@@ -1,0 +1,134 @@
+/* GLOBAL SMOOTHNESS & PERFORMANCE OPTIMIZATIONS */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  perspective: 1000px;
+  min-height: 100vh;
+  min-width: 100vw;
+}
+
+body, html {
+  overflow-x: hidden;
+}
+
+/* Hardware acceleration for all major containers */
+main, .main-content, .page-container, .modal, .sidebar, .drawer, .card, .dialog, .overlay {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Smooth transitions for interactive elements */
+button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.25);
+}
+
+/* Momentum scrolling for mobile */
+@media (max-width: 700px) {
+  html, body, #root {
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Prevent text selection lag on fast scroll */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in inputs and textareas */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* --- GLOBAL OPTIMIZATIONS FOR SMOOTH UX --- */
+
+/* 1. Font rendering and swap */
+html {
+  text-rendering: optimizeLegibility;
+}
+
+/* 2. Image smoothing and lazy loading */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Lazy loading hint for browsers */
+  content-visibility: auto;
+}
+
+/* 3. Accessibility: focus-visible and active states */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  transition: outline 0.18s;
+}
+button:active, .card:active, a:active {
+  filter: brightness(0.96);
+  transition: filter 0.13s;
+}
+
+/* 4. Tap highlight color for mobile */
+* {
+  -webkit-tap-highlight-color: rgba(99,102,241,0.18);
+}
+
+/* 5. Pointer events for scrollbars */
+::-webkit-scrollbar {
+  pointer-events: none;
+}
+
+/* 6. Global box-sizing for layout consistency */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* 7. Smooth background and color transitions for theme changes */
+body, html, #root, .page-container, .main-content, .card, .modal, .sidebar, .drawer {
+  transition: background 0.25s cubic-bezier(0.4,0,0.2,1), color 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* 8. CSS variables for easy theming */
+:root {
+  --accent: #6366f1;
+  --bg-dark: #181c2a;
+  --bg-light: #f3f4f6;
+  --text-main: #22223b;
+  --text-light: #f3f4f6;
+}
+
+/* 9. Prevent text selection lag on fast scroll, but allow in inputs */
+button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+} 

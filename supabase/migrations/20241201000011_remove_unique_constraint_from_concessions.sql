@@ -1,0 +1,3 @@
+-- Drop the unique constraint from student_fee_concessions table
+ALTER TABLE student_fee_concessions
+DROP CONSTRAINT student_fee_concessions_school_id_student_id_fee_head_id_key; 
