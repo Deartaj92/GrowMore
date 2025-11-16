@@ -222,6 +222,69 @@ export const useActivityTracking = () => {
     );
   }, [logActivity]);
 
+  const logHomeworkDiaryActivity = useCallback(async (
+    action: 'create' | 'update' | 'delete' | 'view',
+    className: string,
+    sectionName: string | null,
+    subjectName: string | null,
+    homeworkDate: string,
+    homeworkCount: number,
+    options: {
+      entityId?: number;
+      entityName?: string;
+      createNotification?: boolean;
+    } = {}
+  ) => {
+    const details = activityTrackingService.createHomeworkDiaryActivityDetails(
+      className,
+      sectionName,
+      subjectName,
+      homeworkDate,
+      homeworkCount
+    );
+
+    return logActivity(
+      'homework_diary',
+      action,
+      'homework_diary',
+      {
+        ...options,
+        details
+      }
+    );
+  }, [logActivity]);
+
+  const logReportActivity = useCallback(async (
+    action: 'create' | 'update' | 'delete' | 'view',
+    categoryName: string,
+    subjectName: string,
+    subjectType: 'student' | 'staff',
+    severity: string,
+    options: {
+      entityId?: number;
+      entityName?: string;
+      createNotification?: boolean;
+    } = {}
+  ) => {
+    const details = {
+      category_name: categoryName,
+      subject_name: subjectName,
+      subject_type: subjectType,
+      severity: severity
+    };
+
+    return logActivity(
+      'report',
+      action,
+      'report',
+      {
+        ...options,
+        details,
+        createNotification: options.createNotification !== false // Default to true for reports
+      }
+    );
+  }, [logActivity]);
+
   return {
     logActivity,
     logAttendanceActivity,
@@ -230,6 +293,8 @@ export const useActivityTracking = () => {
     logSubjectAssignmentActivity,
     logClassManagementActivity,
     logStudentManagementActivity,
+    logHomeworkDiaryActivity,
+    logReportActivity,
   };
 };
 

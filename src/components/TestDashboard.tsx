@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -14,6 +14,8 @@ import {
   Person as PersonIcon,
   CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -327,6 +329,8 @@ const CardAction = styled.div<{ $color?: string }>`
 const TestDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useContext(ThemeContext);
+  const { user } = useAuth() as any;
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
 
   const testCards = [
     {
@@ -352,6 +356,35 @@ const TestDashboard: React.FC = () => {
     }
   ];
 
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id) {
+      fetchRenderSettings(user.school_id)
+        .then(s => setRenderSettings(s))
+        .catch(() => setRenderSettings(null));
+    } else {
+      setRenderSettings(null);
+    }
+  }, [user?.role, user?.school_id]);
+
+  const getKeyForTitle = (title: string): string | null => {
+    switch (title) {
+      case 'Test Record Entry': return 'test_dash_record_entry';
+      case 'Test Master Sheet': return 'test_dash_master_sheet';
+      case 'Test Analytics': return 'test_dash_analytics';
+      default: return null;
+    }
+  };
+
+  const visibleCards = useMemo(() => {
+    if (user?.role !== 'Guest') return testCards;
+    if (!renderSettings) return testCards;
+    return testCards.filter(card => {
+      const key = getKeyForTitle(card.title);
+      if (!key) return true;
+      return renderSettings.guest?.[key] !== false;
+    });
+  }, [renderSettings, user?.role]);
+
   const handleCardClick = (path: string) => {
     navigate(path);
   };
@@ -369,7 +402,7 @@ const TestDashboard: React.FC = () => {
       </Header>
 
       <CardsGrid>
-        {testCards.map((card, index) => (
+        {visibleCards.map((card, index) => (
           <Card 
             key={index}
             onClick={() => handleCardClick(card.path)}

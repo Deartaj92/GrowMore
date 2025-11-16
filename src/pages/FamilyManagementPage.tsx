@@ -82,11 +82,6 @@ const FamilyManagementPage: React.FC = () => {
   if (!user?.school_id) {
     return (
       <Box minHeight="100vh" bgcolor={muiTheme.palette.background.default}>
-        <Paper elevation={0} sx={{ bgcolor: muiTheme.palette.background.paper, p: { xs: 2, sm: 4 }, boxShadow: 1 }}>
-          <Typography variant="h4" fontWeight={700} color={muiTheme.palette.text.primary} mb={2}>
-            Family Management
-          </Typography>
-        </Paper>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh" color="#ef4444" textAlign="center" p={4}>
           <Box>
             <Typography variant="h5" fontWeight={700} mb={1}>Access Restricted</Typography>
@@ -104,11 +99,6 @@ const FamilyManagementPage: React.FC = () => {
 
   return (
     <Box minHeight="100vh" bgcolor={muiTheme.palette.background.default}>
-      <Paper elevation={0} sx={{ bgcolor: muiTheme.palette.background.paper, p: { xs: 2, sm: 4 }, boxShadow: 1 }}>
-        <Typography variant="h4" fontWeight={700} color={muiTheme.palette.text.primary} mb={2}>
-          Family Management
-        </Typography>
-      </Paper>
       <FamilyManagement />
     </Box>
   );

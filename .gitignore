@@ -102,6 +102,8 @@ dist/
 # Temporary files
 *.tmp
 *.temp
+temp/
 
 # GitHub token (security)
 .github_token.txt
+

@@ -7,6 +7,7 @@ import {
   Refresh,
   Visibility as DetailsIcon,
   PictureAsPdf,
+  Receipt as ReceiptIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
@@ -994,6 +995,8 @@ const FeeDefaultersList: React.FC = () => {
   const [defaulters, setDefaulters] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [slipsLoading, setSlipsLoading] = useState(false);
+  const [messageLanguage, setMessageLanguage] = useState<'english' | 'urdu'>('english');
   
   // Panel state
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -1143,7 +1146,6 @@ const FeeDefaultersList: React.FC = () => {
       });
       setStudentPaymentHistory(paymentHistory || []);
     } catch (error) {
-      console.error('Error fetching student details:', error);
       showToast('Failed to load student details', 'error');
     } finally {
       setPanelLoading(false);
@@ -1167,7 +1169,6 @@ const FeeDefaultersList: React.FC = () => {
       
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
-        console.log('Generating PDF for mobile... Please wait.');
       }
       
       // Filter out students with 0 remaining amount for PDF export
@@ -1469,16 +1470,13 @@ const FeeDefaultersList: React.FC = () => {
               });
 
               // Show success message and trigger native Android "Open with" dialog
-              console.log(`PDF saved successfully as ${mobileFileName}`);
               
               // Trigger native Android "Open with" dialog by opening the file URI
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
-              console.log('PDF downloaded successfully!');
             }
           } else {
             // Fallback for web browsers - use the blob approach
@@ -1529,10 +1527,8 @@ const FeeDefaultersList: React.FC = () => {
                 URL.revokeObjectURL(url);
               }, 30000);
               
-              console.log(`PDF ready! Click the download button that appeared on screen.`);
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -1570,26 +1566,747 @@ const FeeDefaultersList: React.FC = () => {
                   </html>
                 `);
                 newWindow.document.close();
-                console.log(`PDF opened in new tab. Use the download button in the new tab.`);
               } else {
-                console.log('Please allow popups for this site to download the PDF');
               }
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
-          console.log('Failed to export PDF on mobile. Please try on desktop.');
+          // Error handled by toast notification
         }
       } else {
         // For desktop, use the standard approach
         doc.save(fileName);
-        console.log('Fee defaulters PDF generated successfully');
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      console.log('Failed to generate PDF');
+      // Error handled by toast notification
     } finally {
       setExportLoading(false);
+    }
+  };
+
+  // Helper function to load Urdu font
+  // Helper function to render Urdu text to canvas and return as image data
+  const renderUrduTextToImage = async (text: string, width: number, fontSize: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a canvas element
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        // Set canvas size (in pixels, we'll scale for PDF)
+        const scale = 2; // Higher scale for better quality
+        canvas.width = width * scale * 3.779527559; // Convert mm to pixels (1mm = 3.779527559px)
+        canvas.height = 200 * scale; // Initial height, will adjust
+
+        // Load the Urdu font
+        const fontFace = new FontFace('JameelNooriNastaleeq', 'url(/fonts/JameelNooriNastaleeq.ttf)');
+        
+        fontFace.load().then((loadedFont) => {
+          document.fonts.add(loadedFont);
+          
+          // Set font and text properties
+          ctx.font = `${fontSize * scale}px JameelNooriNastaleeq`;
+          ctx.fillStyle = '#000000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.direction = 'rtl'; // Right-to-left for Urdu
+          
+          // Split text into lines that fit the width
+          // For Urdu/RTL, the browser handles direction automatically
+          const maxWidth = canvas.width - 20 * scale; // Padding
+          const words = text.split(' ');
+          const lines: string[] = [];
+          let currentLine = '';
+          
+          // Build lines normally - browser will handle RTL rendering
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          
+          // Adjust canvas height based on number of lines
+          const lineHeight = fontSize * scale * 1.5;
+          canvas.height = (lines.length * lineHeight) + 20 * scale;
+          
+          // Clear and redraw with proper height
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.font = `${fontSize * scale}px JameelNooriNastaleeq`;
+          ctx.fillStyle = '#000000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.direction = 'rtl';
+          
+          // Draw each line
+          lines.forEach((line, index) => {
+            const y = 10 * scale + (index * lineHeight);
+            ctx.fillText(line, canvas.width / 2, y);
+          });
+          
+          // Convert canvas to image data
+          const imageData = canvas.toDataURL('image/png');
+          resolve(imageData);
+        }).catch((error) => {
+          // Fallback: render without custom font
+          ctx.font = `${fontSize * scale}px Arial`;
+          ctx.fillStyle = '#000000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.direction = 'rtl';
+          
+          const maxWidth = canvas.width - 20 * scale;
+          const words = text.split(' ');
+          const lines: string[] = [];
+          let currentLine = '';
+          
+          // Build lines normally - browser will handle RTL rendering
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          
+          const lineHeight = fontSize * scale * 1.5;
+          canvas.height = (lines.length * lineHeight) + 20 * scale;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.font = `${fontSize * scale}px Arial`;
+          ctx.fillStyle = '#000000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.direction = 'rtl';
+          
+          lines.forEach((line, index) => {
+            const y = 10 * scale + (index * lineHeight);
+            ctx.fillText(line, canvas.width / 2, y);
+          });
+          
+          const imageData = canvas.toDataURL('image/png');
+          resolve(imageData);
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+
+  const loadUrduFont = async (doc: jsPDF): Promise<boolean> => {
+    try {
+      // Check if font is already loaded
+      const fontList = doc.getFontList();
+      if (fontList && 'JameelNooriNastaleeq' in fontList) {
+        return true;
+      }
+
+      // Try different possible paths for the font file
+      const fontPaths = [
+        '/fonts/JameelNooriNastaleeq.ttf',
+        '/public/fonts/JameelNooriNastaleeq.ttf',
+        './fonts/JameelNooriNastaleeq.ttf',
+        'fonts/JameelNooriNastaleeq.ttf'
+      ];
+
+      for (const fontPath of fontPaths) {
+        try {
+          const response = await fetch(fontPath);
+          
+          if (response.ok) {
+            const fontArrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(fontArrayBuffer);
+            
+            // Convert to base64 properly - handle large files in chunks
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+              const chunk = uint8Array.slice(i, i + chunkSize);
+              binary += String.fromCharCode.apply(null, Array.from(chunk));
+            }
+            const fontBase64 = btoa(binary);
+            
+            
+            // Add font to jsPDF
+            try {
+              doc.addFileToVFS('JameelNooriNastaleeq.ttf', fontBase64);
+              doc.addFont('JameelNooriNastaleeq.ttf', 'JameelNooriNastaleeq', 'normal');
+              
+              // Also register bold variant (same font file)
+              doc.addFont('JameelNooriNastaleeq.ttf', 'JameelNooriNastaleeq', 'bold');
+              
+              // Verify font was added
+              const updatedFontList = doc.getFontList();
+              
+              if (updatedFontList && 'JameelNooriNastaleeq' in updatedFontList) {
+                return true;
+              } else {
+                // Try alternative font name
+                if (updatedFontList && Object.keys(updatedFontList).some(f => f.toLowerCase().includes('jameel'))) {
+                  const altFontName = Object.keys(updatedFontList).find(f => f.toLowerCase().includes('jameel'));
+                  return true;
+                }
+              }
+            } catch (fontError) {
+              throw fontError;
+            }
+          } else {
+          }
+        } catch (e) {
+        }
+      }
+
+      return false;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // Handle Generate Slips - Generate single PDF with all fee slips
+  const handleGenerateSlips = async () => {
+    setSlipsLoading(true);
+    
+    try {
+      // Check if it's a mobile device
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Filter out students with 0 remaining amount for slips
+      const defaultersForSlips = filteredDefaulters.filter(defaulter => defaulter.remainingAmount > 0);
+      
+      // Check if there are any defaulters to generate slips for
+      if (defaultersForSlips.length === 0) {
+        showToast('No fee defaulters found to generate slips', 'success');
+        setSlipsLoading(false);
+        return;
+      }
+
+      // Fetch school information
+      const [{ data: profileData }, { data: schoolData }] = await Promise.all([
+        supabase.from('institute_profile').select('*').eq('school_id', user.school_id).single(),
+        supabase.from('schools').select('*').eq('id', user.school_id).single(),
+      ]);
+
+      const schoolInfo = {
+        name: profileData?.name || schoolData?.name || 'AL-HARAM PUBLIC SCHOOL & IQRA ACADEMY',
+        address: profileData?.address || schoolData?.address || 'BALU SHARIF DISTT. NOWSHERA',
+        phone: profileData?.phone || schoolData?.contact || '0315 949830',
+        logo_url: profileData?.logo_url || schoolData?.logo_url || null,
+      };
+
+      // Fetch sessions to get active session
+      const { data: sessionsData } = await supabase
+        .from('sessions')
+        .select('id, name, is_active')
+        .eq('school_id', user.school_id)
+        .order('is_active', { ascending: false })
+        .limit(1);
+
+      const activeSession = sessionsData?.[0];
+
+      // Create single PDF document
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      // Load Urdu font if needed
+      let urduFontLoaded = false;
+      if (messageLanguage === 'urdu') {
+        urduFontLoaded = await loadUrduFont(doc);
+        if (!urduFontLoaded) {
+          showToast('Urdu font could not be loaded. Please ensure font file is in public/fonts/ folder.', 'error');
+        } else {
+          // Verify font is available
+          const fontList = doc.getFontList();
+        }
+      }
+
+      // Process each defaulter and add slip to PDF
+      for (let i = 0; i < defaultersForSlips.length; i++) {
+        const defaulter = defaultersForSlips[i];
+        
+        // Add new page for each slip (except the first one)
+        if (i > 0) {
+          doc.addPage();
+        }
+
+        // Fetch fee invoices for this student
+        const { data: feeInvoices, error: invoicesError } = await supabase
+          .from('fee_invoices')
+          .select(`
+            id,
+            student_id,
+            session_id,
+            month,
+            year,
+            total_amount,
+            status,
+            due_date,
+            fee_invoice_items (
+              id,
+              fee_head_id,
+              amount,
+              fee_heads (
+                id,
+                name,
+                description
+              )
+            )
+          `)
+          .eq('student_id', defaulter.id)
+          .eq('school_id', user.school_id)
+          .order('year', { ascending: false })
+          .order('month', { ascending: false });
+
+        if (invoicesError) {
+          continue;
+        }
+
+        // Fetch payment history for this student
+        const { data: paymentHistory, error: paymentError } = await supabase
+          .from('fee_payments')
+          .select(`
+            id,
+            amount,
+            fee_invoices!inner (
+              student_id
+            ),
+            fee_payment_items (
+              id,
+              fee_item_id,
+              amount
+            )
+          `)
+          .eq('fee_invoices.student_id', defaulter.id)
+          .eq('school_id', user.school_id);
+
+        if (paymentError) {
+          continue;
+        }
+
+        // Calculate remaining items only - ensure only items with remaining > 0
+        const remainingFeeItems: any[] = [];
+        let totalRemainingAmount = 0;
+
+        if (feeInvoices && feeInvoices.length > 0) {
+          feeInvoices.forEach((invoice) => {
+            invoice.fee_invoice_items?.forEach((item: any) => {
+              const itemAmount = Number(item.amount || 0);
+              
+              // Calculate already paid amount for this specific fee item
+              const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
+                if (payment.fee_payment_items) {
+                  const itemPayment = payment.fee_payment_items.find(
+                    (paymentItem: any) => paymentItem.fee_item_id === item.id
+                  );
+                  return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
+                }
+                return sum;
+              }, 0) || 0;
+              
+              const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+              
+              // Only include items that still need payment (remaining > 0)
+              if (remainingItemAmount > 0) {
+                const monthYear = invoice.month && invoice.year
+                  ? `${invoice.month} ${invoice.year}`
+                  : '-';
+                
+                remainingFeeItems.push({
+                  name: item.fee_heads?.name || 'Unknown Fee Head',
+                  monthYear,
+                  amount: remainingItemAmount,
+                });
+                totalRemainingAmount += remainingItemAmount;
+              }
+            });
+          });
+        }
+
+        // Skip this student if no remaining amount
+        if (totalRemainingAmount <= 0) {
+          continue;
+        }
+
+        // Header section - matching the image
+        const headerY = 10;
+        
+        // School name - bold and centered (increased size)
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text(schoolInfo.name, 105, headerY, { align: 'center' });
+
+        // Contact info - centered (increased size)
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        const contactText = schoolInfo.phone ? `${schoolInfo.address || ''} - ${schoolInfo.phone}` : schoolInfo.address || '';
+        doc.text(contactText, 105, headerY + 8, { align: 'center' });
+
+        // Separator line
+        const separatorY = headerY + 16;
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(0, 0, 0);
+        doc.line(20, separatorY, 190, separatorY);
+
+        // Main title - "Remaining Fee Slip"
+        const titleY = separatorY + 10;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('Remaining Fee Slip', 105, titleY, { align: 'center' });
+
+        // Student details section - 3 column table
+        const detailsY = titleY + 10;
+        
+        // Student details table - Name, Father, Class
+        const studentDetailsData = [
+          [defaulter.name, defaulter.father_name || '-', `${getClassName(defaulter.class_id)}${getSectionName(defaulter.section_id) ? ` (${getSectionName(defaulter.section_id)})` : ''}`]
+        ];
+
+        autoTable(doc, {
+          startY: detailsY,
+          head: [['Name', 'Father', 'Class']],
+          body: studentDetailsData,
+          margin: { left: 20, right: 20 },
+          tableWidth: 170,
+          styles: { 
+            fontSize: 10, 
+            cellPadding: 4,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.5,
+            textColor: [0, 0, 0]
+          },
+          headStyles: { 
+            fillColor: [240, 240, 240], 
+            textColor: [0, 0, 0], 
+            fontStyle: 'bold',
+            fontSize: 10,
+            lineWidth: 0.5,
+            cellPadding: 2,
+            minCellHeight: 5,
+            halign: 'center'
+          },
+          columnStyles: {
+            0: { cellWidth: 60, halign: 'center' },
+            1: { cellWidth: 60, halign: 'center' },
+            2: { cellWidth: 50, halign: 'center' }
+          },
+          theme: 'grid',
+        });
+
+        let yPos = (doc as any).lastAutoTable.finalY + 10;
+
+        // Fee Details title - centered on light gray background
+        const feeTitleY = yPos;
+        doc.setFillColor(240, 240, 240);
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.rect(20, feeTitleY - 6, 170, 8, 'FD');
+        
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('Fee Details', 105, feeTitleY, { align: 'center' });
+
+        // Fee details table - Sno, Fee Items, Amounts
+        if (remainingFeeItems.length > 0) {
+          const feeTableData = remainingFeeItems.map((item, idx) => [
+            (idx + 1).toString(),
+            `${item.name} (${item.monthYear})`,
+            formatCurrency(item.amount)
+          ]);
+
+          // Ensure exactly 15 data rows (add empty rows if needed)
+          const targetRows = 15;
+          const currentRows = feeTableData.length;
+          const emptyRowsNeeded = Math.max(0, targetRows - currentRows);
+          
+          for (let i = 0; i < emptyRowsNeeded; i++) {
+            feeTableData.push(['', '', '']);
+          }
+
+          // Add total row (will be styled with didDrawCell)
+          feeTableData.push([
+            '',
+            'Total',
+            formatCurrency(totalRemainingAmount)
+          ]);
+
+          autoTable(doc, {
+            startY: feeTitleY + 4,
+            head: [['Sno', 'Particulars', 'Amounts']],
+            body: feeTableData,
+            margin: { left: 20, right: 20 },
+            tableWidth: 170,
+            styles: { 
+              fontSize: 10, 
+              cellPadding: 2,
+              lineColor: [0, 0, 0],
+              lineWidth: 0.3,
+              textColor: [0, 0, 0],
+              minCellHeight: 5
+            },
+            headStyles: { 
+              fillColor: [240, 240, 240], 
+              textColor: [0, 0, 0], 
+              fontStyle: 'bold',
+              fontSize: 10,
+              lineWidth: 0.3,
+              cellPadding: 2,
+              minCellHeight: 5
+            },
+            columnStyles: {
+              0: { cellWidth: 20, halign: 'center' }, // Center Sno column
+              1: { cellWidth: 100, halign: 'left' },
+              2: { cellWidth: 50, halign: 'center' } // Center Amounts column
+            },
+            theme: 'grid', // Simple grid theme with normal borders
+            didParseCell: (data: any) => {
+              const rowIndex = data.row.index;
+              const isTotalRow = rowIndex === feeTableData.length - 1;
+              const isHeaderRow = rowIndex === -1; // Header row has index -1
+              
+              // Handle header alignment - center Sno and Amounts, keep Particulars left
+              if (isHeaderRow) {
+                if (data.column.index === 0 || data.column.index === 2) {
+                  data.cell.styles.halign = 'center';
+                } else if (data.column.index === 1) {
+                  data.cell.styles.halign = 'left';
+                }
+              }
+              
+              // Set background color for total row so autoTable draws borders on top
+              if (isTotalRow) {
+                data.cell.styles.fillColor = [240, 240, 240];
+                data.cell.styles.fontStyle = 'bold';
+                // Center the "Total" text in the Particulars column (column 1)
+                if (data.column.index === 1) {
+                  data.cell.styles.halign = 'center';
+                }
+              }
+            },
+            didDrawCell: (data: any) => {
+              const rowIndex = data.row.index;
+              const isEmptyRow = rowIndex >= 0 && 
+                                 rowIndex < feeTableData.length - 1 &&
+                                 feeTableData[rowIndex][0] === '' && 
+                                 feeTableData[rowIndex][1] === '' && 
+                                 feeTableData[rowIndex][2] === '';
+              
+              // Handle empty rows - no text
+              if (isEmptyRow) {
+                return true;
+              }
+              
+              // Let autoTable handle everything (header, data rows, footer, borders)
+              return false;
+            }
+          });
+
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        // Message section - proper message text (ensure it fits on page)
+        const maxMessageY = 270; // Maximum Y position to ensure it fits on A4 (297mm height)
+        const messageY = Math.min(yPos, maxMessageY);
+        
+        // Select message based on language
+        let messageText = '';
+        
+        if (messageLanguage === 'urdu') {
+          // Urdu message - render to canvas and embed as image
+          messageText = ` محترم والدین، آپ کی ہر کاوش آپ کے بچے کی تعلیم میں سرمایہ کاری ہے اور یہ ان کا مستقبل بناتی ہے۔  فیس کی بروقت ادائیگی آپ کے بچے کی صلاحیتوں کو کھولنے اور ان کے مستقبل کو روشن  بنانے کی طرف ایک قدم ہے۔ بروقت ادائیگی آپ کے بچے کے لیے معیاری تعلیم کو برقرار رکھنے میں مدد کرتی ہے۔ براہ کرم جلد از جلد بقایا جات ادا کریں تاکہ غیر منقطع تعلیم اور مسلسل عمدگی کو یقینی بنایا جا سکے۔ ہم اور آپ مل کر کل کے رہنما بنا رہے ہیں۔ اس سفر میں آپ کی شراکت انمول ہے۔ آپ کی مسلسل حمایت اور اپنے بچے کی کامیابی کے لیے عزم کا شکریہ!`;
+          
+          try {
+            // Render Urdu text to canvas and get image data
+            // Using larger font size (20) for better readability - almost double the English size (11)
+            const imageData = await renderUrduTextToImage(messageText, 170, 20);
+            
+            // Calculate image dimensions (maintain aspect ratio)
+            const img = new Image();
+            img.src = imageData;
+            
+            await new Promise((resolve) => {
+              img.onload = () => {
+                // Calculate dimensions in mm (canvas is 2x scale, so divide by 2 and convert px to mm)
+                const imgWidthMm = 170; // Use full width
+                const imgHeightMm = (img.height / 2) / 3.779527559; // Convert from pixels to mm
+                
+                // Ensure it fits on page (leave space for date at bottom - about 6mm)
+                const availableHeight = 279 - messageY; // Reduced from 285 to 279 to leave space for date
+                let finalWidth = imgWidthMm;
+                let finalHeight = imgHeightMm;
+                
+                if (finalHeight > availableHeight) {
+                  finalHeight = availableHeight;
+                  finalWidth = (imgWidthMm * availableHeight) / imgHeightMm;
+                }
+                
+                // Center the image
+                const xPos = (210 - finalWidth) / 2; // A4 width is 210mm
+                
+                // Add image to PDF
+                doc.addImage(imageData, 'PNG', xPos, messageY, finalWidth, finalHeight);
+                resolve(null);
+              };
+              img.onerror = () => {
+                resolve(null);
+              };
+            });
+          } catch (error) {
+            // Fallback to English if Urdu rendering fails
+            messageText = `Dear Parents, your investment in your child's education today shapes their tomorrow. Every fee payment is a step towards unlocking your child's potential and building a brighter future. We understand the importance of timely payments in maintaining the quality education your child deserves. Please clear the outstanding dues as soon as possible to ensure uninterrupted learning and continued excellence. Together, we are building the leaders of tomorrow. Your partnership in this journey is invaluable. Thank you for your continued support and commitment to your child's success!`;
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            const splitText = doc.splitTextToSize(messageText, 170);
+            const lineHeight = 4.5;
+            splitText.forEach((line: string, index: number) => {
+              doc.text(line, 105, messageY + (index * lineHeight), { align: 'center' });
+            });
+          }
+        } else {
+          // English message - render directly with jsPDF
+          let messageText = `Dear Parents, your investment in your child's education today shapes their tomorrow. Every fee payment is a step towards unlocking your child's potential and building a brighter future. We understand the importance of timely payments in maintaining the quality education your child deserves. Please clear the outstanding dues as soon as possible to ensure uninterrupted learning and continued excellence. Together, we are building the leaders of tomorrow. Your partnership in this journey is invaluable. Thank you for your continued support and commitment to your child's success!`;
+          
+          const initialFontSize = 13;
+          const initialLineHeight = 5; // Slightly increased to match larger font
+          const reducedFontSize = 11;
+          const reducedLineHeight = 4.5;
+
+          doc.setTextColor(0, 0, 0);
+          
+          const boldPhrase = "Dear Parents!";
+          let currentY = messageY; // Start Y for the message block
+
+          // 1. Render "Dear Parents!" in bold and centered
+          doc.setFontSize(initialFontSize);
+          doc.setFont('helvetica', 'bold');
+          doc.text(boldPhrase, 105, currentY, { align: 'center' }); // Center align bold phrase
+          currentY += initialLineHeight; // Move to next line for the rest of the message
+
+          // 2. Prepare the remaining message for centered rendering
+          let remainingMessage = messageText;
+          if (messageText.startsWith(boldPhrase)) {
+            remainingMessage = messageText.substring(boldPhrase.length).trim();
+          }
+
+          doc.setFont('helvetica', 'normal'); // Reset to normal font for the rest
+          
+          const splitText = doc.splitTextToSize(remainingMessage, 170);
+          const remainingMessageHeight = splitText.length * initialLineHeight;
+          
+          // Check if remaining message fits on page, if not, reduce font size
+          if (currentY + remainingMessageHeight > 279) { // Leave space for date at bottom
+            doc.setFontSize(reducedFontSize);
+            splitText.forEach((line: string, index: number) => {
+              const lineY = currentY + (index * reducedLineHeight);
+              if (lineY < 279) { // Leave space for date at bottom
+                doc.text(line, 105, lineY, { 
+                  align: 'center', 
+                  maxWidth: 170 
+                });
+              }
+            });
+          } else {
+            doc.setFontSize(initialFontSize); // Ensure font size is set for this path too
+            splitText.forEach((line: string, index: number) => {
+              doc.text(line, 105, currentY + (index * initialLineHeight), { 
+                align: 'center', 
+                maxWidth: 170 
+              });
+            });
+          }
+        }
+        
+        // Add date at the bottom right of the page (small font)
+        const currentDate = new Date();
+        const day = currentDate.getDate().toString().padStart(2, '0');
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const month = months[currentDate.getMonth()];
+        const year = currentDate.getFullYear();
+        const dateString = `${day} ${month}, ${year}`;
+        
+        doc.setFontSize(8); // Small font size
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(dateString, 190, 285, { align: 'right' }); // Right-aligned, near right margin
+      }
+
+      // Save single PDF file
+      const formatDateForFileName = (date: Date) => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
+
+      const fileName = `Fee_Slips_${formatDateForFileName(new Date())}.pdf`;
+      
+      if (isMobileDevice) {
+        // For mobile devices, use Capacitor Filesystem API approach
+        try {
+          const pdfBase64 = doc.output('datauristring').split(',')[1];
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const mobileFileName = `fee-slips-${timestamp}.pdf`;
+
+          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+            try {
+              await window.Capacitor.Plugins.Filesystem.writeFile({
+                path: mobileFileName,
+                data: pdfBase64,
+                directory: 'DOCUMENTS'
+              });
+
+              const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                path: mobileFileName,
+                directory: 'DOCUMENTS'
+              });
+
+              showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+              window.open(uriResult.uri, '_blank');
+            } catch (fsError) {
+              doc.save(mobileFileName);
+              showToast('PDF downloaded successfully!', 'success');
+            }
+          } else {
+            const pdfBlob = doc.output('blob');
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('PDF downloaded successfully!', 'success');
+          }
+        } catch (error) {
+          showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
+        }
+      } else {
+        // For desktop, use the standard approach
+        doc.save(fileName);
+        showToast(`Generated ${defaultersForSlips.length} fee slip(s) in single PDF successfully!`, 'success');
+      }
+    } catch (error) {
+      showToast('Failed to generate slips: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+    } finally {
+      setSlipsLoading(false);
     }
   };
 
@@ -1620,15 +2337,6 @@ const FeeDefaultersList: React.FC = () => {
           supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
         ]);
         
-        console.log('Initial data loaded:', {
-          students: studentsData?.length || 0,
-          classes: classesData?.length || 0,
-          sections: allSectionsData?.length || 0,
-        });
-        
-        if (allSectionsData && allSectionsData.length > 0) {
-          console.log('Sample sections data:', allSectionsData.slice(0, 3));
-        }
         
         if (studentsData) setStudents(studentsData);
         if (classesData) {
@@ -1655,13 +2363,6 @@ const FeeDefaultersList: React.FC = () => {
   const filteredSections = useMemo(() => {
     if (!selectedClass) return [];
     const filtered = sections.filter(section => section.class_id === Number(selectedClass));
-    console.log('Filtering sections:', {
-      selectedClass,
-      selectedClassType: typeof selectedClass,
-      totalSections: sections.length,
-      filteredCount: filtered.length,
-      sections: sections.map(s => ({ id: s.id, name: s.name, class_id: s.class_id }))
-    });
     return filtered;
   }, [sections, selectedClass]);
 
@@ -1675,13 +2376,11 @@ const FeeDefaultersList: React.FC = () => {
     if (students.length === 0) return;
 
     const loadFeeDefaulters = async () => {
-      console.log('Starting loadFeeDefaulters with', students.length, 'students');
       setLoadingData(true);
       setError(null);
       
       // Set a timeout to prevent infinite loading
       const timeoutId = setTimeout(() => {
-        console.log('Timeout reached, showing partial results');
         setLoadingData(false);
       }, 10000); // 10 seconds timeout (should be much faster now)
       
@@ -1695,19 +2394,14 @@ const FeeDefaultersList: React.FC = () => {
           .select('id, total_amount')
           .limit(1);
         
-        console.log('Test invoices result:', testInvoices, 'Error:', testError);
-        
         if (testError) {
-          console.warn('fee_invoices table not accessible:', testError);
           // If no fee invoices table, show empty list (no fee system configured)
-          console.log('No fee invoices table found - fee system not configured');
           setDefaulters([]);
           return;
         }
         
         
         // Much more efficient approach: Get all data in bulk queries
-        console.log('Fetching all fee invoices in bulk...');
         
         // Get all fee invoices for all students at once
         const studentIds = students.map(s => s.id);
@@ -1717,11 +2411,6 @@ const FeeDefaultersList: React.FC = () => {
           .eq('school_id', user.school_id)
           .in('student_id', studentIds);
         
-        if (invoicesError) {
-          console.warn('Error fetching invoices:', invoicesError);
-        } else {
-          console.log(`Found ${allInvoices?.length || 0} invoices for all students`);
-        }
         
         // Get all payments for all invoices at once
         let allPayments: any[] = [];
@@ -1733,16 +2422,12 @@ const FeeDefaultersList: React.FC = () => {
             .eq('school_id', user.school_id)
             .in('invoice_id', invoiceIds);
           
-          if (paymentsError) {
-            console.warn('Error fetching payments:', paymentsError);
-          } else {
+          if (!paymentsError) {
             allPayments = payments || [];
-            console.log(`Found ${allPayments.length} payments for all invoices`);
           }
         }
         
         // Process the data locally (much faster)
-        console.log('Processing data locally...');
         
         // Group invoices by student_id
         const invoicesByStudent: { [key: string]: any[] } = {};
@@ -1816,18 +2501,14 @@ const FeeDefaultersList: React.FC = () => {
           return b.remainingAmount - a.remainingAmount;
         });
         
-        console.log('Final defaulter data:', defaulterData.length, 'items');
-        console.log('Defaulter data:', defaulterData);
         
         // If no defaulters found, show empty list (no students with outstanding fees)
         if (defaulterData.length === 0) {
-          console.log('No fee defaulters found - all students have paid their fees or have no fee records');
           setDefaulters([]);
         } else {
           setDefaulters(defaulterData);
         }
       } catch (err: any) {
-        console.error('Error loading fee defaulters:', err);
         setError('Failed to load fee defaulters. Please check if fee data is properly configured.');
         setDefaulters([]);
       } finally {
@@ -1985,7 +2666,6 @@ const FeeDefaultersList: React.FC = () => {
               <SegmentedButton
                 onClick={handleExportPDF}
                 disabled={exportLoading}
-                last
                 $isPdf={true}
               >
                 {exportLoading ? (
@@ -2002,6 +2682,38 @@ const FeeDefaultersList: React.FC = () => {
                 )}
                 {exportLoading ? 'Exporting...' : 'PDF'}
               </SegmentedButton>
+              
+              <SegmentedButton
+                onClick={handleGenerateSlips}
+                disabled={slipsLoading}
+                $isPdf={true}
+              >
+                {slipsLoading ? (
+                  <div style={{ 
+                    width: 16, 
+                    height: 16, 
+                    border: '2px solid #e0e7ff', 
+                    borderTop: '2px solid #4a6cf7', 
+                    borderRadius: '50%', 
+                    animation: 'spin 1s linear infinite' 
+                  }} />
+                ) : (
+                  <ReceiptIcon style={{ fontSize: 16 }} />
+                )}
+                {slipsLoading ? 'Generating...' : 'Slips'}
+              </SegmentedButton>
+              
+              <SegmentedButton
+                onClick={() => setMessageLanguage(messageLanguage === 'english' ? 'urdu' : 'english')}
+                last
+                style={{ 
+                  minWidth: '80px',
+                  fontSize: '12px',
+                  padding: '4px 8px'
+                }}
+              >
+                {messageLanguage === 'english' ? 'EN' : 'اردو'}
+              </SegmentedButton>
             </SegmentedGroup>
           </DesktopSegmentedGroup>
         </HeaderTopRow>
@@ -2009,7 +2721,7 @@ const FeeDefaultersList: React.FC = () => {
         <HeaderBottomRow>
           {/* Mobile layout - search and filters in separate rows */}
           <MobileHeaderLayout>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
               <SegmentedButton
                 onClick={handleExportPDF}
                 disabled={exportLoading}
@@ -2028,6 +2740,37 @@ const FeeDefaultersList: React.FC = () => {
                   <PictureAsPdf style={{ fontSize: 18 }} />
                 )}
                 {exportLoading ? 'Exporting...' : 'PDF'}
+              </SegmentedButton>
+              
+              <SegmentedButton
+                onClick={handleGenerateSlips}
+                disabled={slipsLoading}
+                $isPdf={true}
+              >
+                {slipsLoading ? (
+                  <div style={{ 
+                    width: 16, 
+                    height: 16, 
+                    border: '2px solid #e0e7ff', 
+                    borderTop: '2px solid #4a6cf7', 
+                    borderRadius: '50%', 
+                    animation: 'spin 1s linear infinite' 
+                  }} />
+                ) : (
+                  <ReceiptIcon style={{ fontSize: 18 }} />
+                )}
+                {slipsLoading ? 'Generating...' : 'Slips'}
+              </SegmentedButton>
+              
+              <SegmentedButton
+                onClick={() => setMessageLanguage(messageLanguage === 'english' ? 'urdu' : 'english')}
+                style={{ 
+                  minWidth: '70px',
+                  fontSize: '12px',
+                  padding: '4px 8px'
+                }}
+              >
+                {messageLanguage === 'english' ? 'EN' : 'اردو'}
               </SegmentedButton>
         </div>
             <MobileRow>

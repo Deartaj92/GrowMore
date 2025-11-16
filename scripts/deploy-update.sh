@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 REPO_OWNER="Deartaj92"  # Replace with your GitHub username
-REPO_NAME="DearTaj"        # Replace with your repository name
+REPO_NAME="GrowMore"        # Replace with your repository name
 BUNDLE_NAME="app-bundle.zip"
 
 # Colors for output

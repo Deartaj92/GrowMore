@@ -241,12 +241,13 @@ const MyTimetable: React.FC = () => {
       
       const scheduleItem = scheduleMap.get(i);
       if (scheduleItem) {
-        // Remove duplicate subjects while keeping all classes
+        // Remove duplicate subjects and classes (similar to how double subjects are handled)
         const uniqueSubjects = Array.from(new Set(scheduleItem.subjects));
+        const uniqueClasses = Array.from(new Set(scheduleItem.classes));
         allPeriods.push({
           period: i,
           time: periods[i-1].time,
-          class: scheduleItem.classes.join(' / '),
+          class: uniqueClasses.join(' / '),
           subject: uniqueSubjects.join(' / ')
         });
       } else {

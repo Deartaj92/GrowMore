@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useContext, useRef, MouseEvent, useCallback } from 'react';
+import React, { useEffect, useState, useContext, useRef, MouseEvent, useCallback, useMemo } from 'react';
 import styled, { css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { ThemeContext, useProgress, darkTheme, lightTheme } from './Layout';
 import { useToast } from './useToast';
 import { format, isSunday, parseISO } from 'date-fns';
 import { sortClasses } from '../utils/classUtils';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   CheckCircle,
   Cancel,
@@ -1274,6 +1275,10 @@ const MarkAttendance: React.FC = () => {
   const [showWhatsAppSender, setShowWhatsAppSender] = useState(false);
   const [whatsappNotificationData, setWhatsappNotificationData] = useState<AttendanceNotificationData[]>([]);
   const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Stats
   const totalStudents = students.length;
@@ -1388,6 +1393,48 @@ const MarkAttendance: React.FC = () => {
     }
   }, [selectedClass, user]);
 
+  // Preloading guard: when class/section changes to a valid selection, show loading immediately
+  useEffect(() => {
+    if (!user?.school_id) return;
+    // Determine if the selected class requires a section
+    const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
+    const hasSections = selectedClassObj?.has_sections ?? true;
+
+    // If no class or required section is missing, don't set loading (and clear students)
+    if (!selectedClass || (hasSections && !selectedSection)) {
+      setLoadingStudents(false);
+      return;
+    }
+
+    // We have a valid selection that will trigger fetchStudents; set loading immediately
+    setLoadingStudents(true);
+  }, [selectedClass, selectedSection, user?.school_id, classes]);
+
+  // Ensure selectedSection aligns with selectedClass for teachers
+  useEffect(() => {
+    if (user?.role !== 'Teacher') return;
+    if (!selectedClass) return;
+    if (!selectedSection) return;
+    const isValid = teacherSections.some(
+      (s) => String(s.id) === String(selectedSection) && String(s.class_id) === String(selectedClass)
+    );
+    if (!isValid) {
+      setSelectedSection('');
+    }
+  }, [selectedClass, selectedSection, teacherSections, user?.role]);
+
+  // Auto-select the only available section for the selected class (teacher),
+  // but only when the teacher is linked to exactly one class
+  useEffect(() => {
+    if (user?.role !== 'Teacher') return;
+    if (!selectedClass) return;
+    const uniqueClassIds = Array.from(new Set(teacherSections.map(s => String(s.class_id))));
+    if (uniqueClassIds.length !== 1) return;
+    if (!selectedSection && sections.length === 1) {
+      setSelectedSection(sections[0].id.toString());
+    }
+  }, [sections, selectedClass, selectedSection, user?.role, teacherSections]);
+
   // Fetch active session on mount
   useEffect(() => {
     const fetchSession = async () => {
@@ -1493,9 +1540,19 @@ const MarkAttendance: React.FC = () => {
         if (error) throw error;
         if (data && data.length > 0) {
           setTeacherSections(data);
-          if (!selectedSection) {
-            setSelectedSection(data[0].id.toString());
-            setSelectedClass(data[0].class_id.toString());
+          // Determine unique classes linked to the teacher
+          const uniqueClassIds = Array.from(new Set(data.map(s => String(s.class_id))));
+          if (uniqueClassIds.length === 1) {
+            const onlyClassId = uniqueClassIds[0];
+            // Auto-select class if not already selected
+            if (!selectedClass) {
+              setSelectedClass(onlyClassId.toString());
+            }
+            // If exactly one section in that class is linked to the teacher, auto-select it
+            const sectionsInOnlyClass = data.filter(s => String(s.class_id) === String(onlyClassId));
+            if (!selectedSection && sectionsInOnlyClass.length === 1) {
+              setSelectedSection(sectionsInOnlyClass[0].id.toString());
+            }
           }
         } else {
           setTeacherSections([]);
@@ -1718,9 +1775,6 @@ const MarkAttendance: React.FC = () => {
         };
       }).sort((a, b) => a.id - b.id);
       setStudents(formattedStudents);
-      if (formattedStudents.length === 0) {
-        toast.showToast('No students found in this class', 'success');
-      }
       setHasAttendanceRecords((attendanceData || []).length > 0);
       
       // Log attendance view activity (no notification for view)
@@ -1748,7 +1802,28 @@ const MarkAttendance: React.FC = () => {
     }
   };
 
+  // Touch handling state to prevent status change during scroll
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const [isTouchScrolling, setIsTouchScrolling] = useState(false);
+
+  // Helper function for vibration feedback
+  const vibrate = useCallback((pattern: number | number[] = 10) => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (error) {
+        // Vibration not supported or failed
+      }
+    }
+  }, []);
+
   const handleStatusChange = (studentId: number, status: 'present' | 'absent' | 'leave' | 'late') => {
+    // Prevent status change if user is scrolling
+    if (isTouchScrolling) return;
+    
+    // Vibration feedback
+    vibrate(10);
+    
     setStudents(prev =>
       prev.map(student =>
         student.id === studentId
@@ -1895,6 +1970,9 @@ const MarkAttendance: React.FC = () => {
       setProgress(90);
       setHasAttendanceRecords(true);
       
+      // Clear unsaved changes flag after successful save
+      setSelectedRows([]);
+      
       // Log attendance activity
       try {
         const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
@@ -1961,7 +2039,7 @@ const MarkAttendance: React.FC = () => {
     );
 
   useEffect(() => {
-    // Clear students when class changes
+    // Clear students when class/section changes
     setStudents([]);
     setSelectedRows([]);
     
@@ -1977,8 +2055,15 @@ const MarkAttendance: React.FC = () => {
       
       // Only fetch if class has no sections OR if class has sections and section is selected
       if (!hasSections || (hasSections && selectedSection)) {
+        // Set loading immediately to avoid empty-state flicker
+        setLoadingStudents(true);
         fetchStudents();
+      } else {
+        // No valid selection to fetch yet
+        setLoadingStudents(false);
       }
+    } else {
+      setLoadingStudents(false);
     }
   }, [selectedClass, selectedSection, date, user, classes]);
 
@@ -2038,6 +2123,51 @@ const MarkAttendance: React.FC = () => {
   useEffect(() => {
     didAutoSelect.current = false;
   }, [selectedClass, selectedSection, date]);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!selectedClass || !date) return false;
+    // Check if there are any selected rows with status changes
+    // If there are selected rows, we have unsaved changes
+    return selectedRows.length > 0;
+  }, [selectedRows, selectedClass, date]);
+
+  // Handle browser navigation (refresh, close tab, etc.)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved attendance changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Handle React Router navigation (back button, programmatic navigation)
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (hasUnsavedChanges) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setShowSaveConfirm(true);
+        // Push state back to prevent navigation
+        window.history.pushState(null, '', location.pathname);
+      }
+    };
+
+    // Push initial state to enable back button handling
+    window.history.pushState(null, '', location.pathname);
+    window.addEventListener('popstate', handlePopState, true);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState, true);
+    };
+  }, [hasUnsavedChanges, location.pathname]);
 
   const handleRemarksChange = (studentId: number, value: string) => {
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, remarks: value } : s));
@@ -2141,7 +2271,7 @@ const MarkAttendance: React.FC = () => {
           <div style={{ fontSize: '1rem', marginTop: 8, color: '#aaa' }}>Attendance will appear here once you select a section.</div>
         </div>
       );
-    } else if (!loading && students.length === 0) {
+    } else if (!loading && !loadingStudents && students.length === 0) {
       studentAreaContent = (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 0', color: '#888', fontWeight: 600
@@ -2216,11 +2346,11 @@ const MarkAttendance: React.FC = () => {
                   >
                     <option value="">Select Section</option>
                     {user?.role === 'Teacher'
-                        ? teacherSections.map((s) => (
+                        ? sections.map((s) => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                           ))
                         : sections.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
+                            <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
                   </SegmentedSelect>
                 ) : null;
@@ -2290,7 +2420,7 @@ const MarkAttendance: React.FC = () => {
                 >
                   <option value="">Select Section</option>
                   {user?.role === 'Teacher'
-                    ? teacherSections.map((s) => (
+                    ? sections.map((s) => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))
                     : sections.map((s) => (
@@ -2391,11 +2521,27 @@ const MarkAttendance: React.FC = () => {
                     <EnhancedStatusButton
                       $active={student.status === 'present'}
                       $color="#16a34a"
-                      onMouseDown={e => { e.preventDefault(); handleStatusChange(student.id, 'present'); }}
-                      onMouseUp={() => setStatusBounce(null)}
-                      onMouseLeave={() => setStatusBounce(null)}
-                      onTouchStart={e => { handleStatusChange(student.id, 'present'); }}
-                      onTouchEnd={() => setStatusBounce(null)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                        setIsTouchScrolling(false);
+                      }}
+                      onTouchMove={(e) => {
+                        if (!touchStartPos.current) return;
+                        const touch = e.touches[0];
+                        const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+                        const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+                        if (deltaX > 10 || deltaY > 10) {
+                          setIsTouchScrolling(true);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        if (!isTouchScrolling) {
+                          handleStatusChange(student.id, 'present');
+                        }
+                        touchStartPos.current = null;
+                        setTimeout(() => setIsTouchScrolling(false), 100);
+                      }}
                       onClick={() => handleStatusChange(student.id, 'present')}
                     >
                       P
@@ -2403,11 +2549,27 @@ const MarkAttendance: React.FC = () => {
                     <EnhancedStatusButton
                       $active={student.status === 'absent'}
                       $color="#dc2626"
-                      onMouseDown={e => { e.preventDefault(); handleStatusChange(student.id, 'absent'); }}
-                      onMouseUp={() => setStatusBounce(null)}
-                      onMouseLeave={() => setStatusBounce(null)}
-                      onTouchStart={e => { handleStatusChange(student.id, 'absent'); }}
-                      onTouchEnd={() => setStatusBounce(null)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                        setIsTouchScrolling(false);
+                      }}
+                      onTouchMove={(e) => {
+                        if (!touchStartPos.current) return;
+                        const touch = e.touches[0];
+                        const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+                        const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+                        if (deltaX > 10 || deltaY > 10) {
+                          setIsTouchScrolling(true);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        if (!isTouchScrolling) {
+                          handleStatusChange(student.id, 'absent');
+                        }
+                        touchStartPos.current = null;
+                        setTimeout(() => setIsTouchScrolling(false), 100);
+                      }}
                       onClick={() => handleStatusChange(student.id, 'absent')}
                     >
                       A
@@ -2415,11 +2577,27 @@ const MarkAttendance: React.FC = () => {
                     <EnhancedStatusButton
                       $active={student.status === 'leave'}
                       $color="#4a6cf7"
-                      onMouseDown={e => { e.preventDefault(); handleStatusChange(student.id, 'leave'); }}
-                      onMouseUp={() => setStatusBounce(null)}
-                      onMouseLeave={() => setStatusBounce(null)}
-                      onTouchStart={e => { handleStatusChange(student.id, 'leave'); }}
-                      onTouchEnd={() => setStatusBounce(null)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                        setIsTouchScrolling(false);
+                      }}
+                      onTouchMove={(e) => {
+                        if (!touchStartPos.current) return;
+                        const touch = e.touches[0];
+                        const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+                        const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+                        if (deltaX > 10 || deltaY > 10) {
+                          setIsTouchScrolling(true);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        if (!isTouchScrolling) {
+                          handleStatusChange(student.id, 'leave');
+                        }
+                        touchStartPos.current = null;
+                        setTimeout(() => setIsTouchScrolling(false), 100);
+                      }}
                       onClick={() => handleStatusChange(student.id, 'leave')}
                     >
                       L
@@ -2427,11 +2605,27 @@ const MarkAttendance: React.FC = () => {
                     <EnhancedStatusButton
                       $active={student.status === 'late'}
                       $color="#f59e42"
-                      onMouseDown={e => { e.preventDefault(); handleStatusChange(student.id, 'late'); }}
-                      onMouseUp={() => setStatusBounce(null)}
-                      onMouseLeave={() => setStatusBounce(null)}
-                      onTouchStart={e => { handleStatusChange(student.id, 'late'); }}
-                      onTouchEnd={() => setStatusBounce(null)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                        setIsTouchScrolling(false);
+                      }}
+                      onTouchMove={(e) => {
+                        if (!touchStartPos.current) return;
+                        const touch = e.touches[0];
+                        const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+                        const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+                        if (deltaX > 10 || deltaY > 10) {
+                          setIsTouchScrolling(true);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        if (!isTouchScrolling) {
+                          handleStatusChange(student.id, 'late');
+                        }
+                        touchStartPos.current = null;
+                        setTimeout(() => setIsTouchScrolling(false), 100);
+                      }}
                       onClick={() => handleStatusChange(student.id, 'late')}
                     >
                       Lt
@@ -2556,7 +2750,7 @@ const MarkAttendance: React.FC = () => {
             }}
           >
             <span style={{ color: '#25d366', fontSize: '16px' }}>📱</span>
-            Send WhatsApp notifications to absent/late/leave students
+            Send Notifications (WhatsApp & SMS)
           </label>
           {whatsappProcessing && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#25d366' }}>
@@ -2591,7 +2785,7 @@ const MarkAttendance: React.FC = () => {
             theme={theme === 'dark' ? darkTheme : lightTheme}
             first
             onClick={() => handleMarkAll('present')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: '0.85em', minHeight: 32 }}
+            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
             disabled={students.length === 0 || selectedRows.length === 0}
           >
             {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
@@ -2600,7 +2794,7 @@ const MarkAttendance: React.FC = () => {
           <SegmentedButton
             theme={theme === 'dark' ? darkTheme : lightTheme}
             onClick={() => handleMarkAll('absent')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: '0.85em', minHeight: 32 }}
+            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
             disabled={students.length === 0 || selectedRows.length === 0}
           >
             {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
@@ -2674,11 +2868,52 @@ const MarkAttendance: React.FC = () => {
         )}
       </PageContainer>
       
+      {/* Save Confirmation Dialog */}
+      {showSaveConfirm && (
+        <>
+          <Overlay onClick={() => setShowSaveConfirm(false)} />
+          <ConfirmationDialog>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogContent>
+              You have unsaved attendance changes. Do you want to save before leaving?
+            </DialogContent>
+            <DialogButtons>
+              <DialogButton onClick={() => {
+                setShowSaveConfirm(false);
+                setPendingNavigation(null);
+                // Clear selected rows to allow navigation
+                setSelectedRows([]);
+              }}>
+                Leave Without Saving
+              </DialogButton>
+              <DialogButton onClick={() => {
+                setShowSaveConfirm(false);
+                setPendingNavigation(null);
+              }}>
+                Cancel
+              </DialogButton>
+              <DialogButton 
+                $variant="danger" 
+                onClick={async () => {
+                  setShowSaveConfirm(false);
+                  await handleSave();
+                  setPendingNavigation(null);
+                }}
+                style={{ background: '#16a34a', color: '#fff' }}
+              >
+                Save & Leave
+              </DialogButton>
+            </DialogButtons>
+          </ConfirmationDialog>
+        </>
+      )}
+      
       {/* WhatsApp Bulk Sender Modal */}
       {showWhatsAppSender && (
         <WhatsAppBulkSender
           notificationData={whatsappNotificationData}
           schoolName="Your School Name" // You can get this from schoolData
+          selectedDate={(whatsappNotificationData[0]?.date as string) || new Date().toISOString().slice(0,10)}
           onClose={() => {
             setShowWhatsAppSender(false);
             setWhatsappNotificationData([]);

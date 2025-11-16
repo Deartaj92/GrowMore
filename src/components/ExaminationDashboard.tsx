@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -13,6 +13,8 @@ import {
   School as SchoolIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -387,6 +389,42 @@ const examinationItems = [
 const ExaminationDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const navigate = useNavigate();
+  const { user } = useAuth() as any;
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id) {
+      fetchRenderSettings(user.school_id)
+        .then(s => setRenderSettings(s))
+        .catch(() => setRenderSettings(null));
+    } else {
+      setRenderSettings(null);
+    }
+  }, [user?.role, user?.school_id]);
+
+  const getKeyForTitle = (title: string): string | null => {
+    switch (title) {
+      case 'Manage Examinations': return 'exam_dash_manage';
+      case 'Marks Entry': return 'exam_dash_marks_entry';
+      case 'Master Sheets': return 'exam_dash_master_sheets';
+      case 'DMC Generation': return 'exam_dash_dmc';
+      case 'Position Holders': return 'exam_dash_positions';
+      case 'Exam Analytics': return 'exam_dash_analytics';
+      case 'Manage Subjects': return 'exam_dash_subjects';
+      case 'Examination Configuration': return 'exam_dash_configuration';
+      default: return null;
+    }
+  };
+
+  const visibleItems = useMemo(() => {
+    if (user?.role !== 'Guest') return examinationItems;
+    if (!renderSettings) return examinationItems;
+    return examinationItems.filter(item => {
+      const key = getKeyForTitle(item.title);
+      if (!key) return true;
+      return renderSettings.guest?.[key] !== false;
+    });
+  }, [renderSettings, user?.role]);
 
   const handleCardClick = (path: string) => {
     navigate(path);
@@ -405,7 +443,7 @@ const ExaminationDashboard: React.FC = () => {
       </Header>
 
       <CardsGrid>
-        {examinationItems.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <Card 
             key={index}
             onClick={() => handleCardClick(item.path)}

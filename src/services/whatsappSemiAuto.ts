@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 export interface AttendanceNotificationData {
   student_id: number;
   student_name: string;
+  father_name?: string;
   class_name: string;
   section_name?: string;
   date: string;
@@ -11,6 +12,7 @@ export interface AttendanceNotificationData {
   student_phone: string; // Changed from parent_phone to student_phone
   family_id?: number;
   school_short_name?: string;
+  notification_channel?: 'whatsapp' | 'sms'; // Added notification channel
 }
 
 export interface WhatsAppNotification {
@@ -111,49 +113,84 @@ Thank you for informing us.
       }
 
       const notificationData: AttendanceNotificationData[] = [];
-      
-      for (const student of attendanceData) {
-        // Only send notifications for absent, late, or leave students
-        if (['absent', 'late', 'leave'].includes(student.status.toLowerCase())) {
-          try {
-            // Get student info including phone number
-            const { data: studentInfo, error: studentError } = await supabase
-              .from('students')
-              .select('name, phone')
-              .eq('id', student.id)
-              .eq('school_id', schoolId)
-              .single();
 
-            if (studentError) {
-              console.error(`Error fetching student info for ID ${student.id}:`, studentError);
-              continue;
-            }
+      // Filter eligible attendance entries first
+      const eligible = attendanceData.filter(s => ['absent', 'late', 'leave'].includes(String(s.status).toLowerCase()));
+      if (eligible.length === 0) {
+        return [];
+      }
 
-            // Check if we have phone number
-            if (studentInfo?.phone) {
-              notificationData.push({
-                student_id: student.id,
-                student_name: studentInfo.name,
-                class_name: className,
-                section_name: sectionName,
-                date: student.date || new Date().toISOString().split('T')[0],
-                status: student.status,
-                remarks: student.remarks,
-                student_phone: studentInfo.phone,
-                family_id: undefined, // Not using family system
-                school_short_name: schoolShortName
-              });
-            } else {
-              console.warn(`No phone number found for student ID ${student.id} (${studentInfo?.name})`);
-            }
-          } catch (error) {
-            console.error(`Unexpected error processing student ID ${student.id}:`, error);
-            continue;
-          }
+      // Batch fetch students
+      const studentIds = Array.from(new Set(eligible.map((s: any) => s.id))).filter(Boolean);
+      const { data: studentsBatch, error: studentsBatchError } = await supabase
+        .from('students')
+        .select('id, name, phone, notification_channel, class_id, section_id, father_name')
+        .in('id', studentIds)
+        .eq('school_id', schoolId);
+
+      if (studentsBatchError) {
+        console.error('Error fetching students batch:', studentsBatchError);
+        return [];
+      }
+
+      const studentMap = new Map<number, any>();
+      (studentsBatch || []).forEach(s => studentMap.set(s.id, s));
+
+      // Collect unique class and section IDs
+      const classIds = Array.from(new Set((studentsBatch || []).map(s => s.class_id).filter(Boolean)));
+      const sectionIds = Array.from(new Set((studentsBatch || []).map(s => s.section_id).filter(Boolean)));
+
+      // Batch fetch classes and sections
+      let classMap = new Map<number, string>();
+      let sectionMap = new Map<number, string>();
+
+      if (classIds.length > 0) {
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .in('id', classIds)
+          .eq('school_id', schoolId);
+        (classesData || []).forEach(c => classMap.set(c.id, c.name));
+      }
+
+      if (sectionIds.length > 0) {
+        const { data: sectionsData } = await supabase
+          .from('sections')
+          .select('id, name')
+          .in('id', sectionIds)
+          .eq('school_id', schoolId);
+        (sectionsData || []).forEach(s => sectionMap.set(s.id, s.name));
+      }
+
+      // Build notifications
+      for (const att of eligible) {
+        const studentInfo = studentMap.get(att.id);
+        if (!studentInfo) continue;
+
+        const studentClassName = studentInfo.class_id ? (classMap.get(studentInfo.class_id) || className) : className;
+        const studentSectionName = studentInfo.section_id ? (sectionMap.get(studentInfo.section_id) || sectionName) : sectionName;
+
+        if (studentInfo.phone) {
+          notificationData.push({
+            student_id: att.id,
+            student_name: studentInfo.name,
+            father_name: studentInfo.father_name,
+            class_name: studentClassName,
+            section_name: studentSectionName,
+            date: att.date || new Date().toISOString().split('T')[0],
+            status: att.status,
+            remarks: att.remarks,
+            student_phone: studentInfo.phone,
+            family_id: undefined,
+            school_short_name: schoolShortName,
+            notification_channel: (studentInfo.notification_channel as 'whatsapp' | 'sms') || 'whatsapp'
+          });
+        } else {
+          console.warn(`No phone number found for student ID ${att.id} (${studentInfo?.name})`);
         }
       }
 
-      console.log(`Prepared ${notificationData.length} notifications out of ${attendanceData.length} students`);
+      console.log(`Prepared ${notificationData.length} notifications out of ${eligible.length} eligible attendance entries`);
       return notificationData;
     } catch (error) {
       console.error('Failed to prepare attendance notifications:', error);

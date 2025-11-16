@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -12,6 +12,8 @@ import {
   History as HistoryIcon,
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -370,7 +372,41 @@ const feeManagementItems = [
 
 const FeeManagementDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
+  const { user } = useAuth() as any;
   const navigate = useNavigate();
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id) {
+      fetchRenderSettings(user.school_id)
+        .then(s => setRenderSettings(s))
+        .catch(() => setRenderSettings(null));
+    } else {
+      setRenderSettings(null);
+    }
+  }, [user?.role, user?.school_id]);
+
+  const getKeyForTitle = (title: string): string | null => {
+    switch (title) {
+      case 'Fee Structure': return 'fee_dash_structure';
+      case 'Load Fee': return 'fee_dash_load_fee';
+      case 'Fee Collection': return 'fee_dash_collection';
+      case 'Fee Defaulters': return 'fee_dash_defaulters';
+      case 'Fee Audit Logs': return 'fee_dash_audit_logs';
+      case 'Fee Analytics': return 'fee_dash_analytics';
+      default: return null;
+    }
+  };
+
+  const visibleItems = useMemo(() => {
+    if (user?.role !== 'Guest') return feeManagementItems;
+    if (!renderSettings) return feeManagementItems;
+    return feeManagementItems.filter(item => {
+      const key = getKeyForTitle(item.title);
+      if (!key) return true;
+      return renderSettings.guest?.[key] !== false;
+    });
+  }, [renderSettings, user?.role]);
 
   const handleCardClick = (path: string) => {
     navigate(path);
@@ -389,7 +425,7 @@ const FeeManagementDashboard: React.FC = () => {
       </Header>
 
       <CardsGrid>
-        {feeManagementItems.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <Card 
             key={index}
             onClick={() => handleCardClick(item.path)}

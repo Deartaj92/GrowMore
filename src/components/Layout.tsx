@@ -36,12 +36,15 @@ import {
   Refresh as RefreshIcon,
   WifiOff as WifiOffIcon,
   ExitToApp as ExitIcon,
-  SystemUpdate as SystemUpdateIcon,
+  Assignment,
+  Search as SearchIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import ReactDOM from 'react-dom';
 import { useToast } from './useToast';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Autocomplete, TextField, Box, Typography } from '@mui/material';
 import useGlobalClickSound from '../hooks/useGlobalClickSound';
 import { getUser, removeUser } from '../utils/auth';
 import { supabase } from '../supabaseClient';
@@ -188,6 +191,12 @@ const menuItems = [
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
   },
   {
+    text: 'Daily Diary',
+    icon: <Assignment />,
+    path: '/homework-diary',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+  },
+  {
     text: 'Settings',
     icon: <Settings />,
     path: '/settings',
@@ -294,7 +303,7 @@ const MenuButton = styled.button`
 
 const PageTitle = styled.h1<{ isMobile: boolean; $isOverflowing?: boolean }>`
   font-weight: 700;
-  font-size: ${({ isMobile }) => isMobile ? 'clamp(0.9rem, 4vw, 1.2rem)' : '1.12rem'};
+  font-size: ${({ isMobile }) => isMobile ? 'clamp(0.8rem, 3.5vw, 1.05rem)' : '1.12rem'};
   color: ${props => props.theme.TEXT_PRIMARY};
   margin: 0;
   padding: 0;
@@ -302,29 +311,9 @@ const PageTitle = styled.h1<{ isMobile: boolean; $isOverflowing?: boolean }>`
   flex: ${({ isMobile }) => isMobile ? '2' : '1'};
   line-height: 1.2;
   transition: font-size 0.2s ease;
-  
-  ${({ isMobile, $isOverflowing }) => isMobile ? `
-    white-space: nowrap;
-    overflow: hidden;
-    position: relative;
-    
-    ${$isOverflowing ? `
-      animation: marquee 5s linear infinite;
-      
-      @keyframes marquee {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
-      }
-      
-      &:hover {
-        animation-play-state: paused;
-      }
-    ` : ''}
-  ` : `
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  `}
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const Logo = styled.div`
@@ -391,6 +380,267 @@ const NavigationButtonsContainer = styled.div`
   
   @media (max-width: 700px) {
     display: none;
+  }
+`;
+
+const StudentSearchWrapper = styled.div<{ $expanded: boolean }>`
+  position: relative;
+  width: ${props => props.$expanded ? '280px' : '36px'};
+  height: 36px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  @media (max-width: 700px) {
+    width: ${props => props.$expanded ? '200px' : '36px'};
+  }
+`;
+
+const StudentSearchInput = styled.div<{ $expanded: boolean }>`
+  position: absolute;
+  width: 100%;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  border-radius: ${props => props.$expanded ? '10px' : '50%'};
+  background: ${props => props.theme.FIELD_BG || props.theme.CARD};
+  border: 1.2px solid ${props => props.$expanded ? props.theme.FIELD_BORDER : props.theme.BORDER};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+  cursor: ${props => props.$expanded ? 'text' : 'pointer'};
+  -webkit-app-region: no-drag;
+  padding: ${props => props.$expanded ? '0 14px' : '0'};
+  
+  &:hover {
+    border-color: ${props => props.theme.ACCENT};
+    background: ${props => props.theme.HOVER_BG || props.theme.FIELD_BG || props.theme.CARD};
+  }
+  
+  &:focus-within {
+    border-color: ${props => props.theme.ACCENT};
+  }
+  
+  .search-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: ${props => props.theme.TEXT_SECONDARY};
+    transition: all 0.3s ease;
+    opacity: ${props => props.$expanded ? '0' : '1'};
+    transform: ${props => props.$expanded ? 'scale(0)' : 'scale(1)'};
+    pointer-events: ${props => props.$expanded ? 'none' : 'auto'};
+    position: ${props => props.$expanded ? 'absolute' : 'relative'};
+    left: ${props => props.$expanded ? '14px' : '0'};
+    
+    svg {
+      width: 18px;
+      height: 18px;
+      color: #7c8597;
+    }
+  }
+  
+  .search-field {
+    flex: 1;
+    min-width: 0;
+    opacity: ${props => props.$expanded ? '1' : '0'};
+    pointer-events: ${props => props.$expanded ? 'auto' : 'none'};
+    transition: opacity 0.2s ease 0.1s;
+    position: relative;
+    
+    input {
+      border: none;
+      background: transparent;
+      color: ${props => props.theme.TEXT_PRIMARY};
+      font-size: 1rem;
+      outline: none;
+      width: 100%;
+      padding: 0;
+      margin-left: ${props => props.$expanded ? '10px' : '0'};
+      
+      &::placeholder {
+        color: #7c8597;
+      }
+    }
+  }
+`;
+
+const StudentSuggestionList = styled.ul<{ $visible: boolean }>`
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: ${props => props.theme.CARD};
+  border: 1.5px solid ${props => props.theme.BORDER};
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 8px 32px #0003, 0 1.5px 6px #232a3b22;
+  z-index: 1000;
+  margin: 0;
+  padding: 0.1rem 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  display: ${props => props.$visible ? 'block' : 'none'};
+  scrollbar-width: thin;
+  scrollbar-color: ${props => props.theme.ACCENT}40 ${props => props.theme.BG};
+  
+  &::-webkit-scrollbar {
+    width: 10px;
+    background: ${props => props.theme.BG};
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.ACCENT}80;
+    border-radius: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: ${props => props.theme.BG};
+    border-radius: 6px;
+  }
+  
+  @media (max-width: 700px) {
+    left: -12px;
+    right: -12px;
+    min-width: calc(100% + 24px);
+    width: calc(100% + 24px);
+    border-radius: 12px;
+    margin-top: 4px;
+  }
+`;
+
+const StudentSuggestionItem = styled.li<{ $active: boolean }>`
+  padding: 0.45rem 1.1rem 0.45rem 0.9rem;
+  color: ${props => props.theme.TEXT_PRIMARY};
+  background: ${props => props.$active ? props.theme.HOVER_BG : 'transparent'};
+  cursor: pointer;
+  font-size: 0.98rem;
+  display: flex;
+  align-items: center;
+  border-left: 3.5px solid ${props => props.$active ? props.theme.ACCENT : 'transparent'};
+  transition: background 0.16s, border-color 0.16s;
+  
+  &:hover {
+    background: ${props => props.theme.HOVER_BG};
+  }
+  
+  @media (max-width: 700px) {
+    padding: 0.35rem 0.9rem 0.35rem 0.7rem;
+    font-size: 0.85rem;
+  }
+`;
+
+const StudentSuggestionItemRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+`;
+
+const StudentSuggestionMain = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  
+  @media (max-width: 700px) {
+    gap: 0.5rem;
+  }
+`;
+
+const StudentSuggestionTextCol = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+`;
+
+const StudentSuggestionAvatar = styled.div`
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #232a3b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #b0b8d1;
+  overflow: hidden;
+  border: 1.5px solid #353b4a;
+  flex-shrink: 0;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  @media (max-width: 700px) {
+    display: none;
+  }
+`;
+
+const StudentSuggestionName = styled.span`
+  font-weight: 700;
+  color: ${props => props.theme.TEXT_PRIMARY};
+  font-size: 0.99rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+  
+  @media (max-width: 700px) {
+    max-width: 220px;
+    font-size: 0.85rem;
+  }
+`;
+
+const StudentSuggestionFather = styled.span`
+  color: #7c8597;
+  font-size: 0.97rem;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+  
+  @media (max-width: 700px) {
+    max-width: 220px;
+    font-size: 0.8rem;
+  }
+`;
+
+const StudentSuggestionMetaCol = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+  margin-left: 1.2rem;
+`;
+
+const StudentSuggestionClass = styled.span`
+  color: ${props => props.theme.ACCENT};
+  font-size: 0.91rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+  
+  @media (max-width: 700px) {
+    max-width: 120px;
+    font-size: 0.78rem;
+  }
+`;
+
+const StudentSuggestionId = styled.span`
+  color: #a0a7b8;
+  font-size: 0.91rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  
+  @media (max-width: 700px) {
+    font-size: 0.78rem;
   }
 `;
 
@@ -755,6 +1005,11 @@ const ProfileDropdownHeader = styled.div`
   font-weight: 600;
   border-bottom: 1.5px solid ${({ theme }) => theme.BORDER};
   margin-bottom: 6px;
+`;
+const ProfileDropdownDivider = styled.div`
+  height: 1px;
+  background: ${({ theme }) => theme.BORDER};
+  margin: 8px 0;
 `;
 
 const ToggleSwitch = styled.div`
@@ -1321,15 +1576,234 @@ const Layout: React.FC = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [instituteProfile, setInstituteProfile] = useState<{ short_name?: string; name?: string; logo_url?: string; tagline?: string } | null>(null);
+  const [studentInfo, setStudentInfo] = useState<{ id: number; name: string; school_id: number } | null>(null);
   const [lastChecked, setLastChecked] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageHeader, setPageHeader] = useState('');
   const [isTitleOverflowing, setIsTitleOverflowing] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   
+  // Student search state
+  const [studentSearchInput, setStudentSearchInput] = useState('');
+  const [studentSearchSuggestions, setStudentSearchSuggestions] = useState<Array<{
+    id: number;
+    name: string;
+    father_name?: string;
+    class_id: number;
+    section_id: number;
+    picture_url?: string;
+    class_name?: string;
+    section_name?: string;
+  }>>([]);
+  const [studentSearchShowSuggestions, setStudentSearchShowSuggestions] = useState(false);
+  const [studentSearchActiveSuggestion, setStudentSearchActiveSuggestion] = useState(0);
+  const [studentSearchExpanded, setStudentSearchExpanded] = useState(false);
+  const studentSearchRef = useRef<HTMLDivElement>(null);
+  const studentSearchInputRef = useRef<HTMLInputElement>(null);
+  const [studentsList, setStudentsList] = useState<Array<{
+    id: number;
+    name: string;
+    father_name?: string;
+    class_id: number;
+    section_id: number;
+    picture_url?: string;
+  }>>([]);
+  const [classesList, setClassesList] = useState<Array<{ id: number; name: string; has_sections?: boolean }>>([]);
+  const [sectionsList, setSectionsList] = useState<Array<{ id: number; name: string }>>([]);
+  
+  // Check if we're on student profile page and user is Principal
+  const isStudentProfilePage = location.pathname.match(/^\/students\/profile\/\d+$/);
+  const showStudentSearch = user?.role === 'Principal' && isStudentProfilePage;
+  
+  // Fetch students, classes, and sections for search
+  useEffect(() => {
+    if (!showStudentSearch || !user?.school_id) return;
+    
+    const fetchSearchData = async () => {
+      try {
+        const [studentsResult, classesResult, sectionsResult] = await Promise.all([
+          supabase
+            .from('students')
+            .select('id, name, father_name, class_id, section_id, picture_url')
+            .eq('school_id', user.school_id),
+          supabase
+            .from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', user.school_id),
+          supabase
+            .from('sections')
+            .select('id, name')
+            .eq('school_id', user.school_id)
+        ]);
+        
+        if (studentsResult.data) setStudentsList(studentsResult.data);
+        if (classesResult.data) setClassesList(classesResult.data);
+        if (sectionsResult.data) setSectionsList(sectionsResult.data);
+      } catch (error) {
+        console.error('Error fetching search data:', error);
+      }
+    };
+    
+    fetchSearchData();
+  }, [showStudentSearch, user?.school_id]);
+  
+  // Search logic - filter students similar to FineCollection with better ID matching
+  useEffect(() => {
+    if (!studentSearchExpanded) {
+      setStudentSearchSuggestions([]);
+      setStudentSearchShowSuggestions(false);
+      return;
+    }
+    
+    if (studentSearchInput.trim().length === 0) {
+      setStudentSearchSuggestions([]);
+      setStudentSearchShowSuggestions(false);
+      return;
+    }
+    
+    const searchTerm = studentSearchInput.trim().toLowerCase();
+    const isNumericSearch = !isNaN(Number(searchTerm));
+    const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
+    
+    // Filter and score students for better sorting
+    const scoredStudents = studentsList
+      .map(student => {
+        const studentIdStr = String(student.id);
+        const studentNameLower = student.name.toLowerCase();
+        let score = 0;
+        let matches = false;
+        
+        if (isNumericSearch && searchTermNum !== null) {
+          // ID search - prioritize exact match, then starts with, then contains
+          if (student.id === searchTermNum) {
+            score = 1000; // Highest priority for exact match
+            matches = true;
+          } else if (studentIdStr.startsWith(searchTerm)) {
+            score = 500; // High priority for starts with
+            matches = true;
+          } else if (studentIdStr.includes(searchTerm)) {
+            score = 100; // Lower priority for contains
+            matches = true;
+          }
+        } else {
+          // Name search
+          if (studentNameLower.startsWith(searchTerm)) {
+            score = 100; // High priority for starts with
+            matches = true;
+          } else if (studentNameLower.includes(searchTerm)) {
+            score = 50; // Lower priority for contains
+            matches = true;
+          }
+          
+          // Also check ID for non-numeric searches (secondary)
+          if (!matches && studentIdStr.includes(searchTerm)) {
+            score = 10;
+            matches = true;
+          }
+        }
+        
+        return matches ? { student, score } : null;
+      })
+      .filter(item => item !== null)
+      .sort((a, b) => b!.score - a!.score) // Sort by score descending
+      .slice(0, 8)
+      .map(item => item!.student);
+    
+    // Enrich with class and section names
+    const enriched = scoredStudents.map(student => {
+      const classObj = classesList.find(c => c.id === student.class_id);
+      const sectionObj = sectionsList.find(s => s.id === student.section_id);
+      return {
+        ...student,
+        class_name: classObj?.name || '',
+        section_name: sectionObj?.name || ''
+      };
+    });
+    
+    setStudentSearchSuggestions(enriched);
+    setStudentSearchShowSuggestions(enriched.length > 0);
+    setStudentSearchActiveSuggestion(0);
+  }, [studentSearchInput, studentsList, classesList, sectionsList, studentSearchExpanded]);
+  
+  // Close search when clicking outside
+  useEffect(() => {
+    if (!showStudentSearch || !studentSearchExpanded) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (studentSearchRef.current && !studentSearchRef.current.contains(event.target as Node)) {
+        setStudentSearchExpanded(false);
+        setStudentSearchInput('');
+        setStudentSearchSuggestions([]);
+        setStudentSearchShowSuggestions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showStudentSearch, studentSearchExpanded]);
+  
+  // Collapse search when route changes
+  useEffect(() => {
+    setStudentSearchExpanded(false);
+    setStudentSearchInput('');
+    setStudentSearchSuggestions([]);
+    setStudentSearchShowSuggestions(false);
+  }, [location.pathname]);
+  
+  // Keyboard navigation for suggestions
+  const handleStudentSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!studentSearchShowSuggestions) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setStudentSearchActiveSuggestion(prev => Math.min(prev + 1, studentSearchSuggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setStudentSearchActiveSuggestion(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (studentSearchSuggestions[studentSearchActiveSuggestion]) {
+        handleStudentSelect(studentSearchSuggestions[studentSearchActiveSuggestion]);
+      }
+    } else if (e.key === 'Escape') {
+      setStudentSearchExpanded(false);
+      setStudentSearchInput('');
+      setStudentSearchSuggestions([]);
+      setStudentSearchShowSuggestions(false);
+    }
+  };
+  
+  // Helper functions
+  const getStudentClassName = (classId: number) => {
+    return classesList.find(c => c.id === classId)?.name || '-';
+  };
+  
+  const getStudentSectionName = (sectionId: number) => {
+    return sectionsList.find(s => s.id === sectionId)?.name || '';
+  };
+  
+  const getStudentClassHasSections = (classId: number) => {
+    return classesList.find(c => c.id === classId)?.has_sections ?? true;
+  };
+  
+  // Handle student selection
+  const handleStudentSelect = (student: {
+    id: number;
+    name: string;
+    class_id: number;
+    section_id: number;
+  }) => {
+    navigate(`/students/profile/${student.id}`);
+    setStudentSearchInput('');
+    setStudentSearchSuggestions([]);
+    setStudentSearchShowSuggestions(false);
+    setStudentSearchExpanded(false);
+  };
+  
   // Update checking state
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateService] = useState(() => UpdateService.getInstance());
+  const appVersion = process.env.REACT_APP_VERSION || 'dev';
 
   // Mobile navigation state
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -1343,6 +1817,7 @@ const Layout: React.FC = () => {
   // Get progress functions
   const { startProgress, setProgress, completeProgress, resetProgress } = useProgress();
 
+
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.isMaximized().then(setIsMaximized);
@@ -1351,19 +1826,53 @@ const Layout: React.FC = () => {
     }
   }, []);
 
+  // Detect student session and load minimal student info
+  // Also clear studentInfo if staff user is detected
+  useEffect(() => {
+    const load = async () => {
+      try {
+        // If staff user is logged in (user from getUser exists), clear student session
+        const currentUser = getUser();
+        if (currentUser) {
+          // Staff is logged in, ensure student session is cleared
+          localStorage.removeItem('studentSession');
+          setStudentInfo(null);
+          return;
+        }
+        
+        // Only check for student session if no staff user is logged in
+        const raw = localStorage.getItem('studentSession');
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed?.id) {
+          const { data } = await supabase
+            .from('students')
+            .select('id, name, school_id')
+            .eq('id', parsed.id)
+            .single();
+          if (data) setStudentInfo({ id: data.id, name: data.name, school_id: data.school_id });
+        } else {
+          setStudentInfo(null);
+        }
+      } catch {
+        setStudentInfo(null);
+      }
+    };
+    load();
+  }, [user, authUser]);
+
   // Fetch institute profile
   useEffect(() => {
     const fetchInstituteProfile = async () => {
-      if (!authUser?.school_id) {
+      const schoolId = authUser?.school_id || studentInfo?.school_id;
+      if (!schoolId) {
         return;
       }
-      
       try {
         // Remove progress bar calls to avoid interfering with page-specific progress
         const { data, error } = await supabase
           .from('institute_profile')
           .select('*')
-          .eq('school_id', authUser.school_id)
+          .eq('school_id', schoolId)
           .single();
         
         if (!error && data && (data.short_name || data.logo_url)) {
@@ -1374,7 +1883,7 @@ const Layout: React.FC = () => {
             const { data: schoolData, error: schoolError } = await supabase
               .from('schools')
               .select('name, logo_url')
-              .eq('id', authUser.school_id)
+              .eq('id', schoolId)
               .single();
             
             if (!schoolError && schoolData) {
@@ -1400,7 +1909,7 @@ const Layout: React.FC = () => {
     };
 
     fetchInstituteProfile();
-  }, [authUser?.school_id]);
+  }, [authUser?.school_id, studentInfo?.school_id]);
 
   const toggleTheme = () => {
     setTheme(prev => {
@@ -1650,11 +2159,66 @@ const Layout: React.FC = () => {
       toast.showToast('New passwords do not match.', 'error');
       return;
     }
+    if (newPassword.length < 4) {
+      toast.showToast('Password must be at least 4 characters.', 'error');
+      return;
+    }
     setModalLoading(true);
     startProgress(true); // Start indeterminate progress for password change
     
     try {
-      // Check current password
+      // Check if student is logged in
+      if (studentInfo) {
+        // Student password change flow
+        const { data, error } = await supabase
+          .from('students')
+          .select('password')
+          .eq('id', studentInfo.id)
+          .single();
+
+        if (error) {
+          console.error('Password fetch error:', error);
+          toast.showToast('Failed to verify current password.', 'error');
+          completeProgress();
+          setModalLoading(false);
+          return;
+        }
+
+        // Check current password (accept both the stored password and default 'aa')
+        const isValidPassword = data.password === currentPassword || 
+                               (data.password === 'aa' && currentPassword === 'aa') ||
+                               (!data.password && currentPassword === 'aa');
+
+        if (!isValidPassword) {
+          toast.showToast('Current password is incorrect.', 'error');
+          completeProgress();
+          setModalLoading(false);
+          return;
+        }
+
+        // Update student password
+        const { error: updateError } = await supabase
+          .from('students')
+          .update({ password: newPassword })
+          .eq('id', studentInfo.id)
+          .eq('school_id', studentInfo.school_id);
+
+        if (updateError) {
+          console.error('Password update error:', updateError);
+          toast.showToast('Failed to update password.', 'error');
+          completeProgress();
+          return;
+        }
+
+        toast.showToast('Password updated successfully!', 'success');
+        completeProgress();
+        setTimeout(() => {
+          closeChangePasswordModal();
+        }, 600);
+        return;
+      }
+
+      // Staff password change flow (existing logic)
       const { data, error } = await supabase
         .from('users')
         .select('id')
@@ -1717,64 +2281,103 @@ const Layout: React.FC = () => {
     if (!user) return [];
     return menuItems.filter(item => {
     if (!user || !user.role || !item.allowedRoles) return false;
-    // For teachers, show Welcome Page, Attendance, and Reports
+    // For teachers, show Welcome Page, Attendance, Reports, Examination, and Homework Diary
     if (user.role === 'Teacher') {
-      return item.text === 'Attendance' || item.text === 'Welcome Page' || item.text === 'Reports';
+      return item.text === 'Attendance' || 
+             item.text === 'Welcome Page' || 
+             item.text === 'Reports' || 
+             item.text === 'Examination' ||
+             item.text === 'Daily Diary';
     }
     return item.allowedRoles.includes(user.role);
   });
   }, [user]);
 
   const handleRefresh = () => {
-    startProgress(true); // Start indeterminate progress for page refresh
-    window.location.reload();
-  };
-
-  // Update checking functions
-  const handleCheckForUpdates = async () => {
-    setIsCheckingUpdate(true);
     try {
-      const result = await updateService.checkForUpdates();
-      if (result.updateAvailable && result.release) {
-        const shouldDownload = confirm(
-          `Update ${result.release.tag_name} is available!\n\n${result.release.body || 'Bug fixes and improvements'}\n\nWould you like to download it now?`
-        );
-        if (shouldDownload) {
-          await updateService.downloadUpdate(result.release, (progress) => {
-            // Progress will be handled by the UpdateNotification component
-            console.log(`Download progress: ${progress}%`);
-          });
+      startProgress(true); // Start indeterminate progress for page refresh
+      
+      // For student users, use React Router navigation instead of hard reload
+      // Students use studentSession in localStorage, not user in AuthContext
+      // Hard reload causes white screen because InitialRouteHandler redirects before student session is checked
+      const studentSession = localStorage.getItem('studentSession');
+      if (studentSession) {
+        try {
+          const parsed = JSON.parse(studentSession);
+          if (parsed?.id) {
+            // Student user: navigate to the same route with a timestamp query param
+            // This forces React Router to remount the component without full page reload
+            const currentPath = location.pathname;
+            const searchParams = new URLSearchParams(location.search);
+            searchParams.set('_refresh', Date.now().toString());
+            navigate(`${currentPath}?${searchParams.toString()}`, { replace: true });
+            // Remove the refresh param after a short delay
+            setTimeout(() => {
+              navigate(currentPath, { replace: true });
+              completeProgress();
+            }, 100);
+            return;
+          }
+        } catch (e) {
+          // If parsing fails, fall through to normal refresh
         }
+      }
+      
+      // For guest users, also use React Router navigation to avoid routing issues
+      // Guest users might have render settings that need to be checked on refresh
+      const currentUser = getUser();
+      if (currentUser && currentUser.role === 'Guest') {
+        // Guest user: navigate to the same route with a timestamp query param
+        // This forces React Router to remount the component without full page reload
+        const currentPath = location.pathname;
+        const searchParams = new URLSearchParams(location.search);
+        searchParams.set('_refresh', Date.now().toString());
+        navigate(`${currentPath}?${searchParams.toString()}`, { replace: true });
+        // Remove the refresh param after a short delay
+        setTimeout(() => {
+          navigate(currentPath, { replace: true });
+          completeProgress();
+        }, 100);
+        return;
+      }
+      
+      // For other staff users (principal, teacher), use normal hard reload
+      // Force a hard reload for all user types
+      if (window.location.reload) {
+        window.location.reload();
       } else {
-        toast.showToast('You are using the latest version!', 'success');
+        // Fallback: navigate to the same page to force refresh
+        window.location.href = window.location.href;
       }
     } catch (error) {
-      console.error('Update check failed:', error);
-      toast.showToast('Failed to check for updates. Please try again later.', 'error');
+      console.error('Error during refresh:', error);
+      // Fallback: try alternative reload method
+      window.location.href = window.location.href;
+    }
+  };
+
+  // Update checking functions - use the global update notification modal
+  const handleCheckForUpdates = async () => {
+    if (isCheckingUpdate) return; // debounce concurrent checks
+    setIsCheckingUpdate(true);
+    try {
+      // Use the global update check function that shows the modal
+      if ((window as any).checkForAppUpdates) {
+        console.log('[Layout] Calling checkForAppUpdates');
+        (window as any).checkForAppUpdates();
+      } else {
+        console.warn('[Layout] checkForAppUpdates function not available');
+        toast.showToast('Update service not available', 'error');
+      }
+    } catch (error) {
+      console.error('[Layout] Failed to check for updates:', error);
+      toast.showToast('Failed to check for updates', 'error');
     } finally {
       setIsCheckingUpdate(false);
     }
   };
 
-  // Check for updates on app startup
-  useEffect(() => {
-    const checkForUpdatesOnStartup = async () => {
-      try {
-        const result = await updateService.checkForUpdates();
-        if (result.updateAvailable) {
-          // Update notification will be shown by the UpdateNotification component
-          console.log('Update available:', result.release?.tag_name);
-        }
-      } catch (error) {
-        console.error('Startup update check failed:', error);
-        // Don't show error to user on startup
-      }
-    };
-
-    // Check for updates 2 seconds after app loads
-    const timer = setTimeout(checkForUpdatesOnStartup, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Remove intrusive startup confirm flow; UpdateNotification handles showing the card
 
   // Function to check actual internet connectivity
   useEffect(() => {
@@ -1820,9 +2423,17 @@ const Layout: React.FC = () => {
   };
 
   const handleExit = () => {
-    if (window.electronAPI) {
-      window.electronAPI.close();
-    } else {
+    try {
+      if (CapacitorApp) {
+        CapacitorApp.exitApp();
+      } else if (window.electronAPI) {
+        window.electronAPI.close();
+      } else {
+        window.close();
+      }
+    } catch (error) {
+      console.error('Failed to exit app:', error);
+      // Fallback: try window.close() if all else fails
       window.close();
     }
   };
@@ -1957,6 +2568,7 @@ const Layout: React.FC = () => {
     '/fee-structure-management': 'Fee Structure',
     '/load-fee': 'Load Fee',
     '/timetable': 'Timetable',
+    '/homework-diary': 'Daily Diary',
     '/employees': 'All Employees',
     '/employees/add': 'Add Employee',
     '/employees/edit/:id': 'Edit Employee',
@@ -2007,6 +2619,8 @@ const Layout: React.FC = () => {
   }, []);
 
   const getPageHeaderText = (pathname: string) => {
+    // Check pageHeader context first (takes precedence if set)
+    if (pageHeader) return pageHeader;
     if (pathname === '/') return currentTime;
     if (customHeaderTexts[pathname]) return customHeaderTexts[pathname];
     const dynamicMatch = Object.keys(customHeaderTexts).find(pattern => matchRoutePattern(pattern, pathname));
@@ -2016,8 +2630,8 @@ const Layout: React.FC = () => {
       .filter(key => key !== '/')
       .find(key => pathname.startsWith(key));
     if (parentMatch) return customHeaderTexts[parentMatch];
-    // Fallback: use pageHeader from context
-    return pageHeader || '';
+    // Fallback: empty string
+    return '';
   };
 
   // Reset pageHeader on route change
@@ -2080,8 +2694,8 @@ const Layout: React.FC = () => {
             <GlobalStyle />
             <AppContainer>
               <LayoutWrapper>
-                {/* Sidebar always rendered on desktop, toggled on mobile - Hidden for teachers */}
-                {user?.role !== 'Teacher' && (
+                {/* Sidebar hidden only for teachers and students, shown for staff */}
+                {user?.role !== 'Teacher' && !studentInfo && user && (
                   <CollapsibleSidebar
                     navigate={navigate}
                     theme={theme === 'dark' ? darkTheme : lightTheme}
@@ -2103,14 +2717,14 @@ const Layout: React.FC = () => {
                         >
                           <DashboardIcon />
                         </MenuButton>
-                      ) : (
+                      ) : !studentInfo ? (
                         <MenuButton
                           onClick={() => setSidebarOpen((v) => !v)}
                           aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
                         >
                           <MenuIcon />
                         </MenuButton>
-                      )}
+                      ) : null}
                       <NavigationButtonsContainer>
                         <HeaderIconCircle 
                           as="button" 
@@ -2141,8 +2755,8 @@ const Layout: React.FC = () => {
                           <span style={{ display: 'inline-block', transform: 'translateX(1px)' }}>›</span>
                         </HeaderIconCircle>
                       </NavigationButtonsContainer>
-                      {/* Dashboard/Teacher special layout - show logo and short name on left */}
-                      {(location.pathname === '/dashboard' || location.pathname === '/teacher') ? (
+                      {/* Always show school/institute short name in header for both staff and students */}
+                      {(location.pathname === '/dashboard' || location.pathname === '/teacher' || studentInfo) ? (
                         <>
                           {isMobile && instituteProfile?.logo_url && (
                             <InstituteLogo 
@@ -2169,6 +2783,7 @@ const Layout: React.FC = () => {
                             ref={titleRef}
                             isMobile={isMobile}
                             $isOverflowing={isTitleOverflowing}
+                            data-text={getPageHeaderText(location.pathname)}
                           >
                             {getPageHeaderText(location.pathname)}
                           </PageTitle>
@@ -2193,13 +2808,87 @@ const Layout: React.FC = () => {
                       )}
                     </HeaderLeft>
                     <HeaderActions>
+                      {/* Student Search Bar (for Principal on student profile page) */}
+                      {showStudentSearch && (
+                        <StudentSearchWrapper ref={studentSearchRef} $expanded={studentSearchExpanded}>
+                          <StudentSearchInput
+                            $expanded={studentSearchExpanded}
+                            onClick={() => {
+                              if (!studentSearchExpanded) {
+                                setStudentSearchExpanded(true);
+                                setTimeout(() => {
+                                  studentSearchInputRef.current?.focus();
+                                }, 100);
+                              }
+                            }}
+                          >
+                            <div className="search-icon">
+                              <SearchIcon />
+                            </div>
+                            <div className="search-field">
+                              <input
+                                ref={studentSearchInputRef}
+                                type="text"
+                                value={studentSearchInput}
+                                onChange={(e) => setStudentSearchInput(e.target.value)}
+                                onKeyDown={handleStudentSearchKeyDown}
+                                onFocus={() => {
+                                  if (studentSearchSuggestions.length > 0) {
+                                    setStudentSearchShowSuggestions(true);
+                                  }
+                                }}
+                                placeholder="Search by name or ID..."
+                              />
+                            </div>
+                            {studentSearchShowSuggestions && studentSearchSuggestions.length > 0 && (
+                              <StudentSuggestionList $visible={studentSearchShowSuggestions}>
+                                {studentSearchSuggestions.map((student, idx) => (
+                                  <StudentSuggestionItem
+                                    key={student.id}
+                                    $active={idx === studentSearchActiveSuggestion}
+                                    onClick={() => handleStudentSelect(student)}
+                                    onMouseEnter={() => setStudentSearchActiveSuggestion(idx)}
+                                  >
+                                    <StudentSuggestionItemRow>
+                                      <StudentSuggestionMain>
+                                        <StudentSuggestionAvatar>
+                                          {student.picture_url ? (
+                                            <img src={student.picture_url} alt="" />
+                                          ) : (
+                                            <UserIcon style={{ fontSize: '1.4rem' }} />
+                                          )}
+                                        </StudentSuggestionAvatar>
+                                        <StudentSuggestionTextCol>
+                                          <StudentSuggestionName>{student.name}</StudentSuggestionName>
+                                          {student.father_name && (
+                                            <StudentSuggestionFather>{student.father_name}</StudentSuggestionFather>
+                                          )}
+                                        </StudentSuggestionTextCol>
+                                      </StudentSuggestionMain>
+                                      <StudentSuggestionMetaCol>
+                                        <StudentSuggestionClass>
+                                          {getStudentClassName(student.class_id)}
+                                          {getStudentClassHasSections(student.class_id) && getStudentSectionName(student.section_id) 
+                                            ? ` ${getStudentSectionName(student.section_id)}` 
+                                            : ''}
+                                        </StudentSuggestionClass>
+                                        <StudentSuggestionId>ID: {student.id}</StudentSuggestionId>
+                                      </StudentSuggestionMetaCol>
+                                    </StudentSuggestionItemRow>
+                                  </StudentSuggestionItem>
+                                ))}
+                              </StudentSuggestionList>
+                            )}
+                          </StudentSearchInput>
+                        </StudentSearchWrapper>
+                      )}
                       {isWeakConnection && (
                         <WeakConnectionIndicator title="Slow internet connection detected">
                           <WifiOffIcon style={{ color: '#fbbf24' }} />
                           {!isMobile && 'Slow Connection'}
                         </WeakConnectionIndicator>
                       )}
-                      {user?.role !== 'Teacher' && <NotificationBell />}
+                      {(user?.role === 'Super Admin' || user?.role === 'Principal' || user?.role === 'Admin') && <NotificationBell />}
                       <HeaderIconCircle 
                         as="button" 
                         onClick={handleRefresh} 
@@ -2233,7 +2922,10 @@ const Layout: React.FC = () => {
                         {profileMenuOpen && (
                           <ProfileDropdown ref={profileDropdownRef}>
                             <ProfileDropdownHeader>
-                              {staffName || user?.name} <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>{user?.role}</span>
+                              {studentInfo?.name || staffName || user?.name}
+                              {!studentInfo && user?.role && (
+                                <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>{user?.role}</span>
+                              )}
                             </ProfileDropdownHeader>
                             <ProfileDropdownItem onClick={toggleTheme}>
                               <span>Dark Mode</span>
@@ -2244,24 +2936,31 @@ const Layout: React.FC = () => {
                             <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); openChangePasswordModal(); setProfileMenuOpen(false); }}>
                               Change Password
                             </ProfileDropdownItem>
-                            <ProfileDropdownItem 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                handleCheckForUpdates(); 
-                                setProfileMenuOpen(false); 
-                              }}
-                              disabled={isCheckingUpdate}
-                              style={{ 
-                                opacity: isCheckingUpdate ? 0.6 : 1,
-                                cursor: isCheckingUpdate ? 'not-allowed' : 'pointer'
-                              }}
-                            >
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <SystemUpdateIcon style={{ fontSize: '18px' }} />
-                                {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
-                              </span>
+                            {/* Only show "Check for Updates" in Electron/desktop or Capacitor (mobile), not in web */}
+                            {((window as any).electronAPI || (window as any).Capacitor) && (
+                              <>
+                                <ProfileDropdownDivider />
+                                <ProfileDropdownItem 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    handleCheckForUpdates(); 
+                                    setProfileMenuOpen(false); 
+                                  }}
+                                  disabled={isCheckingUpdate}
+                                  style={{ 
+                                    opacity: isCheckingUpdate ? 0.6 : 1,
+                                    cursor: isCheckingUpdate ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                                </ProfileDropdownItem>
+                              </>
+                            )}
+                            <ProfileDropdownDivider />
+                            <ProfileDropdownItem disabled style={{ opacity: 0.8, cursor: 'default' }}>
+                              Version: v{appVersion}
                             </ProfileDropdownItem>
-                            {user?.role === 'Teacher' && (
+                            {(user?.role === 'Teacher' || studentInfo) && (
                               <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); setAboutUsModalOpen(true); setProfileMenuOpen(false); }}>
                                 About Us
                               </ProfileDropdownItem>

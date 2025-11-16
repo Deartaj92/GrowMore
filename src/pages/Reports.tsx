@@ -65,6 +65,7 @@ import { useToast } from '../components/useToast';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { supabase } from '../supabaseClient';
 import { useProgress } from '../components/Layout';
+import { useActivityTracking } from '../hooks/useActivityTracking';
 
 // Type definitions
 interface Report extends Omit<ImportedReport, 'id' | 'category_id' | 'reported_by' | 'category'> {
@@ -552,6 +553,7 @@ const AddHeaderIconButton = styled('button')`
 export const Reports = (): JSX.Element => {
     const { user } = useAuth();
     const { startProgress, setProgress, completeProgress } = useProgress();
+    const { logReportActivity } = useActivityTracking();
     const [loading, setLoading] = useState(true);
     
     // Check if user has school_id
@@ -712,7 +714,12 @@ export const Reports = (): JSX.Element => {
             
             // Filter reports to only include students from the active session
             const filteredData = data.filter(report => {
-                // If it's a staff report, include it
+                // If user is a teacher, exclude all staff reports
+                if (user?.role === 'Teacher' && report.subject_type === 'staff') {
+                    return false;
+                }
+                
+                // If it's a staff report, include it (for non-teacher roles)
                 if (report.subject_type === 'staff') {
                     return true;
                 }
@@ -773,11 +780,43 @@ export const Reports = (): JSX.Element => {
         setFilters(prev => ({ ...prev, category_id: '' }));
     }, [filters.type]);
 
+    // Reset type filter to 'student' or empty if teacher and type is 'staff'
+    useEffect(() => {
+        if (user?.role === 'Teacher' && filters.type === 'staff') {
+            setFilters(prev => ({ ...prev, type: '' }));
+        }
+    }, [user?.role, filters.type]);
+
+    // Helper function to check if user can edit/delete a report
+    const canEditOrDeleteReport = (report: Report): boolean => {
+        // If user is not a teacher, allow (Principal, Admin, etc.)
+        if (user?.role !== 'Teacher') {
+            return true;
+        }
+        
+        // For teachers, only allow if they are the creator
+        if (user?.role === 'Teacher' && user?.staff_id) {
+            return report.reported_by === user.staff_id.toString();
+        }
+        
+        return false;
+    };
+
     const handleEditReport = (report: Report) => {
+        // Check permissions before allowing edit
+        if (!canEditOrDeleteReport(report)) {
+            showToast('You can only edit reports that you created', 'error');
+            return;
+        }
         setEditingReport(report);
     };
 
     const handleDeleteClick = (report: Report) => {
+        // Check permissions before allowing delete
+        if (!canEditOrDeleteReport(report)) {
+            showToast('You can only delete reports that you created', 'error');
+            return;
+        }
         setReportToDelete(report);
         setDeleteDialogOpen(true);
     };
@@ -788,6 +827,27 @@ export const Reports = (): JSX.Element => {
         setDeleteLoading(true);
         try {
             await reportService.deleteReport(parseInt(reportToDelete.id), user?.school_id);
+            
+            // Log activity
+            if (reportToDelete.category?.name && user?.staff_id) {
+                const subjectName = reportToDelete.subject_type === 'student' 
+                    ? reportToDelete.student?.name || 'Unknown Student'
+                    : reportToDelete.staff?.name || 'Unknown Staff';
+                
+                await logReportActivity(
+                    'delete',
+                    reportToDelete.category.name,
+                    subjectName,
+                    reportToDelete.subject_type,
+                    reportToDelete.severity,
+                    {
+                        entityId: parseInt(reportToDelete.id),
+                        entityName: `Report #${reportToDelete.id}`,
+                        createNotification: false // Don't notify on delete
+                    }
+                );
+            }
+            
             await loadReports();
             setDeleteDialogOpen(false);
             setReportToDelete(undefined);
@@ -807,7 +867,32 @@ export const Reports = (): JSX.Element => {
 
     const handleCreateReport = async (reportData: CreateReportDTO) => {
         try {
-            await reportService.createReport(reportData, user?.school_id);
+            const createdReport = await reportService.createReport(reportData, user?.school_id);
+            
+            // Log activity - this will create high-priority notification for admins
+            if (createdReport && user?.staff_id) {
+                // Get category name from created report or categories list
+                const categoryName = createdReport.category?.name || categories.find(c => c.id === reportData.category_id)?.name || 'Report';
+                
+                // Get subject name from created report data
+                const subjectName = reportData.subject_type === 'student' 
+                    ? (createdReport.student?.name || 'Unknown Student')
+                    : (createdReport.staff?.name || 'Unknown Staff');
+                
+                await logReportActivity(
+                    'create',
+                    categoryName,
+                    subjectName,
+                    reportData.subject_type,
+                    reportData.severity,
+                    {
+                        entityId: createdReport.id,
+                        entityName: `Report #${createdReport.id}`,
+                        createNotification: true // Create high-priority notification
+                    }
+                );
+            }
+            
             loadReports();
             setCreateDialogOpen(false);
             showToast('Report created successfully', 'success');
@@ -839,6 +924,27 @@ export const Reports = (): JSX.Element => {
         if (!editingReport?.id) return;
         try {
             await reportService.updateReportDetails(editingReport.id, data, user?.school_id);
+            
+            // Log activity
+            if (editingReport.category?.name && user?.staff_id) {
+                const subjectName = editingReport.subject_type === 'student' 
+                    ? editingReport.student?.name || 'Unknown Student'
+                    : editingReport.staff?.name || 'Unknown Staff';
+                
+                await logReportActivity(
+                    'update',
+                    editingReport.category.name,
+                    subjectName,
+                    editingReport.subject_type,
+                    data.severity,
+                    {
+                        entityId: parseInt(editingReport.id),
+                        entityName: `Report #${editingReport.id}`,
+                        createNotification: false // Don't notify on update
+                    }
+                );
+            }
+            
             await loadReports();
             setEditingReport(undefined);
             showToast('Report updated successfully', 'success');
@@ -858,23 +964,21 @@ export const Reports = (): JSX.Element => {
     };
 
     const sortedReports = useMemo(() => {
-        const sorted = [...reports].sort((a, b) => {
-            // Define status priority
-            const statusPriority: { [key: string]: number } = {
-                'pending': 0,
-                'in_review': 1,
-                'resolved': 2,
-                'dismissed': 3
-            };
-            
-            return statusPriority[a.status] - statusPriority[b.status];
-        });
+        // Split reports into unresolved and resolved first
+        const unresolved = reports.filter(r => ['pending', 'in_review'].includes(r.status));
+        const resolved = reports.filter(r => ['resolved', 'dismissed'].includes(r.status));
 
-        // Split reports into unresolved and resolved
-        const unresolved = sorted.filter(r => ['pending', 'in_review'].includes(r.status));
-        const resolved = sorted.filter(r => ['resolved', 'dismissed'].includes(r.status));
+        // Sort each section by date (newest to oldest)
+        const sortByDate = (a: Report, b: Report) => {
+            const dateA = a.incident_date ? new Date(a.incident_date).getTime() : new Date(a.created_at).getTime();
+            const dateB = b.incident_date ? new Date(b.incident_date).getTime() : new Date(b.created_at).getTime();
+            return dateB - dateA; // Descending order (newest first)
+        };
 
-        return { unresolved, resolved };
+        return {
+            unresolved: unresolved.sort(sortByDate),
+            resolved: resolved.sort(sortByDate)
+        };
     }, [reports]);
 
     const getFilteredCategories = useMemo(() => {
@@ -1124,7 +1228,7 @@ export const Reports = (): JSX.Element => {
                             >
                                 <option value="">All Types</option>
                                 <option value="student">Student</option>
-                                <option value="staff">Staff</option>
+                                {user?.role !== 'Teacher' && <option value="staff">Staff</option>}
                             </SegmentedSelect>
                             <SegmentedSelect
                                     value={filters.category_id}
@@ -1198,7 +1302,7 @@ export const Reports = (): JSX.Element => {
                         >
                             <option value="">All Types</option>
                             <option value="student">Student</option>
-                            <option value="staff">Staff</option>
+                            {user?.role !== 'Teacher' && <option value="staff">Staff</option>}
                         </SegmentedSelect>
                         <SegmentedSelect
                             value={filters.category_id}
@@ -1426,6 +1530,8 @@ export const Reports = (): JSX.Element => {
                                                             </Box>
                                                         </UpdateButton>
                                                     )}
+                                                    {canEditOrDeleteReport(report) && (
+                                                        <>
                                                     <ReportActionButton
                                                         onClick={() => handleEditReport(report)}
                                                         size="small"
@@ -1462,12 +1568,14 @@ export const Reports = (): JSX.Element => {
                                                     >
                                                         <DeleteIcon fontSize="inherit" sx={{ color: 'error.main' }} />
                                                     </ReportActionButton>
+                                                        </>
+                                                    )}
                                                         </Box>
                                             </Box>
 
                                             <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                                                 <Avatar 
-                                                    src={report.student?.picture_url} 
+                                                    src={report.subject_type === 'staff' ? report.staff?.picture_url : report.student?.picture_url} 
                                                                                     sx={{ 
                                                         width: 48, 
                                                         height: 48,
@@ -1475,16 +1583,33 @@ export const Reports = (): JSX.Element => {
                                                         color: 'primary.main'
                                                                                     }}
                                                                                 >
-                                                    {!report.student?.picture_url && report.student?.name?.[0]}
+                                                    {report.subject_type === 'staff' 
+                                                        ? (!report.staff?.picture_url && report.staff?.name?.[0])
+                                                        : (!report.student?.picture_url && report.student?.name?.[0])
+                                                    }
                                                 </Avatar>
                                                 <Box sx={{ flex: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                                                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {report.student?.name}
+                                                            {report.subject_type === 'staff' ? report.staff?.name : report.student?.name}
                                                                                     </Typography>
-                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                            • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
+                                                        {report.subject_type === 'student' && (
+                                                            <>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
                                                                                     </Typography>
+                                                                {report.reporter?.name && (
+                                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                        • by {report.reporter.name}
+                                                                                    </Typography>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {report.subject_type === 'staff' && report.staff?.role && (
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                • {report.staff.role}
+                                                                                    </Typography>
+                                                        )}
                                                     </Box>
                                                     <Typography variant="body1" sx={{ mb: 1 }}>
                                                         {report.description}
@@ -1799,6 +1924,8 @@ export const Reports = (): JSX.Element => {
                                                             </Box>
                                                         </UpdateButton>
                                                     )}
+                                                    {canEditOrDeleteReport(report) && (
+                                                        <>
                                                     <ReportActionButton
                                                         onClick={() => handleEditReport(report)}
                                                         size="small"
@@ -1835,12 +1962,14 @@ export const Reports = (): JSX.Element => {
                                                     >
                                                         <DeleteIcon fontSize="inherit" sx={{ color: 'error.main' }} />
                                                     </ReportActionButton>
+                                                        </>
+                                                    )}
                                                         </Box>
                                             </Box>
 
                                             <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                                                 <Avatar 
-                                                    src={report.student?.picture_url} 
+                                                    src={report.subject_type === 'staff' ? report.staff?.picture_url : report.student?.picture_url} 
                                                                                     sx={{ 
                                                         width: 48, 
                                                         height: 48,
@@ -1848,16 +1977,33 @@ export const Reports = (): JSX.Element => {
                                                         color: 'primary.main'
                                                                                     }}
                                                                                 >
-                                                    {!report.student?.picture_url && report.student?.name?.[0]}
+                                                    {report.subject_type === 'staff' 
+                                                        ? (!report.staff?.picture_url && report.staff?.name?.[0])
+                                                        : (!report.student?.picture_url && report.student?.name?.[0])
+                                                    }
                                                 </Avatar>
                                                 <Box sx={{ flex: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                                                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {report.student?.name}
+                                                            {report.subject_type === 'staff' ? report.staff?.name : report.student?.name}
                                                                                     </Typography>
-                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                            • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
+                                                        {report.subject_type === 'student' && (
+                                                            <>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
                                                                                     </Typography>
+                                                                {report.reporter?.name && (
+                                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                        • by {report.reporter.name}
+                                                                                    </Typography>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {report.subject_type === 'staff' && report.staff?.role && (
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                • {report.staff.role}
+                                                                                    </Typography>
+                                                        )}
                                                     </Box>
                                                     <Typography variant="body1" sx={{ mb: 1 }}>
                                                         {report.description}

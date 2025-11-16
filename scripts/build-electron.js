@@ -2,6 +2,22 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Function to read GitHub token from .github_token.txt
+function getGitHubToken() {
+  try {
+    const tokenPath = path.join(__dirname, '..', '.github_token.txt');
+    if (fs.existsSync(tokenPath)) {
+      const token = fs.readFileSync(tokenPath, 'utf8').trim();
+      if (token) {
+        return token;
+      }
+    }
+  } catch (e) {
+    console.log('Could not read GitHub token file:', e.message);
+  }
+  return null;
+}
+
 // Function to check if running as administrator
 function isAdmin() {
   try {
@@ -43,6 +59,14 @@ function clearCache() {
 function buildElectron() {
   console.log('Starting Electron build process...');
   
+  // Ensure latest source code is used
+  try {
+    console.log('Ensuring latest source code...');
+    execSync('node scripts/ensure-latest-code.js --no-pull', { stdio: 'inherit' });
+  } catch (error) {
+    console.log('Warning: Could not ensure latest code, continuing anyway...');
+  }
+  
   // Check if running as admin
   if (!isAdmin()) {
     console.log('Not running as administrator. Attempting to enable Developer Mode...');
@@ -62,8 +86,23 @@ function buildElectron() {
   clearCache();
   
   try {
+    // Read GitHub token and prepare environment variables
+    const githubToken = getGitHubToken();
+    const buildEnv = {
+      ...process.env,
+      REACT_APP_VERSION: require('../package.json').version
+    };
+    
+    // Add GitHub token if available
+    if (githubToken) {
+      buildEnv.REACT_APP_GITHUB_TOKEN = githubToken;
+      console.log('GitHub token found, will use authenticated API requests');
+    } else {
+      console.log('No GitHub token found, using unauthenticated API requests (60 req/hour limit)');
+    }
+    
     console.log('Building React app...');
-    execSync('npm run build', { stdio: 'inherit' });
+    execSync('npm run build', { stdio: 'inherit', env: buildEnv });
     
     console.log('Generating asset manifest...');
     execSync('node scripts/generate-asset-manifest.js', { stdio: 'inherit' });

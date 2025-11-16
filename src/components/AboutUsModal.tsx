@@ -32,36 +32,6 @@ const ModalContent = styled.div`
   flex-direction: row;
   position: relative;
   
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, 
-      rgba(255, 255, 255, 0.25) 0%, 
-      rgba(255, 255, 255, 0.1) 25%, 
-      rgba(255, 255, 255, 0.3) 50%, 
-      rgba(255, 255, 255, 0.1) 75%, 
-      rgba(255, 255, 255, 0.25) 100%);
-    background-size: 300% 300%;
-    border-radius: 20px;
-    animation: glassyGlow 2.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-  
-  @keyframes glassyGlow {
-    0%, 100% {
-      background-position: 0% 50%;
-      opacity: 0.9;
-    }
-    50% {
-      background-position: 100% 50%;
-      opacity: 1;
-    }
-  }
-  
   @media (max-width: 768px) {
     width: 95vw;
     max-width: 500px;
@@ -69,10 +39,30 @@ const ModalContent = styled.div`
     min-height: 250px;
     flex-direction: row;
     border-radius: 16px;
-    
-    &::before {
-      border-radius: 16px;
-    }
+  }
+`;
+
+const PatternBackground = styled.div`
+  position: absolute;
+  bottom: -100px;
+  right: -50px;
+  width: 400px;
+  height: 400px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: url('${process.env.PUBLIC_URL || ''}/patternLogo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  mix-blend-mode: overlay;
+  
+  @media (max-width: 768px) {
+    width: 250px;
+    height: 250px;
+    bottom: -60px;
+    right: -30px;
+    opacity: 0.18;
   }
 `;
 
@@ -84,6 +74,7 @@ const ContentSection = styled.div`
   justify-content: flex-end;
   position: relative;
   color: white;
+  z-index: 1;
   
   @media (max-width: 768px) {
     padding: 20px 15px;
@@ -111,6 +102,29 @@ const BrandTitle = styled.div`
   line-height: 1;
   margin-bottom: 5px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #ffffff 25%,
+    #ffc107 50%,
+    #ffffff 75%,
+    #ffffff 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleShine 3s ease-in-out infinite;
+  
+  @keyframes titleShine {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
   
   @media (max-width: 768px) {
     font-size: 1.8rem;
@@ -147,25 +161,26 @@ const ContactSection = styled.div`
 const ContactName = styled.div`
   font-size: 1.4rem;
   font-weight: 800;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
   color: #ffc107;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
   
   @media (max-width: 768px) {
     font-size: 1rem;
     white-space: nowrap;
+    margin-bottom: 1px;
   }
 `;
 
 const ContactTitle = styled.div`
   font-size: 1rem;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   color: #ffffff;
   opacity: 0.9;
   
   @media (max-width: 768px) {
     font-size: 0.8rem;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     white-space: nowrap;
   }
 `;
@@ -190,6 +205,7 @@ const ImageSection = styled.div`
   overflow: visible;
   padding-top: 0;
   border-radius: 20px 0 0 20px;
+  z-index: 1;
   
   @media (max-width: 768px) {
     flex: 0 0 250px;
@@ -254,6 +270,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) => {
   return (
     <ModalOverlay onClick={handleOverlayClick}>
       <ModalContent>
+        <PatternBackground />
         <ImageSection>
           <AboutImage 
             src={`${process.env.PUBLIC_URL || ''}/aboutus.png`} 

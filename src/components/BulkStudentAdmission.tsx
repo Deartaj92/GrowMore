@@ -803,7 +803,8 @@ const BulkStudentAdmission: React.FC = () => {
         mother_income: null,
         session_id: session.id,
         school_id: user.school_id,
-        status: 'active'
+        status: 'active',
+        password: 'aa'
       }));
 
       // Insert students

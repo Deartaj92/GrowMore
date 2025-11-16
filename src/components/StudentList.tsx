@@ -21,6 +21,8 @@ import {
   KeyboardArrowUp as KeyboardArrowUpIcon,
   Phone as PhoneIcon,
   LocationOn as LocationIcon,
+  Sms as SmsIcon,
+  WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
 import { Textfit } from '@techstack/react-textfit';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
@@ -1713,7 +1715,13 @@ const MemoizedStudentCard = memo(({
           <span>{student.father_name || 'N/A'}</span>
           {(student.phone || student.father_mobile) && (
             <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <PhoneIcon style={{ fontSize: '0.9rem' }} />
+              {student.notification_channel === 'whatsapp' ? (
+                <WhatsAppIcon style={{ fontSize: '0.9rem', color: '#25D366' }} />
+              ) : student.notification_channel === 'sms' ? (
+                <SmsIcon style={{ fontSize: '0.9rem', color: '#4CAF50' }} />
+              ) : (
+                <PhoneIcon style={{ fontSize: '0.9rem' }} />
+              )}
               {student.phone || student.father_mobile}
             </span>
           )}
@@ -1900,6 +1908,7 @@ const StudentList: React.FC = () => {
       mother_mobile: student.mother_mobile || '',
       mother_occupation: student.mother_occupation || '',
       mother_income: student.mother_income || '',
+      notification_channel: student.notification_channel || 'whatsapp',
       status: student.status || 'active'
     };
     
@@ -1948,32 +1957,78 @@ const StudentList: React.FC = () => {
   }, []);
 
 
-  // Optimized filtered students computation with reduced memory allocations
+  // Optimized filtered students computation with reduced memory allocations and ID search
   const filteredStudents = useMemo(() => {
     if (!students.length) return [];
     
     // Pre-compute filter values to avoid repeated conversions
     const searchLower = search.trim().toLowerCase();
+    const searchTerm = search.trim();
+    const isNumericSearch = !isNaN(Number(searchTerm));
+    const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
     const classFilterStr = classFilter ? String(classFilter) : '';
     const sectionFilterStr = sectionFilter ? String(sectionFilter) : '';
     const sessionFilterStr = sessionFilter ? String(sessionFilter) : '';
     const statusFilterStr = statusFilter ? String(statusFilter) : '';
     
-    // Use for loop instead of multiple filter chains for better performance
-    const result: typeof students = [];
+    // Use for loop with scoring for better sorting
+    const scoredResults: Array<{ student: typeof students[0]; score: number }> = [];
     
     for (let i = 0; i < students.length; i++) {
       const stu = students[i];
       let shouldInclude = true;
+      let searchScore = 0;
       
-      // Search filter
+      // Search filter with scoring
       if (searchLower && shouldInclude) {
-        shouldInclude = (
-          (stu.name?.toLowerCase().includes(searchLower)) ||
-          (stu.classes?.name?.toLowerCase().includes(searchLower)) ||
-          (stu.sections?.name?.toLowerCase().includes(searchLower)) ||
-          (stu.sessions?.name?.toLowerCase().includes(searchLower))
-        );
+        let searchMatch = false;
+        
+        if (isNumericSearch && searchTermNum !== null) {
+          // ID search - prioritize exact match, then starts with, then contains
+          const studentIdStr = String(stu.id);
+          if (stu.id === searchTermNum) {
+            searchScore = 1000; // Highest priority for exact match
+            searchMatch = true;
+          } else if (studentIdStr.startsWith(searchTerm)) {
+            searchScore = 500; // High priority for starts with
+            searchMatch = true;
+          } else if (studentIdStr.includes(searchTerm)) {
+            searchScore = 100; // Lower priority for contains
+            searchMatch = true;
+          }
+        }
+        
+        // Name and other field searches
+        if (!searchMatch) {
+          const nameMatch = stu.name?.toLowerCase().includes(searchLower);
+          const classMatch = stu.classes?.name?.toLowerCase().includes(searchLower);
+          const sectionMatch = stu.sections?.name?.toLowerCase().includes(searchLower);
+          const sessionMatch = stu.sessions?.name?.toLowerCase().includes(searchLower);
+          
+          if (nameMatch || classMatch || sectionMatch || sessionMatch) {
+            searchMatch = true;
+            // Prioritize name matches
+            if (nameMatch) {
+              if (stu.name?.toLowerCase().startsWith(searchLower)) {
+                searchScore = 100; // High priority for name starts with
+              } else {
+                searchScore = 50; // Lower priority for name contains
+              }
+            } else {
+              searchScore = 25; // Lower priority for class/section/session matches
+            }
+          }
+          
+          // Also check ID for non-numeric searches (secondary)
+          if (!searchMatch && String(stu.id).includes(searchTerm)) {
+            searchScore = 10;
+            searchMatch = true;
+          }
+        }
+        
+        if (!searchMatch) {
+          shouldInclude = false;
+        }
       }
       
       // Class filter
@@ -1997,11 +2052,19 @@ const StudentList: React.FC = () => {
       }
       
       if (shouldInclude) {
-        result.push(stu);
+        scoredResults.push({ student: stu, score: searchScore });
       }
     }
     
-    return result;
+    // Sort by score descending (higher scores first), then by ID ascending
+    scoredResults.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score; // Higher score first
+      }
+      return a.student.id - b.student.id; // Then by ID ascending
+    });
+    
+    return scoredResults.map(item => item.student);
   }, [students, search, classFilter, sectionFilter, sessionFilter, statusFilter]);
 
   // Optimized studentsToShow computation
@@ -2331,7 +2394,7 @@ const StudentList: React.FC = () => {
     cleanedForm.session_id = editingStudent.session_id;
     // Only keep fields that exist in the students table
     const allowedFields = [
-      'name', 'class_id', 'section_id', 'admission_date', 'discount_in_fee', 'phone', 'picture_url', 'dob', 'form_b', 'gender', 'cast', 'orphan', 'osc', 'id_mark', 'blood_group', 'previous_school', 'previous_id', 'religion', 'nationality', 'disease', 'additional_note', 'total_siblings', 'address', 'father_name', 'father_national_id', 'father_education', 'father_mobile', 'father_occupation', 'father_income', 'mother_name', 'mother_national_id', 'mother_education', 'mother_mobile', 'mother_occupation', 'mother_income', 'status', 'session_id'
+      'name', 'class_id', 'section_id', 'admission_date', 'discount_in_fee', 'phone', 'picture_url', 'dob', 'form_b', 'gender', 'cast', 'orphan', 'osc', 'id_mark', 'blood_group', 'previous_school', 'previous_id', 'religion', 'nationality', 'disease', 'additional_note', 'total_siblings', 'address', 'father_name', 'father_national_id', 'father_education', 'father_mobile', 'father_occupation', 'father_income', 'mother_name', 'mother_national_id', 'mother_education', 'mother_mobile', 'mother_occupation', 'mother_income', 'notification_channel', 'status', 'session_id'
     ];
     Object.keys(cleanedForm).forEach(key => {
       if (!allowedFields.includes(key)) {

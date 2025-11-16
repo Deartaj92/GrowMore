@@ -356,6 +356,37 @@ const StatusBlock = styled.span<{ status?: string }>`
     '#bbb'};
   transition: background 0.18s, color 0.18s;
 `;
+const HalfLeaveBadge = styled.span`
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ec4899;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1;
+  z-index: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+`;
+const SummaryRow = styled.tr`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  font-weight: 700;
+  border-top: 2px solid ${({ theme }) => theme.BORDER};
+`;
+const SummaryCell = styled(Td)`
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  text-align: center;
+`;
+const SummaryLabelCell = styled(SummaryCell)`
+  text-align: right;
+  padding-right: 0.5rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
+`;
 
 const StatusDropdown = styled.div`
   position: absolute;
@@ -718,6 +749,7 @@ const StaffAttendanceReport: React.FC = () => {
   const lastClickTimeRef = useRef<number>(0);
   const [holidayTextStyle, setHolidayTextStyle] = useState<{ [key: string]: { angle: number, fontSize: string, maxWidth?: string } }>({});
   const holidayCellRefs = useRef<{ [key: string]: HTMLTableCellElement | null }>({});
+  const [halfLeavesMap, setHalfLeavesMap] = useState<Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>>(new Map());
 
   // Fetch active session on mount
   useEffect(() => {
@@ -844,6 +876,34 @@ const StaffAttendanceReport: React.FC = () => {
         return;
       }
       setStaffMembers(staffData);
+      
+      // Fetch half leaves for staff in this month
+      setProgress(70);
+      if (sessionId) {
+        const { data: halfLeavesData } = await supabase
+          .from('half_leaves')
+          .select('person_id, date, leave_type, arrival_time, departure_time')
+          .eq('person_type', 'staff')
+          .eq('session_id', sessionId)
+          .eq('school_id', user?.school_id)
+          .in('person_id', staffIds)
+          .gte('date', startDate)
+          .lte('date', endDate);
+        
+        // Create a map for quick lookup: "staffId_date" -> half leave data
+        const hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
+        (halfLeavesData || []).forEach((hl: any) => {
+          const key = `${hl.person_id}_${hl.date}`;
+          hlMap.set(key, {
+            leave_type: hl.leave_type,
+            arrival_time: hl.arrival_time,
+            departure_time: hl.departure_time
+          });
+        });
+        setHalfLeavesMap(hlMap);
+      } else {
+        setHalfLeavesMap(new Map());
+      }
       
       // Build attendance matrix
       setProgress(80);
@@ -1312,34 +1372,6 @@ const StaffAttendanceReport: React.FC = () => {
       doc.text(`Working Days: ${workingDays}`, 80, 30);
       doc.text(`Average Attendance: ${avgAttendance}%`, 160, 30);
 
-      // Prepare table data
-      const sortedStaff = [...filteredStaff].sort((a, b) => a.id - b.id);
-      const tableData = sortedStaff.map((staff, idx) => {
-        const row = [
-          (idx + 1).toString(),
-          staff.id.toString(),
-          staff.name,
-          staff.role,
-          ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
-            const date = new Date(parseISO(selectedMonth + '-01'));
-            date.setDate(dayIdx + 1);
-            const isSunday = date.getDay() === 0;
-            if (isSunday) return '';
-            return attendanceMatrix[idx]?.[dayIdx] || '-';
-          })
-        ];
-        return row;
-      });
-
-      // Prepare table headers
-      const headers = [
-        '#',
-        'ID',
-        'Staff Name',
-        'Role',
-        ...Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString())
-      ];
-
       // Prepare a map of holiday days for quick lookup
       let holidayDayMap: Record<number, string> = {};
       holidays.forEach(holiday => {
@@ -1353,6 +1385,74 @@ const StaffAttendanceReport: React.FC = () => {
           holidayDayMap[i + 1] = holiday.name;
         }
       });
+
+      // Prepare table data
+      const sortedStaff = [...filteredStaff].sort((a, b) => a.id - b.id);
+      const tableData = sortedStaff.map((staff, idx) => {
+        const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+        const row = [
+          (idx + 1).toString(),
+          staff.id.toString(),
+          staff.name,
+          staff.role,
+          ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
+            const date = new Date(parseISO(selectedMonth + '-01'));
+            date.setDate(dayIdx + 1);
+            const isSunday = date.getDay() === 0;
+            if (isSunday) return '';
+            const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx] || '-';
+            const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+            const halfLeaveKey = `${staff.id}_${dateStr}`;
+            const halfLeave = halfLeavesMap.get(halfLeaveKey);
+            // Replace status with HL if half leave exists
+            // Use "HLt" if original status was "Lt" (Late) to maintain yellow color
+            if (halfLeave) {
+              return status === 'Lt' ? 'HLt' : 'HL';
+            }
+            return status;
+          })
+        ];
+        return row;
+      });
+      
+      // Add summary row for absents/leaves
+      const summaryRow = [
+        '',
+        '',
+        '',
+        'Absents/Leaves:',
+        ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
+          const date = new Date(parseISO(selectedMonth + '-01'));
+          date.setDate(dayIdx + 1);
+          const isSunday = date.getDay() === 0;
+          if (isSunday) return '';
+          
+          // Check for holidays
+          if (holidayDayMap[dayIdx + 1]) return '';
+          
+          // Count absent and leave staff for this day
+          let absentCount = 0;
+          sortedStaff.forEach((staff) => {
+            const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+            const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
+            if (status === 'A' || status === 'L') {
+              absentCount++;
+            }
+          });
+          
+          return absentCount > 0 ? absentCount.toString() : '-';
+        })
+      ];
+      tableData.push(summaryRow);
+
+      // Prepare table headers
+      const headers = [
+        '#',
+        'ID',
+        'Staff Name',
+        'Role',
+        ...Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString())
+      ];
 
       // Build columnStyles for uniform day columns
       const totalWidth = 270;
@@ -1412,17 +1512,41 @@ const StaffAttendanceReport: React.FC = () => {
           }
           // Style for status cells
           if (data.column.index > 3 && data.cell.raw !== '') {
-            const status = String(data.cell.raw || '');
-            if (status === 'P') {
+            const cellValue = String(data.cell.raw || '');
+            
+            // Check if this is the summary row (last row)
+            const isSummaryRow = data.row.index === tableData.length - 1;
+            
+            if (isSummaryRow) {
+              // Style summary row
+              data.cell.styles.fillColor = [248, 249, 250];
+              data.cell.styles.fontStyle = 'bold';
+              if (cellValue !== '-' && cellValue !== '') {
+                data.cell.styles.textColor = [220, 38, 38]; // Red for absent counts
+              }
+            } else {
+              // Style regular status cells
+              if (cellValue === 'HL') {
+                // Highlight HL in pink color (when replacing P, A, L, H, etc.)
+                data.cell.styles.textColor = [236, 72, 153]; // Pink color for HL
+                data.cell.styles.fontStyle = 'bold';
+              } else if (cellValue === 'HLt') {
+                // Highlight HL in yellow color (when replacing Lt/Late)
+                data.cell.styles.textColor = [245, 158, 66]; // Yellow/Orange color for HL replacing Late
+                data.cell.styles.fontStyle = 'bold';
+                // Change text from "HLt" to "HL" for display
+                data.cell.text = ['HL'];
+              } else if (cellValue === 'P') {
               data.cell.styles.textColor = [22, 163, 74];
-            } else if (status === 'A') {
+              } else if (cellValue === 'A') {
               data.cell.styles.textColor = [220, 38, 38];
-            } else if (status === 'L') {
+              } else if (cellValue === 'L') {
               data.cell.styles.textColor = [74, 108, 247];
-            } else if (status === 'Lt') {
+              } else if (cellValue === 'Lt') {
               data.cell.styles.textColor = [245, 158, 66];
-            } else if (status === 'H') {
+              } else if (cellValue === 'H') {
               data.cell.styles.textColor = [139, 92, 246];
+              }
             }
           }
         }
@@ -2013,9 +2137,20 @@ const StaffAttendanceReport: React.FC = () => {
                         }
                       }
                       // Otherwise, render attendance status
-                      const status = attendanceMatrix[idx]?.[dayIdx] || '-';
+                      const staff = filteredStaff[idx];
+                      const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+                      const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx] || '-';
+                      const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+                      const halfLeaveKey = staff ? `${staff.id}_${dateStr}` : '';
+                      const halfLeave = halfLeaveKey ? halfLeavesMap.get(halfLeaveKey) : null;
+                      
                       return (
                         <StatusCell key={dayIdx} status={status} style={{ position: 'relative' }}>
+                          {halfLeave && (
+                            <HalfLeaveBadge title={`Half Leave (${halfLeave.leave_type === 'first_half' ? 'First Half' : 'Second Half'})`}>
+                              HL
+                            </HalfLeaveBadge>
+                          )}
                           <span
                             ref={el => {
                               if (openDropdown && openDropdown.row === idx && openDropdown.col === dayIdx && el) {
@@ -2111,6 +2246,69 @@ const StaffAttendanceReport: React.FC = () => {
                   </tr>
                   );
                 })}
+                {/* Summary row showing daily absent and leave counts */}
+                <SummaryRow>
+                  <SummaryLabelCell colSpan={4}>Absents/Leaves:</SummaryLabelCell>
+                  {(() => {
+                    let skipCols = 0;
+                    return Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                      if (skipCols > 0) {
+                        skipCols--;
+                        return null;
+                      }
+                      
+                      const date = new Date(parseISO(selectedMonth + '-01'));
+                      date.setDate(dayIdx + 1);
+                      const isSunday = date.getDay() === 0;
+                      
+                      // Check if this day is the start of a holiday range
+                      const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
+                      if (holiday) {
+                        skipCols = holiday.endIdx - holiday.startIdx;
+                        const colSpan = holiday.endIdx - holiday.startIdx + 1;
+                        return (
+                          <SummaryCell 
+                            key={dayIdx} 
+                            colSpan={colSpan}
+                            style={{ 
+                              background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                              color: '#4a6cf7'
+                            }}
+                          >
+                            -
+                          </SummaryCell>
+                        );
+                      }
+                      
+                      if (isSunday) {
+                        return (
+                          <SummaryCell 
+                            key={dayIdx} 
+                            style={{ background: isDark(theme) ? '#232a3b' : '#ffeaea', color: '#dc2626' }}
+                          >
+                            -
+                          </SummaryCell>
+                        );
+                      }
+                      
+                      // Count absent and leave staff for this day
+                      let absentCount = 0;
+                      filteredStaff.forEach((staff) => {
+                        const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+                        const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
+                        if (status === 'A' || status === 'L') {
+                          absentCount++;
+                        }
+                      });
+                      
+                      return (
+                        <SummaryCell key={dayIdx} style={{ color: absentCount > 0 ? '#dc2626' : 'inherit' }}>
+                          {absentCount > 0 ? absentCount : '-'}
+                        </SummaryCell>
+                      );
+                    });
+                  })()}
+                </SummaryRow>
               </tbody>
             </Table>
           </>

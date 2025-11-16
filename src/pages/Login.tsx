@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled, { ThemeProvider, useTheme } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -226,8 +226,68 @@ const ErrorMsg = styled.div`
   padding: 7px 0 5px 0;
 `;
 
+const LoginModeSwitch = styled.div`
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#1f1f1f' : '#e5e7eb'};
+  border-radius: 12px;
+  padding: 4px;
+  position: relative;
+`;
+
+const SwitchOption = styled.button<{ $active: boolean }>`
+  flex: 1;
+  background: ${({ $active, theme }) => 
+    $active 
+      ? theme.ACCENT || '#4a6cf7'
+      : 'transparent'};
+  color: ${({ $active, theme }) => 
+    $active 
+      ? '#fff'
+      : theme.TEXT_SECONDARY};
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: ${({ $active }) => $active ? '600' : '500'};
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  
+  &:hover {
+    ${({ $active, theme }) => !$active && `
+      background: ${theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+      color: ${theme.TEXT_PRIMARY};
+    `}
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+`;
+
+const SwitchLabel = styled.span`
+  display: block;
+  white-space: nowrap;
+`;
+
 const Login: React.FC = () => {
+  const [loginMode, setLoginMode] = useState<'staff' | 'student'>('staff');
   const [username, setUsername] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -243,6 +303,10 @@ const Login: React.FC = () => {
   });
   const [isMobile, setIsMobile] = useState(false);
   const themeObj = themeMode === 'dark' ? darkTheme : lightTheme;
+  
+  // Lock mode during submission to prevent switching
+  const loginModeRef = useRef<'staff' | 'student'>('staff');
+  loginModeRef.current = loginMode;
 
   // Mobile detection
   useEffect(() => {
@@ -265,15 +329,99 @@ const Login: React.FC = () => {
     });
   };
 
+  // Handle mode switching with field clearing
+  const handleModeSwitch = (mode: 'staff' | 'student') => {
+    if (loading) return; // Prevent switching during submission
+    setLoginMode(mode);
+    setError('');
+    // Clear form fields when switching modes
+    setUsername('');
+    setStudentId('');
+    setPassword('');
+    setShowPassword(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Use ref to get the current mode (locked during submission)
+    const currentMode = loginModeRef.current;
+    
+    // Validate fields based on mode
+    if (currentMode === 'staff') {
+      if (!username.trim()) {
+        setError('Please enter your username.');
+        return;
+      }
+      if (!password.trim()) {
+        setError('Please enter your password.');
+        return;
+      }
+    } else {
+      if (!studentId.trim()) {
+        setError('Please enter your Student ID.');
+        return;
+      }
+      if (!password.trim()) {
+        setError('Please enter your password.');
+        return;
+      }
+    }
+    
     setLoading(true);
     try {
-      await signIn(username, password);
+      if (currentMode === 'staff') {
+        // Clear any existing student session when staff logs in
+        localStorage.removeItem('studentSession');
+        await signIn(username, password);
+      } else {
+        // Student authentication: lookup by student id and password
+        // Try by id first, then by student_number if id fails
+        let studentLookup = null;
+        if (!isNaN(Number(studentId))) {
+          // First try by id
+          const { data: byId, error: idError } = await supabase
+            .from('students')
+            .select('*')
+            .eq('id', studentId)
+            .single();
+          
+          if (!idError && byId) {
+            studentLookup = { data: byId, error: null };
+          } else {
+            // If id fails, try by student_number
+            const { data: byNumber, error: numberError } = await supabase
+              .from('students')
+              .select('*')
+              .eq('student_number', studentId)
+              .single();
+            
+            studentLookup = { data: byNumber, error: numberError };
+          }
+        }
+        if (!studentLookup || studentLookup.error || !studentLookup.data) {
+          setError('Student not found. Please check your ID.');
+          setLoading(false);
+          return;
+        }
+        const student = studentLookup.data;
+        // Check password logic, fallback to 'aa' if empty/null
+        const passToCheck = student.password || 'aa';
+        if (password !== passToCheck) {
+          setError('Incorrect password.');
+          setLoading(false);
+          return;
+        }
+        // Store student session info (minimal)
+        localStorage.setItem('studentSession', JSON.stringify({ id: student.id, isStudent: true }));
+        // Redirect to student profile. Assume route: /student/:id
+        navigate(`/student/${student.id}`, { replace: true });
+        return;
+      }
       toast.showToast('Login successful', 'success');
     } catch (err: any) {
-      setError(err.message || 'Invalid username or password');
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -293,34 +441,95 @@ const Login: React.FC = () => {
             <SchoolIcon />
             <div>Welcome to <span style={{ color: '#ff6b35' }}>GROW</span> <span style={{ color: '#4a6cf7' }}>MORE</span>!</div>
           </Logo>
-          <Title>Sign In</Title>
-          <Label htmlFor="username">Username</Label>
-          <InputGroup>
-            <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-              autoComplete="username"
-              required
-              placeholder="Enter your username"
-            />
-          </InputGroup>
-          <Label htmlFor="password">Password</Label>
-          <InputGroup>
-            <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              placeholder="Enter your password"
-            />
-            <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
-              {showPassword ? <VisibilityOff /> : <Visibility />}
-            </ToggleButton>
-          </InputGroup>
+          <LoginModeSwitch>
+            <SwitchOption 
+              $active={loginMode === 'staff'}
+              onClick={() => handleModeSwitch('staff')}
+              disabled={loading}
+              type="button"
+            >
+              <SwitchLabel>Teacher/Staff</SwitchLabel>
+            </SwitchOption>
+            <SwitchOption 
+              $active={loginMode === 'student'}
+              onClick={() => handleModeSwitch('student')}
+              disabled={loading}
+              type="button"
+            >
+              <SwitchLabel>Student/Parent</SwitchLabel>
+            </SwitchOption>
+          </LoginModeSwitch>
+          {loginMode === 'staff' ? (
+            <>
+              <Title>Sign In</Title>
+              <Label htmlFor="username">Username</Label>
+              <InputGroup>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  autoComplete="username"
+                  autoFocus={!isMobile}
+                  required
+                  placeholder="Enter your username"
+                />
+              </InputGroup>
+              <Label htmlFor="password">Password</Label>
+              <InputGroup>
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  placeholder="Enter your password"
+                />
+                <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </ToggleButton>
+              </InputGroup>
+            </>
+          ) : (
+            <>
+              <Title>Student Login</Title>
+              <Label htmlFor="studentId">Student ID</Label>
+              <InputGroup>
+                <Input
+                  id="studentId"
+                  type="text"
+                  inputMode="numeric"
+                  value={studentId}
+                  onChange={e => {
+                    const value = e.target.value;
+                    // Only allow numeric characters
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setStudentId(value);
+                    }
+                  }}
+                  autoFocus={!isMobile}
+                  autoComplete="off"
+                  required
+                  placeholder="Enter your Student ID"
+                />
+              </InputGroup>
+              <Label htmlFor="studentPassword">Password</Label>
+              <InputGroup>
+                <Input
+                  id="studentPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="Enter your password"
+                />
+                <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </ToggleButton>
+              </InputGroup>
+            </>
+          )}
           {error && <ErrorMsg>{error}</ErrorMsg>}
           <Button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</Button>
         </LoginCard>

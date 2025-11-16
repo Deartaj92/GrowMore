@@ -157,13 +157,16 @@ class ActivityTrackingService {
       }
 
       // Create notification for each admin
+      // Mark report notifications as important for high attention
+      const isImportant = activityType === 'report' && activityAction === 'create';
+      
       const notifications = admins.map(admin => ({
         recipient_id: admin.id,
         school_id: schoolId,
         notification_type: activityType, // Use the actual activity type for specific icons
         title: teacher.name,
         message: this.getNotificationMessage(activityType, activityAction, entityName, details),
-        is_important: false,
+        is_important: isImportant,
         expires_at: null
       }));
 
@@ -187,6 +190,7 @@ class ActivityTrackingService {
   private getNotificationTitle(activityType: string, activityAction: string): string {
     const actionText = activityAction === 'create' ? 'Created' : 
                       activityAction === 'update' ? 'Updated' : 
+                      activityAction === 'delete' ? 'Deleted' :
                       activityAction === 'view' ? 'Viewed' : 'Modified';
     
     switch (activityType) {
@@ -198,6 +202,10 @@ class ActivityTrackingService {
         return `${actionText} Examination Marks`;
       case 'subject_assignment':
         return `${actionText} Subject Assignment`;
+      case 'homework_diary':
+        return `${actionText} Homework Diary`;
+      case 'report':
+        return `${actionText} Report`;
       default:
         return `${actionText} Activity`;
     }
@@ -216,13 +224,45 @@ class ActivityTrackingService {
     
     switch (activityType) {
       case 'attendance':
+        if (activityAction === 'delete') {
+          return `Deleted Attendance - ${currentDate} - ${details?.class_name || 'Class'}${details?.section_name ? ` (${details.section_name})` : ''}`;
+        }
         return `Marked Attendance - ${currentDate} - ${details?.class_name || 'Class'}${details?.section_name ? ` (${details.section_name})` : ''}`;
       case 'test_marks':
-        return `${details?.subject_name || 'Subject'} Test Marks Entered - ${currentDate} - ${details?.marks_entered || 0} Students`;
+        if (activityAction === 'delete') {
+          return `Deleted Test Marks - ${currentDate} - ${details?.subject_name || 'Subject'} - ${details?.test_name || 'Test'} - ${details?.marks_entered || 0} Student${(details?.marks_entered || 0) !== 1 ? 's' : ''}`;
+        } else if (activityAction === 'update') {
+          return `Updated Test Marks - ${currentDate} - ${details?.subject_name || 'Subject'} - ${details?.test_name || 'Test'} - ${details?.marks_entered || 0} Students`;
+        }
+        return `Test Marks Entered - ${currentDate} - ${details?.subject_name || 'Subject'} - ${details?.test_name || 'Test'} - ${details?.marks_entered || 0} Students`;
       case 'examination_marks':
-        return `${details?.subject_name || 'Subject'} Test Marks Entered - ${currentDate} - ${details?.examination_name || 'Examination'}`;
+        if (activityAction === 'delete') {
+          return `Deleted Examination Marks - ${currentDate} - ${details?.subject_name || 'Subject'} - ${details?.examination_name || 'Examination'}`;
+        } else if (activityAction === 'update') {
+          return `Updated Examination Marks - ${currentDate} - ${details?.subject_name || 'Subject'} - ${details?.examination_name || 'Examination'}`;
+        }
+        return `Examination Marks Entered - ${currentDate} - ${details?.subject_name || 'Subject'} - ${details?.examination_name || 'Examination'}`;
       case 'subject_assignment':
+        if (activityAction === 'delete') {
+          return `Deleted Subject Assignment - ${currentDate} - ${details?.subject_count || 0} Subjects`;
+        }
         return `Subject Assignment - ${currentDate} - ${details?.subject_count || 0} Subjects`;
+      case 'homework_diary':
+        if (activityAction === 'delete') {
+          return `Deleted Homework Entry - ${currentDate} - ${details?.class_name || 'Class'}${details?.section_name ? ` (${details.section_name})` : ''} - ${details?.subject_name || 'General'}`;
+        }
+        return `Homework Diary - ${currentDate} - ${details?.class_name || 'Class'}${details?.section_name ? ` (${details.section_name})` : ''} - ${details?.homework_count || 0} ${details?.homework_count === 1 ? 'Entry' : 'Entries'}`;
+      case 'report':
+        const severityText = details?.severity ? ` [${details.severity.toUpperCase()}]` : '';
+        const subjectTypeText = details?.subject_type === 'student' ? 'Student' : 'Staff';
+        if (activityAction === 'delete') {
+          return `Deleted ${subjectTypeText} Report - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
+        } else if (activityAction === 'update') {
+          return `Updated ${subjectTypeText} Report - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
+        } else if (activityAction === 'create') {
+          return `New ${subjectTypeText} Report - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
+        }
+        return `${subjectTypeText} Report - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
       default:
         return `${entityName} - ${currentDate}`;
     }
@@ -386,17 +426,22 @@ class ActivityTrackingService {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        // If table doesn't exist (406 error), return null gracefully
-        if (error.code === 'PGRST406') {
-          console.warn('notification_preferences table does not exist, skipping preferences check');
+        // If table doesn't exist or RLS blocks access (406 error), return null gracefully
+        if (error.code === 'PGRST406' || error.message?.includes('406')) {
+          // Silently handle - table might not exist or RLS might be blocking
           return null;
         }
+        // Only log non-406 errors
         console.error('Error getting notification preferences:', error);
         throw error;
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle 406 errors gracefully (table doesn't exist or RLS blocking)
+      if (error?.code === 'PGRST406' || error?.message?.includes('406')) {
+        return null;
+      }
       console.error('Failed to get notification preferences:', error);
       return null;
     }
@@ -423,17 +468,22 @@ class ActivityTrackingService {
         .single();
 
       if (error) {
-        // If table doesn't exist (406 error), return null gracefully
-        if (error.code === 'PGRST406') {
-          console.warn('notification_preferences table does not exist, skipping preferences update');
+        // If table doesn't exist or RLS blocks access (406 error), return null gracefully
+        if (error.code === 'PGRST406' || error.message?.includes('406')) {
+          // Silently handle - table might not exist or RLS might be blocking
           return null;
         }
+        // Only log non-406 errors
         console.error('Error updating notification preferences:', error);
         throw error;
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle 406 errors gracefully (table doesn't exist or RLS blocking)
+      if (error?.code === 'PGRST406' || error?.message?.includes('406')) {
+        return null;
+      }
       console.error('Failed to update notification preferences:', error);
       return null;
     }
@@ -501,6 +551,25 @@ class ActivityTrackingService {
       subject_name: subjectName,
       examination_name: examinationName,
       marks_entered: marksEntered
+    };
+  }
+
+  /**
+   * Helper method to create activity details for homework diary
+   */
+  createHomeworkDiaryActivityDetails(
+    className: string,
+    sectionName: string | null,
+    subjectName: string | null,
+    homeworkDate: string,
+    homeworkCount: number
+  ): ActivityDetails {
+    return {
+      class_name: className,
+      section_name: sectionName || undefined,
+      subject_name: subjectName || undefined,
+      homework_date: homeworkDate,
+      homework_count: homeworkCount
     };
   }
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -7,7 +7,10 @@ import {
   Assessment as AssessmentIcon,
   BarChart as BarChartIcon,
   Work as WorkIcon,
+  AccessTime as AccessTimeIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -347,12 +350,52 @@ const attendanceItems = [
     icon: <BarChartIcon />,
     path: '/attendance/staff-report',
     color: '#8b5cf6' // Purple
+  },
+  {
+    title: 'Half Leaves',
+    description: 'Record and manage half-day leaves for both students and staff, track first half and second half leave records',
+    icon: <AccessTimeIcon />,
+    path: '/attendance/half-leaves',
+    color: '#ec4899' // Pink
   }
 ];
 
 const AttendanceDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const navigate = useNavigate();
+  const { user } = useAuth() as any;
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id) {
+      fetchRenderSettings(user.school_id)
+        .then(s => setRenderSettings(s))
+        .catch(() => setRenderSettings(null));
+    } else {
+      setRenderSettings(null);
+    }
+  }, [user?.role, user?.school_id]);
+
+  const getKeyForTitle = (title: string): string | null => {
+    switch (title) {
+      case 'Mark Student Attendance': return 'attendance_dash_mark_student';
+      case 'Student Attendance Report': return 'attendance_dash_student_report';
+      case 'Mark Staff Attendance': return 'attendance_dash_mark_staff';
+      case 'Staff Attendance Report': return 'attendance_dash_staff_report';
+      case 'Half Leaves': return 'attendance_dash_half_leaves';
+      default: return null;
+    }
+  };
+
+  const visibleItems = useMemo(() => {
+    if (user?.role !== 'Guest') return attendanceItems;
+    if (!renderSettings) return attendanceItems;
+    return attendanceItems.filter(item => {
+      const key = getKeyForTitle(item.title);
+      if (!key) return true;
+      return renderSettings.guest?.[key] !== false;
+    });
+  }, [renderSettings, user?.role]);
 
   const handleCardClick = (path: string) => {
     navigate(path);
@@ -371,7 +414,7 @@ const AttendanceDashboard: React.FC = () => {
       </Header>
 
       <CardsGrid>
-        {attendanceItems.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <Card 
             key={index}
             onClick={() => handleCardClick(item.path)}

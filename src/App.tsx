@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import { HashRouter, BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
@@ -6,10 +6,11 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './components/useToast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout, { ProgressProvider } from './components/Layout';
-import UpdateNotification from './components/UpdateNotification';
+import UpdateNotification, { UpdateNotificationRef } from './components/UpdateNotification';
 import Login from './pages/Login';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import Dashboard from './pages/Dashboard';
+import GuestDashboard from './pages/GuestDashboard';
 import WelcomePage from './pages/WelcomePage';
 import ClassesManager from './components/ClassesManager';
 import StudentAdmissionForm from './components/StudentAdmissionForm';
@@ -20,6 +21,7 @@ import MarkAttendance from './components/MarkAttendance';
 import MarkStaffAttendance from './components/MarkStaffAttendance';
 import StaffAttendanceReport from './components/StaffAttendanceReport';
 import AttendanceReport from './components/AttendanceReport';
+import HalfLeaves from './components/HalfLeaves';
 import FineManager from './components/FineManager';
 import FineCollection from './pages/FineCollection';
 import RemainingFine from './pages/RemainingFine';
@@ -30,6 +32,9 @@ import PageNotFound from './pages/PageNotFound';
 import StudentStatusManager from './pages/StudentStatusManager';
 import BulkPromoteDemote from './pages/BulkPromoteDemote';
 import UserManagement from './pages/UserManagement';
+import StudentPasswordManagement from './pages/StudentPasswordManagement';
+import RenderSettings from './pages/RenderSettings';
+import GeneralSettings from './pages/GeneralSettings';
 import StaffAddForm from './pages/StaffAddForm';
 import { useAuth } from './contexts/AuthContext';
 import HolidayManager from './components/HolidayManager';
@@ -42,6 +47,7 @@ import { Reports } from './pages/Reports';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { StudentProfile } from './pages/StudentProfile';
+import { TeacherProfile } from './pages/TeacherProfile';
 import SchoolsManagement from './pages/SchoolsManagement';
 import SchoolWelcomeScreen from './pages/SchoolWelcomeScreen';
 import FeeStructureManager from './pages/FeeStructureManager';
@@ -63,11 +69,14 @@ import MarksEntryManager from './components/MarksEntryManager';
 import TestRecordManager from './components/TestRecordManager';
 import TestRecordMasterSheet from './components/TestRecordMasterSheet';
 import TestDashboard from './components/TestDashboard';
+import TestAnalytics from './components/TestAnalytics';
 import MasterSheetManager from './components/MasterSheetManager';
 import DetailedMarksCertificate from './components/DetailedMarksCertificate';
 import PositionHolders from './components/PositionHolders';
 import ExaminationAnalytics from './components/ExaminationAnalytics';
 import ExaminationConfiguration from './pages/ExaminationConfiguration';
+// Homework Diary Management
+import HomeworkDiaryManager from './components/HomeworkDiaryManager';
 // Student Management Components
 import StudentDashboard from './components/StudentDashboard';
 // Fine Management Components
@@ -87,6 +96,7 @@ import { ThemeContext, darkTheme, lightTheme } from './contexts/ThemeContext';
 import GlobalBackHandler from './components/GlobalBackHandler';
 import { NavigationProvider } from './contexts/NavigationContext';
 import InitialRouteHandler from './components/InitialRouteHandler';
+import { Capacitor } from '@capacitor/core';
 
 // Use HashRouter in Electron, BrowserRouter in web
 const isElectron = Boolean((window as any).electronAPI);
@@ -119,6 +129,24 @@ const GlobalLoaderOverlay: React.FC = () => {
 
 const App: React.FC = () => {
   const { theme } = useContext(ThemeContext);
+  const updateNotificationRef = useRef<UpdateNotificationRef>(null);
+
+  // Expose update check function globally for manual checks
+  useEffect(() => {
+    (window as any).checkForAppUpdates = () => {
+      console.log('[App] checkForAppUpdates called, ref:', updateNotificationRef.current);
+      if (updateNotificationRef.current) {
+        updateNotificationRef.current.checkForUpdates();
+      } else {
+        console.warn('[App] UpdateNotification ref is not available yet');
+      }
+    };
+    console.log('[App] checkForAppUpdates function exposed to window');
+    return () => {
+      delete (window as any).checkForAppUpdates;
+    };
+  }, []);
+  // Remove all storage permission code: no useEffect needed!
   const muiTheme = React.useMemo(() => createTheme({
     palette: {
       mode: theme === 'dark' ? 'dark' : 'light',
@@ -151,6 +179,7 @@ const App: React.FC = () => {
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                
 
                 {/* School Welcome Screen - Shows after login */}
                 <Route
@@ -166,7 +195,7 @@ const App: React.FC = () => {
                 <Route
                   path="/dashboard"
                   element={
-                    <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Super Admin']}>
+                    <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Super Admin', 'Guest']} guestPageKey="dashboard">
                       <Layout />
                     </ProtectedRoute>
                   }
@@ -174,6 +203,21 @@ const App: React.FC = () => {
                   <Route
                     index
                     element={<Dashboard />}
+                  />
+                </Route>
+
+                {/* Guest Dashboard Route - Menu cards for guest users */}
+                <Route
+                  path="/guest"
+                  element={
+                    <ProtectedRoute allowedRoles={['Guest']}>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route
+                    index
+                    element={<GuestDashboard />}
                   />
                 </Route>
 
@@ -186,6 +230,11 @@ const App: React.FC = () => {
                   />
 
                   {/* Teacher Welcome Page */}
+                  {/* Public Student Self Profile (uses Layout providers for styles/contexts) */}
+                  <Route
+                    path="student/:id"
+                    element={<StudentProfile />}
+                  />
                   <Route
                     path="teacher"
                     element={
@@ -220,7 +269,10 @@ const App: React.FC = () => {
                   <Route
                     path="students"
                     element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                        guestPageKey="dashboard"
+                      >
                         <StudentDashboard />
                       </ProtectedRoute>
                     }
@@ -230,7 +282,10 @@ const App: React.FC = () => {
                   <Route
                     path="students/list"
                     element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                        guestPageKey="students_list"
+                      >
                         <StudentList />
                       </ProtectedRoute>
                     }
@@ -239,7 +294,10 @@ const App: React.FC = () => {
                   <Route
                     path="students/profile/:id"
                     element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                        guestPageKey="student_profile"
+                      >
                         <StudentProfile />
                       </ProtectedRoute>
                     }
@@ -304,7 +362,10 @@ const App: React.FC = () => {
                   <Route
                     path="employees/list"
                     element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Guest']}
+                        guestPageKey="employees_list"
+                      >
                         <EmployeeList />
                       </ProtectedRoute>
                     }
@@ -315,6 +376,18 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
                         <StaffAddForm />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="employees/profile/:id"
+                    element={
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Guest', 'Teacher']}
+                        guestPageKey="employee_profile"
+                      >
+                        <TeacherProfile />
                       </ProtectedRoute>
                     }
                   />
@@ -358,6 +431,15 @@ const App: React.FC = () => {
                   />
 
                   <Route
+                    path="settings/student-passwords"
+                    element={
+                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                        <StudentPasswordManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
                     path="settings/institute-profile"
                     element={
                       <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
@@ -380,6 +462,23 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
                         <ClassesManager />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="settings/render-settings"
+                    element={
+                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                        <RenderSettings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="settings/general-settings"
+                    element={
+                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                        <GeneralSettings />
                       </ProtectedRoute>
                     }
                   />
@@ -425,7 +524,10 @@ const App: React.FC = () => {
                   <Route
                     path="fines/statistics"
                     element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
+                        guestPageKey="fine_statistics"
+                      >
                         <FineStatistics />
                       </ProtectedRoute>
                     }
@@ -490,7 +592,10 @@ const App: React.FC = () => {
                   <Route
                     path="fee-analytics"
                     element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
+                        guestPageKey="fee_analytics"
+                      >
                         <FeeAnalyticsPage />
                       </ProtectedRoute>
                     }
@@ -550,7 +655,10 @@ const App: React.FC = () => {
                     <Route
                       path="reports"
                       element={
-                        <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                        <ProtectedRoute 
+                          allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
+                          guestPageKey="reports"
+                        >
                           <Reports />
                         </ProtectedRoute>
                       }
@@ -597,8 +705,20 @@ const App: React.FC = () => {
                   <Route
                     path="attendance/report"
                     element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
+                        guestPageKey="attendance_reports"
+                      >
                         <AttendanceReport />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="attendance/half-leaves"
+                    element={
+                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                        <HalfLeaves />
                       </ProtectedRoute>
                     }
                   />
@@ -617,7 +737,10 @@ const App: React.FC = () => {
                   <Route
                     path="examination"
                     element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                        guestPageKey="examination_results"
+                      >
                         <ExaminationDashboard />
                       </ProtectedRoute>
                     }
@@ -627,7 +750,10 @@ const App: React.FC = () => {
                   <Route
                     path="examinations"
                     element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                      <ProtectedRoute 
+                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                        guestPageKey="examination_results"
+                      >
                         <ExaminationManager />
                       </ProtectedRoute>
                     }
@@ -700,7 +826,10 @@ const App: React.FC = () => {
             <Route
               path="test-records"
               element={
-                <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                <ProtectedRoute 
+                  allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                  guestPageKey="test_records"
+                >
                   <TestRecordManager />
                 </ProtectedRoute>
               }
@@ -713,6 +842,14 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="test-analytics"
+              element={
+                <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                  <TestAnalytics />
+                </ProtectedRoute>
+              }
+            />
 
                   {/* Time Table Management */}
                   <Route
@@ -720,6 +857,16 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
                         <TimeTableManager />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Homework Diary Management */}
+                  <Route
+                    path="homework-diary"
+                    element={
+                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                        <HomeworkDiaryManager />
                       </ProtectedRoute>
                     }
                   />
@@ -740,7 +887,7 @@ const App: React.FC = () => {
                 </Routes>
                     </ToastProvider>
                   </AuthProvider>
-                  <UpdateNotification />
+                  <UpdateNotification ref={updateNotificationRef} />
                 </NavigationProvider>
               </LoadingProvider>
             </ProgressProvider>

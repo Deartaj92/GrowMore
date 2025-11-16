@@ -119,7 +119,8 @@ export const reportService = {
                     class_id,
                     classes:class_id (
                         id,
-                        name
+                        name,
+                        has_sections
                     )
                 `)
                 .eq('session_id', activeSession.id)
@@ -194,14 +195,14 @@ export const reportService = {
         }
     },
 
-    // Students in a section
-    async getStudents(classId: number, sectionId: number, schoolId?: number): Promise<any[]> {
+    // Students in a section (or class if no sections)
+    async getStudents(classId: number, sectionId: number | null, schoolId?: number): Promise<any[]> {
         // First get active session
         const activeSession = await this.getActiveSession(schoolId);
         if (!activeSession) return [];
 
-        // Get students from student_class_history for the active session
-        const { data, error } = await supabase
+        // Build query - if sectionId is null, don't filter by section
+        let query = supabase
             .from('student_class_history')
             .select(`
                 student_id,
@@ -210,8 +211,17 @@ export const reportService = {
             `)
             .eq('session_id', activeSession.id)
             .eq('class_id', classId)
-            .eq('section_id', sectionId)
             .eq('status', 'active');
+        
+        // Only filter by section if sectionId is provided
+        if (sectionId !== null && sectionId !== undefined) {
+            query = query.eq('section_id', sectionId);
+        } else {
+            // For non-sectioned classes, filter out records with section_id
+            query = query.is('section_id', null);
+        }
+        
+        const { data, error } = await query;
 
         if (error) {
             console.error('Error fetching students:', error);
@@ -489,6 +499,8 @@ export const reportService = {
         description: string; 
         created_at: string 
     }, schoolId?: number) => {
+        // Note: This function only updates severity, description, and created_at.
+        // The reported_by field is intentionally NOT updated to preserve the original creator.
         let query = supabase
             .from('reports')
             .update({

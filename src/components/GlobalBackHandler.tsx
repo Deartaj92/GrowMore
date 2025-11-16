@@ -24,25 +24,15 @@ const GlobalBackHandler: React.FC<GlobalBackHandlerProps> = ({ onExit }) => {
       window.history.pushState(null, '', window.location.pathname);
     };
 
-    // Handle beforeunload to prevent accidental exits
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // This will show the browser's default "Leave site?" dialog
-      // We can't prevent it completely, but we can warn the user
-      event.preventDefault();
-      event.returnValue = '';
-    };
-
     // Push initial state to enable back button handling
     window.history.pushState(null, '', window.location.pathname);
 
     // Add event listeners
     window.addEventListener('popstate', handlePopState, true);
-    window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Cleanup
     return () => {
       window.removeEventListener('popstate', handlePopState, true);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [handleBackPress]);
 

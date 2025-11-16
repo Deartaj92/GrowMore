@@ -1308,14 +1308,62 @@ const FineCollection: React.FC = () => {
       return;
     }
      
-    const s = search.trim().toLowerCase();
-    const filtered = students.filter(
-      stu => stu.name.toLowerCase().includes(s) ||
-             // Add ability to search by student ID
-             String(stu.id).includes(s)
-    ).slice(0, 8);
-    setSuggestions(filtered);
-    setShowSuggestions(filtered.length > 0);
+    const searchTerm = search.trim();
+    const searchLower = searchTerm.toLowerCase();
+    const isNumericSearch = !isNaN(Number(searchTerm));
+    const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
+    
+    // Filter and score students for better sorting
+    const scoredStudents = students
+      .map(student => {
+        const studentIdStr = String(student.id);
+        const studentNameLower = student.name.toLowerCase();
+        let score = 0;
+        let matches = false;
+        
+        if (isNumericSearch && searchTermNum !== null) {
+          // ID search - prioritize exact match, then starts with, then contains
+          if (student.id === searchTermNum) {
+            score = 1000; // Highest priority for exact match
+            matches = true;
+          } else if (studentIdStr.startsWith(searchTerm)) {
+            score = 500; // High priority for starts with
+            matches = true;
+          } else if (studentIdStr.includes(searchTerm)) {
+            score = 100; // Lower priority for contains
+            matches = true;
+          }
+        } else {
+          // Name search
+          if (studentNameLower.startsWith(searchLower)) {
+            score = 100; // High priority for name starts with
+            matches = true;
+          } else if (studentNameLower.includes(searchLower)) {
+            score = 50; // Lower priority for name contains
+            matches = true;
+          }
+          
+          // Also check ID for non-numeric searches (secondary)
+          if (!matches && studentIdStr.includes(searchTerm)) {
+            score = 10;
+            matches = true;
+          }
+        }
+        
+        return matches ? { student, score } : null;
+      })
+      .filter(item => item !== null)
+      .sort((a, b) => {
+        if (b!.score !== a!.score) {
+          return b!.score - a!.score; // Higher score first
+        }
+        return a!.student.id - b!.student.id; // Then by ID ascending
+      })
+      .slice(0, 8)
+      .map(item => item!.student);
+    
+    setSuggestions(scoredStudents);
+    setShowSuggestions(scoredStudents.length > 0);
     setActiveSuggestion(0);
     setSuggestionsLoading(false);
   }, [search, students, justSelectedStudent, selectedStudent, searchExactMatch]);
@@ -1477,23 +1525,15 @@ const FineCollection: React.FC = () => {
     fetchPaymentHistoryData();
   }, [selectedStudent, user?.school_id]);
 
-  // Update the useEffect for selectedStudent to auto-focus search when no fine remains
+  // Auto-focus amount field when student is first selected (only when selectedStudent changes, not when remainingFineDisplay changes)
   useEffect(() => {
     if (selectedStudent) {
-      if (remainingFineDisplay <= 0) {
-        // Focus on search field when no remaining fine
-        setTimeout(() => {
-          searchInputRef.current?.focus();
-          searchInputRef.current?.select();
-        }, 100);
-      } else {
-        // Focus on amount field when there is remaining fine
-        setTimeout(() => {
-          amountInputRef.current?.focus();
-        }, 100);
-      }
+      // Focus on amount field when a student is selected
+      setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 100);
     }
-  }, [selectedStudent, remainingFineDisplay]);
+  }, [selectedStudent]);
 
   const handleCollectPayment = async () => {
     if (!selectedStudent) {

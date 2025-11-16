@@ -465,6 +465,37 @@ const StatusBlock = styled.span<{ status?: string }>`
     '#bbb'};
   transition: background 0.18s, color 0.18s;
 `;
+const HalfLeaveBadge = styled.span`
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ec4899;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1;
+  z-index: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+`;
+const SummaryRow = styled.tr`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  font-weight: 700;
+  border-top: 2px solid ${({ theme }) => theme.BORDER};
+`;
+const SummaryCell = styled(Td)`
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  text-align: center;
+`;
+const SummaryLabelCell = styled(SummaryCell)`
+  text-align: right;
+  padding-right: 0.5rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
+`;
 const SundayMergedCell = styled.td`
   background: ${({ theme }) => isDark(theme) ? '#232a3b' : '#eaeaea'} !important;
   color: #dc2626 !important;
@@ -917,6 +948,7 @@ const AttendanceReport: React.FC = () => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const updatingStatusRef = useRef<Set<string>>(new Set());
   const lastClickTimeRef = useRef<number>(0);
+  const [halfLeavesMap, setHalfLeavesMap] = useState<Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>>(new Map());
 
   // Fetch active session on mount
   useEffect(() => {
@@ -1117,6 +1149,34 @@ const AttendanceReport: React.FC = () => {
       }
       setStudents(studentsData);
       
+      // Fetch half leaves for students in this month
+      setProgress(70);
+      if (sessionId) {
+        const { data: halfLeavesData } = await supabase
+          .from('half_leaves')
+          .select('person_id, date, leave_type, arrival_time, departure_time')
+          .eq('person_type', 'student')
+          .eq('session_id', sessionId)
+          .eq('school_id', user.school_id)
+          .in('person_id', studentIds)
+          .gte('date', startDate)
+          .lte('date', endDate);
+        
+        // Create a map for quick lookup: "studentId_date" -> half leave data
+        const hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
+        (halfLeavesData || []).forEach((hl: any) => {
+          const key = `${hl.person_id}_${hl.date}`;
+          hlMap.set(key, {
+            leave_type: hl.leave_type,
+            arrival_time: hl.arrival_time,
+            departure_time: hl.departure_time
+          });
+        });
+        setHalfLeavesMap(hlMap);
+      } else {
+        setHalfLeavesMap(new Map());
+      }
+      
       // Build attendance matrix
       setProgress(80);
       const attMap: Record<number, Record<number, string>> = {};
@@ -1265,6 +1325,13 @@ const AttendanceReport: React.FC = () => {
     }
     lastClickTimeRef.current = now;
     
+    // Find the student's index in the original students array for attendanceMatrix lookup
+    const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+    if (studentIndexInOriginal === -1) {
+      console.error('Student not found in original students array');
+      return;
+    }
+    
     // Create a unique key for this update operation
     const updateKey = `${student.id}-${selectedClass}-${selectedSection}-${selectedMonth}-${dayIdx + 1}-${opt.value}`;
     
@@ -1285,7 +1352,7 @@ const AttendanceReport: React.FC = () => {
         // Delete attendance record from Supabase
         setAttendanceMatrix(prev => {
           const updated = prev.map(row => [...row]);
-          updated[idx][dayIdx] = '-';
+          updated[studentIndexInOriginal][dayIdx] = '-';
           // --- Realtime average and working days update ---
           const daysWithAttendance = new Set<number>();
           for (let d = 0; d < updated[0]?.length; d++) {
@@ -1373,7 +1440,7 @@ const AttendanceReport: React.FC = () => {
       
       setAttendanceMatrix(prev => {
         const updated = prev.map(row => [...row]);
-        updated[idx][dayIdx] = opt.value;
+        updated[studentIndexInOriginal][dayIdx] = opt.value;
 
         // --- Realtime average and working days update ---
         // 1. Find working days (days with at least one attendance record)
@@ -1502,7 +1569,7 @@ const AttendanceReport: React.FC = () => {
       // Revert the UI state on error
       setAttendanceMatrix(prev => {
         const reverted = prev.map(row => [...row]);
-        reverted[idx][dayIdx] = attendanceMatrix[idx]?.[dayIdx] || '-';
+        reverted[studentIndexInOriginal][dayIdx] = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
         return reverted;
       });
       
@@ -1527,7 +1594,7 @@ const AttendanceReport: React.FC = () => {
 
     // Check if student has at least one attendance record (any status except '-')
     return studentAttendance.some(status => status !== '-');
-  });
+  }).sort((a, b) => a.id - b.id);
 
   // Helper to get class/section names
   const className = classes.find(c => String(c.id) === String(selectedClass))?.name || selectedClass;
@@ -1800,9 +1867,24 @@ const AttendanceReport: React.FC = () => {
     doc.text(`Working Days: ${workingDays}`, 80, 30);
     doc.text(`Average Attendance: ${avgAttendance}%`, 160, 30);
 
+    // Prepare a map of holiday days for quick lookup
+    let holidayDayMap: Record<number, string> = {};
+    holidays.forEach(holiday => {
+      const start = parseISO(holiday.start_date);
+      const end = parseISO(holiday.end_date);
+      const monthStart = parseISO(selectedMonth + '-01');
+      const daysInMonth = getDaysInMonth(monthStart);
+      const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+      const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+      for (let i = firstDayIdx; i <= lastDayIdx; i++) {
+        holidayDayMap[i + 1] = holiday.name;
+      }
+    });
+
     // Prepare table data
     const sortedStudents = [...filteredStudents].sort((a, b) => a.id - b.id);
     const tableData = sortedStudents.map((student, idx) => {
+      const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
       const row = [
         (idx + 1).toString(),
         student.id.toString(),
@@ -1812,11 +1894,49 @@ const AttendanceReport: React.FC = () => {
           date.setDate(dayIdx + 1);
           const isSunday = date.getDay() === 0;
           if (isSunday) return '';
-          return attendanceMatrix[idx]?.[dayIdx] || '-';
+          const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
+          const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+          const halfLeaveKey = `${student.id}_${dateStr}`;
+          const halfLeave = halfLeavesMap.get(halfLeaveKey);
+          // Replace status with HL if half leave exists
+          // Use "HLt" if original status was "Lt" (Late) to maintain yellow color
+          if (halfLeave) {
+            return status === 'Lt' ? 'HLt' : 'HL';
+          }
+          return status;
         })
       ];
       return row;
     });
+    
+    // Add summary row for absents/leaves
+    const summaryRow = [
+      '',
+      '',
+      'Absents/Leaves:',
+      ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
+        const date = new Date(parseISO(selectedMonth + '-01'));
+        date.setDate(dayIdx + 1);
+        const isSunday = date.getDay() === 0;
+        if (isSunday) return '';
+        
+        // Check for holidays
+        if (holidayDayMap[dayIdx + 1]) return '';
+        
+        // Count absent and leave students for this day
+        let absentCount = 0;
+        sortedStudents.forEach((student) => {
+          const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+          const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx];
+          if (status === 'A' || status === 'L') {
+            absentCount++;
+          }
+        });
+        
+        return absentCount > 0 ? absentCount.toString() : '-';
+      })
+    ];
+    tableData.push(summaryRow);
 
     // Prepare table headers
     const headers = [
@@ -1839,20 +1959,6 @@ const AttendanceReport: React.FC = () => {
     for (let i = 3; i < daysInMonth + 3; i++) {
       columnStyles[i] = { cellWidth: dayColWidth, halign: 'center' };
     }
-
-    // Prepare a map of holiday days for quick lookup
-    let holidayDayMap: Record<number, string> = {};
-    holidays.forEach(holiday => {
-      const start = parseISO(holiday.start_date);
-      const end = parseISO(holiday.end_date);
-      const monthStart = parseISO(selectedMonth + '-01');
-      const daysInMonth = getDaysInMonth(monthStart);
-      const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-      const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-      for (let i = firstDayIdx; i <= lastDayIdx; i++) {
-        holidayDayMap[i + 1] = holiday.name;
-      }
-    });
 
     // Add table
     autoTable(doc, {
@@ -1897,15 +2003,39 @@ const AttendanceReport: React.FC = () => {
         }
         // Style for status cells
         if (data.column.index > 2 && data.cell.raw !== '') {
-          const status = String(data.cell.raw || '');
-          if (status === 'P') {
+          const cellValue = String(data.cell.raw || '');
+          
+          // Check if this is the summary row (last row)
+          const isSummaryRow = data.row.index === tableData.length - 1;
+          
+          if (isSummaryRow) {
+            // Style summary row
+            data.cell.styles.fillColor = [248, 249, 250];
+            data.cell.styles.fontStyle = 'bold';
+            if (cellValue !== '-' && cellValue !== '') {
+              data.cell.styles.textColor = [220, 38, 38]; // Red for absent counts
+            }
+          } else {
+            // Style regular status cells
+            if (cellValue === 'HL') {
+              // Highlight HL in pink color (when replacing P, A, L, etc.)
+              data.cell.styles.textColor = [236, 72, 153]; // Pink color for HL
+              data.cell.styles.fontStyle = 'bold';
+            } else if (cellValue === 'HLt') {
+              // Highlight HL in yellow color (when replacing Lt/Late)
+              data.cell.styles.textColor = [245, 158, 66]; // Yellow/Orange color for HL replacing Late
+              data.cell.styles.fontStyle = 'bold';
+              // Change text from "HLt" to "HL" for display
+              data.cell.text = ['HL'];
+            } else if (cellValue === 'P') {
             data.cell.styles.textColor = [22, 163, 74];
-          } else if (status === 'A') {
+            } else if (cellValue === 'A') {
             data.cell.styles.textColor = [220, 38, 38];
-          } else if (status === 'L') {
+            } else if (cellValue === 'L') {
             data.cell.styles.textColor = [74, 108, 247];
-          } else if (status === 'Lt') {
+            } else if (cellValue === 'Lt') {
             data.cell.styles.textColor = [245, 158, 66];
+            }
           }
         }
       }
@@ -2453,6 +2583,8 @@ const AttendanceReport: React.FC = () => {
           <tbody>
             {filteredStudents.map((student, idx) => {
               let skipCols = 0;
+              // Find the student's index in the original students array for attendanceMatrix lookup
+              const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
               return (
               <tr key={student.id}>
                 <NarrowTd>{idx + 1}</NarrowTd>
@@ -2553,9 +2685,18 @@ const AttendanceReport: React.FC = () => {
                     }
                   }
                     // Otherwise, render attendance status
-                  const status = attendanceMatrix[idx]?.[dayIdx] || '-';
+                  const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
+                  const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+                  const halfLeaveKey = student ? `${student.id}_${dateStr}` : '';
+                  const halfLeave = halfLeaveKey ? halfLeavesMap.get(halfLeaveKey) : null;
+                  
                   return (
                     <StatusCell key={dayIdx} status={status} style={{ position: 'relative' }}>
+                      {halfLeave && (
+                        <HalfLeaveBadge title="Half Leave">
+                          HL
+                        </HalfLeaveBadge>
+                      )}
                       <span
                         ref={el => {
                           if (openDropdown && openDropdown.row === idx && openDropdown.col === dayIdx && el) {
@@ -2651,6 +2792,69 @@ const AttendanceReport: React.FC = () => {
               </tr>
               );
             })}
+            {/* Summary row showing daily absent and leave counts */}
+            <SummaryRow>
+              <SummaryLabelCell colSpan={3}>Absents/Leaves:</SummaryLabelCell>
+              {(() => {
+                let skipCols = 0;
+                return Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                  if (skipCols > 0) {
+                    skipCols--;
+                    return null;
+                  }
+                  
+                  const date = new Date(parseISO(selectedMonth + '-01'));
+                  date.setDate(dayIdx + 1);
+                  const isSunday = date.getDay() === 0;
+                  
+                  // Check if this day is the start of a holiday range
+                  const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
+                  if (holiday) {
+                    skipCols = holiday.endIdx - holiday.startIdx;
+                    const colSpan = holiday.endIdx - holiday.startIdx + 1;
+                    return (
+                      <SummaryCell 
+                        key={dayIdx} 
+                        colSpan={colSpan}
+                        style={{ 
+                          background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                          color: '#4a6cf7'
+                        }}
+                      >
+                        -
+                      </SummaryCell>
+                    );
+                  }
+                  
+                  if (isSunday) {
+                    return (
+                      <SummaryCell 
+                        key={dayIdx} 
+                        style={{ background: isDark(theme) ? '#232a3b' : '#ffeaea', color: '#dc2626' }}
+                      >
+                        -
+                      </SummaryCell>
+                    );
+                  }
+                  
+                  // Count absent and leave students for this day
+                  let absentCount = 0;
+                  filteredStudents.forEach((student) => {
+                    const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+                    const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx];
+                    if (status === 'A' || status === 'L') {
+                      absentCount++;
+                    }
+                  });
+                  
+                  return (
+                    <SummaryCell key={dayIdx} style={{ color: absentCount > 0 ? '#dc2626' : 'inherit' }}>
+                      {absentCount > 0 ? absentCount : '-'}
+                    </SummaryCell>
+                  );
+                });
+              })()}
+            </SummaryRow>
           </tbody>
         </Table>
           </>

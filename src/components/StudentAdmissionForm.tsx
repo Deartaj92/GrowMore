@@ -16,7 +16,11 @@ import {
   TextField,
   CircularProgress,
   styled as muiStyled,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormLabel
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import imageCompression from 'browser-image-compression';
@@ -1311,6 +1315,7 @@ const StudentAdmissionForm: React.FC = () => {
     admissionDate: getToday(),
     discountInFee: '',
     phone: '',
+    notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
     picture: null as string | null,
     pictureFile: null as File | null,
     dob: '2000-01-01',
@@ -1780,6 +1785,7 @@ const StudentAdmissionForm: React.FC = () => {
       motherMobile: '',
       motherOccupation: '',
       motherIncome: '',
+      notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
     });
     setImage(null);
     setSelectedClassHasSections(true); // Reset to default
@@ -1947,9 +1953,11 @@ const StudentAdmissionForm: React.FC = () => {
             mother_mobile: form.motherMobile || null,
             mother_occupation: form.motherOccupation || null,
             mother_income: form.motherIncome || null,
+            notification_channel: form.notificationChannel || 'whatsapp',
             session_id: session.id,
             school_id: user.school_id,
-            status: 'active'
+            status: 'active',
+            password: 'aa'
       };
 
       // Debug: Log the data being sent to database
@@ -2297,7 +2305,19 @@ const StudentAdmissionForm: React.FC = () => {
                       pattern: '[0-9]*'
                     }}
                   />
-            </Field>
+                </Field>
+                <Field>
+                  <FormLabel component="legend">Notification Channel</FormLabel>
+                  <RadioGroup
+                    row
+                    value={form.notificationChannel}
+                    onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
+                    name="notificationChannel"
+                  >
+                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
+                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
+                  </RadioGroup>
+                </Field>
               </ModernGrid>
             </SectionContainer>
             <SectionContainer>

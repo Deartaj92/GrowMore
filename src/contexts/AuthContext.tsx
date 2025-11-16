@@ -36,6 +36,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Helper: Clear navigation history and lock current route in stack
+  const clearNavigationHistory = (path: string) => {
+    try {
+      // Replace the current entry, then push and replace again to prevent back navigation
+      window.history.replaceState(null, '', path);
+      window.history.pushState(null, '', path);
+      window.history.replaceState(null, '', path);
+    } catch (e) {
+      // Fallback: hard redirect
+      window.location.replace(path);
+    }
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -60,12 +73,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Set auth context
       await setAuthContext(username, password);
 
-      // Try super admin login first (simplified approach)
-      const { data: superAdminData, error: superAdminError } = await supabase
-        .from('super_admins')
-        .select('*')
-        .eq('username', username)
-        .single();
+      // Try super admin login first (only if super_admins table exists)
+      // Handle 406 errors gracefully - table might not exist
+      let superAdminData = null;
+      try {
+        const { data, error } = await supabase
+          .from('super_admins')
+          .select('*')
+          .eq('username', username)
+          .single();
+        
+        // Only use data if no error or if error is just "no rows" (PGRST116)
+        if (!error || error.code === 'PGRST116') {
+          superAdminData = data;
+        }
+      } catch (err) {
+        // Ignore errors from super_admins table (might not exist)
+        console.log('Super admins table not accessible, continuing with users table');
+      }
 
       if (superAdminData && superAdminData.password === password && superAdminData.status === 'active') {
         const user = {
@@ -79,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         navigate('/welcome', { replace: true });
+        clearNavigationHistory('/welcome');
         return user;
       }
 
@@ -88,6 +114,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*')
         .eq('username', username)
         .single();
+
+      // Handle case where user is not found (PGRST116 = no rows returned)
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('Error fetching user:', userError);
+        // Don't throw here - let it fall through to show "Invalid username or password"
+      }
 
       if (userData && userData.password === password && userData.status === 'active') {
         const user = {
@@ -105,8 +137,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Redirect based on user role
         if (userData.role === 'Teacher') {
           navigate('/teacher', { replace: true });
+          clearNavigationHistory('/teacher');
+        } else if (userData.role === 'Guest') {
+          navigate('/dashboard', { replace: true });
+          clearNavigationHistory('/dashboard');
         } else {
           navigate('/welcome', { replace: true });
+          clearNavigationHistory('/welcome');
         }
         return user;
       }
@@ -132,13 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Reset navigation history by replacing current entry
       navigate('/login', { replace: true });
-      
-      // Clear browser history by pushing a new state and replacing it
-      window.history.pushState(null, '', '/login');
-      window.history.replaceState(null, '', '/login');
-      
-      // Force a page reload to completely reset the application state
-      window.location.href = '/login';
+      clearNavigationHistory('/login');
     } catch (error: any) {
       throw error;
     }

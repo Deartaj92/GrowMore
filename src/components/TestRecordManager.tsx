@@ -445,6 +445,7 @@ const TestRecordManager: React.FC = () => {
   const [showToTop, setShowToTop] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [inputErrors, setInputErrors] = useState<{ [studentId: number]: boolean }>({});
   const [focusedStudentId, setFocusedStudentId] = useState<number | null>(null);
 
@@ -837,7 +838,16 @@ const TestRecordManager: React.FC = () => {
     }
   };
 
-  // Delete test results for selected students
+  // Show delete confirmation modal
+  const handleDeleteClick = () => {
+    if (selectedStudents.size === 0) {
+      showToast('Please select students to delete marks for', 'error');
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  // Delete test results for selected students from database
   const handleDeleteMarks = async () => {
     if (selectedStudents.size === 0) {
       showToast('Please select students to delete marks for', 'error');
@@ -849,23 +859,157 @@ const TestRecordManager: React.FC = () => {
       return;
     }
 
+    if (!selectedClass || !selectedSubject || !activeSessionId) {
+      showToast('Missing required information to delete marks', 'error');
+      return;
+    }
+
     try {
       setDeleting(true);
+      setShowDeleteModal(false);
 
+      // Find the test record for the selected class, section, subject, and date
+      const hasSections = selectedClass.has_sections ?? true;
+      let trQuery = supabase
+        .from('test_records')
+        .select('id')
+        .eq('class_id', selectedClass.id)
+        .eq('subject_id', selectedSubject.subject_id)
+        .eq('test_date', testDate)
+        .eq('session_id', activeSessionId)
+        .eq('school_id', user?.school_id!);
+
+      if (hasSections) {
+        if (!selectedSection) {
+          showToast('Section is required', 'error');
+          return;
+        }
+        trQuery = trQuery.eq('section_id', selectedSection.id);
+      } else {
+        trQuery = trQuery.is('section_id', null);
+      }
+
+      const { data: testRecords, error: testRecordsError } = await trQuery;
+
+      if (testRecordsError) {
+        console.error('Error finding test record:', testRecordsError);
+        showToast('Error finding test record', 'error');
+        return;
+      }
+
+      if (!testRecords || testRecords.length === 0) {
+        showToast('No test record found to delete marks from', 'error');
+        return;
+      }
+
+      const testRecordId = testRecords[0].id;
+      const studentIds = Array.from(selectedStudents);
+
+      // Delete test results for the selected students
+      const { error: deleteError } = await supabase
+        .from('test_results')
+        .delete()
+        .eq('test_id', testRecordId)
+        .eq('school_id', user?.school_id!)
+        .in('student_id', studentIds);
+
+      if (deleteError) {
+        console.error('Error deleting test results:', deleteError);
+        showToast('Failed to delete marks from database', 'error');
+        return;
+      }
+
+      // Check if there are any remaining test results for this test record
+      const { data: remainingResults, error: checkError } = await supabase
+        .from('test_results')
+        .select('id')
+        .eq('test_id', testRecordId)
+        .eq('school_id', user?.school_id!)
+        .limit(1);
+
+      if (checkError) {
+        console.error('Error checking remaining results:', checkError);
+        // Continue even if check fails - we'll just not delete the test record
+      }
+
+      // If no results remain, delete the test record as well
+      if (!remainingResults || remainingResults.length === 0) {
+        const { error: deleteTestRecordError } = await supabase
+          .from('test_records')
+          .delete()
+          .eq('id', testRecordId)
+          .eq('school_id', user?.school_id!);
+
+        if (deleteTestRecordError) {
+          console.error('Error deleting test record:', deleteTestRecordError);
+          showToast('Marks deleted but failed to delete test record', 'error');
+        } else {
+          // Test record deleted, reset the form
+          setTestCreated(false);
+          setTestName('');
+          setMaxMarks('');
+          setPassingMarks('');
+          setMarksData({});
+          setSelectedStudents(new Set());
+          
+          // Log test marks activity (test record deleted)
+          try {
+            await logTestMarksActivity(
+              'delete',
+              selectedClass?.name || 'Unknown Class',
+              selectedSection?.name || 'All Sections',
+              selectedSubject?.subject?.name || 'Unknown Subject',
+              testName || 'Test Record',
+              studentIds.length
+            );
+          } catch (activityError) {
+            console.error('Failed to log test marks delete activity:', activityError);
+            // Don't fail the delete operation if activity logging fails
+          }
+          
+          showToast(`Successfully deleted marks and test record for ${selectedStudents.size} selected student${selectedStudents.size !== 1 ? 's' : ''}`, 'success');
+          return; // Exit early since we've reset everything
+        }
+      }
+
+      // Update local state
       const newMarksData = { ...marksData };
       selectedStudents.forEach(studentId => {
         delete newMarksData[studentId];
       });
       setMarksData(newMarksData);
 
-      showToast(`Successfully cleared marks for ${selectedStudents.size} selected students`, 'success');
+      showToast(`Successfully deleted marks for ${selectedStudents.size} selected student${selectedStudents.size !== 1 ? 's' : ''}`, 'success');
       setSelectedStudents(new Set());
+
+      // Reload existing marks to update the UI
+      await loadExistingMarks();
+
+      // Log test marks activity
+      try {
+        await logTestMarksActivity(
+          'delete',
+          selectedClass?.name || 'Unknown Class',
+          selectedSection?.name || 'All Sections',
+          selectedSubject?.subject?.name || 'Unknown Subject',
+          testName || 'Test Record',
+          studentIds.length
+        );
+      } catch (activityError) {
+        console.error('Failed to log test marks delete activity:', activityError);
+        // Don't fail the delete operation if activity logging fails
+      }
     } catch (error) {
       console.error('Error deleting marks:', error);
       showToast('Failed to delete marks', 'error');
     } finally {
       setDeleting(false);
     }
+  };
+
+  // Cancel delete modal
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
   };
 
   // Load initial data
@@ -2200,7 +2344,7 @@ const TestRecordManager: React.FC = () => {
                 Reset
               </button>
               <button
-                onClick={handleDeleteMarks}
+                onClick={handleDeleteClick}
                 disabled={deleting || selectedStudents.size === 0}
                 style={{
                   padding: '6px 12px',
@@ -2215,14 +2359,7 @@ const TestRecordManager: React.FC = () => {
                   minWidth: '60px'
                 }}
               >
-                {deleting ? (
-                  <>
-                    <Spinner />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
+                Delete
               </button>
               <button
                 onClick={handleSaveTest}
@@ -2339,6 +2476,101 @@ const TestRecordManager: React.FC = () => {
                     </>
                   ) : (
                     'Save Test'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px'
+          }}>
+            <div style={{
+              background: theme.palette?.mode === 'dark' ? '#2a2a2a' : '#ffffff',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+              border: `1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+            }}>
+              <h3 style={{
+                fontSize: '1.2rem',
+                fontWeight: '700',
+                color: theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
+                margin: '0 0 16px 0',
+                textAlign: 'center'
+              }}>
+                Confirm Delete
+              </h3>
+              <p style={{
+                fontSize: '1rem',
+                color: theme.palette?.mode === 'dark' ? '#b0b8d1' : '#666666',
+                margin: '0 0 24px 0',
+                textAlign: 'center',
+                lineHeight: '1.5'
+              }}>
+                Are you sure you want to delete marks for {selectedStudents.size} selected student{selectedStudents.size !== 1 ? 's' : ''}? This action cannot be undone.
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={handleCancelDelete}
+                  disabled={deleting}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    minWidth: '100px',
+                    background: theme.palette?.mode === 'dark' ? '#444' : '#f3f4f6',
+                    color: theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
+                    border: `1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                    opacity: deleting ? 0.7 : 1
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteMarks}
+                  disabled={deleting}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    border: 'none',
+                    minWidth: '100px',
+                    background: '#ef4444',
+                    color: 'white',
+                    opacity: deleting ? 0.7 : 1
+                  }}
+                >
+                  {deleting ? (
+                    <>
+                      <Spinner />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete'
                   )}
                 </button>
               </div>

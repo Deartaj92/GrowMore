@@ -9,7 +9,7 @@ interface User {
   id?: number;
   username: string;
   name: string;
-  role: 'Principal' | 'Management Staff' | 'Teacher' | 'Accountant' | 'Store Manager' | 'Other';
+  role: 'Principal' | 'Management Staff' | 'Teacher' | 'Accountant' | 'Store Manager' | 'Guest' | 'Other';
   status: string;
   avatar_url: string | null;
   password: string;
@@ -188,14 +188,18 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
   }, [user]);
 
   useEffect(() => {
-    if (form.role) {
+    if (form.role && form.role !== 'Guest') {
       const filtered = staff.filter(s => s.role === form.role);
       setFilteredStaff(filtered);
       if (!staffLoading && filtered.length === 0) {
         toast.showToast(`No staff members found for role: ${form.role}`, 'error');
       }
+    } else if (form.role === 'Guest') {
+      // For Guest users, clear staff selection and allow manual name entry
+      setFilteredStaff([]);
+      setForm(prev => ({ ...prev, staff_id: undefined }));
     }
-  }, [form.role, staff, staffLoading]);
+  }, [form.role, staff, staffLoading, toast]);
 
   const fetchStaff = async () => {
     setStaffLoading(true);
@@ -398,36 +402,59 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
               <option value="Teacher">Teacher</option>
               <option value="Accountant">Accountant</option>
               <option value="Store Manager">Store Manager</option>
+              <option value="Guest">Guest</option>
               <option value="Other">Other</option>
             </Select>
           </FormGroup>
 
-          <FormGroup>
-            <Label>Select Staff Member*</Label>
-            <Select 
-              value={form.staff_id || ''} 
-              onChange={handleStaffSelect}
-              required
-              disabled={filteredStaff.length === 0}
-            >
-              <option value="">{filteredStaff.length === 0 ? 'No staff members found for this role' : 'Select a staff member'}</option>
-              {filteredStaff.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.id} · {s.name}{s.father_name ? ` · ${s.father_name}` : ''}
-                </option>
-              ))}
-            </Select>
-            {filteredStaff.length === 0 && (
+          {form.role !== 'Guest' ? (
+            <FormGroup>
+              <Label>Select Staff Member*</Label>
+              <Select 
+                value={form.staff_id || ''} 
+                onChange={handleStaffSelect}
+                required
+                disabled={filteredStaff.length === 0}
+              >
+                <option value="">{filteredStaff.length === 0 ? 'No staff members found for this role' : 'Select a staff member'}</option>
+                {filteredStaff.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.id} · {s.name}{s.father_name ? ` · ${s.father_name}` : ''}
+                  </option>
+                ))}
+              </Select>
+              {filteredStaff.length === 0 && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#f59e0b', 
+                  marginTop: '4px',
+                  fontStyle: 'italic'
+                }}>
+                  Please add staff members with this role first
+                </div>
+              )}
+            </FormGroup>
+          ) : (
+            <FormGroup>
+              <Label>Name*</Label>
+              <Input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Enter guest user name"
+                required
+              />
               <div style={{ 
                 fontSize: '12px', 
-                color: '#f59e0b', 
+                color: '#6b7280', 
                 marginTop: '4px',
                 fontStyle: 'italic'
               }}>
-                Please add staff members with this role first
+                Guest users are not linked to staff members
               </div>
-            )}
-          </FormGroup>
+            </FormGroup>
+          )}
 
           <FormGroup>
             <Label>Username*</Label>

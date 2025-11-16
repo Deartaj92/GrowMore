@@ -1,12 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
-import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon } from '@mui/icons-material';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, ExitToApp as ExitIcon, AccessTime as AccessTimeIcon, Person as PersonIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { usePageReady } from '../hooks/usePageReady';
 import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
+import { ThemeContext } from '../components/Layout';
+import { fetchRenderSettings, isTeacherCardVisible, RenderSettings } from '../services/renderSettingsService';
+
+// Capacitor App import for back button handling
+let CapacitorApp: any = null;
+try {
+  CapacitorApp = require('@capacitor/app').App;
+} catch {
+  // Capacitor not available
+}
 
 const Container = styled.div`
   padding: 2rem;
@@ -82,6 +93,18 @@ const QuickLinksGrid = styled.div`
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+`;
+
+const CardDivider = styled.div`
+  display: none;
+  
+  @media (max-width: 768px) {
+    display: block;
+    height: 1px;
+    background: ${({ theme }) => theme.BORDER};
+    margin: 8px 0;
+    opacity: 0.5;
   }
 `;
 
@@ -391,10 +414,61 @@ const SkeletonSubtitle = styled.div`
   animation: pulse 1.5s ease-in-out infinite;
 `;
 
+// Exit Confirmation Modal Components
+const ModalOverlay = styled.div`
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0,0,0,0.35) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100vw !important;
+  height: 100vh !important;
+`;
+
+const ModalBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 2.2rem 2rem 1.7rem 2rem;
+  min-width: 320px;
+  max-width: 95vw;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  border: 1.5px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  margin-bottom: 1.1rem;
+`;
+
+const ModalButton = styled.button<{ color?: string }>`
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  background: ${({ color, theme }) => color || theme.ACCENT};
+  color: #fff;
+  transition: background 0.18s;
+  &:hover {
+    background: ${({ color, theme }) => color ? color + 'cc' : theme.ACCENT + 'cc'};
+  }
+`;
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme: themeMode } = useContext(ThemeContext);
   const [staffName, setStaffName] = useState<string>('');
   const [staffGender, setStaffGender] = useState<string>('');
   const [teacherSections, setTeacherSections] = useState<Array<{id: number, name: string, class_id: number, class_name: string}>>([]);
@@ -402,6 +476,58 @@ const WelcomePage: React.FC = () => {
   const [publishedExaminations, setPublishedExaminations] = useState<Examination[]>([]);
   const [isClassTeacher, setIsClassTeacher] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const location = useLocation();
+  const showExitConfirmRef = React.useRef(false);
+
+  // Sync ref with state
+  useEffect(() => {
+    showExitConfirmRef.current = showExitConfirm;
+  }, [showExitConfirm]);
+
+  // Reset navigation history when WelcomePage is mounted/navigated to
+  useEffect(() => {
+    if (location.pathname === '/teacher') {
+      console.log('WelcomePage mounted/navigated to, resetting navigation history');
+      
+      // Clear any existing navigation history by replacing current entry
+      // This ensures back button always shows exit dialog instead of navigating to previous pages
+      window.history.replaceState(null, '', '/teacher');
+      
+      // Push a new state to enable back button handling
+      setTimeout(() => {
+        window.history.pushState(null, '', '/teacher');
+        console.log('Navigation history reset and new state pushed');
+      }, 0);
+    }
+  }, [location.pathname]); // Run whenever pathname changes to /teacher
+
+  // Block navigation when exit dialog is shown
+  useEffect(() => {
+    if (!showExitConfirm || location.pathname !== '/teacher') {
+      return;
+    }
+
+    // If somehow we navigated away while dialog is open, force back to /teacher
+    const checkLocation = () => {
+      if (location.pathname !== '/teacher' && showExitConfirmRef.current) {
+        console.log('Preventing navigation away from /teacher while exit dialog is open');
+        navigate('/teacher', { replace: true });
+        // Reset history again after navigation
+        window.history.replaceState(null, '', '/teacher');
+        window.history.pushState(null, '', '/teacher');
+      }
+    };
+
+    // Check immediately and after a short delay
+    checkLocation();
+    const timeoutId = setTimeout(checkLocation, 50);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [location.pathname, showExitConfirm, navigate]);
 
   // Use the page ready hook to signal when the page is fully loaded
   usePageReady(isPageReady);
@@ -411,11 +537,12 @@ const WelcomePage: React.FC = () => {
       setLoading(true);
       
       try {
-        const [staffNameResult, examinationsResult, classTeacherResult, sectionsResult] = await Promise.all([
+        const [staffNameResult, examinationsResult, classTeacherResult, sectionsResult, settingsResult] = await Promise.all([
           fetchStaffName(),
           fetchPublishedExaminations(),
           checkClassTeacherAssignment(),
-          fetchTeacherSections()
+          fetchTeacherSections(),
+          fetchRenderSettingsData()
         ]);
         
         // Signal that the page is ready after data is loaded
@@ -535,32 +662,155 @@ const WelcomePage: React.FC = () => {
       }
     };
 
+    const fetchRenderSettingsData = async () => {
+      if (user?.school_id) {
+        const settings = await fetchRenderSettings(user.school_id);
+        setRenderSettings(settings);
+      }
+    };
+
 
     fetchData();
   }, [user?.staff_id, user?.school_id]);
 
+  // Debug: Log when exit confirm state changes and verify modal is in DOM
+  useEffect(() => {
+    if (showExitConfirm) {
+      console.log('Exit confirmation dialog should now be visible');
+      
+      // Verify modal is actually in the DOM
+      setTimeout(() => {
+        const modal = document.querySelector('[role="dialog"], .modal-overlay');
+        if (modal) {
+          console.log('Modal found in DOM:', modal);
+          const styles = window.getComputedStyle(modal as Element);
+          console.log('Modal display:', styles.display, 'visibility:', styles.visibility, 'opacity:', styles.opacity, 'z-index:', styles.zIndex);
+        } else {
+          console.warn('Modal not found in DOM!');
+        }
+      }, 100);
+    }
+  }, [showExitConfirm]);
+
+  // Stable handler using useCallback
+  const handleBackPress = React.useCallback(() => {
+    console.log('Back button pressed on WelcomePage, showing exit dialog');
+    
+    // Use ref to check if already showing to prevent duplicate calls
+    if (showExitConfirmRef.current) {
+      console.log('Exit dialog already showing, ignoring duplicate back press');
+      return;
+    }
+    
+    // Immediately push state back to prevent any navigation
+    const currentPath = window.location.pathname;
+    if (currentPath === '/teacher') {
+      window.history.pushState(null, '', currentPath);
+    }
+    
+    // Show exit confirmation dialog
+    showExitConfirmRef.current = true;
+    setShowExitConfirm(true);
+    
+    console.log('Exit confirmation dialog state set to true');
+  }, []);
+
+  // Mobile back button handling (similar to Layout.tsx)
+  useEffect(() => {
+    // Only handle back button on the teacher welcome page
+    if (location.pathname !== '/teacher') {
+      return;
+    }
+
+    console.log('Setting up back button handler for /teacher route');
+
+    let removeCapListener: (() => void) | null = null;
+    
+    // Try to set up Capacitor listener
+    const setupCapacitorListener = async () => {
+      try {
+        if (CapacitorApp) {
+          const listener = await CapacitorApp.addListener('backButton', () => {
+            // Always show exit dialog for welcome page
+            console.log('Capacitor backButton event received, showing exit dialog');
+            handleBackPress();
+          });
+          removeCapListener = () => {
+            listener.remove();
+          };
+        }
+      } catch (error) {
+        console.log('Capacitor not available or error setting up listener:', error);
+      }
+    };
+
+    // Set up listener
+    setupCapacitorListener();
+
+    // Fallback for non-Capacitor contexts (web/Cordova)
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('popstate event triggered on WelcomePage, current path:', window.location.pathname);
+      
+      // Immediately prevent navigation
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      
+      // Show exit confirmation dialog
+      handleBackPress();
+      
+      // Push state back immediately to prevent navigation
+      // Since we reset history on mount, there should be no previous page to go to
+      window.history.pushState(null, '', '/teacher');
+      
+      // Force React Router to stay on current route if it tried to navigate
+      setTimeout(() => {
+        if (window.location.pathname !== '/teacher') {
+          console.log('React Router tried to navigate, forcing back to /teacher');
+          navigate('/teacher', { replace: true });
+          window.history.pushState(null, '', '/teacher');
+        }
+      }, 10);
+    };
+
+    // Handle beforeunload to prevent accidental exits
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Don't prevent if dialog is already shown, let user decide
+    };
+
+    // Add event listeners with capture phase to catch events early
+    window.addEventListener('popstate', handlePopState, true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      removeCapListener?.();
+      window.removeEventListener('popstate', handlePopState, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [location.pathname, handleBackPress, navigate]); // Added handleBackPress to dependencies
+
   if (loading) {
     return (
-      <Container>
-        <WelcomeHeader>
-          <SkeletonTitleMain />
-          <SkeletonSubtitle />
-        </WelcomeHeader>
+        <Container>
+          <WelcomeHeader>
+            <SkeletonTitleMain />
+            <SkeletonSubtitle />
+          </WelcomeHeader>
 
-        <QuickLinksGrid>
-          {/* Skeleton cards for the main navigation items */}
-          {[1, 2, 3, 4, 5].map((index) => (
-            <SkeletonCard key={index}>
-              <SkeletonHeader>
-                <SkeletonIcon />
-                <SkeletonTitle />
-              </SkeletonHeader>
-              <SkeletonDescription />
-              <SkeletonDescription />
-            </SkeletonCard>
-          ))}
-        </QuickLinksGrid>
-      </Container>
+          <QuickLinksGrid>
+            {/* Skeleton cards for the main navigation items */}
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((index) => (
+              <SkeletonCard key={index}>
+                <SkeletonHeader>
+                  <SkeletonIcon />
+                  <SkeletonTitle />
+                </SkeletonHeader>
+                <SkeletonDescription />
+                <SkeletonDescription />
+              </SkeletonCard>
+            ))}
+          </QuickLinksGrid>
+        </Container>
     );
   }
 
@@ -586,8 +836,8 @@ const WelcomePage: React.FC = () => {
 
 
   return (
-    <Container>
-      <WelcomeHeader>
+      <Container>
+        <WelcomeHeader>
         <WelcomeText>
           <WelcomeSmall>Welcome to</WelcomeSmall>
           <WelcomeLarge>
@@ -598,115 +848,199 @@ const WelcomePage: React.FC = () => {
       </WelcomeHeader>
 
       <QuickLinksGrid>
-        {/* Only show attendance cards if teacher is assigned as class teacher */}
-        {isClassTeacher && (
-          <>
-            <QuickLinkCard onClick={() => navigate('/attendance/mark')} $color="#3b82f6">
-              <CardHeader $color="#3b82f6">
-                <CardIcon $color="#3b82f6">
-              <AssessmentIcon />
-            </CardIcon>
-            <CardTitle>Mark Attendance</CardTitle>
-          </CardHeader>
-              <CardBody>
-          <CardDescription>
-            Take attendance for your classes. Mark students as present, absent, or late.
-          </CardDescription>
-                <CardAction $color="#3b82f6">
-                  Get Started
-                </CardAction>
-              </CardBody>
-        </QuickLinkCard>
-
-            <QuickLinkCard onClick={() => navigate('/attendance/report')} $color="#10b981">
-              <CardHeader $color="#10b981">
-                <CardIcon $color="#10b981">
-              <BarChartIcon />
-            </CardIcon>
-            <CardTitle>Attendance Reports</CardTitle>
-          </CardHeader>
-              <CardBody>
-          <CardDescription>
-            View and analyze attendance records, generate reports, and track attendance patterns.
-          </CardDescription>
-                <CardAction $color="#10b981">
-                  Get Started
-                </CardAction>
-              </CardBody>
-        </QuickLinkCard>
-          </>
+        {/* My Profile Card */}
+        {user?.staff_id && isTeacherCardVisible(renderSettings, 'my_profile') && (
+          <QuickLinkCard onClick={() => navigate(`/employees/profile/${user.staff_id}`)} $color="#6366f1">
+            <CardHeader $color="#6366f1">
+              <CardIcon $color="#6366f1">
+                <PersonIcon />
+              </CardIcon>
+              <CardTitle>My Profile</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                View your profile, attendance records, timetable, test analysis, and diary assignments.
+              </CardDescription>
+              <CardAction $color="#6366f1">
+                View Profile
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
         )}
 
-        <QuickLinkCard onClick={() => navigate('/reports')} $color="#f59e0b">
-          <CardHeader $color="#f59e0b">
-            <CardIcon $color="#f59e0b">
-              <AssignmentIcon />
-            </CardIcon>
-            <CardTitle>Reports</CardTitle>
-          </CardHeader>
-          <CardBody>
-          <CardDescription>
-            View, create, and manage student and staff reports.
-          </CardDescription>
-            <CardAction $color="#f59e0b">
-              Get Started
-            </CardAction>
-          </CardBody>
-        </QuickLinkCard>
+        {/* Divider after My Profile */}
+        {user?.staff_id && isTeacherCardVisible(renderSettings, 'my_profile') && <CardDivider />}
 
-        <QuickLinkCard onClick={() => navigate('/test-records')} $color="#8b5cf6">
-          <CardHeader $color="#8b5cf6">
-            <CardIcon $color="#8b5cf6">
-              <QuizIcon />
-            </CardIcon>
-            <CardTitle>Test Marks Entry</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <CardDescription>
-              Create and manage test records, enter marks, and track student performance.
-            </CardDescription>
-            <CardAction $color="#8b5cf6">
-              Get Started
-            </CardAction>
-          </CardBody>
-        </QuickLinkCard>
+        {/* Only show attendance cards if teacher is assigned as class teacher AND render setting is enabled */}
+        {isClassTeacher && isTeacherCardVisible(renderSettings, 'mark_attendance') && (
+          <QuickLinkCard onClick={() => navigate('/attendance/mark')} $color="#3b82f6">
+            <CardHeader $color="#3b82f6">
+              <CardIcon $color="#3b82f6">
+                <AssessmentIcon />
+              </CardIcon>
+              <CardTitle>Mark Attendance</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                Take attendance for your classes. Mark students as present, absent, or late.
+              </CardDescription>
+              <CardAction $color="#3b82f6">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
 
-        <QuickLinkCard onClick={() => navigate('/test-record-master-sheet')} $color="#06b6d4">
-          <CardHeader $color="#06b6d4">
-            <CardIcon $color="#06b6d4">
-              <AssessmentIcon />
-            </CardIcon>
-            <CardTitle>Test Records</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <CardDescription>
-              View comprehensive test records and performance analysis for students.
-            </CardDescription>
-            <CardAction $color="#06b6d4">
-              Get Started
-            </CardAction>
-          </CardBody>
-        </QuickLinkCard>
+        {isClassTeacher && isTeacherCardVisible(renderSettings, 'attendance_reports') && (
+          <QuickLinkCard onClick={() => navigate('/attendance/report')} $color="#10b981">
+            <CardHeader $color="#10b981">
+              <CardIcon $color="#10b981">
+                <BarChartIcon />
+              </CardIcon>
+              <CardTitle>Attendance Reports</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                View and analyze attendance records, generate reports, and track attendance patterns.
+              </CardDescription>
+              <CardAction $color="#10b981">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
 
-        <QuickLinkCard onClick={() => navigate('/my-timetable')} $color="#8b5cf6">
-          <CardHeader $color="#8b5cf6">
-            <CardIcon $color="#8b5cf6">
-              <ScheduleIcon />
-            </CardIcon>
-            <CardTitle>My Timetable</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <CardDescription>
-              View your assigned periods, subjects, and classes for the current session.
-            </CardDescription>
-            <CardAction $color="#8b5cf6">
-              View Schedule
-            </CardAction>
-          </CardBody>
-        </QuickLinkCard>
+        {isClassTeacher && isTeacherCardVisible(renderSettings, 'half_leaves') && (
+          <QuickLinkCard onClick={() => navigate('/attendance/half-leaves')} $color="#ec4899">
+            <CardHeader $color="#ec4899">
+              <CardIcon $color="#ec4899">
+                <AccessTimeIcon />
+              </CardIcon>
+              <CardTitle>Half Leaves</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                Record and manage half-day leaves for students in your classes. Track first half and second half leave records.
+              </CardDescription>
+              <CardAction $color="#ec4899">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
 
-        {/* Examination Marks Entry Cards - Only show if there are published examinations */}
-        {publishedExaminations.map((examination) => (
+        {/* Divider after Attendance group */}
+        {(isClassTeacher && (isTeacherCardVisible(renderSettings, 'mark_attendance') || isTeacherCardVisible(renderSettings, 'attendance_reports') || isTeacherCardVisible(renderSettings, 'half_leaves'))) && <CardDivider />}
+
+        {isTeacherCardVisible(renderSettings, 'reports') && (
+          <QuickLinkCard onClick={() => navigate('/reports')} $color="#f59e0b">
+            <CardHeader $color="#f59e0b">
+              <CardIcon $color="#f59e0b">
+                <AssignmentIcon />
+              </CardIcon>
+              <CardTitle>Reports</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                View, create, and manage student and staff reports.
+              </CardDescription>
+              <CardAction $color="#f59e0b">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
+
+        {/* Divider after Reports */}
+        {isTeacherCardVisible(renderSettings, 'reports') && <CardDivider />}
+
+        {isTeacherCardVisible(renderSettings, 'test_marks_entry') && (
+          <QuickLinkCard onClick={() => navigate('/test-records')} $color="#8b5cf6">
+            <CardHeader $color="#8b5cf6">
+              <CardIcon $color="#8b5cf6">
+                <QuizIcon />
+              </CardIcon>
+              <CardTitle>Test Marks Entry</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                Create and manage test records, enter marks, and track student performance.
+              </CardDescription>
+              <CardAction $color="#8b5cf6">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
+
+        {isTeacherCardVisible(renderSettings, 'test_records') && (
+          <QuickLinkCard onClick={() => navigate('/test-record-master-sheet')} $color="#06b6d4">
+            <CardHeader $color="#06b6d4">
+              <CardIcon $color="#06b6d4">
+                <AssessmentIcon />
+              </CardIcon>
+              <CardTitle>Test Records</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                View comprehensive test records and performance analysis for students.
+              </CardDescription>
+              <CardAction $color="#06b6d4">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
+
+        {/* Divider after Test group */}
+        {(isTeacherCardVisible(renderSettings, 'test_marks_entry') || isTeacherCardVisible(renderSettings, 'test_records')) && <CardDivider />}
+
+        {isTeacherCardVisible(renderSettings, 'my_timetable') && (
+          <QuickLinkCard onClick={() => navigate('/my-timetable')} $color="#8b5cf6">
+            <CardHeader $color="#8b5cf6">
+              <CardIcon $color="#8b5cf6">
+                <ScheduleIcon />
+              </CardIcon>
+              <CardTitle>My Timetable</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                View your assigned periods, subjects, and classes for the current session.
+              </CardDescription>
+              <CardAction $color="#8b5cf6">
+                View Schedule
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
+
+        {/* Divider after Timetable */}
+        {isTeacherCardVisible(renderSettings, 'my_timetable') && <CardDivider />}
+
+        {isTeacherCardVisible(renderSettings, 'assign_diary') && (
+          <QuickLinkCard onClick={() => navigate('/homework-diary')} $color="#10b981">
+            <CardHeader $color="#10b981">
+              <CardIcon $color="#10b981">
+                <AssignmentIcon />
+              </CardIcon>
+              <CardTitle>Assign Diary</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <CardDescription>
+                Assign daily homework diary entries for your classes and subjects.
+              </CardDescription>
+              <CardAction $color="#10b981">
+                Get Started
+              </CardAction>
+            </CardBody>
+          </QuickLinkCard>
+        )}
+
+        {/* Divider after Assign Diary */}
+        {isTeacherCardVisible(renderSettings, 'assign_diary') && <CardDivider />}
+
+        {/* Examination Marks Entry Cards - Only show if there are published examinations AND render setting is enabled */}
+        {isTeacherCardVisible(renderSettings, 'examination_marks_entry') && publishedExaminations.map((examination) => (
           <QuickLinkCard 
             key={examination.id} 
             onClick={() => navigate('/marks-entry', { state: { examinationId: examination.id } })}
@@ -730,7 +1064,76 @@ const WelcomePage: React.FC = () => {
         ))}
       </QuickLinksGrid>
 
-    </Container>
+      {/* Exit Confirmation Modal - Rendered via Portal */}
+      {showExitConfirm && ReactDOM.createPortal(
+        <ModalOverlay onClick={() => {
+            console.log('Modal overlay clicked, closing dialog');
+            showExitConfirmRef.current = false;
+            setShowExitConfirm(false);
+          }}>
+          <ModalBox onClick={(e) => e.stopPropagation()}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                margin: '0 auto 16px',
+                background: themeMode === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
+              </div>
+              <ModalTitle style={{ textAlign: 'center', marginBottom: '8px' }}>
+                Exit Application
+              </ModalTitle>
+              <p style={{
+                color: themeMode === 'dark' ? '#9ca3af' : '#6b7280',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                Are you sure you want to exit the application?
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <ModalButton
+                  onClick={() => {
+                    console.log('Cancel button clicked, closing dialog');
+                    showExitConfirmRef.current = false;
+                    setShowExitConfirm(false);
+                  }}
+                  color="#6b7280"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </ModalButton>
+                <ModalButton
+                  onClick={() => {
+                    console.log('Exit button clicked');
+                    showExitConfirmRef.current = false;
+                    setShowExitConfirm(false);
+                    try { 
+                      if (CapacitorApp) {
+                        CapacitorApp.exitApp();
+                      } else if (window.electronAPI) {
+                        window.electronAPI.close();
+                      } else {
+                        window.close();
+                      }
+                    } catch { /* noop */ }
+                  }}
+                  color="#ef4444"
+                  style={{ flex: 1 }}
+                >
+                  Exit
+                </ModalButton>
+              </div>
+            </div>
+          </ModalBox>
+        </ModalOverlay>,
+        document.body
+      )}
+      </Container>
   );
 };
 

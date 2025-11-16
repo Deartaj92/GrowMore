@@ -1,13 +1,16 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import styled, { ThemeProvider } from 'styled-components';
 import { darkTheme } from './Layout';
+import { fetchRenderSettings, isGuestPageAccessible } from '../services/renderSettingsService';
+import { RenderSettings } from '../services/renderSettingsService';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
   allowedRoles: string[];
   redirectTo?: string;
+  guestPageKey?: string; // Key for guest page access check
 };
 
 const LoadingContainer = styled.div`
@@ -33,17 +36,85 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-export default function ProtectedRoute({ children, allowedRoles, redirectTo = '/unauthorized' }: ProtectedRouteProps) {
+export default function ProtectedRoute({ 
+  children, 
+  allowedRoles, 
+  redirectTo = '/unauthorized',
+  guestPageKey 
+}: ProtectedRouteProps) {
   const { user, loading, hasPermission } = useAuth();
+  const location = useLocation();
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
+  // Fetch render settings if user is a guest
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id && guestPageKey) {
+      setSettingsLoading(true);
+      fetchRenderSettings(user.school_id)
+        .then(settings => {
+          setRenderSettings(settings);
+        })
+        .catch(error => {
+          console.error('Error fetching render settings for guest:', error);
+        })
+        .finally(() => {
+          setSettingsLoading(false);
+        });
+    }
+  }, [user, guestPageKey]);
+
+  // Show loading while auth or settings are loading
   if (loading) {
-    return null;
+    return (
+      <LoadingContainer>
+        <LoadingSpinner />
+      </LoadingContainer>
+    );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
+  // Handle Guest users with render settings
+  if (user.role === 'Guest') {
+    // If no guestPageKey is provided, check if this is the guest dashboard route
+    // The guest dashboard (/guest) should always be accessible to guest users
+    if (!guestPageKey) {
+      // Allow access if this is the guest dashboard route
+      // Otherwise, deny access for other routes without guestPageKey
+      if (location.pathname === '/guest' || location.pathname.startsWith('/guest/')) {
+        return <>{children}</>;
+      }
+      // For other routes without guestPageKey, deny access
+      return <Navigate to={redirectTo} replace />;
+    }
+    
+    // If settings are still loading, wait
+    if (settingsLoading) {
+      return (
+        <LoadingContainer>
+          <LoadingSpinner />
+        </LoadingContainer>
+      );
+    }
+    
+    // Check if guest can access this page based on render settings
+    // If settings haven't loaded yet, allow temporary access (they'll be checked in the component)
+    // This prevents premature denial while settings are being fetched
+    if (renderSettings) {
+      // Settings are loaded, check access
+      if (!isGuestPageAccessible(renderSettings, guestPageKey)) {
+        return <Navigate to={redirectTo} replace />;
+      }
+    }
+    // If settings are null (not loaded yet), allow temporary access
+    // The component itself will do the final check once settings are loaded
+    return <>{children}</>;
+  }
+
+  // Handle regular role-based access
   if (!hasPermission(allowedRoles)) {
     return <Navigate to={redirectTo} replace />;
   }

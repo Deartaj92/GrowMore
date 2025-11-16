@@ -1195,8 +1195,23 @@ const MasterSheetManager: React.FC = () => {
   const loadExaminations = async () => {
     try {
       setLoading(true);
-      const data = await examinationService.getExaminations({ status: 'published' }, user?.school_id);
-      setExaminations(data);
+      // Fetch both published and archived examinations
+      const [publishedData, archivedData] = await Promise.all([
+        examinationService.getExaminations({ status: 'published' }, user?.school_id),
+        examinationService.getExaminations({ status: 'archived' }, user?.school_id)
+      ]);
+      // Combine and remove duplicates (in case an exam has both statuses somehow)
+      const allExaminations = [...publishedData, ...archivedData];
+      const uniqueExaminations = Array.from(
+        new Map(allExaminations.map(exam => [exam.id, exam])).values()
+      );
+      // Sort by created_at descending
+      uniqueExaminations.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+      setExaminations(uniqueExaminations);
     } catch (error) {
       console.error('Error loading examinations:', error);
       showToast('Failed to load examinations', 'error');

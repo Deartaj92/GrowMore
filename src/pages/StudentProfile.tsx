@@ -24,7 +24,9 @@ import {
   TableBody,
   Stack,
   IconButton,
-  Badge as MuiBadge
+  Badge as MuiBadge,
+  Skeleton,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Person,
@@ -89,10 +91,19 @@ import { alpha } from '@mui/material/styles';
 import NoSessionsFound from '../components/NoSessionsFound';
 import { useProgress } from '../components/Layout';
 import { PageHeaderContext } from '../components/Layout';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, isStudentTabVisible, isStudentSummaryCardVisible, RenderSettings } from '../services/renderSettingsService';
+import { STUDENT_PROFILE_TABS } from '../config/renderSettingsConfig';
 import { examinationService } from '../services/examinationService';
 import { testRecordService } from '../services/testRecordService';
+import { homeworkDiaryService } from '../services/homeworkDiaryService';
 import { ExamResult } from '../types/examinations';
 import { TestResult } from '../types/testRecords';
+import { HomeworkDiary } from '../types/homeworkDiary';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
 
 const pulseAnimation = keyframes`
   0%, 100% { opacity: 0.2; }
@@ -212,7 +223,7 @@ interface ExamSummary {
   obtained_marks: number;
   percentage: number;
   grade?: string;
-  status: 'pass' | 'fail';
+  status: 'pass' | 'fail' | 'absent';
   position?: number;
   total_strength?: number;
   subjects: ExamResult[];
@@ -231,6 +242,7 @@ interface MonthlyStats {
   absent: number;
   late: number;
   leave: number;
+  halfLeaves: number;
   [key: string]: string | number; // Allow indexing by status string
 }
 
@@ -240,7 +252,7 @@ interface AttendancePatternStat {
   label: string;
   value: string;
   count: number;
-  colorKey: ColorKey;
+  colorKey: ColorKey | 'secondary';
 }
 
 const statusColors: Record<string, string> = {
@@ -492,6 +504,8 @@ const ModernTabs = styled(Tabs)(({ theme }) => ({
     gap: theme.spacing(1),
     [theme.breakpoints.down('sm')]: {
       gap: theme.spacing(0.5),
+      flexWrap: 'wrap',
+      justifyContent: 'flex-start',
     }
   },
   '& .MuiTabs-indicator': {
@@ -499,10 +513,19 @@ const ModernTabs = styled(Tabs)(({ theme }) => ({
     borderRadius: 12,
     background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.15)}, ${alpha(theme.palette.primary.main, 0.25)})`,
     zIndex: 0,
+    [theme.breakpoints.down('sm')]: {
+      display: 'none', // Hide indicator on mobile since tabs wrap
+    }
   },
   [theme.breakpoints.down('sm')]: {
     borderRadius: 12,
     padding: theme.spacing(0.5),
+    '& .MuiTabs-scrollableContainer': {
+      overflow: 'visible !important',
+    },
+    '& .MuiTabs-scroller': {
+      overflow: 'visible !important',
+    },
   }
 }));
 
@@ -553,25 +576,33 @@ const TabItem = styled(Tab)(({ theme }) => ({
     fontWeight: 600,
   },
   [theme.breakpoints.down('sm')]: {
-    minHeight: 48,
-    padding: theme.spacing(1),
-    fontSize: '0.8rem',
+    minHeight: 28, // Half of 56px
+    padding: theme.spacing(0.5, 1),
+    fontSize: '0.75rem',
+    flex: '0 0 auto',
+    maxWidth: 'none',
     '& .icon-wrapper': {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
+      display: 'none',
     },
     '& .MuiSvgIcon-root': {
-      fontSize: '1.1rem',
+      display: 'none',
     },
     '& .tab-wrapper': {
-      gap: theme.spacing(1),
-      flexDirection: 'column',
-      alignItems: 'center',
+      gap: 0,
     },
     '& .tab-label': {
       textAlign: 'center',
-      fontSize: '0.75rem',
+      fontSize: '0.7rem',
+      fontWeight: 500,
+      whiteSpace: 'nowrap',
+    },
+    '&.Mui-selected': {
+      backgroundColor: alpha(theme.palette.primary.main, 0.15),
+      color: theme.palette.primary.main,
+      borderRadius: 8,
+      '& .tab-label': {
+        fontWeight: 600,
+      }
     }
   }
 }));
@@ -596,6 +627,9 @@ const InfoSection = styled(Box)(({ theme }) => ({
   '&:hover': {
     transform: 'translateY(-2px)',
     boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, 0.1)}`
+  },
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(2),
   }
 }));
 
@@ -612,10 +646,22 @@ const SectionTitle = styled(Box)(({ theme }) => ({
     alignItems: 'center',
     justifyContent: 'center',
     background: alpha(theme.palette.primary.main, 0.1),
-    color: theme.palette.primary.main
+    color: theme.palette.primary.main,
+    [theme.breakpoints.down('sm')]: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      '& .MuiSvgIcon-root': {
+        fontSize: '1.1rem',
+      }
+    }
   },
   '& .title-content': {
     flex: 1
+  },
+  [theme.breakpoints.down('sm')]: {
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(2),
   }
 }));
 
@@ -639,7 +685,15 @@ const InfoGrid = styled(Grid)(({ theme }) => ({
       justifyContent: 'center',
       background: alpha(theme.palette.primary.main, 0.08),
       color: theme.palette.primary.main,
-      flexShrink: 0
+      flexShrink: 0,
+      [theme.breakpoints.down('sm')]: {
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        '& .MuiSvgIcon-root': {
+          fontSize: '1rem',
+        }
+      }
     },
     '& .info-content': {
       flex: 1
@@ -649,11 +703,20 @@ const InfoGrid = styled(Grid)(({ theme }) => ({
       color: theme.palette.text.secondary,
       marginBottom: theme.spacing(0.5),
       textTransform: 'uppercase',
-      letterSpacing: '0.5px'
+      letterSpacing: '0.5px',
+      [theme.breakpoints.down('sm')]: {
+        fontSize: '0.6rem',
+        marginBottom: theme.spacing(0.25),
+        letterSpacing: '0.3px',
+      }
     },
     '& .info-value': {
       color: theme.palette.text.primary,
-      fontWeight: 500
+      fontWeight: 500,
+      fontSize: '0.875rem',
+      [theme.breakpoints.down('sm')]: {
+        fontSize: '0.7rem',
+      }
     },
     '& .info-chip': {
       margin: theme.spacing(0.5),
@@ -686,6 +749,14 @@ const InfoItem = styled(Box)(({ theme }) => ({
     justifyContent: 'center',
     background: alpha(theme.palette.primary.main, 0.08),
     color: theme.palette.primary.main,
+    [theme.breakpoints.down('sm')]: {
+      width: 28,
+      height: 28,
+      borderRadius: 6,
+      '& .MuiSvgIcon-root': {
+        fontSize: '0.9rem',
+      }
+    }
   },
   '& .info-content': {
     flex: 1,
@@ -695,11 +766,22 @@ const InfoItem = styled(Box)(({ theme }) => ({
     fontSize: '0.875rem',
     fontWeight: 500,
     marginBottom: '4px',
+    [theme.breakpoints.down('sm')]: {
+      fontSize: '0.6rem',
+      marginBottom: '2px',
+    }
   },
   '& .info-value': {
     color: theme.palette.text.primary,
     fontSize: '0.875rem',
     fontWeight: 400,
+    [theme.breakpoints.down('sm')]: {
+      fontSize: '0.7rem',
+    }
+  },
+  [theme.breakpoints.down('sm')]: {
+    gap: theme.spacing(1),
+    padding: theme.spacing(1),
   }
 }));
 
@@ -961,23 +1043,53 @@ const ReportsHeader = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: theme.spacing(1, 0),
-  marginBottom: theme.spacing(2),
+  padding: theme.spacing(1.5, 0),
+  marginBottom: theme.spacing(1.5),
+  gap: theme.spacing(1.5),
+  flexWrap: 'nowrap',
   '& .header-content': {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1.5),
+    gap: theme.spacing(1.25),
+    flex: 1,
+    minWidth: 0,
   },
   '& .icon-wrapper': {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: alpha(theme.palette.primary.main, 0.1),
     color: theme.palette.primary.main,
     transition: 'all 0.3s ease',
+    flexShrink: 0,
+    '& svg': {
+      fontSize: '1.2rem',
+    }
+  },
+  '& .header-text': {
+    minWidth: 0,
+    flex: '0 1 auto',
+  },
+  '& .header-title': {
+    fontSize: '1rem',
+    fontWeight: 600,
+    lineHeight: 1.2,
+    marginBottom: theme.spacing(0.25),
+  },
+  '& .header-subtitle': {
+    fontSize: '0.75rem',
+    opacity: 0.7,
+    lineHeight: 1.2,
+  },
+  '& .date-picker-wrapper': {
+    flexShrink: 0,
+    width: '120px',
+    [theme.breakpoints.down('sm')]: {
+      width: '100px',
+    }
   }
 }));
 
@@ -1051,24 +1163,48 @@ const ReportsList = styled(Box)(({ theme }) => ({
   }
 }));
 
-const ReportItem = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(1.5, 2),
-  borderRadius: theme.spacing(1),
-  background: alpha(theme.palette.background.paper, 0.4),
-  backdropFilter: 'blur(5px)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  transition: 'all 0.2s ease',
-  cursor: 'pointer',
-  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+const ReportItem = styled(Box)<{ $shadeIndex?: number }>(({ theme, $shadeIndex = 0 }) => {
+  // Define light color shades (light pastel colors) - base colors
+  const shadeColors = [
+    theme.palette.info.main,      // Blue
+    theme.palette.success.main,    // Green
+    theme.palette.warning.main,    // Yellow/amber
+    theme.palette.error.main,      // Red/pink
+    theme.palette.primary.main,    // Primary
+    theme.palette.secondary.main,  // Secondary
+    '#9C27B0',                    // Purple
+    '#00BCD4',                    // Cyan
+  ];
 
-  '&:hover': {
-    background: alpha(theme.palette.background.paper, 0.6),
-    transform: 'translateY(-1px)',
-    boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.05)}`,
-  }
-}));
+  const colorIndex = $shadeIndex % shadeColors.length;
+  const baseColor = shadeColors[colorIndex];
+  const baseShade = alpha(baseColor, 0.08);
+  const hoverShade = alpha(baseColor, 0.12); // Slightly brighter but still light
+
+  return {
+    padding: theme.spacing(1.5, 2),
+    borderRadius: theme.spacing(1),
+    background: baseShade,
+    backdropFilter: 'blur(5px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+
+    '&:hover': {
+      background: hoverShade,
+      transform: 'translateY(-1px)',
+      boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.05)}`,
+      
+      '& .homework-icon': {
+        opacity: 0.9,
+        color: theme.palette.text.primary,
+      }
+    }
+  };
+});
 
 // Add new styled components for month card elements
 const MonthHeader = styled(Box)(({ theme }) => ({
@@ -1445,7 +1581,7 @@ function CustomTabPanel(props: TabPanelProps) {
   );
 }
 
-const calculateMonthlyStats = (records: AttendanceData[]): MonthlyStats[] => {
+const calculateMonthlyStats = (records: AttendanceData[], halfLeavesMap?: Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>): MonthlyStats[] => {
   const monthlyData: { [key: string]: MonthlyStats } = {};
   
   // Process each record and group by month
@@ -1460,7 +1596,8 @@ const calculateMonthlyStats = (records: AttendanceData[]): MonthlyStats[] => {
         present: 0,
         absent: 0,
         late: 0,
-        leave: 0
+        leave: 0,
+        halfLeaves: 0
       };
     }
     
@@ -1468,6 +1605,18 @@ const calculateMonthlyStats = (records: AttendanceData[]): MonthlyStats[] => {
     monthlyData[monthKey].total++;
     monthlyData[monthKey][record.status as keyof Pick<MonthlyStats, 'present' | 'absent' | 'late' | 'leave'>]++;
   });
+
+  // Count half leaves per month
+  if (halfLeavesMap) {
+    halfLeavesMap.forEach((halfLeave, dateStr) => {
+      const date = new Date(dateStr);
+      const monthKey = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      
+      if (monthlyData[monthKey]) {
+        monthlyData[monthKey].halfLeaves++;
+      }
+    });
+  }
 
   // Convert to array and sort by date (most recent first)
   return Object.values(monthlyData).sort((a, b) => {
@@ -1489,17 +1638,22 @@ interface WeeklyAttendanceData {
     absent: number;
     late: number;
     leave: number;
+    halfLeave: number;
   };
   percentages: {
     present: number;
     late: number;
     absent: number;
     leave: number;
+    halfLeave: number;
   };
 }
 
 // Update the getWeeklyAttendance function to analyze all-time day patterns
-const getWeeklyAttendance = (records: AttendanceData[]): WeeklyAttendanceData[] => {
+const getWeeklyAttendance = (
+  records: AttendanceData[],
+  halfLeavesMap?: Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>
+): WeeklyAttendanceData[] => {
   // Create a map for all weekdays (Mon-Sat)
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const weeklyData: WeeklyAttendanceData[] = weekDays.map(day => ({
@@ -1510,13 +1664,15 @@ const getWeeklyAttendance = (records: AttendanceData[]): WeeklyAttendanceData[] 
       present: 0,
       absent: 0,
       late: 0,
-      leave: 0
+      leave: 0,
+      halfLeave: 0
     },
     percentages: {
       present: 0,
       late: 0,
       absent: 0,
-      leave: 0
+      leave: 0,
+      halfLeave: 0
     }
   }));
 
@@ -1533,41 +1689,58 @@ const getWeeklyAttendance = (records: AttendanceData[]): WeeklyAttendanceData[] 
       if (record.status && weeklyData[dayIndex].details) {
         weeklyData[dayIndex].details[record.status]++;
       }
+    }
+  });
+
+  // Process half leaves
+  if (halfLeavesMap) {
+    halfLeavesMap.forEach((halfLeave, dateStr) => {
+      const recordDate = new Date(dateStr);
+      const dayIndex = recordDate.getDay() - 1;
+      
+      if (dayIndex >= 0 && dayIndex < 6) {
+        weeklyData[dayIndex].details.halfLeave++;
+        // Don't increment count for half leaves as they're already counted in records
+      }
+    });
+  }
+
+  // Calculate percentages and set dominant status for each day
+  weeklyData.forEach(day => {
+    if (day.count > 0) {
+      const totalItems = day.count + day.details.halfLeave;
+      day.percentages = {
+        present: (day.details.present / totalItems) * 100,
+        late: (day.details.late / totalItems) * 100,
+        absent: (day.details.absent / totalItems) * 100,
+        leave: (day.details.leave / totalItems) * 100,
+        halfLeave: (day.details.halfLeave / totalItems) * 100
+      };
       
       // Set the dominant status for the day based on the highest count
-      const details = weeklyData[dayIndex].details;
+      const details = day.details;
       const statusCounts = [
         { status: 'present', count: details.present },
         { status: 'late', count: details.late },
         { status: 'absent', count: details.absent },
-        { status: 'leave', count: details.leave }
+        { status: 'leave', count: details.leave },
+        { status: 'halfLeave', count: details.halfLeave }
       ];
       
       const dominantStatus = statusCounts.reduce((prev, current) => 
         current.count > prev.count ? current : prev
       );
       
-      weeklyData[dayIndex].status = dominantStatus.count > 0 ? 
+      day.status = dominantStatus.count > 0 ? 
         dominantStatus.status as AttendanceData['status'] : 
         null;
-    }
-  });
-
-  // Calculate percentages for each day
-  weeklyData.forEach(day => {
-    if (day.count > 0) {
-      day.percentages = {
-        present: (day.details.present / day.count) * 100,
-        late: (day.details.late / day.count) * 100,
-        absent: (day.details.absent / day.count) * 100,
-        leave: (day.details.leave / day.count) * 100
-      };
     } else {
       day.percentages = {
         present: 0,
         late: 0,
         absent: 0,
-        leave: 0
+        leave: 0,
+        halfLeave: 0
       };
     }
   });
@@ -1575,8 +1748,11 @@ const getWeeklyAttendance = (records: AttendanceData[]): WeeklyAttendanceData[] 
   return weeklyData;
 };
 
-const getAttendancePattern = (records: AttendanceData[]): AttendancePatternStat[] => {
-  const total = records.length;
+const getAttendancePattern = (
+  records: AttendanceData[],
+  halfLeavesCount: number = 0
+): AttendancePatternStat[] => {
+  const total = records.length + halfLeavesCount;
   if (total === 0) return [];
 
   const onTime = records.filter(r => r.status === 'present').length;
@@ -1608,11 +1784,20 @@ const getAttendancePattern = (records: AttendanceData[]): AttendancePatternStat[
       value: `${Math.round((leaves / total) * 100)}%`,
       count: leaves,
       colorKey: 'info' as const
+    },
+    { 
+      label: 'Half Leaves', 
+      value: `${Math.round((halfLeavesCount / total) * 100)}%`,
+      count: halfLeavesCount,
+      colorKey: 'secondary' as const
     }
   ];
 };
 
-const getYearlyOverview = (records: AttendanceData[]): { startDate: Date; endDate: Date; percentage: number }[] => {
+const getYearlyOverview = (
+  records: AttendanceData[],
+  halfLeavesMap?: Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>
+): { startDate: Date; endDate: Date; percentage: number }[] => {
   const today = new Date();
   const startOfYear = new Date(today.getFullYear(), 0, 1);
   const weeks: { startDate: Date; endDate: Date; percentage: number }[] = [];
@@ -1628,13 +1813,26 @@ const getYearlyOverview = (records: AttendanceData[]): { startDate: Date; endDat
       return recordDate >= currentWeek && recordDate <= weekEnd;
     });
 
-    const presentCount = weekRecords.filter(r => r.status === 'present').length;
-    const totalCount = weekRecords.length || 0;
+    // Count half leaves in this week
+    let weekHalfLeaves = 0;
+    if (halfLeavesMap) {
+      halfLeavesMap.forEach((halfLeave, dateStr) => {
+        const recordDate = new Date(dateStr);
+        if (recordDate >= currentWeek && recordDate <= weekEnd) {
+          weekHalfLeaves++;
+        }
+      });
+    }
+
+    const presentCount = weekRecords.filter(r => r.status === 'present' || r.status === 'late').length;
+    // Half leaves count as 0.5 attendance
+    const totalCount = weekRecords.length + weekHalfLeaves || 0;
+    const attendanceCount = presentCount + (weekHalfLeaves * 0.5);
 
     weeks.push({
       startDate: new Date(currentWeek),
       endDate: new Date(weekEnd),
-      percentage: totalCount > 0 ? (presentCount / totalCount) : 0
+      percentage: totalCount > 0 ? (attendanceCount / totalCount) : 0
     });
 
     // Move to next week
@@ -1785,6 +1983,10 @@ interface Report {
     name: string;
   };
   updates?: ReportUpdate[];
+  reporter?: {
+    id: number;
+    name: string;
+  };
 }
 
 // Add new interface for report updates
@@ -1939,13 +2141,32 @@ const SectionContainer = styled('div')<{ theme?: Theme }>(({ theme }) => ({
       '& svg': {
         color: '#fff',
         fontSize: '1.2rem'
+      },
+      '@media (max-width: 600px)': {
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        marginRight: '8px',
+        '& svg': {
+          fontSize: '1rem'
+        }
       }
     },
     '& h6': {
       margin: 0,
       fontSize: '1.1rem',
-      fontWeight: 600
+      fontWeight: 600,
+      '@media (max-width: 600px)': {
+        fontSize: '0.95rem'
+      }
+    },
+    '@media (max-width: 600px)': {
+      marginBottom: '12px',
+      paddingBottom: '6px',
     }
+  },
+  '@media (max-width: 600px)': {
+    marginBottom: '16px',
   }
 }));
 
@@ -2142,7 +2363,10 @@ const getCategoryColor = (categoryName: string) => {
 
 const calculateStudentScore = (
   attendanceStats: AttendanceStats | null,
-  reports: Report[]
+  reports: Report[],
+  examSummaries: ExamSummary[] = [],
+  testResults: TestResult[] = [],
+  halfLeavesCount: number = 0
 ): number => {
   let score = 10; // Start with perfect score
 
@@ -2153,6 +2377,9 @@ const calculateStudentScore = (
     const attendanceDeduction = Math.floor(percentageBelow100 / 2) * 0.1; // -0.1 for every 2%
     score -= attendanceDeduction;
   }
+
+  // Half Leave: deduct 0.05 per occurrence
+  score -= halfLeavesCount * 0.05;
 
   // Calculate reports deduction
   if (reports && reports.length > 0) {
@@ -2166,6 +2393,43 @@ const calculateStudentScore = (
         case 'urgent':
           score -= 0.5;
           break;
+      }
+    });
+  }
+
+  // Calculate examination deductions
+  if (examSummaries && examSummaries.length > 0) {
+    examSummaries.forEach(exam => {
+      // Skip absent exams (they don't count as failed)
+      if (exam.status === 'absent') return;
+      
+      // Deduct 0.5 for each failed exam
+      if (exam.status === 'fail') {
+        score -= 0.5;
+      }
+      // Deduct 0.2 for each exam below 70% (but not if already failed to avoid double counting)
+      else if (exam.percentage < 70) {
+        score -= 0.2;
+      }
+    });
+  }
+
+  // Calculate test deductions
+  if (testResults && testResults.length > 0) {
+    testResults.forEach(test => {
+      // Determine if test is failed based on passing_marks from test_records
+      // If test_records is joined and has passing_marks, use it; otherwise default to 40%
+      let passingMarks = 40; // Default to 40% if not available
+      if ((test as any).test_records && (test as any).test_records.passing_marks) {
+        // Calculate passing percentage from passing_marks and max_marks
+        passingMarks = (test.max_marks > 0) 
+          ? ((test as any).test_records.passing_marks / test.max_marks) * 100 
+          : 40;
+      }
+      
+      // A test is considered failed if percentage < passing percentage
+      if (test.percentage < passingMarks) {
+        score -= 0.05; // Deduct 0.05 for each failed test
       }
     });
   }
@@ -2339,29 +2603,376 @@ const SkeletonTabContent = styled('div')(({ theme }) => ({
     borderRadius: 16,
   },
 }));
-const StudentProfileSkeleton: React.FC = () => (
-  <StudentProfileSkeletonContainer>
-    <SkeletonHeader>
-      <SkeletonAvatar />
-      <SkeletonNameBlock>
-        <SkeletonName />
-        <SkeletonStatus />
-      </SkeletonNameBlock>
-    </SkeletonHeader>
-    <SkeletonSummaryGrid>
-      {[1,2,3,4].map(i => (
-        <SkeletonSummaryCard key={i} />
-      ))}
-    </SkeletonSummaryGrid>
-    <SkeletonTabBar />
-    <SkeletonTabContent />
-  </StudentProfileSkeletonContainer>
-);
+const StudentProfileSkeleton: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <ProfileContainer>
+      {/* Profile Header Skeleton */}
+      <ProfileHeader>
+        <Skeleton variant="circular" width={90} height={90} sx={{ flexShrink: 0, [theme.breakpoints.down('sm')]: { width: 70, height: 70 } }} />
+        <Stack 
+          spacing={0.5} 
+          sx={{ 
+            flex: 1,
+            minWidth: 0,
+            [theme.breakpoints.down('sm')]: {
+              alignItems: 'center',
+            }
+          }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: { xs: 'flex-start', sm: 'center' }, 
+            gap: 1,
+            flexWrap: 'wrap',
+            width: '100%'
+          }}>
+            <Skeleton variant="text" width={200} height={36} sx={{ [theme.breakpoints.down('sm')]: { width: 150, height: 24 } }} />
+            <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: '100px', [theme.breakpoints.down('sm')]: { width: 80, height: 20 } }} />
+          </Box>
+          <Box sx={{ 
+            mt: { xs: 0.5, sm: 1 },
+            width: '100%',
+            textAlign: { xs: 'left', sm: 'left' }
+          }}>
+            <Skeleton variant="text" width={150} height={24} sx={{ mb: 0.25, [theme.breakpoints.down('sm')]: { width: 120, height: 18 } }} />
+            <Skeleton variant="text" width={120} height={20} sx={{ [theme.breakpoints.down('sm')]: { width: 100, height: 16 } }} />
+          </Box>
+        </Stack>
+        <Box 
+          sx={{ 
+            display: 'flex',
+            alignItems: 'center',
+            gap: { xs: 0.8, sm: 1.6 },
+            ml: 'auto',
+            p: { xs: 0.8, sm: 1.6 },
+            borderRadius: 2.4,
+            bgcolor: theme => alpha(theme.palette.background.paper, 0.05),
+            backdropFilter: 'blur(10px)',
+            border: '1px solid',
+            borderColor: theme => alpha(theme.palette.divider, 0.1),
+            [theme.breakpoints.down('sm')]: {
+              position: 'absolute',
+              right: 12,
+              bottom: 12,
+              p: 1,
+            }
+          }}
+        >
+          <Skeleton variant="circular" width={38} height={38} sx={{ [theme.breakpoints.down('sm')]: { width: 32, height: 32 } }} />
+          <Box>
+            <Skeleton variant="text" width={80} height={16} sx={{ mb: 0.5, [theme.breakpoints.down('sm')]: { width: 60, height: 12 } }} />
+            <Skeleton variant="text" width={60} height={20} sx={{ [theme.breakpoints.down('sm')]: { width: 50, height: 16 } }} />
+          </Box>
+        </Box>
+      </ProfileHeader>
+
+      {/* Summary Cards Skeleton */}
+      <Box sx={{ mb: 3 }}>
+        <Grid container spacing={2}>
+          {/* Attendance Card Skeleton */}
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                <Box sx={{ 
+                  position: 'relative', 
+                  width: '180px',
+                  height: '180px',
+                  margin: '0 auto',
+                  mb: 3
+                }}>
+                  <Skeleton variant="circular" width={180} height={180} />
+                </Box>
+                <Grid container spacing={2}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <Grid item xs={6} key={i}>
+                      <Box sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                        <Skeleton variant="circular" width={32} height={32} sx={{ mb: 1 }} />
+                        <Skeleton variant="text" width={40} height={24} />
+                        <Skeleton variant="text" width={60} height={14} sx={{ mt: 0.5 }} />
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </StatCard>
+          </Grid>
+
+          {/* Test Records Summary Card Skeleton */}
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Header Skeleton */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  pb: 1.5,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
+                }}>
+                  <Skeleton variant="text" width={80} height={16} />
+                  <Skeleton variant="text" width={50} height={28} />
+                </Box>
+                
+                {/* Stats Grid Skeleton */}
+                <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                  {[1, 2, 3].map((i) => (
+                    <Grid item xs={4} key={i}>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 1,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        textAlign: 'center',
+                        height: '100%'
+                      }}>
+                        <Skeleton variant="circular" width={16} height={16} sx={{ mb: 0.5 }} />
+                        <Skeleton variant="text" width={40} height={18} sx={{ mb: 0.25 }} />
+                        <Skeleton variant="text" width={50} height={12} />
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                {/* Subject Summary Skeleton */}
+                <Box sx={{ 
+                  flex: 1, 
+                  minHeight: 0, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  pt: 1.5
+                }}>
+                  <Skeleton variant="text" width={100} height={14} sx={{ mb: 1 }} />
+                  <Grid container spacing={1}>
+                    {[1, 2, 3, 4].map((i) => (
+                      <Grid item xs={6} key={i}>
+                        <Box sx={{
+                          p: 1.25,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}>
+                          <Skeleton variant="text" width="70%" height={12} sx={{ mb: 0.5 }} />
+                          <Skeleton variant="text" width="50%" height={12} />
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </Box>
+            </StatCard>
+          </Grid>
+
+          {/* Examinations Summary Card Skeleton */}
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Header Skeleton */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  pb: 1.5,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
+                }}>
+                  <Skeleton variant="text" width={90} height={16} />
+                  <Skeleton variant="text" width={50} height={28} />
+                </Box>
+                
+                {/* Stats Grid Skeleton */}
+                <Grid container spacing={1} sx={{ mb: 1.5 }}>
+                  {[1, 2, 3].map((i) => (
+                    <Grid item xs={4} key={i}>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 1,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        textAlign: 'center',
+                        height: '100%'
+                      }}>
+                        <Skeleton variant="circular" width={16} height={16} sx={{ mb: 0.5 }} />
+                        <Skeleton variant="text" width={40} height={18} sx={{ mb: 0.25 }} />
+                        <Skeleton variant="text" width={50} height={12} />
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                {/* Exam Summary Skeleton */}
+                <Box sx={{ 
+                  flex: 1, 
+                  minHeight: 0, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  pt: 1.5
+                }}>
+                  <Skeleton variant="text" width={100} height={14} sx={{ mb: 1 }} />
+                  <Grid container spacing={1}>
+                    {[1, 2, 3, 4].map((i) => (
+                      <Grid item xs={6} key={i}>
+                        <Box sx={{
+                          p: 1.25,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}>
+                          <Skeleton variant="text" width="70%" height={12} sx={{ mb: 0.5 }} />
+                          <Skeleton variant="text" width="50%" height={12} />
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </Box>
+            </StatCard>
+          </Grid>
+
+          {/* Reports/Homework Diary Card Skeleton */}
+          <Grid item xs={12} sm={6} md={3}>
+            <ReportsCard>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 2,
+                pb: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider'
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Skeleton variant="rectangular" width={40} height={40} sx={{ borderRadius: '12px' }} />
+                  <Box>
+                    <Skeleton variant="text" width={120} height={24} />
+                    <Skeleton variant="text" width={100} height={16} sx={{ mt: 0.5 }} />
+                  </Box>
+                </Box>
+                <Skeleton variant="rectangular" width={120} height={32} sx={{ borderRadius: 1 }} />
+              </Box>
+              <Stack spacing={1}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Box key={i} sx={{
+                    p: 1.5,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5
+                  }}>
+                    <Skeleton variant="rectangular" width={32} height={32} sx={{ borderRadius: '8px' }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Skeleton variant="text" width="80%" height={16} sx={{ mb: 0.5 }} />
+                      <Skeleton variant="text" width="100%" height={14} />
+                    </Box>
+                    <Skeleton variant="circular" width={24} height={24} />
+                  </Box>
+                ))}
+              </Stack>
+            </ReportsCard>
+          </Grid>
+
+        </Grid>
+      </Box>
+
+      {/* Tabs Skeleton */}
+      <GlassCard>
+        <ModernTabs value={0}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <TabItem
+              key={i}
+              disabled
+              label={
+                <Box className="tab-wrapper">
+                  <Box className="icon-wrapper" sx={{ display: { xs: 'none', sm: 'flex' } }}>
+                    <Skeleton variant="circular" width={24} height={24} />
+                  </Box>
+                  <Skeleton variant="text" width={80} height={20} />
+                </Box>
+              }
+            />
+          ))}
+        </ModernTabs>
+
+        {/* Tab Content Skeleton */}
+        <TabPanel>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{
+                p: 3,
+                borderRadius: 2,
+                background: theme => alpha(theme.palette.background.paper, 0.6),
+                border: '1px solid',
+                borderColor: 'divider'
+              }}>
+                <Skeleton variant="text" width={200} height={28} sx={{ mb: 3 }} />
+                <Grid container spacing={2}>
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Grid item xs={12} sm={6} key={i}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 1 }}>
+                        <Skeleton variant="circular" width={36} height={36} />
+                        <Box sx={{ flex: 1 }}>
+                          <Skeleton variant="text" width={100} height={14} sx={{ mb: 0.5 }} />
+                          <Skeleton variant="text" width={150} height={18} />
+                        </Box>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{
+                p: 3,
+                borderRadius: 2,
+                background: theme => alpha(theme.palette.background.paper, 0.6),
+                border: '1px solid',
+                borderColor: 'divider'
+              }}>
+                <Skeleton variant="text" width={200} height={28} sx={{ mb: 3 }} />
+                <Grid container spacing={2}>
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Grid item xs={12} sm={6} key={i}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 1 }}>
+                        <Skeleton variant="circular" width={36} height={36} />
+                        <Box sx={{ flex: 1 }}>
+                          <Skeleton variant="text" width={100} height={14} sx={{ mb: 0.5 }} />
+                          <Skeleton variant="text" width={150} height={18} />
+                        </Box>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </Grid>
+          </Grid>
+        </TabPanel>
+      </GlassCard>
+    </ProfileContainer>
+  );
+};
 // --- Dashboard-style Skeleton Loader for StudentProfile ---
 
 export const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showToast } = useToast();
   const { setPageHeader } = React.useContext(PageHeaderContext);
   const [loading, setLoading] = useState(true);
@@ -2407,8 +3018,25 @@ export const StudentProfile: React.FC = () => {
   const [attendancePattern, setAttendancePattern] = useState<AttendancePatternStat[]>([]);
   const [yearlyOverview, setYearlyOverview] = useState<{ startDate: Date; endDate: Date; percentage: number }[]>([]);
   const [reportCategories, setReportCategories] = useState<ReportCategory[]>([]);
+  const [homeworkDiaryEntries, setHomeworkDiaryEntries] = useState<HomeworkDiary[]>([]);
+  const [selectedHomeworkDate, setSelectedHomeworkDate] = useState<Dayjs | null>(dayjs());
   const [studentScore, setStudentScore] = useState<number>(10);
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const [halfLeavesMap, setHalfLeavesMap] = useState<Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>>(new Map());
+  const [tabDataLoaded, setTabDataLoaded] = useState<{ [key: number]: boolean }>({});
+  const [tabDataLoading, setTabDataLoading] = useState<{ [key: number]: boolean }>({});
   const { startProgress, setProgress, completeProgress } = useProgress();
+  const { user } = useAuth();
+  
+  // Check if user is logged in as student
+  const isStudent = useMemo(() => {
+    try {
+      const studentSession = localStorage.getItem('studentSession');
+      return !!studentSession;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const toggleUpdates = (reportId: string) => {
     setExpandedUpdates(prev => ({
@@ -2455,7 +3083,8 @@ export const StudentProfile: React.FC = () => {
             id,
             name,
             test_date,
-            subject_id
+            subject_id,
+            passing_marks
           )
         `)
         .eq('student_id', parseInt(id!))
@@ -2674,15 +3303,48 @@ export const StudentProfile: React.FC = () => {
   }, [selectedTestSession, student, processTestRecords]);
 
   useEffect(() => {
+    const fetchRenderSettingsData = async () => {
+      // Get school_id from student or user
+      let schoolId: number | null = null;
+      
+      if (user?.school_id) {
+        schoolId = user.school_id;
+      } else if (student?.session_id) {
+        // Try to get school_id from student's session
+        try {
+          const { data: sessionData } = await supabase
+            .from('sessions')
+            .select('school_id')
+            .eq('id', student.session_id)
+            .single();
+          if (sessionData) schoolId = sessionData.school_id;
+        } catch (e) {
+          // Ignore error
+        }
+      }
+
+      if (schoolId) {
+        const settings = await fetchRenderSettings(schoolId);
+        setRenderSettings(settings);
+      }
+    };
+
+    if (student || user) {
+      fetchRenderSettingsData();
+    }
+  }, [student, user]);
+
+  useEffect(() => {
     const fetchStudentData = async () => {
-      const minDuration = 1500; // 1.5 seconds
+      const minDuration = 800; // Reduced from 1.5s to 0.8s
       const start = Date.now();
       startProgress(false);
       setProgress(10);
       try {
-        // Fetch student details
+        // Fetch student details and attendance in parallel
         setProgress(20);
-        const { data: studentData, error: studentError } = await supabase
+        const [studentResult, attendanceResult] = await Promise.all([
+          supabase
           .from('students')
           .select(`
             *,
@@ -2690,23 +3352,44 @@ export const StudentProfile: React.FC = () => {
             section:sections(name)
           `)
           .eq('id', id)
-          .single();
+            .single(),
+          supabase
+            .from('attendance_records')
+            .select('id, date, status, remarks, class_id')
+            .eq('student_id', id)
+            .order('date', { ascending: false })
+        ]);
 
-        if (studentError) throw studentError;
+        if (studentResult.error) throw studentResult.error;
+        const studentData = studentResult.data;
         setStudent(studentData);
 
+        if (attendanceResult.error) throw attendanceResult.error;
+        const allAttendanceData = attendanceResult.data;
 
-        // Get ALL attendance records (not just absent/late)
+        // Fetch half leaves in parallel with other critical data
         setProgress(30);
-        const { data: allAttendanceData, error: allAttendanceError } = await supabase
-          .from('attendance_records')
-          .select('id, date, status, remarks, class_id')
-          .eq('student_id', id)
-          .order('date', { ascending: false });
+        let hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
+        if (studentData.session_id) {
+          const { data: halfLeavesData } = await supabase
+            .from('half_leaves')
+            .select('date, leave_type, arrival_time, departure_time')
+            .eq('person_type', 'student')
+            .eq('person_id', parseInt(id!))
+            .eq('session_id', studentData.session_id)
+            .eq('school_id', studentData.school_id);
 
-        if (allAttendanceError) throw allAttendanceError;
+          (halfLeavesData || []).forEach((hl: any) => {
+            hlMap.set(hl.date, {
+              leave_type: hl.leave_type,
+              arrival_time: hl.arrival_time,
+              departure_time: hl.departure_time
+            });
+          });
+        }
+        setHalfLeavesMap(hlMap);
 
-        // Calculate attendance stats from all records
+        // Calculate basic attendance stats (critical for initial render)
         setProgress(40);
         if (allAttendanceData) {
           const stats: AttendanceStats = {
@@ -2723,50 +3406,43 @@ export const StudentProfile: React.FC = () => {
 
           setAttendanceStats(stats);
 
+          // Defer heavy calculations to avoid blocking initial render
+          setTimeout(() => {
           // Calculate monthly stats
-          setProgress(50);
-          const monthlyStatsData = calculateMonthlyStats(allAttendanceData);
+            const monthlyStatsData = calculateMonthlyStats(allAttendanceData, hlMap);
           setMonthlyStats(monthlyStatsData);
 
           // Calculate weekly attendance
-          setProgress(60);
-          const weeklyStats = getWeeklyAttendance(allAttendanceData);
+            const weeklyStats = getWeeklyAttendance(allAttendanceData, hlMap);
           setWeeklyAttendance(weeklyStats);
 
           // Calculate attendance pattern
-          setProgress(70);
-          const patternStats = getAttendancePattern(allAttendanceData);
+            const patternStats = getAttendancePattern(allAttendanceData, hlMap.size);
           setAttendancePattern(patternStats);
 
           // Calculate yearly overview
-          setProgress(80);
-          const yearlyStats = getYearlyOverview(allAttendanceData);
+            const yearlyStats = getYearlyOverview(allAttendanceData, hlMap);
           setYearlyOverview(yearlyStats);
-        }
+          }, 0);
 
-        // Filter attendance records for fines (only absent/late)
-        const fineRecords = allAttendanceData?.filter(record => 
+          // Load fine history for attendance tab (used in Recent Attendance section)
+          // Defer fine calculations to avoid blocking
+          setTimeout(async () => {
+            try {
+              const fineRecords = allAttendanceData.filter(record => 
           record.status === 'absent' || record.status === 'late'
-        ) || [];
+              );
 
-        // Fetch all fine settings for the school
-        setProgress(85);
-        const { data: fineData, error: fineError } = await supabase
+              const { data: fineData } = await supabase
           .from('fines')
           .select('class_id, absent_fine, late_fine, effective_from')
+          .eq('school_id', studentData.school_id)
           .order('effective_from', { ascending: true });
 
-        if (fineError) throw fineError;
-
-        // Calculate fines for each attendance record using the class from the record
         const recordsWithFines = fineRecords.map(record => {
-          // Use the class_id directly from the attendance record (this is the class the student was in when attendance was marked)
-          const classIdFromRecord = record.class_id;
-          
-          // Find fines for that specific class
+          const classIdFromRecord = record.class_id || studentData.class_id;
           const classFines = fineData?.filter((f: any) => f.class_id === classIdFromRecord) || [];
           
-          // Find the latest fine setting with effective_from <= record.date
           let fine = classFines && classFines.length > 0 ? classFines[0] : null;
           for (const f of classFines) {
             if (f.effective_from <= record.date) fine = f;
@@ -2782,34 +3458,481 @@ export const StudentProfile: React.FC = () => {
         });
 
         setFineHistory(recordsWithFines);
+            } catch (error) {
+              console.error('Error loading fine history:', error);
+            }
+          }, 100);
+        }
 
-        // Fetch payment history
-        setProgress(90);
-        const { data: paymentData, error: paymentError } = await supabase
-          .from('fine_payments')
-          .select('*')
-          .eq('student_id', id)
-          .order('payment_date', { ascending: false });
+        // Load minimal data for summary cards (counts only)
+        setProgress(50);
+        const studentId = parseInt(id!);
+        const schoolId = studentData.school_id;
+        
+        // Load reports count for summary cards
+        try {
+          const reportsCountResult = await supabase
+            .from('reports')
+            .select('id, status, created_at, severity, category:report_categories(id, name), reporter:staff!reports_reported_by_fkey(id, name)')
+            .eq('student_id', studentId)
+            .order('created_at', { ascending: false });
+          
+          if (!reportsCountResult.error && reportsCountResult.data) {
+            // Set reports data for summary cards (minimal data for counts)
+            setReports(reportsCountResult.data.map((r: any) => ({
+              id: r.id.toString(),
+              created_at: r.created_at || '',
+              description: '',
+              status: r.status,
+              severity: (r.severity || 'low') as 'low' | 'medium' | 'high' | 'urgent',
+              category: r.category,
+              reporter: r.reporter
+            })));
+            
+            // Calculate report categories for summary card
+            const categoryMap = new Map<string, ReportCategory>();
+            reportsCountResult.data.forEach((report: any) => {
+              if (report.category) {
+                const existing = categoryMap.get(report.category.id);
+                if (existing) {
+                  existing.count++;
+                } else {
+                  categoryMap.set(report.category.id, {
+                    id: report.category.id,
+                    name: report.category.name,
+                    count: 1
+                  });
+                }
+              }
+            });
+            setReportCategories(Array.from(categoryMap.values()));
+          }
+        } catch (error) {
+          console.error('Error loading reports count:', error);
+        }
+        
+        // Load exam summaries count for summary cards
+        try {
+          // Try to load from examination_summaries table first (same as tab loading)
+          const { data: examinationSummaries } = await supabase
+            .from('examination_summaries')
+            .select(`
+              examination_id,
+              total_marks,
+              obtained_marks,
+              percentage,
+              grade,
+              status,
+              examinations!inner(
+                id,
+                name,
+                exam_type,
+                status
+              )
+            `)
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+            .order('examination_id', { ascending: false });
+          
+          let filteredSummaries = examinationSummaries || [];
+          if (isStudent) {
+            filteredSummaries = filteredSummaries.filter(summary => {
+              const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+              return examination?.status === 'archived';
+            });
+          } else {
+            filteredSummaries = filteredSummaries.filter(summary => {
+              const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+              return examination?.status === 'archived' || examination?.status === 'published';
+            });
+          }
+          
+          if (filteredSummaries && filteredSummaries.length > 0) {
+            // Create minimal exam summaries from examination_summaries
+            const summaries = filteredSummaries.map(summary => {
+              const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+              return {
+                exam_id: summary.examination_id,
+                exam_name: examination?.name || `Exam ${summary.examination_id}`,
+                exam_type: examination?.exam_type || 'Examination',
+                total_subjects: 0, // Will be populated when tab is opened
+                total_marks: summary.total_marks || 0,
+                obtained_marks: summary.obtained_marks || 0,
+                percentage: summary.percentage || 0,
+                grade: summary.grade,
+                status: (summary.status as 'pass' | 'fail') || (summary.percentage >= 40 ? 'pass' as const : 'fail' as const),
+                subjects: []
+              } as ExamSummary;
+            });
+            
+            setExamSummaries(summaries);
+          } else {
+            // Fallback: Load from exam_results and calculate
+            const examResultsData = await examinationService.getExamResults({
+              student_id: studentId
+            }, schoolId);
+            
+            if (examResultsData && examResultsData.length > 0) {
+              // Get unique exam IDs
+              const examIds = Array.from(new Set(examResultsData.map((result: any) => result.exam_id)));
+              
+              // Fetch exam details with status filtering
+              const { data: examsData } = await supabase
+                .from('examinations')
+                .select('id, name, exam_type, status')
+                .in('id', examIds)
+                .eq('school_id', schoolId);
+              
+              // Filter exams by status
+              let filteredExams = examsData || [];
+              if (isStudent) {
+                filteredExams = filteredExams.filter(exam => exam.status === 'archived');
+              } else {
+                filteredExams = filteredExams.filter(exam => exam.status === 'archived' || exam.status === 'published');
+              }
+              
+              if (filteredExams.length > 0) {
+                const filteredExamIds = new Set(filteredExams.map(e => e.id));
+                const summaries = examIds
+                  .filter(examId => filteredExamIds.has(examId))
+                  .map(examId => {
+                    const exam = filteredExams.find(e => e.id === examId);
+                    const examResults = examResultsData.filter((r: any) => r.exam_id === examId);
+                    const totalMarks = examResults.reduce((sum: number, r: any) => sum + (r.max_marks || 0), 0);
+                    const obtainedMarks = examResults.reduce((sum: number, r: any) => sum + (r.obtained_marks || 0), 0);
+                    const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
+                    
+                    return {
+                      exam_id: examId,
+                      exam_name: exam?.name || 'Unknown',
+                      exam_type: exam?.exam_type || 'unknown',
+                      total_subjects: examResults.length,
+                      total_marks: totalMarks,
+                      obtained_marks: obtainedMarks,
+                      percentage: percentage,
+                      status: percentage >= 40 ? 'pass' as const : 'fail' as const,
+                      subjects: []
+                    } as ExamSummary;
+                  });
+                
+                setExamSummaries(summaries);
+              } else {
+                setExamSummaries([]);
+              }
+            } else {
+              setExamSummaries([]);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading exam summaries count:', error);
+          setExamSummaries([]);
+        }
+        
+        // Load test results count for summary cards
+        try {
+          // Fetch test results with test_records join (matching TestRecordMasterSheet pattern)
+          const { data: testResultsData } = await supabase
+            .from('test_results')
+            .select(`
+              id, 
+              test_id, 
+              student_id, 
+              session_id, 
+              obtained_marks, 
+              max_marks, 
+              percentage, 
+              grade, 
+              school_id, 
+              created_at, 
+              updated_at,
+              test_records!inner(
+                id,
+                name,
+                test_date,
+                subject_id,
+                passing_marks
+              )
+            `)
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId);
+          
+          if (testResultsData && testResultsData.length > 0) {
+            // Get unique subject IDs from test_records
+            const subjectIds = Array.from(new Set(
+              testResultsData
+                .map((r: any) => r.test_records?.subject_id)
+                .filter((id: any) => id != null)
+            ));
+            
+            // Fetch subjects separately (matching TestRecordMasterSheet pattern)
+            let subjectsMap = new Map();
+            if (subjectIds.length > 0) {
+              const { data: subjectsData } = await supabase
+                .from('subjects')
+                .select('id, name')
+                .in('id', subjectIds)
+                .eq('school_id', schoolId);
+              
+              if (subjectsData) {
+                subjectsData.forEach(subject => {
+                  subjectsMap.set(subject.id, subject);
+                });
+              }
+            }
+            
+            // Set minimal test results for count (with proper structure)
+            setTestResults(testResultsData.map((r: any) => ({
+              id: r.id,
+              test_id: r.test_id || 0,
+              student_id: r.student_id,
+              session_id: r.session_id || 0,
+              obtained_marks: r.obtained_marks || 0,
+              max_marks: r.max_marks || 0,
+              percentage: r.percentage || 0,
+              grade: r.grade || '',
+              school_id: r.school_id,
+              created_at: r.created_at || new Date().toISOString(),
+              updated_at: r.updated_at || new Date().toISOString(),
+              // Add test_records for compatibility with score calculation
+              test_records: r.test_records || { passing_marks: 40 } as any
+            })));
+            
+            // Calculate test summary data
+            const subjectMap = new Map<number, { name: string; obtained: number; total: number; count: number }>();
+            let totalObtained = 0;
+            let totalMax = 0;
+            
+            testResultsData.forEach((result: any) => {
+              const subjectId = result.test_records?.subject_id;
+              const subject = subjectsMap.get(subjectId);
+              const subjectName = subject?.name || 'Unknown';
+              const obtained = result.obtained_marks || 0;
+              const max = result.max_marks || 0;
+              
+              totalObtained += obtained;
+              totalMax += max;
+              
+              if (subjectId) {
+                const existing = subjectMap.get(subjectId);
+                if (existing) {
+                  existing.obtained += obtained;
+                  existing.total += max;
+                  existing.count += 1;
+                } else {
+                  subjectMap.set(subjectId, {
+                    name: subjectName,
+                    obtained,
+                    total: max,
+                    count: 1
+                  });
+                }
+              }
+            });
+            
+            const subjectSummaries = Array.from(subjectMap.entries()).map(([subjectId, data]) => ({
+              subject_id: subjectId,
+              subject_name: data.name,
+              obtained_marks: data.obtained,
+              total_marks: data.total,
+              percentage: data.total > 0 ? (data.obtained / data.total) * 100 : 0,
+              test_count: data.count
+            }));
+            
+            setTestSummaryData({
+              totalSubjects: subjectMap.size,
+              totalTests: testResultsData.length,
+              totalObtainedMarks: totalObtained,
+              totalMaxMarks: totalMax,
+              totalPercentage: totalMax > 0 ? (totalObtained / totalMax) * 100 : 0,
+              subjectSummaries
+            });
+          } else {
+            setTestResults([]);
+            setTestSummaryData({
+              totalSubjects: 0,
+              totalTests: 0,
+              totalObtainedMarks: 0,
+              totalMaxMarks: 0,
+              totalPercentage: 0,
+              subjectSummaries: []
+            });
+          }
+        } catch (error) {
+          console.error('Error loading test results count:', error);
+          setTestResults([]);
+          setTestSummaryData({
+            totalSubjects: 0,
+            totalTests: 0,
+            totalObtainedMarks: 0,
+            totalMaxMarks: 0,
+            totalPercentage: 0,
+            subjectSummaries: []
+          });
+        }
 
-        if (paymentError) throw paymentError;
+        setProgress(100);
+      } catch (error: any) {
+        console.error('Error fetching student data:', error);
+        showToast('Failed to load student data', 'error');
+      } finally {
+        const elapsed = Date.now() - start;
+        if (elapsed < minDuration) {
+          setTimeout(() => {
+            setLoading(false);
+            completeProgress();
+          }, minDuration - elapsed);
+        } else {
+          setLoading(false);
+          completeProgress();
+        }
+      }
+    };
 
-        // Calculate payment totals
-        const totalPaid = paymentData?.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) || 0;
-        const totalRemission = paymentData?.reduce((sum, payment) => sum + Number(payment.remission || 0), 0) || 0;
+    if (id) {
+      fetchStudentData();
+    }
+  }, [id, showToast, startProgress, setProgress, completeProgress]);
 
-        setFineDetails({
-          payments: paymentData || [],
-          totalPaid,
-          totalRemission
-        });
+  // Fetch homework diary entries when date changes (for students only)
+  useEffect(() => {
+    const fetchHomeworkDiary = async () => {
+      if (!isStudent || !student || !selectedHomeworkDate) return;
 
-        // Fetch reports with categories
-        setProgress(95);
-        const { data: reportsData, error: reportsError } = await supabase
+      try {
+        // Get school_id from student data if not directly available
+        let schoolId = (student as any).school_id;
+        if (!schoolId && id) {
+          const { data: studentData } = await supabase
+            .from('students')
+            .select('school_id')
+            .eq('id', id)
+            .single();
+          schoolId = studentData?.school_id;
+        }
+
+        if (!schoolId) {
+          console.warn('School ID not found for student');
+          return;
+        }
+
+        const selectedDateStr = selectedHomeworkDate.format('YYYY-MM-DD');
+        const homeworkResponse = await homeworkDiaryService.getHomeworkDiary(
+          {
+            class_id: student.class_id,
+            section_id: student.section_id,
+            homework_date: selectedDateStr
+          },
+          1,
+          50,
+          schoolId
+        );
+
+        setHomeworkDiaryEntries(homeworkResponse.data || []);
+      } catch (homeworkError) {
+        console.error('Error fetching homework diary:', homeworkError);
+        setHomeworkDiaryEntries([]);
+      }
+    };
+
+    fetchHomeworkDiary();
+  }, [isStudent, student, selectedHomeworkDate, id]);
+
+  // Calculate and update student score when attendance stats, reports, exam summaries, test results, or half leaves change
+  useEffect(() => {
+    const score = calculateStudentScore(attendanceStats, reports, examSummaries, testResults, halfLeavesMap.size);
+    setStudentScore(score);
+  }, [attendanceStats, reports, examSummaries, testResults, halfLeavesMap]);
+
+  // Compute visible tabs and map indices based on render settings
+  // Map tab keys to their original indices
+  const tabIndexMap: Record<string, number> = {
+    'profile_tab': 0,
+    'reports_tab': 1,
+    'examinations_tab': 2,
+    'test_records_tab': 3,
+    'attendance_tab': 4,
+    'fines_tab': 5,
+  };
+
+  const visibleTabs = useMemo(() => {
+    const tabs: Array<{ originalIndex: number; label: string; icon: React.ReactNode }> = [];
+
+    STUDENT_PROFILE_TABS.forEach((tabConfig) => {
+      // Check if tab should be visible based on render settings
+      const isVisible = isStudentTabVisible(renderSettings, tabConfig.key);
+      
+      // Fines tab is only for non-students
+      if (tabConfig.key === 'fines_tab' && isStudent) {
+        return; // Skip fines tab for students
+      }
+
+      if (isVisible) {
+        const originalIndex = tabIndexMap[tabConfig.key];
+        if (originalIndex !== undefined) {
+          tabs.push({
+            originalIndex,
+            label: tabConfig.label.replace(' Tab', ''), // Remove "Tab" suffix for display
+            icon: (
+              originalIndex === 0 ? <Person /> :
+              originalIndex === 1 ? <Assignment /> :
+              originalIndex === 2 ? <Quiz /> :
+              originalIndex === 3 ? <Assessment /> :
+              originalIndex === 4 ? <AttachMoney /> :
+              originalIndex === 5 ? <CalendarToday /> :
+              <Person />
+            )
+          });
+        }
+      }
+    });
+
+    return tabs;
+  }, [renderSettings, isStudent]);
+
+  // Map activeTab (visible index) to original tab index
+  const getOriginalTabIndex = useCallback((visibleIndex: number): number => {
+    return visibleTabs[visibleIndex]?.originalIndex ?? 0;
+  }, [visibleTabs]);
+
+  // Map original tab index to visible index
+  const getVisibleTabIndex = useCallback((originalIndex: number): number => {
+    return visibleTabs.findIndex(tab => tab.originalIndex === originalIndex);
+  }, [visibleTabs]);
+
+  // Adjust activeTab when tabs change
+  useEffect(() => {
+    if (visibleTabs.length > 0) {
+      const currentVisibleIndex = getVisibleTabIndex(activeTab);
+      if (currentVisibleIndex === -1 || currentVisibleIndex >= visibleTabs.length) {
+        // Current tab is hidden or invalid, switch to first visible tab
+        setActiveTab(visibleTabs[0].originalIndex);
+      }
+    }
+  }, [visibleTabs, getVisibleTabIndex, activeTab]);
+
+  // Lazy load tab-specific data when tab is accessed
+  useEffect(() => {
+    const loadTabData = async (tabIndex: number) => {
+      if (tabDataLoaded[tabIndex] || tabDataLoading[tabIndex] || !student || !id) return;
+
+      setTabDataLoading(prev => ({ ...prev, [tabIndex]: true }));
+
+      try {
+        const studentId = parseInt(id!);
+        const schoolId = (student as any).school_id;
+
+        switch (tabIndex) {
+          case 1: // Reports tab
+            const [reportsResult] = await Promise.all([
+              supabase
           .from('reports')
           .select(`
             *,
             category:report_categories(id, name),
+            reporter:staff!reports_reported_by_fkey(
+              id,
+              name
+            ),
             updates:reports_updates(
               id,
               report_id,
@@ -2824,12 +3947,13 @@ export const StudentProfile: React.FC = () => {
               )
             )
           `)
-          .eq('student_id', id)
-          .order('created_at', { ascending: false });
+                .eq('student_id', studentId)
+                .order('created_at', { ascending: false })
+            ]);
 
-        if (reportsError) throw reportsError;
+            if (reportsResult.error) throw reportsResult.error;
+            const reportsData = reportsResult.data;
         
-        // Sort updates by created_at in descending order
         const reportsWithSortedUpdates = reportsData?.map(report => ({
           ...report,
           updates: report.updates?.sort((a: ReportUpdate, b: ReportUpdate) => 
@@ -2839,7 +3963,6 @@ export const StudentProfile: React.FC = () => {
         
         setReports(reportsWithSortedUpdates);
 
-        // Calculate category counts
         const categoryMap = new Map<string, ReportCategory>();
         reportsData?.forEach(report => {
           if (report.category) {
@@ -2856,25 +3979,15 @@ export const StudentProfile: React.FC = () => {
           }
         });
         setReportCategories(Array.from(categoryMap.values()));
+            break;
 
-        // Fetch examination results
-        setProgress(90);
-        if (studentData) {
+          case 2: // Examinations tab
           try {
-            console.log('Fetching exam results for student:', parseInt(id!));
             const examResultsData = await examinationService.getExamResults({
-              student_id: parseInt(id!)
-            });
-            console.log('Exam results data:', examResultsData);
-            
-            // Check if we have any exam results at all
-            if (!examResultsData || examResultsData.length === 0) {
-              console.log('No exam results found for this student');
-              setExamSummaries([]);
-              return;
-            }
-            
-            // Fetch student details for each exam result
+                student_id: studentId
+              });
+              
+              if (examResultsData && examResultsData.length > 0) {
             const enrichedExamResults = await Promise.all(
               examResultsData.map(async (result) => {
                 try {
@@ -2902,11 +4015,7 @@ export const StudentProfile: React.FC = () => {
             
             setExamResults(enrichedExamResults);
             
-            // Fetch examination summaries
-            try {
-              console.log('Fetching examination summaries for student:', parseInt(id!), 'school:', studentData.school_id);
-              
-              const { data: examinationSummaries, error: summariesError } = await supabase
+                const { data: examinationSummaries } = await supabase
                 .from('examination_summaries')
                 .select(`
                   examination_id,
@@ -2922,24 +4031,30 @@ export const StudentProfile: React.FC = () => {
                   examinations!inner(
                     id,
                     name,
-                    exam_type
+                    exam_type,
+                    status
                   )
                 `)
-                .eq('student_id', parseInt(id!))
-                .eq('school_id', studentData.school_id)
+                  .eq('student_id', studentId)
+                  .eq('school_id', schoolId)
                 .order('examination_id', { ascending: false });
               
-              console.log('Examination summaries query result:', { examinationSummaries, summariesError });
-              
-              if (summariesError) {
-                console.error('Error fetching examination summaries:', summariesError);
+              let filteredSummaries = examinationSummaries || [];
+              if (isStudent) {
+                filteredSummaries = filteredSummaries.filter(summary => {
+                  const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+                  return examination?.status === 'archived';
+                });
+              } else {
+                filteredSummaries = filteredSummaries.filter(summary => {
+                  const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+                  return examination?.status === 'archived' || examination?.status === 'published';
+                });
               }
               
-              if (examinationSummaries && examinationSummaries.length > 0) {
-                // Create exam summaries from examination_summaries table
+              if (filteredSummaries && filteredSummaries.length > 0) {
                 const examSummariesData = await Promise.all(
-                  examinationSummaries.map(async (summary) => {
-                    // Fetch subject-wise results for this exam
+                  filteredSummaries.map(async (summary) => {
                     const { data: subjectResults } = await supabase
                       .from('exam_results')
                       .select(`
@@ -2950,8 +4065,8 @@ export const StudentProfile: React.FC = () => {
                         )
                       `)
                       .eq('exam_id', summary.examination_id)
-                      .eq('student_id', parseInt(id!))
-                      .eq('school_id', studentData.school_id);
+                        .eq('student_id', studentId)
+                        .eq('school_id', schoolId);
                     
                     const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
                     return {
@@ -2975,25 +4090,29 @@ export const StudentProfile: React.FC = () => {
                 
                 setExamSummaries(examSummariesData);
               } else {
-                console.log('No examination summaries found, falling back to exam_results calculation');
-                // Fallback: Calculate summaries from exam_results if master sheets are empty
+                  // Fallback calculation
             const examIds = Array.from(new Set(enrichedExamResults.map(result => result.exam_id)));
             const examDetails = new Map();
             
-                // Fetch examination details
             for (const examId of examIds) {
               try {
                 const exam = await examinationService.getExaminationById(examId);
-                examDetails.set(examId, exam);
+                if (exam) {
+                  if (isStudent) {
+                          if (exam.status === 'archived') examDetails.set(examId, exam);
+                  } else {
+                          if (exam.status === 'archived' || exam.status === 'published') examDetails.set(examId, exam);
+                  }
+                }
               } catch (error) {
                 console.warn(`Failed to fetch exam ${examId}:`, error);
               }
             }
             
-                // Create exam summaries from exam_results
             const examMap = new Map<number, ExamSummary>();
-            
             enrichedExamResults.forEach(result => {
+                    if (!examDetails.has(result.exam_id)) return;
+              
               if (!examMap.has(result.exam_id)) {
                 const exam = examDetails.get(result.exam_id);
                 examMap.set(result.exam_id, {
@@ -3016,7 +4135,6 @@ export const StudentProfile: React.FC = () => {
               exam.obtained_marks += result.obtained_marks;
             });
             
-            // Calculate percentages and status for each exam
             examMap.forEach(exam => {
               exam.percentage = exam.total_marks > 0 ? (exam.obtained_marks / exam.total_marks) * 100 : 0;
                   exam.status = exam.percentage >= 33 ? 'pass' : 'fail';
@@ -3024,87 +4142,95 @@ export const StudentProfile: React.FC = () => {
             
             setExamSummaries(Array.from(examMap.values()));
               }
-            } catch (error) {
-              console.warn('Failed to fetch examination summaries:', error);
+              } else {
               setExamSummaries([]);
             }
           } catch (examError) {
             console.error('Error fetching examination results:', examError);
-            // Don't throw error, just log it as examination data is optional
-          }
+              setExamSummaries([]);
+            }
+            break;
 
-          // Fetch sessions
-          try {
-            const { data: sessionsData } = await supabase
+          case 3: // Test Records tab
+            const [sessionsResult, testResultsResult] = await Promise.all([
+              supabase
               .from('sessions')
               .select('id, name, start_date, end_date, is_active')
-              .eq('school_id', studentData.school_id)
-              .order('start_date', { ascending: false });
-            
-            if (sessionsData && sessionsData.length > 0) {
-              setSessions(sessionsData);
-              // Set active session as default
-              const activeSession = sessionsData.find(s => s.is_active);
+                .eq('school_id', schoolId)
+                .order('start_date', { ascending: false }),
+              supabase
+              .from('test_results')
+              .select(`
+                *,
+                test_records!inner(
+                  passing_marks
+                )
+              `)
+                .eq('student_id', studentId)
+                .eq('school_id', schoolId)
+                .order('created_at', { ascending: false })
+            ]);
+
+            if (sessionsResult.data && sessionsResult.data.length > 0) {
+              setSessions(sessionsResult.data);
+              const activeSession = sessionsResult.data.find(s => s.is_active);
               if (activeSession) {
                 setSelectedTestSession(activeSession.id);
-              } else {
-                setSelectedTestSession(sessionsData[0].id);
+        } else {
+                setSelectedTestSession(sessionsResult.data[0].id);
               }
             }
-          } catch (sessionError) {
-            console.error('Error fetching sessions:', sessionError);
-          }
 
-          // Fetch test records
-          try {
-            const { data: testResultsData } = await supabase
-              .from('test_results')
-              .select('*')
-              .eq('student_id', parseInt(id!))
-              .eq('school_id', studentData.school_id)
-              .order('created_at', { ascending: false });
-            
-            setTestResults(testResultsData || []);
-          } catch (testError) {
-            console.error('Error fetching test records:', testError);
-            // Don't throw error, just log it as test data is optional
-          }
+            if (testResultsResult.data) {
+              setTestResults(testResultsResult.data);
+            }
+            break;
+
+          case 5: // Fines tab
+            // Fine history is already loaded, just need payment data
+            const [paymentDataResult] = await Promise.all([
+              supabase
+                .from('fine_payments')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('payment_date', { ascending: false })
+            ]);
+
+            if (paymentDataResult.error) throw paymentDataResult.error;
+            const paymentData = paymentDataResult.data;
+
+            const totalPaid = paymentData?.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) || 0;
+            const totalRemission = paymentData?.reduce((sum, payment) => sum + Number(payment.remission || 0), 0) || 0;
+
+            setFineDetails({
+              payments: paymentData || [],
+              totalPaid,
+              totalRemission
+            });
+            break;
         }
 
-        setProgress(100);
+        setTabDataLoaded(prev => ({ ...prev, [tabIndex]: true }));
       } catch (error: any) {
-        console.error('Error fetching student data:', error);
-        showToast('Failed to load student data', 'error');
+        console.error(`Error loading tab ${tabIndex} data:`, error);
+        showToast(`Failed to load tab data`, 'error');
       } finally {
-        const elapsed = Date.now() - start;
-        if (elapsed < minDuration) {
-          setTimeout(() => {
-            setLoading(false);
-            completeProgress();
-          }, minDuration - elapsed);
-        } else {
-          setLoading(false);
-          completeProgress();
-        }
+        setTabDataLoading(prev => ({ ...prev, [tabIndex]: false }));
       }
     };
 
-    if (id) {
-      fetchStudentData();
+    const originalTabIndex = getOriginalTabIndex(activeTab);
+    if (originalTabIndex !== 0 && originalTabIndex !== 4) { // Don't load for Profile (0) or Attendance (4) tabs
+      loadTabData(originalTabIndex);
     }
-  }, [id, showToast, startProgress, setProgress, completeProgress]);
+  }, [activeTab, student, id, tabDataLoaded, tabDataLoading, isStudent, showToast, getOriginalTabIndex]);
 
-  // Calculate and update student score when attendance stats or reports change
-  useEffect(() => {
-    if (attendanceStats || reports.length > 0) {
-      const score = calculateStudentScore(attendanceStats, reports);
-      setStudentScore(score);
-    }
-  }, [attendanceStats, reports]);
-
+  // Attendance percentage: Present and Late count as attended, Absent and Leave count as not attended
   const attendancePercentage = useMemo(() => {
-    if (!attendanceStats?.total) return 0;
-    return Math.round((attendanceStats.present / attendanceStats.total) * 100);
+    if (!attendanceStats?.total || attendanceStats.total === 0) return 0;
+    // Present + Late = attended days
+    const attendedDays = attendanceStats.present + attendanceStats.late;
+    return Math.round((attendedDays / attendanceStats.total) * 100);
   }, [attendanceStats]);
 
   const totalFines = useMemo(() => {
@@ -3112,6 +4238,38 @@ export const StudentProfile: React.FC = () => {
       return total + (record.fine_amount || 0);
     }, 0);
   }, [fineHistory]);
+
+  // Memoize filtered students for reports/exams to avoid recalculation
+  const activeReportsCount = useMemo(() => {
+    return reports.filter(r => ['pending', 'in_review', 'in_progress'].includes(r.status)).length;
+  }, [reports]);
+
+  const resolvedReportsCount = useMemo(() => {
+    return reports.filter(r => r.status === 'resolved').length;
+  }, [reports]);
+
+  const dismissedReportsCount = useMemo(() => {
+    return reports.filter(r => r.status === 'dismissed').length;
+  }, [reports]);
+
+  // Memoize exam calculations
+  const averageExamPercentage = useMemo(() => {
+    if (examSummaries.length === 0) return 0;
+    return Math.round(examSummaries.reduce((sum, exam) => sum + exam.percentage, 0) / examSummaries.length);
+  }, [examSummaries]);
+
+  const passedExamsCount = useMemo(() => {
+    return examSummaries.filter(exam => exam.status === 'pass').length;
+  }, [examSummaries]);
+
+  const failedExamsCount = useMemo(() => {
+    return examSummaries.filter(exam => exam.status === 'fail').length;
+  }, [examSummaries]);
+
+  const passRate = useMemo(() => {
+    if (examSummaries.length === 0) return 0;
+    return Math.round((passedExamsCount / examSummaries.length) * 100);
+  }, [examSummaries, passedExamsCount]);
 
   const formatStatus = (status: string | undefined) => {
     if (!status) return 'Unknown';
@@ -3514,27 +4672,37 @@ export const StudentProfile: React.FC = () => {
                       color: 'warning' as ColorKey
                     },
                     { 
-                      label: 'Absent', 
-                      value: attendanceStats?.absent || 0,
+                      label: 'Absent / Leave', 
+                      value: (attendanceStats?.absent || 0) + (attendanceStats?.leave || 0),
                       icon: <Cancel />,
-                      color: 'error' as ColorKey
+                      color: 'error' as ColorKey,
+                      showSeparateCounts: true,
+                      absentCount: attendanceStats?.absent || 0,
+                      leaveCount: attendanceStats?.leave || 0
                     },
                     { 
-                      label: 'Leave', 
-                      value: attendanceStats?.leave || 0,
-                      icon: <EventBusy />,
-                      color: 'info' as ColorKey
+                      label: 'Half Leaves', 
+                      value: halfLeavesMap.size,
+                      icon: <AccessTime />,
+                      color: 'secondary' as ColorKey,
+                      customColor: '#ec4899'
                     }
-                  ] as StatItem[]).map((stat, index) => (
+                  ] as any[]).map((stat, index) => (
                     <Grid item xs={6} key={index}>
                       <Box sx={{
                         p: 1.5,
                         borderRadius: 1,
                         border: '1px solid',
-                        borderColor: theme => alpha(theme.palette[stat.color].main, 0.2),
+                        borderColor: stat.customColor 
+                          ? alpha(stat.customColor, 0.2)
+                          : theme => {
+                            const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
+                            return alpha(paletteColor?.main || theme.palette.primary.main, 0.2);
+                          },
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1
+                        gap: 1,
+                        position: 'relative'
                       }}>
                         <Box sx={{
                           width: 32,
@@ -3543,19 +4711,48 @@ export const StudentProfile: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          bgcolor: theme => alpha(theme.palette[stat.color].main, 0.1),
-                          color: `${stat.color}.main`
+                          bgcolor: stat.customColor 
+                            ? alpha(stat.customColor, 0.1)
+                            : theme => {
+                              const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
+                              return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
+                            },
+                          color: stat.customColor || `${stat.color}.main`,
+                          flexShrink: 0
                         }}>
                           {stat.icon}
                         </Box>
-                        <Box>
+                        <Box sx={{
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          textAlign: 'center'
+                        }}>
                           <Typography variant="h6" sx={{ 
-                            color: `${stat.color}.main`,
+                            color: stat.customColor || `${stat.color}.main`,
                             fontWeight: 600,
                             lineHeight: 1,
-                            fontSize: '1.25rem'
+                            fontSize: '1.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            justifyContent: 'center'
                           }}>
-                            {stat.value}
+                            {stat.showSeparateCounts ? (
+                              <>
+                                <Box component="span" sx={{ color: theme => theme.palette.error.main }}>
+                                  {stat.absentCount}
+                                </Box>
+                                <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.9em' }}>+</Box>
+                                <Box component="span" sx={{ color: theme => theme.palette.info.main }}>
+                                  {stat.leaveCount}
+                                </Box>
+                              </>
+                            ) : (
+                              stat.value
+                            )}
                           </Typography>
                           <Typography variant="caption" sx={{ 
                             color: 'text.secondary',
@@ -3573,10 +4770,10 @@ export const StudentProfile: React.FC = () => {
             </StatCard>
           </Grid>
 
-          {/* Fines Card */}
+          {/* Test Records Summary Card */}
           <Grid item xs={12} sm={6} md={3}>
             <StatCard sx={{
-              p: 3,
+              p: 1,
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
@@ -3598,359 +4795,952 @@ export const StudentProfile: React.FC = () => {
               }
             }}>
               {/* Main Content */}
-              <Box sx={{ position: 'relative', zIndex: 1 }}>
-                {/* Header with Total Amount */}
+              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Header with Title and Average Score */}
                 <Box sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 2,
-                  mb: 3
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  pb: 1.5,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
                 }}>
-                  <Box sx={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: theme => alpha(theme.palette.error.main, 0.1),
-                    color: 'error.main'
+                  <Typography variant="caption" sx={{ 
+                    color: 'text.secondary',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
                   }}>
-                    <AttachMoney sx={{ fontSize: 32 }} />
-                  </Box>
-                  <Box>
-                    <Typography variant="h4" sx={{ 
-                      color: 'error.main',
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      mb: 0.5
-                    }}>
-                      Rs. {totalFines - (fineDetails?.totalPaid || 0) - (fineDetails?.totalRemission || 0)}
-                    </Typography>
-                    <Typography variant="caption" sx={{ 
-                      color: 'text.secondary',
-                      fontSize: '0.75rem',
-                      letterSpacing: '0.5px'
-                    }}>
-                      Remaining Dues
-                    </Typography>
-                  </Box>
+                    Test Records
+                  </Typography>
+                  <Typography variant="h6" sx={{ 
+                    color: theme => {
+                      const percentage = testSummaryData.totalPercentage;
+                      if (percentage >= 80) return theme.palette.success.main;
+                      if (percentage >= 60) return theme.palette.warning.main;
+                      if (percentage >= 40) return theme.palette.info.main;
+                      return theme.palette.error.main;
+                    },
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    fontSize: '1.5rem'
+                  }}>
+                    {Math.round(testSummaryData.totalPercentage)}%
+                  </Typography>
                 </Box>
 
-                {/* Payment Progress Bar */}
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{
-                    height: 8,
-                    bgcolor: theme => alpha(theme.palette.divider, 0.1),
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                    position: 'relative'
-                  }}>
-                    {/* Paid Amount */}
-                    <Box sx={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      height: '100%',
-                      width: `${(fineDetails?.totalPaid || 0) / totalFines * 100}%`,
-                      bgcolor: 'success.main',
-                      transition: 'width 0.5s ease-out'
-                    }} />
-                    {/* Remission Amount */}
-                    <Box sx={{
-                      position: 'absolute',
-                      left: `${(fineDetails?.totalPaid || 0) / totalFines * 100}%`,
-                      top: 0,
-                      height: '100%',
-                      width: `${(fineDetails?.totalRemission || 0) / totalFines * 100}%`,
-                      bgcolor: 'info.main',
-                      transition: 'width 0.5s ease-out'
-                    }} />
-                  </Box>
-                </Box>
-
-                {/* Payment Details */}
-                <Stack spacing={2}>
-                  {([
+                {/* Compact Stats Grid */}
+                <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                  {[
                     {
-                      label: 'Total Fines',
-                      value: totalFines,
-                      icon: <AttachMoney />,
-                      color: 'error' as ColorKey
-                    },
-                    {
-                      label: 'Paid',
-                      value: fineDetails?.totalPaid || 0,
-                      icon: <CheckCircle />,
-                      color: 'success' as ColorKey
-                    },
-                    {
-                      label: 'Remission',
-                      value: fineDetails?.totalRemission || 0,
-                      icon: <HistoryIcon />,
+                      label: 'Tests',
+                      value: testSummaryData.totalTests,
+                      icon: <Assessment sx={{ fontSize: 16 }} />,
                       color: 'info' as ColorKey
+                    },
+                    {
+                      label: 'Subjects',
+                      value: testSummaryData.totalSubjects,
+                      icon: <Quiz sx={{ fontSize: 16 }} />,
+                      color: 'primary' as ColorKey
+                    },
+                    {
+                      label: 'Marks',
+                      value: `${testSummaryData.totalObtainedMarks}/${testSummaryData.totalMaxMarks}`,
+                      icon: <Grade sx={{ fontSize: 16 }} />,
+                      color: 'success' as ColorKey
                     }
-                  ] as StatItem[]).map((item, index) => (
-                    <Box key={index} sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.5,
-                      p: 1.5,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: theme => alpha(theme.palette[item.color].main, 0.2),
-                    }}>
+                  ].map((item, index) => (
+                    <Grid item xs={4} key={index}>
                       <Box sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '10px',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        bgcolor: theme => alpha(theme.palette[item.color].main, 0.1),
-                        color: `${item.color}.main`
+                        p: 1,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: theme => {
+                          const paletteColor = (theme.palette as any)[item.color] as { main: string } | undefined;
+                          return alpha(paletteColor?.main || theme.palette.primary.main, 0.2);
+                        },
+                        bgcolor: theme => {
+                          const paletteColor = (theme.palette as any)[item.color] as { main: string } | undefined;
+                          return alpha(paletteColor?.main || theme.palette.primary.main, 0.05);
+                        },
+                        textAlign: 'center',
+                        height: '100%'
                       }}>
-                        {item.icon}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
+                        <Box sx={{
+                          color: `${item.color}.main`,
+                          mb: 0.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {item.icon}
+                        </Box>
+                        <Typography variant="body2" sx={{ 
+                          color: `${item.color}.main`,
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          lineHeight: 1.2,
+                          mb: 0.25
+                        }}>
+                          {item.value}
+                        </Typography>
                         <Typography variant="caption" sx={{ 
                           color: 'text.secondary',
-                          display: 'block',
-                          fontSize: '0.75rem',
-                          mb: 0.5
+                          fontSize: '0.65rem',
+                          lineHeight: 1
                         }}>
                           {item.label}
                         </Typography>
-                        <Typography variant="subtitle1" sx={{ 
-                          color: `${item.color}.main`,
-                          fontWeight: 600
-                        }}>
-                          Rs. {item.value}
-                        </Typography>
                       </Box>
-                      <Typography variant="caption" sx={{ 
-                        color: `${item.color}.main`,
-                        fontWeight: 500
-                      }}>
-                        {Math.round((item.value / totalFines) * 100)}%
-                      </Typography>
-                    </Box>
+                    </Grid>
                   ))}
-                </Stack>
+                </Grid>
+
+                {/* Subject-wise Summary */}
+                {testSummaryData.subjectSummaries.length > 0 && (
+                  <Box sx={{ 
+                    flex: 1, 
+                    minHeight: 0, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    pt: 1.5
+                  }}>
+                    <Typography variant="caption" sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      mb: 1,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Subject Summary
+                    </Typography>
+                    <Box sx={{ 
+                      flex: 1,
+                      overflowY: 'auto',
+                      minHeight: 0,
+                      pr: 0,
+                      '&::-webkit-scrollbar': {
+                        width: '4px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: theme => alpha(theme.palette.text.secondary, 0.2),
+                        borderRadius: '2px',
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: theme => alpha(theme.palette.text.secondary, 0.3),
+                      }
+                    }}>
+                      <Grid container spacing={1}>
+                        {testSummaryData.subjectSummaries.map((subject) => (
+                          <Grid item xs={6} key={subject.subject_id}>
+                            <Box sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              p: 1.25,
+                              borderRadius: 1,
+                              bgcolor: theme => alpha(theme.palette.info.main, 0.05),
+                              border: '1px solid',
+                              borderColor: theme => alpha(theme.palette.info.main, 0.1),
+                              transition: 'all 0.2s ease',
+                              height: '100%',
+                              '&:hover': {
+                                bgcolor: theme => alpha(theme.palette.info.main, 0.08),
+                                borderColor: theme => alpha(theme.palette.info.main, 0.2),
+                                transform: 'translateY(-1px)',
+                              }
+                            }}>
+                              <Typography variant="caption" sx={{ 
+                                color: 'text.primary',
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flex: 1,
+                                minWidth: 0,
+                                mr: 1
+                              }}>
+                                {subject.subject_name} ({subject.test_count})
+                              </Typography>
+                              <Typography variant="caption" sx={{ 
+                                color: 'info.main',
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
+                              }}>
+                                {subject.obtained_marks}/{subject.total_marks} - {subject.percentage.toFixed(1)}%
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  </Box>
+                )}
               </Box>
             </StatCard>
           </Grid>
 
-          {/* Reports Card */}
-          <Grid item xs={12} sm={6} md={3}>
-            <ReportsCard>
-              <ReportsHeader>
-                <Box className="header-content">
-                  <Box className="icon-wrapper">
-                    <Assignment />
-                  </Box>
-                  <Box>
-                    <Typography variant="h6" fontWeight={600}>
-                      Reports
+          {/* Test Records Summary Card - Duplicate */}
+          {isStudentSummaryCardVisible(renderSettings, 'test_records_summary_card_duplicate') && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{
+                p: 1,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: theme => `
+                    linear-gradient(135deg, 
+                      ${alpha(theme.palette.background.paper, 0.95)} 0%,
+                      ${alpha(theme.palette.background.paper, 0.85)} 100%)
+                  `,
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                }
+              }}>
+                {/* Main Content */}
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  {/* Header with Title and Average Score */}
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 2,
+                    pb: 1.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
+                  }}>
+                    <Typography variant="caption" sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Test Records
                     </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                      Total Reports: {reportCategories.length}
+                    <Typography variant="h6" sx={{ 
+                      color: theme => {
+                        const percentage = testSummaryData.totalPercentage;
+                        if (percentage >= 80) return theme.palette.success.main;
+                        if (percentage >= 60) return theme.palette.warning.main;
+                        if (percentage >= 40) return theme.palette.info.main;
+                        return theme.palette.error.main;
+                      },
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      fontSize: '1.5rem'
+                    }}>
+                      {Math.round(testSummaryData.totalPercentage)}%
                     </Typography>
                   </Box>
-                </Box>
-              </ReportsHeader>
 
-              <ReportsList>
-                {reportCategories.length === 0 ? (
-                  <EmptyReportState>
-                    <Box className="emoji">🌟</Box>
-                    <Typography className="message">
-                      Well done! No reports yet.
-                      <br />
-                      Keep up the good work!
-                    </Typography>
-                  </EmptyReportState>
-                ) : (
-                  <Box className="scroll-container">
-                    {reportCategories.map(category => (
-                      <ReportItem key={category.id}>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1.5,
-                          flex: 1,
-                          minWidth: 0
+                  {/* Compact Stats Grid */}
+                  <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                    {[
+                      {
+                        label: 'Tests',
+                        value: testSummaryData.totalTests,
+                        icon: <Assessment sx={{ fontSize: 16 }} />,
+                        color: 'info' as ColorKey
+                      },
+                      {
+                        label: 'Subjects',
+                        value: testSummaryData.totalSubjects,
+                        icon: <Quiz sx={{ fontSize: 16 }} />,
+                        color: 'primary' as ColorKey
+                      },
+                      {
+                        label: 'Marks',
+                        value: `${testSummaryData.totalObtainedMarks}/${testSummaryData.totalMaxMarks}`,
+                        icon: <Grade sx={{ fontSize: 16 }} />,
+                        color: 'success' as ColorKey
+                      }
+                    ].map((item, index) => (
+                      <Grid item xs={4} key={`test-card-duplicate-${index}`}>
+                        <Box sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          p: 1,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme => {
+                            const paletteColor = (theme.palette as any)[item.color] as { main: string } | undefined;
+                            return alpha(paletteColor?.main || theme.palette.primary.main, 0.2);
+                          },
+                          bgcolor: theme => {
+                            const paletteColor = (theme.palette as any)[item.color] as { main: string } | undefined;
+                            return alpha(paletteColor?.main || theme.palette.primary.main, 0.05);
+                          },
+                          textAlign: 'center',
+                          height: '100%'
                         }}>
                           <Box sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: '8px',
+                            color: `${item.color}.main`,
+                            mb: 0.5,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
-                            color: 'primary.main'
+                            justifyContent: 'center'
                           }}>
-                            <Assignment sx={{ fontSize: 18 }} />
+                            {item.icon}
                           </Box>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              color: 'text.primary',
-                              fontWeight: 500,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {category.name}
+                          <Typography variant="body2" sx={{ 
+                            color: `${item.color}.main`,
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
+                            lineHeight: 1.2,
+                            mb: 0.25
+                          }}>
+                            {item.value}
+                          </Typography>
+                          <Typography variant="caption" sx={{ 
+                            color: 'text.secondary',
+                            fontSize: '0.65rem',
+                            lineHeight: 1
+                          }}>
+                            {item.label}
                           </Typography>
                         </Box>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1 
-                        }}>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              color: 'primary.main',
-                              fontWeight: 500
-                            }}
-                          >
-                            {category.count || 1}
-                          </Typography>
-                          <ArrowForwardIcon sx={{ 
-                            fontSize: 18, 
-                            color: 'primary.main',
-                            opacity: 0.8
-                          }} />
-                        </Box>
-                      </ReportItem>
+                      </Grid>
                     ))}
-                  </Box>
-                )}
-              </ReportsList>
-            </ReportsCard>
-          </Grid>
+                  </Grid>
 
-          {/* Future Card (Placeholder) */}
+                  {/* Subject-wise Summary */}
+                  {testSummaryData.subjectSummaries.length > 0 && (
+                    <Box sx={{ 
+                      flex: 1, 
+                      minHeight: 0, 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      borderTop: '1px solid',
+                      borderColor: 'divider',
+                      pt: 1.5
+                    }}>
+                      <Typography variant="caption" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        mb: 1,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Subject Summary
+                      </Typography>
+                      <Box sx={{ 
+                        flex: 1,
+                        overflowY: 'auto',
+                        minHeight: 0,
+                        pr: 0,
+                        '&::-webkit-scrollbar': {
+                          width: '4px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                          background: 'transparent',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          background: theme => alpha(theme.palette.text.secondary, 0.2),
+                          borderRadius: '2px',
+                        },
+                        '&::-webkit-scrollbar-thumb:hover': {
+                          background: theme => alpha(theme.palette.text.secondary, 0.3),
+                        }
+                      }}>
+                        <Grid container spacing={1}>
+                          {testSummaryData.subjectSummaries.map((subject) => (
+                            <Grid item xs={6} key={`test-card-duplicate-subject-${subject.subject_id}`}>
+                              <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                p: 1.25,
+                                borderRadius: 1,
+                                bgcolor: theme => alpha(theme.palette.info.main, 0.05),
+                                border: '1px solid',
+                                borderColor: theme => alpha(theme.palette.info.main, 0.1),
+                                transition: 'all 0.2s ease',
+                                height: '100%',
+                                '&:hover': {
+                                  bgcolor: theme => alpha(theme.palette.info.main, 0.08),
+                                  borderColor: theme => alpha(theme.palette.info.main, 0.2),
+                                  transform: 'translateY(-1px)',
+                                }
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: 'text.primary',
+                                  fontSize: '0.6rem',
+                                  fontWeight: 600,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flex: 1,
+                                  minWidth: 0,
+                                  mr: 1
+                                }}>
+                                  {subject.subject_name} ({subject.test_count})
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: 'info.main',
+                                  fontSize: '0.6rem',
+                                  fontWeight: 600,
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0
+                                }}>
+                                  {subject.obtained_marks}/{subject.total_marks} - {subject.percentage.toFixed(1)}%
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              </StatCard>
+            </Grid>
+          )}
+
+          {/* Examinations Summary Card */}
           <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{ 
+            <StatCard sx={{
+              p: 1,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
               position: 'relative',
-              overflow: 'hidden',
-              '&::after': {
+              '&::before': {
                 content: '""',
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                right: 0,
-                bottom: 0,
-                background: `linear-gradient(45deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
-                zIndex: 0
+                width: '100%',
+                height: '100%',
+                background: theme => `
+                  linear-gradient(135deg, 
+                    ${alpha(theme.palette.background.paper, 0.95)} 0%,
+                    ${alpha(theme.palette.background.paper, 0.85)} 100%)
+                `,
+                borderRadius: 'inherit',
+                zIndex: 0,
               }
             }}>
-              <Box sx={{ position: 'relative', zIndex: 1 }}>
-                <School sx={{ 
-                  fontSize: 40, 
-                  color: 'secondary.main',
-                  opacity: 0.2,
-                  mb: 1 
-                }} />
-                <Typography variant="h5" sx={{ color: 'secondary.main' }} fontWeight="600">
-                  Coming Soon
-                </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                  Future Features
-                </Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 1, 
-                  flexWrap: 'wrap',
-                  justifyContent: 'center'
+              {/* Main Content */}
+              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Header with Title and Average Score */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                  pb: 1.5,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
                 }}>
-                  <Chip
-                    size="small"
-                    label="Stay Tuned"
-                    sx={{ 
-                      bgcolor: alpha(theme.palette.secondary.main, 0.1), 
-                      color: 'secondary.main'
-                    }}
-                  />
+                  <Typography variant="caption" sx={{ 
+                    color: 'text.secondary',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Examinations
+                  </Typography>
+                  <Typography variant="h6" sx={{ 
+                    color: theme => {
+                      const percentage = averageExamPercentage;
+                      if (percentage >= 80) return theme.palette.success.main;
+                      if (percentage >= 60) return theme.palette.warning.main;
+                      if (percentage >= 40) return theme.palette.info.main;
+                      return theme.palette.error.main;
+                    },
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    fontSize: '1.5rem'
+                  }}>
+                    {averageExamPercentage}%
+                  </Typography>
                 </Box>
+
+                {/* Compact Stats Grid */}
+                <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                  {[
+                    {
+                      label: 'Exams',
+                      value: examSummaries.length,
+                      icon: <Quiz sx={{ fontSize: 16 }} />,
+                      color: 'info' as ColorKey
+                    },
+                    {
+                      label: 'Passed',
+                      value: passedExamsCount,
+                      icon: <CheckCircle sx={{ fontSize: 16 }} />,
+                      color: 'success' as ColorKey
+                    },
+                    {
+                      label: 'Failed',
+                      value: failedExamsCount,
+                      icon: <Cancel sx={{ fontSize: 16 }} />,
+                      color: 'error' as ColorKey
+                    }
+                  ].map((item, index) => (
+                    <Grid item xs={4} key={`exam-card-stats-${index}`}>
+                      <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 1,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: theme => {
+                          const paletteColor = (theme.palette as any)[item.color] as { main: string } | undefined;
+                          return alpha(paletteColor?.main || theme.palette.primary.main, 0.2);
+                        },
+                        bgcolor: theme => {
+                          const paletteColor = (theme.palette as any)[item.color] as { main: string } | undefined;
+                          return alpha(paletteColor?.main || theme.palette.primary.main, 0.05);
+                        },
+                        textAlign: 'center',
+                        height: '100%'
+                      }}>
+                        <Box sx={{
+                          color: `${item.color}.main`,
+                          mb: 0.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {item.icon}
+                        </Box>
+                        <Typography variant="body2" sx={{ 
+                          color: `${item.color}.main`,
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          lineHeight: 1.2,
+                          mb: 0.25
+                        }}>
+                          {item.value}
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          color: 'text.secondary',
+                          fontSize: '0.65rem',
+                          lineHeight: 1
+                        }}>
+                          {item.label}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                {/* Exam-wise Summary */}
+                {examSummaries.length > 0 && (
+                  <Box sx={{ 
+                    flex: '1 !important', 
+                    minHeight: '0 !important', 
+                    display: 'flex !important', 
+                    flexDirection: 'column !important',
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    pt: '12px !important',
+                    width: '100% !important',
+                    boxSizing: 'border-box !important'
+                  }}>
+                    <Typography variant="caption" sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      mb: 1,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Exam Summary
+                    </Typography>
+                    <Box sx={{ 
+                      flex: 1,
+                      overflowY: 'auto',
+                      minHeight: 0,
+                      pr: '0 !important',
+                      '&::-webkit-scrollbar': {
+                        width: '4px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: theme => alpha(theme.palette.text.secondary, 0.2),
+                        borderRadius: '2px',
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: theme => alpha(theme.palette.text.secondary, 0.3),
+                      }
+                    }}>
+                      <Grid container spacing={1} sx={{ 
+                        margin: '0 !important',
+                        width: '100% !important',
+                        '& > .MuiGrid-item': {
+                          padding: '0 !important',
+                          margin: '0 !important'
+                        }
+                      }}>
+                        {examSummaries.map((exam) => (
+                          <Grid item xs={12} key={exam.exam_id} sx={{ 
+                            padding: '0 !important',
+                            margin: '0 !important',
+                            width: '100% !important'
+                          }}>
+                            <Box sx={{
+                              display: 'flex !important',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              p: '10px !important',
+                              borderRadius: '4px !important',
+                              bgcolor: theme => alpha(theme.palette.info.main, 0.05),
+                              border: '1px solid',
+                              borderColor: theme => alpha(theme.palette.info.main, 0.1),
+                              transition: 'all 0.2s ease',
+                              height: '100%',
+                              width: '100% !important',
+                              boxSizing: 'border-box !important',
+                              '&:hover': {
+                                bgcolor: theme => alpha(theme.palette.info.main, 0.08),
+                                borderColor: theme => alpha(theme.palette.info.main, 0.2),
+                                transform: 'translateY(-1px)',
+                              }
+                            }}>
+                            <Typography variant="caption" sx={{ 
+                              color: 'text.primary',
+                              fontSize: '0.6rem',
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                              minWidth: 0,
+                              mr: 1
+                            }}>
+                              {exam.exam_name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ 
+                              color: 'primary.main',
+                              fontSize: '0.6rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}>
+                              {exam.obtained_marks}/{exam.total_marks} - {exam.percentage.toFixed(1)}%
+                            </Typography>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  </Box>
+                )}
               </Box>
             </StatCard>
           </Grid>
+
+          {/* Reports Card or Homework Diary Card (conditional) */}
+          <Grid item xs={12} sm={6} md={3}>
+            {isStudent ? (
+              <ReportsCard>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <ReportsHeader>
+                    <Box className="header-content">
+                      <Box className="icon-wrapper">
+                        <HomeWork />
+                      </Box>
+                      <Box className="header-text">
+                        <Typography className="header-title">
+                          Homework Diary
+                        </Typography>
+                        <Typography className="header-subtitle">
+                          {homeworkDiaryEntries.length} {homeworkDiaryEntries.length === 1 ? 'entry' : 'entries'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box className="date-picker-wrapper">
+                      <DatePicker
+                        value={selectedHomeworkDate}
+                        onChange={(newValue) => setSelectedHomeworkDate(newValue)}
+                        format="DD-MM-YYYY"
+                        slotProps={{
+                          textField: {
+                            size: 'small',
+                            sx: {
+                              '& .MuiOutlinedInput-root': {
+                                fontSize: '0.75rem',
+                                height: '32px',
+                                '& input': {
+                                  padding: '6px 10px',
+                                  fontSize: '0.75rem',
+                                },
+                                '& .MuiInputAdornment-root': {
+                                  marginLeft: '4px',
+                                  '& button': {
+                                    padding: '4px',
+                                  },
+                                  '& svg': {
+                                    fontSize: '1rem',
+                                  }
+                                },
+                              },
+                            }
+                          }
+                        }}
+                      />
+                    </Box>
+                  </ReportsHeader>
+                </LocalizationProvider>
+
+                <ReportsList>
+                  {homeworkDiaryEntries.length === 0 ? (
+                    <EmptyReportState>
+                      <Box className="emoji">📚</Box>
+                      <Typography className="message">
+                        No homework assigned for this date.
+                        <br />
+                        Check back later!
+                      </Typography>
+                    </EmptyReportState>
+                  ) : (
+                    <Box className="scroll-container">
+                      {/* Show entries for selected date only */}
+                      {homeworkDiaryEntries.map((entry, idx) => (
+                        <ReportItem key={`${entry.id}-${idx}`} $shadeIndex={idx}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'flex-start', 
+                            gap: 1.5,
+                            flex: 1,
+                            minWidth: 0
+                          }}>
+                            <Box 
+                              className="homework-icon"
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                bgcolor: 'transparent',
+                                color: 'text.secondary',
+                                flexShrink: 0,
+                                transition: 'all 0.2s ease',
+                                opacity: 0.7
+                              }}
+                            >
+                              <HomeWork sx={{ fontSize: 18 }} />
+                            </Box>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 0.5,
+                                mb: 0.25,
+                                flexWrap: 'wrap'
+                              }}>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: 'text.primary',
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem',
+                                  }}
+                                >
+                                  {entry.subject_name || 'General'}
+                                </Typography>
+                                {entry.assigned_by_name && (
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      color: 'text.secondary',
+                                      fontSize: '0.65rem',
+                                      fontWeight: 400,
+                                    }}
+                                  >
+                                    • {entry.assigned_by_gender === 'Female' || entry.assigned_by_gender === 'female' 
+                                      ? 'Ms.' 
+                                      : entry.assigned_by_gender === 'Male' || entry.assigned_by_gender === 'male'
+                                      ? 'Mr.'
+                                      : ''} {entry.assigned_by_name}
+                                  </Typography>
+                                )}
+                              </Box>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  color: 'text.secondary',
+                                  fontSize: '0.7rem',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {entry.homework_text}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </ReportItem>
+                      ))}
+                    </Box>
+                  )}
+                </ReportsList>
+              </ReportsCard>
+            ) : (
+              <ReportsCard>
+                <ReportsHeader>
+                  <Box className="header-content">
+                    <Box className="icon-wrapper">
+                      <Assignment />
+                    </Box>
+                    <Box>
+                      <Typography variant="h6" fontWeight={600}>
+                        Reports
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                        Total Reports: {reportCategories.length}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </ReportsHeader>
+
+                <ReportsList>
+                  {reportCategories.length === 0 ? (
+                    <EmptyReportState>
+                      <Box className="emoji">🌟</Box>
+                      <Typography className="message">
+                        Well done! No reports yet.
+                        <br />
+                        Keep up the good work!
+                      </Typography>
+                    </EmptyReportState>
+                  ) : (
+                    <Box className="scroll-container">
+                      {reportCategories.map(category => (
+                        <ReportItem key={category.id}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1.5,
+                            flex: 1,
+                            minWidth: 0
+                          }}>
+                            <Box sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
+                              color: 'primary.main'
+                            }}>
+                              <Assignment sx={{ fontSize: 18 }} />
+                            </Box>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                color: 'text.primary',
+                                fontWeight: 500,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {category.name}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1 
+                          }}>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                color: 'primary.main',
+                                fontWeight: 500
+                              }}
+                            >
+                              {category.count || 1}
+                            </Typography>
+                            <ArrowForwardIcon sx={{ 
+                              fontSize: 18, 
+                              color: 'primary.main',
+                              opacity: 0.8
+                            }} />
+                          </Box>
+                        </ReportItem>
+                      ))}
+                    </Box>
+                  )}
+                </ReportsList>
+              </ReportsCard>
+            )}
+          </Grid>
+
         </Grid>
       </Box>
 
       <GlassCard sx={{ mb: 3 }}>
         <ModernTabs
-          value={activeTab}
-          onChange={(_, newValue) => setActiveTab(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
+          value={getVisibleTabIndex(activeTab)}
+          onChange={(_, newVisibleIndex) => {
+            const originalIndex = getOriginalTabIndex(newVisibleIndex);
+            setActiveTab(originalIndex);
+          }}
+          variant={isMobile ? "standard" : "scrollable"}
+          scrollButtons={isMobile ? false : "auto"}
+          sx={{
+            [theme.breakpoints.down('sm')]: {
+              '& .MuiTabs-flexContainer': {
+                flexWrap: 'wrap',
+              }
+            }
+          }}
         >
-          <TabItem
-            label={
-              <Box className="tab-wrapper">
-                <Box className="icon-wrapper">
-                  <Person />
+          {visibleTabs.map((tab, visibleIndex) => (
+            <TabItem
+              key={tab.originalIndex}
+              label={
+                <Box className="tab-wrapper">
+                  <Box className="icon-wrapper">
+                    {tab.icon}
+                  </Box>
+                  <span className="tab-label">{tab.label}</span>
                 </Box>
-                <span className="tab-label">Profile</span>
-              </Box>
-            }
-          />
-          <TabItem
-            label={
-              <Box className="tab-wrapper">
-                <Box className="icon-wrapper">
-                  <Assignment />
-                </Box>
-                <span className="tab-label">Reports</span>
-              </Box>
-            }
-          />
-          <TabItem
-            label={
-              <Box className="tab-wrapper">
-                <Box className="icon-wrapper">
-                  <Quiz />
-                </Box>
-                <span className="tab-label">Examinations</span>
-              </Box>
-            }
-          />
-          <TabItem
-            label={
-              <Box className="tab-wrapper">
-                <Box className="icon-wrapper">
-                  <Assessment />
-                </Box>
-                <span className="tab-label">Test Records</span>
-              </Box>
-            }
-          />
-          <TabItem
-            label={
-              <Box className="tab-wrapper">
-                <Box className="icon-wrapper">
-                  <AttachMoney />
-                </Box>
-                <span className="tab-label">Fines</span>
-              </Box>
-            }
-          />
-          <TabItem
-            label={
-              <Box className="tab-wrapper">
-                <Box className="icon-wrapper">
-                  <CalendarToday />
-                </Box>
-                <span className="tab-label">Attendance</span>
-              </Box>
-            }
-          />
+              }
+            />
+          ))}
         </ModernTabs>
 
         <Box sx={{ 
@@ -3969,10 +5759,15 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <Person />
                     </Box>
-                    <Typography variant="h6">Basic Information</Typography>
+                    <Typography variant="h6" sx={{ 
+                      fontSize: { xs: '0.95rem', sm: '1.25rem' }
+                    }}>
+                      Basic Information
+                    </Typography>
                   </Box>
 
                   <Grid container spacing={2}>
+                    {student.form_b && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -3980,11 +5775,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Form-B/NIC</Typography>
-                        <Typography className="info-value">{student.form_b || 'Not provided'}</Typography>
+                            <Typography className="info-value">{student.form_b}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.dob && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -3993,12 +5790,14 @@ export const StudentProfile: React.FC = () => {
                         <Box className="info-content">
                         <Typography className="info-label">Date of Birth</Typography>
                         <Typography className="info-value">
-                          {student.dob ? new Date(student.dob).toLocaleDateString() : 'Not specified'}
+                              {new Date(student.dob).toLocaleDateString()}
                         </Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.gender && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4006,11 +5805,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Gender</Typography>
-                        <Typography className="info-value">{student.gender || 'Not specified'}</Typography>
+                            <Typography className="info-value">{student.gender}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.blood_group && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4018,10 +5819,11 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Blood Group</Typography>
-                        <Typography className="info-value">{student.blood_group || 'Not specified'}</Typography>
+                            <Typography className="info-value">{student.blood_group}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
                   </Grid>
                 </SectionContainer>
 
@@ -4031,10 +5833,15 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <ContactPhone />
                     </Box>
-                    <Typography variant="h6">Contact Details</Typography>
+                    <Typography variant="h6" sx={{ 
+                      fontSize: { xs: '0.95rem', sm: '1.25rem' }
+                    }}>
+                      Contact Details
+                    </Typography>
                   </Box>
 
                   <Grid container spacing={2}>
+                    {student.phone && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4042,11 +5849,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Student Phone</Typography>
-                        <Typography className="info-value">{student.phone || 'Not provided'}</Typography>
+                            <Typography className="info-value">{student.phone}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.father_mobile && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4054,11 +5863,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Father's Mobile</Typography>
-                        <Typography className="info-value">{student.father_mobile || 'Not provided'}</Typography>
+                            <Typography className="info-value">{student.father_mobile}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.mother_mobile && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4066,11 +5877,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Mother's Mobile</Typography>
-                        <Typography className="info-value">{student.mother_mobile || 'Not provided'}</Typography>
+                            <Typography className="info-value">{student.mother_mobile}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.address && (
                     <Grid item xs={12}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4078,10 +5891,11 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Address</Typography>
-                        <Typography className="info-value">{student.address || 'Not provided'}</Typography>
+                            <Typography className="info-value">{student.address}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
                   </Grid>
                 </SectionContainer>
 
@@ -4095,6 +5909,7 @@ export const StudentProfile: React.FC = () => {
                   </Box>
 
                   <Grid container spacing={2}>
+                    {student.admission_date && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4103,12 +5918,14 @@ export const StudentProfile: React.FC = () => {
                         <Box className="info-content">
                         <Typography className="info-label">Admission Date</Typography>
                         <Typography className="info-value">
-                          {student.admission_date ? new Date(student.admission_date).toLocaleDateString() : 'Not specified'}
+                              {new Date(student.admission_date).toLocaleDateString()}
                         </Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.previous_school && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4116,11 +5933,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Previous School</Typography>
-                        <Typography className="info-value">{student.previous_school || 'Not specified'}</Typography>
+                            <Typography className="info-value">{student.previous_school}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.discount_in_fee !== undefined && student.discount_in_fee !== null && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4129,12 +5948,14 @@ export const StudentProfile: React.FC = () => {
                         <Box className="info-content">
                         <Typography className="info-label">Fee Discount</Typography>
                         <Typography className="info-value">
-                          {student.discount_in_fee ? `${student.discount_in_fee}%` : 'None'}
+                              {student.discount_in_fee}%
                         </Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.class?.name && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4143,11 +5964,12 @@ export const StudentProfile: React.FC = () => {
                         <Box className="info-content">
                         <Typography className="info-label">Current Class</Typography>
                         <Typography className="info-value">
-                          {student.class?.name} {student.section?.name && `- ${student.section.name}`}
+                              {student.class.name} {student.section?.name && `- ${student.section.name}`}
                         </Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
                   </Grid>
                 </SectionContainer>
 
@@ -4157,10 +5979,15 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <PostAdd />
                     </Box>
-                    <Typography variant="h6">Additional Details</Typography>
+                    <Typography variant="h6" sx={{ 
+                      fontSize: { xs: '0.95rem', sm: '1.25rem' }
+                    }}>
+                      Additional Details
+                    </Typography>
                   </Box>
 
                   <Grid container spacing={2}>
+                    {student.religion && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4168,11 +5995,13 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Religion</Typography>
-                        <Typography className="info-value">{student.religion || 'Not specified'}</Typography>
+                            <Typography className="info-value">{student.religion}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
+                    {student.cast && (
                     <Grid item xs={12} md={6}>
                       <InfoItem>
                         <Box className="icon-container">
@@ -4180,10 +6009,11 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="info-content">
                         <Typography className="info-label">Cast</Typography>
-                        <Typography className="info-value">{student.cast || 'Not specified'}</Typography>
+                            <Typography className="info-value">{student.cast}</Typography>
                       </Box>
                       </InfoItem>
                     </Grid>
+                    )}
 
                     {student.disease && (
                       <Grid item xs={12}>
@@ -4266,7 +6096,11 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <FamilyRestroom />
                     </Box>
-                    <Typography variant="h6">Family Information</Typography>
+                    <Typography variant="h6" sx={{ 
+                      fontSize: { xs: '0.95rem', sm: '1.25rem' }
+                    }}>
+                      Family Information
+                    </Typography>
                   </Box>
 
                   <Grid container spacing={3}>
@@ -4278,6 +6112,7 @@ export const StudentProfile: React.FC = () => {
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
+                        {student.father_name && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4285,10 +6120,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Name</Typography>
-                              <Typography className="info-value">{student.father_name || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.father_name}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.father_national_id && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4296,10 +6133,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">National ID</Typography>
-                              <Typography className="info-value">{student.father_national_id || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.father_national_id}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.father_occupation && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4307,10 +6146,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Occupation</Typography>
-                              <Typography className="info-value">{student.father_occupation || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.father_occupation}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.father_income !== undefined && student.father_income !== null && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4319,11 +6160,13 @@ export const StudentProfile: React.FC = () => {
                             <Box className="info-content">
                               <Typography className="info-label">Income</Typography>
                               <Typography className="info-value">
-                                {student.father_income ? `Rs. ${student.father_income.toLocaleString()}` : 'Not provided'}
+                                  Rs. {student.father_income.toLocaleString()}
                               </Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.father_education && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4331,10 +6174,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Education</Typography>
-                              <Typography className="info-value">{student.father_education || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.father_education}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.father_profession && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4342,10 +6187,11 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Profession</Typography>
-                              <Typography className="info-value">{student.father_profession || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.father_profession}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
                       </Grid>
                     </Grid>
 
@@ -4357,6 +6203,7 @@ export const StudentProfile: React.FC = () => {
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
+                        {student.mother_name && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4364,10 +6211,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Name</Typography>
-                              <Typography className="info-value">{student.mother_name || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.mother_name}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.mother_national_id && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4375,10 +6224,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">National ID</Typography>
-                              <Typography className="info-value">{student.mother_national_id || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.mother_national_id}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.mother_occupation && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4386,10 +6237,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Occupation</Typography>
-                              <Typography className="info-value">{student.mother_occupation || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.mother_occupation}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.mother_profession && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4397,10 +6250,12 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Profession</Typography>
-                              <Typography className="info-value">{student.mother_profession || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.mother_profession}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.mother_education && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
@@ -4408,21 +6263,26 @@ export const StudentProfile: React.FC = () => {
                             </Box>
                             <Box className="info-content">
                               <Typography className="info-label">Education</Typography>
-                              <Typography className="info-value">{student.mother_education || 'Not provided'}</Typography>
+                                <Typography className="info-value">{student.mother_education}</Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
+                        {student.mother_income !== undefined && student.mother_income !== null && (
                         <Grid item xs={12} md={6}>
                           <InfoItem>
                             <Box className="icon-container">
-                              <Work fontSize="small" />
+                                <AccountBalance fontSize="small" />
                             </Box>
                             <Box className="info-content">
-                              <Typography className="info-label">Profession</Typography>
-                              <Typography className="info-value">{student.mother_profession || 'Not provided'}</Typography>
+                                <Typography className="info-label">Income</Typography>
+                                <Typography className="info-value">
+                                  Rs. {student.mother_income.toLocaleString()}
+                                </Typography>
                             </Box>
                           </InfoItem>
                         </Grid>
+                        )}
                       </Grid>
                     </Grid>
                   </Grid>
@@ -4434,6 +6294,12 @@ export const StudentProfile: React.FC = () => {
           </CustomTabPanel>
 
           <CustomTabPanel value={activeTab} index={1}>
+            {tabDataLoading[1] ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
             {/* Reports Summary Cards */}
             <Box sx={{ mb: 3 }}>
               <Grid container spacing={2}>
@@ -4481,7 +6347,7 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Box>
                         <Typography variant="h4" color="warning.main" fontWeight={600}>
-                          {reports.filter(r => ['pending', 'in_review', 'in_progress'].includes(r.status)).length}
+                          {activeReportsCount}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Active Reports
@@ -4508,7 +6374,7 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Box>
                         <Typography variant="h4" color="success.main" fontWeight={600}>
-                          {reports.filter(r => r.status === 'resolved').length}
+                          {resolvedReportsCount}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Resolved Reports
@@ -4535,7 +6401,7 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Box>
                         <Typography variant="h4" color="grey.500" fontWeight={600}>
-                          {reports.filter(r => r.status === 'dismissed').length}
+                          {dismissedReportsCount}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Dismissed Reports
@@ -4607,6 +6473,14 @@ export const StudentProfile: React.FC = () => {
                           >
                             {formatStatus(report.status)}
                           </Box>
+                          {report.reporter?.name && (
+                            <>
+                              <Box component="span" sx={{ color: 'text.disabled' }}>|</Box>
+                              <Box component="span" sx={{ color: 'text.secondary' }}>
+                                by {report.reporter.name}
+                              </Box>
+                            </>
+                          )}
                         </Typography>
                       </Box>
                     </Box>
@@ -4809,9 +6683,17 @@ export const StudentProfile: React.FC = () => {
                 </Grid>
               )}
             </Grid>
+              </>
+            )}
           </CustomTabPanel>
 
           <CustomTabPanel value={activeTab} index={2}>
+            {tabDataLoading[2] ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
             {/* Examinations Summary */}
             <Box sx={{ mb: 3 }}>
               <Grid container spacing={2}>
@@ -4859,9 +6741,7 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Box>
                         <Typography variant="h4" color="success.main" fontWeight={600}>
-                          {examSummaries.length > 0 
-                            ? Math.round(examSummaries.reduce((sum, exam) => sum + exam.percentage, 0) / examSummaries.length)
-                            : 0}%
+                          {averageExamPercentage}%
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Average Performance
@@ -4888,9 +6768,7 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Box>
                         <Typography variant="h4" color="info.main" fontWeight={600}>
-                          {examSummaries.length > 0 
-                            ? Math.round((examSummaries.filter(exam => exam.status === 'pass').length / examSummaries.length) * 100)
-                            : 0}%
+                          {passRate}%
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Pass Rate
@@ -4921,62 +6799,130 @@ export const StudentProfile: React.FC = () => {
               ) : (
                 <Grid container spacing={2}>
                   {examSummaries.map((exam) => (
-                    <Grid item xs={12} md={6} key={exam.exam_id}>
+                    <Grid item xs={12} md={12} key={exam.exam_id}>
                       <GlassCard sx={{ p: 3 }}>
                         <Box 
                           sx={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'flex-start', 
-                            mb: 2,
                             cursor: 'pointer',
                             '&:hover': {
                               backgroundColor: 'rgba(0, 0, 0, 0.04)',
                               borderRadius: 1
                             },
-                            p: 1,
-                            mx: -1,
+                            p: { xs: 1, sm: 1.5 },
+                            mx: { xs: -1.5, sm: -1 },
+                            my: { xs: -0.5, sm: 0 },
+                            mb: 2,
                             transition: 'background-color 0.2s ease'
                           }}
                           onClick={() => toggleExamExpansion(exam.exam_id)}
                         >
-                          <Box sx={{ flex: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                              <Typography variant="h6" fontWeight={600}>
-                                {exam.exam_name}
+                          {/* Top Row: Exam Name on Left, Marks and Expand Icon on Right */}
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            mb: { xs: 1, sm: 0.75 },
+                            gap: 1
+                          }}>
+                            <Typography 
+                              variant="h6" 
+                              fontWeight={600}
+                              sx={{
+                                fontSize: { xs: '1rem', sm: '1.25rem' },
+                                flex: 1,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {exam.exam_name}
+                            </Typography>
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: { xs: 0.5, sm: 1 },
+                              flexShrink: 0
+                            }}>
+                              <Typography 
+                                variant="h5"
+                                fontWeight={700} 
+                                color={exam.status === 'pass' ? 'success.main' : 'error.main'}
+                                sx={{
+                                  fontSize: { xs: '1.25rem', sm: '1.75rem' },
+                                  lineHeight: 1,
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {exam.obtained_marks}/{exam.total_marks}
                               </Typography>
-                              {expandedExams[exam.exam_id] ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowRightIcon fontSize="small" />}
-                            </Box>
-                            <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <Chip 
-                                label={exam.exam_type} 
-                                color="info"
-                                variant="outlined"
-                                size="small"
-                              />
-                              <Chip 
-                                label={exam.status === 'pass' ? 'Passed' : 'Failed'} 
-                                color={exam.status === 'pass' ? 'success' : 'error'}
-                                size="small"
-                              />
-                              <Chip 
-                                label={`${exam.percentage.toFixed(1)}%`} 
-                                color={exam.status === 'pass' ? 'success' : 'error'}
-                                variant="filled"
-                                size="small"
-                              />
+                              {expandedExams[exam.exam_id] ? 
+                                <KeyboardArrowDownIcon fontSize="small" sx={{ flexShrink: 0 }} /> : 
+                                <KeyboardArrowRightIcon fontSize="small" sx={{ flexShrink: 0 }} />
+                              }
                             </Box>
                           </Box>
-                          <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                            <Typography variant="h4" fontWeight={700} color={exam.status === 'pass' ? 'success.main' : 'error.main'}>
-                              {exam.obtained_marks}/{exam.total_marks}
-                            </Typography>
+
+                          {/* Middle Row: Chips (Type, Status, Percentage, Position) */}
+                          <Box sx={{ 
+                            display: 'flex', 
+                            gap: { xs: 0.5, sm: 1 }, 
+                            mb: { xs: 1, sm: 1 }, 
+                            flexWrap: 'wrap', 
+                            alignItems: 'center' 
+                          }}>
+                            <Chip 
+                              label={exam.exam_type} 
+                              color="info"
+                              variant="outlined"
+                              size="small"
+                              sx={{
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                height: { xs: 20, sm: 24 },
+                                '& .MuiChip-label': {
+                                  px: { xs: 0.75, sm: 1 }
+                                }
+                              }}
+                            />
+                            <Chip 
+                              label={exam.status === 'pass' ? 'Passed' : 'Failed'} 
+                              color={exam.status === 'pass' ? 'success' : 'error'}
+                              size="small"
+                              sx={{
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                height: { xs: 20, sm: 24 },
+                                '& .MuiChip-label': {
+                                  px: { xs: 0.75, sm: 1 }
+                                }
+                              }}
+                            />
+                            <Chip 
+                              label={`${exam.percentage.toFixed(1)}%`} 
+                              color={exam.status === 'pass' ? 'success' : 'error'}
+                              variant="filled"
+                              size="small"
+                              sx={{
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                height: { xs: 20, sm: 24 },
+                                fontWeight: 600,
+                                '& .MuiChip-label': {
+                                  px: { xs: 0.75, sm: 1 }
+                                }
+                              }}
+                            />
                             {exam.position && exam.total_strength && (
                               <Chip 
                                 label={`Position: ${exam.position}/${exam.total_strength}`} 
                                 color="warning"
                                 variant="outlined"
                                 size="small"
+                                sx={{
+                                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                  height: { xs: 20, sm: 24 },
+                                  '& .MuiChip-label': {
+                                    px: { xs: 0.75, sm: 1 }
+                                  }
+                                }}
                               />
                             )}
                           </Box>
@@ -4987,35 +6933,99 @@ export const StudentProfile: React.FC = () => {
                         <Divider sx={{ my: 2 }} />
                         
                         <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, fontSize: '0.75rem' }}>
                             Subject-wise Performance
                           </Typography>
-                          <Grid container spacing={1}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: 0.5,
+                            '& > *': {
+                              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                              '&:last-child': {
+                                borderBottom: 'none'
+                              }
+                            }
+                          }}>
                             {exam.subjects.map((subject) => (
-                              <Grid item xs={6} key={subject.subject_id}>
+                              <Box 
+                                key={subject.subject_id}
+                                sx={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between',
+                                  py: 0.75,
+                                  px: 0.5,
+                                  '&:hover': {
+                                    bgcolor: theme => alpha(theme.palette.primary.main, 0.03)
+                                  }
+                                }}
+                              >
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    flex: '1 1 auto',
+                                    minWidth: 0,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  {subject.subject?.name || 'Unknown Subject'}
+                                </Typography>
                                 <Box sx={{ 
-                                  p: 1.5, 
-                                  borderRadius: 1, 
-                                  bgcolor: theme => alpha(theme.palette.background.paper, 0.5),
-                                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: 1,
+                                  flexShrink: 0,
+                                  ml: 1
                                 }}>
-                                  <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
-                                    {subject.subject?.name || 'Unknown Subject'}
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      fontSize: '0.7rem',
+                                      color: 'text.secondary',
+                                      whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    {subject.obtained_marks}/{subject.max_marks}
                                   </Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    {subject.obtained_marks}/{subject.max_marks} ({subject.percentage.toFixed(1)}%)
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: theme => 
+                                        subject.percentage >= 80 ? theme.palette.success.main :
+                                        subject.percentage >= 60 ? theme.palette.info.main :
+                                        subject.percentage >= 40 ? theme.palette.warning.main :
+                                        theme.palette.error.main,
+                                      minWidth: '32px',
+                                      textAlign: 'right'
+                                    }}
+                                  >
+                                    {subject.percentage.toFixed(0)}%
                                   </Typography>
                                   {subject.grade && (
                                     <Chip 
                                       label={subject.grade} 
                                       size="small" 
-                                      sx={{ ml: 1, fontSize: '0.7rem', height: 20 }}
+                                      sx={{ 
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        '& .MuiChip-label': {
+                                          px: 0.75,
+                                          py: 0
+                                        }
+                                      }}
                                     />
                                   )}
                                 </Box>
-                              </Grid>
+                              </Box>
                             ))}
-                          </Grid>
+                          </Box>
                         </Box>
                           </Box>
                         </Collapse>
@@ -5025,9 +7035,17 @@ export const StudentProfile: React.FC = () => {
                 </Grid>
               )}
             </Box>
+              </>
+            )}
           </CustomTabPanel>
 
           <CustomTabPanel value={activeTab} index={3}>
+            {tabDataLoading[3] ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
             {/* Session Selector */}
             <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -5191,9 +7209,18 @@ export const StudentProfile: React.FC = () => {
                 </Typography>
               </GlassCard>
             )}
+              </>
+            )}
           </CustomTabPanel>
 
+          {!isStudent && (
           <CustomTabPanel value={activeTab} index={5}>
+            {tabDataLoading[5] ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
             <Grid container spacing={3}>
               {/* Top Row - Summary Cards */}
               <Grid item xs={12}>
@@ -5398,7 +7425,6 @@ export const StudentProfile: React.FC = () => {
                         <TableHead>
                           <TableRow>
                             <TableCell>Date</TableCell>
-                            <TableCell>Day</TableCell>
                             <TableCell>Amount</TableCell>
                             <TableCell>Remission</TableCell>
                             <TableCell>Method</TableCell>
@@ -5408,9 +7434,14 @@ export const StudentProfile: React.FC = () => {
                         <TableBody>
                           {fineDetails?.payments?.map((payment: any) => (
                             <TableRow key={payment.id}>
-                              <TableCell>{new Date(payment.collected_at).toLocaleDateString()}</TableCell>
                               <TableCell>
-                                {new Date(payment.collected_at).toLocaleDateString('en-US', { weekday: 'short' })}
+                                {payment.payment_date 
+                                  ? new Date(payment.payment_date).toLocaleDateString('en-GB', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })
+                                  : '-'}
                               </TableCell>
                               <TableCell sx={{ color: 'success.main', fontWeight: 600 }}>
                                 Rs. {payment.amount}
@@ -5422,7 +7453,7 @@ export const StudentProfile: React.FC = () => {
                           ))}
                           {(!fineDetails?.payments || fineDetails.payments.length === 0) && (
                             <TableRow>
-                              <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
+                              <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
                                 No payment records found
                               </TableCell>
                             </TableRow>
@@ -5434,7 +7465,10 @@ export const StudentProfile: React.FC = () => {
                 </GlassCard>
               </Grid>
             </Grid>
+              </>
+            )}
           </CustomTabPanel>
+          )}
 
           <CustomTabPanel value={activeTab} index={4}>
             <Grid container spacing={3}>
@@ -5465,7 +7499,9 @@ export const StudentProfile: React.FC = () => {
                         <Typography className="stat-value">{attendanceStats?.present || 0}</Typography>
                         <Box className="stat-percentage">
                           <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                          {attendanceStats ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0}% Attendance Rate
+                          {attendanceStats && attendanceStats.total > 0 
+                            ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100) 
+                            : 0}% Attendance Rate
                         </Box>
                       </StatBox>
                     </Grid>
@@ -5501,9 +7537,96 @@ export const StudentProfile: React.FC = () => {
                         </Box>
                         <Box className="stat-percentage">
                           <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                          {attendanceStats ? Math.round(((attendanceStats.absent + attendanceStats.leave) / attendanceStats.total) * 100) : 0}% Absence Rate
+                          {attendanceStats && attendanceStats.total > 0 
+                            ? Math.round(((attendanceStats.absent + attendanceStats.leave) / attendanceStats.total) * 100) 
+                            : 0}% Absence Rate
                         </Box>
                       </StatBox>
+                    </Grid>
+
+                    <Grid item>
+                      <Box
+                        sx={{
+                          padding: theme.spacing(2.5),
+                          borderRadius: theme.shape.borderRadius,
+                          background: alpha('#ec4899', 0.08),
+                          border: `1px solid ${alpha('#ec4899', 0.12)}`,
+                          position: 'relative',
+                          overflow: 'hidden',
+                          transition: 'all 0.3s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: theme.spacing(1),
+                          height: '100%',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
+                            background: alpha('#ec4899', 0.12),
+                            '& .stat-icon': {
+                              transform: 'scale(1.1) rotate(10deg)',
+                              opacity: 0.2,
+                            }
+                          },
+                          '& .stat-icon': {
+                            position: 'absolute',
+                            right: -10,
+                            bottom: -10,
+                            fontSize: '5rem',
+                            color: '#ec4899',
+                            opacity: 0.1,
+                            transition: 'all 0.3s ease',
+                            transform: 'rotate(-10deg)',
+                          },
+                          '& .stat-header': {
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: theme.spacing(1),
+                            '& .icon': {
+                              fontSize: '1.2rem',
+                              color: '#ec4899',
+                              background: alpha('#ec4899', 0.1),
+                              padding: theme.spacing(0.8),
+                              borderRadius: '8px',
+                            }
+                          },
+                          '& .stat-value': {
+                            fontSize: '2.2rem',
+                            fontWeight: 700,
+                            color: '#ec4899',
+                            lineHeight: 1,
+                          },
+                          '& .stat-label': {
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            color: theme.palette.text.secondary,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                          },
+                        }}
+                      >
+                        <AccessTime className="stat-icon" />
+                        <Box className="stat-header">
+                          <AccessTime className="icon" />
+                          <Typography className="stat-label">Half Leaves</Typography>
+                        </Box>
+                        <Typography className="stat-value">{halfLeavesMap.size}</Typography>
+                        <Box className="stat-percentage" sx={{
+                          fontSize: '0.9rem',
+                          fontWeight: 600,
+                          color: '#ec4899',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: theme.spacing(0.5),
+                          marginTop: 'auto',
+                          background: alpha('#ec4899', 0.08),
+                          padding: theme.spacing(0.5, 1),
+                          borderRadius: '4px',
+                          width: 'fit-content',
+                        }}>
+                          <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                          {attendanceStats?.total ? Math.round((halfLeavesMap.size / attendanceStats.total) * 100) : 0}% of total days
+                        </Box>
+                      </Box>
                     </Grid>
                   </StatsGrid>
                 </AttendanceStatsCard>
@@ -5530,7 +7653,7 @@ export const StudentProfile: React.FC = () => {
                           <MonthBadge>
                             <CalendarToday sx={{ fontSize: '0.875rem' }} />
                             <Box component="span">
-                              {month.total} Days • {((month.present / month.total) * 100).toFixed(1)}% Present
+                              {month.total} Days • {month.total > 0 ? Math.round(((month.present + month.late) / month.total) * 100) : 0}% Attendance
                             </Box>
                           </MonthBadge>
                         </MonthHeader>
@@ -5572,6 +7695,51 @@ export const StudentProfile: React.FC = () => {
                               <StatLabel>Late</StatLabel>
                             </StatBox>
                           </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Box
+                              sx={{
+                                padding: theme.spacing(2.5),
+                                borderRadius: theme.shape.borderRadius,
+                                background: alpha('#ec4899', 0.08),
+                                border: `1px solid ${alpha('#ec4899', 0.12)}`,
+                                position: 'relative',
+                                overflow: 'hidden',
+                                transition: 'all 0.3s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: theme.spacing(1),
+                                height: '100%',
+                                '&:hover': {
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
+                                  background: alpha('#ec4899', 0.12),
+                                  '& .stat-icon': {
+                                    transform: 'scale(1.1) rotate(10deg)',
+                                    opacity: 0.2,
+                                  }
+                                },
+                                '& .stat-icon': {
+                                  position: 'absolute',
+                                  right: -10,
+                                  bottom: -10,
+                                  fontSize: '5rem',
+                                  color: '#ec4899',
+                                  opacity: 0.1,
+                                  transition: 'all 0.3s ease',
+                                  transform: 'rotate(-10deg)',
+                                },
+                              }}
+                            >
+                              <AccessTime className="stat-icon" />
+                              <StatValue color="#ec4899">
+                                {month.halfLeaves || 0}
+                                <span className="percentage">
+                                  ({month.total > 0 ? ((month.halfLeaves || 0) / month.total * 100).toFixed(1) : 0}%)
+                                </span>
+                              </StatValue>
+                              <StatLabel>Half Leaves</StatLabel>
+                            </Box>
+                          </Grid>
                         </StatGrid>
                       </MonthCard>
                     </Grid>
@@ -5609,6 +7777,8 @@ export const StudentProfile: React.FC = () => {
                             month: 'short',
                             year: 'numeric'
                           });
+                          const dateStr = record.date;
+                          const halfLeave = halfLeavesMap.get(dateStr);
                           
                           return (
                             <RecentAttendanceItem key={record.id}>
@@ -5620,10 +7790,50 @@ export const StudentProfile: React.FC = () => {
                                     {formattedDate}
                                   </DateLabel>
                                 </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {halfLeave && (
+                                    <Box
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        px: 0.75,
+                                        py: 0.25,
+                                        borderRadius: '4px',
+                                        bgcolor: '#ec4899',
+                                        color: 'white',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        lineHeight: 1,
+                                      }}
+                                      title="Half Leave"
+                                    >
+                                      HL
+                                    </Box>
+                                  )}
                                 <StatusChip status={record.status}>
                                   {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                                 </StatusChip>
                               </Box>
+                              </Box>
+                              {halfLeave && (
+                                <Box sx={{ 
+                                  mt: 0.5,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.5,
+                                  color: '#ec4899',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 500,
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  bgcolor: alpha('#ec4899', 0.1),
+                                  width: 'fit-content'
+                                }}>
+                                  <AccessTime sx={{ fontSize: '0.75rem' }} />
+                                  Half Leave
+                                  {halfLeave.departure_time && ` (Departed: ${halfLeave.departure_time})`}
+                                </Box>
+                              )}
                               {record.remarks && (
                                 <Typography 
                                   variant="caption" 
@@ -5699,11 +7909,12 @@ export const StudentProfile: React.FC = () => {
                             
                             const getStatusColor = (status: string | null, theme: Theme) => {
                               if (!status) return alpha(theme.palette.divider, 0.1);
-                              switch (status) {
+                              switch (status.toLowerCase()) {
                                 case 'present': return theme.palette.success.main;
                                 case 'late': return theme.palette.warning.main;
                                 case 'absent': return theme.palette.error.main;
                                 case 'leave': return theme.palette.info.main;
+                                case 'halfleave': return '#ec4899';
                                 default: return alpha(theme.palette.divider, 0.1);
                               }
                             };
@@ -5740,9 +7951,12 @@ export const StudentProfile: React.FC = () => {
                                           <Typography variant="caption" display="block" color="info.main">
                                             Leave: {details.leave} ({percentages.leave.toFixed(1)}%)
                                           </Typography>
+                                          <Typography variant="caption" display="block" sx={{ color: '#ec4899' }}>
+                                            Half Leave: {details.halfLeave} ({percentages.halfLeave.toFixed(1)}%)
+                                          </Typography>
                                           <Divider sx={{ my: 1 }} />
                                           <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
-                                            Total Records: {count}
+                                            Total Records: {count + details.halfLeave}
                                           </Typography>
                                         </>
                                       )}
@@ -5803,6 +8017,15 @@ export const StudentProfile: React.FC = () => {
                                           bgcolor: theme => alpha(theme.palette.info.main, 0.3),
                                           transition: 'height 0.3s ease'
                                         }} />
+                                        <Box sx={{
+                                          position: 'absolute',
+                                          bottom: `${percentages.present + percentages.late + percentages.absent + percentages.leave}%`,
+                                          left: 0,
+                                          width: '100%',
+                                          height: `${percentages.halfLeave}%`,
+                                          bgcolor: alpha('#ec4899', 0.3),
+                                          transition: 'height 0.3s ease'
+                                        }} />
                                       </>
                                     )}
                                   </Box>
@@ -5828,7 +8051,7 @@ export const StudentProfile: React.FC = () => {
                                       fontWeight: 500
                                     }}
                                   >
-                                    {count > 0 ? `${count} Days` : 'No Data'}
+                                    {count + details.halfLeave > 0 ? `${count + details.halfLeave} Days` : 'No Data'}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -5849,34 +8072,49 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Box sx={{ p: 2 }}>
                         <Grid container spacing={2}>
-                          {attendancePattern.map((stat) => (
+                          {attendancePattern.map((stat) => {
+                            const color = stat.colorKey === 'secondary' ? '#ec4899' : undefined;
+                            
+                            return (
                             <Grid item xs={12} key={stat.label}>
                               <Box sx={{ mb: 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                                   <Typography variant="caption" color="textSecondary">
                                     {stat.label}
                                   </Typography>
-                                  <Typography variant="caption" sx={{ color: theme => theme.palette[stat.colorKey].main }}>
+                                    <Typography variant="caption" sx={{ 
+                                      color: color || (theme => {
+                                        const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                        return paletteColor?.main || theme.palette.primary.main;
+                                      })
+                                    }}>
                                     {stat.count} days ({stat.value})
                                   </Typography>
                                 </Box>
                                 <Box sx={{ 
                                   width: '100%', 
                                   height: '4px', 
-                                  bgcolor: theme => alpha(theme.palette[stat.colorKey].main, 0.1),
+                                    bgcolor: color ? alpha(color, 0.1) : (theme => {
+                                      const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                      return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
+                                    }),
                                   borderRadius: '2px',
                                   overflow: 'hidden'
                                 }}>
                                   <Box sx={{ 
                                     width: stat.value,
                                     height: '100%',
-                                    bgcolor: theme => theme.palette[stat.colorKey].main,
+                                      bgcolor: color || (theme => {
+                                        const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                        return paletteColor?.main || theme.palette.primary.main;
+                                      }),
                                     transition: 'width 1s ease-in-out'
                                   }} />
                                 </Box>
                               </Box>
                             </Grid>
-                          ))}
+                            );
+                          })}
                         </Grid>
                       </Box>
                     </GlassCard>

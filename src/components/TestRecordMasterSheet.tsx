@@ -20,6 +20,7 @@ import {
   School as SchoolIcon,
   Close as CloseIcon,
   KeyboardArrowUp as KeyboardArrowUpIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
   PictureAsPdf,
   Print as PrintIcon,
   Download as DownloadIcon,
@@ -155,10 +156,17 @@ const SearchInput = styled.input`
   margin-left: 4px;
   height: 32px;
   line-height: 32px;
+  flex: 1;
+  min-width: 0;
   
   &::placeholder {
     color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
     opacity: 0.7;
+  }
+  
+  @media (max-width: 700px) {
+    font-size: 0.875rem;
+    margin-left: 6px;
   }
 `;
 
@@ -258,7 +266,7 @@ const HeaderRow = styled.div`
   }
 `;
 
-const SearchContainer = styled.div`
+const SearchContainer = styled.div<{ $isMobile?: boolean }>`
   position: relative;
   display: flex;
   align-items: center;
@@ -276,6 +284,26 @@ const SearchContainer = styled.div`
   overflow: visible;
   height: 32px;
   box-sizing: border-box;
+  
+  ${({ $isMobile, theme }) => $isMobile && `
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    border-right: 1.5px solid ${theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+    border-radius: 11px;
+    padding: 0 0.75em;
+    flex: 1;
+  `}
+  
+  @media (max-width: 700px) {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    border-right: 1.5px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+    border-radius: 11px;
+    padding: 0 0.75em;
+    flex: 1;
+  }
 `;
 
 const SuggestionsDropdown = styled.div`
@@ -290,26 +318,42 @@ const SuggestionsDropdown = styled.div`
   z-index: 9999;
   max-height: 250px;
   overflow-y: auto;
+  overflow-x: hidden;
   width: 300px;
   min-width: 300px;
   min-height: 40px;
   
-  /* Custom scrollbar styling */
+  /* Custom scrollbar styling - visible */
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
   
   &::-webkit-scrollbar-track {
-    background: transparent;
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 4px;
+    margin: 4px 0;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.BORDER};
-    border-radius: 3px;
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+    border-radius: 4px;
+    border: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'};
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'} ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+  
+  @media (max-width: 700px) {
+    width: 100%;
+    min-width: 0;
+    left: 0;
+    right: 0;
+    max-height: 200px;
   }
 `;
 
@@ -318,12 +362,18 @@ const SuggestionItem = styled.div<{ $isActive?: boolean }>`
   align-items: center;
   padding: 8px 12px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER}40;
   transition: background-color 0.2s ease;
   background: ${({ $isActive, theme }) => $isActive ? `${theme.ACCENT}20` : 'transparent'};
   
   &:hover {
     background: ${({ theme }) => theme.ACCENT}15;
+  }
+  
+  &:active {
+    background: ${({ theme }) => theme.ACCENT}25;
   }
   
   &:last-child {
@@ -432,9 +482,13 @@ const MainContent = styled.div`
 // Card Components
 const SubjectCardsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
+  
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const SubjectCard = styled.div`
@@ -451,20 +505,43 @@ const SubjectCard = styled.div`
   }
 `;
 
-const SubjectHeader = styled.div`
+const SubjectHeader = styled.div<{ $isClickable?: boolean }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  cursor: ${({ $isClickable }) => $isClickable ? 'pointer' : 'default'};
+  user-select: none;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: ${({ theme, $isClickable }) => $isClickable ? `${theme.BORDER}20` : 'transparent'};
+  }
+`;
+
+const SubjectHeaderLeft = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
 `;
 
 const SubjectName = styled.h3`
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const SubjectHeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 `;
 
 const SubjectGrade = styled.div<{ $grade: string }>`
@@ -488,12 +565,41 @@ const SubjectGrade = styled.div<{ $grade: string }>`
     }
   }};
   color: white;
+  white-space: nowrap;
 `;
 
-const TestResultsList = styled.div`
+const SubjectBadge = styled.div`
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: ${({ theme }) => theme.ACCENT}15;
+  color: ${({ theme }) => theme.ACCENT};
+  border: 1px solid ${({ theme }) => theme.ACCENT}30;
+  white-space: nowrap;
+`;
+
+const CollapseIcon = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  transition: transform 0.2s ease;
+  
+  &.expanded {
+    transform: rotate(180deg);
+  }
+`;
+
+const TestResultsList = styled.div<{ $isExpanded?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: ${({ $isExpanded }) => $isExpanded ? '1000px' : '0'};
+  opacity: ${({ $isExpanded }) => $isExpanded ? '1' : '0'};
+  margin-bottom: ${({ $isExpanded }) => $isExpanded ? '0' : '0'};
 `;
 
 const TestResultItem = styled.div`
@@ -620,27 +726,108 @@ const SummaryStats = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1rem;
+  
+  @media (max-width: 700px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
 `;
 
-const SummaryStatItem = styled.div`
+const SummaryStatItem = styled.div<{ $variant?: 'subjects' | 'tests' | 'marks' | 'percentage' }>`
   text-align: center;
   padding: 0.75rem;
-  background: ${({ theme }) => theme.FIELD_BG};
   border-radius: 8px;
   border: 1px solid ${({ theme }) => theme.BORDER};
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  ${({ $variant, theme }) => {
+    const isDark = theme.BG === '#252525';
+    switch ($variant) {
+      case 'subjects':
+        return `
+          background: ${isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'};
+          border-color: ${isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'};
+        `;
+      case 'tests':
+        return `
+          background: ${isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)'};
+          border-color: ${isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'};
+        `;
+      case 'marks':
+        return `
+          background: ${isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)'};
+          border-color: ${isDark ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)'};
+        `;
+      case 'percentage':
+        return `
+          background: ${isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)'};
+          border-color: ${isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'};
+        `;
+      default:
+        return `
+          background: ${theme.FIELD_BG};
+          border-color: ${theme.BORDER};
+        `;
+    }
+  }}
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  @media (max-width: 700px) {
+    padding: 0.625rem;
+  }
 `;
 
-const SummaryStatLabel = styled.div`
+const SummaryStatLabel = styled.div<{ $variant?: 'subjects' | 'tests' | 'marks' | 'percentage' }>`
   font-size: 0.8rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  color: ${({ theme, $variant }) => {
+    const isDark = theme.BG === '#252525';
+    switch ($variant) {
+      case 'subjects':
+        return isDark ? '#93c5fd' : '#3b82f6';
+      case 'tests':
+        return isDark ? '#6ee7b7' : '#10b981';
+      case 'marks':
+        return isDark ? '#fcd34d' : '#f59e0b';
+      case 'percentage':
+        return isDark ? '#c4b5fd' : '#8b5cf6';
+      default:
+        return theme.TEXT_SECONDARY;
+    }
+  }};
   margin-bottom: 0.25rem;
   font-weight: 500;
+  
+  @media (max-width: 700px) {
+    font-size: 0.75rem;
+  }
 `;
 
-const SummaryStatValue = styled.div`
+const SummaryStatValue = styled.div<{ $variant?: 'subjects' | 'tests' | 'marks' | 'percentage' }>`
   font-size: 1.1rem;
   font-weight: 700;
-  color: ${({ theme }) => theme.ACCENT};
+  color: ${({ theme, $variant }) => {
+    const isDark = theme.BG === '#252525';
+    switch ($variant) {
+      case 'subjects':
+        return isDark ? '#60a5fa' : '#2563eb';
+      case 'tests':
+        return isDark ? '#34d399' : '#059669';
+      case 'marks':
+        return isDark ? '#fbbf24' : '#d97706';
+      case 'percentage':
+        return isDark ? '#a78bfa' : '#7c3aed';
+      default:
+        return theme.ACCENT;
+    }
+  }};
+  
+  @media (max-width: 700px) {
+    font-size: 1rem;
+  }
 `;
 
 const SubjectSummaryGrid = styled.div`
@@ -696,6 +883,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
   const [masterSheetData, setMasterSheetData] = useState<MasterSheetData[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [summaryData, setSummaryData] = useState<{
     totalSubjects: number;
     totalTests: number;
@@ -721,7 +909,33 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
   
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const desktopSuggestionsRef = useRef<HTMLDivElement>(null);
+  const mobileSuggestionsRef = useRef<HTMLDivElement>(null);
   const hasInitializedRef = useRef(false);
+
+  // Helper function to fetch all rows with pagination
+  const fetchAllRows = async <T,>(queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>): Promise<T[]> => {
+    let allResults: T[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await queryFn(from, from + pageSize - 1);
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allResults = allResults.concat(data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allResults;
+  };
 
   // Load initial data
   useEffect(() => {
@@ -730,17 +944,45 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
 
       try {
         setLoadingSessions(true);
-        const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: sessionsData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, school_id').eq('status', 'active').eq('school_id', user.school_id),
-          supabase.from('classes').select('id, name, school_id').eq('school_id', user.school_id),
-          supabase.from('sections').select('id, name, class_id, school_id').eq('school_id', user.school_id),
-          supabase.from('sessions').select('id, name, start_date, end_date, is_active, school_id').eq('school_id', user.school_id).order('start_date', { ascending: false }),
+        
+        // Fetch all rows using pagination
+        const [studentsData, classesData, sectionsData, sessionsData] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('students')
+              .select('id, name, father_name, class_id, section_id, picture_url, school_id')
+              .eq('status', 'active')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('classes')
+              .select('id, name, school_id')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('sections')
+              .select('id, name, class_id, school_id')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('sessions')
+              .select('id, name, start_date, end_date, is_active, school_id')
+              .eq('school_id', user.school_id)
+              .order('start_date', { ascending: false })
+              .range(from, to);
+          }),
         ]);
         
-        if (studentsData) setStudents(studentsData);
-        if (classesData) setClasses(classesData);
-        if (sectionsData) setSections(sectionsData);
-        if (sessionsData) {
+        setStudents(studentsData);
+        setClasses(classesData);
+        setSections(sectionsData);
+        if (sessionsData.length > 0) {
           setSessions(sessionsData);
           // Set active session as default (silent selection)
           const activeSession = sessionsData.find(s => s.is_active);
@@ -776,14 +1018,22 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
   }, []);
 
   // Handle student selection
-  const handleSelectStudent = (student: Student) => {
+  const handleSelectStudent = useCallback((student: Student, event?: React.MouseEvent | React.TouchEvent) => {
+    if (!student) return;
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     setSearch(student.name);
     setShowSuggestions(false);
     setJustSelectedStudent(true);
     setSearchExactMatch(true);
     setSelectedStudent(student);
-    searchInputRef.current?.blur();
-  };
+    // Small delay to ensure selection is processed before blur
+    setTimeout(() => {
+      searchInputRef.current?.blur();
+    }, 100);
+  }, []);
 
   // Search functionality
   useEffect(() => {
@@ -829,14 +1079,47 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showSuggestions) return;
+    
+    // Helper function to scroll active element into view
+    const scrollActiveIntoView = (newIndex: number) => {
+      requestAnimationFrame(() => {
+        // Try to find the visible dropdown (desktop or mobile)
+        const isMobile = window.innerWidth <= 700;
+        const dropdownRef = isMobile ? mobileSuggestionsRef : desktopSuggestionsRef;
+        const dropdown = dropdownRef.current;
+        
+        if (!dropdown) return;
+        
+        const activeElement = dropdown.querySelector(`[data-suggestion-index="${newIndex}"]`) as HTMLElement;
+        if (!activeElement) return;
+        
+        const elementTop = activeElement.offsetTop;
+        const elementBottom = elementTop + activeElement.offsetHeight;
+        const dropdownTop = dropdown.scrollTop;
+        const dropdownBottom = dropdownTop + dropdown.clientHeight;
+        
+        if (elementTop < dropdownTop) {
+          dropdown.scrollTo({ top: elementTop, behavior: 'smooth' });
+        } else if (elementBottom > dropdownBottom) {
+          dropdown.scrollTo({ top: elementBottom - dropdown.clientHeight, behavior: 'smooth' });
+        }
+      });
+    };
+    
     if (e.key === 'ArrowDown') {
-      setActiveSuggestion((prev: number) => Math.min(prev + 1, suggestions.length - 1));
+      e.preventDefault();
+      const newIndex = Math.min(activeSuggestion + 1, suggestions.length - 1);
+      setActiveSuggestion(newIndex);
+      scrollActiveIntoView(newIndex);
     } else if (e.key === 'ArrowUp') {
-      setActiveSuggestion((prev: number) => Math.max(prev - 1, 0));
+      e.preventDefault();
+      const newIndex = Math.max(activeSuggestion - 1, 0);
+      setActiveSuggestion(newIndex);
+      scrollActiveIntoView(newIndex);
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (suggestions[activeSuggestion]) {
-        handleSelectStudent(suggestions[activeSuggestion]);
+        handleSelectStudent(suggestions[activeSuggestion], e as any);
       }
     }
   };
@@ -855,15 +1138,24 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
     }
   };
 
-  // Click outside to close suggestions
+  // Click outside to close suggestions (handles both mouse and touch)
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (searchInputRef.current && !searchInputRef.current.contains(e.target as Node)) {
+    const handleClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      const isInsideInput = searchInputRef.current?.contains(target);
+      const isInsideDesktopSuggestions = desktopSuggestionsRef.current?.contains(target);
+      const isInsideMobileSuggestions = mobileSuggestionsRef.current?.contains(target);
+      
+      if (!isInsideInput && !isInsideDesktopSuggestions && !isInsideMobileSuggestions) {
         setShowSuggestions(false);
       }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('mousedown', handleClick as EventListener);
+    document.addEventListener('touchstart', handleClick as EventListener);
+    return () => {
+      document.removeEventListener('mousedown', handleClick as EventListener);
+      document.removeEventListener('touchstart', handleClick as EventListener);
+    };
   }, []);
 
   // Load master sheet data when student or session is selected
@@ -882,31 +1174,29 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
     try {
       setLoading(true);
 
-      // Get all test results for the selected student and session
-      const { data: testResults, error: resultsError } = await supabase
-        .from('test_results')
-        .select(`
-          id,
-          obtained_marks,
-          max_marks,
-          percentage,
-          grade,
-          remarks,
-          test_records!inner(
+      // Get all test results for the selected student and session using pagination
+      const testResults = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('test_results')
+          .select(`
             id,
-            name,
-            test_date,
-            subject_id
-          )
-        `)
-        .eq('student_id', selectedStudent.id)
-        .eq('session_id', selectedSession)
-        .eq('school_id', user.school_id);
-
-      if (resultsError) {
-        console.error('Error loading test results:', resultsError);
-        throw resultsError;
-      }
+            obtained_marks,
+            max_marks,
+            percentage,
+            grade,
+            remarks,
+            test_records!inner(
+              id,
+              name,
+              test_date,
+              subject_id
+            )
+          `)
+          .eq('student_id', selectedStudent.id)
+          .eq('session_id', selectedSession)
+          .eq('school_id', user.school_id)
+          .range(from, to);
+      });
 
       if (!testResults || testResults.length === 0) {
         setMasterSheetData([]);
@@ -917,31 +1207,59 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
       // Get unique test record IDs
       const testRecordIds = Array.from(new Set(testResults.map(result => (result.test_records as any).id)));
 
-      // Get test records for the selected session
-      const { data: testRecords, error: recordsError } = await supabase
-        .from('test_records')
-        .select(`
-          id,
-          name,
-          test_date,
-          subject_id
-        `)
-        .in('id', testRecordIds)
-        .eq('session_id', selectedSession)
-        .eq('school_id', user.school_id);
+      // Get test records for the selected session using pagination
+      // Split into chunks if there are too many IDs (Supabase has a limit on .in() array size)
+      const chunkSize = 1000;
+      const testRecordChunks: number[][] = [];
+      for (let i = 0; i < testRecordIds.length; i += chunkSize) {
+        testRecordChunks.push(testRecordIds.slice(i, i + chunkSize));
+      }
 
-      if (recordsError) throw recordsError;
+      let allTestRecords: any[] = [];
+      for (const chunk of testRecordChunks) {
+        const chunkRecords = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('test_records')
+            .select(`
+              id,
+              name,
+              test_date,
+              subject_id
+            `)
+            .in('id', chunk)
+            .eq('session_id', selectedSession)
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        });
+        allTestRecords = allTestRecords.concat(chunkRecords);
+      }
 
-      // Get subject information separately
+      const testRecords = allTestRecords;
+
+      // Get subject information separately using pagination
       const uniqueSubjectIds = new Set(testRecords?.map(record => record.subject_id) || []);
       const subjectIds = Array.from(uniqueSubjectIds);
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('subjects')
-        .select('id, name')
-        .in('id', subjectIds)
-        .eq('school_id', user.school_id);
+      
+      // Split subject IDs into chunks if needed
+      const subjectChunks: number[][] = [];
+      for (let i = 0; i < subjectIds.length; i += chunkSize) {
+        subjectChunks.push(subjectIds.slice(i, i + chunkSize));
+      }
 
-      if (subjectsError) throw subjectsError;
+      let allSubjectsData: any[] = [];
+      for (const chunk of subjectChunks) {
+        const chunkSubjects = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('subjects')
+            .select('id, name')
+            .in('id', chunk)
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        });
+        allSubjectsData = allSubjectsData.concat(chunkSubjects);
+      }
+
+      const subjectsData = allSubjectsData;
 
       // Create a map of subjects by ID
       const subjectsMap = new Map();
@@ -1143,11 +1461,25 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
                   </button>
                 )}
                 {showSuggestions && suggestions.length > 0 && (
-                  <SuggestionsDropdown>
+                  <SuggestionsDropdown ref={desktopSuggestionsRef}>
                     {suggestions.map((student: Student, index: number) => (
                       <SuggestionItem
                         key={student.id}
-                        onClick={() => handleSelectStudent(student)}
+                        data-suggestion-index={index}
+                        onClick={(e) => {
+                          handleSelectStudent(student, e);
+                        }}
+                        onMouseDown={(e) => {
+                          // Prevent input blur on desktop
+                          e.preventDefault();
+                          handleSelectStudent(student, e);
+                        }}
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onTouchEnd={(e) => {
+                          handleSelectStudent(student, e);
+                        }}
                         $isActive={activeSuggestion === index}
                       >
                         <SuggestionAvatar>
@@ -1219,8 +1551,8 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
           </HeaderFilters>
         </HeaderRow>
         {/* Mobile Search Bar */}
-        <div style={{ display: window.innerWidth <= 700 ? 'flex' : 'none', marginTop: '8px', width: '100%' }}>
-          <SearchContainer style={{ width: '100%', maxWidth: 'none', flex: 1 }}>
+        <div style={{ display: window.innerWidth <= 700 ? 'flex' : 'none', marginTop: '8px', width: '100%', gap: '8px' }}>
+          <SearchContainer $isMobile={true} style={{ width: '100%', maxWidth: 'none', flex: 1 }}>
             <SearchIcon style={{ color: theme === 'dark' ? '#C0C0C0' : '#444', fontSize: '16px' }} />
             <SearchInput
               ref={searchInputRef}
@@ -1233,7 +1565,6 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
                   setShowSuggestions(true);
                 }
               }}
-              style={{ fontSize: '1rem' }}
             />
             {selectedStudent && (
               <button
@@ -1259,11 +1590,25 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
             </button>
           )}
           {showSuggestions && suggestions.length > 0 && (
-            <SuggestionsDropdown>
+            <SuggestionsDropdown ref={mobileSuggestionsRef}>
               {suggestions.map((student: Student, index: number) => (
                 <SuggestionItem
                   key={student.id}
-                  onClick={() => handleSelectStudent(student)}
+                  data-suggestion-index={index}
+                  onClick={(e) => {
+                    handleSelectStudent(student, e);
+                  }}
+                  onMouseDown={(e) => {
+                    // Prevent input blur on desktop
+                    e.preventDefault();
+                    handleSelectStudent(student, e);
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchEnd={(e) => {
+                    handleSelectStudent(student, e);
+                  }}
                   $isActive={activeSuggestion === index}
                 >
                   <SuggestionAvatar>
@@ -1411,28 +1756,28 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
               </SummaryHeader>
               
               <SummaryStats>
-                <SummaryStatItem>
-                  <SummaryStatLabel>Total Subjects</SummaryStatLabel>
-                  <SummaryStatValue>{summaryData.totalSubjects}</SummaryStatValue>
+                <SummaryStatItem $variant="subjects">
+                  <SummaryStatLabel $variant="subjects">Total Subjects</SummaryStatLabel>
+                  <SummaryStatValue $variant="subjects">{summaryData.totalSubjects}</SummaryStatValue>
                 </SummaryStatItem>
-                <SummaryStatItem>
-                  <SummaryStatLabel>Total Tests</SummaryStatLabel>
-                  <SummaryStatValue>{summaryData.totalTests}</SummaryStatValue>
+                <SummaryStatItem $variant="tests">
+                  <SummaryStatLabel $variant="tests">Total Tests</SummaryStatLabel>
+                  <SummaryStatValue $variant="tests">{summaryData.totalTests}</SummaryStatValue>
                 </SummaryStatItem>
-                <SummaryStatItem>
-                  <SummaryStatLabel>Total Marks</SummaryStatLabel>
-                  <SummaryStatValue>{summaryData.totalObtainedMarks}/{summaryData.totalMaxMarks}</SummaryStatValue>
+                <SummaryStatItem $variant="marks">
+                  <SummaryStatLabel $variant="marks">Total Marks</SummaryStatLabel>
+                  <SummaryStatValue $variant="marks">{summaryData.totalObtainedMarks}/{summaryData.totalMaxMarks}</SummaryStatValue>
                 </SummaryStatItem>
-                <SummaryStatItem>
-                  <SummaryStatLabel>Overall %</SummaryStatLabel>
-                  <SummaryStatValue>{summaryData.totalPercentage.toFixed(1)}%</SummaryStatValue>
+                <SummaryStatItem $variant="percentage">
+                  <SummaryStatLabel $variant="percentage">Overall %</SummaryStatLabel>
+                  <SummaryStatValue $variant="percentage">{summaryData.totalPercentage.toFixed(1)}%</SummaryStatValue>
                 </SummaryStatItem>
               </SummaryStats>
 
               <SubjectSummaryGrid>
                 {summaryData.subjectSummaries.map((subject) => (
                   <SubjectSummaryItem key={subject.subject_id}>
-                    <SubjectSummaryName>{subject.subject_name}</SubjectSummaryName>
+                    <SubjectSummaryName>{subject.subject_name} ({subject.test_count})</SubjectSummaryName>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                       <SubjectSummaryMarks>{subject.obtained_marks}/{subject.total_marks}</SubjectSummaryMarks>
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: '500' }}>
@@ -1445,18 +1790,45 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
             </SummaryCard>
 
             <SubjectCardsGrid>
-            {masterSheetData.map((subjectData, index) => (
+            {masterSheetData.map((subjectData, index) => {
+              const isExpanded = expandedCards.has(index);
+              const toggleCard = () => {
+                setExpandedCards(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(index)) {
+                    newSet.delete(index);
+                  } else {
+                    newSet.add(index);
+                  }
+                  return newSet;
+                });
+              };
+              
+              return (
               <SubjectCard key={index}>
-                <SubjectHeader>
+                  <SubjectHeader $isClickable={true} onClick={toggleCard}>
+                    <SubjectHeaderLeft>
                   <SubjectName>
                     {subjectData.test_date} ({subjects.filter(date => subjectData.subject_scores[date] !== '-').length})
                   </SubjectName>
+                    </SubjectHeaderLeft>
+                    <SubjectHeaderRight>
+                      <SubjectBadge>
+                        {subjectData.obtained_marks}/{subjectData.total_marks}
+                      </SubjectBadge>
+                      <SubjectBadge>
+                        {subjectData.percentage.toFixed(1)}%
+                      </SubjectBadge>
                   <SubjectGrade $grade={subjectData.average_grade}>
                     {subjectData.average_grade}
                   </SubjectGrade>
+                      <CollapseIcon className={isExpanded ? 'expanded' : ''}>
+                        <KeyboardArrowDownIcon style={{ fontSize: '1.2rem' }} />
+                      </CollapseIcon>
+                    </SubjectHeaderRight>
                 </SubjectHeader>
                 
-                <TestResultsList>
+                  <TestResultsList $isExpanded={isExpanded}>
                   {subjects
                     .filter(date => subjectData.subject_scores[date] !== '-')
                     .map((date) => (
@@ -1468,18 +1840,9 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
                       </TestResultItem>
                     ))}
                 </TestResultsList>
-                
-                <SubjectSummary>
-                  <SummaryText>Total</SummaryText>
-                  <SummaryValue>{subjectData.obtained_marks}/{subjectData.total_marks}</SummaryValue>
-                </SubjectSummary>
-                
-                <SubjectSummary>
-                  <SummaryText>Percentage</SummaryText>
-                  <SummaryValue>{subjectData.percentage.toFixed(1)}%</SummaryValue>
-                </SubjectSummary>
               </SubjectCard>
-            ))}
+              );
+            })}
           </SubjectCardsGrid>
           </>
           ) : (

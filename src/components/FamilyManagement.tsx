@@ -29,49 +29,70 @@ import imageCompression from 'browser-image-compression';
 import Loader from '../components/Loader';
 const PageContainer = styled.div`
   width: 100%;
-  padding: 1.2rem 1.2rem 2rem 1.2rem;
+  padding: 1rem 1rem 2rem 1rem;
   background: ${({ theme }) => theme.BG};
   min-height: 100vh;
+  
+  @media (max-width: 700px) {
+    padding: 0.75rem 0.75rem 1.5rem 0.75rem;
+  }
 `;
 
-const Header = styled.div`
+const PageHeader = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  justify-content: space-between;
+  margin: 0 0 0.75rem 0;
 `;
 
-const Title = styled.h1`
-  font-size: 2rem;
-  font-weight: 800;
-  color: ${({ theme }) => theme.ACCENT};
+const PageTitle = styled.h1`
   margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 const FamiliesGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-  margin-top: 0.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 0;
+  
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
 `;
 
-const FamilyCard = styled.div`
+const FamilyCard = styled.div<{ $accent: string }>`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 16px;
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  transition: border-color 0.18s, box-shadow 0.18s;
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  border: 1px solid ${({ theme }) => theme.BORDER};
   position: relative;
   overflow: hidden;
-  margin-bottom: 0.5rem;
-  min-width: 220px;
-  max-width: 400px;
   display: flex;
   flex-direction: column;
   height: 100%;
+  border-top: 3px solid ${({ $accent }) => $accent};
+  
   &:hover {
     border-color: #6366f1;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  @media (max-width: 700px) {
+    padding: 0.85rem;
+    border-radius: 10px;
   }
 `;
 
@@ -81,21 +102,49 @@ const AddFamilyCard = styled(FamilyCard)`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: 2px dashed #4a6cf7;
-  color: #4a6cf7;
+  border: 1.5px dashed #6366f1;
+  color: #6366f1;
   background: ${({ theme }) => theme.BG};
-  transition: border-color 0.18s, background 0.18s;
+  transition: all 0.2s ease;
+  min-height: 180px;
+  
   &:hover {
-    border-color: #274bb5;
+    border-color: #4f46e5;
     background: ${({ theme }) => theme.FIELD_BG};
+    color: #4f46e5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
   }
 `;
 
 const FamilyHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 700px) {
+    gap: 0.6rem;
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.7rem;
+  }
+`;
+
+const ContactBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 `;
 
 // Add a helper for avatar color
@@ -113,20 +162,21 @@ function stringToColor(str: string) {
 }
 
 const FamilyAvatar = styled.div`
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: ${({ $bg }: { $bg: string }) => $bg};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   overflow: hidden;
   position: relative;
+  flex-shrink: 0;
   
   img {
     width: 100%;
@@ -135,41 +185,66 @@ const FamilyAvatar = styled.div`
     border-radius: 50%;
     display: block;
   }
+  
+  @media (max-width: 700px) {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
 `;
 
 const FamilyInfo = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const FamilyName = styled.h3`
-  margin: 0;
-  font-size: 1.25rem;
-  color: ${({ theme }) => theme.ACCENT};
-  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  @media (max-width: 700px) {
+    font-size: 1rem;
+  }
 `;
 
 const FamilyDetails = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.98rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+  }
 `;
 
 const MemberList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 1rem 0 0 0;
+  margin: 0.75rem 0 0 0;
 `;
 
 const MemberItem = styled.li`
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  font-size: 0.9rem;
+  gap: 0.6rem;
+  font-size: 0.85rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin-bottom: 0.3rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
-  padding: 0.5rem;
+  margin-bottom: 0.4rem;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'};
+  padding: 0.5rem 0.6rem;
   border-radius: 8px;
   position: relative;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'};
+  }
 
   span {
     display: flex;
@@ -202,8 +277,21 @@ const MemberItem = styled.li`
     margin-left: 0.2rem;
   }
   &.primary-contact {
-    border: 2px solid #22c55e !important;
-    box-shadow: 0 0 0 2px #22c55e33;
+    border: 1px solid #22c55e;
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)'};
+  }
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.5rem;
+    gap: 0.5rem;
+    .member-actions {
+      position: static;
+      transform: none;
+      opacity: 1 !important;
+      margin-left: 0.25rem;
+      gap: 0.25rem;
+    }
   }
 `;
 
@@ -216,10 +304,16 @@ const MemberIcon = styled.div`
 
 const CardActions = styled.div`
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-top: auto;
-  padding-top: 1.2rem;
+  padding-top: 0.85rem;
   justify-content: flex-end;
+  align-items: center;
+  
+  @media (max-width: 700px) {
+    padding-top: 0.7rem;
+    gap: 0.3rem;
+  }
 `;
 
 const StyledIconButton = styled.button`
@@ -227,8 +321,8 @@ const StyledIconButton = styled.button`
   border: none;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 6px;
+  border-radius: 6px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -243,10 +337,15 @@ const StyledIconButton = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
+  
+  @media (max-width: 700px) {
+    padding: 5px;
+  }
 `;
 
 const DeleteButton = styled(StyledIconButton)`
   &:hover {
+    background: rgba(239, 68, 68, 0.1);
     color: #ef4444;
   }
 `;
@@ -254,11 +353,11 @@ const DeleteButton = styled(StyledIconButton)`
 const Button = styled.button`
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.98rem;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
@@ -266,9 +365,17 @@ const Button = styled.button`
   color: white;
   min-width: 0;
   width: auto;
+  
   &:hover {
     background: ${({ theme }) => theme.ACCENT_INPUT};
     transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  @media (max-width: 700px) {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    gap: 0.3rem;
   }
 `;
 
@@ -288,60 +395,100 @@ const Modal = styled.div`
 
 const ModalContent = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  padding: 1.1rem 1.2rem 1.2rem 1.2rem;
+  border-radius: 12px;
+  padding: 1rem;
   width: 96%;
-  max-width: 370px;
+  max-width: 380px;
   position: relative;
   border: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 700px) {
+    padding: 0.9rem;
+    max-width: 94%;
+  }
 `;
 
 const ModalTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 1.5rem;
+  margin: 0 0 1.2rem;
+  
+  @media (max-width: 700px) {
+    font-size: 1.15rem;
+    margin: 0 0 1rem;
+  }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
+  
+  @media (max-width: 700px) {
+    margin-bottom: 1rem;
+  }
 `;
 
 const Label = styled.label`
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-weight: 500;
+  font-size: 0.9rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.85rem;
+    margin-bottom: 0.35rem;
+  }
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.65rem;
   border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
   border-radius: 8px;
   background: ${({ theme }) => theme.FIELD_BG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: all 0.2s ease;
+  
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.ACCENT};
     box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}33;
   }
+  
+  @media (max-width: 700px) {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
 `;
 
 const CloseButton = styled.button`
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 12px;
+  right: 12px;
   background: none;
   border: none;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   cursor: pointer;
   z-index: 10;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  
   &:hover {
     color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+  
+  @media (max-width: 700px) {
+    top: 10px;
+    right: 10px;
+    font-size: 1.2rem;
   }
 `;
 
@@ -361,25 +508,32 @@ const UnlinkButton = styled.button`
 `;
 
 const StudentAvatar = styled.div<{ $src?: string; $bg: string }>`
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: ${({ $bg }) => $bg};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
+  
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
     display: block;
+  }
+  
+  @media (max-width: 700px) {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
   }
 `;
 
@@ -436,14 +590,14 @@ const DeleteModalOverlay = styled.div`
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(30, 32, 38, 0.38);
   backdrop-filter: blur(7px) saturate(1.2);
-  z-index: 4000;
+  z-index: 14000;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: modal-fade-in 0.25s;
   @media (max-width: 700px) {
-    align-items: flex-start;
-    padding: 24px 0 0 0;
+    align-items: center;
+    padding: 0;
   }
   @keyframes modal-fade-in {
     from { opacity: 0; }
@@ -455,16 +609,18 @@ const DeleteModalBox = styled.div`
   color: ${({theme}) => theme.TEXT_PRIMARY};
   border-radius: 16px;
   box-shadow: 0 8px 32px #0007;
-  padding: 32px 36px 24px 36px;
+  padding: 24px 28px 20px 28px;
   min-width: 320px;
+  max-width: 520px;
+  width: 92vw;
   display: flex;
   flex-direction: column;
   align-items: center;
   border: 1.5px solid ${({theme}) => theme.FIELD_BORDER};
   @media (max-width: 700px) {
     min-width: 0;
-    width: 95vw;
-    padding: 12px 2vw;
+    width: calc(100vw - 32px);
+    padding: 16px 16px 14px 16px;
   }
 `;
 const DeleteModalActions = styled.div`
@@ -518,9 +674,10 @@ const FamilyAvatarPreview = styled.div<{ $top: number; $left: number; $themeObj:
 // Add a styled span for class-section info
 const ClassSectionInfo = styled.span`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.92em;
-  margin-left: 0.4em;
-  font-weight: 500;
+  font-size: 0.88em;
+  margin-left: 0.3em;
+  font-weight: 400;
+  opacity: 0.8;
 `;
 
 const MemberGrid = styled.ul`
@@ -578,6 +735,16 @@ const MemberItemSmall = styled(MemberItem)`
     border: 2px solid #22c55e !important;
     box-shadow: 0 0 0 2px #22c55e33;
   }
+  
+  @media (max-width: 700px) {
+    .member-actions {
+      position: static;
+      transform: none;
+      opacity: 1 !important;
+      margin-left: 0.2rem;
+      gap: 0.25rem;
+    }
+  }
 `;
 
 // Enhanced Modal Components (copied from CreateReportForm)
@@ -590,7 +757,7 @@ const StyledDialog = muiStyled(Dialog)(({ theme }: { theme: MuiTheme }) => ({
             : theme.palette.background.paper,
         maxWidth: '600px',
         width: '95%',
-        margin: '84px 16px 16px',
+        margin: 0,
         overflow: 'hidden',
         boxShadow: theme.palette.mode === 'dark'
             ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
@@ -604,10 +771,10 @@ const StyledDialog = muiStyled(Dialog)(({ theme }: { theme: MuiTheme }) => ({
         zIndex: 1301,
         [theme.breakpoints.down('sm')]: {
             width: 'calc(100% - 32px)',
-            height: 'calc(100% - 96px)',
-            margin: '76px 16px 20px',
+            height: 'auto',
+            margin: 0,
             borderRadius: '16px',
-            maxHeight: 'calc(100% - 96px)'
+            maxHeight: 'calc(100% - 48px)'
         }
     },
     '& .MuiBackdrop-root': {
@@ -638,7 +805,7 @@ const DialogHeader = muiStyled(Box)(({ theme }: { theme: MuiTheme }) => ({
 }));
 
 const DialogTitle = muiStyled(Typography)(({ theme }: { theme: MuiTheme }) => ({
-    fontSize: '1.5rem',
+    fontSize: '1.1rem',
     fontWeight: 600,
     color: theme.palette.mode === 'dark'
         ? theme.palette.primary.light
@@ -790,18 +957,19 @@ const FamilyManagementSkeletonGrid = styled.div`
 `;
 const FamilySkeletonCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#232a3b' : '#f3f4f6'};
-  border-radius: 16px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.10);
-  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
   min-height: 180px;
   width: 100%;
   max-width: 340px;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  
   &::after {
     content: '';
     position: absolute;
@@ -809,21 +977,29 @@ const FamilySkeletonCard = styled.div`
     background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
     animation: shimmer 1.5s infinite;
     z-index: 2;
-    border-radius: 16px;
+    border-radius: 12px;
   }
+  
   @keyframes shimmer {
     0% { left: -100%; }
     100% { left: 100%; }
   }
+  
+  @media (max-width: 700px) {
+    padding: 0.85rem;
+    border-radius: 10px;
+  }
 `;
 const FamilySkeletonAvatar = styled.div`
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin: 0 auto 18px auto;
+  margin: 0 0 12px 0;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+  
   &::after {
     content: '';
     position: absolute;
@@ -834,28 +1010,29 @@ const FamilySkeletonAvatar = styled.div`
   }
 `;
 const FamilySkeletonLine = styled.div<{ width?: string; height?: string }>`
-  height: ${({ height }) => height || '18px'};
+  height: ${({ height }) => height || '16px'};
   width: ${({ width }) => width || '80%'};
   background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e0e7ef'};
-  border-radius: 8px;
-  margin: 10px auto 0 auto;
+  border-radius: 6px;
+  margin: 6px 0;
   position: relative;
   overflow: hidden;
+  
   &::after {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
     animation: shimmer 1.5s infinite;
-    border-radius: 8px;
+    border-radius: 6px;
   }
 `;
 const FamilySkeletonDivider = styled.div`
-  width: 60%;
-  height: 2px;
+  width: 100%;
+  height: 1px;
   background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
-  margin: 8px auto 8px auto;
-  border-radius: 2px;
+  margin: 8px 0;
+  border-radius: 1px;
 `;
 const skeletonFamilyCount = 8;
 const FamilyManagementSkeleton: React.FC = () => (
@@ -863,12 +1040,16 @@ const FamilyManagementSkeleton: React.FC = () => (
     <FamilyManagementSkeletonGrid>
       {Array.from({ length: skeletonFamilyCount }).map((_, i) => (
         <FamilySkeletonCard key={i}>
-          <FamilySkeletonAvatar />
-          <FamilySkeletonLine width="70%" height="22px" />
-          <FamilySkeletonLine width="50%" height="16px" />
-          <FamilySkeletonDivider />
-          <FamilySkeletonLine width="60%" height="14px" />
-          <FamilySkeletonLine width="40%" height="14px" />
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.85rem', paddingBottom: '0.85rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <FamilySkeletonAvatar />
+            <div style={{ flex: 1 }}>
+              <FamilySkeletonLine width="65%" height="18px" />
+              <FamilySkeletonLine width="85%" height="14px" />
+            </div>
+          </div>
+          <FamilySkeletonLine width="40%" height="12px" />
+          <FamilySkeletonLine width="100%" height="36px" />
+          <FamilySkeletonLine width="100%" height="36px" />
         </FamilySkeletonCard>
       ))}
     </FamilyManagementSkeletonGrid>
@@ -922,6 +1103,11 @@ const FamilyManagement: React.FC = () => {
     bg: string;
     top: number;
     left: number;
+  } | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void> | void;
   } | null>(null);
   const { startProgress, setProgress, completeProgress } = useProgress();
   const [loadingFamilies, setLoadingFamilies] = useState(true);
@@ -1283,6 +1469,11 @@ const FamilyManagement: React.FC = () => {
   };
 
   const handleDeleteFamily = (family: any) => {
+    const hasLinked = Array.isArray(family.family_members) && family.family_members.length > 0;
+    if (hasLinked) {
+      showToast('Unlink all students before deleting family', 'error');
+      return;
+    }
     setFamilyToDelete(family);
     setShowDeleteModal(true);
   };
@@ -1380,32 +1571,194 @@ const FamilyManagement: React.FC = () => {
           </DeleteModalBox>
         </DeleteModalOverlay>
       )}
+      {confirm && (
+        <DeleteModalOverlay>
+          <DeleteModalBox theme={themeObj}>
+            <div style={{fontSize: '1.1rem', fontWeight: 600, marginBottom: 10}}>{confirm.title}</div>
+            <div style={{marginBottom: 10}}>{confirm.message}</div>
+            <DeleteModalActions>
+              <DeleteModalCancel onClick={() => setConfirm(null)}>Cancel</DeleteModalCancel>
+              <DeleteModalButton onClick={async () => { await confirm.onConfirm(); setConfirm(null); }}>Yes</DeleteModalButton>
+            </DeleteModalActions>
+          </DeleteModalBox>
+        </DeleteModalOverlay>
+      )}
       <PageContainer>
         {loadingFamilies ? (
           <FamilyManagementSkeleton />
         ) : (
-          <FamiliesGrid>
+          <>
+            <PageHeader>
+              <PageTitle>Families</PageTitle>
+              <HeaderActions>
+                <Button onClick={openAddFamilyModal}>
+                  <AddIcon style={{ fontSize: 18 }} /> Add Family
+                </Button>
+              </HeaderActions>
+            </PageHeader>
+            <FamiliesGrid>
             {families.map(family => (
-              <FamilyCard key={family.id}>
+              <FamilyCard key={family.id} $accent={stringToColor(family.name)}>
+                {family.contact_number && (
+                  <ContactBadge>
+                    <span style={{ opacity: 0.8 }}>📞</span>
+                    <span>{family.contact_number}</span>
+                  </ContactBadge>
+                )}
                 <FamilyHeader>
-                  <Avatar src={family.avatar_url || undefined} sx={{ width: 48, height: 48, fontSize: '1.5rem', bgcolor: stringToColor(family.name) }}>
+                  <Avatar src={family.avatar_url || undefined} sx={{ width: 44, height: 44, fontSize: '1.3rem', fontWeight: 600, bgcolor: stringToColor(family.name) }}>
                     {!family.avatar_url && getInitials(family.name)}
                   </Avatar>
                   <FamilyInfo>
                     <FamilyName>{family.name}</FamilyName>
                     <FamilyDetails>
-                      {family.address}<br />
-                      <b>Contact:</b> {family.contact_number || '-'}
+                      {family.address && (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+                          <span style={{ opacity: 0.7 }}>📍</span>
+                          <span style={{ flex: 1, lineHeight: 1.3 }}>{family.address}</span>
+                        </div>
+                      )}
                     </FamilyDetails>
                   </FamilyInfo>
                 </FamilyHeader>
-                <div style={{marginTop: 10, marginBottom: 4, fontWeight: 600, color: themeObj.TEXT_PRIMARY}}>Linked Students:</div>
+                <div style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: themeObj.TEXT_SECONDARY,
+                  marginBottom: '0.5rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Students ({family.family_members?.length || 0})
+                </div>
                 {family.family_members && family.family_members.length > 0 ? (
-                    <MemberList>
-                    {[...family.family_members]
-                      .sort((a, b) => (b.is_primary_contact ? 1 : 0) - (a.is_primary_contact ? 1 : 0))
-                      .map((member: any) => (
-                        <MemberItem key={member.id} className={member.is_primary_contact ? 'primary-contact' : ''}>
+                    (family.family_members.length > 3 ? (
+                      <MemberGrid>
+                        {[...family.family_members]
+                          .sort((a, b) => (b.is_primary_contact ? 1 : 0) - (a.is_primary_contact ? 1 : 0))
+                          .map((member: any) => (
+                            <MemberItemSmall key={member.id} className={member.is_primary_contact ? 'primary-contact' : ''}>
+                              <StudentAvatar
+                                $src={member.student?.picture_url}
+                                $bg={stringToColor(member.student?.name || '')}
+                                onMouseEnter={e => {
+                                  if (previewTimeout.current) clearTimeout(previewTimeout.current);
+                                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                  setStudentAvatarPreview({
+                                    src: member.student?.picture_url,
+                                    initials: getStudentInitials(member.student?.name || ''),
+                                    bg: stringToColor(member.student?.name || ''),
+                                    top: rect.top - 110 < 0 ? rect.bottom + 8 : rect.top - 110,
+                                    left: rect.left - 32 < 0 ? rect.right + 8 : rect.left - 32,
+                                  });
+                                }}
+                                onMouseLeave={() => {
+                                  previewTimeout.current = setTimeout(() => setStudentAvatarPreview(null), 120);
+                                }}
+                              >
+                                {member.student?.picture_url ? (
+                                  <img src={member.student.picture_url} alt={member.student.name} />
+                                ) : (
+                                  getStudentInitials(member.student?.name || '')
+                                )}
+                              </StudentAvatar>
+                              <span>
+                                {member.student?.name}
+                                {getClassSectionString(member.student) && (
+                                  <ClassSectionInfo>{getClassSectionString(member.student)}</ClassSectionInfo>
+                                )}
+                              </span>
+                              <div className="member-actions">
+                                <MuiButton
+                                  variant={member.is_primary_contact ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  size="small"
+                                  disabled={member.is_primary_contact || loading}
+                                  sx={{ 
+                                    minWidth: 0, 
+                                    px: 1, 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: 500, 
+                                    textTransform: 'none', 
+                                    height: 22, 
+                                    borderRadius: '6px'
+                                  }}
+                                  onClick={async () => {
+                                    if (member.is_primary_contact) return;
+                                    setLoading(true);
+                                    try {
+                                      await supabase
+                                        .from('family_members')
+                                        .update({ is_primary_contact: false })
+                                        .eq('family_id', family.id);
+                                      await supabase
+                                        .from('family_members')
+                                        .update({ is_primary_contact: true })
+                                        .eq('id', member.id);
+                                      fetchFamilies();
+                                      showToast('Primary contact updated!', 'success');
+                                    } catch (error) {
+                                      showToast('Failed to update primary contact', 'error');
+                                    } finally {
+                                      setLoading(false);
+                                    }
+                                  }}
+                                >
+                                  {member.is_primary_contact ? 'Primary' : 'Make Primary'}
+                                </MuiButton>
+                                {member.is_primary_contact && (
+                                  <MuiIconButton
+                                    title="Unset primary"
+                                    size="small"
+                                    sx={{ width: 20, height: 20, ml: 0.3,
+                                      '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}}
+                                    onClick={async () => {
+                                      setLoading(true);
+                                      try {
+                                        await supabase
+                                          .from('family_members')
+                                          .update({ is_primary_contact: false })
+                                          .eq('id', member.id);
+                                        fetchFamilies();
+                                        showToast('Primary contact removed', 'success');
+                                      } catch (error) {
+                                        showToast('Failed to remove primary', 'error');
+                                      } finally {
+                                        setLoading(false);
+                                      }
+                                    }}
+                                  >
+                                    <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                                  </MuiIconButton>
+                                )}
+                                <MuiIconButton
+                                  className="unlink-btn"
+                                  onClick={() => handleUnlinkStudent(member.id)}
+                                  disabled={unlinkingId === member.id}
+                                  title="Unlink student from family"
+                                  size="small"
+                                  sx={{ 
+                                    width: 20, 
+                                    height: 20, 
+                                    ml: 0.2,
+                                    '&:hover': {
+                                      background: 'rgba(239, 68, 68, 0.1)',
+                                      color: '#ef4444'
+                                    }
+                                  }}
+                                >
+                                  <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                                </MuiIconButton>
+                              </div>
+                            </MemberItemSmall>
+                          ))}
+                      </MemberGrid>
+                    ) : (
+                      <MemberList>
+                        {[...family.family_members]
+                          .sort((a, b) => (b.is_primary_contact ? 1 : 0) - (a.is_primary_contact ? 1 : 0))
+                          .map((member: any) => (
+                            <MemberItem key={member.id} className={member.is_primary_contact ? 'primary-contact' : ''}>
                           <StudentAvatar
                             $src={member.student?.picture_url}
                             $bg={stringToColor(member.student?.name || '')}
@@ -1442,7 +1795,15 @@ const FamilyManagement: React.FC = () => {
                               color="primary"
                               size="small"
                               disabled={member.is_primary_contact || loading}
-                              sx={{ minWidth: 0, px: 1.2, fontSize: '0.78rem', fontWeight: 600, textTransform: 'none', height: 24, borderRadius: '7px' }}
+                              sx={{ 
+                                minWidth: 0, 
+                                px: 1, 
+                                fontSize: '0.75rem', 
+                                fontWeight: 500, 
+                                textTransform: 'none', 
+                                height: 22, 
+                                borderRadius: '6px'
+                              }}
                               onClick={async () => {
                                 if (member.is_primary_contact) return;
                                 setLoading(true);
@@ -1466,30 +1827,80 @@ const FamilyManagement: React.FC = () => {
                             >
                               {member.is_primary_contact ? 'Primary' : 'Make Primary'}
                             </MuiButton>
+                            {member.is_primary_contact && (
+                              <MuiIconButton
+                                title="Unset primary"
+                                size="small"
+                                sx={{ width: 20, height: 20, ml: 0.3,
+                                  '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}}
+                                onClick={() => setConfirm({
+                                  title: 'Remove Primary Contact',
+                                  message: `Unset ${member.student?.name || 'this student'} as the primary contact?`,
+                                  onConfirm: async () => {
+                                    setLoading(true);
+                                    try {
+                                      await supabase
+                                        .from('family_members')
+                                        .update({ is_primary_contact: false })
+                                        .eq('id', member.id);
+                                      fetchFamilies();
+                                      showToast('Primary contact removed', 'success');
+                                    } catch (error) {
+                                      showToast('Failed to remove primary', 'error');
+                                    } finally {
+                                      setLoading(false);
+                                    }
+                                  }
+                                })}
+                              >
+                                <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                              </MuiIconButton>
+                            )}
                             <MuiIconButton
                               className="unlink-btn"
-                              onClick={() => handleUnlinkStudent(member.id)}
+                              onClick={() => setConfirm({
+                                title: 'Unlink Student',
+                                message: `Are you sure you want to unlink ${member.student?.name || 'this student'} from ${family.name}?`,
+                                onConfirm: async () => handleUnlinkStudent(member.id)
+                              })}
                               disabled={unlinkingId === member.id}
                               title="Unlink student from family"
                               size="small"
-                              sx={{ width: 22, height: 22, ml: 0.2 }}
+                              sx={{ 
+                                width: 20, 
+                                height: 20, 
+                                ml: 0.2,
+                                '&:hover': {
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  color: '#ef4444'
+                                }
+                              }}
                             >
-                              <CloseIcon sx={{ fontSize: '1rem' }} />
+                              <CloseIcon sx={{ fontSize: '0.9rem' }} />
                             </MuiIconButton>
                           </div>
                         </MemberItem>
                       ))}
-                    </MemberList>
+                      </MemberList>
+                    ))
                 ) : (
-                  <MemberList>
-                    <MemberItem style={{ justifyContent: 'center', color: themeObj.TEXT_SECONDARY, fontStyle: 'italic' }}>None</MemberItem>
-                  </MemberList>
+                  <div style={{ 
+                    color: themeObj.TEXT_SECONDARY, 
+                    fontStyle: 'italic',
+                    fontSize: '0.85rem',
+                    padding: '0.75rem',
+                    textAlign: 'center',
+                    background: themeObj.BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                    borderRadius: '8px'
+                  }}>
+                    No students linked
+                  </div>
                 )}
                 <CardActions>
                   <StyledIconButton onClick={() => startEditFamily(family)} title="Edit Family">
                     <EditIcon fontSize="small" />
                   </StyledIconButton>
-                  <DeleteButton onClick={() => handleDeleteFamily(family)} title="Delete Family">
+                  <DeleteButton onClick={() => handleDeleteFamily(family)} title={Array.isArray(family.family_members) && family.family_members.length > 0 ? 'Unlink all students first' : 'Delete Family'} disabled={Array.isArray(family.family_members) && family.family_members.length > 0}>
                     <DeleteIcon fontSize="small" />
                   </DeleteButton>
                   <Button onClick={() => { setSelectedFamily(family); setShowLinkModal(true); }}>
@@ -1498,11 +1909,8 @@ const FamilyManagement: React.FC = () => {
                 </CardActions>
               </FamilyCard>
             ))}
-            <AddFamilyCard onClick={openAddFamilyModal}>
-              <AddIcon style={{ fontSize: '3rem', marginBottom: '0.5rem' }} />
-              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>Add Family</div>
-            </AddFamilyCard>
           </FamiliesGrid>
+          </>
         )}
 
         {/* Enhanced Add Family Modal */}
@@ -1781,75 +2189,96 @@ const FamilyManagement: React.FC = () => {
             </FormActions>
         </StyledDialog>
 
-        {/* Link Student Modal */}
+        {/* Link Student Modal (centered to viewport via MUI Dialog) */}
         {showLinkModal && (
-          <Modal onClick={() => setShowLinkModal(false)}>
-            <ModalContent onClick={e => e.stopPropagation()}>
-              <CloseButton onClick={() => setShowLinkModal(false)}>
-                <CloseIcon />
-              </CloseButton>
-              <ModalTitle>Link Student to {selectedFamily?.name}</ModalTitle>
+          <StyledDialog
+            open={showLinkModal}
+            onClose={() => setShowLinkModal(false)}
+            fullScreen={fullScreen}
+            maxWidth="sm"
+            slotProps={{
+              backdrop: { sx: { position: 'fixed', zIndex: 1300 } }
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Link Student to {selectedFamily?.name}</DialogTitle>
+              <MuiIconButton onClick={() => setShowLinkModal(false)} size="small">
+                <CloseIcon fontSize="small" />
+              </MuiIconButton>
+            </DialogHeader>
+            <StyledDialogContent>
               <form onSubmit={handleLinkStudent}>
-                <FormGroup>
-                  <Label>Class</Label>
-                  <select
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: 8, fontSize: '1rem', background: themeObj.FIELD_BG, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.FIELD_BORDER}` }}
-                    value={linkClassId}
-                    onChange={e => { setLinkClassId(e.target.value); setLinkSectionId(''); setLinkStudentId(''); }}
-                  >
-                    <option value="">All Classes</option>
-                    {classes.map((cls: any) => (
-                      <option key={cls.id} value={cls.id}>{cls.name}</option>
-                    ))}
-                  </select>
-                </FormGroup>
-                {(() => {
-                  const selectedClass = classes.find(c => String(c.id) === String(linkClassId));
-                  const hasSections = selectedClass?.has_sections ?? true;
-                  return hasSections ? (
-                    <FormGroup>
-                      <Label>Section</Label>
-                      <select
-                        style={{ width: '100%', padding: '0.75rem', borderRadius: 8, fontSize: '1rem', background: themeObj.FIELD_BG, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.FIELD_BORDER}` }}
-                        value={linkSectionId}
-                        onChange={e => { setLinkSectionId(e.target.value); setLinkStudentId(''); }}
-                        disabled={!linkClassId}
-                      >
-                        <option value="">All Sections</option>
-                        {filteredSections.map((section: any) => (
-                          <option key={section.id} value={section.id}>{section.name}</option>
-                        ))}
-                      </select>
-                    </FormGroup>
-                  ) : null;
-                })()}
-                <FormGroup>
-                  <Label>Student</Label>
-                  <select
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: 8, fontSize: '1rem', background: themeObj.FIELD_BG, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.FIELD_BORDER}` }}
-                    value={linkStudentId}
-                    onChange={e => setLinkStudentId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select a student</option>
-                    {filteredStudents.map((student: any) => {
-                      const isLinked = linkedStudentIds.has(student.id);
-                      return (
-                        <option key={student.id} value={student.id} disabled={isLinked}>
-                          {student.name}{isLinked ? ' (Linked)' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </FormGroup>
-                <CardActions>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Linking...' : 'Link Student'}
-                  </Button>
-                </CardActions>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Label>Class</Label>
+                    <select
+                      style={{ width: '100%', padding: '0.65rem', borderRadius: 8, fontSize: '0.9rem', background: themeObj.FIELD_BG, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.FIELD_BORDER}` }}
+                      value={linkClassId}
+                      onChange={e => { setLinkClassId(e.target.value); setLinkSectionId(''); setLinkStudentId(''); }}
+                    >
+                      <option value="">All Classes</option>
+                      {classes.map((cls: any) => (
+                        <option key={cls.id} value={cls.id}>{cls.name}</option>
+                      ))}
+                    </select>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Label>Section</Label>
+                    <select
+                      style={{ width: '100%', padding: '0.65rem', borderRadius: 8, fontSize: '0.9rem', background: themeObj.FIELD_BG, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.FIELD_BORDER}` }}
+                      value={linkSectionId}
+                      onChange={e => { setLinkSectionId(e.target.value); setLinkStudentId(''); }}
+                      disabled={!linkClassId}
+                    >
+                      <option value="">All Sections</option>
+                      {filteredSections.map((section: any) => (
+                        <option key={section.id} value={section.id}>{section.name}</option>
+                      ))}
+                    </select>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Label>Student</Label>
+                    <select
+                      style={{ width: '100%', padding: '0.65rem', borderRadius: 8, fontSize: '0.85rem', background: themeObj.FIELD_BG, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.FIELD_BORDER}`, lineHeight: '1.4' }}
+                      value={linkStudentId}
+                      onChange={e => setLinkStudentId(e.target.value)}
+                      required
+                    >
+                      <option value="">Select a student</option>
+                      {filteredStudents.map((student: any) => {
+                        const isLinked = linkedStudentIds.has(student.id);
+                        const displayText = `#${student.id} - ${student.name}${student.father_name ? ` - ${student.father_name}` : ''}${isLinked ? ' (Linked)' : ''}`;
+                        return (
+                          <option key={student.id} value={student.id} disabled={isLinked}>
+                            {displayText}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </Grid>
+                </Grid>
               </form>
-            </ModalContent>
-          </Modal>
+            </StyledDialogContent>
+            <FormActions>
+              <MuiButton 
+                onClick={() => setShowLinkModal(false)}
+                variant="outlined"
+                size="small"
+                sx={{ borderRadius: '6px', textTransform: 'none', px: 2 }}
+              >
+                Cancel
+              </MuiButton>
+              <MuiButton 
+                onClick={handleLinkStudent}
+                variant="contained"
+                size="small"
+                disabled={loading}
+                sx={{ borderRadius: '6px', textTransform: 'none', px: 2 }}
+              >
+                {loading ? 'Linking...' : 'Link Student'}
+              </MuiButton>
+            </FormActions>
+          </StyledDialog>
         )}
 
         {studentAvatarPreview && (

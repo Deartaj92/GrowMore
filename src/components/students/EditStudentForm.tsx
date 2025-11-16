@@ -14,7 +14,11 @@ import {
   useTheme,
   useMediaQuery,
   styled as muiStyled,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormLabel
 } from '@mui/material';
 import { Close as CloseIcon, AccountCircle } from '@mui/icons-material';
 import { supabase } from '../../supabaseClient';
@@ -255,6 +259,7 @@ interface StudentFormData {
   mother_mobile?: string;
   mother_occupation?: string;
   mother_income?: string;
+  notification_channel?: 'whatsapp' | 'sms';
   _newAvatarFile?: File | null;
 }
 
@@ -311,6 +316,7 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     mother_mobile: '',
     mother_occupation: '',
     mother_income: '',
+    notification_channel: 'whatsapp',
     _newAvatarFile: null
   });
   const [classOptions, setClassOptions] = useState<Array<{ id: string; name: string; has_sections?: boolean }>>([]);
@@ -577,6 +583,20 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                     label="Mobile No. for SMS/WhatsApp"
                     variant="outlined"
                   />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <FormControl fullWidth>
+                  <FormLabel component="legend">Notification Channel</FormLabel>
+                  <RadioGroup
+                    row
+                    value={formData.notification_channel || 'whatsapp'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notification_channel: (e.target.value as 'whatsapp' | 'sms') }))}
+                    name="notification_channel"
+                  >
+                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
+                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
+                  </RadioGroup>
                 </FormControl>
               </Grid>
             </Grid>

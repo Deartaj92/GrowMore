@@ -9,6 +9,9 @@ import {
   CalendarMonth as CalendarMonthIcon,
   BeachAccess as BeachAccessIcon,
   People as PeopleIcon,
+  Lock as LockIcon,
+  Visibility as VisibilityIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 
 // Styled Components
@@ -356,6 +359,27 @@ const settingsItems = [
     icon: <PeopleIcon />,
     path: '/settings/user-management',
     color: '#ef4444' // Red
+  },
+  {
+    title: 'Student Password Management',
+    description: 'Manage and reset student login passwords, view current passwords, and set default credentials for students',
+    icon: <LockIcon />,
+    path: '/settings/student-passwords',
+    color: '#06b6d4' // Cyan
+  },
+  {
+    title: 'Render Settings',
+    description: 'Control which menu cards and tabs are visible to teachers and students in their respective dashboards',
+    icon: <VisibilityIcon />,
+    path: '/settings/render-settings',
+    color: '#9333ea' // Purple
+  },
+  {
+    title: 'General Settings',
+    description: 'Configure general system settings including individual teacher score deduction preferences',
+    icon: <SettingsIcon />,
+    path: '/settings/general-settings',
+    color: '#6366f1' // Indigo
   }
 ];
 

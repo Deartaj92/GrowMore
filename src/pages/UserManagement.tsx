@@ -13,7 +13,7 @@ interface User {
   id: number;
   username: string;
   name: string;
-  role: 'Principal' | 'Management Staff' | 'Teacher' | 'Accountant' | 'Store Manager' | 'Other';
+  role: 'Principal' | 'Management Staff' | 'Teacher' | 'Accountant' | 'Store Manager' | 'Guest' | 'Other';
   status: string;
   avatar_url: string | null;
   created_at: string;
@@ -147,6 +147,7 @@ const RoleBadge = styled.div<{ role: string }>`
       case 'Teacher': return '#6366f1';
       case 'Accountant': return '#f59e0b';
       case 'Store Manager': return '#8b5cf6';
+      case 'Guest': return '#10b981';
       default: return '#6b7280';
     }
   }};
@@ -576,10 +577,16 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    getStaffInfo(user.staff_id).name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const staffInfo = getStaffInfo(user.staff_id);
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      staffInfo.name.toLowerCase().includes(searchLower) ||
+      user.username.toLowerCase().includes(searchLower) ||
+      user.name.toLowerCase().includes(searchLower) ||
+      user.role.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading) return <Loader />;
   if (!hasActiveSession) return <NoSessionsFound />;
@@ -619,16 +626,19 @@ const UserManagement: React.FC = () => {
             </AddUserCard>
             {filteredUsers.map(user => {
               const staffInfo = getStaffInfo(user.staff_id);
+              // For Guest users, use the user's name directly instead of staff name
+              const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
+              const displayAvatar = user.role === 'Guest' ? user.avatar_url : staffInfo.avatar;
               return (
                 <UserCard key={user.id} status={user.status}>
                   <RoleBadge role={user.role}>{user.role}</RoleBadge>
                   <CardTop>
-                    <Avatar src={staffInfo.avatar}>
-                      {!staffInfo.avatar && staffInfo.name.charAt(0).toUpperCase()}
+                    <Avatar src={displayAvatar}>
+                      {!displayAvatar && displayName.charAt(0).toUpperCase()}
                     </Avatar>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <UserName>
-                        {staffInfo.name}
+                        {displayName}
                         <StatusBadge status={user.status}>
                           {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                         </StatusBadge>

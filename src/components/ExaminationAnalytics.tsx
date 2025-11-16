@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useContext, useMemo, useCallback, memo, useRef } from 'react';
-import styled, { keyframes, DefaultTheme, css } from 'styled-components';
+import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from 'react';
+import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from './useToast';
 import { sortClasses } from '../utils/classUtils';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { examinationService } from '../services/examinationService';
-import { Examination, PerformanceAnalytics, ExamStatistics } from '../types/examinations';
+import { Examination } from '../types/examinations';
 import {
   Assessment as AssessmentIcon,
   School as SchoolIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  PieChart as PieChartIcon,
   BarChart as BarChartIcon,
   Analytics as AnalyticsIcon,
   People as PeopleIcon,
@@ -21,610 +20,103 @@ import {
   Class as ClassIcon,
   PictureAsPdf,
   Refresh as RefreshIcon,
-  Download as DownloadIcon,
-  Visibility as VisibilityIcon,
   KeyboardArrowUp as KeyboardArrowUpIcon,
+  Warning as WarningIcon,
+  KeyboardArrowUpRounded as ChevronDownIcon,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Legend,
+  ComposedChart,
+  Area,
+  AreaChart,
+} from 'recharts';
 
-// Subject ordering configuration - handles variations in naming (from DetailedMarksCertificate.tsx)
+// Subject ordering configuration
 const getSubjectOrder = (subjectName: string): number => {
   const name = subjectName.toLowerCase().trim();
-  
-  // English subjects
   if (name.includes('english') && !name.includes('b')) return 1;
   if (name.includes('english') && name.includes('b')) return 2;
-  
-  // Urdu subjects
   if (name.includes('urdu') && !name.includes('b')) return 3;
   if (name.includes('urdu') && name.includes('b')) return 4;
-  
-  // Mathematics
   if (name.includes('math') || name.includes('mathematics')) return 5;
-  
-  // Islamic subjects
   if (name.includes('islam') || name.includes('islamiyat') || name.includes('islamiat')) return 6;
   if (name.includes('pak study') || name.includes('pakistan')) return 7;
   if (name.includes('mutala') || name.includes('quran')) return 8;
-  
-  // Science subjects
   if (name.includes('biology')) return 9;
   if (name.includes('chemistry')) return 10;
   if (name.includes('physics')) return 11;
-  
-  // Social subjects
   if (name.includes('social') || name.includes('study')) return 12;
   if (name.includes('general science')) return 13;
   if (name.includes('general knowledge') || name.includes('gk')) return 14;
-  
-  // Islamic studies
   if (name.includes('nazra') || name.includes('nazira')) return 15;
   if (name.includes('hifz') || name.includes('hifazat')) return 16;
-  
-  // Default order for other subjects
   return 999;
 };
 
-// Professional Analytics Layout
-const PageContainer = styled.div`
-  width: 100%;
-  margin: 0;
-  padding: 0 8px 0 8px;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  max-width: 100vw;
-  overflow-x: hidden;
-  height: 92vh;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transform: translateZ(0);
-  will-change: transform;
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
+// Grade calculation helper
+const calculateGrade = (percentage: number): string => {
+  if (percentage >= 90) return 'A+';
+  if (percentage >= 80) return 'A';
+  if (percentage >= 70) return 'B';
+  if (percentage >= 60) return 'C';
+  if (percentage >= 50) return 'D';
+  return 'F';
+};
 
-const Header = styled.div`
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin: 4px 0 2px 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 1px 4px #0001;
-  border-radius: 8px;
-  padding: 3px 6px 1px 6px;
-  min-height: 32px;
-`;
+// Interfaces
+interface Class {
+  id: number;
+  name: string;
+  has_sections?: boolean;
+}
 
-const Title = styled.h1`
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  
-  @media (max-width: 700px) {
-    padding-right: 50px; /* Space for PDF button */
-  }
-`;
+interface Section {
+  id: number;
+  name: string;
+  class_id: number;
+}
 
-// Enhanced Header Components (matching other components)
-const HeaderTopRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  flex-wrap: nowrap;
+interface Student {
+  id: number;
+  name: string;
+  father_name?: string;
+  class_id: number;
+  section_id: number | null;
+}
 
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-`;
+interface StudentPerformance {
+  student_id: number;
+  student_name: string;
+  father_name?: string;
+  class_name: string;
+  section_name: string;
+  class_id: number;
+  total_marks: number;
+  obtained_marks: number;
+  percentage: number;
+  grade: string;
+  status: 'pass' | 'fail' | 'absent';
+  position: number;
+  rank_in_class: number;
+}
 
-const HeaderBottomRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-
-  @media (max-width: 700px) {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  
-  @media (min-width: 701px) {
-    display: none;
-  }
-`;
-
-const DesktopSegmentedGroup = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  min-width: 0;
-
-  @media (max-width: 700px) {
-    display: none;
-  }
-`;
-
-const MobileHeaderLayout = styled.div`
-  display: none;
-
-  @media (max-width: 700px) {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-  }
-`;
-
-const MobileRow = styled.div`
-  display: flex;
-  width: 100%;
-  gap: 8px;
-  margin-top: 8px; /* Lower the segmented group */
-  
-  @media (max-width: 700px) {
-    gap: 0;
-    margin-top: 12px; /* More space on mobile */
-  }
-`;
-
-const MobilePdfButton = styled.button`
-  display: none;
-  
-  @media (max-width: 700px) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: none;
-    background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
-    color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#374151'};
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 1.4px 1.4px 4px #2222;
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    z-index: 10;
-    
-    &:hover {
-      background: ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-      transform: translateY(-1px);
-    }
-    
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-  }
-`;
-
-const MainContent = styled.div`
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overflow-y: auto;
-  padding: 0 0 32px 0;
-  
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.FIELD_BORDER};
-    border-radius: 3px;
-  }
-  
-  &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.TEXT_SECONDARY};
-  }
-`;
-
-// Enhanced Header Components
-const SEGMENTED_HEIGHT = '28px';
-
-const SegmentedGroup = styled.div`
-  display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f8f9fa'};
-  border-radius: 11px;
-  box-shadow: ${({ theme }) => theme.BG === '#252525' ? '1.4px 1.4px 4px rgba(0,0,0,0.3)' : '1.4px 1.4px 4px rgba(0,0,0,0.1)'};
-  border: ${({ theme }) => theme.BG === '#252525' ? '1px solid #333' : '1px solid #e5e7eb'};
-  overflow: hidden;
-  
-  /* Mobile enhancements - maintain segmented group appearance */
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: center;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    border-radius: 8px;
-    gap: 0;
-    padding: 0;
-  }
-  
-  @media (max-width: 480px) {
-    flex-direction: row;
-    gap: 0;
-    padding: 0;
-    border-radius: 8px;
-    overflow-x: visible;
-    overflow-y: visible;
-  }
-`;
-
-const SegmentedSelect = styled.select<{ first?: boolean; $last?: boolean }>`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: ${({ theme }) => theme.BG === '#252525' ? '1.4px 1.4px 4px rgba(0,0,0,0.3)' : '1.4px 1.4px 4px rgba(0,0,0,0.1)'};
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#ffffff'};
-  color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#374151'};
-  padding: 0 2.2em 0 0.84em;
-  border-right: ${({ theme }) => theme.BG === '#252525' ? '1px solid #555' : '1px solid #e5e7eb'};
-  &:last-child { border-right: none; }
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ $last }) => $last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
-  &:not(:first-child) {
-    border-left: ${({ theme }) => theme.BG === '#252525' ? '1px solid #555' : '1px solid #e5e7eb'};
-  }
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525' 
-    ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
-    : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
-  background-repeat: no-repeat;
-  background-position: right 0.8em center;
-  background-size: 1em 1em;
-  
-  /* Mobile enhancements - maintain segmented group appearance */
-  @media (max-width: 768px) {
-    width: 100%;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    min-width: 0;
-    background-position: right 1em center;
-    margin: 0;
-    box-shadow: none;
-  }
-  
-  @media (max-width: 480px) {
-    width: 100%;
-    border-radius: 0;
-    margin: 0;
-    border: none;
-    background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#ffffff'};
-    box-shadow: none;
-  }
-`;
-
-// Professional Analytics Cards
-const AnalyticsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
-  padding: 8px 0 10px 0;
-  
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.2rem;
-  }
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-`;
-
-const AnalyticsCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 2.5px solid ${({ theme }) => theme.BORDER};
-  border-radius: 16px;
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: ${({ theme }) => theme.ACCENT};
-  }
-  
-  @media (max-width: 768px) {
-    padding: 1.2rem 1.2rem 1rem 1.2rem;
-    border-radius: 12px;
-  }
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-`;
-
-const CardTitle = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const CardValue = styled.div`
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: ${({ theme }) => theme.ACCENT};
-  margin: 0;
-  line-height: 1;
-`;
-
-const CardSubtitle = styled.p`
-  font-size: 0.85rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin: 0.5rem 0 0 0;
-`;
-
-const MetricCard = styled.div<{ $color?: string }>`
-  background: ${({ theme }) => theme.CARD};
-  border: 2px solid ${({ $color, theme }) => $color || theme.BORDER};
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-const MetricValue = styled.div<{ $color?: string }>`
-  font-size: 2rem;
-  font-weight: 800;
-  color: ${({ $color, theme }) => $color || theme.ACCENT};
-  margin: 0.5rem 0;
-  line-height: 1;
-`;
-
-const MetricLabel = styled.div`
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
-
-const ProgressBar = styled.div`
-  width: 100%;
-  height: 8px;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 4px;
-  overflow: hidden;
-  margin: 0.5rem 0;
-`;
-
-const ProgressFill = styled.div<{ $width: number; $color: string }>`
-  height: 100%;
-  width: ${({ $width }) => $width}%;
-  background: ${({ $color }) => $color};
-  border-radius: 4px;
-  transition: width 0.3s ease;
-`;
-
-const TableContainer = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 2px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const TableHeader = styled.thead`
-  background: ${({ theme }) => theme.FIELD_BG};
-`;
-
-const TableHeaderCell = styled.th`
-  padding: 1rem;
-  text-align: left;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
-`;
-
-const TableBody = styled.tbody``;
-
-const TableRow = styled.tr`
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  
-  &:hover {
-    background: ${({ theme }) => theme.FIELD_BG};
-  }
-`;
-
-const TableCell = styled.td`
-  padding: 1rem;
-  font-size: 0.9rem;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-`;
-
-const NoResults = styled.div`
-  text-align: center;
-  padding: 4rem 2rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 1.1rem;
-  background: ${({ theme }) => theme.CARD};
-  border: 2px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-`;
-
-const LoadingSpinner = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
-  
-  &::after {
-    content: '';
-    width: 40px;
-    height: 40px;
-    border: 3px solid ${({ theme }) => theme.FIELD_BG};
-    border-top: 3px solid ${({ theme }) => theme.ACCENT};
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-
-const ToTopButton = styled.button`
-  position: fixed;
-  right: 18px;
-  bottom: 24px;
-  z-index: 3000;
-  background: #6366f1;
-  color: #fff;
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px #0005;
-  font-size: 2rem;
-  cursor: pointer;
-  transition: background 0.18s, box-shadow 0.18s, transform 0.13s;
-  opacity: 0.92;
-  &:hover {
-    background: #4f46e5;
-    box-shadow: 0 8px 32px #6366f155;
-    transform: scale(1.08);
-  }
-  @media (min-width: 701px) {
-    display: none;
-  }
-`;
-
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  background: ${({ variant, theme }) => {
-    if (variant === 'primary') {
-      return '#4a6cf7';
-    } else {
-      return theme.BG === '#252525' ? '#333' : '#f3f4f6';
-    }
-  }};
-  color: ${({ variant, theme }) => {
-    if (variant === 'primary') {
-      return 'white';
-    } else {
-      return theme.TEXT_PRIMARY;
-    }
-  }};
-  border: 1px solid ${({ variant, theme }) => {
-    if (variant === 'primary') {
-      return '#4a6cf7';
-    } else {
-      return theme.BORDER;
-    }
-  }};
-
-  &:hover {
-    background: ${({ variant, theme }) => {
-      if (variant === 'primary') {
-        return '#3a5ce5';
-      } else {
-        return theme.BG === '#252525' ? '#444' : '#e5e7eb';
-      }
-    }};
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-// Analytics Data Types
 interface AnalyticsData {
-  totalStudents: number;
   appearedStudents: number;
   passedStudents: number;
   failedStudents: number;
@@ -632,46 +124,10 @@ interface AnalyticsData {
   highestPercentage: number;
   lowestPercentage: number;
   passPercentage: number;
-  topPerformers: Array<{
-    student_id: number;
-    student_name: string;
-    father_name?: string;
-    class_name: string;
-    section_name?: string;
-    percentage: number;
-    obtained_marks: number;
-    total_marks: number;
-    grade: string;
-    position: number;
-    rank_in_class: number;
-    status: string;
-  }>;
-  lowestScorer?: {
-    student_id: number;
-    student_name: string;
-    father_name?: string;
-    class_name: string;
-    section_name?: string;
-    percentage: number;
-    obtained_marks: number;
-    total_marks: number;
-    grade: string;
-    status: string;
-  };
-  failedStudentsList: Array<{
-    student_id: number;
-    student_name: string;
-    father_name?: string;
-    class_name: string;
-    section_name?: string;
-    percentage: number;
-    obtained_marks: number;
-    total_marks: number;
-    grade: string;
-    position: number;
-    rank_in_class: number;
-    status: string;
-  }>;
+  topPerformers: StudentPerformance[];
+  lowestScorer?: StudentPerformance;
+  failedStudentsList: StudentPerformance[];
+  studentsNeedingAttention: StudentPerformance[];
   subjectPerformance: Array<{
     subject_name: string;
     average_percentage: number;
@@ -691,6 +147,962 @@ interface AnalyticsData {
   }>;
 }
 
+// Styled Components
+const PageContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  padding: clamp(8px, 2vw, 24px);
+  box-sizing: border-box;
+  background: ${({ theme }) => theme.BG};
+  @media (max-width: 900px) {
+    padding: clamp(6px, 2vw, 12px);
+  }
+  @media (max-width: 600px) {
+    padding: 8px 10px;
+    padding-bottom: 2.5rem;
+  }
+`;
+
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(0.7rem, 2vw, 1.5rem);
+  margin-bottom: clamp(1rem, 3vw, 2.2rem);
+  flex-wrap: wrap;
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+  }
+`;
+
+const Title = styled.h1`
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  @media (max-width: 600px) {
+    font-size: 1.1rem;
+  }
+`;
+
+const HeaderControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 1.5vw, 1rem);
+  @media (max-width: 600px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`;
+
+const Select = styled.select`
+  padding: 0.5rem 1rem;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? 'rgba(99,102,241,0.13)' : 'rgba(99,102,241,0.13)'};
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#232a3b' : '#fff'};
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#fff' : '#232a3b'};
+  min-height: 2.3em;
+  height: 2.3em;
+  min-width: 200px;
+  box-sizing: border-box;
+  transition: border 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  outline: none;
+  &:focus {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 2px #a78bfa33;
+  }
+  @media (max-width: 600px) {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.95rem;
+  }
+`;
+
+const IconButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3em;
+  height: 2.3em;
+  border-radius: 8px;
+  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? 'rgba(99,102,241,0.13)' : 'rgba(99,102,241,0.13)'};
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#232a3b' : '#fff'};
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#fff' : '#232a3b'};
+  cursor: pointer;
+  transition: all 0.2s;
+  box-sizing: border-box;
+
+  &:hover {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 2px #a78bfa33;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const ExportButton = styled.button`
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? 'rgba(99,102,241,0.13)' : 'rgba(99,102,241,0.13)'};
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#6366f1' : '#6366f1'};
+  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.2)'};
+  border-radius: 8px;
+  padding: 0.5rem 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-width: 80px;
+  max-width: 120px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  height: 2.3em;
+  box-sizing: border-box;
+  @media (max-width: 600px) {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+    min-width: 70px;
+  }
+  &:hover { 
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.22)'}; 
+  }
+`;
+
+const MainContent = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.7rem, 2vw, 1.5rem);
+  margin-top: clamp(0.5rem, 2vw, 1rem);
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(0.7rem, 2vw, 1.5rem);
+  margin-bottom: clamp(1rem, 3vw, 2.2rem);
+  width: 100%;
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+`;
+
+const StatCard = styled.div<{ $highlight?: boolean }>`
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
+  border-radius: 14px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
+  padding: clamp(0.8rem, 2vw, 1.2rem) clamp(0.8rem, 2vw, 1.2rem) clamp(0.7rem, 1.5vw, 1rem) clamp(0.8rem, 2vw, 1.2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1 1 0;
+  color: #fff;
+  position: relative;
+  margin-bottom: 0;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  transition: border-color 0.18s;
+  font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+  &:hover {
+    border-color: #6366f1;
+  }
+  
+  @media (max-width: 600px) {
+    padding: 0.7rem 0.8rem 0.6rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+  color: #a0a7b8;
+  
+  @media (max-width: 600px) {
+    font-size: 0.85rem;
+    margin-bottom: 0.15rem;
+  }
+`;
+
+const StatValue = styled.div<{ $color?: string; $size?: 'large' | 'medium' | 'small' }>`
+  font-size: ${({ $size }) => {
+    if ($size === 'large') return '2rem';
+    if ($size === 'small') return '1.2rem';
+    return '1.5rem';
+  }};
+  font-weight: 800;
+  color: ${({ $color }) => $color || '#fff'};
+  margin-bottom: 0.1rem;
+  
+  @media (max-width: 600px) {
+    font-size: ${({ $size }) => {
+      if ($size === 'large') return '1.5rem';
+      if ($size === 'small') return '1rem';
+      return '1.2rem';
+    }};
+  }
+`;
+
+const StatSubtext = styled.div`
+  font-size: 0.85rem;
+  color: #a0a7b8;
+  margin-top: 0.2rem;
+  opacity: 0.8;
+  
+  @media (max-width: 600px) {
+    font-size: 0.75rem;
+    margin-top: 0.15rem;
+  }
+`;
+
+// Collapsible Section Components (matching Dashboard.tsx)
+const SectionWrapper = styled.div`
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
+  border-radius: 14px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 0;
+  margin-bottom: clamp(1rem, 2vw, 1.5rem);
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  
+  @media (max-width: 600px) {
+    border-radius: 12px;
+    margin-bottom: 0.8rem;
+  }
+`;
+
+const SectionHeader = styled.div`
+  width: 100%;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.20)' : 'rgba(99,102,241, 0.08)'};
+  border-bottom: 1.5px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)'};
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.35)' : 'rgba(99,102,241, 0.12)'};
+  }
+
+  @media (max-width: 700px) {
+    padding: 10px 12px;
+  }
+`;
+
+const SectionHeaderTitle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+`;
+
+const SectionTitle = styled.div`
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #6366f1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  @media (max-width: 700px) {
+    font-size: 1rem;
+    gap: 6px;
+  }
+`;
+
+const ExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+  transform: ${props => props.$isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};
+  color: #6366f1;
+  
+  @media (max-width: 700px) {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const CollapsibleContent = styled.div<{ $isExpanded: boolean }>`
+  max-height: ${props => props.$isExpanded ? '5000px' : '0'};
+  opacity: ${props => props.$isExpanded ? '1' : '0'};
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: ${props => props.$isExpanded ? '1rem 1.2rem' : '0 1.2rem'};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.10)' : 'transparent'};
+  
+  @media (max-width: 600px) {
+    padding: ${props => props.$isExpanded ? '0.8rem 0.9rem' : '0 0.9rem'};
+  }
+`;
+
+const Section = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const CompactGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(0.7rem, 2vw, 1.5rem);
+  margin-bottom: clamp(1rem, 3vw, 2.2rem);
+  width: 100%;
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+`;
+
+const TableWrapper = styled.div`
+  max-height: 440px; /* 10 rows + header = 11 * 40px */
+  overflow-y: auto;
+  overflow-x: auto;
+  border-radius: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1 #1e293b' : '#6366f1 #f1f5f9'};
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  
+  @media (max-width: 600px) {
+    max-height: 400px;
+    margin-left: -10px;
+    margin-right: -10px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 0;
+  }
+  
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#1e293b' : '#f1f5f9'};
+    border-radius: 4px;
+    border: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#d1d5db'};
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#6366f1' : '#6366f1'};
+    border-radius: 4px;
+    border: 2px solid ${({ theme }) => theme.BG === '#252525' ? '#1e293b' : '#f1f5f9'};
+    min-height: 30px;
+    
+    &:hover {
+      background: ${({ theme }) => theme.BG === '#252525' ? '#818cf8' : '#818cf8'};
+    }
+    
+    &:active {
+      background: ${({ theme }) => theme.BG === '#252525' ? '#4f46e5' : '#4f46e5'};
+    }
+  }
+  
+  &::-webkit-scrollbar-corner {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#1e293b' : '#f1f5f9'};
+  }
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  min-width: 600px; /* Ensure table doesn't get too cramped on mobile */
+  
+  @media (max-width: 600px) {
+    font-size: 0.7rem;
+    min-width: 500px;
+  }
+`;
+
+const Th = styled.th`
+  padding: 10px 8px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#1e293b' : '#f8fafc'};
+  white-space: nowrap;
+  
+  @media (max-width: 600px) {
+    padding: 8px 6px;
+    font-size: 0.65rem;
+    letter-spacing: 0.3px;
+  }
+`;
+
+const Td = styled.td`
+  padding: 10px 8px;
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 600px) {
+    padding: 8px 6px;
+    font-size: 0.7rem;
+  }
+`;
+
+const Badge = styled.span<{ $variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: ${({ $variant, theme }) => {
+    if ($variant === 'success') return theme.BG === '#252525' ? '#065f46' : '#d1fae5';
+    if ($variant === 'warning') return theme.BG === '#252525' ? '#78350f' : '#fef3c7';
+    if ($variant === 'danger') return theme.BG === '#252525' ? '#7f1d1d' : '#fee2e2';
+    if ($variant === 'info') return theme.BG === '#252525' ? '#1e3a8a' : '#dbeafe';
+    return theme.BG === '#252525' ? '#374151' : '#f3f4f6';
+  }};
+  color: ${({ $variant, theme }) => {
+    if ($variant === 'success') return theme.BG === '#252525' ? '#6ee7b7' : '#065f46';
+    if ($variant === 'warning') return theme.BG === '#252525' ? '#fbbf24' : '#78350f';
+    if ($variant === 'danger') return theme.BG === '#252525' ? '#f87171' : '#991b1b';
+    if ($variant === 'info') return theme.BG === '#252525' ? '#93c5fd' : '#1e40af';
+    return theme.TEXT_SECONDARY;
+  }};
+  
+  @media (max-width: 600px) {
+    padding: 3px 8px;
+    font-size: 0.65rem;
+    border-radius: 10px;
+  }
+`;
+
+const MiniCard = styled.div`
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
+  border-radius: 14px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
+  padding: clamp(0.8rem, 2vw, 1.2rem) clamp(0.8rem, 2vw, 1.2rem) clamp(0.7rem, 1.5vw, 1rem) clamp(0.8rem, 2vw, 1.2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1 1 0;
+  color: #fff;
+  position: relative;
+  margin-bottom: 0;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  transition: border-color 0.18s;
+  font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+  &:hover {
+    border-color: #6366f1;
+  }
+  
+  @media (max-width: 600px) {
+    padding: 0.7rem 0.8rem 0.6rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  gap: 0.5rem;
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  @media (max-width: 600px) {
+    margin-bottom: 0.4rem;
+    flex-wrap: wrap;
+  }
+`;
+
+const InfoLabel = styled.span`
+  font-size: 0.98rem;
+  color: #a0a7b8;
+  font-weight: 700;
+  
+  @media (max-width: 600px) {
+    font-size: 0.85rem;
+  }
+`;
+
+const InfoValue = styled.span<{ $color?: string }>`
+  font-size: 1rem;
+  font-weight: 800;
+  color: ${({ $color }) => $color || '#fff'};
+  
+  @media (max-width: 600px) {
+    font-size: 0.9rem;
+  }
+`;
+
+const ProgressBar = styled.div<{ $percentage: number; $color?: string }>`
+  width: 100%;
+  height: 6px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#334155' : '#e2e8f0'};
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+
+  &::after {
+    content: '';
+    display: block;
+    width: ${({ $percentage }) => Math.min($percentage, 100)}%;
+    height: 100%;
+    background: ${({ $color, theme }) => $color || theme.ACCENT};
+    transition: width 0.3s ease;
+    border-radius: 3px;
+  }
+  
+  @media (max-width: 600px) {
+    height: 5px;
+    margin-top: 5px;
+  }
+`;
+
+const CompactProgressBar = styled.div<{ $percentage: number; $color?: string }>`
+  width: 60px;
+  height: 4px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#334155' : '#e2e8f0'};
+  border-radius: 2px;
+  overflow: hidden;
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+
+  &::after {
+    content: '';
+    display: block;
+    width: ${({ $percentage }) => Math.min($percentage, 100)}%;
+    height: 100%;
+    background: ${({ $color, theme }) => $color || theme.ACCENT};
+    transition: width 0.3s ease;
+    border-radius: 2px;
+  }
+`;
+
+const Divider = styled.div`
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+`;
+
+const ToTopButton = styled.button`
+  position: fixed;
+  right: 18px;
+  bottom: 24px;
+  z-index: 3000;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #4f46e5;
+    transform: scale(1.1);
+  }
+  
+  @media (max-width: 600px) {
+    right: 12px;
+    bottom: 16px;
+    width: 44px;
+    height: 44px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  }
+`;
+
+// Dashboard-specific styled components
+const DashboardGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.65rem;
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+`;
+
+const DashboardCard = styled.div<{ $span?: number; $highlight?: boolean }>`
+  grid-column: span ${({ $span }) => $span || 6};
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03);
+  padding: 0.9rem;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  
+  ${({ $highlight }) => $highlight && `
+    border: 2px solid #6366f1;
+    background: linear-gradient(135deg, ${({ theme }: any) => theme.BG === '#252525' ? '#2a2a2a' : '#fff'} 0%, ${({ theme }: any) => theme.BG === '#252525' ? '#1e293b' : '#f8fafc'} 100%);
+  `}
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  }
+  
+  @media (max-width: 1200px) {
+    grid-column: span ${({ $span }) => $span && $span > 6 ? 6 : $span || 6};
+    padding: 0.8rem;
+  }
+  
+  @media (max-width: 768px) {
+    grid-column: span 1;
+    padding: 0.7rem;
+  }
+`;
+
+const PerformanceIndexCard = styled(DashboardCard)`
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  border: none;
+  padding: 1.2rem;
+  min-height: fit-content;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    opacity: 0.5;
+  }
+  
+  @media (max-width: 1200px) {
+    padding: 1rem;
+    
+    > div {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: 1rem !important;
+    }
+    
+    > div > div:last-child {
+      max-width: 100% !important;
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    padding: 1.1rem;
+    border-radius: 12px;
+    
+    > div {
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 1.25rem !important;
+      text-align: center;
+    }
+    
+    > div > div:first-child {
+      width: 100%;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 0.75rem !important;
+      text-align: center;
+    }
+    
+    > div > div:first-child > div:last-child {
+      text-align: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.95rem;
+    
+    > div {
+      gap: 1rem !important;
+    }
+    
+    > div > div:first-child {
+      gap: 0.6rem !important;
+    }
+  }
+`;
+
+const PerformanceValue = styled.div`
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0.5rem 0;
+  line-height: 1;
+  
+  @media (max-width: 768px) {
+    font-size: 2.2rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 2rem;
+  }
+`;
+
+const PerformanceLabel = styled.div`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    letter-spacing: 0.8px;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 0.7rem;
+    letter-spacing: 0.6px;
+  }
+`;
+
+const TrendIndicator = styled.div<{ $positive?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: ${({ $positive }) => $positive ? '#6ee7b7' : '#fca5a5'};
+  margin-top: 0.5rem;
+  font-weight: 600;
+`;
+
+const MetricRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+`;
+
+const MetricItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const MetricLabel = styled.div`
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 0.65rem;
+    letter-spacing: 0.3px;
+  }
+`;
+
+const MetricValue = styled.div`
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 1.1rem;
+  }
+`;
+
+const MetricsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  flex: 1;
+  max-width: 600px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+`;
+
+const ChartCard = styled(DashboardCard)`
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  
+  @media (max-width: 768px) {
+    min-height: 300px;
+  }
+`;
+
+const ChartTitle = styled.div`
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.2px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+`;
+
+const SubjectMasteryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+`;
+
+const MasteryCircle = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const MasteryLabel = styled.div`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 600;
+  text-align: center;
+`;
+
+const TopSubjectsTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+`;
+
+const TopSubjectsTh = styled.th`
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const TopSubjectsTd = styled.td`
+  padding: 0.75rem 0.5rem;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ImprovementBadge = styled.span<{ $positive?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: ${({ $positive }) => $positive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'};
+  color: ${({ $positive }) => $positive ? '#10b981' : '#ef4444'};
+`;
+
+const AreasForImprovement = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+`;
+
+const ImprovementItem = styled.li`
+  padding: 0.75rem 0;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &::before {
+    content: '•';
+    color: #6366f1;
+    font-weight: bold;
+    display: inline-block;
+    width: 1em;
+    margin-right: 0.5rem;
+  }
+`;
+
 const ExaminationAnalytics: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -698,10 +1110,16 @@ const ExaminationAnalytics: React.FC = () => {
   const [examinations, setExaminations] = useState<Examination[]>([]);
   const [selectedExam, setSelectedExam] = useState<Examination | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [classes, setClasses] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [showToTop, setShowToTop] = useState(false);
+  
+  // Collapsible section states (matching Dashboard pattern)
+  const [isTopPerformersExpanded, setIsTopPerformersExpanded] = useState(true);
+  const [isStudentsNeedingAttentionExpanded, setIsStudentsNeedingAttentionExpanded] = useState(true);
+  const [isFailedStudentsExpanded, setIsFailedStudentsExpanded] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -733,8 +1151,21 @@ const ExaminationAnalytics: React.FC = () => {
   const loadExaminations = async () => {
     try {
       setLoading(true);
-      const data = await examinationService.getExaminations({}, user?.school_id);
-      setExaminations(data);
+      // Fetch both published and archived examinations
+      const [publishedData, archivedData] = await Promise.all([
+        examinationService.getExaminations({ status: 'published' }, user?.school_id),
+        examinationService.getExaminations({ status: 'archived' }, user?.school_id)
+      ]);
+      const allExaminations = [...publishedData, ...archivedData];
+      const uniqueExaminations = Array.from(
+        new Map(allExaminations.map(exam => [exam.id, exam])).values()
+      );
+      uniqueExaminations.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+      setExaminations(uniqueExaminations);
     } catch (error) {
       console.error('Error loading examinations:', error);
       showToast('Failed to load examinations', 'error');
@@ -748,8 +1179,9 @@ const ExaminationAnalytics: React.FC = () => {
 
     try {
       setAnalyticsLoading(true);
-      const analyticsData = await getAnalyticsData(selectedExam.id, user.school_id);
+      const { analytics: analyticsData, classes: classesData } = await getAnalyticsData(selectedExam.id, user.school_id);
       setAnalytics(analyticsData);
+      setClasses(classesData);
     } catch (error) {
       console.error('Error loading analytics:', error);
       showToast('Failed to load analytics', 'error');
@@ -758,187 +1190,290 @@ const ExaminationAnalytics: React.FC = () => {
     }
   };
 
-        const getAnalyticsData = async (examId: number, schoolId: number): Promise<AnalyticsData> => {
-          // First, get the examination details to get the passing percentage
-          const { data: examDetails, error: examDetailsError } = await supabase
-            .from('examinations')
-            .select('passing_marks')
-            .eq('id', examId)
-            .eq('school_id', schoolId)
-            .single();
+  // Helper function to fetch all rows with pagination
+  const fetchAllRows = async <T,>(queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>): Promise<T[]> => {
+    let allResults: T[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-          if (examDetailsError) throw examDetailsError;
-          
-          const passingPercentage = examDetails?.passing_marks || 33; // Default to 33% if not set
+    while (hasMore) {
+      const { data, error } = await queryFn(from, from + pageSize - 1);
+      if (error) throw error;
 
-          // Get all exam results for this exam (similar to MasterSheetManager)
-          const { data: examResults, error: examError } = await supabase
-            .from('exam_results')
-            .select(`
-              student_id,
-              obtained_marks,
-              max_marks,
-              percentage,
-              grade,
-              remarks,
-              subject_id,
-              subjects!inner(name, short_name)
-            `)
-            .eq('exam_id', examId)
-            .eq('school_id', schoolId);
-
-          if (examError) throw examError;
-          
-
-    // Get total active students in school (not just enrolled, but active during exam period)
-    const { data: totalStudents, error: totalError } = await supabase
-      .from('students')
-      .select('id')
-      .eq('school_id', schoolId)
-      .eq('status', 'active');
-
-    if (totalError) throw totalError;
-
-    // Group results by student to calculate overall performance
-    const studentResults: { [studentId: number]: any[] } = {};
-    examResults?.forEach(result => {
-      if (!studentResults[result.student_id]) {
-        studentResults[result.student_id] = [];
+      if (data && data.length > 0) {
+        allResults = allResults.concat(data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
       }
-      studentResults[result.student_id].push(result);
+    }
+
+    return allResults;
+  };
+
+  // Helper function to calculate subject performance from data
+  const getSubjectPerformanceFromData = (combinedData: StudentPerformance[], allExamResults: any[], passingPercentage: number) => {
+    // Get unique subjects from exam results
+    const subjectMap = new Map<number, { id: number; name: string }>();
+    allExamResults.forEach(result => {
+      if (result.subject_id) {
+        let subjectName = 'Unknown';
+        if (result.subjects) {
+          if (typeof result.subjects === 'object' && !Array.isArray(result.subjects)) {
+            subjectName = result.subjects.name || 'Unknown';
+          } else if (Array.isArray(result.subjects) && result.subjects.length > 0) {
+            subjectName = result.subjects[0].name || 'Unknown';
+          }
+        }
+        if (!subjectMap.has(result.subject_id)) {
+          subjectMap.set(result.subject_id, { id: result.subject_id, name: subjectName });
+        }
+      }
     });
 
-    // Get student details for those who appeared
-    const studentIds = Object.keys(studentResults).map(id => parseInt(id));
-    let studentDetails: any[] = [];
-    
-    if (studentIds.length > 0) {
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select(`
-          id,
-          name,
-          father_name,
-          class_id,
-          section_id,
-          school_id
-        `)
-        .in('id', studentIds)
-        .eq('school_id', schoolId);
-
-      if (studentsError) throw studentsError;
-      studentDetails = students || [];
+    if (subjectMap.size === 0) {
+      return [];
     }
 
-    // Get class details with has_sections
-    const classIds = Array.from(new Set(studentDetails.map(s => s.class_id)));
-    let classDetails: any[] = [];
+    // Group exam results by subject to calculate per-subject marks
+    const subjectResultsMap = new Map<number, Map<number, { obtained: number; max: number; remarks?: string }>>();
     
-    if (classIds.length > 0) {
-      const { data: classes, error: classesError } = await supabase
-        .from('classes')
-        .select('id, name, has_sections')
-        .in('id', classIds);
+    allExamResults.forEach(result => {
+      if (!result.subject_id || !result.student_id) return;
+      
+      const remarks = result.remarks || '';
+      const isAbsent = remarks === 'Absent' || remarks.toLowerCase().includes('absent');
+      if (isAbsent) return; // Skip absent students
+      
+      if (!subjectResultsMap.has(result.subject_id)) {
+        subjectResultsMap.set(result.subject_id, new Map());
+      }
+      
+      const studentMap = subjectResultsMap.get(result.subject_id)!;
+      if (!studentMap.has(result.student_id)) {
+        studentMap.set(result.student_id, { obtained: 0, max: 0 });
+      }
+      
+      const studentData = studentMap.get(result.student_id)!;
+      studentData.obtained += result.obtained_marks || 0;
+      studentData.max += result.max_marks || 0;
+    });
 
-      if (classesError) throw classesError;
-      
-      // Sort classes: numbered classes first, then special classes (Play Group, Nursery, K.G)
-      const sortedClasses = sortClasses(classes || []);
-      
-      classDetails = sortedClasses;
-    }
+    // Calculate performance for each subject
+    const subjectPerformance = Array.from(subjectMap.entries()).map(([subjectId, subjectInfo]) => {
+      const studentResults = subjectResultsMap.get(subjectId);
+      if (!studentResults || studentResults.size === 0) {
+        return {
+          subject_name: subjectInfo.name,
+          average_percentage: 0,
+          pass_percentage: 0,
+          total_students: 0
+        };
+      }
 
-    // Get section details for classes that have sections
-    const sectionIds = Array.from(new Set(studentDetails.map(s => s.section_id).filter(Boolean)));
-    let sectionDetails: any[] = [];
-    
-    if (sectionIds.length > 0) {
-      const { data: sections, error: sectionsError } = await supabase
-        .from('sections')
-        .select('id, name, class_id')
-        .in('class_id', classIds);
+      const studentPercentages: number[] = [];
+      let passedCount = 0;
+      
+      studentResults.forEach((data, studentId) => {
+        if (data.max > 0) {
+          const percentage = (data.obtained / data.max) * 100;
+          studentPercentages.push(percentage);
+          if (percentage >= passingPercentage) {
+            passedCount++;
+          }
+        }
+      });
 
-      if (sectionsError) throw sectionsError;
-      sectionDetails = sections || [];
-    }
+      const averagePercentage = studentPercentages.length > 0
+        ? studentPercentages.reduce((sum, p) => sum + p, 0) / studentPercentages.length
+        : 0;
+      
+      const passPercentage = studentPercentages.length > 0
+        ? (passedCount / studentPercentages.length) * 100
+        : 0;
 
-    // Create lookup maps for efficient access
-    const classMap = new Map(classDetails.map(c => [c.id, c]));
-    const sectionMap = new Map(sectionDetails.map(s => [s.id, s]));
-    
-    // Helper function to get section name based on has_sections
-    const getSectionName = (classId: number, sectionId: number | null): string => {
-      if (!sectionId) return '';
-      const classInfo = classMap.get(classId);
-      const hasSections = classInfo?.has_sections ?? true;
-      if (!hasSections) return '';
-      return sectionMap.get(sectionId)?.name || '';
-    };
-
-    // Calculate overall performance for each student
-    const combinedData: any[] = studentDetails.map(student => {
-      const results = studentResults[student.id] || [];
-      const totalMarks = results.reduce((sum, r) => sum + (r.max_marks || 0), 0);
-      const obtainedMarks = results.reduce((sum, r) => sum + (r.obtained_marks || 0), 0);
-      const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-      
-      
-      // Calculate grade based on overall percentage (same logic as DetailedMarksCertificate)
-      let grade = 'F';
-      if (percentage >= 90) grade = 'A+';
-      else if (percentage >= 80) grade = 'A';
-      else if (percentage >= 70) grade = 'B';
-      else if (percentage >= 60) grade = 'C';
-      else if (percentage >= 50) grade = 'D';
-      
-            // Determine status using the actual passing percentage from examination
-            let status = 'pass';
-            if (results.some(r => r.remarks === 'Absent')) {
-              status = 'absent';
-            } else if (percentage < passingPercentage) {
-              status = 'fail';
-            }
-      
-      const classInfo = classMap.get(student.class_id);
-      
       return {
-        student_id: student.id,
-        student_name: student.name,
-        father_name: student.father_name,
-        class_name: classInfo?.name || 'Unknown',
-        section_name: getSectionName(student.class_id, student.section_id),
-        class_id: student.class_id,
-        total_marks: totalMarks,
-        obtained_marks: obtainedMarks,
-        percentage: percentage,
-        grade: grade,
-        status: status,
-        position: 0, // Will be calculated later
-        rank_in_class: 0 // Will be calculated later
+        subject_name: subjectInfo.name,
+        average_percentage: averagePercentage,
+        pass_percentage: passPercentage,
+        total_students: studentPercentages.length
       };
     });
 
-          // Calculate analytics using the actual passing percentage
-          const appearedStudents = combinedData.length;
-          const totalStudentsCount = totalStudents?.length || 0;
-          const passedStudents = combinedData.filter(s => s.percentage >= passingPercentage).length;
-          const failedStudents = appearedStudents - passedStudents;
-    const averagePercentage = combinedData.reduce((sum, s) => sum + s.percentage, 0) / appearedStudents || 0;
-    const highestPercentage = Math.max(...(combinedData.map(s => s.percentage) || [0]));
-    const lowestPercentage = Math.min(...(combinedData.map(s => s.percentage) || [0]));
-    const passPercentage = appearedStudents > 0 ? (passedStudents / appearedStudents) * 100 : 0;
-    
+    return subjectPerformance.sort((a, b) => {
+      const orderA = getSubjectOrder(a.subject_name);
+      const orderB = getSubjectOrder(b.subject_name);
+      return orderA - orderB;
+    });
+  };
 
-    // Calculate positions and ranks
-    const sortedByPercentage = [...combinedData].sort((a, b) => b.percentage - a.percentage);
-    
-    // Assign positions with proper handling of ties
+  // Get analytics data - complete implementation
+  const getAnalyticsData = async (examId: number, schoolId: number): Promise<{ analytics: AnalyticsData; classes: Array<{ id: number; name: string }> }> => {
+    // Get examination details for passing percentage
+    const { data: examDetails, error: examDetailsError } = await supabase
+      .from('examinations')
+      .select('passing_marks')
+      .eq('id', examId)
+      .eq('school_id', schoolId)
+      .single();
+
+    if (examDetailsError) throw examDetailsError;
+    const passingPercentage = examDetails?.passing_marks || 33;
+
+    // Step 1: Get all distinct class_ids from exam_results (fetch all rows) filtered by exam_id and school_id
+    const allExamResults = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('exam_results')
+        .select('class_id, student_id, subject_id, obtained_marks, max_marks, remarks, exam_id, classes!inner(id, name), subjects!inner(name)')
+        .eq('exam_id', examId)
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
+
+    if (allExamResults.length === 0) {
+      return { analytics: getEmptyAnalytics(), classes: [] };
+    }
+
+    // Extract unique class IDs and create class map
+    const classMap = new Map<number, { id: number; name: string }>();
+    allExamResults.forEach(result => {
+      const classId = result.class_id;
+      const classInfo = (result.classes as any);
+      if (classId && classInfo && !classMap.has(classId)) {
+        classMap.set(classId, {
+          id: classId,
+          name: classInfo.name || `Class ${classId}`
+        });
+      }
+    });
+
+    const classes = sortClasses(Array.from(classMap.values()));
+    const classIds = Array.from(classMap.keys());
+
+    // Step 2: Get all students for these classes (ignore sections) filtered by school_id
+    const allStudents = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('students')
+        .select('id, name, father_name, class_id, section_id')
+        .in('class_id', classIds)
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
+
+    // Step 3: Group exam results by class_id and student_id
+    const resultsByClassAndStudent: { [classId: number]: { [studentId: number]: any[] } } = {};
+    allExamResults.forEach(result => {
+      const classId = result.class_id;
+      const studentId = result.student_id;
+      if (!resultsByClassAndStudent[classId]) {
+        resultsByClassAndStudent[classId] = {};
+      }
+      if (!resultsByClassAndStudent[classId][studentId]) {
+        resultsByClassAndStudent[classId][studentId] = [];
+      }
+      resultsByClassAndStudent[classId][studentId].push(result);
+    });
+
+    // Step 4: Process only students who appeared (have exam results and not marked absent)
+    const allCombinedData: StudentPerformance[] = [];
+
+    for (const classInfo of classes) {
+      const classId = classInfo.id;
+      const classResults = resultsByClassAndStudent[classId] || {};
+      
+      // Get unique student IDs who have exam results for this class
+      const studentIdsWithResults = Object.keys(classResults).map(id => Number(id));
+      
+      if (studentIdsWithResults.length === 0) continue;
+
+      // Get all exam results for this class to determine subjects
+      const allClassResults: any[] = [];
+      studentIdsWithResults.forEach(studentId => {
+        const results = classResults[studentId] || [];
+        if (results.length > 0) {
+          allClassResults.push(...results);
+        }
+      });
+
+      // Get unique subjects for this class
+      const subjectsData: { [key: number]: { id: number; name: string; max_marks: number } } = {};
+      allClassResults.forEach(result => {
+        if (!subjectsData[result.subject_id]) {
+          subjectsData[result.subject_id] = {
+            id: result.subject_id,
+            name: (result.subjects as any)?.name || '',
+            max_marks: result.max_marks
+          };
+        }
+      });
+
+      const subjectsArray = Object.values(subjectsData).sort((a, b) => {
+        const orderA = getSubjectOrder(a.name);
+        const orderB = getSubjectOrder(b.name);
+        return orderA - orderB;
+      });
+
+      const totalExamMarks = subjectsArray.reduce((sum, subject) => sum + (subject.max_marks || 0), 0);
+
+      // Process ONLY students who have exam results (appeared students)
+      for (const studentId of studentIdsWithResults) {
+        const results = classResults[studentId] || [];
+        
+        // Skip if no results or marked as absent
+        if (results.length === 0) continue;
+        if (results.some(r => r.remarks === 'Absent')) continue;
+        
+        // Get student details
+        const student = allStudents.find(s => s.id === studentId);
+        if (!student) continue;
+        
+        const obtainedMarks = results.reduce((sum, r) => sum + (r.obtained_marks || 0), 0);
+        const percentage = totalExamMarks > 0 ? (obtainedMarks / totalExamMarks) * 100 : 0;
+        
+        let status: 'pass' | 'fail' = percentage < passingPercentage ? 'fail' : 'pass';
+        const grade = calculateGrade(percentage);
+
+        allCombinedData.push({
+          student_id: student.id,
+          student_name: student.name,
+          father_name: student.father_name,
+          class_name: classInfo.name,
+          section_name: '',
+          class_id: student.class_id,
+          total_marks: totalExamMarks,
+          obtained_marks: obtainedMarks,
+          percentage: percentage,
+          grade: grade,
+          status: status,
+          position: 0,
+          rank_in_class: 0
+        });
+      }
+    }
+
+    // Step 5: Calculate analytics (all students in allCombinedData are appeared)
+    const appearedStudents = allCombinedData.length;
+    const passedStudents = allCombinedData.filter(s => s.status === 'pass').length;
+    const failedStudents = allCombinedData.filter(s => s.status === 'fail').length;
+    const averagePercentage = appearedStudents > 0
+      ? allCombinedData.reduce((sum, s) => sum + s.percentage, 0) / appearedStudents
+      : 0;
+    const highestPercentage = appearedStudents > 0
+      ? Math.max(...allCombinedData.map(s => s.percentage))
+      : 0;
+    const lowestPercentage = appearedStudents > 0
+      ? Math.min(...allCombinedData.map(s => s.percentage))
+      : 0;
+    const passPercentage = appearedStudents > 0 ? (passedStudents / appearedStudents) * 100 : 0;
+
+    // Calculate positions
+    const sortedByPercentage = [...allCombinedData].sort((a, b) => b.percentage - a.percentage);
     let currentPosition = 1;
     for (let i = 0; i < sortedByPercentage.length; i++) {
       const student = sortedByPercentage[i];
       const currentPercentage = student.percentage;
-      
-      // Count how many students have the same percentage as current student
       let samePercentageCount = 1;
       for (let j = i + 1; j < sortedByPercentage.length; j++) {
         if (sortedByPercentage[j].percentage === currentPercentage) {
@@ -947,149 +1482,129 @@ const ExaminationAnalytics: React.FC = () => {
           break;
         }
       }
-      
-      // Assign the same position to all students with same percentage
       for (let k = 0; k < samePercentageCount; k++) {
         sortedByPercentage[i + k].position = currentPosition;
         sortedByPercentage[i + k].rank_in_class = currentPosition;
       }
-      
-      // Move to next position (skip the tied students and increment by 1)
       i += samePercentageCount - 1;
-      currentPosition = currentPosition + 1;
+      currentPosition++;
     }
 
-    // Top performers with detailed information
-    const topPerformers = sortedByPercentage
-      .slice(0, 15) // Show top 15 performers
-      .map((student, index) => ({
-        student_id: student.student_id,
-        student_name: student.student_name,
-        father_name: student.father_name,
-        class_name: student.class_name,
-        section_name: student.section_name,
-        percentage: student.percentage,
-        obtained_marks: student.obtained_marks,
-        total_marks: student.total_marks,
-        grade: student.grade,
-        position: student.position,
-        rank_in_class: student.rank_in_class,
-        status: student.status
-      }));
+    // Update positions in allCombinedData
+    const positionMap = new Map(sortedByPercentage.map(s => [s.student_id, s.position]));
+    allCombinedData.forEach(student => {
+      student.position = positionMap.get(student.student_id) || 0;
+      student.rank_in_class = positionMap.get(student.student_id) || 0;
+    });
 
-    // Find the actual lowest scorer from all students
-    const lowestScorer = sortedByPercentage.length > 0 
-      ? sortedByPercentage[sortedByPercentage.length - 1] 
-      : null;
+    // Top performers
+    const topPerformers = sortedByPercentage.slice(0, 15).map(student => ({
+      ...student,
+      student_id: student.student_id,
+      student_name: student.student_name,
+      father_name: student.father_name,
+      class_name: student.class_name,
+      section_name: student.section_name,
+      percentage: student.percentage,
+      obtained_marks: student.obtained_marks,
+      total_marks: student.total_marks,
+      grade: student.grade,
+      position: student.position,
+      rank_in_class: student.rank_in_class,
+      status: student.status
+    }));
 
-    // Get all failed students (below passing percentage)
+    const lowestScorer = sortedByPercentage.length > 0 ? sortedByPercentage[sortedByPercentage.length - 1] : undefined;
     const failedStudentsList = sortedByPercentage
       .filter(student => student.status === 'fail')
-      .map(student => ({
-        student_id: student.student_id,
-        student_name: student.student_name,
-        father_name: student.father_name,
-        class_name: student.class_name,
-        section_name: student.section_name,
-        percentage: student.percentage,
-        obtained_marks: student.obtained_marks,
-        total_marks: student.total_marks,
-        grade: student.grade,
-        position: student.position,
-        rank_in_class: student.rank_in_class,
-        status: student.status
-      }));
+      .map(student => ({ ...student }));
+    
+    // Students needing attention (below 50%) - sorted from lowest to highest percentage
+    const studentsNeedingAttention = sortedByPercentage
+      .filter(student => student.percentage < 50)
+      .reverse() // Reverse to get lowest to highest (since sortedByPercentage is highest to lowest)
+      .map(student => ({ ...student }));
 
-    // Subject-wise performance
-    const subjectPerformance = await getSubjectPerformance(examId, schoolId);
+    // Subject performance - calculate from allCombinedData
+    const subjectPerformance = getSubjectPerformanceFromData(allCombinedData, allExamResults, passingPercentage);
 
-    // Class-wise performance
-    const classPerformance = getClassPerformanceFromData(combinedData);
+    // Class performance
+    const classPerformance = getClassPerformance(allCombinedData, passingPercentage);
 
     // Grade distribution
-    const gradeDistribution = getGradeDistribution(combinedData);
+    const gradeDistribution = getGradeDistribution(allCombinedData);
 
     return {
-      totalStudents: totalStudentsCount,
-      appearedStudents,
-      passedStudents,
-      failedStudents,
-      averagePercentage,
-      highestPercentage,
-      lowestPercentage,
-      passPercentage,
-      topPerformers,
-      lowestScorer: lowestScorer ? {
-        student_id: lowestScorer.student_id,
-        student_name: lowestScorer.student_name,
-        father_name: lowestScorer.father_name,
-        class_name: lowestScorer.class_name,
-        section_name: lowestScorer.section_name,
-        percentage: lowestScorer.percentage,
-        obtained_marks: lowestScorer.obtained_marks,
-        total_marks: lowestScorer.total_marks,
-        grade: lowestScorer.grade,
-        status: lowestScorer.status
-      } : undefined,
-      failedStudentsList,
-      subjectPerformance,
-      classPerformance,
-      gradeDistribution
+      analytics: {
+        appearedStudents,
+        passedStudents,
+        failedStudents,
+        averagePercentage,
+        highestPercentage,
+        lowestPercentage,
+        passPercentage,
+        topPerformers,
+        lowestScorer,
+        failedStudentsList,
+        studentsNeedingAttention,
+        subjectPerformance,
+        classPerformance,
+        gradeDistribution
+      },
+      classes
     };
   };
 
-  const getSubjectPerformance = async (examId: number, schoolId: number) => {
-    // Get exam results with subject information (similar to MasterSheetManager)
-    const { data: examResults, error: resultsError } = await supabase
+  const getEmptyAnalytics = (): AnalyticsData => ({
+    appearedStudents: 0,
+    passedStudents: 0,
+    failedStudents: 0,
+    averagePercentage: 0,
+    highestPercentage: 0,
+    lowestPercentage: 0,
+    passPercentage: 0,
+    topPerformers: [],
+    lowestScorer: undefined,
+    failedStudentsList: [],
+    studentsNeedingAttention: [],
+    subjectPerformance: [],
+    classPerformance: [],
+    gradeDistribution: []
+  });
+
+  const getSubjectPerformance = async (examId: number, schoolId: number, passingPercentage: number) => {
+    const { data: examResults, error } = await supabase
       .from('exam_results')
       .select(`
         student_id,
         obtained_marks,
         max_marks,
         percentage,
-        grade,
+        remarks,
         subject_id,
         subjects!inner(name, short_name)
       `)
       .eq('exam_id', examId)
       .eq('school_id', schoolId);
 
-    if (resultsError) throw resultsError;
+    if (error) throw error;
 
-    // Get student details to filter by school
-    const studentIds = examResults?.map(s => s.student_id) || [];
-    let studentDetails: any[] = [];
-    
-    if (studentIds.length > 0) {
-      const { data: students, error: studentDetailsError } = await supabase
-        .from('students')
-        .select('id, school_id')
-        .in('id', studentIds)
-        .eq('school_id', schoolId);
-
-      if (studentDetailsError) throw studentDetailsError;
-      studentDetails = students || [];
-    }
-
-    // Filter exam results by school
-    const schoolStudentIds = studentDetails.map(s => s.id);
-    const filteredExamResults = examResults?.filter(s => schoolStudentIds.includes(s.student_id)) || [];
-
-    // Group results by subject
-    const subjectMap = new Map();
-    filteredExamResults.forEach(result => {
+    const subjectMap = new Map<string, any[]>();
+    examResults?.forEach(result => {
       const subjectName = (result.subjects as any)?.name || 'Unknown';
       if (!subjectMap.has(subjectName)) {
         subjectMap.set(subjectName, []);
       }
-      subjectMap.get(subjectName).push(result);
+      subjectMap.get(subjectName)!.push(result);
     });
 
-    // Calculate performance for each subject and sort them
-    const subjectPerformance = Array.from(subjectMap.entries()).map(([subjectName, results]: [string, any[]]) => {
-      const averagePercentage = results.reduce((sum, r) => sum + r.percentage, 0) / results.length || 0;
-      const passPercentage = (results.filter(r => r.percentage >= 33).length / results.length) * 100 || 0;
-      
+    const subjectPerformance = Array.from(subjectMap.entries()).map(([subjectName, results]) => {
+      const nonAbsentResults = results.filter(r => r.remarks !== 'Absent' && !r.remarks?.toLowerCase().includes('absent'));
+      const averagePercentage = results.reduce((sum, r) => sum + (r.percentage || 0), 0) / results.length || 0;
+      const passPercentage = nonAbsentResults.length > 0
+        ? (nonAbsentResults.filter(r => (r.percentage || 0) >= passingPercentage).length / nonAbsentResults.length) * 100
+        : 0;
+
       return {
         subject_name: subjectName,
         average_percentage: averagePercentage,
@@ -1098,7 +1613,6 @@ const ExaminationAnalytics: React.FC = () => {
       };
     });
 
-    // Sort subjects using the same logic as DetailedMarksCertificate
     return subjectPerformance.sort((a, b) => {
       const orderA = getSubjectOrder(a.subject_name);
       const orderB = getSubjectOrder(b.subject_name);
@@ -1106,21 +1620,24 @@ const ExaminationAnalytics: React.FC = () => {
     });
   };
 
-  const getClassPerformanceFromData = (combinedData: any[]) => {
-    const classMap = new Map();
-    
+  const getClassPerformance = (combinedData: StudentPerformance[], passingPercentage: number) => {
+    const classMap = new Map<string, StudentPerformance[]>();
     combinedData.forEach(student => {
       const className = student.class_name;
       if (!classMap.has(className)) {
         classMap.set(className, []);
       }
-      classMap.get(className).push(student.percentage);
+      classMap.get(className)!.push(student);
     });
 
-    const classPerformance = Array.from(classMap.entries()).map(([className, percentages]: [string, number[]]) => {
-      const averagePercentage = percentages.reduce((sum: number, p: number) => sum + p, 0) / percentages.length;
-      const passPercentage = (percentages.filter((p: number) => p >= 33).length / percentages.length) * 100;
-      
+    const classPerformance = Array.from(classMap.entries()).map(([className, students]) => {
+      const percentages = students.map(s => s.percentage);
+      const averagePercentage = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
+      const nonAbsentStudents = students.filter(s => s.status !== 'absent');
+      const passPercentage = nonAbsentStudents.length > 0
+        ? (nonAbsentStudents.filter(s => s.status === 'pass').length / nonAbsentStudents.length) * 100
+        : 0;
+
       return {
         class_name: className,
         average_percentage: averagePercentage,
@@ -1129,541 +1646,653 @@ const ExaminationAnalytics: React.FC = () => {
       };
     });
 
-    // Sort classes numerically (1st, 2nd, 3rd, etc.)
     return classPerformance.sort((a, b) => {
       const numA = parseInt(a.class_name.match(/\d+/)?.[0] || '0');
       const numB = parseInt(b.class_name.match(/\d+/)?.[0] || '0');
-      return numA - numB;
+      if (numA !== numB) return numA - numB;
+      return a.class_name.localeCompare(b.class_name);
     });
   };
 
-  const getGradeDistribution = (students: any[]) => {
-    const gradeMap = new Map();
-    students.forEach((student: any) => {
-      // Calculate grade based on percentage (same logic as DetailedMarksCertificate)
-      const percentage = student.percentage;
-      let grade = 'F';
-      if (percentage >= 90) grade = 'A+';
-      else if (percentage >= 80) grade = 'A';
-      else if (percentage >= 70) grade = 'B';
-      else if (percentage >= 60) grade = 'C';
-      else if (percentage >= 50) grade = 'D';
-      
-      gradeMap.set(grade, (gradeMap.get(grade) || 0) + 1);
+  const getGradeDistribution = (students: StudentPerformance[]) => {
+    const gradeCounts: { [key: string]: number } = {};
+    students.forEach(student => {
+      gradeCounts[student.grade] = (gradeCounts[student.grade] || 0) + 1;
     });
 
     const total = students.length;
-    const gradeData = Array.from(gradeMap.entries()).map(([grade, count]: [string, number]) => ({
+    return ['A+', 'A', 'B', 'C', 'D', 'F'].map(grade => ({
       grade,
-      count,
-      percentage: (count / total) * 100
+      count: gradeCounts[grade] || 0,
+      percentage: total > 0 ? ((gradeCounts[grade] || 0) / total) * 100 : 0
     }));
-
-    // Define the exact order we want
-    const gradeOrder = ['A+', 'A', 'B', 'C', 'D', 'F'];
-    
-    // Sort by the predefined order
-    return gradeData.sort((a, b) => {
-      const indexA = gradeOrder.indexOf(a.grade);
-      const indexB = gradeOrder.indexOf(b.grade);
-      return indexA - indexB;
-    });
   };
 
-  const scrollToTop = () => {
-    if (mainContentRef.current) {
-      mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleExportPDF = async () => {
+    if (!selectedExam || !analytics) {
+      showToast('Please select an examination and wait for analytics to load', 'error');
+      return;
     }
-  };
-
-  const generateAnalyticsPDF = async () => {
-    if (!analytics || !selectedExam) return;
 
     setExportLoading(true);
     try {
-      // Check if it's a mobile device
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      // Show immediate feedback for mobile users
-      if (isMobileDevice) {
-        showToast('Generating PDF for mobile... Please wait.', 'success');
-      }
-      // Fetch institute name from database
-      let instituteName = 'School Analytics';
+      // Fetch school information
+      let schoolName = 'School';
       if (user?.school_id) {
-        const { data: instituteProfile } = await supabase
-          .from('institute_profile')
-          .select('name')
-          .eq('school_id', user.school_id)
-          .single();
-        
-        if (instituteProfile?.name) {
-          instituteName = instituteProfile.name;
+        try {
+          const { data: schoolData } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', user.school_id)
+            .single();
+          if (schoolData?.name) {
+            schoolName = schoolData.name;
+          }
+        } catch (err) {
+          console.error('Error fetching school name:', err);
         }
       }
 
-      const doc = new jsPDF('p', 'mm', 'a4');
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      
-      // Helper function to format date
-      const formatDate = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = date.toLocaleString('default', { month: 'short' });
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
+      const margin = 14;
+      const maxWidth = pageWidth - (margin * 2);
+
+      // Helper function to add new page if needed
+      const checkPageBreak = (currentY: number, requiredSpace: number = 20) => {
+        if (currentY + requiredSpace > pageHeight - margin) {
+          doc.addPage();
+          // Don't add header on new pages, just return the starting Y position
+          return margin + 10;
+        }
+        return currentY + 10;
       };
 
-      // Header
-      doc.setFillColor(74, 108, 247);
-      doc.rect(0, 0, pageWidth, 25, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('EXAMINATION ANALYTICS REPORT', pageWidth / 2, 10, { align: 'center' });
-      
-      // Add institute name from database
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(instituteName, pageWidth / 2, 16, { align: 'center' });
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Generated on: ${formatDate(new Date())}`, pageWidth / 2, 22, { align: 'center' });
-      
-      // Reset text color
-      doc.setTextColor(0, 0, 0);
-      
-      let yPosition = 35;
+      // Helper function to add header only on first page
+      const addPageHeader = (yPos: number, isFirstPage: boolean = true) => {
+        if (!isFirstPage) {
+          return yPos; // Don't add header on subsequent pages
+        }
+        
+        // Header background
+        doc.setFillColor(99, 102, 241);
+        doc.rect(0, 0, pageWidth, 25, 'F');
+        
+        // School name
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text(schoolName, margin, 12);
+        
+        // Report title
+        doc.setFontSize(12);
+        doc.text('Examination Analytics Report', margin, 18);
+        
+        // Exam name
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Exam: ${selectedExam.name}`, margin, 23);
+        
+        // Date
+        doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth - margin - 50, 23, { align: 'right' });
+        
+        doc.setTextColor(0, 0, 0);
+        return yPos;
+      };
 
-      // Examination Details
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('EXAMINATION DETAILS', 15, yPosition);
-      
-      yPosition += 8;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Examination: ${selectedExam.name}`, 15, yPosition);
-      doc.text(`Type: ${selectedExam.exam_type}`, 15, yPosition + 5);
-      doc.text(`Start Date: ${formatDate(new Date(selectedExam.start_date))}`, 15, yPosition + 10);
-      if (selectedExam.end_date) {
-        doc.text(`End Date: ${formatDate(new Date(selectedExam.end_date))}`, 15, yPosition + 15);
-        yPosition += 20;
-      } else {
-        yPosition += 15;
-      }
+      // Helper function to add section title
+      const addSectionTitle = (title: string, yPos: number) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(99, 102, 241);
+        doc.text(title, margin, yPos);
+        doc.setDrawColor(99, 102, 241);
+        doc.setLineWidth(0.5);
+        doc.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
+        doc.setTextColor(0, 0, 0);
+        return yPos + 8;
+      };
 
-      // Key Metrics Table
-      yPosition += 5;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('KEY METRICS', 15, yPosition);
+      // Helper function to add footer
+      const addFooter = () => {
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFontSize(8);
+          doc.setTextColor(128, 128, 128);
+          doc.text(
+            `Page ${i} of ${pageCount}`,
+            pageWidth / 2,
+            pageHeight - 10,
+            { align: 'center' }
+          );
+        }
+      };
+
+      let yPos = margin + 30;
+
+      // Page 1: Header and Overview
+      addPageHeader(yPos, true); // Only show header on first page
+      yPos = margin + 30;
+
+      // Overall Statistics Section
+      yPos = addSectionTitle('Overall Statistics', yPos);
       
-      yPosition += 8;
-      const metricsData = [
-        ['Metric', 'Count', 'Percentage'],
-        ['Total Students', analytics.totalStudents.toString(), '100%'],
-        ['Appeared Students', analytics.appearedStudents.toString(), `${((analytics.appearedStudents / analytics.totalStudents) * 100).toFixed(1)}%`],
-        ['Passed Students', analytics.passedStudents.toString(), `${analytics.passPercentage.toFixed(1)}%`],
-        ['Failed Students', analytics.failedStudents.toString(), `${((analytics.failedStudents / analytics.appearedStudents) * 100).toFixed(1)}%`],
-        ['Average Percentage', `${analytics.averagePercentage.toFixed(1)}%`, 'Overall Performance'],
-        ['Highest Score', `${analytics.highestPercentage.toFixed(1)}%`, 'Best Performer'],
-        ['Lowest Score', `${analytics.lowestPercentage.toFixed(1)}%`, 'Needs Improvement']
+      // Create a professional table for statistics
+      const statsData = [
+        ['Appeared Students', analytics.appearedStudents.toString()],
+        ['Passed Students', analytics.passedStudents.toString()],
+        ['Failed Students', analytics.failedStudents.toString()],
+        ['Average Percentage', analytics.averagePercentage.toFixed(2) + '%'],
+        ['Pass Rate', analytics.passPercentage.toFixed(2) + '%'],
+        ['Highest Percentage', analytics.highestPercentage.toFixed(2) + '%'],
+        ['Lowest Percentage', analytics.lowestPercentage.toFixed(2) + '%'],
       ];
 
       autoTable(doc, {
-        startY: yPosition,
-        head: [metricsData[0]],
-        body: metricsData.slice(1),
-        theme: 'grid',
-        headStyles: { fillColor: [74, 108, 247], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        margin: { left: 15, right: 15 },
-        styles: { fontSize: 8, cellPadding: 2 },
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: statsData,
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [99, 102, 241], 
+          textColor: 255, 
+          fontStyle: 'bold',
+          fontSize: 10,
+          halign: 'left'
+        },
+        bodyStyles: { 
+          fontSize: 9,
+          halign: 'left'
+        },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { left: margin, right: margin },
+        styles: { 
+          cellPadding: 4,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
+        },
         columnStyles: {
-          0: { halign: 'left' },
-          1: { halign: 'center' },
-          2: { halign: 'center' }
-        }
+          0: { cellWidth: 120, fontStyle: 'bold', textColor: [60, 60, 60] },
+          1: { cellWidth: 60, halign: 'right', textColor: [99, 102, 241], fontStyle: 'bold' }
+        },
+        showHead: 'everyPage' // Ensure table headers repeat on every page
       });
 
-      yPosition = (doc as any).lastAutoTable.finalY + 10;
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+      yPos = checkPageBreak(yPos, 30);
+
+      // Class-wise Performance
+      if (analytics.classPerformance.length > 0) {
+        yPos = addSectionTitle('Class-wise Performance', yPos);
+        
+        const classData = analytics.classPerformance
+          .filter(cp => cp && cp.class_name) // Filter out invalid entries
+          .map(cp => [
+            cp.class_name || '',
+            (cp.average_percentage || 0).toFixed(1) + '%',
+            (cp.pass_percentage || 0).toFixed(1) + '%',
+            (cp.total_students || 0).toString()
+          ])
+          .filter(row => row.length === 4); // Ensure all rows have 4 columns
+
+        if (classData.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Class', 'Average %', 'Pass Rate %', 'Students']],
+            body: classData,
+            theme: 'striped',
+            headStyles: { 
+              fillColor: [99, 102, 241], 
+              textColor: 255, 
+              fontStyle: 'bold',
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [245, 247, 250] },
+            margin: { left: margin, right: margin },
+            styles: { cellPadding: 3 },
+            showHead: 'everyPage' // Ensure table headers repeat on every page
+          });
+
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          yPos = checkPageBreak(yPos, 30);
+        }
+      }
+
+      // Subject-wise Performance
+      if (analytics.subjectPerformance.length > 0) {
+        yPos = addSectionTitle('Subject-wise Performance', yPos);
+        
+        const subjectData = analytics.subjectPerformance
+          .filter(sp => sp && sp.subject_name) // Filter out invalid entries
+          .map(sp => [
+            sp.subject_name || '',
+            (sp.average_percentage || 0).toFixed(1) + '%',
+            (sp.pass_percentage || 0).toFixed(1) + '%',
+            (sp.total_students || 0).toString()
+          ])
+          .filter(row => row.length === 4); // Ensure all rows have 4 columns
+
+        if (subjectData.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Subject', 'Average %', 'Pass Rate %', 'Students']],
+            body: subjectData,
+            theme: 'striped',
+            headStyles: { 
+              fillColor: [16, 185, 129], 
+              textColor: 255, 
+              fontStyle: 'bold',
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [245, 247, 250] },
+            margin: { left: margin, right: margin },
+            styles: { cellPadding: 3 },
+            showHead: 'everyPage' // Ensure table headers repeat on every page
+          });
+
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          yPos = checkPageBreak(yPos, 30);
+        }
+      }
 
       // Grade Distribution
       if (analytics.gradeDistribution.length > 0) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('GRADE DISTRIBUTION', 15, yPosition);
+        yPos = addSectionTitle('Grade Distribution', yPos);
         
-        yPosition += 8;
-        const gradeData = analytics.gradeDistribution.map(grade => [
-          `Grade ${grade.grade}`,
-          grade.count.toString(),
-          `${grade.percentage.toFixed(1)}%`
-        ]);
+        const gradeData = analytics.gradeDistribution
+          .filter(gd => gd && gd.grade) // Filter out invalid entries
+          .map(gd => [
+            gd.grade || '',
+            (gd.count || 0).toString(),
+            (gd.percentage || 0).toFixed(1) + '%'
+          ])
+          .filter(row => row.length === 3); // Ensure all rows have 3 columns
 
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['Grade', 'Count', 'Percentage']],
-          body: gradeData,
-          theme: 'grid',
-          headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { left: 15, right: 15 },
-          styles: { fontSize: 8, cellPadding: 2 },
-          columnStyles: {
-            0: { halign: 'left' },
-            1: { halign: 'center' },
-            2: { halign: 'center' }
-          }
-        });
+        if (gradeData.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Grade', 'Count', 'Percentage']],
+            body: gradeData,
+            theme: 'striped',
+            headStyles: { 
+              fillColor: [139, 92, 246], 
+              textColor: 255, 
+              fontStyle: 'bold',
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [245, 247, 250] },
+            margin: { left: margin, right: margin },
+            styles: { cellPadding: 3 },
+            showHead: 'everyPage' // Ensure table headers repeat on every page
+          });
 
-        yPosition = (doc as any).lastAutoTable.finalY + 10;
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          yPos = checkPageBreak(yPos, 30);
+        }
       }
 
       // Top Performers
       if (analytics.topPerformers.length > 0) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TOP PERFORMERS', 15, yPosition);
+        yPos = addSectionTitle('Top Performers (Top 15)', yPos);
         
-        yPosition += 8;
-        const topPerformersData = analytics.topPerformers.slice(0, 10).map(performer => [
-          performer.position.toString(),
-          performer.student_name,
-          performer.father_name || 'N/A',
-          performer.section_name ? `${performer.class_name} (${performer.section_name})` : performer.class_name,
-          `${performer.obtained_marks.toFixed(0)}/${performer.total_marks.toFixed(0)}`,
-          `${performer.percentage.toFixed(1)}%`,
-          performer.grade
-        ]);
+        const topPerformersData = analytics.topPerformers
+          .filter(tp => tp && tp.student_name) // Filter out invalid entries
+          .map((tp, idx) => [
+            (idx + 1).toString(),
+            tp.student_name || '',
+            tp.class_name || '',
+            ((tp.obtained_marks || 0).toFixed(0) + '/' + (tp.total_marks || 0).toFixed(0)),
+            (tp.percentage || 0).toFixed(2) + '%',
+            tp.grade || ''
+          ])
+          .filter(row => row.length === 6); // Ensure all rows have 6 columns
 
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['Rank', 'Student Name', 'Father Name', 'Class (Section)', 'Marks', 'Percentage', 'Grade']],
-          body: topPerformersData,
-          theme: 'grid',
-          headStyles: { fillColor: [245, 158, 11], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { left: 15, right: 15 },
-          styles: { fontSize: 7, cellPadding: 1.5 },
-          columnStyles: {
-            0: { cellWidth: 12, halign: 'center' },
-            1: { cellWidth: 40, halign: 'left' },
-            2: { cellWidth: 35, halign: 'left' },
-            3: { cellWidth: 30, halign: 'left' },
-            4: { cellWidth: 25, halign: 'center' },
-            5: { cellWidth: 20, halign: 'center' },
-            6: { cellWidth: 15, halign: 'center' }
-          }
-        });
+        if (topPerformersData.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Rank', 'Student Name', 'Class', 'Marks', 'Percentage', 'Grade']],
+            body: topPerformersData,
+            theme: 'striped',
+            headStyles: { 
+              fillColor: [245, 158, 11], 
+              textColor: 255, 
+              fontStyle: 'bold',
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [245, 247, 250] },
+            margin: { left: margin, right: margin },
+            styles: { cellPadding: 3 },
+            columnStyles: {
+              0: { cellWidth: 15 },
+              1: { cellWidth: 50 },
+              2: { cellWidth: 30 },
+              3: { cellWidth: 30 },
+              4: { cellWidth: 30 },
+              5: { cellWidth: 20 }
+            },
+            showHead: 'everyPage' // Ensure table headers repeat on every page
+          });
 
-        yPosition = (doc as any).lastAutoTable.finalY + 10;
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          yPos = checkPageBreak(yPos, 30);
+        }
+      }
+
+      // Students Needing Attention
+      if (analytics.studentsNeedingAttention.length > 0) {
+        yPos = addSectionTitle('Students Needing Attention (Below 50%)', yPos);
+        
+        const attentionData = analytics.studentsNeedingAttention
+          .filter(sna => sna && sna.student_name) // Filter out invalid entries
+          .map(sna => [
+            sna.student_name || '',
+            sna.class_name || '',
+            ((sna.obtained_marks || 0).toFixed(0) + '/' + (sna.total_marks || 0).toFixed(0)),
+            (sna.percentage || 0).toFixed(2) + '%',
+            sna.grade || ''
+          ])
+          .filter(row => row.length === 5); // Ensure all rows have 5 columns
+
+        if (attentionData.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Student Name', 'Class', 'Marks', 'Percentage', 'Grade']],
+            body: attentionData,
+            theme: 'striped',
+            headStyles: { 
+              fillColor: [239, 68, 68], 
+              textColor: 255, 
+              fontStyle: 'bold',
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [254, 242, 242] },
+            margin: { left: margin, right: margin },
+            styles: { cellPadding: 3 },
+            columnStyles: {
+              0: { cellWidth: 60 },
+              1: { cellWidth: 35 },
+              2: { cellWidth: 35 },
+              3: { cellWidth: 35 },
+              4: { cellWidth: 20 }
+            },
+            showHead: 'everyPage' // Ensure table headers repeat on every page
+          });
+
+          yPos = (doc as any).lastAutoTable.finalY + 10;
+          yPos = checkPageBreak(yPos, 30);
+        }
       }
 
       // Failed Students
       if (analytics.failedStudentsList.length > 0) {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 60) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('FAILED STUDENTS', 15, yPosition);
+        yPos = addSectionTitle('Failed Students', yPos);
         
-        yPosition += 8;
-        // Sort failed students by class name numerically
-        const sortedFailedStudents = [...analytics.failedStudentsList].sort((a, b) => {
-          const numA = parseInt(a.class_name.match(/\d+/)?.[0] || '0');
-          const numB = parseInt(b.class_name.match(/\d+/)?.[0] || '0');
-          return numA - numB;
-        });
+        const failedData = analytics.failedStudentsList
+          .filter(fs => fs && fs.student_name) // Filter out invalid entries
+          .map(fs => [
+            fs.student_name || '',
+            fs.class_name || '',
+            ((fs.obtained_marks || 0).toFixed(0) + '/' + (fs.total_marks || 0).toFixed(0)),
+            (fs.percentage || 0).toFixed(2) + '%',
+            fs.grade || ''
+          ])
+          .filter(row => row.length === 5); // Ensure all rows have 5 columns
 
-        const failedStudentsData = sortedFailedStudents.map((student, index) => [
-          (index + 1).toString(),
-          student.student_name,
-          student.father_name || 'N/A',
-          student.section_name ? `${student.class_name} (${student.section_name})` : student.class_name,
-          `${student.obtained_marks.toFixed(0)}/${student.total_marks.toFixed(0)}`,
-          `${student.percentage.toFixed(1)}%`,
-          student.grade
-        ]);
+        if (failedData.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Student Name', 'Class', 'Marks', 'Percentage', 'Grade']],
+            body: failedData,
+            theme: 'striped',
+            headStyles: { 
+              fillColor: [185, 28, 28], 
+              textColor: 255, 
+              fontStyle: 'bold',
+              fontSize: 9
+            },
+            bodyStyles: { fontSize: 8 },
+            alternateRowStyles: { fillColor: [254, 242, 242] },
+            margin: { left: margin, right: margin },
+            styles: { cellPadding: 3 },
+            columnStyles: {
+              0: { cellWidth: 60 },
+              1: { cellWidth: 35 },
+              2: { cellWidth: 35 },
+              3: { cellWidth: 35 },
+              4: { cellWidth: 20 }
+            },
+            showHead: 'everyPage' // Ensure table headers repeat on every page
+          });
 
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['S.No', 'Student Name', 'Father Name', 'Class (Section)', 'Marks', 'Percentage', 'Grade']],
-          body: failedStudentsData,
-          theme: 'grid',
-          headStyles: { fillColor: [239, 68, 68], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-          alternateRowStyles: { fillColor: [254, 242, 242] },
-          margin: { left: 15, right: 15 },
-          styles: { fontSize: 7, cellPadding: 1.5 },
-          columnStyles: {
-            0: { cellWidth: 12, halign: 'center' },
-            1: { cellWidth: 40, halign: 'left' },
-            2: { cellWidth: 35, halign: 'left' },
-            3: { cellWidth: 30, halign: 'left' },
-            4: { cellWidth: 25, halign: 'center' },
-            5: { cellWidth: 20, halign: 'center' },
-            6: { cellWidth: 15, halign: 'center' }
-          }
-        });
-
-        yPosition = (doc as any).lastAutoTable.finalY + 10;
-      }
-
-      // Subject Performance
-      if (analytics.subjectPerformance.length > 0) {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 60) {
-          doc.addPage();
-          yPosition = 20;
+          yPos = (doc as any).lastAutoTable.finalY + 10;
         }
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('SUBJECT-WISE PERFORMANCE', 15, yPosition);
-        
-        yPosition += 8;
-        const subjectData = analytics.subjectPerformance.map(subject => [
-          subject.subject_name,
-          `${subject.average_percentage.toFixed(1)}%`,
-          `${subject.pass_percentage.toFixed(1)}%`,
-          subject.total_students.toString()
-        ]);
-
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['Subject', 'Average %', 'Pass Rate', 'Students']],
-          body: subjectData,
-          theme: 'grid',
-          headStyles: { fillColor: [139, 92, 246], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { left: 15, right: 15 },
-          styles: { fontSize: 8, cellPadding: 2 },
-          columnStyles: {
-            0: { halign: 'left' },
-            1: { halign: 'center' },
-            2: { halign: 'center' },
-            3: { halign: 'center' }
-          }
-        });
-
-        yPosition = (doc as any).lastAutoTable.finalY + 10;
       }
 
-      // Class Performance
-      if (analytics.classPerformance.length > 0) {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 60) {
-          doc.addPage();
-          yPosition = 20;
-        }
+      // Add footer to all pages
+      addFooter();
 
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CLASS-WISE PERFORMANCE', 15, yPosition);
-        
-        yPosition += 8;
-        const classData = analytics.classPerformance.map(classPerf => [
-          classPerf.class_name,
-          `${classPerf.average_percentage.toFixed(1)}%`,
-          `${classPerf.pass_percentage.toFixed(1)}%`,
-          classPerf.total_students.toString()
-        ]);
-
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['Class', 'Average %', 'Pass Rate', 'Students']],
-          body: classData,
-          theme: 'grid',
-          headStyles: { fillColor: [6, 182, 212], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { left: 15, right: 15 },
-          styles: { fontSize: 8, cellPadding: 2 },
-          columnStyles: {
-            0: { halign: 'left' },
-            1: { halign: 'center' },
-            2: { halign: 'center' },
-            3: { halign: 'center' }
-          }
-        });
-      }
-
-      // Footer
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(128, 128, 128);
-        doc.text(`Page ${i} of ${pageCount}`, pageWidth - 30, pageHeight - 10);
-      }
-
-      // Save the PDF with mobile-friendly approach
-      const fileName = `ExaminationAnalytics_${selectedExam?.name}_${new Date().toLocaleDateString('en-GB')}.pdf`;
+      // Save PDF
+      const fileName = `Examination_Analytics_${selectedExam.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      if (isMobileDevice) {
-        // For mobile devices, use Capacitor Filesystem API approach
+      // Handle mobile/desktop differently
+      const capacitor = (window as any).Capacitor;
+      const isNative = capacitor?.isNativePlatform?.() || false;
+      
+      if (isNative) {
         try {
-          // Generate PDF as base64 string
-          const pdfBase64 = doc.output('datauristring').split(',')[1];
+          const pdfBlob = doc.output('blob');
+          const { Filesystem, Directory } = await import('@capacitor/filesystem');
+          const base64Data = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(',')[1];
+              resolve(base64);
+            };
+            reader.readAsDataURL(pdfBlob);
+          });
           
-          // Create unique filename with timestamp to prevent overwriting
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const mobileFileName = `examination-analytics-${timestamp}.pdf`;
-
-          // Check if Capacitor is available (for mobile apps)
-          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-            try {
-              // Write PDF to documents directory
-              await window.Capacitor.Plugins.Filesystem.writeFile({
-                path: mobileFileName,
-                data: pdfBase64,
-                directory: 'DOCUMENTS'
-              });
-
-              // Get the file URI
-              const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-                path: mobileFileName,
-                directory: 'DOCUMENTS'
-              });
-
-              // Show success message and trigger native Android "Open with" dialog
-              showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-              
-              // Trigger native Android "Open with" dialog by opening the file URI
-              // This will show the native Android app chooser dialog
-              window.open(uriResult.uri, '_blank');
-              
-            } catch (fsError) {
-              console.error('Filesystem error:', fsError);
-              // If filesystem fails, fallback to regular download
-              doc.save(mobileFileName);
-              showToast('PDF downloaded successfully!', 'success');
-            }
-          } else {
-            // Fallback for web browsers - use the blob approach
-            try {
-              const pdfBlob = doc.output('blob');
-              const url = URL.createObjectURL(pdfBlob);
-              
-              // Create a visible download button for mobile
-              const downloadContainer = document.createElement('div');
-              downloadContainer.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: white;
-                border: 2px solid #4a6cf7;
-                border-radius: 12px;
-                padding: 20px;
-                z-index: 10000;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                text-align: center;
-                max-width: 90vw;
-              `;
-              
-              downloadContainer.innerHTML = `
-                <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
-                <p style="margin: 0 0 15px 0; color: #666;">Examination Analytics Report</p>
-                <a href="${url}" download="${fileName}" 
-                   style="display: inline-block; background: #4a6cf7; color: white; padding: 12px 24px; 
-                          text-decoration: none; border-radius: 8px; font-weight: bold; margin: 5px;">
-                  📄 Download PDF
-                </a>
-                <br>
-                <button onclick="this.parentElement.remove()" 
-                        style="background: #ef4444; color: white; border: none; padding: 8px 16px; 
-                               border-radius: 6px; margin-top: 10px; cursor: pointer;">
-                  Close
-                </button>
-              `;
-              
-              document.body.appendChild(downloadContainer);
-              
-              // Auto-remove after 30 seconds
-              setTimeout(() => {
-                if (downloadContainer.parentElement) {
-                  downloadContainer.remove();
-                }
-                URL.revokeObjectURL(url);
-              }, 30000);
-              
-              showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-              
-            } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
-              
-              // Final fallback: Open PDF in new tab with data URI
-              const pdfDataUri = doc.output('datauristring');
-              const newWindow = window.open('', '_blank');
-              if (newWindow) {
-                newWindow.document.write(`
-                  <!DOCTYPE html>
-                  <html>
-                    <head>
-                      <title>Examination Analytics PDF</title>
-                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                      <style>
-                        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-                        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                        .header { text-align: center; margin-bottom: 20px; }
-                        .download-btn { display: inline-block; background: #4a6cf7; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 10px; }
-                        .download-btn:hover { background: #3a5ce5; }
-                        iframe { width: 100%; height: 600px; border: none; border-radius: 8px; }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="container">
-                        <div class="header">
-                          <h2>📄 Examination Analytics PDF Generated</h2>
-                          <p>If the PDF doesn't open automatically, use the download button below:</p>
-                        </div>
-                        <div style="text-align: center;">
-                          <a href="${pdfDataUri}" download="${fileName}" class="download-btn">
-                            📥 Download PDF File
-                          </a>
-                        </div>
-                        <iframe src="${pdfDataUri}"></iframe>
-                      </div>
-                    </body>
-                  </html>
-                `);
-                newWindow.document.close();
-                showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-              } else {
-                showToast('Please allow popups for this site to download the PDF', 'error');
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Mobile PDF export error:', error);
-          showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
+          await Filesystem.writeFile({
+            path: `Documents/${fileName}`,
+            data: base64Data,
+            directory: Directory.ExternalStorage as any
+          });
+          
+          showToast('PDF saved to Documents folder', 'success');
+        } catch (mobileError) {
+          // Fallback to regular download if mobile save fails
+          console.error('Mobile save failed:', mobileError);
+          doc.save(fileName);
+          showToast('PDF exported successfully', 'success');
         }
       } else {
-        // For desktop, use the standard approach
         doc.save(fileName);
-        showToast('Analytics PDF generated successfully!', 'success');
+        showToast('PDF exported successfully', 'success');
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      showToast('Failed to generate PDF', 'error');
+      console.error('Error exporting PDF:', error);
+      showToast('Failed to export PDF', 'error');
     } finally {
       setExportLoading(false);
     }
   };
 
+  const handleToTop = () => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Prepare chart data
+  const gradeChartData = useMemo(() => {
+    if (!analytics) return [];
+    return analytics.gradeDistribution.map(gd => ({
+      grade: gd.grade,
+      count: gd.count,
+      percentage: gd.percentage
+    }));
+  }, [analytics]);
+
+  const allSubjectsChartData = useMemo(() => {
+    if (!analytics || analytics.subjectPerformance.length === 0) return [];
+    
+    // Function to get base subject name (remove suffixes like " B", " A", " I", " II", etc.)
+    const getBaseSubjectName = (name: string): string => {
+      // Remove common suffixes: " B", " A", " I", " II", " 1", " 2", etc.
+      return name.replace(/\s+[ABI1-9]+$/, '').trim();
+    };
+    
+    // Group subjects by base name
+    const subjectMap = new Map<string, {
+      baseName: string;
+      subjects: Array<{
+        name: string;
+        average: number;
+        passRate: number;
+        students: number;
+        passed: number;
+        failed: number;
+      }>;
+    }>();
+    
+    analytics.subjectPerformance.forEach(sp => {
+      const baseName = getBaseSubjectName(sp.subject_name);
+      const passed = Math.round((sp.pass_percentage / 100) * sp.total_students);
+      const failed = sp.total_students - passed;
+      
+      if (!subjectMap.has(baseName)) {
+        subjectMap.set(baseName, {
+          baseName,
+          subjects: []
+        });
+      }
+      subjectMap.get(baseName)!.subjects.push({
+        name: sp.subject_name,
+        average: sp.average_percentage,
+        passRate: sp.pass_percentage,
+        students: sp.total_students,
+        passed,
+        failed
+      });
+    });
+    
+    // Combine similar subjects
+    const combinedData = Array.from(subjectMap.values()).map(group => {
+      if (group.subjects.length === 1) {
+        // Single subject, no need to combine
+        const subj = group.subjects[0];
+        return {
+          subject: group.baseName.length > 15 ? group.baseName.substring(0, 15) + '...' : group.baseName,
+          fullName: group.baseName,
+          average: subj.average,
+          passRate: subj.passRate,
+          students: subj.students,
+          passed: subj.passed,
+          failed: subj.failed
+        };
+      } else {
+        // Multiple similar subjects, combine them
+        const totalStudents = group.subjects.reduce((sum, s) => sum + s.students, 0);
+        const totalPassed = group.subjects.reduce((sum, s) => sum + s.passed, 0);
+        const totalFailed = group.subjects.reduce((sum, s) => sum + s.failed, 0);
+        // Weighted average based on student count
+        const weightedAverage = group.subjects.reduce((sum, s) => 
+          sum + (s.average * s.students), 0) / totalStudents;
+        const weightedPassRate = group.subjects.reduce((sum, s) => 
+          sum + (s.passRate * s.students), 0) / totalStudents;
+        
+        return {
+          subject: group.baseName.length > 15 ? group.baseName.substring(0, 15) + '...' : group.baseName,
+          fullName: group.baseName,
+          average: weightedAverage,
+          passRate: weightedPassRate,
+          students: totalStudents,
+          passed: totalPassed,
+          failed: totalFailed
+        };
+      }
+    });
+    
+    return combinedData;
+  }, [analytics]);
+
+  const classPerformanceChartData = useMemo(() => {
+    if (!analytics) return [];
+    return analytics.classPerformance.map(cp => {
+      const passed = Math.round((cp.pass_percentage / 100) * cp.total_students);
+      const failed = cp.total_students - passed;
+      return {
+        class: cp.class_name,
+        average: cp.average_percentage,
+        passRate: cp.pass_percentage,
+        students: cp.total_students,
+        passed,
+        failed
+      };
+    });
+  }, [analytics]);
+
+
+  const areasForImprovement = useMemo(() => {
+    if (!analytics) return [];
+    const improvements: string[] = [];
+    
+    // Find subjects with low pass rates
+    const lowPassSubjects = analytics.subjectPerformance
+      .filter(sp => sp.pass_percentage < 50)
+      .slice(0, 2);
+    lowPassSubjects.forEach(sp => {
+      improvements.push(`Problem Solving in ${sp.subject_name}`);
+    });
+    
+    // Find classes needing attention
+    const lowPerformingClasses = analytics.classPerformance
+      .filter(cp => cp.average_percentage < analytics.averagePercentage)
+      .slice(0, 1);
+    if (lowPerformingClasses.length > 0) {
+      improvements.push(`Individualized Learning Plans for ${lowPerformingClasses[0].class_name}`);
+    }
+    
+    // Add general improvements
+    if (analytics.studentsNeedingAttention.length > 0) {
+      improvements.push('Targeted Tutoring for Struggling Students');
+    }
+    
+    if (analytics.failedStudentsList.length > 0) {
+      improvements.push('Critical Thinking Enhancement Programs');
+    }
+    
+    return improvements.length > 0 ? improvements : ['All areas performing well'];
+  }, [analytics]);
+
+  const COLORS = ['#6366f1', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const GRADE_COLORS: { [key: string]: string } = {
+    'A+': '#10b981',
+    'A': '#22c55e',
+    'B': '#3b82f6',
+    'C': '#f59e0b',
+    'D': '#f97316',
+    'F': '#ef4444'
+  };
+
   if (loading) {
     return (
-      <PageContainer>
-        <LoadingSpinner />
-      </PageContainer>
+      <LoadingContainer>
+        <div style={{
+          width: 48,
+          height: 48,
+          border: '5px solid #e0e7ff',
+          borderTop: '5px solid #6366f1',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+      </LoadingContainer>
     );
   }
 
@@ -1671,721 +2300,575 @@ const ExaminationAnalytics: React.FC = () => {
     <PageContainer>
       <Header>
         <Title>
-          <AnalyticsIcon style={{ fontSize: 20 }} />
+          <AnalyticsIcon />
           Examination Analytics
         </Title>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-          <button
-            onClick={loadAnalytics}
-            disabled={!selectedExam || analyticsLoading}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: theme === 'dark' ? '#e2e8f0' : '#374151',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              opacity: (!selectedExam || analyticsLoading) ? 0.5 : 1,
-              pointerEvents: (!selectedExam || analyticsLoading) ? 'none' : 'auto'
+        <HeaderControls>
+          <Select
+            value={selectedExam?.id || ''}
+            onChange={(e) => {
+              const exam = examinations.find(ex => ex.id === Number(e.target.value));
+              setSelectedExam(exam || null);
             }}
-            onMouseEnter={(e) => {
-              if (selectedExam && !analyticsLoading) {
-                e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'none';
-            }}
-            title={analyticsLoading ? 'Loading...' : 'Refresh Analytics'}
           >
-            <RefreshIcon 
-              style={{ 
-                fontSize: 20,
-                animation: analyticsLoading ? 'spin 1s linear infinite' : 'none'
-              }} 
-            />
-          </button>
-          <button
-            onClick={generateAnalyticsPDF}
-            disabled={!selectedExam || !analytics || analyticsLoading || exportLoading}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: theme === 'dark' ? '#e2e8f0' : '#374151',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              opacity: (!selectedExam || !analytics || analyticsLoading || exportLoading) ? 0.5 : 1,
-              pointerEvents: (!selectedExam || !analytics || analyticsLoading || exportLoading) ? 'none' : 'auto'
-            }}
-            onMouseEnter={(e) => {
-              if (selectedExam && analytics && !analyticsLoading && !exportLoading) {
-                e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'none';
-            }}
-            title={!analytics ? 'Generate Analytics PDF' : 'Export Analytics PDF'}
-          >
+            <option value="">Select Examination</option>
+            {examinations.map((exam) => (
+              <option key={exam.id} value={exam.id}>
+                {exam.name} ({exam.exam_type.replace('_', ' ').toUpperCase()})
+              </option>
+            ))}
+          </Select>
+          <IconButton onClick={loadAnalytics} disabled={!selectedExam || analyticsLoading} title="Refresh">
+            <RefreshIcon />
+          </IconButton>
+          <ExportButton onClick={handleExportPDF} disabled={!selectedExam || !analytics || exportLoading}>
             {exportLoading ? (
-              <div style={{ 
-                width: 20, 
-                height: 20, 
-                border: '2px solid #e0e7ff', 
-                borderTop: '2px solid #4a6cf7', 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite' 
-              }} />
+              <div style={{ width: 16, height: 16, border: '2px solid #e0e7ff', borderTop: '2px solid #4a6cf7', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             ) : (
-              <PictureAsPdf style={{ fontSize: 20 }} />
+              <PictureAsPdf style={{ fontSize: '1rem' }} />
             )}
-          </button>
-        </div>
-        <DesktopSegmentedGroup>
-          <SegmentedGroup>
-            <SegmentedSelect
-              value={selectedExam?.id || ''}
-              onChange={(e) => {
-                const exam = examinations.find(ex => ex.id === Number(e.target.value));
-                setSelectedExam(exam || null);
-              }}
-              first
-              $last={true}
-            >
-              <option value="">Select Examination</option>
-              {examinations.map((exam) => (
-                <option key={exam.id} value={exam.id}>
-                  {exam.name} ({exam.exam_type.replace('_', ' ').toUpperCase()})
-                </option>
-              ))}
-            </SegmentedSelect>
-          </SegmentedGroup>
-        </DesktopSegmentedGroup>
-        
-        <HeaderBottomRow>
-          <MobileHeaderLayout>
-            <MobileRow>
-              <SegmentedGroup>
-                <SegmentedSelect
-                  value={selectedExam?.id || ''}
-                  onChange={(e) => {
-                    const exam = examinations.find(ex => ex.id === Number(e.target.value));
-                    setSelectedExam(exam || null);
-                  }}
-                  style={{ flex: '1', minWidth: 0 }}
-                  first
-                  $last
-                >
-                  <option value="">Select Examination</option>
-                  {examinations.map((exam) => (
-                    <option key={exam.id} value={exam.id}>
-                      {exam.name} ({exam.exam_type.replace('_', ' ').toUpperCase()})
-                    </option>
-                  ))}
-                </SegmentedSelect>
-              </SegmentedGroup>
-            </MobileRow>
-          </MobileHeaderLayout>
-        </HeaderBottomRow>
+            PDF
+          </ExportButton>
+        </HeaderControls>
       </Header>
 
       <MainContent ref={mainContentRef}>
-        {/* Analytics Loading */}
-        {analyticsLoading && (
-          <LoadingSpinner />
-        )}
-
-        {/* Analytics Content */}
-        {selectedExam && analytics && !analyticsLoading && (
+        {analyticsLoading ? (
+          <LoadingContainer>
+            <div style={{
+              width: 48,
+              height: 48,
+              border: '5px solid #e0e7ff',
+              borderTop: '5px solid #6366f1',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+          </LoadingContainer>
+        ) : !selectedExam ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: '#666' }}>
+            Please select an examination to view analytics
+          </div>
+        ) : (
           <>
-            {/* Key Metrics */}
-            <AnalyticsGrid>
-              <AnalyticsCard>
-                <CardHeader>
-                  <CardTitle>
-                    <SchoolIcon style={{ fontSize: 20, color: '#10b981' }} />
-                    Appeared
-                  </CardTitle>
-                </CardHeader>
-                <CardValue>{analytics.appearedStudents}</CardValue>
-                <CardSubtitle>
-                  {analytics.totalStudents > 0 
-                    ? `${((analytics.appearedStudents / analytics.totalStudents) * 100).toFixed(1)}% of total students`
-                    : 'No students enrolled'
-                  }
-                </CardSubtitle>
-              </AnalyticsCard>
-
-              <AnalyticsCard>
-                <CardHeader>
-                  <CardTitle>
-                    <TrendingUpIcon style={{ fontSize: 20, color: '#10b981' }} />
-                    Passed
-                  </CardTitle>
-                </CardHeader>
-                <CardValue>{analytics.passedStudents}</CardValue>
-                <CardSubtitle>
-                  {analytics.appearedStudents > 0 
-                    ? `${analytics.passPercentage.toFixed(1)}% pass rate`
-                    : 'No students appeared'
-                  }
-                </CardSubtitle>
-              </AnalyticsCard>
-
-              <AnalyticsCard>
-                <CardHeader>
-                  <CardTitle>
-                    <TrendingDownIcon style={{ fontSize: 20, color: '#ef4444' }} />
-                    Failed
-                  </CardTitle>
-                </CardHeader>
-                <CardValue>{analytics.failedStudents}</CardValue>
-                <CardSubtitle>
-                  {analytics.appearedStudents > 0 
-                    ? `${((analytics.failedStudents / analytics.appearedStudents) * 100).toFixed(1)}% fail rate`
-                    : 'No students appeared'
-                  }
-                </CardSubtitle>
-              </AnalyticsCard>
-            </AnalyticsGrid>
-
-            {/* Performance Metrics */}
-            <AnalyticsGrid>
-              <AnalyticsCard>
-                <CardHeader>
-                  <CardTitle>
-                    <BarChartIcon style={{ fontSize: 20, color: '#3b82f6' }} />
-                    Average Percentage
-                  </CardTitle>
-                </CardHeader>
-                <CardValue>{analytics.averagePercentage.toFixed(1)}%</CardValue>
-                <CardSubtitle>Overall performance</CardSubtitle>
-              </AnalyticsCard>
-
-                    <AnalyticsCard style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ flex: 1 }}>
-                        <CardHeader>
-                          <CardTitle>
-                            <TrophyIcon style={{ fontSize: 20, color: '#10b981' }} />
-                            Highest Score
-                          </CardTitle>
-                        </CardHeader>
-                        <CardValue>{analytics.highestPercentage.toFixed(1)}%</CardValue>
-                        <CardSubtitle>Best performer</CardSubtitle>
-                      </div>
-                      {analytics.topPerformers.length > 0 && analytics.topPerformers[0].percentage === analytics.highestPercentage && (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'flex-end',
-                          gap: '6px',
-                          padding: '12px 16px',
-                          background: theme === 'dark' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
-                          borderRadius: '12px',
-                          border: `1px solid ${theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)'}`,
-                          minWidth: '140px'
-                        }}>
-                          <div style={{ 
-                            fontWeight: 700, 
-                            fontSize: '0.9rem',
-                            color: theme === 'dark' ? '#10b981' : '#059669',
-                            textAlign: 'right'
-                          }}>
-                            {analytics.topPerformers[0].student_name}
-                          </div>
-                          <div style={{ 
-                            fontSize: '0.75rem', 
-                            color: theme === 'dark' ? '#a1a1aa' : '#6b7280',
-                            textAlign: 'right'
-                          }}>
-                            {analytics.topPerformers[0].section_name 
-                              ? `${analytics.topPerformers[0].class_name} (${analytics.topPerformers[0].section_name})`
-                              : analytics.topPerformers[0].class_name
-                            }
-                          </div>
-                          <div style={{ 
-                            fontSize: '0.7rem', 
-                            color: theme === 'dark' ? '#71717a' : '#6b7280',
-                            textAlign: 'right',
-                            fontWeight: 500
-                          }}>
-                            {analytics.topPerformers[0].obtained_marks.toFixed(0)}/{analytics.topPerformers[0].total_marks.toFixed(0)} marks
-                          </div>
+            {!analytics ? (
+              <div style={{ textAlign: 'center', padding: '48px', color: '#666' }}>
+                Loading analytics...
+              </div>
+            ) : (
+              <>
+                {/* Professional Dashboard Layout */}
+                <DashboardGrid>
+                  {/* Overall Performance Index - Full Width Top Row */}
+                  <PerformanceIndexCard $span={12}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <PerformanceValue style={{ fontSize: '2.5rem', margin: 0 }}>{analytics.averagePercentage.toFixed(1)}%</PerformanceValue>
+                        <div>
+                          <PerformanceLabel style={{ fontSize: '0.7rem', marginBottom: '0.2rem' }}>Overall Performance Index</PerformanceLabel>
+                          <div style={{ fontSize: '0.65rem', color: 'rgba(255, 255, 255, 0.7)', marginTop: '0.1rem' }}>Average Percentage</div>
                         </div>
-                      )}
-                    </AnalyticsCard>
-
-                    <AnalyticsCard style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ flex: 1 }}>
-                        <CardHeader>
-                          <CardTitle>
-                            <TrendingDownIcon style={{ fontSize: 20, color: '#ef4444' }} />
-                            Lowest Score
-                          </CardTitle>
-                        </CardHeader>
-                        <CardValue>{analytics.lowestPercentage.toFixed(1)}%</CardValue>
-                        <CardSubtitle>Needs improvement</CardSubtitle>
                       </div>
-                      {analytics.lowestScorer && (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'flex-end',
-                          gap: '6px',
-                          padding: '12px 16px',
-                          background: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                          borderRadius: '12px',
-                          border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}`,
-                          minWidth: '140px'
-                        }}>
-                          <div style={{ 
-                            fontWeight: 700, 
-                            fontSize: '0.9rem',
-                            color: theme === 'dark' ? '#ef4444' : '#dc2626',
-                            textAlign: 'right'
-                          }}>
-                            {analytics.lowestScorer.student_name}
+                      
+                      <MetricsGrid>
+                        <MetricItem style={{ textAlign: 'center' }}>
+                          <MetricLabel style={{ fontSize: '0.65rem', marginBottom: '0.3rem' }}>Appeared</MetricLabel>
+                          <MetricValue style={{ fontSize: '1.4rem' }}>{analytics.appearedStudents}</MetricValue>
+                        </MetricItem>
+                        <MetricItem style={{ textAlign: 'center' }}>
+                          <MetricLabel style={{ fontSize: '0.65rem', marginBottom: '0.3rem' }}>Passed / Failed</MetricLabel>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                            <MetricValue style={{ fontSize: '1.4rem', color: '#6ee7b7' }}>{analytics.passedStudents}</MetricValue>
+                            <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.5)' }}>/</span>
+                            <MetricValue style={{ fontSize: '1.4rem', color: '#fca5a5' }}>{analytics.failedStudents}</MetricValue>
                           </div>
-                          <div style={{ 
-                            fontSize: '0.75rem', 
-                            color: theme === 'dark' ? '#a1a1aa' : '#6b7280',
-                            textAlign: 'right'
-                          }}>
-                            {analytics.lowestScorer.section_name 
-                              ? `${analytics.lowestScorer.class_name} (${analytics.lowestScorer.section_name})`
-                              : analytics.lowestScorer.class_name
-                            }
-                          </div>
-                          <div style={{ 
-                            fontSize: '0.7rem', 
-                            color: theme === 'dark' ? '#71717a' : '#6b7280',
-                            textAlign: 'right',
-                            fontWeight: 500
-                          }}>
-                            {analytics.lowestScorer.obtained_marks.toFixed(0)}/{analytics.lowestScorer.total_marks.toFixed(0)} marks
-                          </div>
-                        </div>
-                      )}
-                    </AnalyticsCard>
-            </AnalyticsGrid>
+                        </MetricItem>
+                        <MetricItem style={{ textAlign: 'center' }}>
+                          <MetricLabel style={{ fontSize: '0.65rem', marginBottom: '0.3rem' }}>Pass %</MetricLabel>
+                          <MetricValue style={{ fontSize: '1.4rem', color: '#6ee7b7' }}>{analytics.passPercentage.toFixed(1)}%</MetricValue>
+                        </MetricItem>
+                        <MetricItem style={{ textAlign: 'center' }}>
+                          <MetricLabel style={{ fontSize: '0.65rem', marginBottom: '0.3rem' }}>Average %</MetricLabel>
+                          <MetricValue style={{ fontSize: '1.4rem', color: '#fff' }}>{analytics.averagePercentage.toFixed(1)}%</MetricValue>
+                        </MetricItem>
+                      </MetricsGrid>
+                    </div>
+                  </PerformanceIndexCard>
 
-                  {/* Grade Distribution */}
-                  {analytics.gradeDistribution.length > 0 && (
-                    <AnalyticsGrid>
-                      <AnalyticsCard style={{ gridColumn: '1 / -1' }}>
-                        <CardTitle>
-                          <GradeIcon style={{ fontSize: 20, color: '#8b5cf6' }} />
-                          Grade Distribution
-                        </CardTitle>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                          {analytics.gradeDistribution.map((grade, index) => (
-                            <MetricCard key={grade.grade} $color={grade.grade.includes('A') ? '#10b981' : grade.grade.includes('B') ? '#3b82f6' : grade.grade.includes('C') ? '#f59e0b' : '#ef4444'} style={{ position: 'relative' }}>
-                              {/* Large Grade Text in Top Right Corner */}
-                              <div style={{
-                                position: 'absolute',
-                                top: '12px',
-                                right: '16px',
-                                fontSize: '5rem',
-                                fontWeight: '900',
-                                color: grade.grade.includes('A') ? 'rgba(16, 185, 129, 0.15)' : 
-                                       grade.grade.includes('B') ? 'rgba(59, 130, 246, 0.15)' : 
-                                       grade.grade.includes('C') ? 'rgba(245, 158, 11, 0.15)' : 
-                                       'rgba(239, 68, 68, 0.15)',
-                                lineHeight: '1',
-                                zIndex: 1,
-                                pointerEvents: 'none',
-                                userSelect: 'none'
-                              }}>
-                                {grade.grade === 'A+' ? (
-                                  <>
-                                    A<span style={{ fontSize: '2.5rem', verticalAlign: 'top' }}>+</span>
-                                  </>
-                                ) : (
-                                  grade.grade
-                                )}
-                              </div>
+                  {/* All Subjects Performance - Full Width */}
+                  <ChartCard $span={12} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexShrink: 0 }}>
+                      <ChartTitle style={{ marginBottom: 0 }}>
+                        <SubjectIcon />
+                        All Subjects Performance
+                      </ChartTitle>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ width: '12px', height: '12px', backgroundColor: '#6366f1', borderRadius: '2px' }}></div>
+                          <span style={{ fontSize: '0.7rem', color: (theme as any).TEXT_SECONDARY }}>Average %</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ width: '12px', height: '12px', backgroundColor: '#10b981', borderRadius: '2px' }}></div>
+                          <span style={{ fontSize: '0.7rem', color: (theme as any).TEXT_SECONDARY }}>Pass Rate %</span>
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: (theme as any).TEXT_SECONDARY }}>
+                          {allSubjectsChartData.length} {allSubjectsChartData.length === 1 ? 'Subject' : 'Subjects'}
+                        </div>
+                      </div>
+                    </div>
+                    {allSubjectsChartData.length > 0 ? (
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart 
+                            data={allSubjectsChartData} 
+                            margin={{ top: 5, right: 25, left: 15, bottom: 55 }}
+                            barCategoryGap="20%"
+                          >
+                            <XAxis 
+                              dataKey="subject" 
+                              stroke={(theme as any).TEXT_SECONDARY}
+                              angle={-45}
+                              textAnchor="end"
+                              height={55}
+                              interval={0}
+                              fontSize={11}
+                              tick={{ fill: (theme as any).TEXT_SECONDARY }}
+                              tickLine={{ stroke: (theme as any).TEXT_SECONDARY }}
+                            />
+                          <YAxis 
+                            stroke={(theme as any).TEXT_SECONDARY}
+                            domain={[0, 100]}
+                            tick={{ fill: (theme as any).TEXT_SECONDARY }}
+                            tickLine={{ stroke: (theme as any).TEXT_SECONDARY }}
+                            label={{ 
+                              value: 'Percentage (%)', 
+                              angle: -90, 
+                              position: 'insideLeft', 
+                              style: { 
+                                textAnchor: 'middle',
+                                fill: (theme as any).TEXT_SECONDARY,
+                                fontSize: '12px'
+                              } 
+                            }}
+                            ticks={[0, 25, 50, 75, 100]}
+                          />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(99, 102, 241, 0.1)' }}
+                            contentStyle={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}
+                            content={({ active, payload, label }: any) => {
+                              if (!active || !payload || !payload.length) return null;
                               
-                              <MetricLabel style={{ position: 'relative', zIndex: 2 }}>
-                                <GradeIcon style={{ fontSize: 16 }} />
-                                Grade {grade.grade}
-                              </MetricLabel>
-                              <MetricValue $color={grade.grade.includes('A') ? '#10b981' : grade.grade.includes('B') ? '#3b82f6' : grade.grade.includes('C') ? '#f59e0b' : '#ef4444'} style={{ position: 'relative', zIndex: 2 }}>
-                                {grade.count}
-                              </MetricValue>
-                              <div style={{ fontSize: '0.8rem', color: theme === 'dark' ? '#71717a' : '#6b7280', position: 'relative', zIndex: 2 }}>
-                                {grade.percentage.toFixed(1)}% of students
-                              </div>
-                              <ProgressBar style={{ position: 'relative', zIndex: 2 }}>
-                                <ProgressFill 
-                                  $width={grade.percentage} 
-                                  $color={grade.grade.includes('A') ? '#10b981' : grade.grade.includes('B') ? '#3b82f6' : grade.grade.includes('C') ? '#f59e0b' : '#ef4444'}
-                                />
-                              </ProgressBar>
-                            </MetricCard>
-                          ))}
-                        </div>
-                      </AnalyticsCard>
-                    </AnalyticsGrid>
-                  )}
-
-                  {/* Top Performers */}
-                  {analytics.topPerformers.length > 0 && (
-                    <TableContainer>
-                      <div style={{ padding: '1.5rem', borderBottom: `2px solid ${theme === 'dark' ? '#444' : '#e5e7eb'}` }}>
-                        <CardTitle>
-                          <TrophyIcon style={{ fontSize: 20, color: '#f59e0b' }} />
-                          Top Performers
-                        </CardTitle>
-                      </div>
-                      <Table>
-                        <TableHeader>
-                          <tr>
-                            <TableHeaderCell>Rank</TableHeaderCell>
-                            <TableHeaderCell>Student Name</TableHeaderCell>
-                            <TableHeaderCell>Father Name</TableHeaderCell>
-                            <TableHeaderCell>Class</TableHeaderCell>
-                            <TableHeaderCell>Section</TableHeaderCell>
-                            <TableHeaderCell>Marks</TableHeaderCell>
-                            <TableHeaderCell>Percentage</TableHeaderCell>
-                            <TableHeaderCell>Grade</TableHeaderCell>
-                            <TableHeaderCell>Status</TableHeaderCell>
-                          </tr>
-                        </TableHeader>
-                        <TableBody>
-                          {analytics.topPerformers.map((performer, index) => (
-                            <TableRow key={performer.student_id}>
-                              <TableCell style={{ fontWeight: 700, color: theme === 'dark' ? '#e2e8f0' : '#1e293b' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  {performer.position <= 3 && (
-                                    <TrophyIcon style={{ 
-                                      fontSize: 16, 
-                                      color: performer.position === 1 ? '#ffd700' : 
-                                             performer.position === 2 ? '#c0c0c0' : '#cd7f32' 
-                                    }} />
-                                  )}
-                                  {performer.position}
-                                </div>
-                              </TableCell>
-                              <TableCell style={{ fontWeight: 600 }}>
-                                {performer.student_name}
-                              </TableCell>
-                              <TableCell style={{ color: theme === 'dark' ? '#a1a1aa' : '#6b7280' }}>
-                                {performer.father_name || 'N/A'}
-                              </TableCell>
-                              <TableCell style={{ fontWeight: 500 }}>
-                                {performer.class_name}
-                              </TableCell>
-                              <TableCell style={{ color: theme === 'dark' ? '#a1a1aa' : '#6b7280' }}>
-                                {performer.section_name || ''}
-                              </TableCell>
-                              <TableCell>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                    {performer.obtained_marks.toFixed(0)}/{performer.total_marks.toFixed(0)}
-                                  </span>
-                                  <span style={{ fontSize: '0.7rem', color: theme === 'dark' ? '#a1a1aa' : '#6b7280' }}>
-                                    Marks
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <span style={{
-                                  color: performer.percentage >= 90 ? '#10b981' :
-                                         performer.percentage >= 80 ? '#3b82f6' :
-                                         performer.percentage >= 70 ? '#f59e0b' :
-                                         '#ef4444',
-                                  fontWeight: 700,
-                                  fontSize: '1rem'
-                                }}>
-                                  {performer.percentage.toFixed(1)}%
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span style={{
-                                  display: 'inline-flex',
-                                  padding: '4px 8px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  borderRadius: '12px',
-                                  background: performer.grade?.includes('A') ? '#dcfce7' :
-                                             performer.grade?.includes('B') ? '#dbeafe' :
-                                             performer.grade?.includes('C') ? '#fef3c7' :
-                                             '#f3f4f6',
-                                  color: performer.grade?.includes('A') ? '#166534' :
-                                         performer.grade?.includes('B') ? '#1e40af' :
-                                         performer.grade?.includes('C') ? '#92400e' :
-                                         '#6b7280'
-                                }}>
-                                  {performer.grade}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span style={{
-                                  display: 'inline-flex',
-                                  padding: '4px 8px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 600,
+                              const isDark = (theme as any).BG === '#252525';
+                              const data = payload[0]?.payload;
+                              const subject = data ? allSubjectsChartData.find((s: any) => s.subject === data.subject) : null;
+                              const fullSubjectName = subject?.fullName || label;
+                              
+                              return (
+                                <div style={{
+                                  backgroundColor: isDark ? '#1e293b' : '#fff',
+                                  border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`,
                                   borderRadius: '8px',
-                                  textTransform: 'uppercase',
-                                  background: performer.status === 'pass' ? '#dcfce7' :
-                                             performer.status === 'fail' ? '#fef2f2' :
-                                             '#f3f4f6',
-                                  color: performer.status === 'pass' ? '#166534' :
-                                         performer.status === 'fail' ? '#dc2626' :
-                                         '#6b7280'
+                                  padding: '12px',
+                                  boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
+                                  minWidth: '200px'
                                 }}>
-                                  {performer.status}
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
-
-            {/* Subject Performance */}
-            {analytics.subjectPerformance.length > 0 && (
-              <TableContainer>
-                <div style={{ padding: '1.5rem', borderBottom: `2px solid ${theme === 'dark' ? '#444' : '#e5e7eb'}` }}>
-                  <CardTitle>
-                    <SubjectIcon style={{ fontSize: 20, color: '#8b5cf6' }} />
-                    Subject-wise Performance
-                  </CardTitle>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <tr>
-                      <TableHeaderCell>Subject</TableHeaderCell>
-                      <TableHeaderCell>Average %</TableHeaderCell>
-                      <TableHeaderCell>Pass Rate</TableHeaderCell>
-                      <TableHeaderCell>Students</TableHeaderCell>
-                    </tr>
-                  </TableHeader>
-                  <TableBody>
-                    {analytics.subjectPerformance.map((subject, index) => (
-                      <TableRow key={index}>
-                        <TableCell style={{ fontWeight: 600 }}>
-                          {subject.subject_name}
-                        </TableCell>
-                        <TableCell>
-                          <span style={{
-                            color: subject.average_percentage >= 80 ? '#10b981' :
-                                   subject.average_percentage >= 60 ? '#3b82f6' :
-                                   subject.average_percentage >= 40 ? '#f59e0b' :
-                                   '#ef4444',
-                            fontWeight: 700
-                          }}>
-                            {subject.average_percentage.toFixed(1)}%
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ProgressBar>
-                              <ProgressFill 
-                                $width={subject.pass_percentage} 
-                                $color="#10b981"
-                              />
-                            </ProgressBar>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                              {subject.pass_percentage.toFixed(1)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {subject.total_students}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-
-            {/* Class Performance */}
-            {analytics.classPerformance.length > 0 && (
-              <TableContainer>
-                <div style={{ padding: '1.5rem', borderBottom: `2px solid ${theme === 'dark' ? '#444' : '#e5e7eb'}` }}>
-                  <CardTitle>
-                    <ClassIcon style={{ fontSize: 20, color: '#06b6d4' }} />
-                    Class-wise Performance
-                  </CardTitle>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <tr>
-                      <TableHeaderCell>Class</TableHeaderCell>
-                      <TableHeaderCell>Average %</TableHeaderCell>
-                      <TableHeaderCell>Pass Rate</TableHeaderCell>
-                      <TableHeaderCell>Students</TableHeaderCell>
-                    </tr>
-                  </TableHeader>
-                  <TableBody>
-                    {analytics.classPerformance.map((classPerf, index) => (
-                      <TableRow key={index}>
-                        <TableCell style={{ fontWeight: 600 }}>
-                          {classPerf.class_name}
-                        </TableCell>
-                        <TableCell>
-                          <span style={{
-                            color: classPerf.average_percentage >= 80 ? '#10b981' :
-                                   classPerf.average_percentage >= 60 ? '#3b82f6' :
-                                   classPerf.average_percentage >= 40 ? '#f59e0b' :
-                                   '#ef4444',
-                            fontWeight: 700
-                          }}>
-                            {classPerf.average_percentage.toFixed(1)}%
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ProgressBar>
-                              <ProgressFill 
-                                $width={classPerf.pass_percentage} 
-                                $color="#10b981"
-                              />
-                            </ProgressBar>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                              {classPerf.pass_percentage.toFixed(1)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {classPerf.total_students}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-
-                  {/* Failed Students List */}
-                  {analytics.failedStudentsList.length > 0 && (
-                    <TableContainer>
-                      <div style={{ padding: '1.5rem', borderBottom: `2px solid ${theme === 'dark' ? '#444' : '#e5e7eb'}` }}>
-                        <CardTitle>
-                          <TrendingDownIcon style={{ fontSize: 20, color: '#ef4444' }} />
-                          Failed Students ({analytics.failedStudentsList.length})
-                        </CardTitle>
-                      </div>
-                      <div style={{ 
-                        maxHeight: '300px', 
-                        overflowY: 'auto',
-                        padding: '0'
-                      }}>
-                        <Table>
-                          <TableHeader>
-                            <tr>
-                              <TableHeaderCell>S.No</TableHeaderCell>
-                              <TableHeaderCell>Rank</TableHeaderCell>
-                              <TableHeaderCell>Student Name</TableHeaderCell>
-                              <TableHeaderCell>Father Name</TableHeaderCell>
-                              <TableHeaderCell>Class</TableHeaderCell>
-                              <TableHeaderCell>Section</TableHeaderCell>
-                              <TableHeaderCell>Marks</TableHeaderCell>
-                              <TableHeaderCell>Percentage</TableHeaderCell>
-                              <TableHeaderCell>Grade</TableHeaderCell>
-                            </tr>
-                          </TableHeader>
-                          <TableBody>
-                            {analytics.failedStudentsList.map((student, index) => (
-                              <TableRow key={student.student_id}>
-                                <TableCell style={{ fontWeight: 600, color: theme === 'dark' ? '#a1a1aa' : '#6b7280', textAlign: 'center' }}>
-                                  {index + 1}
-                                </TableCell>
-                                <TableCell style={{ fontWeight: 700, color: theme === 'dark' ? '#e2e8f0' : '#1e293b' }}>
-                                  {student.position}
-                                </TableCell>
-                                <TableCell style={{ fontWeight: 600 }}>
-                                  {student.student_name}
-                                </TableCell>
-                                <TableCell style={{ color: theme === 'dark' ? '#a1a1aa' : '#6b7280' }}>
-                                  {student.father_name || 'N/A'}
-                                </TableCell>
-                                <TableCell style={{ fontWeight: 500 }}>
-                                  {student.class_name}
-                                </TableCell>
-                                <TableCell style={{ color: theme === 'dark' ? '#a1a1aa' : '#6b7280' }}>
-                                  {student.section_name || ''}
-                                </TableCell>
-                                <TableCell>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                      {student.obtained_marks.toFixed(0)}/{student.total_marks.toFixed(0)}
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', color: theme === 'dark' ? '#a1a1aa' : '#6b7280' }}>
-                                      Marks
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span style={{
-                                    color: '#ef4444',
-                                    fontWeight: 700,
-                                    fontSize: '1rem'
-                                  }}>
-                                    {student.percentage.toFixed(1)}%
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <span style={{
-                                    display: 'inline-flex',
-                                    padding: '4px 8px',
-                                    fontSize: '0.75rem',
+                                  <div style={{
+                                    color: isDark ? '#f1f5f9' : '#1e293b',
                                     fontWeight: 600,
-                                    borderRadius: '12px',
-                                    background: '#fef2f2',
-                                    color: '#dc2626'
+                                    fontSize: '13px',
+                                    marginBottom: '10px',
+                                    borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                                    paddingBottom: '6px'
                                   }}>
-                                    {student.grade}
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                                    {fullSubjectName}
+                                  </div>
+                                  {payload.map((entry: any, index: number) => {
+                                    const numValue = typeof entry.value === 'number' ? entry.value : parseFloat(entry.value);
+                                    if (entry.dataKey === 'average') {
+                                      return (
+                                        <div key={index} style={{ color: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span style={{ color: entry.color, fontSize: '10px' }}>●</span> 
+                                          <span>Average %: <strong style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>{numValue.toFixed(2)}%</strong></span>
+                                        </div>
+                                      );
+                                    }
+                                    if (entry.dataKey === 'passRate') {
+                                      const passed = subject?.passed || 0;
+                                      const failed = subject?.failed || 0;
+                                      return (
+                                        <div key={index} style={{ color: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span style={{ color: entry.color, fontSize: '10px' }}>●</span> 
+                                          <span>Pass Rate %: <strong style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>{numValue.toFixed(2)}%</strong> (Passed: <strong style={{ color: '#10b981' }}>{passed}</strong>, Failed: <strong style={{ color: '#ef4444' }}>{failed}</strong>)</span>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })}
+                                </div>
+                              );
+                            }}
+                          />
+                          <Bar 
+                            dataKey="average" 
+                            fill="#6366f1" 
+                            name="Average %" 
+                            radius={[6, 6, 0, 0]}
+                            maxBarSize={50}
+                          />
+                          <Bar 
+                            dataKey="passRate" 
+                            fill="#10b981" 
+                            name="Pass Rate %" 
+                            radius={[6, 6, 0, 0]}
+                            maxBarSize={50}
+                          />
+                        </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                    </TableContainer>
-                  )}
-          </>
-        )}
+                    ) : (
+                      <div style={{ padding: '3rem', textAlign: 'center', color: (theme as any).TEXT_SECONDARY }}>
+                        <SubjectIcon style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
+                        <div style={{ fontSize: '1rem' }}>No subject data available</div>
+                      </div>
+                    )}
+                  </ChartCard>
 
-        {/* No Data Message */}
-        {selectedExam && !analytics && !analyticsLoading && (
-          <NoResults>
-            <h3 style={{ 
-              fontSize: '1.1rem', 
-              fontWeight: 700, 
-              color: theme === 'dark' ? '#e2e8f0' : '#1e293b', 
-              margin: '0 0 8px 0' 
-            }}>No Analytics Data</h3>
-            <p style={{ 
-              fontSize: '0.9rem', 
-              color: theme === 'dark' ? '#71717a' : '#6b7280', 
-              margin: 0 
-            }}>No analytics data available for the selected examination.</p>
-          </NoResults>
+                  {/* Grade Distribution and Class Performance - Side by Side */}
+                  <ChartCard $span={6}>
+                    <ChartTitle>
+                      <GradeIcon />
+                      Distribution of Grades
+                    </ChartTitle>
+                    {gradeChartData.length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1 }}>
+                        <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={gradeChartData}>
+                          <XAxis dataKey="grade" stroke={(theme as any).TEXT_SECONDARY} />
+                          <YAxis stroke={(theme as any).TEXT_SECONDARY} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}
+                            content={({ active, payload, label }: any) => {
+                              if (!active || !payload || !payload.length) return null;
+                              
+                              const isDark = (theme as any).BG === '#252525';
+                              const data = payload[0]?.payload;
+                              const grade = data?.grade || label;
+                              const count = data?.count || 0;
+                              const percentage = data?.percentage || 0;
+                              
+                              return (
+                                <div style={{
+                                  backgroundColor: isDark ? '#1e293b' : '#fff',
+                                  border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`,
+                                  borderRadius: '8px',
+                                  padding: '12px',
+                                  boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
+                                  minWidth: '200px'
+                                }}>
+                                  <div style={{
+                                    color: isDark ? '#f1f5f9' : '#1e293b',
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    marginBottom: '10px',
+                                    borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                                    paddingBottom: '6px'
+                                  }}>
+                                    Grade: {grade}
+                                  </div>
+                                  {payload.map((entry: any, index: number) => {
+                                    const numValue = typeof entry.value === 'number' ? entry.value : parseFloat(entry.value);
+                                    return (
+                                      <div key={index} style={{ color: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ color: entry.color, fontSize: '10px' }}>●</span> 
+                                        <span>Count: <strong style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>{count}</strong></span>
+                                      </div>
+                                    );
+                                  })}
+                                  <div style={{ color: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span>Percentage: <strong style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>{percentage.toFixed(2)}%</strong></span>
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          />
+                          <Bar dataKey="percentage" radius={[8, 8, 0, 0]}>
+                            {gradeChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={GRADE_COLORS[entry.grade] || COLORS[index % COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: (theme as any).TEXT_SECONDARY }}>
+                        No grade data available
+                      </div>
+                    )}
+                  </ChartCard>
+
+                  {/* Class Performance Chart */}
+                  <ChartCard $span={6}>
+                    <ChartTitle>
+                      <ClassIcon />
+                      Student Performance by Class
+                    </ChartTitle>
+                    {classPerformanceChartData.length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1 }}>
+                        <ResponsiveContainer width="100%" height={250}>
+                        <ComposedChart data={classPerformanceChartData}>
+                          <XAxis dataKey="class" stroke={(theme as any).TEXT_SECONDARY} angle={-45} textAnchor="end" height={80} />
+                          <YAxis stroke={(theme as any).TEXT_SECONDARY} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}
+                            content={({ active, payload, label }: any) => {
+                              if (!active || !payload || !payload.length) return null;
+                              
+                              const isDark = (theme as any).BG === '#252525';
+                              const data = payload[0]?.payload;
+                              const classData = data ? classPerformanceChartData.find((c: any) => c.class === data.class) : null;
+                              
+                              return (
+                                <div style={{
+                                  backgroundColor: isDark ? '#1e293b' : '#fff',
+                                  border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`,
+                                  borderRadius: '8px',
+                                  padding: '12px',
+                                  boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.15)',
+                                  minWidth: '200px'
+                                }}>
+                                  <div style={{
+                                    color: isDark ? '#f1f5f9' : '#1e293b',
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    marginBottom: '10px',
+                                    borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                                    paddingBottom: '6px'
+                                  }}>
+                                    {label}
+                                  </div>
+                                  {payload.map((entry: any, index: number) => {
+                                    const numValue = typeof entry.value === 'number' ? entry.value : parseFloat(entry.value);
+                                    const passed = classData?.passed || 0;
+                                    const failed = classData?.failed || 0;
+                                    
+                                    if (entry.dataKey === 'average') {
+                                      return (
+                                        <div key={index} style={{ color: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span style={{ color: entry.color, fontSize: '10px' }}>●</span> 
+                                          <span>Average %: <strong style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>{numValue.toFixed(2)}%</strong></span>
+                                        </div>
+                                      );
+                                    }
+                                    if (entry.dataKey === 'passRate') {
+                                      return (
+                                        <div key={index} style={{ color: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span style={{ color: entry.color, fontSize: '10px' }}>●</span> 
+                                          <span>Pass Rate %: <strong style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>{numValue.toFixed(2)}%</strong> (Passed: <strong style={{ color: '#10b981' }}>{passed}</strong>, Failed: <strong style={{ color: '#ef4444' }}>{failed}</strong>)</span>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })}
+                                </div>
+                              );
+                            }}
+                          />
+                          <Bar dataKey="average" name="Average %" radius={[8, 8, 0, 0]}>
+                            {classPerformanceChartData.map((entry, index) => {
+                              const colors = [
+                                '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+                                '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#14b8a6',
+                                '#a855f7', '#3b82f6', '#22c55e', '#eab308', '#f43f5e'
+                              ];
+                              return (
+                                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                              );
+                            })}
+                          </Bar>
+                          <Line type="monotone" dataKey="passRate" stroke="#10b981" strokeWidth={2} name="Pass Rate %" />
+                        </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: (theme as any).TEXT_SECONDARY }}>
+                        No class data available
+                      </div>
+                    )}
+                  </ChartCard>
+                </DashboardGrid>
+
+                {/* Detailed Tables Section - Collapsible */}
+
+
+            {analytics.topPerformers.length > 0 && (
+              <SectionWrapper>
+                <SectionHeader onClick={() => setIsTopPerformersExpanded(!isTopPerformersExpanded)}>
+                  <SectionHeaderTitle>
+                    <SectionTitle>
+                      <TrophyIcon style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
+                      Top Performers (Top 15)
+                    </SectionTitle>
+                    <ExpandIcon $isExpanded={isTopPerformersExpanded} />
+                  </SectionHeaderTitle>
+                </SectionHeader>
+                <CollapsibleContent $isExpanded={isTopPerformersExpanded}>
+                  <TableWrapper>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Th>Rank</Th>
+                          <Th>Name</Th>
+                          <Th>Class</Th>
+                          <Th>Marks</Th>
+                          <Th>%</Th>
+                          <Th>Grade</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.topPerformers.map((tp, idx) => (
+                          <tr key={idx}>
+                            <Td>
+                              <Badge $variant={idx < 3 ? "success" : "info"}>
+                                #{tp.position}
+                              </Badge>
+                            </Td>
+                            <Td><strong>{tp.student_name}</strong></Td>
+                            <Td>{tp.class_name}</Td>
+                            <Td>{tp.obtained_marks}/{tp.total_marks}</Td>
+                            <Td>
+                              <InfoValue $color={tp.percentage >= 90 ? "#10b981" : tp.percentage >= 75 ? "#3b82f6" : "#6366f1"}>
+                                {tp.percentage.toFixed(1)}%
+                              </InfoValue>
+                            </Td>
+                            <Td>
+                              <Badge $variant={tp.grade === 'A+' || tp.grade === 'A' ? "success" : tp.grade === 'B' ? "info" : "warning"}>
+                                {tp.grade}
+                              </Badge>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </TableWrapper>
+                </CollapsibleContent>
+              </SectionWrapper>
+            )}
+
+
+            {analytics.studentsNeedingAttention.length > 0 && (
+              <SectionWrapper>
+                <SectionHeader onClick={() => setIsStudentsNeedingAttentionExpanded(!isStudentsNeedingAttentionExpanded)}>
+                  <SectionHeaderTitle>
+                    <SectionTitle>
+                      <WarningIcon style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
+                      Students Needing Attention ({analytics.studentsNeedingAttention.length})
+                    </SectionTitle>
+                    <ExpandIcon $isExpanded={isStudentsNeedingAttentionExpanded} />
+                  </SectionHeaderTitle>
+                </SectionHeader>
+                <CollapsibleContent $isExpanded={isStudentsNeedingAttentionExpanded}>
+                  <div style={{ padding: '8px 0 12px 0', fontSize: '0.75rem', color: '#666', marginBottom: '8px' }}>
+                    Students scoring below 50% who require additional support
+                  </div>
+                  <TableWrapper>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Th>Name</Th>
+                          <Th>Class</Th>
+                          <Th>Marks</Th>
+                          <Th>%</Th>
+                          <Th>Grade</Th>
+                          <Th>Status</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.studentsNeedingAttention.map((student, idx) => (
+                          <tr key={idx}>
+                            <Td><strong>{student.student_name}</strong></Td>
+                            <Td>{student.class_name}</Td>
+                            <Td>{student.obtained_marks}/{student.total_marks}</Td>
+                            <Td>
+                              <InfoValue $color={student.percentage < 33 ? "#ef4444" : "#f59e0b"}>
+                                {student.percentage.toFixed(1)}%
+                              </InfoValue>
+                            </Td>
+                            <Td>
+                              <Badge $variant={student.percentage < 33 ? "danger" : "warning"}>
+                                {student.grade}
+                              </Badge>
+                            </Td>
+                            <Td>
+                              <Badge $variant={student.status === 'pass' ? "info" : "danger"}>
+                                {student.status === 'pass' ? 'Pass' : 'Fail'}
+                              </Badge>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </TableWrapper>
+                </CollapsibleContent>
+              </SectionWrapper>
+            )}
+
+            {analytics.failedStudentsList.length > 0 && (
+              <SectionWrapper>
+                <SectionHeader onClick={() => setIsFailedStudentsExpanded(!isFailedStudentsExpanded)}>
+                  <SectionHeaderTitle>
+                    <SectionTitle>
+                      <PeopleIcon style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
+                      Failed Students ({analytics.failedStudentsList.length})
+                    </SectionTitle>
+                    <ExpandIcon $isExpanded={isFailedStudentsExpanded} />
+                  </SectionHeaderTitle>
+                </SectionHeader>
+                <CollapsibleContent $isExpanded={isFailedStudentsExpanded}>
+                  <TableWrapper>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Th>Name</Th>
+                          <Th>Class</Th>
+                          <Th>Marks</Th>
+                          <Th>%</Th>
+                          <Th>Grade</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.failedStudentsList.map((fs, idx) => (
+                          <tr key={idx}>
+                            <Td><strong>{fs.student_name}</strong></Td>
+                            <Td>{fs.class_name}</Td>
+                            <Td>{fs.obtained_marks}/{fs.total_marks}</Td>
+                            <Td>
+                              <InfoValue $color="#ef4444">{fs.percentage.toFixed(1)}%</InfoValue>
+                            </Td>
+                            <Td>
+                              <Badge $variant="danger">{fs.grade}</Badge>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </TableWrapper>
+                </CollapsibleContent>
+              </SectionWrapper>
+            )}
+              </>
+            )}
+          </>
         )}
       </MainContent>
 
-      {/* To Top Button */}
       {showToTop && (
-        <ToTopButton onClick={scrollToTop}>
-          <KeyboardArrowUpIcon style={{ fontSize: 24 }} />
+        <ToTopButton onClick={handleToTop} aria-label="Scroll to top">
+          <KeyboardArrowUpIcon style={{ fontSize: 32 }} />
         </ToTopButton>
       )}
+
     </PageContainer>
   );
 };
 
 export default ExaminationAnalytics;
+

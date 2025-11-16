@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import styled, { useTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { supabase } from '../supabaseClient';
@@ -195,6 +195,7 @@ const StudentCard = styled.div<{ status: string }>`
   width: 100%;
   overflow: hidden;
   box-sizing: border-box;
+  
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -202,11 +203,22 @@ const StudentCard = styled.div<{ status: string }>`
   }
   
   @media (max-width: 700px) {
-    /* Reduce animations and effects on mobile for better performance */
-    transition: border-color 0.18s;
+    /* Optimize for mobile performance */
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-width: 2px;
+    transition: none;
+    transform: translateZ(0);
+    will-change: transform;
+    
     &:hover {
-      transform: none;
-      box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
+      transform: translateZ(0);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    &:active {
+      opacity: 0.95;
     }
   }
 `;
@@ -233,6 +245,17 @@ const StatusBadge = styled.div<{ status: string }>`
   align-items: center;
   text-transform: capitalize;
   gap: 0.4rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
 
   ${({ status }) => status === 'active' && `
     &::before {
@@ -258,15 +281,25 @@ const StudentInfo = styled.div`
 
 const StudentName = styled.h3`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.3rem 0;
+  
+  @media (max-width: 700px) {
+    font-size: 0.95rem;
+    margin: 0 0 0.25rem 0;
+  }
 `;
 
 const StudentDetails = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.9rem;
-  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  margin: 0.2rem 0;
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+    margin: 0.15rem 0;
+  }
 `;
 
 const ActionButtons = styled.div`
@@ -275,28 +308,40 @@ const ActionButtons = styled.div`
   grid-template-rows: 1fr 1fr;
   gap: 3px;
   width: 200px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
+  background: transparent;
   border-radius: 6px;
   padding: 3px;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
   
-  @media (max-width: 768px) {
-    width: 180px;
-    gap: 2px;
-    padding: 2px;
+  /* When single button, align to bottom right */
+  &[data-single-button="true"] {
+    display: flex !important;
+    justify-content: flex-end;
+    align-items: flex-end;
+    width: 200px; /* Keep same width as grid */
+    
+    button {
+      width: auto !important;
+      min-width: fit-content;
+      max-width: calc(100% - 6px); /* Ensure it fits within padding */
+    }
   }
   
-  @media (max-width: 600px) {
-    width: 160px;
-    gap: 2px;
-    padding: 2px;
-  }
-  
-  @media (max-width: 480px) {
-    width: 140px;
-    gap: 1px;
-    padding: 1px;
+  @media (max-width: 700px) {
+    /* Single row on mobile - always fit in one line */
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    gap: 3px;
+    padding: 3px;
+    margin-top: 0.75rem;
+    background: transparent;
+    border-radius: 6px;
+    
+    &[data-single-button="true"] {
+      justify-content: flex-end;
+      width: 100%;
+    }
   }
 `;
 
@@ -357,61 +402,34 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'warning' 
     cursor: not-allowed;
   }
 
-  @media (max-width: 768px) {
-    height: clamp(30px, 8vw, 38px);
-    padding: clamp(0.25rem, 2vw, 0.5rem) clamp(0.25rem, 2vw, 0.6rem);
-    font-size: clamp(0.45rem, 1.5vw, 0.75rem);
-    gap: clamp(0.08rem, 0.8vw, 0.2rem);
-  }
-
-  @media (max-width: 600px) {
-    height: clamp(28px, 7.5vw, 36px);
-    padding: clamp(0.2rem, 1.5vw, 0.4rem) clamp(0.2rem, 1.5vw, 0.5rem);
-    font-size: clamp(0.4rem, 1.2vw, 0.7rem);
-    gap: clamp(0.06rem, 0.6vw, 0.15rem);
-  }
-
-  @media (max-width: 480px) {
-    height: clamp(32px, 9vw, 40px);
-    padding: clamp(0.3rem, 2.5vw, 0.6rem) clamp(0.3rem, 2.5vw, 0.7rem);
-    font-size: clamp(0.5rem, 2vw, 0.8rem);
-    gap: clamp(0.15rem, 1.2vw, 0.3rem);
-  }
-
-  @media (max-width: 400px) {
-    font-size: clamp(0.35rem, 1vw, 0.6rem);
-    padding: clamp(0.2rem, 1.8vw, 0.5rem) clamp(0.2rem, 1.8vw, 0.6rem);
-    gap: clamp(0.05rem, 0.5vw, 0.1rem);
-  }
-
-  @media (max-width: 360px) {
-    font-size: clamp(0.3rem, 0.8vw, 0.5rem);
-    padding: clamp(0.15rem, 1.2vw, 0.4rem) clamp(0.15rem, 1.2vw, 0.5rem);
-    gap: clamp(0.03rem, 0.3vw, 0.08rem);
-  }
-
-  @media (max-width: 320px) {
-    font-size: clamp(0.25rem, 0.6vw, 0.45rem);
-    padding: clamp(0.1rem, 0.8vw, 0.3rem) clamp(0.1rem, 0.8vw, 0.4rem);
-    gap: clamp(0.02rem, 0.2vw, 0.05rem);
+  @media (max-width: 700px) {
+    /* Compact buttons to fit in one line */
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.65rem;
+    height: 32px;
+    gap: 0.2rem;
+    border-radius: 6px;
+    white-space: nowrap;
     
     svg {
-      width: clamp(0.5rem, 1.5vw, 0.8rem);
-      height: clamp(0.5rem, 1.5vw, 0.8rem);
+      width: 0.75rem;
+      height: 0.75rem;
+      flex-shrink: 0;
+    }
+    
+    span {
+      font-size: 0.65rem;
+      font-weight: 600;
+      white-space: nowrap;
     }
   }
 `;
 
 const HistoryButton = styled.button<{ status: string }>`
   position: absolute;
-  top: 12px;
-  right: 80px;
-  background: ${({ status }) =>
-    status === 'active' ? 'rgb(34, 197, 94)' :
-    status === 'inactive' ? 'rgb(107, 114, 128)' :
-    status === 'suspended' ? 'rgb(245, 158, 11)' :
-    status === 'withdrawn' ? 'rgb(239, 68, 68)' :
-    'rgb(99, 102, 241)'};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#555' : '#9ca3af'};
   color: #fff;
   border: none;
   border-radius: 50%;
@@ -428,6 +446,7 @@ const HistoryButton = styled.button<{ status: string }>`
   &:hover {
     transform: scale(1.1);
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    background: ${({ theme }) => theme.BG === '#252525' ? '#666' : '#6b7280'};
   }
   
   svg {
@@ -435,15 +454,25 @@ const HistoryButton = styled.button<{ status: string }>`
     height: 0.75rem;
   }
   
-  @media (max-width: 480px) {
-    width: 20px;
-    height: 20px;
-    top: 8px;
-    right: 70px;
+  /* Desktop: Position to the left of status badge (same top, calculated right) */
+  @media (min-width: 701px) {
+    top: 12px;
+    /* Position closer to status badge - adjust based on badge width */
+    /* Status badges vary: "Active" ~55px, "Withdrawn" ~75px, "Suspended" ~75px, "Inactive" ~70px */
+    /* Using smaller gap for better proximity */
+    right: calc(12px + 55px);
+  }
+  
+  /* Mobile: Position below status badge */
+  @media (max-width: 700px) {
+    top: 44px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
     
     svg {
-      width: 0.6rem;
-      height: 0.6rem;
+      width: 0.7rem;
+      height: 0.7rem;
     }
   }
 `;
@@ -685,36 +714,77 @@ const Avatar = styled.div`
   &:active {
     transform: translateY(0) scale(0.98);
   }
+
+  @media (max-width: 700px) {
+    transition: none;
+    &:hover {
+      transform: none;
+      box-shadow: none;
+      
+      &::after {
+        opacity: 0;
+      }
+    }
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
 `;
 
 const CardTop = styled.div`
   display: flex;
-  align-items: stretch;
+  flex-direction: column;
   gap: 0.7rem;
+  
+  @media (min-width: 701px) {
+    flex-direction: row;
+    align-items: stretch;
+  }
+`;
+
+const MobileInfoRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
 `;
 
 const FatherName = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   margin-bottom: 0.1rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+    margin-bottom: 0.05rem;
+  }
 `;
 
 const ReasonBadge = styled.div<{ status: string }>`
-  position: absolute;
-  left: 1.2rem;
-  bottom: 1.1rem;
-  padding: 0.13rem 0.54rem;
-  border-radius: 4.8px;
-  font-size: 0.58rem;
-  font-weight: 600;
-  color: #fff;
-  opacity: 0.7;
-  background: ${({ status }) =>
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  background: ${({ theme, status }) => 
+    theme.BG === '#252525' 
+      ? 'rgba(255, 255, 255, 0.05)' 
+      : 'rgba(0, 0, 0, 0.03)'};
+  border-left: 3px solid ${({ status }) =>
     status === 'suspended' ? '#f59e0b' :
     status === 'withdrawn' ? '#ef4444' :
+    status === 'inactive' ? '#6b7280' :
     '#6366f1'};
-  box-shadow: 0 1px 4px #0002;
-  z-index: 2;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.65rem;
+    padding: 0.35rem 0.5rem;
+  }
 `;
 
 const StudentList = styled.div`
@@ -985,6 +1055,14 @@ const HistoryEntry = styled.div<{ type: string }>`
     box-shadow: 0 4px 12px ${({theme}) => theme.BG === '#252525'
       ? 'rgba(0, 0, 0, 0.3)'
       : 'rgba(0, 0, 0, 0.1)'};
+  }
+
+  @media (max-width: 700px) {
+    transition: none;
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
   }
 
   &::before {
@@ -1426,194 +1504,249 @@ const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmi
   const navigate = useNavigate();
   const theme = useTheme();
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
+  
+  // Memoize button handlers to prevent re-renders
+  const handleDeactivate = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedStudent({
+      ...student,
+      reason: '',
+      deactivateDate: today
+    });
+    setModalType('deactivate');
+    setShowModal(true);
+  }, [student, setSelectedStudent, setModalType, setShowModal]);
+
+  const handleSuspend = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedStudent({
+      ...student,
+      reason: '',
+      suspendDate: today
+    });
+    setModalType('suspend');
+    setShowModal(true);
+  }, [student, setSelectedStudent, setModalType, setShowModal]);
+
+  const handleWithdraw = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedStudent({
+      ...student,
+      reason: '',
+      withdrawDate: today
+    });
+    setModalType('withdraw');
+    setShowModal(true);
+  }, [student, setSelectedStudent, setModalType, setShowModal]);
+
+  const handlePromoteClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedStudent({
+      ...student,
+      newClassId: student.class_id,
+      newSectionId: student.section_id
+    });
+    setModalType('promote');
+    setShowModal(true);
+    if (student.class_id) {
+      fetchSectionsForPromotion(student.class_id, student.section_id);
+    }
+  }, [student, setSelectedStudent, setModalType, setShowModal, fetchSectionsForPromotion]);
+
+  const handleReactivate = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onStatusChange(student.id, 'active');
+  }, [student.id, onStatusChange]);
+
+  const handleReadmitClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onReadmit(student);
+  }, [student, onReadmit]);
+
+  const handleHistoryClick = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHistory(student.id);
+  }, [student.id, onHistory]);
+
+  const handleAvatarClick = useCallback(() => {
+    navigate(`/students/profile/${student.id}`);
+  }, [student.id, navigate]);
+
   return (
     <StudentCard status={student.status}>
-      <StatusBadge status={student.status}>
+      <StatusBadge 
+        status={student.status}
+        title="Click to view status history"
+        onClick={handleHistoryClick}
+      >
         {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
       </StatusBadge>
       <CardTop>
-        <Avatar
-          onClick={() => navigate(`/students/profile/${student.id}`)}
-          title="View Student Profile"
-        >
-          {student.picture_url ? (
-            <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover', display: 'block' }} />
-          ) : (
-            <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}</span>
-          )}
-        </Avatar>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <StudentName>
-            {student.name}
-            <span style={{ 
-              fontSize: '0.75rem', 
-              opacity: 0.6, 
-              marginLeft: '8px',
-              fontWeight: 'normal'
-            }}>
-              #{student.id}
-            </span>
-          </StudentName>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Mobile: Info row with avatar and details */}
+        {isMobile ? (
+          <MobileInfoRow>
+            <Avatar
+              onClick={handleAvatarClick}
+              title="View Student Profile"
+            >
+              {student.picture_url ? (
+                <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}</span>
+              )}
+            </Avatar>
             <div style={{ flex: 1 }}>
-              <FatherName>Father: {student.father_name || 'N/A'}</FatherName>
+              <StudentName>
+                {student.name}
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  opacity: 0.6, 
+                  marginLeft: '6px',
+                  fontWeight: 'normal'
+                }}>
+                  #{student.id}
+                </span>
+              </StudentName>
+              <FatherName>{student.father_name || 'N/A'}</FatherName>
               <StudentDetails>
                 {student.classes?.name || 'N/A'}
                 {student.sections?.name && ` (${student.sections.name})`}
               </StudentDetails>
             </div>
-            <ActionButtons>
+          </MobileInfoRow>
+        ) : (
+          /* Desktop: Original layout */
+          <>
+            <Avatar
+              onClick={handleAvatarClick}
+              title="View Student Profile"
+            >
+              {student.picture_url ? (
+                <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}</span>
+              )}
+            </Avatar>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <StudentName>
+                {student.name}
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  opacity: 0.6, 
+                  marginLeft: '6px',
+                  fontWeight: 'normal'
+                }}>
+                  #{student.id}
+                </span>
+              </StudentName>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <FatherName>{student.father_name || 'N/A'}</FatherName>
+                  <StudentDetails>
+                    {student.classes?.name || 'N/A'}
+                    {student.sections?.name && ` (${student.sections.name})`}
+                  </StudentDetails>
+                </div>
+                <ActionButtons data-single-button={student.status !== 'active' ? 'true' : 'false'}>
               {student.status === 'active' && (
                 <>
-                  <ActionButton
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Open deactivate modal
-                      const today = new Date().toISOString().split('T')[0];
-                      setSelectedStudent({
-                        ...student,
-                        reason: '',
-                        deactivateDate: today
-                      });
-                      setModalType('deactivate');
-                      setShowModal(true);
-                    }}
-                  >
+                  <ActionButton onClick={handleDeactivate}>
                     <BlockIcon style={{ fontSize: '1rem' }} />
                     <span>Deactivate</span>
                   </ActionButton>
-                  <ActionButton
-                    variant="warning"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Open suspend modal
-                      const today = new Date().toISOString().split('T')[0];
-                      setSelectedStudent({
-                        ...student,
-                        reason: '',
-                        suspendDate: today
-                      });
-                      setModalType('suspend');
-                      setShowModal(true);
-                    }}
-                  >
+                  <ActionButton variant="warning" onClick={handleSuspend}>
                     <BlockIcon style={{ fontSize: '1rem' }} />
                     <span>Suspend</span>
                   </ActionButton>
-                  <ActionButton
-                    variant="danger"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Open withdraw modal
-                      const today = new Date().toISOString().split('T')[0];
-                      setSelectedStudent({
-                        ...student,
-                        reason: '',
-                        withdrawDate: today
-                      });
-                      setModalType('withdraw');
-                      setShowModal(true);
-                    }}
-                  >
+                  <ActionButton variant="danger" onClick={handleWithdraw}>
                     <ExitIcon style={{ fontSize: '1rem' }} />
                     <span>Withdraw</span>
                   </ActionButton>
-                  <ActionButton
-                    variant="primary"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Open promote modal
-                      setSelectedStudent({
-                        ...student,
-                        newClassId: student.class_id,
-                        newSectionId: student.section_id
-                      });
-                      setModalType('promote');
-                      setShowModal(true);
-                      // Fetch sections for current class
-                      if (student.class_id) {
-                        fetchSectionsForPromotion(student.class_id, student.section_id);
-                      }
-                    }}
-                  >
+                  <ActionButton variant="primary" onClick={handlePromoteClick}>
                     <SchoolIcon style={{ fontSize: '1rem' }} />
                     <span>Promote</span>
                   </ActionButton>
                 </>
               )}
               {student.status === 'inactive' && (
-                <>
-                  <ActionButton
-                    variant="primary"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onStatusChange(student.id, 'active');
-                    }}
-                  >
-                    <SchoolIcon style={{ fontSize: '1rem' }} />
-                    <span>Reactivate</span>
-                  </ActionButton>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                </>
+                <ActionButton variant="primary" onClick={handleReactivate}>
+                  <SchoolIcon style={{ fontSize: '1rem' }} />
+                  <span>Reactivate</span>
+                </ActionButton>
               )}
               {student.status === 'suspended' && (
-                <>
-                  <ActionButton
-                    variant="primary"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onStatusChange(student.id, 'active');
-                    }}
-                  >
-                    <SchoolIcon style={{ fontSize: '1rem' }} />
-                    <span>Reactivate</span>
-                  </ActionButton>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                </>
+                <ActionButton variant="primary" onClick={handleReactivate}>
+                  <SchoolIcon style={{ fontSize: '1rem' }} />
+                  <span>Reactivate</span>
+                </ActionButton>
               )}
               {student.status === 'withdrawn' && (
-                <>
-                  <ActionButton
-                    variant="primary"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onReadmit(student);
-                    }}
-                  >
-                    <SchoolIcon style={{ fontSize: '1rem' }} />
-                    <span>Re-admit</span>
-                  </ActionButton>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                </>
+                <ActionButton variant="primary" onClick={handleReadmitClick}>
+                  <SchoolIcon style={{ fontSize: '1rem' }} />
+                  <span>Re-admit</span>
+                </ActionButton>
               )}
-            </ActionButtons>
-          </div>
-        </div>
+                </ActionButtons>
+              </div>
+            </div>
+          </>
+        )}
       </CardTop>
-      <HistoryButton
-        status={student.status}
-        title="View Status History"
-        onClick={async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onHistory(student.id);
-        }}
-      >
-        <HistoryMaterialIcon />
-      </HistoryButton>
+      
+      {/* Mobile: Buttons centered at bottom */}
+      {isMobile && (
+        <ActionButtons>
+          {student.status === 'active' && (
+            <>
+              <ActionButton onClick={handleDeactivate}>
+                <BlockIcon />
+                <span>Deactivate</span>
+              </ActionButton>
+              <ActionButton variant="warning" onClick={handleSuspend}>
+                <BlockIcon />
+                <span>Suspend</span>
+              </ActionButton>
+              <ActionButton variant="danger" onClick={handleWithdraw}>
+                <ExitIcon />
+                <span>Withdraw</span>
+              </ActionButton>
+              <ActionButton variant="primary" onClick={handlePromoteClick}>
+                <SchoolIcon />
+                <span>Promote</span>
+              </ActionButton>
+            </>
+          )}
+          {student.status === 'inactive' && (
+            <ActionButton variant="primary" onClick={handleReactivate}>
+              <SchoolIcon />
+              <span>Reactivate</span>
+            </ActionButton>
+          )}
+          {student.status === 'suspended' && (
+            <ActionButton variant="primary" onClick={handleReactivate}>
+              <SchoolIcon />
+              <span>Reactivate</span>
+            </ActionButton>
+          )}
+          {student.status === 'withdrawn' && (
+            <ActionButton variant="primary" onClick={handleReadmitClick}>
+              <SchoolIcon />
+              <span>Re-admit</span>
+            </ActionButton>
+          )}
+        </ActionButtons>
+      )}
       
       {student.status !== 'active' && student.status_reason && (
         <ReasonBadge status={student.status}>
@@ -1629,8 +1762,13 @@ const StudentStatusManager: React.FC = () => {
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
   const { startProgress, setProgress, completeProgress } = useProgress();
+  
+  // Detect mobile early for initial state setup
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
+  
   const [students, setStudents] = useState<any[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
@@ -1665,7 +1803,7 @@ const StudentStatusManager: React.FC = () => {
   const [sourceStudents, setSourceStudents] = useState<any[]>([]);
   const [targetStudents, setTargetStudents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(100);
+  const [perPage, setPerPage] = useState(isMobile ? 20 : 100);
   const [promotionSections, setPromotionSections] = useState<any[]>([]);
   const [userIdToName, setUserIdToName] = useState<Record<number, string>>({});
   const [userIdToStaffName, setUserIdToStaffName] = useState<Record<number, string>>({});
@@ -1674,37 +1812,63 @@ const StudentStatusManager: React.FC = () => {
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const navigate = useNavigate();
-
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
   
-  const [mobileOptimizations] = useState({
+  // Mobile optimizations - memoized to avoid re-creating on every render
+  const mobileOptimizations = useMemo(() => ({
     enableAnimations: !isMobile,
     enableGlowEffects: !isMobile,
     reduceRenders: isMobile,
-    batchUpdates: isMobile
-  });
+    batchUpdates: isMobile,
+    debounceDelay: isMobile ? 500 : 300,
+    renderBatchSize: isMobile ? 20 : 100
+  }), [isMobile]);
   
   const totalPages = Math.ceil(filteredStudents.length / perPage);
-  const paginated = search.trim()
-    ? filteredStudents // show all filtered students if searching
-    : filteredStudents.slice((page - 1) * perPage, page * perPage);
+  
+  // Optimized pagination - always paginate, even when searching
+  const paginated = useMemo(() => {
+    const start = (page - 1) * perPage;
+    const end = start + perPage;
+    return filteredStudents.slice(start, end);
+  }, [filteredStudents, page, perPage]);
 
   // Add these calculations near the pagination logic - match StudentList.tsx exactly
   const from = (page - 1) * perPage + 1;
   const to = (page - 1) * perPage + paginated.length;
   const total = filteredStudents.length;
 
-  // Scroll to top when page changes
-  const scrollToTop = () => {
+  // Memoized callback handlers for better performance
+  const scrollToTop = useCallback(() => {
     if (contentAreaRef.current) {
-      contentAreaRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      contentAreaRef.current.scrollTo({ top: 0, behavior: isMobile ? 'auto' : 'smooth' });
     }
-  };
+  }, [isMobile]);
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
     scrollToTop();
-  };
+  }, [scrollToTop]);
+
+  const handleClassFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setClassFilter(e.target.value);
+    setSectionFilter('');
+  }, []);
+
+  const handleSectionFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSectionFilter(e.target.value);
+  }, []);
+
+  const handleSessionFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSessionFilter(e.target.value);
+  }, []);
+
+  const handleStatusFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+  }, []);
+
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
+  }, []);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -1743,41 +1907,174 @@ const StudentStatusManager: React.FC = () => {
     loadInitialData();
   }, [user?.school_id, startProgress, setProgress, completeProgress]);
 
+  // Optimized filtered students computation with reduced memory allocations and ID search
+  const computedFilteredStudents = useMemo(() => {
+    if (!students.length) return [];
+    
+    // Pre-compute filter values to avoid repeated conversions
+    const searchLower = search.trim().toLowerCase();
+    const searchTerm = search.trim();
+    const isNumericSearch = !isNaN(Number(searchTerm));
+    const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
+    const classFilterStr = classFilter ? String(classFilter) : '';
+    const sectionFilterStr = sectionFilter ? String(sectionFilter) : '';
+    const statusFilterStr = statusFilter ? String(statusFilter) : '';
+    
+    // Use for loop with scoring for better sorting
+    const scoredResults: Array<{ student: typeof students[0]; score: number }> = [];
+    
+    for (let i = 0; i < students.length; i++) {
+      const stu = students[i];
+      let shouldInclude = true;
+      let searchScore = 0;
+      
+      // Search filter with scoring
+      if (searchLower && shouldInclude) {
+        let searchMatch = false;
+        
+        if (isNumericSearch && searchTermNum !== null) {
+          // ID search - prioritize exact match, then starts with, then contains
+          const studentIdStr = String(stu.id);
+          if (stu.id === searchTermNum) {
+            searchScore = 1000; // Highest priority for exact match
+            searchMatch = true;
+          } else if (studentIdStr.startsWith(searchTerm)) {
+            searchScore = 500; // High priority for starts with
+            searchMatch = true;
+          } else if (studentIdStr.includes(searchTerm)) {
+            searchScore = 100; // Lower priority for contains
+            searchMatch = true;
+          }
+        }
+        
+        // Name and other field searches
+        if (!searchMatch) {
+          const nameMatch = stu.name?.toLowerCase().includes(searchLower);
+          const classMatch = stu.classes?.name?.toLowerCase().includes(searchLower);
+          const sectionMatch = stu.sections?.name?.toLowerCase().includes(searchLower);
+          
+          if (nameMatch || classMatch || sectionMatch) {
+            searchMatch = true;
+            // Prioritize name matches
+            if (nameMatch) {
+              if (stu.name?.toLowerCase().startsWith(searchLower)) {
+                searchScore = 100; // High priority for name starts with
+              } else {
+                searchScore = 50; // Lower priority for name contains
+              }
+            } else {
+              searchScore = 25; // Lower priority for class/section matches
+            }
+          }
+          
+          // Also check ID for non-numeric searches (secondary)
+          if (!searchMatch && String(stu.id).includes(searchTerm)) {
+            searchScore = 10;
+            searchMatch = true;
+          }
+        }
+        
+        if (!searchMatch) {
+          shouldInclude = false;
+        }
+      }
+      
+      // Class filter
+      if (classFilterStr && shouldInclude) {
+        shouldInclude = String(stu.class_id) === classFilterStr;
+      }
+      
+      // Section filter
+      if (sectionFilterStr && shouldInclude) {
+        shouldInclude = String(stu.section_id) === sectionFilterStr;
+      }
+      
+      // Status filter
+      if (statusFilterStr && shouldInclude) {
+        shouldInclude = String(stu.status) === statusFilterStr;
+      }
+      
+      if (shouldInclude) {
+        scoredResults.push({ student: stu, score: searchScore });
+      }
+    }
+    
+    // Sort by score descending (higher scores first), then by ID ascending
+    scoredResults.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score; // Higher score first
+      }
+      return a.student.id - b.student.id; // Then by ID ascending
+    });
+    
+    return scoredResults.map(item => item.student);
+  }, [students, search, classFilter, sectionFilter, statusFilter]);
+
+  // Update filtered state from memoized computation
   useEffect(() => {
-    let filtered = students;
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(student => 
-        student.name.toLowerCase().includes(searchLower) ||
-        student.classes?.name?.toLowerCase().includes(searchLower) ||
-        student.sections?.name?.toLowerCase().includes(searchLower)
-      );
-    }
-    if (classFilter) {
-      filtered = filtered.filter(student => student.class_id === parseInt(classFilter));
-    }
-    if (sectionFilter) {
-      filtered = filtered.filter(student => student.section_id === parseInt(sectionFilter));
-    }
-    if (statusFilter) {
-      filtered = filtered.filter(student => student.status === statusFilter);
-    }
-    setFilteredStudents(filtered);
-  }, [search, classFilter, sectionFilter, statusFilter, students]);
+    setFilteredStudents(computedFilteredStudents);
+  }, [computedFilteredStudents]);
 
   useEffect(() => {
     setPage(1);
   }, [search, classFilter, sectionFilter, statusFilter, sessionFilter]);
 
-  // Update filtered state from memoized filteredStudents
-  useEffect(() => {
-    setFilteredStudents(filteredStudents);
-  }, [filteredStudents]);
-
   // Reset to page 1 if perPage changes and current page is out of range
   useEffect(() => {
     if (page > totalPages) setPage(1);
   }, [perPage, totalPages]);
+
+  // Optimized search debounce with mobile-specific delays
+  useEffect(() => {
+    const delay = mobileOptimizations.debounceDelay;
+    let timeoutId: NodeJS.Timeout;
+    
+    const debouncedSearch = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      timeoutId = setTimeout(() => {
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          window.requestIdleCallback(() => {
+            setSearch(searchInput);
+          });
+        } else {
+          requestAnimationFrame(() => {
+            setSearch(searchInput);
+          });
+        }
+      }, delay);
+    };
+    
+    debouncedSearch();
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [searchInput, mobileOptimizations.debounceDelay]);
+
+  // Optimized scroll handler with RAF for better mobile performance
+  useEffect(() => {
+    const el = contentAreaRef.current;
+    if (!el) return;
+    
+    let rafId: number | null = null;
+    
+    const onScroll = () => {
+      if (rafId) return; // Skip if already scheduled
+      
+      rafId = requestAnimationFrame(() => {
+        // Minimal scroll handling for mobile performance
+        rafId = null;
+      });
+    };
+    
+    el.addEventListener('scroll', onScroll, { passive: true });
+    
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   useEffect(() => {
     if (sessionFilter) {
@@ -2427,13 +2724,13 @@ const StudentStatusManager: React.FC = () => {
               <SegmentedInput
                 type="text"
                 placeholder="Search students..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={handleSearchInputChange}
                 style={{ minWidth: 180, maxWidth: 240, width: '100%' }}
               />
               <SegmentedSelect
                 value={sessionFilter}
-                onChange={(e) => setSessionFilter(e.target.value)}
+                onChange={handleSessionFilterChange}
               >
                 <option value="all">All Sessions</option>
                 {sessions.map(session => (
@@ -2444,7 +2741,7 @@ const StudentStatusManager: React.FC = () => {
               </SegmentedSelect>
               <SegmentedSelect
                 value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
+                onChange={handleClassFilterChange}
               >
                 <option value="">All Classes</option>
                 {classes.map(cls => (
@@ -2457,7 +2754,7 @@ const StudentStatusManager: React.FC = () => {
                 return hasSections ? (
                   <SegmentedSelect
                     value={sectionFilter}
-                    onChange={(e) => setSectionFilter(e.target.value)}
+                    onChange={handleSectionFilterChange}
                     disabled={!classFilter}
                   >
                     <option value="">All Sections</option>
@@ -2469,7 +2766,7 @@ const StudentStatusManager: React.FC = () => {
               })()}
               <SegmentedSelect
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={handleStatusFilterChange}
               >
                 <option value="">All Status</option>
                 <option value="active">Active</option>
@@ -2481,16 +2778,18 @@ const StudentStatusManager: React.FC = () => {
           </FilterGroup>
         </div>
 
-        {/* Search field - always visible */}
-        <div style={{ width: '100%', marginTop: window.innerWidth <= 700 ? 8 : 0 }}>
-          <SegmentedInput
-            type="text"
-            placeholder="Search students..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </div>
+        {/* Search field - mobile only */}
+        {window.innerWidth <= 700 && (
+          <div style={{ width: '100%', marginTop: 8 }}>
+            <SegmentedInput
+              type="text"
+              placeholder="Search students..."
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              style={{ width: '100%' }}
+            />
+          </div>
+        )}
 
         {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
         {window.innerWidth <= 700 && showMobileFilters && (
@@ -2506,7 +2805,7 @@ const StudentStatusManager: React.FC = () => {
           >
             <SegmentedSelect
               value={sessionFilter}
-              onChange={(e) => setSessionFilter(e.target.value)}
+              onChange={handleSessionFilterChange}
               style={{ width: '100%' }}
             >
               <option value="all">All Sessions</option>
@@ -2518,7 +2817,7 @@ const StudentStatusManager: React.FC = () => {
             </SegmentedSelect>
             <SegmentedSelect
               value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
+              onChange={handleClassFilterChange}
               style={{ width: '100%' }}
             >
               <option value="">All Classes</option>
@@ -2532,7 +2831,7 @@ const StudentStatusManager: React.FC = () => {
               return hasSections ? (
                 <SegmentedSelect
                   value={sectionFilter}
-                  onChange={(e) => setSectionFilter(e.target.value)}
+                  onChange={handleSectionFilterChange}
                   disabled={!classFilter}
                   style={{ width: '100%' }}
                 >
@@ -2545,7 +2844,7 @@ const StudentStatusManager: React.FC = () => {
             })()}
             <SegmentedSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={handleStatusFilterChange}
               style={{ width: '100%' }}
             >
               <option value="">All Status</option>

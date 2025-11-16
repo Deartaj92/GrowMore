@@ -65,15 +65,38 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         activityTrackingService.getNotificationPreferences(user.staff_id, user.school_id)
       ]);
 
-      setNotifications(notificationsData);
-      setUnreadCount(unreadCountData);
+      // Filter out teacher activity notifications for teachers and students
+      const teacherActivityTypes = ['attendance', 'test_marks', 'examination_marks', 'subject_assignment', 'homework_diary', 'class_management', 'student_management'];
+      const filteredNotifications = (user?.role === 'Teacher' || user?.role === 'Student') 
+        ? notificationsData.filter(notification => !teacherActivityTypes.includes(notification.notification_type))
+        : notificationsData;
+      
+      // Sort notifications: important and unread first, then by date (newest first)
+      const sortedNotifications = [...filteredNotifications].sort((a, b) => {
+        // Important notifications first
+        if (a.is_important && !b.is_important) return -1;
+        if (!a.is_important && b.is_important) return 1;
+        
+        // Unread notifications before read ones
+        if (!a.is_read && b.is_read) return -1;
+        if (a.is_read && !b.is_read) return 1;
+        
+        // Then by date (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      
+      // Recalculate unread count for filtered notifications
+      const filteredUnreadCount = sortedNotifications.filter(n => !n.is_read).length;
+
+      setNotifications(sortedNotifications);
+      setUnreadCount(filteredUnreadCount);
       setPreferences(preferencesData);
     } catch (error) {
       console.error('Failed to refresh notifications:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.staff_id, user?.school_id]);
+  }, [user?.staff_id, user?.school_id, user?.role]);
 
   // Mark notifications as read (only when explicitly requested)
   const markAsRead = useCallback(async (notificationIds: number[]) => {
@@ -166,14 +189,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           (payload) => {
             // Add new notification to the list
             const newNotification = payload.new as Notification;
-            setNotifications(prev => [newNotification, ...prev]);
             
-            // Update unread count
-            if (!newNotification.is_read) {
-              setUnreadCount(prev => prev + 1);
+            // Filter out teacher activity notifications for teachers and students
+            const teacherActivityTypes = ['attendance', 'test_marks', 'examination_marks', 'subject_assignment', 'homework_diary', 'class_management', 'student_management'];
+            const shouldFilter = (user?.role === 'Teacher' || user?.role === 'Student') && teacherActivityTypes.includes(newNotification.notification_type);
+            
+            if (!shouldFilter) {
+              setNotifications(prev => [newNotification, ...prev]);
               
-              // Show toast notification
-              showToastNotification(newNotification);
+              // Update unread count
+              if (!newNotification.is_read) {
+                setUnreadCount(prev => prev + 1);
+                
+                // Show toast notification
+                showToastNotification(newNotification);
+              }
             }
           }
         )
@@ -220,7 +250,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     } catch (error) {
       console.error('Failed to subscribe to notifications:', error);
     }
-  }, [user?.staff_id, user?.school_id, subscription, refreshNotifications]);
+  }, [user?.staff_id, user?.school_id, user?.role, subscription, refreshNotifications]);
 
   // Unsubscribe from notifications
   const unsubscribeFromNotifications = useCallback(() => {

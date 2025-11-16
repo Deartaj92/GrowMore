@@ -13,11 +13,27 @@ const InitialRouteHandler: React.FC = () => {
         navigate('/teacher', { replace: true });
       } else if (user.role === 'Super Admin') {
         navigate('/welcome', { replace: true });
+      } else if (user.role === 'Guest') {
+        navigate('/guest', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
     } else if (!loading && !user) {
-      // No user logged in, redirect to login
+      // Check for student session before redirecting to login
+      const studentSession = localStorage.getItem('studentSession');
+      if (studentSession) {
+        try {
+          const parsed = JSON.parse(studentSession);
+          if (parsed?.id) {
+            // Student is logged in, redirect to their profile page
+            navigate(`/student/${parsed.id}`, { replace: true });
+            return;
+          }
+        } catch (e) {
+          // If parsing fails, fall through to login redirect
+        }
+      }
+      // No user or student session, redirect to login
       navigate('/login', { replace: true });
     }
   }, [user, loading, navigate]);

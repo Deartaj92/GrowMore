@@ -306,6 +306,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     const [sections, setSections] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
     const [staffMembers, setStaffMembers] = useState<any[]>([]);
+    const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
     
     const [formData, setFormData] = useState<FormData>({
         category_id: initialData?.category_id || 0,
@@ -344,19 +345,42 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
 
     useEffect(() => {
         if (formData.class_id) {
+            // Check if selected class has sections
+            const selectedClass = classes.find(c => c.id === formData.class_id);
+            const hasSections = selectedClass?.has_sections ?? true;
+            setSelectedClassHasSections(hasSections);
+            
+            if (hasSections) {
             loadSections(formData.class_id);
+            } else {
+                // For non-sectioned classes, clear sections and load students directly
+                setSections([]);
+                setFormData(prev => ({ ...prev, section_id: 0 }));
+                loadStudents(formData.class_id, null);
+            }
         } else {
             setSections([]);
+            setSelectedClassHasSections(true);
         }
-    }, [formData.class_id]);
+    }, [formData.class_id, classes]);
 
     useEffect(() => {
-        if (formData.class_id && formData.section_id) {
+        if (formData.class_id) {
+            if (selectedClassHasSections) {
+                // For sectioned classes, require section_id
+                if (formData.section_id) {
             loadStudents(formData.class_id, formData.section_id);
+                } else {
+                    setStudents([]);
+                }
+            } else {
+                // For non-sectioned classes, load students directly
+                loadStudents(formData.class_id, null);
+            }
         } else {
             setStudents([]);
         }
-    }, [formData.class_id, formData.section_id]);
+    }, [formData.class_id, formData.section_id, selectedClassHasSections]);
 
     useEffect(() => {
         if (user?.role === 'Teacher') {
@@ -395,7 +419,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
         }
     };
 
-    const loadStudents = async (classId: number, sectionId: number) => {
+    const loadStudents = async (classId: number, sectionId: number | null) => {
         try {
             const data = await reportService.getStudents(classId, sectionId, user?.school_id);
             setStudents(data);
@@ -422,6 +446,28 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
         
         if (!formData.category_id || !formData.description.trim()) {
             showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Validate student selection for student reports
+        if (selectedType === 'student') {
+            if (!formData.class_id) {
+                showToast('Please select a class', 'error');
+                return;
+            }
+            if (selectedClassHasSections && !formData.section_id) {
+                showToast('Please select a section', 'error');
+                return;
+            }
+            if (!formData.student_id) {
+                showToast('Please select a student', 'error');
+                return;
+            }
+        }
+        
+        // Validate staff selection for staff reports
+        if (selectedType === 'staff' && !formData.staff_id) {
+            showToast('Please select a staff member', 'error');
             return;
         }
 
@@ -547,18 +593,25 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
 
                     {selectedType === 'student' ? (
                         <>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} sm={selectedClassHasSections ? 6 : 12}>
                                 <FormControl fullWidth size="small">
                                     <InputLabel>Class</InputLabel>
                                     <Select
                                         value={formData.class_id ? formData.class_id.toString() : ''}
                                         label="Class"
-                                        onChange={(e) => setFormData({ 
+                                        onChange={(e) => {
+                                            const selectedClassId = Number(e.target.value);
+                                            const selectedClass = classes.find(c => c.id === selectedClassId);
+                                            const hasSections = selectedClass?.has_sections ?? true;
+                                            
+                                            setFormData({ 
                                             ...formData, 
-                                            class_id: Number(e.target.value), 
+                                                class_id: selectedClassId, 
                                             section_id: 0,
                                             student_id: undefined
-                                        })}
+                                            });
+                                            setSelectedClassHasSections(hasSections);
+                                        }}
                                         required
                                     >
                                         <MenuItem value="">Select Class</MenuItem>
@@ -571,6 +624,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                 </FormControl>
                             </Grid>
 
+                            {selectedClassHasSections && (
                             <Grid item xs={12} sm={6}>
                                 <FormControl fullWidth size="small">
                                     <InputLabel>Section</InputLabel>
@@ -594,6 +648,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                     </Select>
                                 </FormControl>
                             </Grid>
+                            )}
 
                             <Grid item xs={12}>
                                 <FormControl fullWidth size="small">
@@ -606,7 +661,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                             student_id: Number(e.target.value) 
                                         })}
                                         required
-                                        disabled={!formData.section_id}
+                                        disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id)}
                                         MenuProps={selectMenuProps}
                                     >
                                         <MenuItem value="">Select Student</MenuItem>

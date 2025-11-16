@@ -143,7 +143,7 @@ const NotificationItem = styled.div<{ $isRead: boolean; $isImportant: boolean }>
   padding: 12px 16px;
   border-bottom: 1px solid ${props => props.theme.BORDER};
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   position: relative;
   background: ${props =>
     props.$isImportant
@@ -152,9 +152,20 @@ const NotificationItem = styled.div<{ $isRead: boolean; $isImportant: boolean }>
         ? 'transparent'
         : `${props.theme.ACCENT}05`
   };
+  border-left: ${props => props.$isImportant ? '4px solid #ef4444' : '4px solid transparent'};
+  animation: ${props => props.$isImportant && !props.$isRead ? 'pulse-important 2s ease-in-out infinite' : 'none'};
+
+  @keyframes pulse-important {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+    }
+  }
 
   &:hover {
-    background: ${props => props.theme.HOVER_BG};
+    background: ${props => props.$isImportant ? `${props.theme.ACCENT}15` : props.theme.HOVER_BG};
   }
 
   &:last-child {
@@ -305,6 +316,7 @@ const NotificationBell: React.FC = () => {
       case 'subject_assignment': return <AssignmentIcon />;
       case 'class_management': return <SchoolIcon />;
       case 'student_management': return <GroupIcon />;
+      case 'report': return <WarningIcon />;
       
       // System types
       case 'activity': return <BellIcon />;

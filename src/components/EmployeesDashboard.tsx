@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -8,6 +8,8 @@ import {
   PersonAdd as PersonAddIcon,
   Assignment as AssignmentIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -346,6 +348,37 @@ const employeesItems = [
 const EmployeesDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const navigate = useNavigate();
+  const { user } = useAuth() as any;
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id) {
+      fetchRenderSettings(user.school_id)
+        .then(s => setRenderSettings(s))
+        .catch(() => setRenderSettings(null));
+    } else {
+      setRenderSettings(null);
+    }
+  }, [user?.role, user?.school_id]);
+
+  const getKeyForTitle = (title: string): string | null => {
+    switch (title) {
+      case 'All Employees': return 'employees_dash_all';
+      case 'Add New': return 'employees_dash_add';
+      case 'Teacher Subject Assignment': return 'employees_dash_teacher_subjects';
+      default: return null;
+    }
+  };
+
+  const visibleItems = useMemo(() => {
+    if (user?.role !== 'Guest') return employeesItems;
+    if (!renderSettings) return employeesItems;
+    return employeesItems.filter(item => {
+      const key = getKeyForTitle(item.title);
+      if (!key) return true;
+      return renderSettings.guest?.[key] !== false;
+    });
+  }, [renderSettings, user?.role]);
 
   const handleCardClick = (path: string) => {
     navigate(path);
@@ -364,7 +397,7 @@ const EmployeesDashboard: React.FC = () => {
       </Header>
 
       <CardsGrid>
-        {employeesItems.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <Card 
             key={index}
             onClick={() => handleCardClick(item.path)}

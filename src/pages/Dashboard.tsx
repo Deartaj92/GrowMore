@@ -22,7 +22,10 @@ import {
   ReceiptLong,
   Settings,
   MonetizationOn,
-  Delete
+  Delete,
+  Assignment,
+  Book,
+  WhatsApp
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
@@ -40,6 +43,10 @@ import { useProgress } from '../components/Layout';
 import { PageHeaderContext } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
 import Loader from '../components/Loader';
+import { homeworkDiaryService } from '../services/homeworkDiaryService';
+import WhatsAppBulkSender from '../components/WhatsAppBulkSender';
+import { whatsappSemiAutoService, AttendanceNotificationData } from '../services/whatsappSemiAuto';
+import { fetchRenderSettings, isDashboardCardVisible, isGuestPageAccessible, RenderSettings } from '../services/renderSettingsService';
 
 // TypeScript declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -440,36 +447,69 @@ const CollapsibleContent = styled.div<{ $isExpanded: boolean }>`
 const ClassStrengthTableContainer = styled.div`
   max-height: 320px; /* Height for ~10 rows */
   overflow-y: auto;
+  overflow-x: hidden;
   border-radius: 8px;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
   
   &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    width: 10px;
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 8px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(167, 139, 250, 0.3);
-    border-radius: 3px;
+    background: #6366f1;
+    border-radius: 8px;
+    border: 2px solid ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    min-height: 30px;
+    
+    &:hover {
+      background: #818cf8;
+    }
+    
+    &:active {
+      background: #4f46e5;
+    }
   }
   
-  &::-webkit-scrollbar-thumb:hover {
-    background: rgba(167, 139, 250, 0.5);
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 8px;
+    border: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#d1d5db'};
+  }
+  
+  &::-webkit-scrollbar-corner {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
   }
 `;
 
 const ClassStrengthTable = styled.table`
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.98em;
   margin: 0 auto;
   th, td {
     padding: 0.45em 0.7em;
-    text-align: center;
     border-bottom: 1px solid #353b4a;
+  }
+  th:first-child, td:first-child {
+    text-align: left;
+    width: 25%;
+  }
+  th:nth-child(2), td:nth-child(2) {
+    text-align: right;
+    width: 25%;
+  }
+  th:nth-child(3), td:nth-child(3) {
+    text-align: right;
+    width: 25%;
+  }
+  th:nth-child(4), td:nth-child(4) {
+    text-align: right;
+    width: 25%;
   }
   th {
     color: #a78bfa;
@@ -485,18 +525,42 @@ const ClassStrengthTable = styled.table`
 const ClassStrengthFooter = styled.div`
   background: rgba(167, 139, 250, 0.1);
   border-top: 2px solid #6366f1;
-  padding: 0.8rem 0.7rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 0.7rem;
-  align-items: center;
+  padding: 0;
+  display: table;
+  width: 100%;
+  table-layout: fixed;
   font-weight: 800;
   color: #6366f1;
   position: sticky;
   bottom: 0;
   z-index: 1;
   backdrop-filter: blur(8px);
-  text-align: center;
+  
+  & > span {
+    display: table-cell;
+    padding: 0.8rem 0.7em;
+    vertical-align: middle;
+  }
+  
+  & > span:first-child {
+    text-align: left;
+    width: 25%;
+  }
+  
+  & > span:nth-child(2) {
+    text-align: right;
+    width: 25%;
+  }
+  
+  & > span:nth-child(3) {
+    text-align: right;
+    width: 25%;
+  }
+  
+  & > span:nth-child(4) {
+    text-align: right;
+    width: 25%;
+  }
 `;
 
 const GenderRow = styled.div`
@@ -522,9 +586,9 @@ const ProgressBarRow = styled.div`
   margin: 0.5rem 0 0.2rem 0;
 `;
 
-const TwoColumnGrid = styled.div`
+const TwoColumnGrid = styled.div<{ $columns: number }>`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: ${({ $columns }) => ($columns === 2 ? '1fr 1fr' : '1fr')};
   gap: 1.1rem;
   align-items: flex-start;
   width: 100%;
@@ -614,6 +678,9 @@ const AbsentsControls = styled.div<{ isExpanded: boolean }>`
     pointer-events: ${props => props.isExpanded ? 'auto' : 'none'};
     transition: all 0.2s ease;
     overflow: hidden;
+    gap: 8px;
+    align-items: stretch;
+    justify-content: flex-start;
   }
 `;
 
@@ -630,7 +697,8 @@ const DateInput = styled.input`
 
   @media (max-width: 700px) {
     flex: 1;
-    height: 40px;
+    height: 44px;
+    min-width: 0;
   }
 `;
 
@@ -643,6 +711,7 @@ const ExportButton = styled.button`
   font-size: 0.9rem;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -655,9 +724,12 @@ const ExportButton = styled.button`
 
   @media (max-width: 700px) {
     height: 44px;
-    padding: 10px 16px;
+    width: 44px;
+    padding: 0;
     font-size: 1rem;
-    min-width: 100px;
+    font-weight: 700;
+    min-width: 44px;
+    flex-shrink: 0;
   }
 `;
 
@@ -744,6 +816,47 @@ const ExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
   transition: transform 0.2s ease;
   transform: ${props => props.$isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};
   color: #ef4444;
+`;
+
+const WhatsAppButton = styled.button`
+  background: rgba(37, 211, 102, 0.1);
+  color: #25d366;
+  border: 1px solid rgba(37, 211, 102, 0.2);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(37, 211, 102, 0.15);
+    border-color: rgba(37, 211, 102, 0.3);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  svg {
+    font-size: 1.2rem;
+  }
+
+  @media (max-width: 700px) {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    flex-shrink: 0;
+    
+    svg {
+      font-size: 1.4rem;
+    }
+  }
 `;
 
 const AbsentsCollapsibleContent = styled(CollapsibleContent)`
@@ -1924,6 +2037,266 @@ const FineCollapsibleContent = styled(CollapsibleContent)`
   background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.10)' : 'transparent'};
 `;
 
+// Homework Diary styled components
+const HomeworkTableWrapper = styled.div`
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
+  border-radius: 14px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 0;
+  margin-top: 1.5rem;
+  margin-bottom: clamp(1rem, 2vw, 2rem);
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  
+  @media (max-width: 700px) {
+    border-radius: 12px;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+`;
+
+const HomeworkTableHeader = styled.div`
+  width: 100%;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.20)' : 'rgba(99,102,241, 0.08)'};
+  border-bottom: 1.5px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)'};
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.35)' : 'rgba(99,102,241, 0.12)'};
+  }
+  
+  @media (max-width: 700px) {
+    padding: 10px 12px;
+  }
+`;
+
+const HomeworkHeaderTitle = styled.div`
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #6366f1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  @media (max-width: 700px) {
+    font-size: 1rem;
+    gap: 6px;
+  }
+`;
+
+const HomeworkExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+  transform: ${props => props.$isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};
+  color: #6366f1;
+  
+  @media (max-width: 700px) {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
+const HomeworkCollapsibleContent = styled(CollapsibleContent)`
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.10)' : 'transparent'};
+`;
+
+const HomeworkList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem 1.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+  
+  &::-webkit-scrollbar {
+    width: 10px;
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 8px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #6366f1;
+    border-radius: 8px;
+    border: 2px solid ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    min-height: 30px;
+    
+    &:hover {
+      background: #818cf8;
+    }
+    
+    &:active {
+      background: #4f46e5;
+    }
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 8px;
+    border: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#d1d5db'};
+  }
+  
+  &::-webkit-scrollbar-corner {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+  }
+  
+  @media (max-width: 700px) {
+    padding: 0.75rem 0.9rem;
+    gap: 0.4rem;
+    max-height: 350px;
+    
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+  }
+`;
+
+const HomeworkClassItem = styled.div`
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#2a2a2a' : '#fff'};
+  border-radius: 10px;
+  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
+  padding: 0.75rem 1rem;
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#fff' : '#232a3b'};
+  min-width: 0;
+  font-size: 0.9rem;
+  
+  @media (max-width: 700px) {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+`;
+
+const HomeworkClassHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: #6366f1;
+  font-size: 1rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.9rem;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+    flex-wrap: wrap;
+  }
+`;
+
+const HomeworkSubjectItem = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.04)'};
+    border-radius: 6px;
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  @media (max-width: 700px) {
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem 0;
+    align-items: stretch;
+  }
+`;
+
+const HomeworkSubjectHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  
+  @media (max-width: 700px) {
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+`;
+
+const HomeworkSubjectName = styled.span`
+  font-weight: 600;
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#a78bfa' : '#6366f1'};
+  min-width: 110px;
+  max-width: 110px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  
+  @media (max-width: 700px) {
+    min-width: auto;
+    max-width: none;
+    font-size: 0.8rem;
+    flex: 1;
+  }
+`;
+
+const HomeworkText = styled.span`
+  flex: 1;
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#e2e8f0' : '#1e293b'};
+  font-size: 0.85rem;
+  line-height: 1.6;
+  word-wrap: break-word;
+  min-width: 0;
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    width: 100%;
+    flex: none;
+  }
+`;
+
+const HomeworkTeacher = styled.span`
+  font-weight: 500;
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#94a3b8' : '#64748b'};
+  font-size: 0.8rem;
+  min-width: 100px;
+  text-align: right;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  
+  @media (max-width: 700px) {
+    min-width: auto;
+    text-align: right;
+    justify-content: flex-end;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+`;
+
+const NoHomeworkData = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  min-height: 120px;
+`;
+
 const FineStatsRow = styled.div`
   display: flex;
   justify-content: center;
@@ -2181,6 +2554,10 @@ const Dashboard: React.FC = () => {
   const [fineDetails, setFineDetails] = useState<any[]>([]);
   const [isFineExpanded, setIsFineExpanded] = useExpandedState('dashboard_fine_expanded');
   
+  // Homework Diary state
+  const [homeworkDiaryData, setHomeworkDiaryData] = useState<any[]>([]);
+  const [isHomeworkExpanded, setIsHomeworkExpanded] = useExpandedState('dashboard_homework_expanded');
+  
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [fineToDelete, setFineToDelete] = useState<{ 
@@ -2191,6 +2568,15 @@ const Dashboard: React.FC = () => {
     amount: number;
     date: string;
   } | null>(null);
+  
+  // WhatsApp notification modal state
+  const [showWhatsAppSender, setShowWhatsAppSender] = useState(false);
+  const [whatsappNotificationData, setWhatsappNotificationData] = useState<AttendanceNotificationData[]>([]);
+  const [whatsappProcessing, setWhatsappProcessing] = useState(false);
+  
+  // Render settings for guest users
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Helper functions for class and section names
   const getClassName = (classId: any) => classes.find((c: any) => String(c.id) === String(classId))?.name || '-';
@@ -2354,6 +2740,23 @@ const Dashboard: React.FC = () => {
     fetchSchoolName();
   }, [user?.school_id, setPageHeader]);
 
+  // Fetch render settings if user is a guest
+  useEffect(() => {
+    if (user?.role === 'Guest' && user?.school_id) {
+      setSettingsLoading(true);
+      fetchRenderSettings(user.school_id)
+        .then(settings => {
+          setRenderSettings(settings);
+        })
+        .catch(error => {
+          console.error('Error fetching render settings for guest:', error);
+        })
+        .finally(() => {
+          setSettingsLoading(false);
+        });
+    }
+  }, [user]);
+
   // Fetch fine details for selected date
   useEffect(() => {
     const fetchFineDetails = async () => {
@@ -2492,6 +2895,54 @@ const Dashboard: React.FC = () => {
 
     fetchFineDetails();
   }, [user?.school_id, fineDate]);
+
+  // Fetch homework diary for today
+  useEffect(() => {
+    const fetchHomeworkDiary = async () => {
+      if (!user?.school_id) return;
+      
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data, error } = await supabase
+          .from('homework_diary')
+          .select(`
+            id,
+            class_id,
+            section_id,
+            subject_id,
+            homework_text,
+            homework_date,
+            assigned_by,
+            classes:class_id(id, name),
+            sections:section_id(id, name),
+            subjects:subject_id(id, name),
+            assigned_by_user:users!assigned_by(id, name)
+          `)
+          .eq('homework_date', today)
+          .eq('school_id', user.school_id)
+          .order('class_id', { ascending: true })
+          .order('section_id', { ascending: true, nullsFirst: true })
+          .order('subject_id', { ascending: true, nullsFirst: true });
+        
+        if (error) {
+          console.error('Error fetching homework diary:', error);
+          return;
+        }
+        
+        // Process and normalize the data - handle both created_by_user and assigned_by_user
+        const processedData = (data || []).map((item: any) => ({
+          ...item,
+          users: item.assigned_by_user || item.created_by_user || null
+        }));
+        
+        setHomeworkDiaryData(processedData);
+      } catch (error) {
+        console.error('Error fetching homework diary:', error);
+      }
+    };
+    
+    fetchHomeworkDiary();
+  }, [user?.school_id]);
 
   // Handle clicking outside the export dropdown
   useEffect(() => {
@@ -4505,8 +4956,48 @@ const Dashboard: React.FC = () => {
   }, [absentDate, user?.school_id]);
 
   // Show loading animation while all data is being fetched and checked
-  if (loading || !allDataLoaded) {
+  if (loading || !allDataLoaded || settingsLoading) {
     return <Loader />;
+  }
+
+  // For guest users, check if dashboard access is allowed
+  // Note: This check is redundant since ProtectedRoute already checks this,
+  // but we keep it as a safety measure in case someone accesses Dashboard directly
+  if (user?.role === 'Guest') {
+    // If settings are still loading, show loader
+    if (settingsLoading || !renderSettings) {
+      return <Loader />;
+    }
+    
+    // If settings loaded but dashboard page access is not enabled, show access denied
+    // Use isGuestPageAccessible to check if the dashboard page is accessible
+    if (!isGuestPageAccessible(renderSettings, 'dashboard')) {
+      return (
+        <DashboardContainer>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4rem 2rem',
+            textAlign: 'center',
+            color: isDark ? '#a0a7b8' : '#64748b',
+            minHeight: '400px'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.7 }}>🔒</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem', color: isDark ? '#e2e8f0' : '#1e293b' }}>
+              Access Denied
+            </div>
+            <div style={{ fontSize: '0.95rem', opacity: 0.8 }}>
+              Dashboard access is not enabled for guest users. Please contact your administrator.
+            </div>
+            <div style={{ fontSize: '0.85rem', opacity: 0.7, marginTop: '1rem' }}>
+              To enable access, go to Settings → Render Settings → Guest tab → Enable "Dashboard"
+            </div>
+          </div>
+        </DashboardContainer>
+      );
+    }
   }
 
   if (!hasActiveSession) {
@@ -4519,18 +5010,29 @@ const Dashboard: React.FC = () => {
       return <NoStudentsFound />;
     }
   }
+  
+  // Check which cards should be visible for guest users
+  const isGuest = user?.role === 'Guest';
+  const showClassStrength = !isGuest || isDashboardCardVisible(renderSettings, 'class_strength_card');
+  const showFineCollection = !isGuest || isDashboardCardVisible(renderSettings, 'fine_collection_card');
+  const showAbsentees = !isGuest || isDashboardCardVisible(renderSettings, 'absentees_card');
+  const showHomeworkDiary = !isGuest || isDashboardCardVisible(renderSettings, 'homework_diary_card');
+  const hasLeftCards = showClassStrength || showFineCollection;
+  const hasRightCards = showAbsentees || showHomeworkDiary;
 
   return (
     <DashboardContainer>
-      <TwoColumnGrid>
+      <TwoColumnGrid $columns={(hasLeftCards && hasRightCards) ? 2 : 1}>
+        {hasLeftCards && (
         <LeftColumn>
-          <ClassStrengthTableCard>
-            <SectionHeader onClick={() => setIsStrengthExpanded(!isStrengthExpanded)}>
-              <SectionHeaderTitle>
-                Class Wise Strength
-                <StrengthExpandIcon $isExpanded={isStrengthExpanded} />
-              </SectionHeaderTitle>
-            </SectionHeader>
+          {showClassStrength && (
+            <ClassStrengthTableCard>
+              <SectionHeader onClick={() => setIsStrengthExpanded(!isStrengthExpanded)}>
+                <SectionHeaderTitle>
+                  Class Wise Strength
+                  <StrengthExpandIcon $isExpanded={isStrengthExpanded} />
+                </SectionHeaderTitle>
+              </SectionHeader>
             <CollapsibleContent $isExpanded={isStrengthExpanded}>
               <ClassStrengthTableContainer>
                 <ClassStrengthTable>
@@ -4568,9 +5070,11 @@ const Dashboard: React.FC = () => {
               </ClassStrengthFooter>
             </CollapsibleContent>
           </ClassStrengthTableCard>
+          )}
           
           {/* Fine Collection Details Card */}
-          <FineTableWrapper>
+          {showFineCollection && (
+            <FineTableWrapper>
             <FineTableHeader onClick={() => setIsFineExpanded(!isFineExpanded)}>
               <FineHeaderTitleRow>
                 <FineHeaderTitle>
@@ -4665,14 +5169,16 @@ const Dashboard: React.FC = () => {
                             <FineTime>{time}</FineTime>
                           </FineMeta>
                         </FineCardContent>
-                        <FineActions>
-                          <DeleteButton
-                            onClick={() => showDeleteConfirmation(fine)}
-                            title="Delete fine payment"
-                          >
-                            <Delete style={{ fontSize: '0.7rem' }} />
-                          </DeleteButton>
-                        </FineActions>
+                        {!isGuest && (
+                          <FineActions>
+                            <DeleteButton
+                              onClick={() => showDeleteConfirmation(fine)}
+                              title="Delete fine payment"
+                            >
+                              <Delete style={{ fontSize: '0.7rem' }} />
+                            </DeleteButton>
+                          </FineActions>
+                        )}
                       </FineDetailItem>
                     );
                   })
@@ -4687,9 +5193,13 @@ const Dashboard: React.FC = () => {
               </FineStatsRow>
             </FineCollapsibleContent>
           </FineTableWrapper>
+          )}
         </LeftColumn>
+        )}
+        {hasRightCards && (
         <RightColumn>
-          <AbsentsTableWrapper>
+          {showAbsentees && (
+            <AbsentsTableWrapper>
             <AbsentsTableHeader onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
               <AbsentsHeaderTitleRow>
                 <AbsentsHeaderTitle>
@@ -4707,9 +5217,107 @@ const Dashboard: React.FC = () => {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 />
+                <WhatsAppButton
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (whatsappProcessing || absentees.length === 0) return;
+                    // Proceed even if absentees list is empty, since we also include 'late' students for the selected date
+                    
+                    setWhatsappProcessing(true);
+                    try {
+                      // Also include students marked 'late' for the selected date (not listed in UI)
+                      let lateRecords: { student_id: number; status: string; date: string; remarks?: string }[] = [];
+                      if (user?.school_id) {
+                        const { data: sessionData, error: sessionError } = await supabase
+                          .from('sessions')
+                          .select('id')
+                          .eq('is_active', true)
+                          .eq('school_id', user.school_id)
+                          .single();
+
+                        if (!sessionError && sessionData?.id) {
+                          const { data: lateData, error: lateError } = await supabase
+                            .from('attendance_records')
+                            .select('student_id, status, date, remarks')
+                            .eq('date', absentDate)
+                            .eq('session_id', sessionData.id)
+                            .eq('school_id', user.school_id)
+                            .eq('status', 'late');
+
+                          if (!lateError && lateData) {
+                            lateRecords = lateData as any;
+                          }
+                        }
+                      }
+
+                      // Prepare notification data for absent/leave + late students
+                      const attendanceForNotify = [
+                        ...absentees.map(a => ({
+                          id: a.student_id,
+                          status: a.status,
+                          date: absentDate,
+                          remarks: a.remarks
+                        })),
+                        ...lateRecords.map(l => ({
+                          id: l.student_id,
+                          status: l.status,
+                          date: l.date || absentDate,
+                          remarks: l.remarks
+                        }))
+                      ];
+
+                      // De-duplicate by student id, preferring non-late statuses if duplicates exist
+                      const seen = new Set<number>();
+                      const uniqueAttendance = attendanceForNotify.filter(entry => {
+                        if (seen.has(entry.id)) return false;
+                        seen.add(entry.id);
+                        return true;
+                      });
+
+                      const notificationData = await whatsappSemiAutoService.prepareAttendanceNotifications(
+                        uniqueAttendance,
+                        user?.school_id!,
+                        schoolName || 'School',
+                        'All Classes',
+                        undefined
+                      );
+                      
+                      if (notificationData.length > 0) {
+                        setWhatsappNotificationData(notificationData);
+                        setShowWhatsAppSender(true);
+                        toast.showToast(`Prepared ${notificationData.length} notifications`, 'success');
+                      } else {
+                        toast.showToast('No students with phone numbers found', 'success');
+                      }
+                    } catch (error) {
+                      console.error('Error preparing notifications:', error);
+                      toast.showToast('Failed to prepare notifications', 'error');
+                    } finally {
+                      setWhatsappProcessing(false);
+                    }
+                  }}
+                  disabled={whatsappProcessing || absentees.length === 0}
+                  style={{
+                    opacity: (whatsappProcessing || absentees.length === 0) ? 0.5 : 1,
+                    cursor: (whatsappProcessing || absentees.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
+                  title="Send WhatsApp/SMS notifications to absent students"
+                >
+                  {whatsappProcessing ? (
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #25d366',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                  ) : (
+                    <WhatsApp />
+                  )}
+                </WhatsAppButton>
                 {isMobile ? (
-                  // Mobile: Two separate buttons
-                  <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <ExportButton 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -4720,12 +5328,6 @@ const Dashboard: React.FC = () => {
                         background: 'rgba(239,68,68,0.1)', 
                         color: '#ef4444',
                         border: '1px solid rgba(239,68,68,0.2)',
-                        marginRight: '8px',
-                        minWidth: '44px',
-                        height: '44px',
-                        padding: '8px 12px',
-                        fontSize: '1rem',
-                        fontWeight: '700',
                         opacity: exportAbsentLoading ? 0.5 : 1
                       }}
                     >
@@ -4741,19 +5343,13 @@ const Dashboard: React.FC = () => {
                         background: 'rgba(34,197,94,0.1)', 
                         color: '#16a34a',
                         border: '1px solid rgba(34,197,94,0.2)',
-                        minWidth: '44px',
-                        height: '44px',
-                        padding: '8px 12px',
-                        fontSize: '1rem',
-                        fontWeight: '700',
                         opacity: exportPresentLoading ? 0.5 : 1
                       }}
                     >
                       P
                     </ExportButton>
-                  </>
+                  </div>
                 ) : (
-                  // Desktop/Web: Dropdown
                   <ExportButton 
                     ref={exportDropdownRef}
                     onClick={(e) => {
@@ -5201,7 +5797,196 @@ const Dashboard: React.FC = () => {
               </AbsenteesStatsRow>
             </AbsentsCollapsibleContent>
           </AbsentsTableWrapper>
+          )}
+          
+          {/* Homework Diary Section */}
+          {showHomeworkDiary && (
+            <HomeworkTableWrapper>
+            <HomeworkTableHeader onClick={() => setIsHomeworkExpanded(!isHomeworkExpanded)}>
+              <HomeworkHeaderTitle>
+                <Assignment style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
+                Today's Homework Diary
+              </HomeworkHeaderTitle>
+              <HomeworkExpandIcon $isExpanded={isHomeworkExpanded} />
+            </HomeworkTableHeader>
+            
+            <HomeworkCollapsibleContent $isExpanded={isHomeworkExpanded}>
+              <HomeworkList>
+                {(() => {
+                  // Group homework by class only (combine all sections for the same class)
+                  const grouped: Record<string, any> = {};
+                  
+                  homeworkDiaryData.forEach((hw: any) => {
+                    const classId = hw.class_id;
+                    const className = hw.classes?.name || 'Unknown Class';
+                    
+                    // Create key: just classId to group all sections together
+                    const key = String(classId);
+                    
+                    if (!grouped[key]) {
+                      // For display, use the first section name if all entries have the same section
+                      // Otherwise, show just the class name
+                      grouped[key] = {
+                        class_id: classId,
+                        class_name: className,
+                        section_id: null,
+                        section_name: '',
+                        entries: []
+                      };
+                    }
+                    
+                    grouped[key].entries.push(hw);
+                  });
+                  
+                  // After grouping, determine if all entries have the same section
+                  Object.values(grouped).forEach((group: any) => {
+                    const sections = new Set();
+                    group.entries.forEach((entry: any) => {
+                      if (entry.section_id) {
+                        sections.add(entry.section_id);
+                      }
+                    });
+                    
+                    // If all entries have the same section, show it in the header
+                    if (sections.size === 1) {
+                      const sectionId = Array.from(sections)[0] as number;
+                      const firstEntry = group.entries.find((e: any) => e.section_id === sectionId);
+                      if (firstEntry) {
+                        group.section_id = sectionId;
+                        group.section_name = firstEntry.sections?.name || '';
+                      }
+                    }
+                  });
+                  
+                  const groups = Object.values(grouped);
+                  
+                  if (groups.length === 0) {
+                    return (
+                      <NoHomeworkData>
+                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
+                          📝
+                        </div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                          No Homework Assigned
+                        </div>
+                        <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+                          No homework has been assigned for today
+                        </div>
+                      </NoHomeworkData>
+                    );
+                  }
+                  
+                  return groups.map((group: any, groupIdx: number) => {
+                    // Sort entries: general homework first (null subject), then by subject name
+                    const sortedEntries = group.entries.sort((a: any, b: any) => {
+                      if (!a.subject_id && !b.subject_id) return 0;
+                      if (!a.subject_id) return -1;
+                      if (!b.subject_id) return 1;
+                      const aName = a.subjects?.name || '';
+                      const bName = b.subjects?.name || '';
+                      return aName.localeCompare(bName);
+                    });
+                    
+                    const classLabel = group.section_name 
+                      ? `${group.class_name} (${group.section_name})`
+                      : group.class_name;
+                    const diaryCount = sortedEntries.length;
+                    
+                    return (
+                      <HomeworkClassItem key={groupIdx}>
+                        <HomeworkClassHeader>
+                          <School style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
+                          <span>{classLabel}</span>
+                          <span style={{ 
+                            marginLeft: 'auto',
+                            fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
+                            fontWeight: 600,
+                            color: '#6366f1',
+                            backgroundColor: 'rgba(99,102,241,0.1)',
+                            padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
+                            borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
+                            border: '1px solid rgba(99,102,241,0.2)',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {diaryCount} {diaryCount === 1 ? 'Entry' : 'Entries'}
+                          </span>
+                        </HomeworkClassHeader>
+                        {sortedEntries.map((entry: any, entryIdx: number) => {
+                          const subjectName = entry.subjects?.name || 'General Homework';
+                          const isGeneral = !entry.subject_id;
+                          
+                          return (
+                            <HomeworkSubjectItem key={entryIdx}>
+                              {window.innerWidth <= 700 ? (
+                                <>
+                                  <HomeworkSubjectHeader>
+                                    <HomeworkSubjectName>
+                                      {isGeneral ? (
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <Assignment style={{ fontSize: '0.75rem' }} />
+                                          {subjectName}
+                                        </span>
+                                      ) : (
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <Book style={{ fontSize: '0.75rem' }} />
+                                          {subjectName}
+                                        </span>
+                                      )}
+                                    </HomeworkSubjectName>
+                                    <HomeworkTeacher>
+                                      {entry.users?.name ? (
+                                        <>
+                                          <AccountCircle style={{ fontSize: '0.7rem', opacity: 0.7 }} />
+                                          {entry.users.name}
+                                        </>
+                                      ) : (
+                                        <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>—</span>
+                                      )}
+                                    </HomeworkTeacher>
+                                  </HomeworkSubjectHeader>
+                                  <HomeworkText>{entry.homework_text}</HomeworkText>
+                                </>
+                              ) : (
+                                <>
+                                  <HomeworkSubjectName>
+                                    {isGeneral ? (
+                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <Assignment style={{ fontSize: '0.875rem' }} />
+                                        {subjectName}
+                                      </span>
+                                    ) : (
+                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <Book style={{ fontSize: '0.875rem' }} />
+                                        {subjectName}
+                                      </span>
+                                    )}
+                                  </HomeworkSubjectName>
+                                  <HomeworkText>{entry.homework_text}</HomeworkText>
+                                  <HomeworkTeacher>
+                                    {entry.users?.name ? (
+                                      <>
+                                        <AccountCircle style={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                        {entry.users.name}
+                                      </>
+                                    ) : (
+                                      <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>—</span>
+                                    )}
+                                  </HomeworkTeacher>
+                                </>
+                              )}
+                            </HomeworkSubjectItem>
+                          );
+                        })}
+                      </HomeworkClassItem>
+                    );
+                  });
+                })()}
+              </HomeworkList>
+            </HomeworkCollapsibleContent>
+          </HomeworkTableWrapper>
+          )}
         </RightColumn>
+        )}
       </TwoColumnGrid>
       {hoveredAvatar && (
         <div
@@ -5279,6 +6064,19 @@ const Dashboard: React.FC = () => {
           </ModalContent>
         </ModalOverlay>,
         document.body
+      )}
+      
+      {/* WhatsApp Bulk Sender Modal */}
+      {showWhatsAppSender && (
+        <WhatsAppBulkSender
+          notificationData={whatsappNotificationData}
+          schoolName={schoolName || 'School'}
+          selectedDate={absentDate}
+          onClose={() => {
+            setShowWhatsAppSender(false);
+            setWhatsappNotificationData([]);
+          }}
+        />
       )}
     </DashboardContainer>
   );

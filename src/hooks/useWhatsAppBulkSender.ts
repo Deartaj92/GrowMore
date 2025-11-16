@@ -285,6 +285,35 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
   }, [generateWhatsAppLinks]);
 
   /**
+   * Open SMS app with a specific phone number and message
+   */
+  const openSMSChat = useCallback((phone: string, message: string) => {
+    // Format phone number with proper country code
+    const formattedPhone = formatPhoneNumber(phone);
+    
+    // Create SMS URL (sms: protocol)
+    // Remove country code for SMS (most SMS apps work better with local format)
+    const localPhone = formattedPhone.startsWith('92') ? formattedPhone.substring(2) : formattedPhone;
+    const smsUrl = `sms:${localPhone}?body=${encodeURIComponent(message)}`;
+    
+    try {
+      // Try to open SMS app
+      window.location.href = smsUrl;
+      return true;
+    } catch (error) {
+      console.error('Failed to open SMS app:', error);
+      // Fallback: try with tel: protocol
+      try {
+        window.location.href = `tel:${localPhone}`;
+        return true;
+      } catch (fallbackError) {
+        console.error('Failed to open tel link:', fallbackError);
+        return false;
+      }
+    }
+  }, [formatPhoneNumber]);
+
+  /**
    * Request notification permission
    */
   const requestNotificationPermission = useCallback(async () => {
@@ -300,6 +329,7 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
     sendBulkMessages,
     openWhatsAppChat,
     openWhatsAppChatAlternative,
+    openSMSChat,
     generateWhatsAppLinks,
     downloadAsHTML,
     requestNotificationPermission,

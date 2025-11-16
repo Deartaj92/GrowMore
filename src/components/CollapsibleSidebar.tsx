@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
 import styled, { ThemeProvider } from 'styled-components';
 import {
   Dashboard as DashboardIcon,
@@ -26,6 +28,7 @@ import {
   QuestionAnswer as QuestionAnswerIcon,
   Quiz as QuizIcon,
   Info as InfoIcon,
+  Assignment,
 } from '@mui/icons-material';
 import type { NavigateFunction } from 'react-router-dom';
 
@@ -525,7 +528,7 @@ const allPages = [
   {
     text: 'Dashboard',
     icon: <HomeIcon />,
-    path: '/',
+    path: '/dashboard',
     allowedRoles: ['Super Admin', 'Principal', 'Admin'],
     category: 'Main',
     keywords: ['dashboard', 'home', 'overview', 'main']
@@ -601,6 +604,14 @@ const allPages = [
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
     category: 'Main',
     keywords: ['examination', 'exams', 'tests', 'assessment']
+  },
+  {
+    text: 'Daily Diary',
+    icon: <Assignment />,
+    path: '/homework-diary',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Main',
+    keywords: ['homework', 'diary', 'assignment', 'daily homework', 'homework diary', 'daily diary']
   },
   {
     text: 'Test Record',
@@ -932,8 +943,8 @@ const allPages = [
   },
 ];
 
-// Main menu items for sidebar navigation
-const menuItems = allPages.filter(page => page.category === 'Main');
+// Main menu items for sidebar navigation (exclude Welcome Page from sidebar)
+const menuItems = allPages.filter(page => page.category === 'Main' && page.text !== 'Welcome Page');
 
 interface CollapsibleSidebarProps {
   navigate: NavigateFunction;
@@ -946,6 +957,7 @@ interface CollapsibleSidebarProps {
 }
 
 const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme, userRole, instituteProfile, open, onClose, onAboutUsClick }) => {
+  const { user } = useAuth() as any;
   const [expanded, setExpanded] = useState(false);
   const [openDrawer, setOpenDrawer] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
@@ -953,6 +965,43 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
   const prevExpanded = React.useRef(expanded);
   const resizeTimeoutRef = useRef<number>();
   const touchStartXRef = useRef<number>(0);
+  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  // Fetch guest render settings
+  useEffect(() => {
+    if (userRole === 'Guest' && user?.school_id) {
+      setSettingsLoading(true);
+      fetchRenderSettings(user.school_id)
+        .then(s => setRenderSettings(s))
+        .catch(() => setRenderSettings(null))
+        .finally(() => setSettingsLoading(false));
+    } else {
+      setRenderSettings(null);
+      setSettingsLoading(false);
+    }
+  }, [userRole, user?.school_id]);
+
+  // Map menu text to guest menu setting key
+  const getGuestMenuKey = useCallback((text: string): string | null => {
+    switch (text) {
+      case 'Dashboard': return 'menu_dashboard';
+      case 'Students': return 'menu_students';
+      case 'Attendance': return 'menu_attendance';
+      case 'Reports': return 'menu_reports';
+      case 'Fine Management': return 'menu_fines';
+      case 'Fee Management': return 'menu_fee_management';
+      case 'Enquiry Management': return 'menu_enquiries';
+      case 'Timetable': return 'menu_timetable';
+      case 'Employees': return 'menu_employees';
+      case 'Examination': return 'menu_examination';
+      case 'Daily Diary': return 'menu_daily_diary';
+      case 'Test Record': return 'menu_test_record';
+      case 'Settings': return 'menu_settings';
+      case 'Schools Management': return 'menu_schools_management';
+      default: return null;
+    }
+  }, []);
 
   // Optimized resize handler with RAF and debouncing
   const handleResize = useCallback(() => {
@@ -1113,19 +1162,32 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
   const filteredMenuItems = useMemo(() => {
     return menuItems
     .filter(item => {
-      if (!userRole || !item.allowedRoles) return false;
-      // For teachers, show Welcome Page, Attendance, and Reports
+      if (!userRole) return false;
+      // For teachers, show Welcome Page, Attendance, Reports, Examination, Daily Diary, and Test Record
       if (userRole === 'Teacher') {
-        return item.text === 'Attendance' || item.text === 'Welcome Page' || item.text === 'Reports';
+        return item.text === 'Attendance' ||
+               item.text === 'Welcome Page' ||
+               item.text === 'Reports' ||
+               item.text === 'Examination' ||
+               item.text === 'Daily Diary' ||
+               item.text === 'Test Record';
       }
-      return item.allowedRoles.includes(userRole);
+      // For Guests: bypass role filter and control via render settings
+      if (userRole === 'Guest') {
+        const key = getGuestMenuKey(item.text);
+        if (!key) return true;
+        if (!renderSettings) return true; // default allow before load
+        return renderSettings.guest?.[key] !== false;
+      }
+      // Other roles: enforce allowedRoles as usual
+      return item.allowedRoles?.includes(userRole);
     })
     .filter(item => {
       // Filter main menu by search
       if (!search) return true;
       return item.text.toLowerCase().includes(search.toLowerCase());
     });
-  }, [userRole, search]);
+  }, [userRole, search, renderSettings, getGuestMenuKey]);
 
   // Memoized comprehensive search results
   const flatSearchResults = useMemo(() => {
@@ -1138,8 +1200,14 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
         // Role-based filtering
         if (!userRole || !page.allowedRoles) return false;
         if (userRole === 'Teacher') {
-          return page.text === 'Attendance' || page.text === 'Welcome Page' || page.text === 'Reports' || page.text === 'Test Record' ||
-                 page.category === 'Attendance' || page.category === 'Examination';
+          return page.text === 'Attendance' || 
+                 page.text === 'Welcome Page' || 
+                 page.text === 'Reports' || 
+                 page.text === 'Test Record' ||
+                 page.text === 'Examination' ||
+                 page.text === 'Daily Diary' ||
+                 page.category === 'Attendance' || 
+                 page.category === 'Examination';
         }
         return page.allowedRoles.includes(userRole);
       })

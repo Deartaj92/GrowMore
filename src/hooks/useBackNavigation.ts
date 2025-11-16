@@ -258,20 +258,10 @@ export const useBackNavigation = (options: UseBackNavigationOptions = {}) => {
       handleBackPress();
     };
 
-    // Handle beforeunload to prevent accidental exits
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (exitPromptShown.current) {
-        event.preventDefault();
-        event.returnValue = '';
-      }
-    };
-
     window.addEventListener('popstate', handlePopState);
-    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (exitTimeoutRef.current) {
         clearTimeout(exitTimeoutRef.current);
       }
