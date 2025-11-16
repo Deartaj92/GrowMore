@@ -49,10 +49,10 @@ function run(cmd, retries = 3, delay = 2000) {
 }
 
 try {
-  // Ensure latest source code is used
-  console.log('🔍 Ensuring latest source code...');
+  // Ensure latest source code is used and pushed to GitHub
+  console.log('🔍 Ensuring latest source code and uploading to GitHub...');
   try {
-    execSync('node scripts/ensure-latest-code.js --no-pull', { stdio: 'inherit' });
+    execSync('node scripts/ensure-latest-code.js --auto-commit', { stdio: 'inherit' });
   } catch (error) {
     console.log('⚠️  Warning: Could not ensure latest code, continuing anyway...');
   }

@@ -54,11 +54,12 @@ function ensureLatestCode(options = {}) {
     autoCommit = false,
     commitMessage = 'Auto-commit before build',
     pullLatest = true,
+    pushToGitHub = true,
     cleanBuild = true,
     updateDeps = false
   } = options;
 
-  console.log('🔍 Ensuring latest source code is used...\n');
+  console.log('🔍 Ensuring latest source code is used and uploaded to GitHub...\n');
 
   // Check if this is a git repository
   if (!isGitRepo()) {
@@ -91,6 +92,22 @@ function ensureLatestCode(options = {}) {
           console.log('✅ Latest code pulled.\n');
         } else {
           console.log('⚠️  Could not pull latest code (this is okay if working offline).\n');
+        }
+      }
+    }
+
+    // Push to GitHub
+    if (pushToGitHub) {
+      const branch = getCurrentBranch();
+      if (branch) {
+        console.log(`📤 Pushing latest code to GitHub (origin/${branch})...`);
+        if (runCommand(`git push origin ${branch}`, { ignoreErrors: true })) {
+          console.log('✅ Latest code pushed to GitHub.\n');
+        } else {
+          console.log('⚠️  Could not push to GitHub. This might be okay if:');
+          console.log('   - You\'re working offline');
+          console.log('   - No changes to push');
+          console.log('   - Authentication issues\n');
         }
       }
     }
@@ -133,6 +150,7 @@ const options = {
                  args.find(arg => arg.startsWith('-m='))?.split('=')[1] || 
                  'Auto-commit before build',
   pullLatest: !args.includes('--no-pull'),
+  pushToGitHub: !args.includes('--no-push'),
   cleanBuild: !args.includes('--no-clean'),
   updateDeps: args.includes('--update-deps') || args.includes('-u')
 };

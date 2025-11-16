@@ -59,10 +59,10 @@ function clearCache() {
 function buildElectron() {
   console.log('Starting Electron build process...');
   
-  // Ensure latest source code is used
+  // Ensure latest source code is used and pushed to GitHub
   try {
-    console.log('Ensuring latest source code...');
-    execSync('node scripts/ensure-latest-code.js --no-pull', { stdio: 'inherit' });
+    console.log('Ensuring latest source code and uploading to GitHub...');
+    execSync('node scripts/ensure-latest-code.js --auto-commit', { stdio: 'inherit' });
   } catch (error) {
     console.log('Warning: Could not ensure latest code, continuing anyway...');
   }
