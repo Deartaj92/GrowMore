@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { isWeb } from '../utils/platformDetection';
 
 interface UseBackNavigationOptions {
   onExit?: () => void;
@@ -14,6 +15,7 @@ export const useBackNavigation = (options: UseBackNavigationOptions = {}) => {
   const lastBackPress = useRef<number>(0);
   const exitPromptShown = useRef<boolean>(false);
   const exitTimeoutRef = useRef<NodeJS.Timeout>();
+  const isClosingModals = useRef<boolean>(false);
   
   const {
     onExit,
@@ -66,16 +68,24 @@ export const useBackNavigation = (options: UseBackNavigationOptions = {}) => {
 
   // Close all open modals and sidebars
   const closeAllModals = () => {
-    // Close Material-UI modals by triggering escape key
-    const escapeEvent = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      code: 'Escape',
-      keyCode: 27,
-      which: 27,
-      bubbles: true,
-      cancelable: true
-    });
-    document.dispatchEvent(escapeEvent);
+    // Prevent infinite recursion
+    if (isClosingModals.current) {
+      return;
+    }
+    
+    isClosingModals.current = true;
+    
+    try {
+      // Close Material-UI modals by triggering escape key
+      const escapeEvent = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        keyCode: 27,
+        which: 27,
+        bubbles: true,
+        cancelable: true
+      });
+      document.dispatchEvent(escapeEvent);
     
     // Close custom modals
     const customModals = document.querySelectorAll('.modal, .dialog, [data-modal="true"]');
@@ -113,6 +123,12 @@ export const useBackNavigation = (options: UseBackNavigationOptions = {}) => {
         const closeEvent = new CustomEvent('closeSidebar', { bubbles: true });
         sidebar.dispatchEvent(closeEvent);
       }
+    }
+    } finally {
+      // Reset flag after a short delay to allow modals to close
+      setTimeout(() => {
+        isClosingModals.current = false;
+      }, 100);
     }
   };
 
@@ -252,6 +268,11 @@ export const useBackNavigation = (options: UseBackNavigationOptions = {}) => {
 
   // Handle hardware back button (Android)
   useEffect(() => {
+    // On web, don't set up any handlers - let browser handle navigation natively
+    if (isWeb()) {
+      return;
+    }
+
     const handlePopState = (event: PopStateEvent) => {
       // Prevent default browser back behavior
       event.preventDefault();

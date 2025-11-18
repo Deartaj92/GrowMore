@@ -58,6 +58,7 @@ import NotificationBell from './NotificationBell';
 import { UpdateService } from '../services/updateService';
 import AboutUsModal from './AboutUsModal';
 import '../utils/testNotifications'; // Import test utilities
+import { isWeb as checkIsWeb } from '../utils/platformDetection';
 
 // Capacitor import for mobile back button handling
 let CapacitorApp: any = null;
@@ -1571,6 +1572,9 @@ const Layout: React.FC = () => {
   const [isWeakConnection, setIsWeakConnection] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isRouteChanging, setIsRouteChanging] = useState(false);
+  // Check if running on web (not Electron or Capacitor)
+  // Hide navigation buttons on web - only show in Electron/Capacitor apps
+  const isWeb = checkIsWeb();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
@@ -2029,11 +2033,17 @@ const Layout: React.FC = () => {
       }
     };
 
-    // Set up listener
-    setupCapacitorListener();
+    // On web, don't set up any custom navigation handlers - let browser handle it
+    if (isWeb) {
+      return;
+    }
 
-    // Fallback for non-Capacitor contexts (web/Cordova)
+    // Set up listener only for Electron/Capacitor
+    setupCapacitorListener();
+    
+    // Fallback for non-Capacitor contexts (Electron/Cordova)
     const handlePopState = (event: PopStateEvent) => {
+      // Only prevent navigation in Electron/Capacitor
       event.preventDefault();
       event.stopImmediatePropagation();
       handleBackPress();
@@ -2044,6 +2054,7 @@ const Layout: React.FC = () => {
 
     // Handle beforeunload to prevent accidental exits
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Only show exit confirm in Electron/Capacitor
       if (showExitConfirm) {
         event.preventDefault();
         event.returnValue = '';
@@ -2053,7 +2064,7 @@ const Layout: React.FC = () => {
     // Push initial state to enable back button handling
     window.history.pushState(null, '', window.location.pathname);
 
-    // Add event listeners
+    // Add event listeners only for Electron/Capacitor
     window.addEventListener('popstate', handlePopState, true);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -2062,12 +2073,17 @@ const Layout: React.FC = () => {
       window.removeEventListener('popstate', handlePopState, true);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [sidebarOpen, navHistory, navigate, showExitConfirm]);
+  }, [sidebarOpen, location.pathname, handleGoBack, showExitConfirm, isWeb, setSidebarOpen, setShowExitConfirm]);
 
   // Navigation functions are now provided by NavigationContext
 
-  // Keyboard shortcuts for navigation
+  // Keyboard shortcuts for navigation (only in Electron/Capacitor, not on web)
   useEffect(() => {
+    // On web, let browser handle Alt+Left/Right for navigation
+    if (isWeb) {
+      return;
+    }
+    
     const handleKeyDown = (event: KeyboardEvent) => {
       // Alt + Left Arrow for back
       if (event.altKey && event.key === 'ArrowLeft') {
@@ -2083,7 +2099,7 @@ const Layout: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleGoBack, handleGoForward]);
+  }, [handleGoBack, handleGoForward, isWeb]);
 
   // Swipe to open/close sidebar (mobile)
   useEffect(() => {
@@ -2428,13 +2444,31 @@ const Layout: React.FC = () => {
         CapacitorApp.exitApp();
       } else if (window.electronAPI) {
         window.electronAPI.close();
+      } else if (isWeb) {
+        // On web, try to close the tab/window
+        // Note: window.close() only works if the window was opened by JavaScript
+        // For user-opened tabs, we'll try to close, and if that fails, navigate to a blank page
+        const closed = window.close();
+        // If window.close() didn't work (returns false or window still exists after a short delay)
+        // Navigate to about:blank as a fallback
+        setTimeout(() => {
+          if (!document.hidden) {
+            window.location.href = 'about:blank';
+          }
+        }, 100);
       } else {
         window.close();
       }
     } catch (error) {
       console.error('Failed to exit app:', error);
-      // Fallback: try window.close() if all else fails
-      window.close();
+      // Fallback: try window.close() or navigate away
+      try {
+        window.close();
+      } catch {
+        if (isWeb) {
+          window.location.href = 'about:blank';
+        }
+      }
     }
   };
 
@@ -2546,6 +2580,7 @@ const Layout: React.FC = () => {
   const customHeaderTexts: Record<string, string> = {
     '/': 'Dashboard',
     '/students': 'All Students',
+    '/students/list': 'Students List',
     '/students/add': 'Add Student',
     '/bulk-student-admission': 'Bulk Student Admission',
     '/students/status': 'Student Status Management',
@@ -2725,36 +2760,39 @@ const Layout: React.FC = () => {
                           <MenuIcon />
                         </MenuButton>
                       ) : null}
-                      <NavigationButtonsContainer>
-                        <HeaderIconCircle 
-                          as="button" 
-                          onClick={handleGoBack} 
-                          title={location.pathname === '/dashboard' ? "Home page" : `Go back (Alt+Left) - ${navHistory.length - 1} pages`}
-                          aria-label={location.pathname === '/dashboard' ? "Home page" : "Go back"}
-                          disabled={location.pathname === '/dashboard'}
-                          style={{ 
-                            opacity: location.pathname === '/dashboard' ? 0.4 : 1,
-                            cursor: location.pathname === '/dashboard' ? 'not-allowed' : 'pointer',
-                            transition: 'opacity 0.2s ease'
-                          }}
-                        >
-                          <span style={{ display: 'inline-block', transform: 'translateX(-1px)' }}>‹</span>
-                        </HeaderIconCircle>
-                        <HeaderIconCircle 
-                          as="button" 
-                          onClick={handleGoForward} 
-                          title={forwardHistory.length > 0 ? `Go forward (Alt+Right) - ${forwardHistory.length} pages` : "No forward history"}
-                          aria-label="Go forward"
-                          disabled={forwardHistory.length === 0}
-                          style={{ 
-                            opacity: forwardHistory.length === 0 ? 0.4 : 1,
-                            cursor: forwardHistory.length === 0 ? 'not-allowed' : 'pointer',
-                            transition: 'opacity 0.2s ease'
-                          }}
-                        >
-                          <span style={{ display: 'inline-block', transform: 'translateX(1px)' }}>›</span>
-                        </HeaderIconCircle>
-                      </NavigationButtonsContainer>
+                      {/* Only show navigation buttons in Electron/Capacitor, not on web */}
+                      {!isWeb && (
+                        <NavigationButtonsContainer>
+                          <HeaderIconCircle 
+                            as="button" 
+                            onClick={handleGoBack} 
+                            title={location.pathname === '/dashboard' ? "Home page" : `Go back (Alt+Left) - ${navHistory.length - 1} pages`}
+                            aria-label={location.pathname === '/dashboard' ? "Home page" : "Go back"}
+                            disabled={location.pathname === '/dashboard'}
+                            style={{ 
+                              opacity: location.pathname === '/dashboard' ? 0.4 : 1,
+                              cursor: location.pathname === '/dashboard' ? 'not-allowed' : 'pointer',
+                              transition: 'opacity 0.2s ease'
+                            }}
+                          >
+                            <span style={{ display: 'inline-block', transform: 'translateX(-1px)' }}>‹</span>
+                          </HeaderIconCircle>
+                          <HeaderIconCircle 
+                            as="button" 
+                            onClick={handleGoForward} 
+                            title={forwardHistory.length > 0 ? `Go forward (Alt+Right) - ${forwardHistory.length} pages` : "No forward history"}
+                            aria-label="Go forward"
+                            disabled={forwardHistory.length === 0}
+                            style={{ 
+                              opacity: forwardHistory.length === 0 ? 0.4 : 1,
+                              cursor: forwardHistory.length === 0 ? 'not-allowed' : 'pointer',
+                              transition: 'opacity 0.2s ease'
+                            }}
+                          >
+                            <span style={{ display: 'inline-block', transform: 'translateX(1px)' }}>›</span>
+                          </HeaderIconCircle>
+                        </NavigationButtonsContainer>
+                      )}
                       {/* Always show school/institute short name in header for both staff and students */}
                       {(location.pathname === '/dashboard' || location.pathname === '/teacher' || studentInfo) ? (
                         <>
@@ -2937,7 +2975,7 @@ const Layout: React.FC = () => {
                               Change Password
                             </ProfileDropdownItem>
                             {/* Only show "Check for Updates" in Electron/desktop or Capacitor (mobile), not in web */}
-                            {((window as any).electronAPI || (window as any).Capacitor) && (
+                            {!isWeb && (
                               <>
                                 <ProfileDropdownDivider />
                                 <ProfileDropdownItem 
@@ -3172,15 +3210,7 @@ const Layout: React.FC = () => {
                       <ModalButton
                         onClick={() => {
                           setShowExitConfirm(false);
-                          try { 
-                            if (CapacitorApp) {
-                              CapacitorApp.exitApp();
-                            } else if (window.electronAPI) {
-                              window.electronAPI.close();
-                            } else {
-                              window.close();
-                            }
-                          } catch { /* noop */ }
+                          handleExit();
                         }}
                         color="#ef4444"
                         style={{ flex: 1 }}

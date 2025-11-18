@@ -1,11 +1,17 @@
 import React, { useEffect } from 'react';
 import { useBackNavigation } from '../hooks/useBackNavigation';
+import { isWeb } from '../utils/platformDetection';
 
 interface GlobalBackHandlerProps {
   onExit?: () => void;
 }
 
 const GlobalBackHandler: React.FC<GlobalBackHandlerProps> = ({ onExit }) => {
+  // Don't render anything on web - let browser handle navigation natively
+  if (isWeb()) {
+    return null;
+  }
+
   const { handleBackPress } = useBackNavigation({
     onExit,
     exitDelay: 2000,
@@ -13,6 +19,7 @@ const GlobalBackHandler: React.FC<GlobalBackHandlerProps> = ({ onExit }) => {
   });
 
   // Handle hardware back button (Android) and browser back
+  // This component only renders on Electron/Capacitor, so we can safely set up handlers
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       // Prevent default browser back behavior
@@ -45,11 +52,8 @@ const GlobalBackHandler: React.FC<GlobalBackHandlerProps> = ({ onExit }) => {
         handleBackPress();
       }
       
-      // Escape key for testing back navigation
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        handleBackPress();
-      }
+      // Don't handle Escape key here - let modals handle it themselves
+      // Escape key handling was causing infinite recursion with closeAllModals
     };
 
     document.addEventListener('keydown', handleKeyDown);

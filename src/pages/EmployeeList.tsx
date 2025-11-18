@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { AccountCircle, Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
@@ -121,46 +121,147 @@ const CardGrid = styled.div`
   }
 `;
 
-const EmployeeCard = styled.div`
+const getStatusColor = (status: string) =>
+  status === 'active' ? '34,197,94' : // green
+  status === 'suspended' ? '245,158,11' : // orange
+  status === 'withdrawn' ? '239,68,68' : // red
+  '99,102,241'; // blue
+
+const EmployeeCard = styled.div<{ status: string }>`
   background: ${({ theme }) => theme.CARD};
   border-radius: 14px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
-  padding: 1.2rem 1rem 1rem 1rem;
+  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
   position: relative;
-  border: 2px solid ${({ theme }) => theme.FIELD_BORDER};
+  border: 2.5px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.18s;
+  min-width: 270px;
   max-width: 100%;
   width: 100%;
   cursor: pointer;
   box-sizing: border-box;
+  
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: ${({ theme }) => theme.ACCENT};
+    border-color: rgba(${({ status }) => getStatusColor(status)}, 0.8);
+  }
+  
+  @media (max-width: 700px) {
+    min-width: 200px;
+    padding: 1.2rem 1rem 1rem 1rem;
   }
 `;
 
-const CardImageSection = styled.div`
-  width: 100%;
-  height: 100px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
+const StatusBadge = styled.div<{ status: string }>`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: ${({ status }) =>
+    status === 'active' ? 'rgb(34, 197, 94)' :
+    status === 'suspended' ? 'rgb(245, 158, 11)' :
+    status === 'withdrawn' ? 'rgb(239, 68, 68)' :
+    'rgb(99, 102, 241)'};
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+  z-index: 3;
+  letter-spacing: 0.02em;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
+  line-height: 1;
+
+  ${({ status }) => status === 'active' && `
+    &::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.8; }
+    }
+  `}
+`;
+
+const Avatar = styled.div`
+  width: 80px;
+  height: 88px;
+  border-radius: 16px;
+  background: ${({ theme }) => theme.ACCENT + '22'};
+  color: ${({ theme }) => theme.ACCENT};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-right: 1.2rem;
+  flex-shrink: 0;
   overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
   position: relative;
-  box-shadow: 0 1px 4px #0001;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${({ theme }) => theme.BG === '#252525' ? 
+      'linear-gradient(45deg, rgba(255,255,255,0.1), transparent)' : 
+      'linear-gradient(45deg, rgba(0,0,0,0.05), transparent)'};
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
 `;
 
-const CardImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+const CardTop = styled.div`
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
 `;
 
-const CardActions = styled.div`
+const EmployeeName = styled.h3`
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+`;
+
+const RoleName = styled.div`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.92rem;
+  margin-bottom: 0.1rem;
+`;
+
+const EmployeeDetails = styled.p`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+`;
+
+const CardActions = styled.div<{ offsetTop?: boolean }>`
   position: absolute;
   bottom: 8px;
   right: 8px;
@@ -172,12 +273,19 @@ const CardActions = styled.div`
   z-index: 3;
   transition: opacity 0.18s, transform 0.18s;
   width: auto;
+  
   @media (min-width: 701px) {
     ${EmployeeCard}:hover & {
       opacity: 1;
       pointer-events: auto;
       transform: translateY(0);
     }
+  }
+  
+  @media (max-width: 700px) {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 `;
 
@@ -200,34 +308,14 @@ const CardActionBtn = styled.button`
     color: #7c3aed;
     transform: scale(1.12);
   }
-`;
-
-const CardContent = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  background: none;
-  padding: 0 6px;
-`;
-
-const CardName = styled.h3`
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-  font-weight: 600;
-  color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
-  margin: 0;
-  text-align: center;
-  line-height: 1.2;
-  letter-spacing: 0.01em;
-`;
-
-const CardInfoRow = styled.div`
-  width: 100%;
-  text-align: center;
-  font-size: 0.8rem;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-weight: 700;
-  margin-top: 2px;
+  &:last-child {
+    background: #ef4444;
+    color: #fff;
+    &:hover {
+      background: #dc2626;
+      color: #fff;
+    }
+  }
 `;
 
 const NoResults = styled.div`
@@ -418,23 +506,98 @@ const EmployeeList: React.FC = () => {
       <MainContent>
         <CardGrid>
           {employees.map((employee) => (
-            <EmployeeCard key={employee.id}>
-              <CardImageSection>
-                <CardActions>
-                  <CardActionBtn title="View Profile" onClick={(e) => { e.stopPropagation(); handleProfile(employee); }}><PersonIcon fontSize="inherit" /></CardActionBtn>
-                  <CardActionBtn title="Edit" onClick={(e) => { e.stopPropagation(); handleEdit(employee); }}><EditIcon fontSize="inherit" /></CardActionBtn>
-                </CardActions>
-                {employee.picture_url ? (
-                  <CardImage src={employee.picture_url} alt={employee.name} />
-                ) : (
-                  <AccountCircle style={{ fontSize: 64, color: '#b0b8d1' }} />
-                )}
-              </CardImageSection>
-              <CardContent>
-                <CardName>{employee.name}</CardName>
-                <CardInfoRow><WorkIcon style={{fontSize:16,verticalAlign:'middle',marginRight:4}} />{employee.role || '-'}</CardInfoRow>
-                <CardInfoRow><PhoneIcon style={{fontSize:16,verticalAlign:'middle',marginRight:4}} />{employee.mobile || '-'}</CardInfoRow>
-              </CardContent>
+            <EmployeeCard 
+              key={employee.id} 
+              status={employee.status || 'active'}
+              onClick={() => handleProfile(employee)}
+              data-employee-card
+            >
+              <StatusBadge status={employee.status || 'active'}>
+                {(employee.status || 'active').charAt(0).toUpperCase() + (employee.status || 'active').slice(1)}
+              </StatusBadge>
+              <CardTop>
+                <Avatar
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleProfile(employee);
+                  }}
+                  title="View Employee Profile"
+                >
+                  {employee.picture_url ? (
+                    <img 
+                      src={employee.picture_url} 
+                      alt={employee.name} 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        borderRadius: '16px', 
+                        objectFit: 'cover', 
+                        display: 'block', 
+                        transform: 'scale(1.1)' 
+                      }} 
+                    />
+                  ) : (
+                    <span style={{ width: '100%', textAlign: 'center' }}>
+                      {(employee.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}
+                    </span>
+                  )}
+                </Avatar>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <EmployeeName>
+                    {employee.name}
+                    <span style={{ 
+                      fontSize: '0.75rem', 
+                      opacity: 0.6, 
+                      marginLeft: '8px',
+                      fontWeight: 'normal'
+                    }}>
+                      #{employee.id}
+                    </span>
+                  </EmployeeName>
+                  <RoleName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{employee.role || 'N/A'}</span>
+                    {employee.mobile && (
+                      <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <PhoneIcon style={{ fontSize: '0.9rem' }} />
+                        {employee.mobile}
+                      </span>
+                    )}
+                  </RoleName>
+                  <EmployeeDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span>
+                      <WorkIcon style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginRight: '4px' }} />
+                      {employee.department || employee.designation || 'N/A'}
+                    </span>
+                    {employee.address && (
+                      <span style={{ fontSize: '0.8rem', opacity: 0.7, textAlign: 'right', maxWidth: '50%', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                        <LocationIcon style={{ fontSize: '0.9rem' }} />
+                        {employee.address}
+                      </span>
+                    )}
+                  </EmployeeDetails>
+                </div>
+              </CardTop>
+              <CardActions>
+                <CardActionBtn 
+                  title="View Profile" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleProfile(employee);
+                  }}
+                  style={{ background: '#4a6cf7', color: '#fff' }}
+                >
+                  <PersonIcon fontSize="inherit" />
+                </CardActionBtn>
+                <CardActionBtn 
+                  title="Edit" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(employee);
+                  }}
+                >
+                  <EditIcon fontSize="inherit" />
+                </CardActionBtn>
+              </CardActions>
             </EmployeeCard>
           ))}
         </CardGrid>
