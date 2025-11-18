@@ -952,13 +952,13 @@ const HalfLeaves: React.FC = () => {
           .from('student_class_history')
           .select('student_id')
           .eq('session_id', sessionId)
-          .eq('class_id', selectedClass)
+          .eq('new_class_id', selectedClass)
           .eq('school_id', user.school_id);
         
         if (hasSections) {
-          schQuery = schQuery.eq('section_id', selectedSection);
+          schQuery = schQuery.eq('new_section_id', selectedSection);
         } else {
-          schQuery = schQuery.is('section_id', null);
+          schQuery = schQuery.is('new_section_id', null);
         }
         
         const { data: schData, error: schError } = await schQuery;

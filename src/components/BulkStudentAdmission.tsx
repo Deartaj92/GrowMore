@@ -819,11 +819,16 @@ const BulkStudentAdmission: React.FC = () => {
       }
 
       // Insert into student_class_history
+      // For new admissions: adm_class_id and new_class_id are the same (admission = current)
       setProgress(90);
+      const admissionClassId = Number(formData.class);
+      const admissionSectionId = selectedClassHasSections ? Number(formData.section) : null;
       const historyData = insertedStudents.map(student => ({
         student_id: student.id,
-        class_id: Number(formData.class),
-        section_id: selectedClassHasSections ? Number(formData.section) : null,
+        adm_class_id: admissionClassId,
+        adm_section_id: admissionSectionId,
+        new_class_id: admissionClassId, // For new students, current class = admission class
+        new_section_id: admissionSectionId, // For new students, current section = admission section
         session_id: session.id,
         school_id: user.school_id,
         admission_date: new Date().toISOString().split('T')[0],

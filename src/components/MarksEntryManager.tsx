@@ -1404,15 +1404,17 @@ const MarksEntryManager: React.FC = () => {
         .from('student_class_history')
         .select(`
           student_id,
-          class_id,
-          section_id,
+          new_class_id,
+          new_section_id,
+          adm_class_id,
+          adm_section_id,
           students!inner(id, name, father_name, status)
         `)
         .eq('session_id', sessionData.id)
         .eq('school_id', user?.school_id)
         .eq('students.status', 'active')
-        .order('class_id')
-        .order('section_id');
+        .order('new_class_id')
+        .order('new_section_id');
 
       if (schError) {
         console.error('Error fetching student_class_history:', schError);
@@ -1428,7 +1430,9 @@ const MarksEntryManager: React.FC = () => {
       // Group students by class and section
       const studentsByClassSection: { [key: string]: any[] } = {};
       schData.forEach(item => {
-        const key = `${item.class_id}-${item.section_id}`;
+        const classId = item.new_class_id || item.adm_class_id;
+        const sectionId = item.new_section_id !== null ? item.new_section_id : (item.adm_section_id !== null ? item.adm_section_id : null);
+        const key = `${classId}-${sectionId}`;
         if (!studentsByClassSection[key]) {
           studentsByClassSection[key] = [];
         }
@@ -1438,8 +1442,8 @@ const MarksEntryManager: React.FC = () => {
           id: student.id,
           name: student.name,
           father_name: student.father_name,
-          class_id: item.class_id,
-          section_id: item.section_id
+          class_id: classId,
+          section_id: sectionId
         });
       });
 
@@ -2270,13 +2274,13 @@ const MarksEntryManager: React.FC = () => {
         .from('student_class_history')
         .select('student_id')
         .eq('session_id', activeSessionId)
-        .eq('class_id', classId)
+        .eq('new_class_id', classId)
         .eq('school_id', user?.school_id);
 
       if (sectionId === null) {
-        schQuery = schQuery.is('section_id', null);
+        schQuery = schQuery.is('new_section_id', null);
       } else {
-        schQuery = schQuery.eq('section_id', sectionId);
+        schQuery = schQuery.eq('new_section_id', sectionId);
       }
 
       const { data: schData, error: schError } = await schQuery;

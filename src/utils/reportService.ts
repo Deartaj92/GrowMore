@@ -116,8 +116,14 @@ export const reportService = {
             const { data, error } = await supabase
                 .from('student_class_history')
                 .select(`
-                    class_id,
-                    classes:class_id (
+                    new_class_id,
+                    adm_class_id,
+                    new_classes:new_class_id (
+                        id,
+                        name,
+                        has_sections
+                    ),
+                    adm_classes:adm_class_id (
                         id,
                         name,
                         has_sections
@@ -132,8 +138,12 @@ export const reportService = {
             }
 
             // 3. Extract unique classes and remove nulls
+            // Use new_class_id classes first, fallback to adm_class_id classes
             const uniqueClasses = Array.from(
-                new Set(data?.map(item => JSON.stringify(item.classes)))
+                new Set(data?.map(item => {
+                    const classObj = item.new_classes || item.adm_classes;
+                    return JSON.stringify(classObj);
+                }))
             )
                 .map(str => JSON.parse(str))
                 .filter(Boolean);
@@ -164,15 +174,21 @@ export const reportService = {
             const { data, error } = await supabase
                 .from('student_class_history')
                 .select(`
-                    section_id,
-                    sections:section_id (
+                    new_section_id,
+                    adm_section_id,
+                    new_sections:new_section_id (
+                        id,
+                        name,
+                        class_id
+                    ),
+                    adm_sections:adm_section_id (
                         id,
                         name,
                         class_id
                     )
                 `)
                 .eq('session_id', activeSession.id)
-            .eq('class_id', classId)
+            .eq('new_class_id', classId)
                 .eq('status', 'active');
             
             if (error) {
@@ -181,8 +197,12 @@ export const reportService = {
             }
 
             // 3. Extract unique sections and remove nulls
+            // Use new_section_id sections first, fallback to adm_section_id sections
             const uniqueSections = Array.from(
-                new Set(data?.map(item => JSON.stringify(item.sections)))
+                new Set(data?.map(item => {
+                    const sectionObj = item.new_sections || item.adm_sections;
+                    return JSON.stringify(sectionObj);
+                }))
             )
                 .map(str => JSON.parse(str))
                 .filter(Boolean);
@@ -206,19 +226,21 @@ export const reportService = {
             .from('student_class_history')
             .select(`
                 student_id,
-                class_id,
-                section_id
+                new_class_id,
+                new_section_id,
+                adm_class_id,
+                adm_section_id
             `)
             .eq('session_id', activeSession.id)
-            .eq('class_id', classId)
+            .eq('new_class_id', classId)
             .eq('status', 'active');
         
         // Only filter by section if sectionId is provided
         if (sectionId !== null && sectionId !== undefined) {
-            query = query.eq('section_id', sectionId);
+            query = query.eq('new_section_id', sectionId);
         } else {
             // For non-sectioned classes, filter out records with section_id
-            query = query.is('section_id', null);
+            query = query.is('new_section_id', null);
         }
         
         const { data, error } = await query;
@@ -259,8 +281,8 @@ export const reportService = {
                 
                 return {
                     ...student,
-                    class_id: item.class_id,
-                    section_id: item.section_id
+                    class_id: item.new_class_id || item.adm_class_id, // Current class (fallback to admission)
+                    section_id: item.new_section_id !== null ? item.new_section_id : (item.adm_section_id !== null ? item.adm_section_id : null) // Current section
                 };
             })
             .filter(Boolean);

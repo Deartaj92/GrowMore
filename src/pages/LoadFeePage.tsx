@@ -1559,7 +1559,7 @@ export default function LoadFeePage() {
         .from('student_class_history')
         .select('student_id')
         .eq('session_id', selectedSession)
-        .eq('class_id', selectedClass)
+        .eq('new_class_id', selectedClass)
         .eq('school_id', schoolId);
 
       if (schError) {
@@ -1584,8 +1584,8 @@ export default function LoadFeePage() {
           .from('student_class_history')
           .select('student_id')
           .eq('session_id', selectedSession)
-          .eq('class_id', selectedClass)
-          .eq('section_id', selectedSection)
+          .eq('new_class_id', selectedClass)
+          .eq('new_section_id', selectedSection)
           .eq('school_id', schoolId);
 
         if (sectionError) {
@@ -1641,7 +1641,7 @@ export default function LoadFeePage() {
           .from('student_class_history')
           .select('student_id')
           .eq('session_id', selectedSession)
-          .eq('class_id', selectedClass)
+          .eq('new_class_id', selectedClass)
           .eq('school_id', schoolId);
 
         if (schError) {

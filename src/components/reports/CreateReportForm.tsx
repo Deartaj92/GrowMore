@@ -308,6 +308,11 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     const [staffMembers, setStaffMembers] = useState<any[]>([]);
     const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
     
+    // Loading states
+    const [loadingClasses, setLoadingClasses] = useState(false);
+    const [loadingSections, setLoadingSections] = useState(false);
+    const [loadingStudents, setLoadingStudents] = useState(false);
+    
     const [formData, setFormData] = useState<FormData>({
         category_id: initialData?.category_id || 0,
         subject_type: initialData?.subject_type || 'student',
@@ -400,32 +405,41 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     };
 
     const loadClasses = async () => {
+        setLoadingClasses(true);
         try {
             const data = await reportService.getClasses(user?.school_id);
             setClasses(data);
         } catch (error) {
             showToast('Failed to load classes', 'error');
             console.error('Error loading classes:', error);
+        } finally {
+            setLoadingClasses(false);
         }
     };
 
     const loadSections = async (classId: number) => {
+        setLoadingSections(true);
         try {
             const data = await reportService.getSections(classId, user?.school_id);
             setSections(data);
         } catch (error) {
             showToast('Failed to load sections', 'error');
             console.error('Error loading sections:', error);
+        } finally {
+            setLoadingSections(false);
         }
     };
 
     const loadStudents = async (classId: number, sectionId: number | null) => {
+        setLoadingStudents(true);
         try {
             const data = await reportService.getStudents(classId, sectionId, user?.school_id);
             setStudents(data);
         } catch (error) {
             showToast('Failed to load students', 'error');
             console.error('Error loading students:', error);
+        } finally {
+            setLoadingStudents(false);
         }
     };
 
@@ -613,13 +627,18 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                             setSelectedClassHasSections(hasSections);
                                         }}
                                         required
+                                        disabled={loadingClasses}
                                     >
                                         <MenuItem value="">Select Class</MenuItem>
-                                        {classes.map((cls) => (
-                                            <MenuItem key={cls.id} value={cls.id.toString()}>
-                                                {cls.name}
-                                            </MenuItem>
-                                        ))}
+                                        {loadingClasses ? (
+                                            <MenuItem disabled>Loading classes...</MenuItem>
+                                        ) : (
+                                            classes.map((cls) => (
+                                                <MenuItem key={cls.id} value={cls.id.toString()}>
+                                                    {cls.name}
+                                                </MenuItem>
+                                            ))
+                                        )}
                                     </Select>
                                 </FormControl>
                             </Grid>
@@ -637,14 +656,18 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                             student_id: undefined
                                         })}
                                         required
-                                        disabled={!formData.class_id}
+                                        disabled={!formData.class_id || loadingSections}
                                     >
                                         <MenuItem value="">Select Section</MenuItem>
-                                        {sections.map((section) => (
-                                            <MenuItem key={section.id} value={section.id.toString()}>
-                                                {section.name}
-                                            </MenuItem>
-                                        ))}
+                                        {loadingSections ? (
+                                            <MenuItem disabled>Loading sections...</MenuItem>
+                                        ) : (
+                                            sections.map((section) => (
+                                                <MenuItem key={section.id} value={section.id.toString()}>
+                                                    {section.name}
+                                                </MenuItem>
+                                            ))
+                                        )}
                                     </Select>
                                 </FormControl>
                             </Grid>
@@ -661,38 +684,42 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                             student_id: Number(e.target.value) 
                                         })}
                                         required
-                                        disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id)}
+                                        disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
                                         MenuProps={selectMenuProps}
                                     >
                                         <MenuItem value="">Select Student</MenuItem>
-                                        {students.map((student) => (
-                                            <MenuItem key={student.id} value={student.id.toString()}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                                                    <Avatar 
-                                                        src={student.picture_url || undefined} 
-                                                        sx={{ width: 40, height: 40 }}
-                                                    >
-                                                        {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
-                                                    </Avatar>
-                                                    <Box>
-                                                        <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                                                            {student.name}
-                                                        </Typography>
-                                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                            {student.father_name || 'N/A'}
-                                                        </Typography>
+                                        {loadingStudents ? (
+                                            <MenuItem disabled>Loading students...</MenuItem>
+                                        ) : (
+                                            students.map((student) => (
+                                                <MenuItem key={student.id} value={student.id.toString()}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
+                                                        <Avatar 
+                                                            src={student.picture_url || undefined} 
+                                                            sx={{ width: 40, height: 40 }}
+                                                        >
+                                                            {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
+                                                        </Avatar>
+                                                        <Box>
+                                                            <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                                                                {student.name}
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                                {student.father_name || 'N/A'}
+                                                            </Typography>
+                                                        </Box>
+                                                        <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                                ID: {student.id}
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                                {student.address || 'No address'}
+                                                            </Typography>
+                                                        </Box>
                                                     </Box>
-                                                    <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                            ID: {student.id}
-                                                        </Typography>
-                                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                            {student.address || 'No address'}
-                                                        </Typography>
-                                                    </Box>
-                                                </Box>
-                                            </MenuItem>
-                                        ))}
+                                                </MenuItem>
+                                            ))
+                                        )}
                                     </Select>
                                 </FormControl>
                             </Grid>

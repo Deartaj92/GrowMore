@@ -1989,14 +1989,19 @@ const StudentAdmissionForm: React.FC = () => {
       console.log('Student successfully inserted:', newStudent);
 
       // 6. Insert into student_class_history with school_id
+      // For new admissions: adm_class_id and new_class_id are the same (admission = current)
       setProgress(95);
+      const admissionClassId = Number(form.class);
+      const admissionSectionId = selectedClassHasSections ? Number(form.section) : null;
       const { error: historyError } = await supabase
         .from('student_class_history')
         .insert([
           {
             student_id: newStudent.id,
-            class_id: Number(form.class),
-            section_id: selectedClassHasSections ? Number(form.section) : null,
+            adm_class_id: admissionClassId,
+            adm_section_id: admissionSectionId,
+            new_class_id: admissionClassId, // For new students, current class = admission class
+            new_section_id: admissionSectionId, // For new students, current section = admission section
             session_id: session.id,
             school_id: user.school_id,
             admission_date: form.admissionDate,

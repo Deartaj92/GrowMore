@@ -1362,7 +1362,9 @@ const SessionsManager: React.FC = () => {
             // Build a map: { 'class_id-section_id': count }
             const pairCountMap = new Map<string, number>();
             schRows.forEach(sch => {
-              const key = `${sch.class_id}-${sch.section_id}`;
+              const classId = sch.new_class_id || sch.adm_class_id;
+              const sectionId = sch.new_section_id !== null ? sch.new_section_id : (sch.adm_section_id !== null ? sch.adm_section_id : null);
+              const key = `${classId}-${sectionId}`;
               pairCountMap.set(key, (pairCountMap.get(key) || 0) + 1);
             });
             // Build a list of { class_id, section_id, count }

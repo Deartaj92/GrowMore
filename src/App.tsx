@@ -16,6 +16,7 @@ import ClassesManager from './components/ClassesManager';
 import StudentAdmissionForm from './components/StudentAdmissionForm';
 import BulkStudentAdmission from './components/BulkStudentAdmission';
 import StudentList from './components/StudentList';
+import WithdrawalRegister from './components/WithdrawalRegister';
 import SessionsManager from './components/SessionsManager';
 import MarkAttendance from './components/MarkAttendance';
 import MarkStaffAttendance from './components/MarkStaffAttendance';
@@ -326,6 +327,18 @@ const App: React.FC = () => {
                     element={
                       <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
                         <StudentStatusManager />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="students/withdrawal-register"
+                    element={
+                      <ProtectedRoute 
+                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                        guestPageKey="students_list"
+                      >
+                        <WithdrawalRegister />
                       </ProtectedRoute>
                     }
                   />

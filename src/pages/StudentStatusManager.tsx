@@ -2321,25 +2321,45 @@ const StudentStatusManager: React.FC = () => {
   // Helper function to update student_class_history
   const updateStudentClassHistory = async (studentId: string, sessionId: string, newClassId: number, newSectionId: number | null) => {
     console.log('Updating student_class_history for student:', studentId, 'session:', sessionId);
-    // First, check if an entry exists for this student in this session
+    
+    // First, get the original admission class from the first record (minimum id) for this student
+    // This preserves the admission class which should never change
+    const { data: admissionRecord, error: admissionError } = await supabase
+      .from('student_class_history')
+      .select('adm_class_id, adm_section_id')
+      .eq('student_id', studentId)
+      .eq('school_id', user?.school_id)
+      .order('id', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    
+    // If no admission record exists, use the new class as admission (shouldn't happen for promotions, but handle it)
+    const admClassId = admissionRecord?.adm_class_id || newClassId;
+    const admSectionId = admissionRecord?.adm_section_id !== null ? admissionRecord?.adm_section_id : newSectionId;
+    
+    console.log('Admission class preserved:', admClassId, 'Admission section:', admSectionId);
+    
+    // Check if an entry exists for this student in this session
     const { data: existingEntry, error: checkError } = await supabase
       .from('student_class_history')
       .select('id')
       .eq('student_id', studentId)
       .eq('session_id', sessionId)
       .eq('school_id', user?.school_id)
-      .single();
+      .maybeSingle();
     
     console.log('Existing entry check:', existingEntry, 'Error:', checkError);
     
     if (existingEntry) {
       console.log('Updating existing student_class_history entry:', existingEntry.id);
-      // Update existing entry
+      // Update existing entry - preserve admission class, update only new/current class
       const { error: schError } = await supabase
         .from('student_class_history')
         .update({
-          class_id: newClassId,
-          section_id: newSectionId
+          adm_class_id: admClassId, // Preserve admission class (never change)
+          adm_section_id: admSectionId, // Preserve admission section (never change)
+          new_class_id: newClassId, // Update current class to promoted class
+          new_section_id: newSectionId // Update current section to promoted section
         })
         .eq('id', existingEntry.id);
       
@@ -2350,14 +2370,16 @@ const StudentStatusManager: React.FC = () => {
       }
     } else {
       console.log('Creating new student_class_history entry');
-      // Create new entry
+      // Create new entry - preserve admission class, set new class to promoted class
       const { error: schError } = await supabase
         .from('student_class_history')
         .insert({
           student_id: studentId,
           session_id: sessionId,
-          class_id: newClassId,
-          section_id: newSectionId,
+          adm_class_id: admClassId, // Preserve admission class (never change)
+          adm_section_id: admSectionId, // Preserve admission section (never change)
+          new_class_id: newClassId, // Set current class to promoted class
+          new_section_id: newSectionId, // Set current section to promoted section
           school_id: user?.school_id
         });
       

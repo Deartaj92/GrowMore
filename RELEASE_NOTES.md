@@ -1,32 +1,20 @@
 # ***What's New!***
 
-## For Teachers:
-- Added **Teacher Profile** with comprehensive information display
-- Added **Half Leaves Setup** and tracking
-- Added **Teacher Score System** with detailed breakdown
-- Added **Score Deduction Settings** in General Settings
-- Added **Edit Profile** functionality with image upload
-- Added **Weekly Day Patterns**, **Attendance Pattern**, and **Yearly Overview** cards
-- Improved mobile layout with compact header and responsive tabs
-- Enhanced attendance calculation with half leaves support
+## 🔒 اہم اعلان (Important Announcement)
 
-## For Students:
-- Added **Half Leaves Info** and tracking
-- Added Half Leaves to score deduction (**0.05 per half leave**)
-- Added **Weekly Day Patterns**, **Attendance Pattern**, and **Yearly Overview** cards
-- Improved mobile layout with responsive tabs
-- Enhanced attendance calculation with half leaves support
+**عزیز صارفین،**
 
-## General Improvements and Fixes:
-- Redesigned **Homework Diary Manager** with modern UI
-- Added segmented filter group for class, section, and date
-- Added delete confirmation modal for homework entries
-- Improved **Test Record Master Sheet** with collapsible subject cards
-- Added test count display in subject-wise summary
-- Added visible scrollbars for better navigation
-- Enhanced update notification with **scrollable release notes** and **markdown support**
-- Improved mobile responsiveness across all pages
-- Added **"My Profile"** quick access card in Welcome Page
-- Optimized font sizes and spacing for mobile devices
-- Fixed scroll indicators for tabs on mobile
-- Improved skeleton loading states
+ہم آپ کو یہ اطلاع دینا چاہتے ہیں کہ ہماری ایپ کی **سیکیورٹی میں نمایاں بہتری** لائی گئی ہے۔ اس کے ساتھ ساتھ **نئی خصوصیات اور بہتریوں** کا اضافہ بھی کیا گیا ہے تاکہ آپ کا تجربہ مزید بہتر ہو سکے۔
+
+**براہ کرم اپنی ایپ کو اپ ڈیٹ کریں** تاکہ آپ تازہ ترین سیکیورٹی اپ ڈیٹس اور نئی خصوصیات سے فائدہ اٹھا سکیں۔
+
+---
+
+**Dear Users,**
+
+We are pleased to inform you that the **security of our application has been significantly enhanced**. Additionally, **new features and improvements** have been added to provide you with a better experience.
+
+**Please make sure to update your app** to benefit from the latest security updates and new features.
+
+---
+

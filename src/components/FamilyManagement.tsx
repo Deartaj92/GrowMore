@@ -1164,10 +1164,14 @@ const FamilyManagement: React.FC = () => {
         .from('student_class_history')
         .select(`
           student_id,
-          class_id,
-          section_id,
-          classes:class_id(name),
-          sections:section_id(name),
+          new_class_id,
+          new_section_id,
+          adm_class_id,
+          adm_section_id,
+          new_classes:new_class_id(id, name),
+          new_sections:new_section_id(id, name),
+          adm_classes:adm_class_id(id, name),
+          adm_sections:adm_section_id(id, name),
           session_id
         `)
         .eq('session_id', sessionToUse)
@@ -1191,10 +1195,10 @@ const FamilyManagement: React.FC = () => {
             const student = studentsMap.get(sch.student_id);
             return {
               ...student,
-              class_id: sch.class_id,
-              section_id: sch.section_id,
-              classes: sch.classes,
-              sections: sch.sections,
+              class_id: sch.new_class_id || sch.adm_class_id, // Current class (fallback to admission)
+              section_id: sch.new_section_id !== null ? sch.new_section_id : (sch.adm_section_id !== null ? sch.adm_section_id : null), // Current section
+              classes: sch.new_classes || sch.adm_classes, // Current class object
+              sections: sch.new_sections || sch.adm_sections, // Current section object
               session_id: sch.session_id,
             };
           });

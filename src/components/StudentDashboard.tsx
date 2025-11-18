@@ -10,6 +10,7 @@ import {
   School as SchoolIcon,
   Group as FamilyIcon,
   GroupAdd as GroupAddIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -367,6 +368,13 @@ const studentItems = [
     icon: <FamilyIcon />,
     path: '/family-management',
     color: '#ef4444' // Red
+  },
+  {
+    title: 'Withdrawal Register',
+    description: 'View admission and withdrawal register with comprehensive student data in table format',
+    icon: <DescriptionIcon />,
+    path: '/students/withdrawal-register',
+    color: '#14b8a6' // Teal
   }
 ];
 
@@ -394,6 +402,7 @@ const StudentDashboard: React.FC = () => {
       case 'Student Status': return 'student_dash_status';
       case 'Promotion': return 'student_dash_promotion';
       case 'Family Management': return 'student_dash_family';
+      case 'Withdrawal Register': return 'student_dash_withdrawal_register';
       default: return null;
     }
   };

@@ -1338,13 +1338,13 @@ const TestRecordManager: React.FC = () => {
         .from('student_class_history')
         .select('student_id')
         .eq('session_id', activeSessionId)
-        .eq('class_id', classId)
+        .eq('new_class_id', classId)
         .eq('school_id', user?.school_id);
 
       if (sectionId === null) {
-        schQuery = schQuery.is('section_id', null);
+        schQuery = schQuery.is('new_section_id', null);
       } else {
-        schQuery = schQuery.eq('section_id', sectionId);
+        schQuery = schQuery.eq('new_section_id', sectionId);
       }
 
       const { data: schData, error: schError } = await schQuery;

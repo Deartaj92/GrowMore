@@ -2162,10 +2162,14 @@ const StudentList: React.FC = () => {
           .from('student_class_history')
           .select(`
             student_id,
-            class_id,
-            section_id,
-            classes:class_id(name),
-            sections:section_id(name),
+            new_class_id,
+            new_section_id,
+            adm_class_id,
+            adm_section_id,
+            new_classes:new_class_id(id, name),
+            new_sections:new_section_id(id, name),
+            adm_classes:adm_class_id(id, name),
+            adm_sections:adm_section_id(id, name),
             session_id
           `)
           .eq('session_id', sessionToUse)
@@ -2197,10 +2201,10 @@ const StudentList: React.FC = () => {
               }
               return {
                 ...student, // This preserves ALL student fields
-                class_id: sch.class_id,
-                section_id: sch.section_id,
-                classes: sch.classes,
-                sections: sch.sections,
+                class_id: sch.new_class_id || sch.adm_class_id, // Current class (fallback to admission)
+                section_id: sch.new_section_id !== null ? sch.new_section_id : (sch.adm_section_id !== null ? sch.adm_section_id : null), // Current section
+                classes: sch.new_classes || sch.adm_classes, // Current class object
+                sections: sch.new_sections || sch.adm_sections, // Current section object
                 session_id: sch.session_id,
               };
             }).filter(Boolean); // Remove any null entries
@@ -2390,6 +2394,8 @@ const StudentList: React.FC = () => {
     }
     // Remove fields not in DB
     delete cleanedForm._newAvatarFile;
+    const modifyAdmissionClassFlag = cleanedForm._modifyAdmissionClass; // Store before deleting
+    delete cleanedForm._modifyAdmissionClass;
     // Always include session_id in the update payload
     cleanedForm.session_id = editingStudent.session_id;
     // Only keep fields that exist in the students table
@@ -2464,6 +2470,40 @@ const StudentList: React.FC = () => {
       }
     }
     if (activeSessionId) {
+      // Check if user wants to modify admission class
+      const shouldModifyAdmissionClass = modifyAdmissionClassFlag === true;
+      
+      // First, get the original admission class from the first record (minimum id) for this student
+      // This preserves the admission class which should never change (unless checkbox is checked)
+      const { data: admissionRecord } = await supabase
+        .from('student_class_history')
+        .select('adm_class_id, adm_section_id')
+        .eq('student_id', editingStudent.id)
+        .eq('school_id', user.school_id)
+        .order('id', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      
+      // If checkbox is checked, use the new class as admission class; otherwise preserve the original
+      const admClassId = shouldModifyAdmissionClass 
+        ? cleanedForm.class_id 
+        : (admissionRecord?.adm_class_id || cleanedForm.class_id);
+      const admSectionId = shouldModifyAdmissionClass
+        ? cleanedForm.section_id
+        : (admissionRecord?.adm_section_id !== null ? admissionRecord?.adm_section_id : cleanedForm.section_id);
+      
+      // If checkbox is checked, update admission class in ALL history records for this student
+      if (shouldModifyAdmissionClass) {
+        await supabase
+          .from('student_class_history')
+          .update({
+            adm_class_id: cleanedForm.class_id,
+            adm_section_id: cleanedForm.section_id
+          })
+          .eq('student_id', editingStudent.id)
+          .eq('school_id', user.school_id);
+      }
+      
       // Check if a student_class_history record exists for this student and session
       const { data: schData, error: schError } = await supabase
         .from('student_class_history')
@@ -2473,24 +2513,28 @@ const StudentList: React.FC = () => {
         .eq('school_id', user.school_id)
         .maybeSingle();
       if (schData && schData.id) {
-        // Update the record
+        // Update the record - preserve admission class (unless checkbox was checked), update new/current class
         await supabase
           .from('student_class_history')
           .update({
-            class_id: cleanedForm.class_id,
-            section_id: cleanedForm.section_id,
+            adm_class_id: admClassId, // Preserve admission class (or update if checkbox was checked)
+            adm_section_id: admSectionId, // Preserve admission section (or update if checkbox was checked)
+            new_class_id: cleanedForm.class_id, // Update current class to edited class
+            new_section_id: cleanedForm.section_id, // Update current section to edited section
             admission_date: cleanedForm.admission_date
           })
           .eq('id', schData.id)
           .eq('school_id', user.school_id);
       } else {
-        // Insert a new record
+        // Insert a new record - preserve admission class (or use new if checkbox was checked), set new class to edited class
         await supabase
           .from('student_class_history')
           .insert({
             student_id: editingStudent.id,
-            class_id: cleanedForm.class_id,
-            section_id: cleanedForm.section_id,
+            adm_class_id: admClassId, // Preserve admission class (or use new if checkbox was checked)
+            adm_section_id: admSectionId, // Preserve admission section (or use new if checkbox was checked)
+            new_class_id: cleanedForm.class_id, // Set current class to edited class
+            new_section_id: cleanedForm.section_id, // Set current section to edited section
             session_id: activeSessionId,
             admission_date: cleanedForm.admission_date,
             status: 'active',
