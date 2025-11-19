@@ -1594,19 +1594,8 @@ const BulkPromoteDemote: React.FC = () => {
           const hasSections = selectedClass?.has_sections ?? true;
           const finalSectionId = hasSections ? parseInt(targetSection) : null;
           
-          // 1. Update class, section, and status_updated_at in students
-      const { error } = await supabase
-        .from('students')
-            .update({
-              class_id: parseInt(targetClass),
-              section_id: finalSectionId,
-              status_updated_at: new Date().toISOString()
-            })
-            .eq('id', studentId)
-        .eq('school_id', user?.school_id);
-      if (error) throw error;
-
-          // 2. Update or create student_class_history for the active session
+          // Update or create student_class_history for the active session
+          // Note: We do NOT update class_id and section_id in students table - only update student_class_history
           if (activeSession) {
             console.log('Updating student_class_history for active session:', activeSession.id);
             await updateStudentClassHistory(studentId, activeSession.id, parseInt(targetClass), finalSectionId);
@@ -1614,7 +1603,7 @@ const BulkPromoteDemote: React.FC = () => {
             console.log('No active session found - skipping student_class_history update');
           }
           
-          // 3. Record in student_status_history
+          // 2. Record in student_status_history
           await supabase.from('student_status_history').insert({
             student_id: studentId,
             school_id: user?.school_id,

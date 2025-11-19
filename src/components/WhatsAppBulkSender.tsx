@@ -1,24 +1,31 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useWhatsAppBulkSender } from '../hooks/useWhatsAppBulkSender';
 import { AttendanceNotificationData } from '../services/whatsappSemiAuto';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { WhatsApp as WhatsAppIcon } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../supabaseClient';
 
 interface WhatsAppBulkSenderProps {
   notificationData: AttendanceNotificationData[];
   schoolName: string;
   onClose: () => void;
   selectedDate: string;
+  mode?: 'attendance' | 'general';
+  defaultMessage?: string;
 }
 
 const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
   notificationData,
   schoolName,
   onClose,
-  selectedDate
+  selectedDate,
+  mode = 'attendance',
+  defaultMessage
 }) => {
   const { theme } = useContext(ThemeContext);
+  const { user } = useAuth();
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
   const [sentStudents, setSentStudents] = useState<Set<number>>(new Set());
   const [sentStudentIds, setSentStudentIds] = useState<Set<number>>(new Set());
@@ -26,6 +33,53 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
   const [customMessages, setCustomMessages] = useState<Map<number, string>>(new Map());
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'urdu' | 'english'>('urdu');
+
+  const applySentIds = useCallback((idSet: Set<number>) => {
+    setSentStudentIds(idSet);
+    setSentStudents(() => {
+      const idxSet = new Set<number>();
+      notificationData.forEach((notification, idx) => {
+        if (idSet.has(notification.student_id)) {
+          idxSet.add(idx);
+        }
+      });
+      return idxSet;
+    });
+  }, [notificationData]);
+
+  const persistSentIds = useCallback((ids: Set<number>) => {
+    try {
+      const key = `attendance_sent_${selectedDate}`;
+      localStorage.setItem(key, JSON.stringify(Array.from(ids)));
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedDate]);
+
+  const loadSentStatusFromLocal = useCallback(() => {
+    try {
+      const key = `attendance_sent_${selectedDate}`;
+      const raw = localStorage.getItem(key);
+      const ids: number[] = raw ? JSON.parse(raw) : [];
+      const idSet = new Set<number>(ids);
+      applySentIds(idSet);
+    } catch (error) {
+      console.error('Failed to load local sent status:', error);
+    }
+  }, [applySentIds, selectedDate]);
+
+  const clearRemoteSentStatus = useCallback(async () => {
+    if (!user?.school_id) return;
+    try {
+      await supabase
+        .from('notification_logs')
+        .delete()
+        .eq('school_id', user.school_id)
+        .eq('notification_date', selectedDate);
+    } catch (error) {
+      console.error('Failed to clear remote sent status:', error);
+    }
+  }, [selectedDate, user?.school_id]);
 
   // Theme-aware colors
   const colors = {
@@ -63,6 +117,7 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
 
   const currentColors = colors[theme];
 
+
   // Status emoji mapping
   const statusEmoji: { [key: string]: string } = {
     'absent': '❌',
@@ -70,7 +125,7 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
     'leave': '🏠'
   };
 
-  const formatMessage = (data: AttendanceNotificationData): string => {
+  const formatMessage = useCallback((data: AttendanceNotificationData): string => {
     // Check if there's a custom message for this student
     const customMessage = customMessages.get(data.student_id);
     if (customMessage) {
@@ -78,9 +133,17 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
     }
 
     // Use default message format based on selected language
+    if (mode === 'general' && defaultMessage) {
+      return defaultMessage
+        .replace('{student_name}', data.student_name)
+        .replace('{father_name}', data.father_name || '')
+        .replace('{class_name}', data.class_name)
+        .replace('{school_name}', schoolName);
+    }
+
     const status = data.status.toLowerCase();
     const effectiveStatus = status === 'leave' ? 'absent' : status; // Treat leave same as absent
-    
+
     if (selectedLanguage === 'urdu') {
       // Urdu status translations
       const urduStatusMap: { [key: string]: string } = {
@@ -88,7 +151,7 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
         'late': 'دیر سے پہنچا',
         'leave': 'غیر حاضر'
       };
-      
+
       const urduStatus = urduStatusMap[effectiveStatus] || data.status;
 
       // Special phrasing for 'late' to avoid 'سے' after 'سکول'
@@ -123,18 +186,18 @@ Please ensure your child attends school regularly. Thank you.
 
 ${data.school_short_name || schoolName}`;
     }
-  };
+  }, [customMessages, schoolName, selectedDate, selectedLanguage]);
 
   const {
     openWhatsAppChatAlternative,
     openSMSChat
   } = useWhatsAppBulkSender({
     delayBetweenMessages: 1000,
-    onProgress: () => {},
-    onComplete: () => {}
+    onProgress: () => { },
+    onComplete: () => { }
   });
 
-  
+
 
   // Sequential sending functions
   const currentStudent = notificationData[currentStudentIndex];
@@ -144,27 +207,59 @@ ${data.school_short_name || schoolName}`;
   const remainingStudents = notificationData.length - totalProcessed;
   const isAlreadySent = currentStudent ? sentStudentIds.has(currentStudent.student_id) : false;
 
+  const recordSentStatus = useCallback(async (student: AttendanceNotificationData, index: number) => {
+    const channel = student.notification_channel || 'whatsapp';
+
+    setSentStudents(prev => {
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
+
+    setSentStudentIds(prev => {
+      const next = new Set(prev);
+      next.add(student.student_id);
+      persistSentIds(next);
+      return next;
+    });
+
+    if (user?.school_id) {
+      try {
+        await supabase
+          .from('notification_logs')
+          .upsert({
+            school_id: user.school_id,
+            student_id: student.student_id,
+            notification_date: selectedDate,
+            channel,
+            status: 'sent',
+            sent_by: user.staff_id || null,
+            msg_type: mode === 'general' ? 'General' : 'Attendance',
+            message: customMessages.get(student.student_id) || formatMessage(student)
+          }, {
+            onConflict: 'school_id,student_id,notification_date,channel'
+          });
+      } catch (error) {
+        console.error('Failed to persist sent status:', error);
+      }
+    }
+  }, [customMessages, formatMessage, persistSentIds, selectedDate, user?.school_id, user?.staff_id]);
+
   const handleSendCurrentStudent = () => {
     if (!currentStudent) return;
-    
+
     const messageToSend = getCurrentMessage();
     const channel = currentStudent.notification_channel || 'whatsapp';
-    
+
     // Use appropriate function based on notification channel
-    const success = channel === 'sms' 
+    const success = channel === 'sms'
       ? openSMSChat(currentStudent.student_phone, messageToSend)
       : openWhatsAppChatAlternative(currentStudent.student_phone, messageToSend);
-    
+
     if (success) {
-      setSentStudents(prev => new Set(Array.from(prev).concat(currentStudentIndex)));
-      // Track by student_id for persistence across sessions
-      setSentStudentIds(prev => {
-        const next = new Set(Array.from(prev).concat(currentStudent.student_id));
-        persistSentIds(next);
-        return next;
-      });
+      recordSentStatus(currentStudent, currentStudentIndex);
       console.log(`✅ Sent ${channel.toUpperCase()} message to ${currentStudent.student_name}`);
-      
+
       // Auto-advance to next student after a short delay
       setTimeout(() => {
         handleNextStudent();
@@ -176,10 +271,10 @@ ${data.school_short_name || schoolName}`;
 
   const handleSkipCurrentStudent = () => {
     if (!currentStudent) return;
-    
+
     setSkippedStudents(prev => new Set(Array.from(prev).concat(currentStudentIndex)));
     console.log(`⏭️ Skipped ${currentStudent.student_name}`);
-    
+
     // Auto-advance to next student
     handleNextStudent();
   };
@@ -202,9 +297,11 @@ ${data.school_short_name || schoolName}`;
     setSkippedStudents(new Set());
     setCustomMessages(new Map());
     setSentStudentIds(new Set());
+    persistSentIds(new Set());
+    clearRemoteSentStatus();
     try {
       localStorage.removeItem(`attendance_sent_${selectedDate}`);
-    } catch {}
+    } catch { }
   };
 
   // Message editing functions
@@ -246,24 +343,48 @@ ${data.school_short_name || schoolName}`;
     return '';
   };
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRemoteSentStatus = async () => {
+      if (!user?.school_id) {
+        if (!cancelled) {
+          loadSentStatusFromLocal();
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('notification_logs')
+          .select('student_id')
+          .eq('school_id', user.school_id)
+          .eq('notification_date', selectedDate);
+
+        if (error) throw error;
+
+        if (!cancelled) {
+          const idSet = new Set<number>((data || []).map(row => row.student_id));
+          applySentIds(idSet);
+          persistSentIds(idSet);
+        }
+      } catch (error) {
+        console.error('Failed to load sent statuses:', error);
+        if (!cancelled) {
+          loadSentStatusFromLocal();
+        }
+      }
+    };
+
+    loadRemoteSentStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.school_id, selectedDate, notificationData, applySentIds, persistSentIds, loadSentStatusFromLocal]);
+
   // Prevent body scroll when modal is open and ensure modal is viewport-centered
   useEffect(() => {
-    // Load already-sent students for this date from localStorage
-    try {
-      const key = `attendance_sent_${selectedDate}`;
-      const raw = localStorage.getItem(key);
-      const ids: number[] = raw ? JSON.parse(raw) : [];
-      const idSet = new Set<number>(ids);
-      setSentStudentIds(idSet);
-
-      // Map to indices present in current notificationData for progress bar
-      const idxSet = new Set<number>();
-      notificationData.forEach((n, idx) => {
-        if (idSet.has(n.student_id)) idxSet.add(idx);
-      });
-      if (idxSet.size > 0) setSentStudents(idxSet);
-    } catch {}
-
     // Store current scroll position
     const scrollY = window.scrollY;
     // Prevent body scroll and lock position
@@ -272,7 +393,7 @@ ${data.school_short_name || schoolName}`;
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
     document.body.setAttribute('data-scroll-position', scrollY.toString());
-    
+
     return () => {
       // Restore scroll position
       const savedScrollY = document.body.getAttribute('data-scroll-position');
@@ -286,14 +407,6 @@ ${data.school_short_name || schoolName}`;
       }
     };
   }, []);
-
-  // Helper to persist sent IDs for selected date
-  const persistSentIds = (ids: Set<number>) => {
-    try {
-      const key = `attendance_sent_${selectedDate}`;
-      localStorage.setItem(key, JSON.stringify(Array.from(ids)));
-    } catch {}
-  };
 
   return ReactDOM.createPortal(
     <div style={{
@@ -362,7 +475,7 @@ ${data.school_short_name || schoolName}`;
               {notificationData.length} students • {notificationData.filter(n => n.notification_channel === 'sms').length} SMS • {notificationData.filter(n => n.notification_channel === 'whatsapp' || !n.notification_channel).length} WhatsApp
             </p>
           </div>
-          
+
           {/* Language Selector */}
           <div style={{
             display: 'flex',
@@ -372,13 +485,13 @@ ${data.school_short_name || schoolName}`;
             flex: window.innerWidth <= 700 ? '1 1 auto' : 'initial'
           }}>
             {window.innerWidth > 700 && (
-            <span style={{
-              fontSize: '12px',
-              fontWeight: '500',
-              color: currentColors.textSecondary
-            }}>
-              Language:
-            </span>
+              <span style={{
+                fontSize: '12px',
+                fontWeight: '500',
+                color: currentColors.textSecondary
+              }}>
+                Language:
+              </span>
             )}
             <div style={{
               display: 'flex',
@@ -485,7 +598,7 @@ ${data.school_short_name || schoolName}`;
                     }}>
                       📝 Message
                     </div>
-                    
+
                     <div style={{ display: 'flex', gap: '3px' }}>
                       {!isEditingMessage ? (
                         <button
@@ -539,7 +652,7 @@ ${data.school_short_name || schoolName}`;
                       )}
                     </div>
                   </div>
-                  
+
                   {isEditingMessage ? (
                     <textarea
                       id="message-editor"
@@ -699,39 +812,39 @@ ${data.school_short_name || schoolName}`;
                     >
                       {isAlreadySent
                         ? (
-                            window.innerWidth <= 700
-                              ? (
-                                  currentStudent?.notification_channel === 'sms'
-                                    ? '↻ 💬 Resend'
-                                    : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                        ↻ <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Resend
-                                      </span>)
-                                )
-                              : (
-                                  currentStudent?.notification_channel === 'sms'
-                                    ? '↻ 💬 Resend SMS'
-                                    : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        ↻ <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Resend WhatsApp
-                                      </span>)
-                                )
-                          )
+                          window.innerWidth <= 700
+                            ? (
+                              currentStudent?.notification_channel === 'sms'
+                                ? '↻ 💬 Resend'
+                                : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  ↻ <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Resend
+                                </span>)
+                            )
+                            : (
+                              currentStudent?.notification_channel === 'sms'
+                                ? '↻ 💬 Resend SMS'
+                                : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  ↻ <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Resend WhatsApp
+                                </span>)
+                            )
+                        )
                         : (
-                            window.innerWidth <= 700
-                              ? (
-                                  currentStudent?.notification_channel === 'sms'
-                                    ? '💬 Send'
-                                    : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                        <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Send
-                                      </span>)
-                                )
-                              : (
-                                  currentStudent?.notification_channel === 'sms'
-                                    ? '💬 Send SMS'
-                                    : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Send WhatsApp
-                                      </span>)
-                                )
-                          )}
+                          window.innerWidth <= 700
+                            ? (
+                              currentStudent?.notification_channel === 'sms'
+                                ? '💬 Send'
+                                : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Send
+                                </span>)
+                            )
+                            : (
+                              currentStudent?.notification_channel === 'sms'
+                                ? '💬 Send SMS'
+                                : (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  <WhatsAppIcon style={{ fontSize: '1.1em' }} /> Send WhatsApp
+                                </span>)
+                            )
+                        )}
                     </button>
                     <button
                       onClick={handleSkipCurrentStudent}
@@ -754,495 +867,495 @@ ${data.school_short_name || schoolName}`;
           ) : (
             /* DESKTOP LAYOUT - Keep Original Side-by-Side */
             <>
-          {/* Left Side - Progress & Student Info */}
-          <div style={{
-            flex: '0 0 300px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px'
-          }}>
-            {/* Progress Summary */}
-            <div style={{
-              background: theme === 'dark' ? 'rgba(37, 211, 102, 0.1)' : 'rgba(37, 211, 102, 0.05)',
-              border: `1px solid ${currentColors.accent}`,
-              borderRadius: '8px',
-              padding: '12px'
-            }}>
+              {/* Left Side - Progress & Student Info */}
               <div style={{
-                fontSize: '14px',
-                fontWeight: 'bold',
-                color: currentColors.text,
-                marginBottom: '8px'
-              }}>
-                📊 Progress: {totalProcessed}/{notificationData.length}
-              </div>
-              
-              {/* Progress Bar */}
-              <div style={{
-                width: '100%',
-                height: '8px',
-                background: currentColors.border,
-                borderRadius: '4px',
-                overflow: 'hidden',
-                marginBottom: '8px'
-              }}>
-                <div style={{
-                  width: `${(totalProcessed / notificationData.length) * 100}%`,
-                  height: '100%',
-                  background: `linear-gradient(90deg, ${currentColors.accent}, ${currentColors.accentHover})`,
-                  transition: 'width 0.5s ease',
-                  borderRadius: '4px'
-                }} />
-              </div>
-              
-              <div style={{
-                fontSize: '11px',
-                color: currentColors.textSecondary,
+                flex: '0 0 300px',
                 display: 'flex',
-                justifyContent: 'space-between'
+                flexDirection: 'column',
+                gap: '12px'
               }}>
-                <span style={{ color: currentColors.success }}>✅ {sentStudents.size}</span>
-                <span style={{ color: currentColors.warning }}>⏭️ {skippedStudents.size}</span>
-                <span style={{ color: currentColors.textSecondary }}>📝 {remainingStudents}</span>
-              </div>
-            </div>
-
-            {/* Current Student Info */}
-            {currentStudent && (
-              <div style={{
-                background: currentColors.card,
-                border: `1px solid ${currentColors.accent}`,
-                borderRadius: '8px',
-                padding: '12px',
-                flex: 1
-              }}>
+                {/* Progress Summary */}
                 <div style={{
-                  textAlign: 'center',
-                  marginBottom: '12px'
+                  background: theme === 'dark' ? 'rgba(37, 211, 102, 0.1)' : 'rgba(37, 211, 102, 0.05)',
+                  border: `1px solid ${currentColors.accent}`,
+                  borderRadius: '8px',
+                  padding: '12px'
                 }}>
                   <div style={{
-                    background: currentColors.accent,
-                    color: 'white',
-                    padding: '2px 8px',
-                    borderRadius: '8px',
-                    fontSize: '10px',
+                    fontSize: '14px',
                     fontWeight: 'bold',
-                    display: 'inline-block',
+                    color: currentColors.text,
                     marginBottom: '8px'
                   }}>
-                    {currentStudentIndex + 1} of {notificationData.length}
+                    📊 Progress: {totalProcessed}/{notificationData.length}
                   </div>
-                  
-                  <h3 style={{
-                    margin: '0 0 6px 0',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    color: currentColors.text
-                  }}>
-                    👤 {currentStudent.student_name}
-                    {currentStudent.father_name && (
-                      <span style={{
-                        fontSize: '16px',
-                        fontWeight: 'normal',
-                        color: currentColors.textSecondary,
-                        marginLeft: '8px'
-                      }}>
-                        • {currentStudent.father_name}
-                      </span>
-                    )}
-                  </h3>
-                  
+
+                  {/* Progress Bar */}
                   <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '8px',
-                        marginBottom: '8px',
-                        flexWrap: 'wrap'
+                    width: '100%',
+                    height: '8px',
+                    background: currentColors.border,
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    marginBottom: '8px'
                   }}>
-                    <span style={{
-                      background: theme === 'dark' ? 'rgba(74, 108, 247, 0.2)' : 'rgba(74, 108, 247, 0.1)',
-                      color: '#4a6cf7',
-                      padding: '2px 6px',
-                      borderRadius: '10px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}>
-                      📚 {currentStudent.class_name}
-                    </span>
-                    <span style={{
-                      background: theme === 'dark' ? 'rgba(220, 53, 69, 0.2)' : 'rgba(220, 53, 69, 0.1)',
-                      color: currentColors.danger,
-                      padding: '2px 6px',
-                      borderRadius: '10px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}>
-                      {statusEmoji[currentStudent.status.toLowerCase()] || '📝'} {currentStudent.status.charAt(0).toUpperCase() + currentStudent.status.slice(1)}
-                    </span>
-                    {isAlreadySent && (
-                      <span style={{
-                        background: theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
-                        color: '#16a34a',
-                        padding: '2px 6px',
-                        borderRadius: '10px',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}>
-                        ✅ Sent
-                      </span>
-                    )}
+                    <div style={{
+                      width: `${(totalProcessed / notificationData.length) * 100}%`,
+                      height: '100%',
+                      background: `linear-gradient(90deg, ${currentColors.accent}, ${currentColors.accentHover})`,
+                      transition: 'width 0.5s ease',
+                      borderRadius: '4px'
+                    }} />
                   </div>
-                  
+
                   <div style={{
-                    fontSize: '13px',
+                    fontSize: '11px',
                     color: currentColors.textSecondary,
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
+                    justifyContent: 'space-between'
                   }}>
-                    {currentStudent.notification_channel === 'sms' ? (
-                      <>
-                        <span style={{ color: '#4CAF50' }}>💬</span>
-                        <span>{currentStudent.student_phone} (SMS)</span>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ color: '#25D366' }}>📱</span>
-                        <span>{currentStudent.student_phone} (WhatsApp)</span>
-                      </>
-                    )}
+                    <span style={{ color: currentColors.success }}>✅ {sentStudents.size}</span>
+                    <span style={{ color: currentColors.warning }}>⏭️ {skippedStudents.size}</span>
+                    <span style={{ color: currentColors.textSecondary }}>📝 {remainingStudents}</span>
                   </div>
                 </div>
 
-                {/* Navigation */}
-                <div style={{
-                  display: 'flex',
-                  gap: '6px',
-                  justifyContent: 'center',
-                  marginBottom: '12px'
-                }}>
-                  <button
-                    onClick={handlePreviousStudent}
-                    disabled={isFirstStudent}
-                    style={{
-                      background: isFirstStudent ? currentColors.border : currentColors.textSecondary,
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      cursor: isFirstStudent ? 'not-allowed' : 'pointer',
-                      opacity: isFirstStudent ? 0.5 : 1,
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isFirstStudent) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    ← Prev
-                  </button>
-                  
-                  <button
-                    onClick={handleNextStudent}
-                    disabled={isLastStudent}
-                    style={{
-                      background: isLastStudent ? currentColors.border : currentColors.textSecondary,
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      cursor: isLastStudent ? 'not-allowed' : 'pointer',
-                      opacity: isLastStudent ? 0.5 : 1,
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isLastStudent) {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    Next →
-                  </button>
-                </div>
+                {/* Current Student Info */}
+                {currentStudent && (
+                  <div style={{
+                    background: currentColors.card,
+                    border: `1px solid ${currentColors.accent}`,
+                    borderRadius: '8px',
+                    padding: '12px',
+                    flex: 1
+                  }}>
+                    <div style={{
+                      textAlign: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        background: currentColors.accent,
+                        color: 'white',
+                        padding: '2px 8px',
+                        borderRadius: '8px',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        display: 'inline-block',
+                        marginBottom: '8px'
+                      }}>
+                        {currentStudentIndex + 1} of {notificationData.length}
+                      </div>
 
-                {/* Action Buttons */}
-                <div style={{
-                  display: 'flex',
-                  gap: '6px',
-                  justifyContent: 'center'
-                }}>
-                  <button
-                    onClick={handleSendCurrentStudent}
-                    style={{
-                      background: currentStudent?.notification_channel === 'sms' 
-                        ? `linear-gradient(135deg, #4CAF50, #45a049)`
-                        : `linear-gradient(135deg, ${currentColors.accent}, ${currentColors.accentHover})`,
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
+                      <h3 style={{
+                        margin: '0 0 6px 0',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        color: currentColors.text
+                      }}>
+                        👤 {currentStudent.student_name}
+                        {currentStudent.father_name && (
+                          <span style={{
+                            fontSize: '16px',
+                            fontWeight: 'normal',
+                            color: currentColors.textSecondary,
+                            marginLeft: '8px'
+                          }}>
+                            • {currentStudent.father_name}
+                          </span>
+                        )}
+                      </h3>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <span style={{
+                          background: theme === 'dark' ? 'rgba(74, 108, 247, 0.2)' : 'rgba(74, 108, 247, 0.1)',
+                          color: '#4a6cf7',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>
+                          📚 {currentStudent.class_name}
+                        </span>
+                        <span style={{
+                          background: theme === 'dark' ? 'rgba(220, 53, 69, 0.2)' : 'rgba(220, 53, 69, 0.1)',
+                          color: currentColors.danger,
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>
+                          {statusEmoji[currentStudent.status.toLowerCase()] || '📝'} {currentStudent.status.charAt(0).toUpperCase() + currentStudent.status.slice(1)}
+                        </span>
+                        {isAlreadySent && (
+                          <span style={{
+                            background: theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
+                            color: '#16a34a',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}>
+                            ✅ Sent
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{
+                        fontSize: '13px',
+                        color: currentColors.textSecondary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}>
+                        {currentStudent.notification_channel === 'sms' ? (
+                          <>
+                            <span style={{ color: '#4CAF50' }}>💬</span>
+                            <span>{currentStudent.student_phone} (SMS)</span>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ color: '#25D366' }}>📱</span>
+                            <span>{currentStudent.student_phone} (WhatsApp)</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Navigation */}
+                    <div style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      transition: 'all 0.2s ease',
-                      boxShadow: currentStudent?.notification_channel === 'sms'
-                        ? `0 2px 8px rgba(76, 175, 80, 0.3)`
-                        : `0 2px 8px rgba(37, 211, 102, 0.3)`,
-                      flex: 1
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = currentStudent?.notification_channel === 'sms'
-                        ? `0 4px 12px rgba(76, 175, 80, 0.4)`
-                        : `0 4px 12px rgba(37, 211, 102, 0.4)`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = currentStudent?.notification_channel === 'sms'
-                        ? `0 2px 8px rgba(76, 175, 80, 0.3)`
-                        : `0 2px 8px rgba(37, 211, 102, 0.3)`;
-                    }}
-                  >
-                    {currentStudent?.notification_channel === 'sms' ? '💬 Send SMS' : '📱 Send WhatsApp'}
-                  </button>
-                  
-                  <button
-                    onClick={handleSkipCurrentStudent}
-                    style={{
-                      background: `linear-gradient(135deg, ${currentColors.warning}, #e0a800)`,
-                      color: 'black',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
+                      gap: '6px',
+                      justifyContent: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <button
+                        onClick={handlePreviousStudent}
+                        disabled={isFirstStudent}
+                        style={{
+                          background: isFirstStudent ? currentColors.border : currentColors.textSecondary,
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          cursor: isFirstStudent ? 'not-allowed' : 'pointer',
+                          opacity: isFirstStudent ? 0.5 : 1,
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isFirstStudent) {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        ← Prev
+                      </button>
+
+                      <button
+                        onClick={handleNextStudent}
+                        disabled={isLastStudent}
+                        style={{
+                          background: isLastStudent ? currentColors.border : currentColors.textSecondary,
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          cursor: isLastStudent ? 'not-allowed' : 'pointer',
+                          opacity: isLastStudent ? 0.5 : 1,
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isLastStudent) {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        Next →
+                      </button>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      transition: 'all 0.2s ease',
-                      boxShadow: `0 2px 8px rgba(255, 193, 7, 0.3)`,
-                      flex: 1
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = `0 4px 12px rgba(255, 193, 7, 0.4)`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = `0 2px 8px rgba(255, 193, 7, 0.3)`;
-                    }}
-                  >
-                    ⏭️ Skip
-                  </button>
-                </div>
+                      gap: '6px',
+                      justifyContent: 'center'
+                    }}>
+                      <button
+                        onClick={handleSendCurrentStudent}
+                        style={{
+                          background: currentStudent?.notification_channel === 'sms'
+                            ? `linear-gradient(135deg, #4CAF50, #45a049)`
+                            : `linear-gradient(135deg, ${currentColors.accent}, ${currentColors.accentHover})`,
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 0.2s ease',
+                          boxShadow: currentStudent?.notification_channel === 'sms'
+                            ? `0 2px 8px rgba(76, 175, 80, 0.3)`
+                            : `0 2px 8px rgba(37, 211, 102, 0.3)`,
+                          flex: 1
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = currentStudent?.notification_channel === 'sms'
+                            ? `0 4px 12px rgba(76, 175, 80, 0.4)`
+                            : `0 4px 12px rgba(37, 211, 102, 0.4)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = currentStudent?.notification_channel === 'sms'
+                            ? `0 2px 8px rgba(76, 175, 80, 0.3)`
+                            : `0 2px 8px rgba(37, 211, 102, 0.3)`;
+                        }}
+                      >
+                        {currentStudent?.notification_channel === 'sms' ? '💬 Send SMS' : '📱 Send WhatsApp'}
+                      </button>
+
+                      <button
+                        onClick={handleSkipCurrentStudent}
+                        style={{
+                          background: `linear-gradient(135deg, ${currentColors.warning}, #e0a800)`,
+                          color: 'black',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 0.2s ease',
+                          boxShadow: `0 2px 8px rgba(255, 193, 7, 0.3)`,
+                          flex: 1
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = `0 4px 12px rgba(255, 193, 7, 0.4)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = `0 2px 8px rgba(255, 193, 7, 0.3)`;
+                        }}
+                      >
+                        ⏭️ Skip
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Right Side - Message Preview */}
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            {currentStudent && (
+              {/* Right Side - Message Preview */}
               <div style={{
-                background: currentColors.card,
-                border: `1px solid ${currentColors.border}`,
-                borderRadius: '8px',
-                padding: '12px',
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column'
               }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px'
-                }}>
+                {currentStudent && (
                   <div style={{
-                    fontWeight: 'bold',
-                    color: currentColors.accent,
-                    fontSize: '14px'
-                  }}>
-                    📝 Message Preview:
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {!isEditingMessage ? (
-                      <>
-                        <button
-                          onClick={handleEditMessage}
-                          style={{
-                            background: currentColors.accent,
-                            color: 'white',
-                            border: 'none',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.opacity = '0.8';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = '1';
-                          }}
-                        >
-                          ✏️ Edit
-                        </button>
-                        
-                        {customMessages.has(currentStudent.student_id) && (
-                          <button
-                            onClick={handleResetMessage}
-                            style={{
-                              background: currentColors.warning,
-                              color: 'black',
-                              border: 'none',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '10px',
-                              fontWeight: '500',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.opacity = '0.8';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.opacity = '1';
-                            }}
-                          >
-                            🔄 Reset
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handleSaveMessage}
-                          style={{
-                            background: currentColors.success,
-                            color: 'white',
-                            border: 'none',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.opacity = '0.8';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = '1';
-                          }}
-                        >
-                          ✅ Save
-                        </button>
-                        
-                        <button
-                          onClick={handleCancelEdit}
-                          style={{
-                            background: currentColors.danger,
-                            color: 'white',
-                            border: 'none',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.opacity = '0.8';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = '1';
-                          }}
-                        >
-                          ❌ Cancel
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                {isEditingMessage ? (
-                  <textarea
-                    id="message-editor"
-                    defaultValue={getCurrentMessage()}
-                    style={{
-                      background: currentColors.bg,
-                      border: `1px solid ${currentColors.border}`,
-                      borderRadius: '6px',
-                      padding: '12px',
-                      fontSize: '12px',
-                      lineHeight: '1.4',
-                      color: currentColors.text,
-                      flex: 1,
-                      resize: 'vertical',
-                      fontFamily: 'monospace',
-                      minHeight: '200px'
-                    }}
-                    placeholder="Enter your custom message here..."
-                  />
-                ) : (
-                  <div style={{
-                    background: currentColors.bg,
+                    background: currentColors.card,
                     border: `1px solid ${currentColors.border}`,
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     padding: '12px',
-                    fontSize: '12px',
-                    whiteSpace: 'pre-line',
-                    lineHeight: '1.4',
-                    color: currentColors.text,
                     flex: 1,
-                    overflow: 'auto',
-                    fontFamily: 'monospace'
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}>
-                    {getCurrentMessage()}
-                  </div>
-                )}
-                
-                {/* Custom message indicator */}
-                {customMessages.has(currentStudent.student_id) && !isEditingMessage && (
-                  <div style={{
-                    marginTop: '8px',
-                    padding: '4px 8px',
-                    background: theme === 'dark' ? 'rgba(255, 193, 7, 0.2)' : 'rgba(255, 193, 7, 0.1)',
-                    border: `1px solid ${currentColors.warning}`,
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    color: currentColors.warning,
-                    textAlign: 'center'
-                  }}>
-                    ✏️ Custom message for this student
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{
+                        fontWeight: 'bold',
+                        color: currentColors.accent,
+                        fontSize: '14px'
+                      }}>
+                        📝 Message Preview:
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {!isEditingMessage ? (
+                          <>
+                            <button
+                              onClick={handleEditMessage}
+                              style={{
+                                background: currentColors.accent,
+                                color: 'white',
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '10px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '0.8';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+
+                            {customMessages.has(currentStudent.student_id) && (
+                              <button
+                                onClick={handleResetMessage}
+                                style={{
+                                  background: currentColors.warning,
+                                  color: 'black',
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '10px',
+                                  fontWeight: '500',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.opacity = '0.8';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.opacity = '1';
+                                }}
+                              >
+                                🔄 Reset
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={handleSaveMessage}
+                              style={{
+                                background: currentColors.success,
+                                color: 'white',
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '10px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '0.8';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                              }}
+                            >
+                              ✅ Save
+                            </button>
+
+                            <button
+                              onClick={handleCancelEdit}
+                              style={{
+                                background: currentColors.danger,
+                                color: 'white',
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '10px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '0.8';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                              }}
+                            >
+                              ❌ Cancel
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {isEditingMessage ? (
+                      <textarea
+                        id="message-editor"
+                        defaultValue={getCurrentMessage()}
+                        style={{
+                          background: currentColors.bg,
+                          border: `1px solid ${currentColors.border}`,
+                          borderRadius: '6px',
+                          padding: '12px',
+                          fontSize: '12px',
+                          lineHeight: '1.4',
+                          color: currentColors.text,
+                          flex: 1,
+                          resize: 'vertical',
+                          fontFamily: 'monospace',
+                          minHeight: '200px'
+                        }}
+                        placeholder="Enter your custom message here..."
+                      />
+                    ) : (
+                      <div style={{
+                        background: currentColors.bg,
+                        border: `1px solid ${currentColors.border}`,
+                        borderRadius: '6px',
+                        padding: '12px',
+                        fontSize: '12px',
+                        whiteSpace: 'pre-line',
+                        lineHeight: '1.4',
+                        color: currentColors.text,
+                        flex: 1,
+                        overflow: 'auto',
+                        fontFamily: 'monospace'
+                      }}>
+                        {getCurrentMessage()}
+                      </div>
+                    )}
+
+                    {/* Custom message indicator */}
+                    {customMessages.has(currentStudent.student_id) && !isEditingMessage && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '4px 8px',
+                        background: theme === 'dark' ? 'rgba(255, 193, 7, 0.2)' : 'rgba(255, 193, 7, 0.1)',
+                        border: `1px solid ${currentColors.warning}`,
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        color: currentColors.warning,
+                        textAlign: 'center'
+                      }}>
+                        ✏️ Custom message for this student
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
             </>
           )}
         </div>
@@ -1285,8 +1398,8 @@ ${data.school_short_name || schoolName}`;
             🔄 Reset
           </button>
 
-          <div style={{ 
-            display: 'flex', 
+          <div style={{
+            display: 'flex',
             gap: window.innerWidth <= 700 ? '8px' : '12px',
             flex: window.innerWidth <= 700 ? '1 1 0' : 'initial',
             order: window.innerWidth <= 700 ? 1 : 2

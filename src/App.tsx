@@ -80,6 +80,7 @@ import ExaminationConfiguration from './pages/ExaminationConfiguration';
 import HomeworkDiaryManager from './components/HomeworkDiaryManager';
 // Student Management Components
 import StudentDashboard from './components/StudentDashboard';
+import GeneralMessagePage from './pages/GeneralMessagePage';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
 // Attendance Management Components
@@ -106,13 +107,13 @@ const AppRouter = isElectron ? HashRouter : BrowserRouter;
 const GlobalLoaderOverlay: React.FC = () => {
   const { loading } = useLoading();
   const { theme } = useContext(ThemeContext);
-  
+
   if (!loading) return null;
   return (
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
-      background: theme === 'dark' 
+      background: theme === 'dark'
         ? 'rgba(37, 37, 37, 0.95)' // Dark theme with slight transparency
         : 'rgba(245, 247, 250, 0.95)', // Light theme with slight transparency
       backdropFilter: 'blur(8px)',
@@ -167,7 +168,7 @@ const App: React.FC = () => {
               <LoadingProvider>
                 <NavigationProvider>
                   <RouteChangeLoader />
-                  <GlobalBackHandler 
+                  <GlobalBackHandler
                     onExit={() => {
                       if (window.electronAPI) {
                         window.electronAPI.minimize();
@@ -176,728 +177,739 @@ const App: React.FC = () => {
                   />
                   <AuthProvider>
                     <ToastProvider theme={theme} muted={false}>
-                    <Routes>
-                {/* Public Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                
-
-                {/* School Welcome Screen - Shows after login */}
-                <Route
-                  path="/welcome"
-                  element={
-                    <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher', 'Super Admin']}>
-                      <SchoolWelcomeScreen />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Dashboard Route - Main app entry point */}
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Super Admin', 'Guest']} guestPageKey="dashboard">
-                      <Layout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route
-                    index
-                    element={<Dashboard />}
-                  />
-                </Route>
-
-                {/* Guest Dashboard Route - Menu cards for guest users */}
-                <Route
-                  path="/guest"
-                  element={
-                    <ProtectedRoute allowedRoles={['Guest']}>
-                      <Layout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route
-                    index
-                    element={<GuestDashboard />}
-                  />
-                </Route>
-
-                {/* Protected Routes */}
-                <Route path="/" element={<Layout />}>
-                  {/* Root route - handle initial redirection based on user role */}
-                  <Route
-                    index
-                    element={<InitialRouteHandler />}
-                  />
-
-                  {/* Teacher Welcome Page */}
-                  {/* Public Student Self Profile (uses Layout providers for styles/contexts) */}
-                  <Route
-                    path="student/:id"
-                    element={<StudentProfile />}
-                  />
-                  <Route
-                    path="teacher"
-                    element={
-                      <ProtectedRoute allowedRoles={['Teacher']}>
-                        <WelcomePage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Teacher Timetable */}
-                  <Route
-                    path="my-timetable"
-                    element={
-                      <ProtectedRoute allowedRoles={['Teacher']}>
-                        <MyTimetable />
-                      </ProtectedRoute>
-                    }
-                  />
+                      <Routes>
+                        {/* Public Routes */}
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
 
-                  {/* Classes Management */}
-                  <Route
-                    path="classes/all"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <ClassesManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                        {/* School Welcome Screen - Shows after login */}
+                        <Route
+                          path="/welcome"
+                          element={
+                            <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher', 'Super Admin']}>
+                              <SchoolWelcomeScreen />
+                            </ProtectedRoute>
+                          }
+                        />
 
-                  {/* Student Dashboard */}
-                  <Route
-                    path="students"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                        guestPageKey="dashboard"
-                      >
-                        <StudentDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Student Management */}
-                  <Route
-                    path="students/list"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                        guestPageKey="students_list"
-                      >
-                        <StudentList />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="students/profile/:id"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                        guestPageKey="student_profile"
-                      >
-                        <StudentProfile />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="students/add"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
-                        <StudentAdmissionForm />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="bulk-student-admission"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
-                        <BulkStudentAdmission />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="students/status"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
-                        <StudentStatusManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="students/withdrawal-register"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                        guestPageKey="students_list"
-                      >
-                        <WithdrawalRegister />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="bulk-promote-demote"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
-                        <BulkPromoteDemote />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="family-management"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
-                        <FamilyManagementPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Employee Dashboard */}
-                  <Route
-                    path="employees"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <EmployeesDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Employee Management */}
-                  <Route
-                    path="employees/list"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Guest']}
-                        guestPageKey="employees_list"
-                      >
-                        <EmployeeList />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="employees/add"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <StaffAddForm />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="employees/profile/:id"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Guest', 'Teacher']}
-                        guestPageKey="employee_profile"
-                      >
-                        <TeacherProfile />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/teacher-subjects"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <TeacherSubjectManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Settings Dashboard */}
-                  <Route
-                    path="settings"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <SettingsDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Settings Routes */}
-                  <Route
-                    path="settings/sessions"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <SessionsManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="settings/user-management"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <UserManagement />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="settings/student-passwords"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <StudentPasswordManagement />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="settings/institute-profile"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <InstituteProfile />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="settings/holidays"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <HolidayManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="settings/classes"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <ClassesManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="settings/render-settings"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <RenderSettings />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="settings/general-settings"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <GeneralSettings />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Fine Dashboard */}
-                  <Route
-                    path="fines"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FineDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Fine Management Routes */}
-                  <Route
-                    path="fines/assign"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FineManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fines/collect"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FineCollection />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fines/remaining"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <RemainingFine />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fines/statistics"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
-                        guestPageKey="fine_statistics"
-                      >
-                        <FineStatistics />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Fee Management Dashboard */}
-                  <Route
-                    path="fee-management"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FeeManagementDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Fee Management Routes */}
-                  <Route
-                    path="fee-structure-management"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FeeStructureManager />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="load-fee"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <LoadFeePage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fee-collection"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FeeCollection />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fee-defaulters"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FeeDefaultersList />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fee-audit-logs"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <FeeAuditLogsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="fee-analytics"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
-                        guestPageKey="fee_analytics"
-                      >
-                        <FeeAnalyticsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Enquiry Management Routes */}
-                  <Route
-                    path="enquiries"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <EnquiryManagementDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="enquiries/dashboard"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <EnquiryDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="enquiries/list"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <EnquiryListPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="enquiries/create"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <EnquiryFormPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="enquiries/:id"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <EnquiryDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="enquiries/:id/edit"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
-                        <EnquiryFormPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                    {/* Reports Management */}
-                    <Route
-                      path="reports"
-                      element={
-                        <ProtectedRoute 
-                          allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
-                          guestPageKey="reports"
+                        {/* Dashboard Route - Main app entry point */}
+                        <Route
+                          path="/dashboard"
+                          element={
+                            <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Super Admin', 'Guest']} guestPageKey="dashboard">
+                              <Layout />
+                            </ProtectedRoute>
+                          }
                         >
-                          <Reports />
-                        </ProtectedRoute>
-                      }
-                    />
+                          <Route
+                            index
+                            element={<Dashboard />}
+                          />
+                        </Route>
 
-                  {/* Attendance Dashboard */}
-                  <Route
-                    path="attendance"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
-                        <AttendanceDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
+                        {/* Guest Dashboard Route - Menu cards for guest users */}
+                        <Route
+                          path="/guest"
+                          element={
+                            <ProtectedRoute allowedRoles={['Guest']}>
+                              <Layout />
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route
+                            index
+                            element={<GuestDashboard />}
+                          />
+                        </Route>
 
-                  {/* Attendance Routes */}
-                  <Route
-                    path="attendance/mark"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
-                        <MarkAttendance />
-                      </ProtectedRoute>
-                    }
-                  />
+                        {/* Protected Routes */}
+                        <Route path="/" element={<Layout />}>
+                          {/* Root route - handle initial redirection based on user role */}
+                          <Route
+                            index
+                            element={<InitialRouteHandler />}
+                          />
 
-                  <Route
-                    path="attendance/staff"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <MarkStaffAttendance />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Teacher Welcome Page */}
+                          {/* Public Student Self Profile (uses Layout providers for styles/contexts) */}
+                          <Route
+                            path="student/:id"
+                            element={<StudentProfile />}
+                          />
+                          <Route
+                            path="teacher"
+                            element={
+                              <ProtectedRoute allowedRoles={['Teacher']}>
+                                <WelcomePage />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="attendance/staff-report"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <StaffAttendanceReport />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Teacher Timetable */}
+                          <Route
+                            path="my-timetable"
+                            element={
+                              <ProtectedRoute allowedRoles={['Teacher']}>
+                                <MyTimetable />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="attendance/report"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
-                        guestPageKey="attendance_reports"
-                      >
-                        <AttendanceReport />
-                      </ProtectedRoute>
-                    }
-                  />
 
-                  <Route
-                    path="attendance/half-leaves"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
-                        <HalfLeaves />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Classes Management */}
+                          <Route
+                            path="classes/all"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <ClassesManager />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Subject Management */}
-                  <Route
-                    path="subjects"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <SubjectManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Student Dashboard */}
+                          <Route
+                            path="students"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                                guestPageKey="dashboard"
+                              >
+                                <StudentDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Examination Dashboard */}
-                  <Route
-                    path="examination"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                        guestPageKey="examination_results"
-                      >
-                        <ExaminationDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Student Management */}
+                          <Route
+                            path="students/list"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                                guestPageKey="students_list"
+                              >
+                                <StudentList />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Examination Management */}
-                  <Route
-                    path="examinations"
-                    element={
-                      <ProtectedRoute 
-                        allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                        guestPageKey="examination_results"
-                      >
-                        <ExaminationManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="students/profile/:id"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                                guestPageKey="student_profile"
+                              >
+                                <StudentProfile />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Examination Configuration */}
-                  <Route
-                    path="examination-configuration"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin']}>
-                        <ExaminationConfiguration />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="students/add"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                                <StudentAdmissionForm />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="marks-entry"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                        <MarksEntryManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="bulk-student-admission"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                                <BulkStudentAdmission />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="master-sheets"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                        <MasterSheetManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="students/status"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                                <StudentStatusManager />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="dmc-generation"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                        <DetailedMarksCertificate />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="students/withdrawal-register"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                                guestPageKey="students_list"
+                              >
+                                <WithdrawalRegister />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="position-holders"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                        <PositionHolders />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="students/general-message"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Academic Head']}
+                              >
+                                <GeneralMessagePage />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  <Route
-                    path="exam-analytics"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                        <ExaminationAnalytics />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="bulk-promote-demote"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                                <BulkPromoteDemote />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Test Record Management */}
-                  <Route
-                    path="test-dashboard"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                        <TestDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-            <Route
-              path="test-records"
-              element={
-                <ProtectedRoute 
-                  allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                  guestPageKey="test_records"
-                >
-                  <TestRecordManager />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="test-record-master-sheet"
-              element={
-                <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                  <TestRecordMasterSheet />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="test-analytics"
-              element={
-                <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                  <TestAnalytics />
-                </ProtectedRoute>
-              }
-            />
+                          <Route
+                            path="family-management"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                                <FamilyManagementPage />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Time Table Management */}
-                  <Route
-                    path="timetable"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                        <TimeTableManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Employee Dashboard */}
+                          <Route
+                            path="employees"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <EmployeesDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Homework Diary Management */}
-                  <Route
-                    path="homework-diary"
-                    element={
-                      <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
-                        <HomeworkDiaryManager />
-                      </ProtectedRoute>
-                    }
-                  />
+                          {/* Employee Management */}
+                          <Route
+                            path="employees/list"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Guest']}
+                                guestPageKey="employees_list"
+                              >
+                                <EmployeeList />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Schools Management */}
-                  <Route
-                    path="schools"
-                    element={
-                      <ProtectedRoute allowedRoles={['Super Admin']}>
-                        <SchoolsManagement />
-                      </ProtectedRoute>
-                    }
-                  />
+                          <Route
+                            path="employees/add"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <StaffAddForm />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                  {/* Default route */}
-                  <Route path="*" element={<PageNotFound />} />
-                </Route>
-                </Routes>
+                          <Route
+                            path="employees/profile/:id"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Guest', 'Teacher']}
+                                guestPageKey="employee_profile"
+                              >
+                                <TeacherProfile />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="/teacher-subjects"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <TeacherSubjectManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Settings Dashboard */}
+                          <Route
+                            path="settings"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <SettingsDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Settings Routes */}
+                          <Route
+                            path="settings/sessions"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <SessionsManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/user-management"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <UserManagement />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/student-passwords"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <StudentPasswordManagement />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/institute-profile"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <InstituteProfile />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/holidays"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <HolidayManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/classes"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <ClassesManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/render-settings"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <RenderSettings />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="settings/general-settings"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <GeneralSettings />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Fine Dashboard */}
+                          <Route
+                            path="fines"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FineDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Fine Management Routes */}
+                          <Route
+                            path="fines/assign"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FineManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fines/collect"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FineCollection />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fines/remaining"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <RemainingFine />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fines/statistics"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
+                                guestPageKey="fine_statistics"
+                              >
+                                <FineStatistics />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Fee Management Dashboard */}
+                          <Route
+                            path="fee-management"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FeeManagementDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Fee Management Routes */}
+                          <Route
+                            path="fee-structure-management"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FeeStructureManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="load-fee"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <LoadFeePage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-collection"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FeeCollection />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-defaulters"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FeeDefaultersList />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-audit-logs"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FeeAuditLogsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-analytics"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
+                                guestPageKey="fee_analytics"
+                              >
+                                <FeeAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Enquiry Management Routes */}
+                          <Route
+                            path="enquiries"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <EnquiryManagementDashboardPage />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="enquiries/dashboard"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <EnquiryDashboardPage />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="enquiries/list"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <EnquiryListPage />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="enquiries/create"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <EnquiryFormPage />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="enquiries/:id"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <EnquiryDetailPage />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="enquiries/:id/edit"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <EnquiryFormPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Reports Management */}
+                          <Route
+                            path="reports"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
+                                guestPageKey="reports"
+                              >
+                                <Reports />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Attendance Dashboard */}
+                          <Route
+                            path="attendance"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                                <AttendanceDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Attendance Routes */}
+                          <Route
+                            path="attendance/mark"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                                <MarkAttendance />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/staff"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <MarkStaffAttendance />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/staff-report"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <StaffAttendanceReport />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/report"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
+                                guestPageKey="attendance_reports"
+                              >
+                                <AttendanceReport />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/half-leaves"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                                <HalfLeaves />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Subject Management */}
+                          <Route
+                            path="subjects"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <SubjectManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Examination Dashboard */}
+                          <Route
+                            path="examination"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                                guestPageKey="examination_results"
+                              >
+                                <ExaminationDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Examination Management */}
+                          <Route
+                            path="examinations"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                                guestPageKey="examination_results"
+                              >
+                                <ExaminationManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Examination Configuration */}
+                          <Route
+                            path="examination-configuration"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin']}>
+                                <ExaminationConfiguration />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="marks-entry"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <MarksEntryManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="master-sheets"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <MasterSheetManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="dmc-generation"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <DetailedMarksCertificate />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="position-holders"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <PositionHolders />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="exam-analytics"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <ExaminationAnalytics />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Test Record Management */}
+                          <Route
+                            path="test-dashboard"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <TestDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="test-records"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                                guestPageKey="test_records"
+                              >
+                                <TestRecordManager />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="test-record-master-sheet"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <TestRecordMasterSheet />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="test-analytics"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <TestAnalytics />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Time Table Management */}
+                          <Route
+                            path="timetable"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <TimeTableManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Homework Diary Management */}
+                          <Route
+                            path="homework-diary"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                                <HomeworkDiaryManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Schools Management */}
+                          <Route
+                            path="schools"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin']}>
+                                <SchoolsManagement />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Default route */}
+                          <Route path="*" element={<PageNotFound />} />
+                        </Route>
+                      </Routes>
                     </ToastProvider>
                   </AuthProvider>
                   <UpdateNotification ref={updateNotificationRef} />

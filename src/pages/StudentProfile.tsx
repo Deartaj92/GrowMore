@@ -3346,11 +3346,7 @@ export const StudentProfile: React.FC = () => {
         const [studentResult, attendanceResult] = await Promise.all([
           supabase
           .from('students')
-          .select(`
-            *,
-            class:classes(name),
-            section:sections(name)
-          `)
+          .select('*')
           .eq('id', id)
             .single(),
           supabase
@@ -3361,7 +3357,77 @@ export const StudentProfile: React.FC = () => {
         ]);
 
         if (studentResult.error) throw studentResult.error;
-        const studentData = studentResult.data;
+        let studentData = studentResult.data;
+        
+        // Get current class from student_class_history
+        setProgress(25);
+        const { data: historyData } = await supabase
+          .from('student_class_history')
+          .select(`
+            id,
+            new_class_id,
+            new_section_id,
+            new_classes:new_class_id(id, name),
+            new_sections:new_section_id(id, name)
+          `)
+          .eq('student_id', id)
+          .eq('school_id', studentData.school_id)
+          .order('id', { ascending: true });
+        
+        // Get the latest record (current class)
+        let currentClass = null;
+        let currentSection = null;
+        let currentClassObj = null;
+        let currentSectionObj = null;
+        
+        if (historyData && historyData.length > 0) {
+          const lastRecord = historyData[historyData.length - 1];
+          currentClass = lastRecord.new_class_id || studentData.class_id;
+          currentSection = lastRecord.new_section_id !== null ? lastRecord.new_section_id : (studentData.section_id !== null ? studentData.section_id : null);
+          
+          // Handle class object (can be single object or array from Supabase join)
+          const classObj = lastRecord.new_classes;
+          if (classObj) {
+            currentClassObj = Array.isArray(classObj) ? classObj[0] : classObj;
+          }
+          
+          // Handle section object (can be single object or array from Supabase join)
+          const sectionObj = lastRecord.new_sections;
+          if (sectionObj) {
+            currentSectionObj = Array.isArray(sectionObj) ? sectionObj[0] : sectionObj;
+          }
+        } else {
+          // Fallback to students table if no history
+          currentClass = studentData.class_id;
+          currentSection = studentData.section_id;
+          // Fetch class and section names from their tables
+          if (currentClass) {
+            const { data: classData } = await supabase
+              .from('classes')
+              .select('id, name')
+              .eq('id', currentClass)
+              .single();
+            currentClassObj = classData;
+          }
+          if (currentSection) {
+            const { data: sectionData } = await supabase
+              .from('sections')
+              .select('id, name')
+              .eq('id', currentSection)
+              .single();
+            currentSectionObj = sectionData;
+          }
+        }
+        
+        // Merge current class information into student data
+        studentData = {
+          ...studentData,
+          class_id: currentClass,
+          section_id: currentSection,
+          class: currentClassObj && currentClassObj.name ? { name: currentClassObj.name } : null,
+          section: currentSectionObj && currentSectionObj.name ? { name: currentSectionObj.name } : null
+        };
+        
         setStudent(studentData);
 
         if (attendanceResult.error) throw attendanceResult.error;

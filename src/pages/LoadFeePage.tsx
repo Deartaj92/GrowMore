@@ -993,6 +993,17 @@ export default function LoadFeePage() {
     return classObj?.has_sections ?? true; // Default to true for backward compatibility
   };
 
+  // Helper function to format class/section display
+  const formatClassSectionDisplay = (classId: any, sectionId: any) => {
+    const className = classes.find(c => c.id === classId)?.name || '-';
+    const hasSections = getClassHasSections(classId);
+    if (hasSections && sectionId) {
+      const sectionName = sections.find(s => s.id === sectionId)?.name || '-';
+      return `${className} (${sectionName})`;
+    }
+    return className;
+  };
+
   // Get current month
   const getCurrentMonth = () => {
     const now = new Date();
@@ -1003,6 +1014,71 @@ export default function LoadFeePage() {
   const getCurrentYear = () => {
     const now = new Date();
     return String(now.getFullYear());
+  };
+
+  // Helper function to merge current class from student_class_history
+  const mergeCurrentClassFromHistory = async (studentsData: any[]) => {
+    if (!studentsData || studentsData.length === 0) return studentsData;
+    
+    const studentIds = studentsData.map(s => s.id);
+    
+    // Fetch class history for all students - get latest record for each student
+    const { data: historyData } = await supabase
+      .from('student_class_history')
+      .select(`
+        id,
+        student_id,
+        new_class_id,
+        new_section_id,
+        new_classes:new_class_id(id, name),
+        new_sections:new_section_id(id, name)
+      `)
+      .in('student_id', studentIds)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true });
+
+    // Create a map of current class for each student
+    const currentClassMap = new Map();
+    
+    if (historyData && historyData.length > 0) {
+      // Group by student_id
+      const studentRecordsMap = new Map();
+      historyData.forEach((entry: any) => {
+        const studentId = entry.student_id;
+        if (!studentRecordsMap.has(studentId)) {
+          studentRecordsMap.set(studentId, []);
+        }
+        studentRecordsMap.get(studentId).push(entry);
+      });
+      
+      // For each student, get the latest record (current class)
+      studentRecordsMap.forEach((records, studentId) => {
+        if (records.length > 0) {
+          // Last record = current class
+          const lastRecord = records[records.length - 1];
+          currentClassMap.set(studentId, {
+            class: lastRecord.new_classes || null,
+            section: lastRecord.new_sections || null,
+            class_id: lastRecord.new_class_id || null,
+            section_id: lastRecord.new_section_id || null
+          });
+        }
+      });
+    }
+
+    // Merge student data with current class from history
+    return studentsData.map((student: any) => {
+      const currentClass = currentClassMap.get(student.id);
+      
+      // Use current class from history if available, otherwise fall back to students table
+      return {
+        ...student,
+        classes: currentClass?.class || null,
+        sections: currentClass?.section || null,
+        class_id: currentClass?.class_id || student.class_id || null,
+        section_id: currentClass?.section_id || student.section_id || null
+      };
+    });
   };
 
   // Load students data with caching
@@ -1017,7 +1093,10 @@ export default function LoadFeePage() {
         .order('name', { ascending: true });
       
       if (error) throw error;
-      setStudents(stu || []);
+      
+      // Merge current class from student_class_history
+      const studentsWithCurrentClass = await mergeCurrentClassFromHistory(stu || []);
+      setStudents(studentsWithCurrentClass);
     } catch (error) {
       console.error('Error loading students:', error);
     } finally {
@@ -1039,7 +1118,10 @@ export default function LoadFeePage() {
       setClasses(sortClassesLocal(cls.data || []));
       setSections(sec.data || []);
       setSessions(ses.data || []);
-      setStudents(stu.data || []);
+      
+      // Merge current class from student_class_history
+      const studentsWithCurrentClass = await mergeCurrentClassFromHistory(stu.data || []);
+      setStudents(studentsWithCurrentClass);
       setFeeHeads(fh || []);
 
       // Set default session (active session or latest)
@@ -1610,7 +1692,8 @@ export default function LoadFeePage() {
         throw studentsError;
       }
 
-      const filtered = studentsData || [];
+      // Merge current class from student_class_history
+      const filtered = await mergeCurrentClassFromHistory(studentsData || []);
       setPreview(filtered);
       // Select all students by default
       setSelectedStudents(filtered.map(stu => stu.id));
@@ -1666,8 +1749,8 @@ export default function LoadFeePage() {
             .from('student_class_history')
             .select('student_id')
             .eq('session_id', selectedSession)
-            .eq('class_id', selectedClass)
-            .eq('section_id', selectedSection)
+            .eq('new_class_id', selectedClass)
+            .eq('new_section_id', selectedSection)
             .eq('school_id', schoolId);
 
           if (sectionError) {
@@ -1692,7 +1775,8 @@ export default function LoadFeePage() {
           throw studentsError;
         }
 
-        const filtered = studentsData || [];
+        // Merge current class from student_class_history
+        const filtered = await mergeCurrentClassFromHistory(studentsData || []);
         setPreview(filtered);
         // Select all students by default
         setSelectedStudents(filtered.map(stu => stu.id));
@@ -2051,7 +2135,11 @@ export default function LoadFeePage() {
           .eq('id', singleStudent.id)
           .single();
         if (!error && data) {
-          setSingleStudent(data);
+          // Merge current class from student_class_history
+          const studentsWithCurrentClass = await mergeCurrentClassFromHistory([data]);
+          if (studentsWithCurrentClass.length > 0) {
+            setSingleStudent(studentsWithCurrentClass[0]);
+          }
         }
       })();
     }
@@ -2639,20 +2727,21 @@ export default function LoadFeePage() {
                         ))}
                       </Select>
                     </FormControl>
-                    <FormControl size="small" sx={{ flex: 1 }}>
-                      <InputLabel>Section</InputLabel>
-                      <Select 
-                        value={selectedSection} 
-                        label="Section" 
-                        onChange={e => setSelectedSection(e.target.value)}
-                        disabled={!selectedClass || !getClassHasSections(selectedClass)}
-                      >
-                        <MenuItem value="">Select</MenuItem>
-                        {sections.filter(s => !selectedClass || s.class_id === selectedClass).map((s: any) => (
-                          <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    {selectedClass && getClassHasSections(selectedClass) && (
+                      <FormControl size="small" sx={{ flex: 1 }}>
+                        <InputLabel>Section</InputLabel>
+                        <Select 
+                          value={selectedSection} 
+                          label="Section" 
+                          onChange={e => setSelectedSection(e.target.value)}
+                        >
+                          <MenuItem value="">Select</MenuItem>
+                          {sections.filter(s => s.class_id === selectedClass).map((s: any) => (
+                            <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
                   </Box>
                   <Box display="flex" gap={1.5}>
                     <FormControl size="small" sx={{ flex: 1 }}>
@@ -2848,7 +2937,9 @@ export default function LoadFeePage() {
                                   width: '100%',
                                   lineHeight: 1.2,
                                 }}>
-                                  {stu.name}
+                                  <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.id}</Box> . {stu.name}{stu.father_name ? (
+                                    <> . <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.father_name}</Box></>
+                                  ) : ''}
                                 </Typography>
                                 <Typography sx={{
                                   fontSize: '0.8rem',
@@ -2861,7 +2952,7 @@ export default function LoadFeePage() {
                                   width: '100%',
                                   lineHeight: 1.2,
                                 }}>
-                                  {classes.find(c => c.id === stu.class_id)?.name || '-'} ({sections.find(s => s.id === stu.section_id)?.name || '-'})
+                                  {formatClassSectionDisplay(stu.class_id, stu.section_id)}
                                 </Typography>
                               </Box>
                               </Box>
@@ -3040,7 +3131,7 @@ export default function LoadFeePage() {
                           ID: {option.id}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                          {classes.find(c => c.id === option.class_id)?.name || ''} ({sections.find(s => s.id === option.section_id)?.name || ''})
+                          {formatClassSectionDisplay(option.class_id, option.section_id)}
                         </Typography>
                       </Box>
                     </Box>
@@ -3125,7 +3216,7 @@ export default function LoadFeePage() {
                               ID: {option.id}
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                              {classes.find(c => c.id === option.class_id)?.name || ''} ({sections.find(s => s.id === option.section_id)?.name || ''})
+                              {formatClassSectionDisplay(option.class_id, option.section_id)}
                             </Typography>
                           </Box>
                         </Box>
@@ -3606,7 +3697,7 @@ export default function LoadFeePage() {
                                 {student.name || 'Student'}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-                                {classes.find(c => c.id === student.class_id)?.name || '--'} ({sections.find(s => s.id === student.section_id)?.name || '--'})
+                                {formatClassSectionDisplay(student.class_id, student.section_id)}
                               </Typography>
                             </Box>
                           </Box>
@@ -3819,7 +3910,7 @@ export default function LoadFeePage() {
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                           {option.father_name && `Father: ${option.father_name} • `}
-                          Class: {classes.find(c => c.id === option.class_id)?.name || '--'} ({sections.find(s => s.id === option.section_id)?.name || '--'})
+                          Class: {formatClassSectionDisplay(option.class_id, option.section_id)}
                         </Typography>
                       </Box>
                     </Box>
@@ -3880,7 +3971,7 @@ export default function LoadFeePage() {
                           {concessionStudent?.father_name || '--'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
-                          • {classes.find(c => c.id === concessionStudent?.class_id)?.name || '--'} ({sections.find(s => s.id === concessionStudent?.section_id)?.name || '--'})
+                          • {formatClassSectionDisplay(concessionStudent?.class_id, concessionStudent?.section_id)}
                         </Typography>
                       </Box>
                     </Box>

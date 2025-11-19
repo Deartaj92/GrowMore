@@ -61,6 +61,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { CreateReportForm } from '../components/reports/CreateReportForm';
 import { ModifyReportModal } from '../components/reports/ModifyReportModal';
 import { EditReportForm } from '../components/reports/EditReportForm';
+import { EditUpdateForm } from '../components/reports/EditUpdateForm';
 import { useToast } from '../components/useToast';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { supabase } from '../supabaseClient';
@@ -593,6 +594,7 @@ export const Reports = (): JSX.Element => {
     const [reportToDelete, setReportToDelete] = useState<Report | undefined>(undefined);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [modifyingReport, setModifyingReport] = useState<Report | undefined>(undefined);
+    const [editingUpdate, setEditingUpdate] = useState<{ update: any; reportId: string } | undefined>(undefined);
     const { showToast } = useToast();
     const [expandedUpdates, setExpandedUpdates] = useState<{ [key: string]: boolean }>({});
     const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
@@ -961,6 +963,28 @@ export const Reports = (): JSX.Element => {
             ...prev,
             [reportId]: !prev[reportId]
         }));
+    };
+
+    const handleEditUpdate = (update: any, reportId: string) => {
+        // Check if current user is the creator of this update
+        if (user?.staff_id && update.updated_by === user.staff_id) {
+            setEditingUpdate({ update, reportId });
+        } else {
+            showToast('You can only edit updates that you created', 'error');
+        }
+    };
+
+    const handleEditUpdateSubmit = async (updateId: string, updateNote: string) => {
+        try {
+            await reportService.updateReportUpdate(updateId, updateNote, user?.school_id);
+            await loadReports();
+            setEditingUpdate(undefined);
+            showToast('Update note updated successfully', 'success');
+        } catch (error) {
+            console.error('Error updating report update:', error);
+            showToast('Failed to update update note', 'error');
+            throw error;
+        }
     };
 
     const sortedReports = useMemo(() => {
@@ -1777,9 +1801,29 @@ export const Reports = (): JSX.Element => {
                                                                         {formatStatus(update.new_status)}
                                                                     </Box>
                                                                 </Typography>
-                                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                                                    by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
-                                                                </Typography>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', mt: 0.5 }}>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
+                                                                    </Typography>
+                                                                    {user?.staff_id && update.updated_by === user.staff_id && (
+                                                                        <IconButton
+                                                                            onClick={() => handleEditUpdate(update, report.id)}
+                                                                            size="small"
+                                                                            sx={{ 
+                                                                                ml: 1,
+                                                                                width: 24,
+                                                                                height: 24,
+                                                                                color: 'primary.main',
+                                                                                '&:hover': {
+                                                                                    backgroundColor: (theme: any) => alpha(theme.palette.primary.main, 0.1)
+                                                                                }
+                                                                            }}
+                                                                            title="Edit update note"
+                                                                        >
+                                                                            <EditIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                </Box>
                                                             </Box>
                                                             {update.update_note && (
                                                                 <Typography 
@@ -2171,9 +2215,29 @@ export const Reports = (): JSX.Element => {
                                                                         {formatStatus(update.new_status)}
                                                                     </Box>
                                                                 </Typography>
-                                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                                                    by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
-                                                                </Typography>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', mt: 0.5 }}>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
+                                                                    </Typography>
+                                                                    {user?.staff_id && update.updated_by === user.staff_id && (
+                                                                        <IconButton
+                                                                            onClick={() => handleEditUpdate(update, report.id)}
+                                                                            size="small"
+                                                                            sx={{ 
+                                                                                ml: 1,
+                                                                                width: 24,
+                                                                                height: 24,
+                                                                                color: 'primary.main',
+                                                                                '&:hover': {
+                                                                                    backgroundColor: (theme: any) => alpha(theme.palette.primary.main, 0.1)
+                                                                                }
+                                                                            }}
+                                                                            title="Edit update note"
+                                                                        >
+                                                                            <EditIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                </Box>
                                                             </Box>
                                                             {update.update_note && (
                                                                 <Typography 
@@ -2328,6 +2392,15 @@ export const Reports = (): JSX.Element => {
                         }
                     } as unknown as ImportedReport}
                     onSubmit={handleModifyReport}
+                />
+            )}
+
+            {editingUpdate && (
+                <EditUpdateForm
+                    open={true}
+                    onClose={() => setEditingUpdate(undefined)}
+                    onSubmit={handleEditUpdateSubmit}
+                    update={editingUpdate.update}
                 />
             )}
             </MainContent>

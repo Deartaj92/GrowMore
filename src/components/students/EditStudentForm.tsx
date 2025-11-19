@@ -18,8 +18,7 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
-  FormLabel,
-  Checkbox
+  FormLabel
 } from '@mui/material';
 import { Close as CloseIcon, AccountCircle } from '@mui/icons-material';
 import { supabase } from '../../supabaseClient';
@@ -262,7 +261,6 @@ interface StudentFormData {
   mother_income?: string;
   notification_channel?: 'whatsapp' | 'sms';
   _newAvatarFile?: File | null;
-  _modifyAdmissionClass?: boolean;
 }
 
 interface EditStudentFormProps {
@@ -328,14 +326,12 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
   const formRef = useRef<HTMLFormElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
-  const [modifyAdmissionClass, setModifyAdmissionClass] = useState<boolean>(false);
 
   // Update form data when initialData changes (when editing different students)
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(initialData);
       setEditAvatar(initialData.picture_url || null);
-      setModifyAdmissionClass(false); // Reset checkbox when editing different student
     }
   }, [initialData]);
 
@@ -443,11 +439,9 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     
     try {
       setIsSubmitting(true);
-      // Include the modifyAdmissionClass checkbox value in formData
-      await onSubmit({ ...formData, _modifyAdmissionClass: modifyAdmissionClass });
+      await onSubmit(formData);
       setTimeout(() => {
         onCancel();
-        setModifyAdmissionClass(false); // Reset checkbox when form closes
       }, 1500);
     } catch (error) {
       console.error('Error updating student:', error);
@@ -551,28 +545,6 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                   </FormControl>
                 </Grid>
               )}
-              <Grid item xs={12} sm={12} md={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={modifyAdmissionClass}
-                      onChange={(e) => {
-                        setModifyAdmissionClass(e.target.checked);
-                      }}
-                      color="primary"
-                    />
-                  }
-                  label={
-                    <span style={{ 
-                      fontSize: '0.95rem',
-                      color: theme.palette.mode === 'dark' ? '#e2e8f0' : '#1e293b',
-                      fontWeight: 500
-                    }}>
-                      Modify admission class too (this will change the original admission class)
-                    </span>
-                  }
-                />
-              </Grid>
               <Grid item xs={12} sm={6} md={4}>
                 <FormControl fullWidth>
                   <TextField

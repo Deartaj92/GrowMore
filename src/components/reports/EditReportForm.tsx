@@ -147,13 +147,17 @@ export const EditReportForm: React.FC<EditReportFormProps> = ({
     });
     const [loading, setLoading] = useState(false);
 
+    // Only initialize form data when modal opens, not when report prop changes
+    // This prevents the form from resetting while user is editing
     useEffect(() => {
-        setFormData({
-            description: report.description,
-            severity: report.severity,
-            created_at: dayjs(report.created_at)
-        });
-    }, [report]);
+        if (open) {
+            setFormData({
+                description: report.description,
+                severity: report.severity,
+                created_at: dayjs(report.created_at)
+            });
+        }
+    }, [open, report.id]); // Only update when modal opens or report ID changes, not when report object reference changes
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

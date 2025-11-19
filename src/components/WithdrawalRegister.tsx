@@ -639,363 +639,151 @@ const WithdrawalRegister: React.FC = () => {
       startProgress(false);
       setProgress(10);
       
-      let sessionToUse = sessionFilter;
-      if (!sessionToUse) {
-        setProgress(20);
-        const { data: sessionsData } = await supabase
-          .from('sessions')
-          .select('id, is_active')
-          .eq('school_id', user.school_id);
-        const activeSession = sessionsData?.find((s: any) => s.is_active);
-        if (activeSession) sessionToUse = String(activeSession.id);
-      }
-      
+      // Always fetch all students from all sessions - no session filtering
       setProgress(40);
       
-      if (sessionToUse) {
-        setProgress(60);
-        const { data, error } = await supabase
-          .from('student_class_history')
-          .select(`
-            student_id,
-            adm_class_id,
-            adm_section_id,
-            new_class_id,
-            new_section_id,
-            exit_date,
-            status,
-            adm_classes:adm_class_id(id, name),
-            adm_sections:adm_section_id(id, name),
-            new_classes:new_class_id(id, name),
-            new_sections:new_section_id(id, name),
-            session_id
-          `)
-          .eq('session_id', sessionToUse)
-          .eq('school_id', user.school_id)
-          .order('id', { ascending: false });
+      setProgress(70);
+      const { data, error } = await supabase
+        .from('students')
+        .select(`*, classes(name), sections(name)`)
+        .eq('school_id', user.school_id)
+        .order('created_at', { ascending: false });
+      
+      setProgress(90);
+      
+      if (!error) {
+        const studentsData = data || [];
         
-        setProgress(80);
-        
-        if (!error && data) {
-          const studentIds = Array.from(new Set(data.map((sch: any) => sch.student_id)));
-          const { data: studentsData, error: studentsError } = await supabase
-            .from('students')
-            .select('*')
+        // Fetch admission class and current class for each student from student_class_history
+        // Get the first record (admission) and the latest record (current) for each student
+        const studentIds = studentsData.map((s: any) => s.id);
+        if (studentIds.length > 0) {
+          // Get all history records for these students
+          const { data: historyData } = await supabase
+            .from('student_class_history')
+            .select(`
+              id,
+              student_id,
+              adm_class_id,
+              adm_section_id,
+              new_class_id,
+              new_section_id,
+              exit_date,
+              status,
+              adm_classes:adm_class_id(id, name),
+              adm_sections:adm_section_id(id, name),
+              new_classes:new_class_id(id, name),
+              new_sections:new_section_id(id, name)
+            `)
+            .in('student_id', studentIds)
             .eq('school_id', user.school_id)
-            .in('id', studentIds);
+            .order('id', { ascending: true });
           
-          setProgress(90);
+          // Create maps for admission (first record), current (last record), and withdrawal classes
+          const admissionClassMap = new Map();
+          const currentClassMap = new Map();
+          const withdrawalDataMap = new Map();
           
-          if (!studentsError && studentsData) {
-            const studentsMap = new Map(studentsData.map((student: any) => [student.id, student]));
-            
-            // Fetch withdrawal data for students who are withdrawn
-            const withdrawnStudents = studentsData.filter((s: any) => s.status === 'withdrawn');
-            let withdrawalDataMap = new Map();
-            
-            if (withdrawnStudents.length > 0) {
-              // First, try to get withdrawal records with exit_date from student_class_history
-              const withdrawnStudentIds = withdrawnStudents.map((s: any) => s.id);
-              const { data: withdrawalHistoryData } = await supabase
-                .from('student_class_history')
-                .select(`
-                  student_id,
-                  exit_date,
-                  new_class_id,
-                  new_section_id,
-                  adm_class_id,
-                  adm_section_id,
-                  new_classes:new_class_id(id, name),
-                  new_sections:new_section_id(id, name),
-                  adm_classes:adm_class_id(id, name),
-                  adm_sections:adm_section_id(id, name)
-                `)
-                .in('student_id', withdrawnStudentIds)
-                .eq('school_id', user.school_id)
-                .not('exit_date', 'is', null)
-                .order('id', { ascending: false });
-              
-              // Group by student_id and get the most recent withdrawal record
-              if (withdrawalHistoryData && withdrawalHistoryData.length > 0) {
-                const studentWithdrawalMap = new Map();
-                withdrawalHistoryData.forEach((entry: any) => {
-                  if (!studentWithdrawalMap.has(entry.student_id)) {
-                    studentWithdrawalMap.set(entry.student_id, entry);
-                  }
-                });
-                studentWithdrawalMap.forEach((entry, studentId) => {
-                  withdrawalDataMap.set(studentId, {
-                    exit_date: entry.exit_date,
-                    withdrawal_class: entry.new_classes || entry.adm_classes,
-                    withdrawal_section: entry.new_sections || entry.adm_sections
-                  });
-                });
+          if (historyData && historyData.length > 0) {
+            // Group by student_id
+            const studentRecordsMap = new Map();
+            historyData.forEach((entry: any) => {
+              const studentId = entry.student_id;
+              if (!studentRecordsMap.has(studentId)) {
+                studentRecordsMap.set(studentId, []);
               }
-              
-              // For students without exit_date in history, get withdrawal info from student_status_history
-              const studentsWithoutExitDate = withdrawnStudentIds.filter(id => !withdrawalDataMap.has(id));
-              if (studentsWithoutExitDate.length > 0) {
-                // Get withdrawal action from student_status_history
-                const { data: statusHistoryData } = await supabase
-                  .from('student_status_history')
-                  .select(`
-                    student_id,
-                    created_at,
-                    new_class_id,
-                    new_section_id,
-                    new_classes:new_class_id(id, name),
-                    new_sections:new_section_id(id, name)
-                  `)
-                  .in('student_id', studentsWithoutExitDate)
-                  .eq('school_id', user.school_id)
-                  .eq('action', 'withdraw')
-                  .order('created_at', { ascending: false });
-                
-                if (statusHistoryData && statusHistoryData.length > 0) {
-                  const studentStatusMap = new Map();
-                  statusHistoryData.forEach((entry: any) => {
-                    if (!studentStatusMap.has(entry.student_id)) {
-                      studentStatusMap.set(entry.student_id, entry);
-                    }
-                  });
-                  
-                  // Get class/section names for these students
-                  const classIds = Array.from(new Set(statusHistoryData.map((e: any) => e.new_class_id).filter(Boolean)));
-                  const sectionIds = Array.from(new Set(statusHistoryData.map((e: any) => e.new_section_id).filter(Boolean)));
-                  
-                  let classesMap = new Map();
-                  let sectionsMap = new Map();
-                  
-                  if (classIds.length > 0) {
-                    const { data: classesData } = await supabase
-                      .from('classes')
-                      .select('id, name')
-                      .in('id', classIds)
-                      .eq('school_id', user.school_id);
-                    if (classesData) {
-                      classesMap = new Map(classesData.map((c: any) => [c.id, c]));
-                    }
-                  }
-                  
-                  if (sectionIds.length > 0) {
-                    const { data: sectionsData } = await supabase
-                      .from('sections')
-                      .select('id, name')
-                      .in('id', sectionIds)
-                      .eq('school_id', user.school_id);
-                    if (sectionsData) {
-                      sectionsMap = new Map(sectionsData.map((s: any) => [s.id, s]));
-                    }
-                  }
-                  
-                  studentStatusMap.forEach((entry, studentId) => {
-                    const withdrawalClass = entry.new_classes || (entry.new_class_id ? classesMap.get(entry.new_class_id) : null);
-                    const withdrawalSection = entry.new_sections || (entry.new_section_id ? sectionsMap.get(entry.new_section_id) : null);
-                    
-                    withdrawalDataMap.set(studentId, {
-                      exit_date: entry.created_at ? new Date(entry.created_at).toISOString().split('T')[0] : null,
-                      withdrawal_class: withdrawalClass,
-                      withdrawal_section: withdrawalSection
-                    });
-                  });
-                }
-                
-                // For students still without withdrawal data, use their current class from the session record
-                const stillMissing = studentsWithoutExitDate.filter(id => !withdrawalDataMap.has(id));
-                stillMissing.forEach(studentId => {
-                  const student = withdrawnStudents.find((s: any) => s.id === studentId);
-                  if (student) {
-                    // Find the session record for this student
-                    const sessionRecord = data.find((sch: any) => sch.student_id === studentId);
-                    if (sessionRecord) {
-                      // Use the current class from the session record
-                      withdrawalDataMap.set(studentId, {
-                        exit_date: null,
-                        withdrawal_class: sessionRecord.new_classes || sessionRecord.adm_classes,
-                        withdrawal_section: sessionRecord.new_sections || sessionRecord.adm_sections
-                      });
-                    } else {
-                      // Fallback to student's current class from students table
-                      withdrawalDataMap.set(studentId, {
-                        exit_date: null,
-                        withdrawal_class: student.classes ? { id: student.class_id, name: student.classes?.name } : null,
-                        withdrawal_section: student.sections ? { id: student.section_id, name: student.sections?.name } : null
-                      });
-                    }
-                  }
-                });
-              }
-            }
-            
-            const mapped = data.map((sch: any) => {
-              const student = studentsMap.get(sch.student_id);
-              if (!student) return null;
-              const withdrawalData = withdrawalDataMap.get(student.id);
-              
-              // For withdrawn students, if no withdrawal data found, use current class as withdrawal class
-              let finalWithdrawalClass = withdrawalData?.withdrawal_class;
-              let finalWithdrawalSection = withdrawalData?.withdrawal_section;
-              let finalWithdrawalDate = withdrawalData?.exit_date;
-              
-              if (student.status === 'withdrawn' && !finalWithdrawalClass) {
-                // Use current class from session record as withdrawal class (the class they were in when withdrawn)
-                finalWithdrawalClass = sch.new_classes || sch.adm_classes;
-                finalWithdrawalSection = sch.new_sections || sch.adm_sections;
-              }
-              
-              // If still no withdrawal date, try to get it from student's status_updated_at
-              if (student.status === 'withdrawn' && !finalWithdrawalDate && student.status_updated_at) {
-                finalWithdrawalDate = new Date(student.status_updated_at).toISOString().split('T')[0];
-              }
-              
-              return {
-                ...student,
-                // Use new_class_id and new_section_id for current class (from the session record)
-                class_id: sch.new_class_id || sch.adm_class_id, // Current class ID (fallback to admission if new not set)
-                section_id: sch.new_section_id !== null ? sch.new_section_id : (sch.adm_section_id !== null ? sch.adm_section_id : null), // Current section ID
-                classes: sch.new_classes || sch.adm_classes, // Current class object (with id and name)
-                sections: sch.new_sections || sch.adm_sections, // Current section object (with id and name)
-                session_id: sch.session_id,
-                // Admission class and section from adm_class_id and adm_section_id
-                admission_class: sch.adm_classes || null, // Admission class object (with id and name)
-                admission_section: sch.adm_sections || null, // Admission section object (with id and name)
-                // Withdrawal data
-                withdrawal_date: finalWithdrawalDate || null,
-                withdrawal_class: finalWithdrawalClass || null,
-                withdrawal_section: finalWithdrawalSection || null,
-              };
-            }).filter(Boolean);
-            setStudents(mapped);
-          }
-        }
-      } else {
-        setProgress(70);
-        const { data, error } = await supabase
-          .from('students')
-          .select(`*, classes(name), sections(name)`)
-          .eq('school_id', user.school_id)
-          .order('created_at', { ascending: false });
-        
-        setProgress(90);
-        
-        if (!error) {
-          const studentsData = data || [];
-          
-          // Fetch admission class and current class for each student from student_class_history
-          // Get the first record (admission) and the latest record (current) for each student
-          const studentIds = studentsData.map((s: any) => s.id);
-          if (studentIds.length > 0) {
-            // Get all history records for these students
-            const { data: historyData } = await supabase
-              .from('student_class_history')
-              .select(`
-                id,
-                student_id,
-                adm_class_id,
-                adm_section_id,
-                new_class_id,
-                new_section_id,
-                exit_date,
-                status,
-                adm_classes:adm_class_id(id, name),
-                adm_sections:adm_section_id(id, name),
-                new_classes:new_class_id(id, name),
-                new_sections:new_section_id(id, name)
-              `)
-              .in('student_id', studentIds)
-              .eq('school_id', user.school_id)
-              .order('id', { ascending: true });
-            
-            // Create maps for admission (first record), current (last record), and withdrawal classes
-            const admissionClassMap = new Map();
-            const currentClassMap = new Map();
-            const withdrawalDataMap = new Map();
-            
-            if (historyData && historyData.length > 0) {
-              // Group by student_id
-              const studentRecordsMap = new Map();
-              historyData.forEach((entry: any) => {
-                const studentId = entry.student_id;
-                if (!studentRecordsMap.has(studentId)) {
-                  studentRecordsMap.set(studentId, []);
-                }
-                studentRecordsMap.get(studentId).push(entry);
-              });
-              
-              // For each student, get first record (admission), last record (current), and withdrawal record
-              studentRecordsMap.forEach((records, studentId) => {
-                if (records.length > 0) {
-                  // First record = admission
-                  const firstRecord = records[0];
-                  admissionClassMap.set(studentId, {
-                    class: firstRecord.adm_classes,
-                    section: firstRecord.adm_sections
-                  });
-                  
-                  // Last record = current
-                  const lastRecord = records[records.length - 1];
-                  currentClassMap.set(studentId, {
-                    class: lastRecord.new_classes || lastRecord.adm_classes,
-                    section: lastRecord.new_sections || lastRecord.adm_sections
-                  });
-                  
-                  // Find withdrawal record (with exit_date)
-                  const withdrawalRecord = records.find((r: any) => r.exit_date);
-                  if (withdrawalRecord) {
-                    withdrawalDataMap.set(studentId, {
-                      exit_date: withdrawalRecord.exit_date,
-                      class: withdrawalRecord.new_classes || withdrawalRecord.adm_classes,
-                      section: withdrawalRecord.new_sections || withdrawalRecord.adm_sections
-                    });
-                  }
-                }
-              });
-            }
-            
-            // Add admission, current, and withdrawal data to each student
-            const studentsWithClasses = studentsData.map((student: any) => {
-              const admission = admissionClassMap.get(student.id);
-              const current = currentClassMap.get(student.id);
-              const withdrawal = withdrawalDataMap.get(student.id);
-              
-              // For withdrawn students, if no withdrawal class found, use current class as withdrawal class
-              let finalWithdrawalClass = withdrawal?.class;
-              let finalWithdrawalSection = withdrawal?.section;
-              let finalWithdrawalDate = withdrawal?.exit_date;
-              
-              if (student.status === 'withdrawn' && !finalWithdrawalClass) {
-                // Use current class as withdrawal class (the class they were in when withdrawn)
-                finalWithdrawalClass = current?.class || (student.classes ? { id: student.class_id, name: student.classes?.name } : null);
-                finalWithdrawalSection = current?.section || (student.sections ? { id: student.section_id, name: student.sections?.name } : null);
-              }
-              
-              // If still no withdrawal date, use status_updated_at
-              if (student.status === 'withdrawn' && !finalWithdrawalDate && student.status_updated_at) {
-                finalWithdrawalDate = new Date(student.status_updated_at).toISOString().split('T')[0];
-              }
-              
-              return {
-                ...student,
-                admission_class: admission?.class || null,
-                admission_section: admission?.section || null,
-                // Override current class/section from history if available
-                classes: current?.class || student.classes || null,
-                sections: current?.section || student.sections || null,
-                // Withdrawal data
-                withdrawal_date: finalWithdrawalDate || null,
-                withdrawal_class: finalWithdrawalClass || null,
-                withdrawal_section: finalWithdrawalSection || null,
-              };
+              studentRecordsMap.get(studentId).push(entry);
             });
             
-            setStudents(studentsWithClasses);
-          } else {
-            setStudents(studentsData);
+            // For each student, get first record (admission), last record (current), and withdrawal record
+            studentRecordsMap.forEach((records, studentId) => {
+              if (records.length > 0) {
+                // First record = admission
+                const firstRecord = records[0];
+                admissionClassMap.set(studentId, {
+                  class: firstRecord.adm_classes,
+                  section: firstRecord.adm_sections
+                });
+                
+                // Last record = current
+                const lastRecord = records[records.length - 1];
+                currentClassMap.set(studentId, {
+                  class: lastRecord.new_classes || lastRecord.adm_classes,
+                  section: lastRecord.new_sections || lastRecord.adm_sections
+                });
+                
+                // Find withdrawal record (with exit_date)
+                const withdrawalRecord = records.find((r: any) => r.exit_date);
+                if (withdrawalRecord) {
+                  withdrawalDataMap.set(studentId, {
+                    exit_date: withdrawalRecord.exit_date,
+                    class: withdrawalRecord.new_classes || withdrawalRecord.adm_classes,
+                    section: withdrawalRecord.new_sections || withdrawalRecord.adm_sections
+                  });
+                }
+              }
+            });
           }
+          
+          // Add admission, current, and withdrawal data to each student
+          const studentsWithClasses = studentsData.map((student: any) => {
+            const admission = admissionClassMap.get(student.id);
+            const current = currentClassMap.get(student.id);
+            const withdrawal = withdrawalDataMap.get(student.id);
+            
+            // Get admission and current class IDs for comparison
+            const admissionClassId = admission?.class?.id;
+            const currentClassId = current?.class?.id || (student.classes ? student.class_id : null);
+            
+            // Initialize withdrawal data
+            let finalWithdrawalClass = withdrawal?.class;
+            let finalWithdrawalSection = withdrawal?.section;
+            let finalWithdrawalDate = withdrawal?.exit_date;
+            
+            // If admission class and current class are different, set current class as withdrawal class
+            // But only set withdrawal date if student is withdrawn or suspended
+            if (admissionClassId && currentClassId && admissionClassId !== currentClassId) {
+              finalWithdrawalClass = current?.class || (student.classes ? { id: student.class_id, name: student.classes?.name } : null);
+              finalWithdrawalSection = current?.section || (student.sections ? { id: student.section_id, name: student.sections?.name } : null);
+              
+              // Only set withdrawal date if student is withdrawn or suspended
+              if (student.status !== 'withdrawn' && student.status !== 'suspended') {
+                finalWithdrawalDate = null;
+              }
+            }
+            
+            // For withdrawn/suspended students, if no withdrawal class found, use current class as withdrawal class
+            if ((student.status === 'withdrawn' || student.status === 'suspended') && !finalWithdrawalClass) {
+              finalWithdrawalClass = current?.class || (student.classes ? { id: student.class_id, name: student.classes?.name } : null);
+              finalWithdrawalSection = current?.section || (student.sections ? { id: student.section_id, name: student.sections?.name } : null);
+            }
+            
+            // If still no withdrawal date for withdrawn students, use status_updated_at
+            if (student.status === 'withdrawn' && !finalWithdrawalDate && student.status_updated_at) {
+              finalWithdrawalDate = new Date(student.status_updated_at).toISOString().split('T')[0];
+            }
+            
+            return {
+              ...student,
+              admission_class: admission?.class || null,
+              admission_section: admission?.section || null,
+              // Override current class/section from history if available
+              classes: current?.class || student.classes || null,
+              sections: current?.section || student.sections || null,
+              // Withdrawal data
+              withdrawal_date: finalWithdrawalDate || null,
+              withdrawal_class: finalWithdrawalClass || null,
+              withdrawal_section: finalWithdrawalSection || null,
+            };
+          });
+          
+          setStudents(studentsWithClasses);
         } else {
-          console.error('Error fetching students:', error);
-          showToast('Failed to load students', 'error');
+          setStudents(studentsData);
         }
+      } else {
+        console.error('Error fetching students:', error);
+        showToast('Failed to load students', 'error');
       }
       
       setProgress(100);
@@ -1073,10 +861,7 @@ const WithdrawalRegister: React.FC = () => {
         console.error('Error fetching sessions:', sessionsError);
       } else {
         setSessionOptions(sessionsData || []);
-        const activeSession = sessionsData?.find(session => session.is_active);
-        if (activeSession) {
-          setSessionFilter(String(activeSession.id));
-        }
+        // Don't set default session filter - show all students from all sessions
       }
       setLoadingSessionsFilter(false);
     };
@@ -1139,34 +924,89 @@ const WithdrawalRegister: React.FC = () => {
       const { jsPDF } = jsPDFModule;
       const autoTable = autoTableModule.default;
     
+      // Fetch school details
+      let schoolName = '';
+      let schoolAddress = '';
+      let schoolPhone = '';
+      
+      if (user?.school_id) {
+        try {
+          // Fetch institute profile
+          const { data: profileData } = await supabase
+            .from('institute_profile')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .single();
+          
+          // Fetch school data
+          const { data: schoolData } = await supabase
+            .from('schools')
+            .select('*')
+            .eq('id', user.school_id)
+            .single();
+          
+          // Merge data (prefer institute_profile, fallback to schools)
+          schoolName = profileData?.name || schoolData?.name || '';
+          schoolAddress = profileData?.address || schoolData?.address || '';
+          schoolPhone = profileData?.phone || schoolData?.contact || '';
+        } catch (error) {
+          console.error('Error fetching school details:', error);
+        }
+      }
+    
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 8;
-      const tableTop = 28;
+      const tableTop = 25; // Increased to accommodate school details
       const tableBottom = pageHeight - 15;
       
       const sortedStudents = [...filteredStudents].sort((a, b) => Number(a.id) - Number(b.id));
       
       // Helper to add header on each page
       const addHeader = (pageNum: number, totalPages: number) => {
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Admission & Withdrawal Register', pageWidth / 2, 10, { align: 'center' });
+        let yPos = 8;
         
+        // School name (if available) - same font size as report title
+        if (schoolName) {
+          doc.setFontSize(13);
+          doc.setFont('helvetica', 'bold');
+          doc.text(schoolName, pageWidth / 2, yPos, { align: 'center' });
+          yPos += 5;
+        }
+        
+        // School address and phone (if available) - increased font size
+        if (schoolAddress || schoolPhone) {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          const schoolInfo = [schoolAddress, schoolPhone].filter(Boolean).join(' | ');
+          doc.text(schoolInfo, pageWidth / 2, yPos, { align: 'center' });
+          yPos += 6; // Increased spacing to properly separate from report title
+        }
+        
+        // Report title - same font size as school name
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Admission & Withdrawal Register', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 4;
+        
+        // Session and class info - moved to right side
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        const sessionName = sessionOptions.find(s => String(s.id) === String(sessionFilter))?.name || 'All Sessions';
+        // Show active session in header, or use sessionFilter if explicitly selected
+        const activeSession = sessionOptions.find(s => s.is_active);
+        const sessionName = sessionFilter 
+          ? sessionOptions.find(s => String(s.id) === String(sessionFilter))?.name || 'All Sessions'
+          : (activeSession?.name || 'All Sessions');
         const className = classFilter ? classOptions.find(c => String(c.id) === String(classFilter))?.name || 'All Classes' : 'All Classes';
-        doc.text(`Session: ${sessionName} | Class: ${className}`, pageWidth / 2, 15, { align: 'center' });
+        doc.text(`Session: ${sessionName} | Class: ${className}`, pageWidth - margin, yPos, { align: 'right' });
         
+        // Generated date - left side
         doc.setFontSize(7);
-        doc.text(`Generated: ${formatDate(new Date())}`, margin, 15, { align: 'left' });
-        doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, 15, { align: 'right' });
+        doc.text(`Generated: ${formatDate(new Date())}`, margin, yPos, { align: 'left' });
+        yPos += 4;
         
-        // Draw line under header
-        doc.setLineWidth(0.3);
-        doc.line(margin, 18, pageWidth - margin, 18);
+        // No line under header
       };
       
       // Helper to add footer
@@ -1185,31 +1025,88 @@ const WithdrawalRegister: React.FC = () => {
       
       // Table columns - compact and professional
       const head = [
-        ['#', 'ID', 'Student Name', 'Father Name', 'Adm Date', 'Adm Class', 'Withd Date', 'Withd Class', 'DOB', 'Phone', 'Address', 'Status']
+        ['#', 'ID', 'Student Name', 'Father Name', 'Adm Date', 'Adm Class', 'Wid. Date', 'Wid. Class', 'DOB', 'Phone', 'Address', 'Status']
       ];
       
       // Table rows - optimized for space
-      const body = sortedStudents.map((stu: any, idx: number) => [
-        idx + 1,
-        stu.id,
-        stu.name || '-',
-        stu.father_name || '-',
-        formatDate(stu.admission_date || stu.created_at),
-        stu.admission_class?.name 
-          ? `${stu.admission_class.name}${stu.admission_section?.name ? ` (${stu.admission_section.name})` : ''}`
-          : '-',
-        stu.withdrawal_date ? formatDate(stu.withdrawal_date) : '-',
-        stu.withdrawal_class?.name 
-          ? `${stu.withdrawal_class.name}${stu.withdrawal_section?.name ? ` (${stu.withdrawal_section.name})` : ''}`
-          : '-',
-        stu.dob ? formatDate(stu.dob) : '-',
-        stu.phone || stu.father_mobile || '-',
-        (stu.address || '-').substring(0, 30) + ((stu.address && stu.address.length > 30) ? '...' : ''),
-        (stu.status || 'active').charAt(0).toUpperCase() + (stu.status || 'active').slice(1)
-      ]);
+      // Store status values for color coding
+      const statusMap = new Map<number, string>();
+      const body = sortedStudents.map((stu: any, idx: number) => {
+        const originalStatus = (stu.status || 'active').toLowerCase();
+        statusMap.set(idx, originalStatus);
+        
+        return [
+          idx + 1,
+          stu.id,
+          stu.name || '-',
+          stu.father_name || '-',
+          formatDate(stu.admission_date || stu.created_at),
+          stu.admission_class?.name 
+            ? `${stu.admission_class.name}${stu.admission_section?.name ? ` (${stu.admission_section.name})` : ''}`
+            : '-',
+          stu.withdrawal_date ? formatDate(stu.withdrawal_date) : '-',
+          stu.withdrawal_class?.name 
+            ? `${stu.withdrawal_class.name}${stu.withdrawal_section?.name ? ` (${stu.withdrawal_section.name})` : ''}`
+            : '-',
+          stu.dob ? formatDate(stu.dob) : '-',
+          stu.phone || stu.father_mobile || '-',
+          (stu.address || '-').substring(0, 30) + ((stu.address && stu.address.length > 30) ? '...' : ''),
+          (() => {
+            const status = originalStatus;
+            // Replace "withdrawn" with "Withd."
+            if (status === 'withdrawn') {
+              return 'Withd.';
+            }
+            const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+            // Truncate if longer than 8 characters (fits in 11mm column width)
+            if (statusText.length > 8) {
+              return statusText.substring(0, 8) + '..';
+            }
+            return statusText;
+          })()
+        ];
+      });
       
-      // Column widths optimized for A4 portrait (total ~190mm for A4 width with margins)
-      const columnWidths = [5, 7, 22, 22, 16, 16, 16, 16, 16, 18, 25, 10];
+      // Calculate available width (page width minus margins)
+      const availableWidth = pageWidth - (2 * margin);
+      
+      // Fixed widths for content-fitting columns (all except Name and Father Name)
+      const fixedWidths = {
+        sno: 6,      // S.No - fit content
+        id: 7,       // ID - fit content
+        admDate: 14, // Adm Date - fit content
+        admClass: 16, // Adm Class - fit content
+        withdDate: 14, // Wid. Date - fit content
+        withdClass: 16, // Wid. Class - fit content
+        dob: 14,     // DOB - fit content
+        phone: 18,   // Phone - fit content
+        address: 25, // Address - fit content
+        status: 11   // Status - fit content (increased to prevent header wrapping)
+      };
+      
+      // Calculate total fixed width
+      const totalFixedWidth = fixedWidths.sno + fixedWidths.id + fixedWidths.admDate + 
+                              fixedWidths.admClass + fixedWidths.withdDate + fixedWidths.withdClass + 
+                              fixedWidths.dob + fixedWidths.phone + fixedWidths.address + fixedWidths.status;
+      
+      // Remaining width for Name and Father Name (equal width)
+      const nameColumnWidth = (availableWidth - totalFixedWidth) / 2;
+      
+      // Column widths array
+      const columnWidths = [
+        fixedWidths.sno,           // 0: S.No
+        fixedWidths.id,            // 1: ID
+        nameColumnWidth,           // 2: Student Name (equal share)
+        nameColumnWidth,           // 3: Father Name (equal share)
+        fixedWidths.admDate,       // 4: Adm Date
+        fixedWidths.admClass,      // 5: Adm Class
+        fixedWidths.withdDate,     // 6: Withd Date
+        fixedWidths.withdClass,    // 7: Withd Class
+        fixedWidths.dob,           // 8: DOB
+        fixedWidths.phone,         // 9: Phone
+        fixedWidths.address,       // 10: Address
+        fixedWidths.status         // 11: Status
+      ];
       
       autoTable(doc, {
         head,
@@ -1249,15 +1146,41 @@ const WithdrawalRegister: React.FC = () => {
           8: { halign: 'center', cellWidth: columnWidths[8] }, // DOB
           9: { halign: 'center', cellWidth: columnWidths[9] }, // Phone
           10: { cellWidth: columnWidths[10], fontSize: 6 }, // Address (smaller font)
-          11: { halign: 'center', cellWidth: columnWidths[11] }, // Status
+          11: { halign: 'center', cellWidth: columnWidths[11], overflow: 'hidden' }, // Status (prevent wrapping)
         },
         alternateRowStyles: { 
           fillColor: [245, 245, 245],
         },
         showHead: 'everyPage',
         showFoot: 'never',
+        didParseCell: (data: any) => {
+          // Apply row fill and text colors for body rows only
+          if (data.row.index !== undefined && (data.row.section === 'body' || !data.row.section)) {
+            const rowIndex = data.row.index;
+            const status = statusMap.get(rowIndex) || 'active';
+            
+            // Fill entire row with light red for withdrawn and suspended students
+            if (status === 'withdrawn' || status === 'suspended') {
+              data.cell.styles.fillColor = [255, 240, 240]; // Light red background
+            }
+            
+            // Apply text colors to status column (column index 11)
+            if (data.column.index === 11) {
+              if (status === 'active') {
+                data.cell.styles.textColor = [34, 197, 94]; // Green text
+              } else if (status === 'suspended') {
+                data.cell.styles.textColor = [245, 158, 11]; // Orange text
+              } else if (status === 'withdrawn') {
+                data.cell.styles.textColor = [239, 68, 68]; // Red text
+              } else {
+                data.cell.styles.textColor = [99, 102, 241]; // Default purple text
+              }
+            }
+          }
+        },
         didDrawPage: (data: any) => {
-          // This callback is called for each page, but we'll add headers/footers after table is complete
+          // Store the final Y position on each page (will use the last page's position)
+          (doc as any).lastAutoTable = { finalY: data.cursor.y };
         },
         styles: {
           overflow: 'linebreak',
@@ -1268,6 +1191,42 @@ const WithdrawalRegister: React.FC = () => {
       
       // Get actual total pages after table is drawn
       const actualTotalPages = (doc as any).internal.pages.length - 1;
+      
+      // Calculate summary statistics
+      const totalStudents = sortedStudents.length;
+      const activeStudents = sortedStudents.filter((s: any) => (s.status || 'active').toLowerCase() === 'active').length;
+      const inactiveStudents = sortedStudents.filter((s: any) => (s.status || 'active').toLowerCase() === 'inactive').length;
+      const withdrawnStudents = sortedStudents.filter((s: any) => (s.status || 'active').toLowerCase() === 'withdrawn').length;
+      const suspendedStudents = sortedStudents.filter((s: any) => (s.status || 'active').toLowerCase() === 'suspended').length;
+      
+      // Add summary at the end of the last page
+      const lastPage = actualTotalPages;
+      doc.setPage(lastPage);
+      
+      // Get the current Y position after the table
+      const finalY = (doc as any).lastAutoTable?.finalY || pageHeight - 30;
+      let summaryY = finalY + 5;
+      
+      // Draw a line before summary
+      doc.setLineWidth(0.2);
+      doc.line(margin, summaryY, pageWidth - margin, summaryY);
+      summaryY += 3;
+      
+      // Add summary text
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary', margin, summaryY, { align: 'left' });
+      summaryY += 4;
+      
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Students: ${totalStudents}`, margin + 5, summaryY, { align: 'left' });
+      doc.text(`Active: ${activeStudents}`, margin + 50, summaryY, { align: 'left' });
+      doc.text(`Inactive: ${inactiveStudents}`, margin + 80, summaryY, { align: 'left' });
+      doc.text(`Withdrawn: ${withdrawnStudents}`, margin + 110, summaryY, { align: 'left' });
+      if (suspendedStudents > 0) {
+        doc.text(`Suspended: ${suspendedStudents}`, margin + 150, summaryY, { align: 'left' });
+      }
       
       // Add headers and footers on all pages with correct total (only once)
       for (let i = 1; i <= actualTotalPages; i++) {
@@ -1564,8 +1523,8 @@ const WithdrawalRegister: React.FC = () => {
                 <tr>
                   <Th>Adm Date</Th>
                   <Th>Adm Class</Th>
-                  <Th>Withd. Date</Th>
-                  <Th>Withd. Class</Th>
+                  <Th>Wid. Date</Th>
+                  <Th>Wid. Class</Th>
                 </tr>
               </thead>
               <tbody>

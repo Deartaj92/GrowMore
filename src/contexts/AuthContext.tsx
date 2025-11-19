@@ -10,6 +10,7 @@ interface User {
   role?: string;
   staff_id?: number;
   school_id?: number;
+  session_id?: number;
   status: string;
 }
 
@@ -69,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Store credentials in localStorage first
       localStorage.setItem('auth_credentials', JSON.stringify({ username, password }));
-      
+
       // Set auth context
       await setAuthContext(username, password);
 
@@ -82,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('*')
           .eq('username', username)
           .single();
-        
+
         // Only use data if no error or if error is just "no rows" (PGRST116)
         if (!error || error.code === 'PGRST116') {
           superAdminData = data;
@@ -122,18 +123,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (userData && userData.password === password && userData.status === 'active') {
-        const user = {
+        // Fetch active session for the school
+        let sessionId: number | undefined;
+        if (userData.school_id) {
+          const { data: sessionData } = await supabase
+            .from('sessions')
+            .select('id')
+            .eq('school_id', userData.school_id)
+            .eq('is_active', true)
+            .single();
+
+          if (sessionData) {
+            sessionId = sessionData.id;
+          }
+        }
+
+        const user: User = {
           id: userData.id,
           username: userData.username,
           name: userData.name,
           role: userData.role,
           staff_id: userData.staff_id,
           school_id: userData.school_id,
+          session_id: sessionId,
           status: userData.status
         };
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
-        
+
         // Redirect based on user role
         if (userData.role === 'Teacher') {
           navigate('/teacher', { replace: true });
@@ -166,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('user');
       localStorage.removeItem('auth_credentials');
       setUser(null);
-      
+
       // Reset navigation history by replacing current entry
       navigate('/login', { replace: true });
       clearNavigationHistory('/login');

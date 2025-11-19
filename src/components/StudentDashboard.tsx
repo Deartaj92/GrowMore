@@ -11,6 +11,7 @@ import {
   Group as FamilyIcon,
   GroupAdd as GroupAddIcon,
   Description as DescriptionIcon,
+  Message as MessageIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -375,6 +376,13 @@ const studentItems = [
     icon: <DescriptionIcon />,
     path: '/students/withdrawal-register',
     color: '#14b8a6' // Teal
+  },
+  {
+    title: 'General Message',
+    description: 'Send general messages to students, classes, or the entire school via WhatsApp or SMS',
+    icon: <MessageIcon />,
+    path: '/students/general-message',
+    color: '#ec4899' // Pink
   }
 ];
 
@@ -403,6 +411,7 @@ const StudentDashboard: React.FC = () => {
       case 'Promotion': return 'student_dash_promotion';
       case 'Family Management': return 'student_dash_family';
       case 'Withdrawal Register': return 'student_dash_withdrawal_register';
+      case 'General Message': return 'student_dash_general_message';
       default: return null;
     }
   };
@@ -435,7 +444,7 @@ const StudentDashboard: React.FC = () => {
 
       <CardsGrid>
         {visibleItems.map((item, index) => (
-          <Card 
+          <Card
             key={index}
             onClick={() => handleCardClick(item.path)}
             theme={theme}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { activityTrackingService, Notification, NotificationPreferences } from '../services/activityTrackingService';
 import { supabase } from '../supabaseClient';
@@ -8,6 +8,7 @@ interface NotificationContextType {
   unreadCount: number;
   isLoading: boolean;
   preferences: NotificationPreferences | null;
+  setPanelOpen: (isOpen: boolean) => void;
   
   // Actions
   refreshNotifications: () => Promise<void>;
@@ -25,6 +26,7 @@ const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
   isLoading: false,
   preferences: null,
+  setPanelOpen: () => {},
   refreshNotifications: async () => {},
   markAsRead: async () => {},
   markAllAsRead: async () => {},
@@ -52,6 +54,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [isLoading, setIsLoading] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
+  const panelOpenRef = useRef(false);
+
+  const setPanelOpen = useCallback((isOpen: boolean) => {
+    panelOpenRef.current = isOpen;
+  }, []);
 
   // Load notifications
   const refreshNotifications = useCallback(async () => {
@@ -366,7 +373,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       
       // Set up polling as fallback (every 10 seconds)
       const pollInterval = setInterval(() => {
-        refreshNotifications();
+        if (!panelOpenRef.current) {
+          refreshNotifications();
+        }
       }, 10000);
       
       return () => clearInterval(pollInterval);
@@ -396,6 +405,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     unreadCount,
     isLoading,
     preferences,
+    setPanelOpen,
     refreshNotifications,
     markAsRead,
     markAllAsRead,

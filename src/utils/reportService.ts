@@ -543,5 +543,27 @@ export const reportService = {
         }
 
         return response.data;
+    },
+
+    // Update an existing report update's note
+    async updateReportUpdate(
+        updateId: string,
+        updateNote: string,
+        schoolId?: number
+    ): Promise<void> {
+        let query = supabase
+            .from('reports_updates')
+            .update({
+                update_note: updateNote
+            })
+            .eq('id', updateId);
+            
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
+        
+        const { error } = await query;
+        
+        if (error) throw error;
     }
 }; 

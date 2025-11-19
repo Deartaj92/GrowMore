@@ -1658,7 +1658,7 @@ const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmi
                     {student.sections?.name && ` (${student.sections.name})`}
                   </StudentDetails>
                 </div>
-                <ActionButtons data-single-button={student.status !== 'active' ? 'true' : 'false'}>
+                <ActionButtons data-single-button={student.status === 'withdrawn' ? 'true' : 'false'}>
               {student.status === 'active' && (
                 <>
                   <ActionButton onClick={handleDeactivate}>
@@ -1680,16 +1680,28 @@ const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmi
                 </>
               )}
               {student.status === 'inactive' && (
-                <ActionButton variant="primary" onClick={handleReactivate}>
-                  <SchoolIcon style={{ fontSize: '1rem' }} />
-                  <span>Reactivate</span>
-                </ActionButton>
+                <>
+                  <ActionButton variant="primary" onClick={handleReactivate}>
+                    <SchoolIcon style={{ fontSize: '1rem' }} />
+                    <span>Reactivate</span>
+                  </ActionButton>
+                  <ActionButton variant="danger" onClick={handleWithdraw}>
+                    <ExitIcon style={{ fontSize: '1rem' }} />
+                    <span>Withdraw</span>
+                  </ActionButton>
+                </>
               )}
               {student.status === 'suspended' && (
-                <ActionButton variant="primary" onClick={handleReactivate}>
-                  <SchoolIcon style={{ fontSize: '1rem' }} />
-                  <span>Reactivate</span>
-                </ActionButton>
+                <>
+                  <ActionButton variant="primary" onClick={handleReactivate}>
+                    <SchoolIcon style={{ fontSize: '1rem' }} />
+                    <span>Reactivate</span>
+                  </ActionButton>
+                  <ActionButton variant="danger" onClick={handleWithdraw}>
+                    <ExitIcon style={{ fontSize: '1rem' }} />
+                    <span>Withdraw</span>
+                  </ActionButton>
+                </>
               )}
               {student.status === 'withdrawn' && (
                 <ActionButton variant="primary" onClick={handleReadmitClick}>
@@ -1728,16 +1740,28 @@ const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmi
             </>
           )}
           {student.status === 'inactive' && (
-            <ActionButton variant="primary" onClick={handleReactivate}>
-              <SchoolIcon />
-              <span>Reactivate</span>
-            </ActionButton>
+            <>
+              <ActionButton variant="primary" onClick={handleReactivate}>
+                <SchoolIcon />
+                <span>Reactivate</span>
+              </ActionButton>
+              <ActionButton variant="danger" onClick={handleWithdraw}>
+                <ExitIcon />
+                <span>Withdraw</span>
+              </ActionButton>
+            </>
           )}
           {student.status === 'suspended' && (
-            <ActionButton variant="primary" onClick={handleReactivate}>
-              <SchoolIcon />
-              <span>Reactivate</span>
-            </ActionButton>
+            <>
+              <ActionButton variant="primary" onClick={handleReactivate}>
+                <SchoolIcon />
+                <span>Reactivate</span>
+              </ActionButton>
+              <ActionButton variant="danger" onClick={handleWithdraw}>
+                <ExitIcon />
+                <span>Withdraw</span>
+              </ActionButton>
+            </>
           )}
           {student.status === 'withdrawn' && (
             <ActionButton variant="primary" onClick={handleReadmitClick}>
@@ -2077,7 +2101,8 @@ const StudentStatusManager: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (sessionFilter) {
+    // Always fetch all students (current class comes from student_class_history)
+    if (user?.school_id) {
       fetchStudents();
     }
   }, [sessionFilter, user?.school_id]);
@@ -2162,59 +2187,8 @@ const StudentStatusManager: React.FC = () => {
 
   const fetchStudents = async () => {
     try {
-      if (sessionFilter === 'all') {
-        // Fetch all students directly from students table
-        const { data, error } = await supabase
-          .from('students')
-          .select(`
-            *,
-            classes:class_id(name),
-            sections:section_id(name)
-          `)
-          .eq('school_id', user?.school_id)
-          .order('name');
-        
-        if (error) throw error;
-        setStudents(data || []);
-        setFilteredStudents(data || []);
-        // Small delay to ensure state updates are processed
-        setTimeout(() => setLoadingStudents(false), 100);
-        return;
-      }
-
-      if (!sessionFilter) {
-        setStudents([]);
-        setFilteredStudents([]);
-        setTimeout(() => setLoadingStudents(false), 100);
-        return;
-      }
-
-      // Fetch students from student_class_history for the selected session
-      const { data: schData, error: schError } = await supabase
-        .from('student_class_history')
-        .select('student_id')
-        .eq('session_id', sessionFilter)
-        .eq('school_id', user?.school_id);
-
-      if (schError || !schData) {
-        setStudents([]);
-        setFilteredStudents([]);
-        setTimeout(() => setLoadingStudents(false), 100);
-        return;
-      }
-
-      if (schData.length === 0) {
-        setStudents([]);
-        setFilteredStudents([]);
-        setTimeout(() => setLoadingStudents(false), 100);
-        return;
-      }
-
-      // Get student IDs from student_class_history
-      const studentIds = schData.map(sch => sch.student_id);
-
-      // Fetch student details for those enrolled in the selected session
-      const { data, error } = await supabase
+      // Always fetch all students from students table
+      const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select(`
           *,
@@ -2222,12 +2196,81 @@ const StudentStatusManager: React.FC = () => {
           sections:section_id(name)
         `)
         .eq('school_id', user?.school_id)
-        .in('id', studentIds)
         .order('name');
       
-      if (error) throw error;
-      setStudents(data || []);
-      setFilteredStudents(data || []);
+      if (studentsError) throw studentsError;
+      
+      if (!studentsData || studentsData.length === 0) {
+        setStudents([]);
+        setFilteredStudents([]);
+        setTimeout(() => setLoadingStudents(false), 100);
+        return;
+      }
+
+      // Get current class from student_class_history for each student
+      const studentIds = studentsData.map((s: any) => s.id);
+      
+      // Fetch class history for all students - get latest record for each student
+      const { data: historyData } = await supabase
+        .from('student_class_history')
+        .select(`
+          id,
+          student_id,
+          session_id,
+          new_class_id,
+          new_section_id,
+          new_classes:new_class_id(id, name),
+          new_sections:new_section_id(id, name)
+        `)
+        .in('student_id', studentIds)
+        .eq('school_id', user?.school_id)
+        .order('id', { ascending: true });
+
+      // Create a map of current class for each student
+      const currentClassMap = new Map();
+      
+      if (historyData && historyData.length > 0) {
+        // Group by student_id
+        const studentRecordsMap = new Map();
+        historyData.forEach((entry: any) => {
+          const studentId = entry.student_id;
+          if (!studentRecordsMap.has(studentId)) {
+            studentRecordsMap.set(studentId, []);
+          }
+          studentRecordsMap.get(studentId).push(entry);
+        });
+        
+        // For each student, get the latest record (current class)
+        studentRecordsMap.forEach((records, studentId) => {
+          if (records.length > 0) {
+            // Last record = current class
+            const lastRecord = records[records.length - 1];
+            currentClassMap.set(studentId, {
+              class: lastRecord.new_classes || null,
+              section: lastRecord.new_sections || null,
+              class_id: lastRecord.new_class_id || null,
+              section_id: lastRecord.new_section_id || null
+            });
+          }
+        });
+      }
+
+      // Merge student data with current class from history
+      const studentsWithCurrentClass = studentsData.map((student: any) => {
+        const currentClass = currentClassMap.get(student.id);
+        
+        // Use current class from history if available, otherwise fall back to students table
+        return {
+          ...student,
+          classes: currentClass?.class || student.classes || null,
+          sections: currentClass?.section || student.sections || null,
+          class_id: currentClass?.class_id || student.class_id || null,
+          section_id: currentClass?.section_id || student.section_id || null
+        };
+      });
+      
+      setStudents(studentsWithCurrentClass);
+      setFilteredStudents(studentsWithCurrentClass);
       setTimeout(() => setLoadingStudents(false), 100);
     } catch (err: any) {
       console.error('Error fetching students:', err);
@@ -2407,19 +2450,8 @@ const StudentStatusManager: React.FC = () => {
       const hasSections = selectedClass?.has_sections ?? true;
       const finalSectionId = hasSections ? newSectionId : null;
       
-      // 1. Update class, section, and status_updated_at in students
-      const { error } = await supabase
-        .from('students')
-        .update({ 
-          class_id: newClassId,
-          section_id: finalSectionId,
-          status_updated_at: new Date().toISOString()
-        })
-        .eq('id', studentId)
-        .eq('school_id', user?.school_id);
-      if (error) throw error;
-      
-      // 2. Update or create student_class_history for the current session
+      // Update or create student_class_history for the current session
+      // Note: We do NOT update class_id and section_id in students table - only update student_class_history
       console.log('Session filter:', sessionFilter);
       
       if (sessionFilter === 'all') {
@@ -2446,7 +2478,7 @@ const StudentStatusManager: React.FC = () => {
         console.log('Skipping student_class_history update - no session filter set');
       }
       
-      // 3. Record in student_status_history
+      // 2. Record in student_status_history
       await supabase.from('student_status_history').insert({
         student_id: studentId,
         school_id: user?.school_id,

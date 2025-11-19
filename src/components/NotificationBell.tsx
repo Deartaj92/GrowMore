@@ -270,6 +270,7 @@ const NotificationBell: React.FC = () => {
     markAsRead,
     markAllAsRead,
     refreshNotifications,
+    setPanelOpen,
   } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -292,6 +293,12 @@ const NotificationBell: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Pause automatic refresh while panel is open
+  useEffect(() => {
+    setPanelOpen(isOpen);
+    return () => setPanelOpen(false);
+  }, [isOpen, setPanelOpen]);
 
   const handleNotificationClick = async (notificationId: number) => {
     // Mark notification as read when clicked
