@@ -122,10 +122,13 @@ const SearchCard = styled(Card)`
 `;
 
 const StudentListCard = styled(Card)`
-  flex: 1;
-  min-height: 200px;
+  height: 500px;
+  max-height: calc(100vh - 400px);
+  min-height: 300px;
   overflow: hidden;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const StudentListHeader = styled.div`
@@ -328,10 +331,13 @@ const SendButton = styled.button`
 `;
 
 const HistorySection = styled(Card)`
-  flex: 1;
-  min-height: 0;
+  height: 300px;
+  max-height: 300px;
+  min-height: 250px;
   overflow: hidden;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const HistoryHeader = styled.div`
@@ -1058,10 +1064,9 @@ const GeneralMessagePage: React.FC = () => {
                                             theme={theme}
                                         />
                                         <StudentInfo>
-                                            <StudentName theme={theme}>{student.name}</StudentName>
-                                            <StudentDetail theme={theme}>
-                                                {student.class_name} {student.section_name ? `(${student.section_name})` : ''} • {student.father_name}
-                                            </StudentDetail>
+                                            <div style={{ fontSize: '0.85rem', color: theme.TEXT_PRIMARY, lineHeight: '1.4' }}>
+                                                <span style={{ opacity: 0.7 }}>{student.id}</span> . <strong>{student.name}</strong> . {student.father_name} . {student.class_name} {student.section_name ? `(${student.section_name})` : ''}
+                                            </div>
                                         </StudentInfo>
                                     </StudentItem>
                                 ))
