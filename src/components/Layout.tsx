@@ -1,6 +1,6 @@
 import React, { useState, createContext, useContext, useRef, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
-import styled, { ThemeProvider, createGlobalStyle, keyframes } from 'styled-components';
+import styled, { ThemeProvider, createGlobalStyle, keyframes, css } from 'styled-components';
 import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
@@ -39,8 +39,11 @@ import {
   Assignment,
   Search as SearchIcon,
   Person as PersonIcon,
+  Snooze as SnoozeIcon,
+  RemoveRedEye as EyeIcon,
 } from '@mui/icons-material';
 import ReactDOM from 'react-dom';
+import ReactMarkdown from 'react-markdown';
 import { useToast } from './useToast';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -68,6 +71,28 @@ try {
 } catch (e) {
   // Capacitor not available, will use fallback
 }
+
+  const normalizeIdList = (raw: any): number[] => {
+    if (raw === null || raw === undefined) return [];
+    if (Array.isArray(raw)) {
+      return raw
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value));
+    }
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      const withoutBraces = trimmed.replace(/[{}]/g, '');
+      if (!withoutBraces) return [];
+      return withoutBraces
+        .split(',')
+        .map(part => Number(part.trim()))
+        .filter(value => Number.isFinite(value));
+    }
+    if (typeof raw === 'number') {
+      return Number.isFinite(raw) ? [raw] : [];
+    }
+    return [];
+  };
 
 // Theme context
 type Theme = 'dark' | 'light';
@@ -217,6 +242,7 @@ const SIDEBAR_BG = '#252525';
 const CARD = '#252525';
 const ACCENT = '#4a6cf7';
 const FONT = `'Inter', 'Segoe UI', Arial, sans-serif`;
+
 
 const AppContainer = styled.div`
   width: 100vw;
@@ -779,6 +805,14 @@ const CardStat = styled.div<{ positive?: boolean }>`
 `;
 
 const GlobalStyle = createGlobalStyle`
+  @font-face {
+    font-family: 'JameelNooriNastaleeq';
+    src: url('/fonts/JameelNooriNastaleeq.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
   /* Hide scrollbar for Chrome, Safari and Opera */
   ::-webkit-scrollbar {
     width: 0px;
@@ -1206,6 +1240,332 @@ const NetworkActions = styled.div`
   justify-content: center;
 `;
 
+// Announcements modal (user pop-up messages)
+const AnnouncementOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9500; /* Below update notification (9999) but above layout */
+`;
+
+const AnnouncementBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  max-width: 380px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 80vh;
+  height: min(500px, 80vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const announcementQuillStyles = css`
+  & h1, & h2, & h3, & h4, & h5, & h6 {
+    margin: 8px 0 4px 0;
+    font-weight: 600;
+  }
+
+  & p {
+    margin: 6px 0;
+  }
+
+  & ul, & ol {
+    margin: 6px 0 6px 1.2rem;
+    padding-left: 1rem;
+  }
+
+  & li {
+    margin: 2px 0;
+  }
+
+  & code {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+  }
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .ql-editor {
+    font-family: 'JameelNooriNastaleeq', 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+  }
+
+  & strong, & b {
+    font-weight: 600;
+  }
+
+  & em, & i {
+    font-style: italic;
+  }
+`;
+
+const AnnouncementHeader = styled.div`
+  padding: 8px 16px 6px 16px;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'};
+`;
+
+const AnnouncementTitle = styled.div`
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  width: 100%;
+  flex: 1;
+  ${announcementQuillStyles}
+`;
+
+const AnnouncementHeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const AnnouncementIconButton = styled.button`
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.CARD};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+  &:hover {
+    transform: translateY(-1px);
+    background: ${({ theme }) => theme.BG};
+  }
+`;
+
+const AnnouncementBody = styled.div`
+  padding: 14px 18px;
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  line-height: 1.5;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'};
+  min-height: 220px;
+  max-height: 360px;
+  ${announcementQuillStyles}
+
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => `${theme.TEXT_SECONDARY}66 ${theme.BG}`};
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#383d4a' : '#edf1f7'};
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.TEXT_SECONDARY}66;
+    border-radius: 999px;
+    border: 1px solid ${({ theme }) => theme.BG};
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+`;
+
+const AnnouncementFooter = styled.div`
+  padding: 10px 18px 12px 18px;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'};
+  min-height: 44px;
+  justify-content: center;
+`;
+
+const AnnouncementFooterRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+const AnnouncementFooterHighlight = styled.div`
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  width: 100%;
+  font-family: 'JameelNooriNastaleeq', 'Inter', 'Segoe UI', Arial, sans-serif;
+  ${announcementQuillStyles}
+`;
+
+const AnnouncementActions = styled.div`
+  display: flex;
+  gap: 12px;
+  padding: 16px 18px;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.CARD};
+`;
+
+const AnnouncementActionButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.2s ease, background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  ${({ theme, $variant }) => $variant === 'primary'
+    ? css`
+        background: ${theme.ACCENT};
+        color: ${theme.BG};
+        &:hover {
+          transform: translateY(-1px);
+          background: ${theme.ACCENT}cc;
+        }
+      `
+    : css`
+        background: ${theme.CARD};
+        color: ${theme.TEXT_PRIMARY};
+        border-color: ${theme.BORDER};
+        &:hover {
+          transform: translateY(-1px);
+          background: ${theme.BG};
+        }
+      `}
+`;
+
+const SeenByOverlay = styled(AnnouncementOverlay)`
+  z-index: 9600;
+`;
+
+const SeenByBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  width: min(420px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const SeenByHeader = styled.div`
+  padding: 14px 18px;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+const SeenByTitle = styled.h3`
+  margin: 0;
+  font-size: 1rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const SeenByClose = styled(AnnouncementIconButton)`
+  width: 32px;
+  height: 32px;
+`;
+
+const SeenByList = styled.div`
+  padding: 14px 18px;
+  flex: 1;
+  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px; /* about five viewer rows */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => `${theme.ACCENT} ${theme.BG}`};
+
+  &::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG};
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.ACCENT};
+    border-radius: 999px;
+    border: 2px solid ${({ theme }) => theme.BG};
+  }
+`;
+
+const SeenByItem = styled.div`
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'};
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const SeenByName = styled.div`
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.95rem;
+`;
+
+const SeenByMeta = styled.div`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const SeenByEmpty = styled.div`
+  text-align: center;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  padding: 24px 12px;
+  font-size: 0.9rem;
+`;
+
 const NetworkButton = styled(ModalButton) <{ variant?: 'primary' | 'danger' }>`
   min-width: 120px;
   background: ${({ variant }) => variant === 'danger' ? '#ef4444' : '#4a6cf7'};
@@ -1581,12 +1941,63 @@ const Layout: React.FC = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [instituteProfile, setInstituteProfile] = useState<{ short_name?: string; name?: string; logo_url?: string; tagline?: string } | null>(null);
-  const [studentInfo, setStudentInfo] = useState<{ id: number; name: string; school_id: number } | null>(null);
+  const [studentInfo, setStudentInfo] = useState<{
+    id: number;
+    name: string;
+    school_id: number;
+    class_id?: number | null;
+    section_id?: number | null;
+  } | null>(null);
   const [lastChecked, setLastChecked] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageHeader, setPageHeader] = useState('');
   const [isTitleOverflowing, setIsTitleOverflowing] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const [announcementQueue, setAnnouncementQueue] = useState<any[]>([]);
+  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [seenByModalOpen, setSeenByModalOpen] = useState(false);
+  const [seenByEntries, setSeenByEntries] = useState<AnnouncementView[]>([]);
+  const [seenByLoading, setSeenByLoading] = useState(false);
+  const [seenByError, setSeenByError] = useState<string | null>(null);
+  const seenAnnouncementsRef = useRef<Set<number>>(new Set());
+  const snoozedAnnouncementsRef = useRef<Set<number>>(new Set());
+  const viewerDeviceIdRef = useRef<string>('');
+
+  const ensureViewerDeviceId = () => {
+    if (viewerDeviceIdRef.current) return viewerDeviceIdRef.current;
+    if (typeof window === 'undefined') return 'server-device';
+    const key = 'gm_viewer_device_id';
+    let existing = window.localStorage.getItem(key);
+    if (!existing) {
+      const randomPart = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `dev_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+      existing = randomPart;
+      window.localStorage.setItem(key, existing);
+    }
+    viewerDeviceIdRef.current = existing;
+    return existing;
+  };
+
+  const getViewerIdentifier = (identity: AnnouncementIdentity | null) => {
+    if (!identity) return null;
+    const deviceId = ensureViewerDeviceId();
+    if (identity.type === 'student') {
+      if (identity.studentId) return `student_${identity.studentId}`;
+      return `student_device_${deviceId}`;
+    }
+    if (identity.staffId) return `staff_${identity.staffId}`;
+    if (identity.userId) return `user_${identity.userId}`;
+    const roleKey = identity.role ? identity.role.replace(/\s+/g, '_').toLowerCase() : 'staff';
+    return `staff_device_${deviceId}_${roleKey}`;
+  };
+
+  const currentAnnouncement = showAnnouncement && announcementQueue.length
+    ? announcementQueue[currentAnnouncementIndex]
+    : null;
+
+  const canViewSeenByList = !!authUser?.role && ['Super Admin', 'Principal', 'Admin'].includes(authUser.role);
 
   // Student search state
   const [studentSearchInput, setStudentSearchInput] = useState('');
@@ -1851,10 +2262,18 @@ const Layout: React.FC = () => {
         if (parsed?.id) {
           const { data } = await supabase
             .from('students')
-            .select('id, name, school_id')
+            .select('id, name, school_id, class_id, section_id')
             .eq('id', parsed.id)
             .single();
-          if (data) setStudentInfo({ id: data.id, name: data.name, school_id: data.school_id });
+          if (data) {
+            setStudentInfo({
+              id: data.id,
+              name: data.name,
+              school_id: data.school_id,
+              class_id: data.class_id,
+              section_id: data.section_id,
+            });
+          }
         } else {
           setStudentInfo(null);
         }
@@ -1924,6 +2343,87 @@ const Layout: React.FC = () => {
       return next;
     });
   };
+
+  const buildViewerPayload = (identity: AnnouncementIdentity | null) => {
+    if (!identity) return null;
+    const viewerIdentifier = getViewerIdentifier(identity);
+    if (!viewerIdentifier) return null;
+    const base: any = {
+      school_id: identity.schoolId,
+      viewer_type: identity.type,
+      viewer_role: identity.type === 'student' ? 'Student' : identity.role || 'Staff',
+      viewer_name: identity.type === 'student'
+        ? studentInfo?.name || 'Student'
+        : staffName || authUser?.name || 'Staff Member',
+      viewer_identifier: viewerIdentifier,
+      viewer_device_id: ensureViewerDeviceId(),
+    };
+    if (identity.type === 'student') {
+      if (identity.studentId) base.student_id = identity.studentId;
+    } else {
+      if (identity.staffId) base.staff_id = identity.staffId;
+      if (identity.userId) base.user_id = identity.userId;
+    }
+
+    return base;
+  };
+
+  const trackAnnouncementSeen = useCallback(async (announcement: any) => {
+    if (!announcement?.id || seenAnnouncementsRef.current.has(announcement.id)) return;
+    const identity = getAnnouncementIdentity();
+    const payload = buildViewerPayload(identity);
+    if (!identity || !payload) return;
+
+    try {
+      await supabase
+        .from('announcement_views')
+        .upsert(
+          {
+            announcement_id: announcement.id,
+            ...payload,
+          },
+          { onConflict: 'announcement_id,viewer_identifier' }
+        );
+      seenAnnouncementsRef.current.add(announcement.id);
+    } catch (error) {
+      console.error('Failed to track announcement view:', error);
+    }
+  }, [authUser?.name, authUser?.role, studentInfo?.name, staffName, staffId]);
+
+  const loadSeenByEntries = useCallback(async (announcementId: number) => {
+    setSeenByLoading(true);
+    setSeenByError(null);
+    try {
+      const { data, error } = await supabase
+        .from('announcement_views')
+        .select('*')
+        .eq('announcement_id', announcementId)
+        .order('seen_at', { ascending: false });
+      if (error) throw error;
+      setSeenByEntries(data || []);
+    } catch (error) {
+      console.error('Failed to load announcement viewers:', error);
+      setSeenByError('Unable to load viewers right now.');
+    } finally {
+      setSeenByLoading(false);
+    }
+  }, []);
+
+  const handleOpenSeenBy = async () => {
+    if (!currentAnnouncement?.id) return;
+    setSeenByModalOpen(true);
+    loadSeenByEntries(currentAnnouncement.id);
+  };
+
+  const handleCloseSeenBy = () => {
+    setSeenByModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (currentAnnouncement) {
+      trackAnnouncementSeen(currentAnnouncement);
+    }
+  }, [currentAnnouncement, trackAnnouncementSeen]);
 
   const toggleMute = () => {
     setMuted(m => {
@@ -2719,6 +3219,260 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('resize', checkOverflow);
   }, [isMobile, location.pathname]);
 
+  const getAnnouncementIdentity = () => {
+    if (studentInfo) {
+      return {
+        type: 'student' as const,
+        schoolId: studentInfo.school_id,
+        studentId: studentInfo.id,
+        classId: studentInfo.class_id ?? undefined,
+        sectionId: studentInfo.section_id ?? undefined,
+      };
+    }
+    if (authUser?.school_id) {
+      return {
+        type: 'staff' as const,
+        schoolId: authUser.school_id,
+        staffId: staffId ? Number(staffId) : undefined,
+        role: authUser.role,
+        userId: authUser.id,
+      };
+    }
+    return null;
+  };
+
+  const getDismissStorageKey = (announcementId: number, identity: ReturnType<typeof getAnnouncementIdentity>) => {
+    if (!identity) return null;
+    const recipientId = identity.type === 'student'
+      ? identity.studentId
+      : identity.staffId || identity.userId || identity.role || 'staff';
+    return `gm_ann_dismiss_${identity.schoolId}_${identity.type}_${recipientId}_${announcementId}`;
+  };
+
+  const isAnnouncementDismissed = (announcementId: number, identity: ReturnType<typeof getAnnouncementIdentity>) => {
+    if (typeof window === 'undefined') return false;
+    const key = getDismissStorageKey(announcementId, identity);
+    if (!key) return false;
+    return window.localStorage.getItem(key) === '1';
+  };
+
+  const persistAnnouncementDismissal = (announcementId: number, identity: ReturnType<typeof getAnnouncementIdentity>) => {
+    if (typeof window === 'undefined') return;
+    const key = getDismissStorageKey(announcementId, identity);
+    if (!key) return;
+    window.localStorage.setItem(key, '1');
+  };
+
+  type AnnouncementIdentity = ReturnType<typeof getAnnouncementIdentity>;
+
+interface AnnouncementView {
+  id?: number;
+  announcement_id?: number;
+  viewer_identifier: string;
+  viewer_type?: string;
+  viewer_role?: string;
+  viewer_name?: string;
+  student_id?: number;
+  staff_id?: number;
+  user_id?: number;
+  viewer_device_id?: string;
+  seen_at?: string;
+}
+
+  const matchesAnnouncementAudience = (announcement: any, identity: AnnouncementIdentity) => {
+    if (!identity) return false;
+    if (identity.type === 'student') {
+      if (announcement.audience_group !== 'students') return false;
+      switch (announcement.target_scope) {
+        case 'all':
+          return true;
+        case 'single':
+        case 'multi': {
+          if (!identity.studentId) return false;
+          const targetIds = [
+            ...normalizeIdList(announcement.student_id),
+            ...normalizeIdList(announcement.student_ids),
+          ];
+          return targetIds.includes(identity.studentId);
+        }
+        case 'class': {
+          const classMatches = !announcement.class_id || (identity.classId && announcement.class_id === identity.classId);
+          const sectionMatches = !announcement.section_id || (identity.sectionId && announcement.section_id === identity.sectionId);
+          return classMatches && sectionMatches;
+        }
+        default:
+          return false;
+      }
+    } else {
+      if (announcement.audience_group !== 'staff') return false;
+      switch (announcement.target_scope) {
+        case 'all':
+          return true;
+        case 'role':
+          return !!announcement.staff_role && announcement.staff_role === identity.role;
+        case 'single':
+        case 'multi': {
+          if (!identity.staffId) return false;
+          const targetIds = [
+            ...normalizeIdList(announcement.staff_id),
+            ...normalizeIdList(announcement.staff_ids),
+          ];
+          return targetIds.includes(identity.staffId);
+        }
+        default:
+          return false;
+      }
+    }
+  };
+
+  const isWithinDisplayWindow = (announcement: any, today: string) => {
+    if (announcement.show_from && announcement.show_from > today) return false;
+    if (announcement.show_until && announcement.show_until < today) return false;
+    return true;
+  };
+
+  const shouldDisplayAnnouncement = (announcement: any, identity: AnnouncementIdentity, today: string) => {
+    if (!identity || !announcement || announcement.is_active === false) return false;
+    if (announcement.id && snoozedAnnouncementsRef.current.has(announcement.id)) return false;
+    if (!isWithinDisplayWindow(announcement, today)) return false;
+    if (!matchesAnnouncementAudience(announcement, identity)) return false;
+    if (isAnnouncementDismissed(announcement.id, identity)) return false;
+    return true;
+  };
+
+  const enqueueAnnouncement = (announcement: any) => {
+    setAnnouncementQueue(prev => {
+      if (prev.some(existing => existing.id === announcement.id)) {
+        return prev;
+      }
+      if (!prev.length) {
+        setCurrentAnnouncementIndex(0);
+        setShowAnnouncement(true);
+        return [announcement];
+      }
+      return [...prev, announcement];
+    });
+  };
+
+  const loadAnnouncements = useCallback(async () => {
+    const identity = getAnnouncementIdentity();
+    if (!identity) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+      let query = supabase
+        .from('announcements')
+        .select('*')
+        .eq('school_id', identity.schoolId)
+        .eq('is_active', true)
+        .lte('show_from', today)
+        .or(`show_until.is.null,show_until.gte.${today}`)
+        .order('created_at', { ascending: false });
+
+      const { data, error } = await query;
+      if (error || !data) {
+        return;
+      }
+
+      const filtered = data.filter((a: any) => shouldDisplayAnnouncement(a, identity, today));
+
+      const visible = filtered;
+      if (!visible.length) {
+        setAnnouncementQueue([]);
+        setShowAnnouncement(false);
+        return;
+      }
+
+      setAnnouncementQueue(visible);
+      setCurrentAnnouncementIndex(0);
+      setShowAnnouncement(true);
+    } catch {
+      // Fail silently for announcements
+    }
+  }, [authUser?.school_id, authUser?.role, studentInfo, staffId]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      loadAnnouncements();
+    }, 2500);
+    return () => clearTimeout(timeout);
+  }, [loadAnnouncements]);
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, [location.pathname, loadAnnouncements]);
+
+  useEffect(() => {
+    const identity = getAnnouncementIdentity();
+    if (!identity) return;
+
+    const channel = supabase
+      .channel(`announcement_inserts_school_${identity.schoolId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'announcements',
+          filter: `school_id=eq.${identity.schoolId}`,
+        },
+        payload => {
+          const newAnnouncement = payload.new as any;
+          const latestIdentity = getAnnouncementIdentity();
+          const today = new Date().toISOString().split('T')[0];
+          if (shouldDisplayAnnouncement(newAnnouncement, latestIdentity, today)) {
+            enqueueAnnouncement(newAnnouncement);
+          }
+        }
+      )
+      .subscribe(status => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('[Announcements] realtime status:', status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [studentInfo, authUser?.school_id, authUser?.role, staffId]);
+
+  const handleDismissAnnouncement = () => {
+    if (!announcementQueue.length) {
+      setShowAnnouncement(false);
+      setAnnouncementQueue([]);
+      setCurrentAnnouncementIndex(0);
+      return;
+    }
+
+    if (currentAnnouncementIndex + 1 < announcementQueue.length) {
+      setCurrentAnnouncementIndex(currentAnnouncementIndex + 1);
+    } else {
+      setShowAnnouncement(false);
+      setAnnouncementQueue([]);
+      setCurrentAnnouncementIndex(0);
+    }
+  };
+
+  const handleRemindMeLater = () => {
+    if (currentAnnouncement?.id) {
+      snoozedAnnouncementsRef.current.add(currentAnnouncement.id);
+    }
+    handleDismissAnnouncement();
+  };
+
+  const handleDontShowAgain = () => {
+    if (!currentAnnouncement) return;
+    const identity = getAnnouncementIdentity();
+    if (identity) {
+      persistAnnouncementDismissal(currentAnnouncement.id, identity);
+    }
+    if (currentAnnouncement.id) {
+      snoozedAnnouncementsRef.current.delete(currentAnnouncement.id);
+    }
+    handleDismissAnnouncement();
+  };
+
   return (
     <PageHeaderContext.Provider value={{ setPageHeader }}>
       <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -2729,6 +3483,74 @@ const Layout: React.FC = () => {
             <ProgressProvider>
               <NotificationProvider>
                 <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
+                  {currentAnnouncement && (
+                    <AnnouncementOverlay>
+                      <AnnouncementBox>
+                        <AnnouncementHeader>
+                          <AnnouncementTitle
+                            className="ql-editor"
+                            dangerouslySetInnerHTML={{ __html: currentAnnouncement.title || '' }}
+                          />
+                        </AnnouncementHeader>
+                        <AnnouncementBody>
+                          <div
+                            className="ql-editor"
+                            dangerouslySetInnerHTML={{ __html: currentAnnouncement.message || '' }}
+                          />
+                        </AnnouncementBody>
+                        {currentAnnouncement.footer_text && (
+                          <AnnouncementFooter>
+                            <AnnouncementFooterRow>
+                              <AnnouncementFooterHighlight
+                                className="ql-editor"
+                                dangerouslySetInnerHTML={{ __html: currentAnnouncement.footer_text }}
+                              />
+                            </AnnouncementFooterRow>
+                          </AnnouncementFooter>
+                        )}
+                        <AnnouncementActions>
+                          <AnnouncementActionButton $variant="primary" type="button" onClick={handleRemindMeLater}>
+                            <SnoozeIcon fontSize="small" />
+                            Remind me later
+                          </AnnouncementActionButton>
+                          {!currentAnnouncement.hide_dont_show && (
+                            <AnnouncementActionButton type="button" onClick={handleDontShowAgain}>
+                              <VisibilityOff fontSize="small" />
+                              Don't show again
+                            </AnnouncementActionButton>
+                          )}
+                        </AnnouncementActions>
+                      </AnnouncementBox>
+                    </AnnouncementOverlay>
+                  )}
+                  {seenByModalOpen && (
+                    <SeenByOverlay>
+                      <SeenByBox>
+                        <SeenByHeader>
+                          <SeenByTitle>Seen by</SeenByTitle>
+                          <SeenByClose onClick={handleCloseSeenBy}>
+                            <CloseIcon fontSize="small" />
+                          </SeenByClose>
+                        </SeenByHeader>
+                        <SeenByList>
+                          {seenByLoading && <SeenByEmpty>Loading…</SeenByEmpty>}
+                          {!seenByLoading && seenByError && <SeenByEmpty>{seenByError}</SeenByEmpty>}
+                          {!seenByLoading && !seenByError && seenByEntries.length === 0 && (
+                            <SeenByEmpty>No viewers yet.</SeenByEmpty>
+                          )}
+                          {!seenByLoading && !seenByError && seenByEntries.map(entry => (
+                            <SeenByItem key={entry.viewer_identifier}>
+                              <SeenByName>{entry.viewer_name || entry.viewer_identifier}</SeenByName>
+                              <SeenByMeta>
+                                <span>{entry.viewer_role || entry.viewer_type}</span>
+                                {entry.seen_at && <span>{new Date(entry.seen_at).toLocaleString()}</span>}
+                              </SeenByMeta>
+                            </SeenByItem>
+                          ))}
+                        </SeenByList>
+                      </SeenByBox>
+                    </SeenByOverlay>
+                  )}
                   {/* Show network error modal only if truly offline (not just slow connection) */}
                   {!isOnline && !isWeakConnection && (
                     <NetworkModal>

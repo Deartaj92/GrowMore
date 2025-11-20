@@ -12,6 +12,7 @@ import {
   Lock as LockIcon,
   Visibility as VisibilityIcon,
   Settings as SettingsIcon,
+  Campaign as CampaignIcon,
 } from '@mui/icons-material';
 
 // Styled Components
@@ -380,6 +381,13 @@ const settingsItems = [
     icon: <SettingsIcon />,
     path: '/settings/general-settings',
     color: '#6366f1' // Indigo
+  },
+  {
+    title: 'User Announcements',
+    description: 'Create announcement pop-ups for students and teachers that show when they open the app',
+    icon: <CampaignIcon />,
+    path: '/settings/user-announcements',
+    color: '#f97316' // Amber / announcement
   }
 ];
 
