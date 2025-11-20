@@ -724,6 +724,12 @@ const StudentPasswordManagement: React.FC = () => {
   const toast = useToast();
   const { user } = useAuth();
   const { theme } = React.useContext(ThemeContext);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   // Update mobile state on resize (throttled for performance)
   useEffect(() => {
@@ -938,6 +944,38 @@ const StudentPasswordManagement: React.FC = () => {
       fetchSections();
     }
   }, [hasActiveSession, user?.school_id]);
+
+  // Real-time subscription for student updates
+  useEffect(() => {
+    if (!user?.school_id) return;
+
+    const subscription = supabase
+      .channel('student-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'students',
+          filter: `school_id=eq.${user.school_id}`,
+        },
+        (payload) => {
+          const updatedStudent = payload.new as Partial<Student>;
+          setStudents((prevStudents) =>
+            prevStudents.map((student) =>
+              student.id === updatedStudent.id
+                ? { ...student, ...updatedStudent }
+                : student
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user?.school_id]);
 
   const handleViewPassword = useCallback((student: Student) => {
     setSelectedStudent(student);
@@ -1286,38 +1324,52 @@ const StudentPasswordManagement: React.FC = () => {
                   </TableCell>
                   {!isMobile && (
                     <TableCell>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          backgroundColor: student.is_online ? '#22c55e' : '#9ca3af',
-                          boxShadow: student.is_online ? '0 0 4px #22c55e' : 'none'
-                        }} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 500, color: student.is_online ? '#22c55e' : 'inherit' }}>
-                            {student.is_online ? 'Online' : 'Offline'}
-                          </span>
-                          {!student.is_online && student.last_online && (
-                            <span style={{ fontSize: '10px', color: '#6b7280' }}>
-                              {new Date(student.last_online).toLocaleDateString()} {new Date(student.last_online).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      {(() => {
+                        const isOnline = student.is_online && student.last_online && (now.getTime() - new Date(student.last_online).getTime() < 5 * 60 * 1000);
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
+                              boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
+                            }} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 500, color: isOnline ? '#22c55e' : 'inherit' }}>
+                                {isOnline ? 'Online' : 'Offline'}
+                              </span>
+                              {!isOnline && student.last_online && (
+                                <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                                  {(() => {
+                                    const date = new Date(student.last_online);
+                                    const day = date.getDate().toString().padStart(2, '0');
+                                    const month = date.toLocaleString('en-US', { month: 'short' });
+                                    const year = date.getFullYear();
+                                    const time = date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                    return `${day}-${month}-${year} ${time}`;
+                                  })()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                   )}
                   {!isMobile && (
                     <TableCell>
-                      <span style={{
-                        fontSize: '12px',
-                        fontFamily: 'monospace',
-                        background: theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                        padding: '2px 6px',
-                        borderRadius: '4px'
-                      }}>
-                        {student.app_version || 'v1.0.0'}
-                      </span>
+                      {student.app_version && (
+                        <span style={{
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          background: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                          padding: '2px 6px',
+                          borderRadius: '4px'
+                        }}>
+                          {student.app_version}
+                        </span>
+                      )}
                     </TableCell>
                   )}
                   <TableCell style={isMobile ? { width: '15%' } : {}}>

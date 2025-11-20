@@ -146,17 +146,17 @@ const FilterSelect = styled.select`
 
   &:hover, &:focus {
     background: ${({ theme }) => theme.BG === '#252525'
-      ? '#2a2a2a'
-      : theme.FIELD_BG};
+    ? '#2a2a2a'
+    : theme.FIELD_BG};
   }
 
   & option {
-    background: ${({ theme }) => theme.BG === '#252525' 
-      ? '#2a2a2a' 
-      : '#ffffff'};
+    background: ${({ theme }) => theme.BG === '#252525'
+    ? '#2a2a2a'
+    : '#ffffff'};
     color: ${({ theme }) => theme.BG === '#252525'
-      ? '#e2e8f0'
-      : '#1e293b'};
+    ? '#e2e8f0'
+    : '#1e293b'};
     padding: 8px;
   }
 
@@ -189,9 +189,9 @@ const CardGrid = styled.div<{ cardCount: number }>`
 
 const getStatusColor = (status: string) =>
   status === 'active' ? '34,197,94' : // green
-  status === 'suspended' ? '245,158,11' : // orange
-  status === 'withdrawn' ? '239,68,68' : // red
-  '99,102,241'; // blue
+    status === 'suspended' ? '245,158,11' : // orange
+      status === 'withdrawn' ? '239,68,68' : // red
+        '99,102,241'; // blue
 
 const cardFlyIn = keyframes`
   0% { opacity: 0; transform: translateY(60px) scale(0.96); }
@@ -254,7 +254,7 @@ const StudentCard = styled.div<{ status: string }>`
   background: ${({ theme }) => theme.CARD};
   border-radius: 14px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+  padding: 0;
   position: relative;
   border: 2.5px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.18s;
@@ -263,6 +263,7 @@ const StudentCard = styled.div<{ status: string }>`
   width: 100%;
   cursor: pointer;
   box-sizing: border-box;
+  overflow: hidden;
   
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -271,47 +272,45 @@ const StudentCard = styled.div<{ status: string }>`
   
   @media (max-width: 700px) {
     min-width: 200px;
-    padding: 1.2rem 1rem 1rem 1rem;
   }
 `;
 
 const StatusBadge = styled.div<{ status: string }>`
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 0.25rem 0.75rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.65rem;
+  font-weight: 600;
   background: ${({ status }) =>
-    status === 'active' ? 'rgb(34, 197, 94)' :
-    status === 'suspended' ? 'rgb(245, 158, 11)' :
-    status === 'withdrawn' ? 'rgb(239, 68, 68)' :
-    'rgb(99, 102, 241)'};
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.13);
-  z-index: 3;
+    status === 'active' ? 'rgba(34, 197, 94, 0.15)' :
+      status === 'suspended' ? 'rgba(245, 158, 11, 0.15)' :
+        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.15)' :
+          'rgba(99, 102, 241, 0.15)'};
+  color: ${({ status }) =>
+    status === 'active' ? 'rgb(21, 128, 61)' :
+      status === 'suspended' ? 'rgb(161, 98, 7)' :
+        status === 'withdrawn' ? 'rgb(185, 28, 28)' :
+          'rgb(67, 56, 202)'};
+  box-shadow: none;
   letter-spacing: 0.02em;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   line-height: 1;
+  border: 1px solid ${({ status }) =>
+    status === 'active' ? 'rgba(34, 197, 94, 0.3)' :
+      status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
+        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
+          'rgba(99, 102, 241, 0.3)'};
 
   ${({ status }) => status === 'active' && `
     &::before {
       content: '';
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: currentColor;
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.2; }
-      50% { opacity: 0.8; }
+      opacity: 0.6;
     }
   `}
 `;
@@ -338,17 +337,17 @@ const CardImage = styled.img`
 `;
 
 const Avatar = styled.div`
-  width: 80px;
-  height: 88px;
-  border-radius: 16px;
+  width: 120px;
+  min-height: 140px;
+  align-self: stretch;
+  border-radius: 0;
   background: ${({ theme }) => theme.ACCENT + '22'};
   color: ${({ theme }) => theme.ACCENT};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  margin-right: 1.2rem;
   flex-shrink: 0;
   overflow: hidden;
   cursor: pointer;
@@ -359,31 +358,33 @@ const Avatar = styled.div`
     content: '';
   position: absolute;
     inset: 0;
-    background: ${({ theme }) => theme.BG === '#252525' ? 
-      'linear-gradient(45deg, rgba(255,255,255,0.1), transparent)' : 
-      'linear-gradient(45deg, rgba(0,0,0,0.05), transparent)'};
+    background: ${({ theme }) => theme.BG === '#252525' ?
+    'linear-gradient(45deg, rgba(255,255,255,0.1), transparent)' :
+    'linear-gradient(45deg, rgba(0,0,0,0.05), transparent)'};
     opacity: 0;
     transition: opacity 0.2s ease;
   }
 
-  &:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-
-    &::after {
-      opacity: 1;
-    }
+  &:hover::after {
+    opacity: 1;
   }
-
-  &:active {
-    transform: translateY(0) scale(0.98);
+  
+  @media (max-width: 700px) {
+    width: 90px;
+    min-height: 120px;
+    font-size: 2rem;
   }
 `;
 
 const CardTop = styled.div`
   display: flex;
   align-items: stretch;
-  gap: 0.7rem;
+  gap: 0;
+  max-height: 140px;
+  
+  @media (max-width: 700px) {
+    max-height: 120px;
+  }
 `;
 
 const StudentName = styled.h3`
@@ -666,8 +667,8 @@ const ListLoadingSpinner = styled.div`
 const EditModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: ${({ theme }) => theme.BG === '#252525' 
-    ? 'rgba(0, 0, 0, 0.5)' 
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(0, 0, 0, 0.5)'
     : 'rgba(255, 255, 255, 0.5)'};
   backdrop-filter: blur(8px);
   WebkitBackdropFilter: blur(8px);
@@ -683,8 +684,8 @@ const EditModalOverlay = styled.div`
 `;
 
 const EditModalBox = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525' 
-    ? theme.BG 
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? theme.BG
     : theme.BG};
   width: 90vw;
   max-width: 1200px;
@@ -763,8 +764,8 @@ const StyledIconButton = styled.button`
 
   &:hover {
     background: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(0, 0, 0, 0.05)'};
   }
 `;
 
@@ -793,14 +794,14 @@ const EditModalContent = styled.div`
   }
   &::-webkit-scrollbar-thumb {
     background: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 4px;
     border: 2px solid ${({ theme }) => theme.BG};
     &:hover {
       background: ${({ theme }) => theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     }
   }
 `;
@@ -825,36 +826,36 @@ const EditModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: ${({ theme, variant }) => 
+  background: ${({ theme, variant }) =>
     variant === 'primary'
       ? 'linear-gradient(45deg, #6366f1, #8b5cf6)'
-      : theme.BG === '#252525' 
-        ? 'rgba(255, 255, 255, 0.1)' 
+      : theme.BG === '#252525'
+        ? 'rgba(255, 255, 255, 0.1)'
         : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme, variant }) => 
+  color: ${({ theme, variant }) =>
     variant === 'primary'
       ? '#fff'
       : theme.BG === '#252525'
         ? '#fff'
         : '#1e293b'};
   border: none;
-  box-shadow: ${({ variant }) => 
+  box-shadow: ${({ variant }) =>
     variant === 'primary'
       ? '0 2px 8px rgba(99, 102, 241, 0.25)'
       : 'none'};
   
   &:hover {
     transform: translateY(-1px);
-    background: ${({ theme, variant }) => 
-      variant === 'primary'
-        ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
-        : theme.BG === '#252525'
-          ? 'rgba(255, 255, 255, 0.15)'
-          : 'rgba(0, 0, 0, 0.1)'};
-    box-shadow: ${({ variant }) => 
-      variant === 'primary'
-        ? '0 4px 12px rgba(99, 102, 241, 0.35)'
-        : 'none'};
+    background: ${({ theme, variant }) =>
+    variant === 'primary'
+      ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
+      : theme.BG === '#252525'
+        ? 'rgba(255, 255, 255, 0.15)'
+        : 'rgba(0, 0, 0, 0.1)'};
+    box-shadow: ${({ variant }) =>
+    variant === 'primary'
+      ? '0 4px 12px rgba(99, 102, 241, 0.35)'
+      : 'none'};
   }
   
   &:active {
@@ -1162,8 +1163,8 @@ const FormInputBase = styled.div`
 
   &:hover, &:focus-within {
     background: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
   }
 `;
 
@@ -1181,8 +1182,8 @@ const FormInput = styled.input`
 
   &::placeholder {
     color: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.3)'
-      : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
   }
 `;
@@ -1215,17 +1216,17 @@ const FormSelect = styled.select`
 
   &:hover, &:focus {
     background: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
   }
 
   & option {
-    background: ${({ theme }) => theme.BG === '#252525' 
-      ? '#2a2a2a' 
-      : '#ffffff'};
+    background: ${({ theme }) => theme.BG === '#252525'
+    ? '#2a2a2a'
+    : '#ffffff'};
     color: ${({ theme }) => theme.BG === '#252525'
-      ? '#e2e8f0'
-      : '#1e293b'};
+    ? '#e2e8f0'
+    : '#1e293b'};
     padding: 12px 16px;
   }
 `;
@@ -1245,8 +1246,8 @@ const FormTextarea = styled.textarea`
 
   &::placeholder {
     color: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.3)'
-      : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
   }
 `;
@@ -1604,9 +1605,9 @@ const MemoizedCardImage = memo(({ src, alt }: { src: string; alt: string }) => {
           observer.disconnect();
         }
       },
-      { 
+      {
         rootMargin: '50px', // Start loading 50px before image comes into view
-        threshold: 0.1 
+        threshold: 0.1
       }
     );
 
@@ -1630,18 +1631,18 @@ const MemoizedCardImage = memo(({ src, alt }: { src: string; alt: string }) => {
   );
 });
 
-const MemoizedCardActions = memo(({ student, onEdit, onPrint, onProfile }: { 
-  student: any; 
+const MemoizedCardActions = memo(({ student, onEdit, onPrint, onProfile }: {
+  student: any;
   onEdit: () => void;
   onPrint: () => void;
   onProfile: () => void;
 }) => {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
-  
+
   return (
     <CardActions className="card-actions" offsetTop={student.status !== 'active'}>
-      <CardActionBtn 
-        title="View Profile" 
+      <CardActionBtn
+        title="View Profile"
         onClick={(e) => {
           e.stopPropagation();
           onProfile();
@@ -1650,8 +1651,8 @@ const MemoizedCardActions = memo(({ student, onEdit, onPrint, onProfile }: {
       >
         <AccountCircle fontSize="inherit" />
       </CardActionBtn>
-      <CardActionBtn 
-        title="Edit" 
+      <CardActionBtn
+        title="Edit"
         onClick={(e) => {
           e.stopPropagation();
           onEdit();
@@ -1668,13 +1669,13 @@ const MemoizedCardActions = memo(({ student, onEdit, onPrint, onProfile }: {
   );
 });
 
-const MemoizedStudentCard = memo(({ 
-  student, 
+const MemoizedStudentCard = memo(({
+  student,
   onClick,
   onEdit,
   onPrint,
-  onProfile 
-}: { 
+  onProfile
+}: {
   student: any;
   onClick: (e: React.MouseEvent) => void;
   onEdit: () => void;
@@ -1682,9 +1683,21 @@ const MemoizedStudentCard = memo(({
   onProfile: () => void;
 }) => (
   <StudentCard status={student.status || 'active'} onClick={onClick} data-student-card>
-    <StatusBadge status={student.status || 'active'}>
-      {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
-    </StatusBadge>
+    <div style={{
+      position: 'absolute',
+      top: '12px',
+      right: '12px',
+      fontSize: '0.85rem',
+      opacity: 0.6,
+      fontWeight: 600,
+      color: 'inherit',
+      background: 'rgba(0, 0, 0, 0.05)',
+      padding: '4px 8px',
+      borderRadius: '8px',
+      zIndex: 1
+    }}>
+      #{student.id}
+    </div>
     <CardTop>
       <Avatar
         onClick={(e) => {
@@ -1694,22 +1707,19 @@ const MemoizedStudentCard = memo(({
         title="View Student Profile"
       >
         {student.picture_url ? (
-          <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover', display: 'block', transform: 'scale(1.1)' }} />
+          <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
         ) : (
-          <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}</span>
+          <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}</span>
         )}
       </Avatar>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1.2rem 1.5rem 1.2rem 1rem' }}>
         <StudentName>
-          {student.name}
-          <span style={{ 
-            fontSize: '0.75rem', 
-            opacity: 0.6, 
-            marginLeft: '8px',
-            fontWeight: 'normal'
-          }}>
-            #{student.id}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>{student.name}</span>
+            <StatusBadge status={student.status || 'active'}>
+              {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
+            </StatusBadge>
+          </div>
         </StudentName>
         <FatherName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{student.father_name || 'N/A'}</span>
@@ -1740,11 +1750,11 @@ const MemoizedStudentCard = memo(({
         </StudentDetails>
       </div>
     </CardTop>
-      <MemoizedCardActions 
-        student={student} 
-        onEdit={onEdit}
-        onPrint={onPrint}
-        onProfile={onProfile}
+    <MemoizedCardActions
+      student={student}
+      onEdit={onEdit}
+      onPrint={onPrint}
+      onProfile={onProfile}
     />
   </StudentCard>
 ));
@@ -1786,7 +1796,7 @@ const StudentList: React.FC = () => {
   const navigate = useNavigate();
   const [printStudent, setPrintStudent] = useState<any | null>(null);
   const { startProgress, completeProgress, setProgress } = useProgressHook();
-  
+
   // Add state to track if we should show "no students" state
   const [showNoStudents, setShowNoStudents] = useState(false);
   const [hasFetchedStudents, setHasFetchedStudents] = useState(false); // NEW
@@ -1815,7 +1825,7 @@ const StudentList: React.FC = () => {
   // Optimized event handlers with useCallback
   const handleCardClickMemo = useCallback((student: any, e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.card-actions')) return;
-    
+
     // On both mobile and desktop, show actions instead of navigating
     const card = (e.target as HTMLElement).closest('[data-student-card]');
     if (card) {
@@ -1832,7 +1842,7 @@ const StudentList: React.FC = () => {
             }
           }
         });
-        
+
         // Then toggle the clicked card's actions
         const isVisible = actions.style.opacity === '1';
         actions.style.opacity = isVisible ? '0' : '1';
@@ -1845,11 +1855,11 @@ const StudentList: React.FC = () => {
     const newClassFilter = e.target.value;
     setClassFilter(newClassFilter);
     setSectionFilter(''); // Reset section when class changes
-    
+
     // Check if the selected class has sections
     const selectedClass = classOptions.find(c => String(c.id) === String(newClassFilter));
     const hasSections = selectedClass?.has_sections ?? true;
-    
+
     // If class doesn't have sections, clear section filter
     if (!hasSections) {
       setSectionFilter('');
@@ -1870,7 +1880,7 @@ const StudentList: React.FC = () => {
 
   const handleEditMemo = useCallback((student: any) => {
     setEditingStudent(student);
-    
+
     // Create the form data object
     const formData = {
       name: student.name || '',
@@ -1911,7 +1921,7 @@ const StudentList: React.FC = () => {
       notification_channel: student.notification_channel || 'whatsapp',
       status: student.status || 'active'
     };
-    
+
     setEditForm(formData);
   }, []);
 
@@ -1928,28 +1938,28 @@ const StudentList: React.FC = () => {
   useEffect(() => {
     const el = mainContentRef.current;
     if (!el) return;
-    
+
     let rafId: number | null = null;
     let lastScrollTop = 0;
-    
+
     const onScroll = () => {
       if (rafId) return; // Skip if already scheduled
-      
+
       rafId = requestAnimationFrame(() => {
         const scrollTop = el.scrollTop;
-        
+
         // Only update state if scroll position changed significantly (mobile optimization)
         if (Math.abs(scrollTop - lastScrollTop) > 10) {
           setShowToTop(scrollTop > 200); // Show button only after scrolling down significantly
           lastScrollTop = scrollTop;
         }
-        
+
         rafId = null;
       });
     };
-    
+
     el.addEventListener('scroll', onScroll, { passive: true });
-    
+
     return () => {
       el.removeEventListener('scroll', onScroll);
       if (rafId) cancelAnimationFrame(rafId);
@@ -1960,7 +1970,7 @@ const StudentList: React.FC = () => {
   // Optimized filtered students computation with reduced memory allocations and ID search
   const filteredStudents = useMemo(() => {
     if (!students.length) return [];
-    
+
     // Pre-compute filter values to avoid repeated conversions
     const searchLower = search.trim().toLowerCase();
     const searchTerm = search.trim();
@@ -1970,19 +1980,19 @@ const StudentList: React.FC = () => {
     const sectionFilterStr = sectionFilter ? String(sectionFilter) : '';
     const sessionFilterStr = sessionFilter ? String(sessionFilter) : '';
     const statusFilterStr = statusFilter ? String(statusFilter) : '';
-    
+
     // Use for loop with scoring for better sorting
     const scoredResults: Array<{ student: typeof students[0]; score: number }> = [];
-    
+
     for (let i = 0; i < students.length; i++) {
       const stu = students[i];
       let shouldInclude = true;
       let searchScore = 0;
-      
+
       // Search filter with scoring
       if (searchLower && shouldInclude) {
         let searchMatch = false;
-        
+
         if (isNumericSearch && searchTermNum !== null) {
           // ID search - prioritize exact match, then starts with, then contains
           const studentIdStr = String(stu.id);
@@ -1997,14 +2007,14 @@ const StudentList: React.FC = () => {
             searchMatch = true;
           }
         }
-        
+
         // Name and other field searches
         if (!searchMatch) {
           const nameMatch = stu.name?.toLowerCase().includes(searchLower);
           const classMatch = stu.classes?.name?.toLowerCase().includes(searchLower);
           const sectionMatch = stu.sections?.name?.toLowerCase().includes(searchLower);
           const sessionMatch = stu.sessions?.name?.toLowerCase().includes(searchLower);
-          
+
           if (nameMatch || classMatch || sectionMatch || sessionMatch) {
             searchMatch = true;
             // Prioritize name matches
@@ -2018,44 +2028,44 @@ const StudentList: React.FC = () => {
               searchScore = 25; // Lower priority for class/section/session matches
             }
           }
-          
+
           // Also check ID for non-numeric searches (secondary)
           if (!searchMatch && String(stu.id).includes(searchTerm)) {
             searchScore = 10;
             searchMatch = true;
           }
         }
-        
+
         if (!searchMatch) {
           shouldInclude = false;
         }
       }
-      
+
       // Class filter
       if (classFilterStr && shouldInclude) {
         shouldInclude = String(stu.class_id) === classFilterStr;
       }
-      
+
       // Section filter
       if (sectionFilterStr && shouldInclude) {
         shouldInclude = String(stu.section_id) === sectionFilterStr;
       }
-      
+
       // Session filter
       if (sessionFilterStr && shouldInclude) {
         shouldInclude = String(stu.session_id) === sessionFilterStr;
       }
-      
+
       // Status filter
       if (statusFilterStr && shouldInclude) {
         shouldInclude = String(stu.status) === statusFilterStr;
       }
-      
+
       if (shouldInclude) {
         scoredResults.push({ student: stu, score: searchScore });
       }
     }
-    
+
     // Sort by score descending (higher scores first), then by ID ascending
     scoredResults.sort((a, b) => {
       if (b.score !== a.score) {
@@ -2063,7 +2073,7 @@ const StudentList: React.FC = () => {
       }
       return a.student.id - b.student.id; // Then by ID ascending
     });
-    
+
     return scoredResults.map(item => item.student);
   }, [students, search, classFilter, sectionFilter, sessionFilter, statusFilter]);
 
@@ -2091,11 +2101,11 @@ const StudentList: React.FC = () => {
   useEffect(() => {
     const delay = mobileOptimizations.debounceDelay;
     let timeoutId: NodeJS.Timeout;
-    
+
     const debouncedSearch = () => {
       // Cancel previous timeout
       if (timeoutId) clearTimeout(timeoutId);
-      
+
       // Set new timeout
       timeoutId = setTimeout(() => {
         // Use requestIdleCallback for better performance on mobile
@@ -2110,9 +2120,9 @@ const StudentList: React.FC = () => {
         }
       }, delay);
     };
-    
+
     debouncedSearch();
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
@@ -2136,11 +2146,11 @@ const StudentList: React.FC = () => {
       const minDuration = 2000; // 2 seconds
       const start = Date.now();
       setLoading(true);
-      
+
       // Start determinate progress
       startProgress(false);
       setProgress(10);
-      
+
       // Always fetch all students from students table
       setProgress(30);
       const { data: studentsData, error: studentsError } = await supabase
@@ -2148,7 +2158,7 @@ const StudentList: React.FC = () => {
         .select('*')
         .eq('school_id', user.school_id)
         .order('name');
-      
+
       if (studentsError) {
         console.error('Error fetching students:', studentsError);
         showToast('Failed to load students', 'error');
@@ -2157,7 +2167,7 @@ const StudentList: React.FC = () => {
         setHasFetchedStudents(true);
         return;
       }
-      
+
       if (!studentsData || studentsData.length === 0) {
         setStudents([]);
         setLoading(false);
@@ -2167,12 +2177,12 @@ const StudentList: React.FC = () => {
       }
 
       setProgress(50);
-      
+
       // Get current class from student_class_history for each student
       const studentIds = studentsData.map((s: any) => s.id);
-      
+
       setProgress(70);
-      
+
       // Fetch class history for all students - get latest record for each student
       const { data: historyData } = await supabase
         .from('student_class_history')
@@ -2193,7 +2203,7 @@ const StudentList: React.FC = () => {
 
       // Create a map of current class for each student
       const currentClassMap = new Map();
-      
+
       if (historyData && historyData.length > 0) {
         // Group by student_id
         const studentRecordsMap = new Map();
@@ -2204,7 +2214,7 @@ const StudentList: React.FC = () => {
           }
           studentRecordsMap.get(studentId).push(entry);
         });
-        
+
         // For each student, get the latest record (current class)
         studentRecordsMap.forEach((records, studentId) => {
           if (records.length > 0) {
@@ -2223,7 +2233,7 @@ const StudentList: React.FC = () => {
       // Merge student data with current class from history
       const studentsWithCurrentClass = studentsData.map((student: any) => {
         const currentClass = currentClassMap.get(student.id);
-        
+
         // Use current class from history if available, otherwise fall back to students table
         return {
           ...student,
@@ -2233,10 +2243,10 @@ const StudentList: React.FC = () => {
           section_id: currentClass?.section_id || student.section_id || null
         };
       });
-      
+
       setProgress(100);
       setStudents(studentsWithCurrentClass);
-      
+
       const elapsed = Date.now() - start;
       if (elapsed < minDuration) {
         setTimeout(() => {
@@ -2250,7 +2260,7 @@ const StudentList: React.FC = () => {
         setHasFetchedStudents(true);
       }
     };
-    
+
     fetchStudents().catch((error) => {
       console.error('Error in fetchStudents:', error);
       setLoading(false);
@@ -2263,7 +2273,7 @@ const StudentList: React.FC = () => {
   useEffect(() => {
     const fetchClasses = async () => {
       if (!user?.school_id) return;
-      
+
       setLoadingClasses(true);
       const { data } = await supabase
         .from('classes')
@@ -2297,7 +2307,7 @@ const StudentList: React.FC = () => {
   useEffect(() => {
     const fetchSessions = async () => {
       if (!user?.school_id) return;
-      
+
       setLoadingSessionsFilter(true);
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
@@ -2352,17 +2362,17 @@ const StudentList: React.FC = () => {
     const el = mainContentRef.current;
     if (!el) return;
     let isScrolling = false;
-    
+
     const onScroll = () => {
       if (!isScrolling) {
         isScrolling = true;
         setScrolling(true);
       }
-      
+
       if (scrollRAFRef.current) {
         cancelAnimationFrame(scrollRAFRef.current);
       }
-      
+
       scrollRAFRef.current = requestAnimationFrame(() => {
         isScrolling = false;
         setScrolling(false);
@@ -2382,128 +2392,128 @@ const StudentList: React.FC = () => {
   const handleEditSave = async (formData: any) => {
     if (!editingStudent || !user?.school_id) return;
     setEditLoading(true);
-    
+
     try {
-    // Convert empty string numeric fields to null
-    const numericFields = [
-      'discount_in_fee', 'phone', 'form_b', 'father_income', 'mother_income', 'total_siblings', 'father_mobile', 'mother_mobile'
-    ];
-    const cleanedForm = { ...formData };
-    numericFields.forEach(field => {
-      if (cleanedForm[field] === "") cleanedForm[field] = null;
-    });
-    
-    // Convert empty section_id to null (for classes without sections)
-    if (cleanedForm.section_id === "" || !cleanedForm.section_id) {
-      cleanedForm.section_id = null;
-    }
-    // Remove fields not in DB
-    delete cleanedForm._newAvatarFile;
-    // Always include session_id in the update payload
-    cleanedForm.session_id = editingStudent.session_id;
-    // Only keep fields that exist in the students table
-    const allowedFields = [
-      'name', 'class_id', 'section_id', 'admission_date', 'discount_in_fee', 'phone', 'picture_url', 'dob', 'form_b', 'gender', 'cast', 'orphan', 'osc', 'id_mark', 'blood_group', 'previous_school', 'previous_id', 'religion', 'nationality', 'disease', 'additional_note', 'total_siblings', 'address', 'father_name', 'father_national_id', 'father_education', 'father_mobile', 'father_occupation', 'father_income', 'mother_name', 'mother_national_id', 'mother_education', 'mother_mobile', 'mother_occupation', 'mother_income', 'notification_channel', 'status', 'session_id'
-    ];
-    Object.keys(cleanedForm).forEach(key => {
-      if (!allowedFields.includes(key)) {
-        delete cleanedForm[key];
+      // Convert empty string numeric fields to null
+      const numericFields = [
+        'discount_in_fee', 'phone', 'form_b', 'father_income', 'mother_income', 'total_siblings', 'father_mobile', 'mother_mobile'
+      ];
+      const cleanedForm = { ...formData };
+      numericFields.forEach(field => {
+        if (cleanedForm[field] === "") cleanedForm[field] = null;
+      });
+
+      // Convert empty section_id to null (for classes without sections)
+      if (cleanedForm.section_id === "" || !cleanedForm.section_id) {
+        cleanedForm.section_id = null;
       }
-    });
-    // Handle avatar upload/removal
-    if (formData._newAvatarFile) {
-      // Delete old image if it exists
-      if (editingStudent && editingStudent.picture_url) {
-        const url = editingStudent.picture_url;
-        const match = url.match(/student-avatars\/([^?\s]+)/);
-        if (match && match[1]) {
-          const path = match[1];
-          console.log('Attempting to delete old avatar:', path);
-          const { error: removeError } = await supabase.storage.from('student-avatars').remove([path]);
-          if (removeError) {
-            console.error('Failed to delete old avatar:', removeError);
-          } else {
-            console.log('Deleted old avatar:', path);
-          }
-        } else {
-          console.warn('Could not extract old avatar path from URL:', url);
+      // Remove fields not in DB
+      delete cleanedForm._newAvatarFile;
+      // Always include session_id in the update payload
+      cleanedForm.session_id = editingStudent.session_id;
+      // Only keep fields that exist in the students table
+      const allowedFields = [
+        'name', 'class_id', 'section_id', 'admission_date', 'discount_in_fee', 'phone', 'picture_url', 'dob', 'form_b', 'gender', 'cast', 'orphan', 'osc', 'id_mark', 'blood_group', 'previous_school', 'previous_id', 'religion', 'nationality', 'disease', 'additional_note', 'total_siblings', 'address', 'father_name', 'father_national_id', 'father_education', 'father_mobile', 'father_occupation', 'father_income', 'mother_name', 'mother_national_id', 'mother_education', 'mother_mobile', 'mother_occupation', 'mother_income', 'notification_channel', 'status', 'session_id'
+      ];
+      Object.keys(cleanedForm).forEach(key => {
+        if (!allowedFields.includes(key)) {
+          delete cleanedForm[key];
         }
+      });
+      // Handle avatar upload/removal
+      if (formData._newAvatarFile) {
+        // Delete old image if it exists
+        if (editingStudent && editingStudent.picture_url) {
+          const url = editingStudent.picture_url;
+          const match = url.match(/student-avatars\/([^?\s]+)/);
+          if (match && match[1]) {
+            const path = match[1];
+            console.log('Attempting to delete old avatar:', path);
+            const { error: removeError } = await supabase.storage.from('student-avatars').remove([path]);
+            if (removeError) {
+              console.error('Failed to delete old avatar:', removeError);
+            } else {
+              console.log('Deleted old avatar:', path);
+            }
+          } else {
+            console.warn('Could not extract old avatar path from URL:', url);
+          }
+        }
+        const file = formData._newAvatarFile;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `student_${editingStudent.id}_${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('student-avatars')
+          .upload(fileName, file, { upsert: true });
+        if (uploadError) {
+          showToast('Failed to upload avatar: ' + uploadError.message, 'error');
+          setEditLoading(false);
+          return;
+        }
+        const { data: publicUrlData } = supabase
+          .storage
+          .from('student-avatars')
+          .getPublicUrl(fileName);
+        cleanedForm.picture_url = publicUrlData?.publicUrl || null;
+      } else if (cleanedForm.picture_url === null) {
+        // Remove avatar
+        cleanedForm.picture_url = null;
       }
-      const file = formData._newAvatarFile;
-      const fileExt = file.name.split('.').pop();
-      const fileName = `student_${editingStudent.id}_${Date.now()}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('student-avatars')
-        .upload(fileName, file, { upsert: true });
-      if (uploadError) {
-        showToast('Failed to upload avatar: ' + uploadError.message, 'error');
-        setEditLoading(false);
+      // Log the payload for debugging
+      console.log('Supabase update payload:', cleanedForm);
+      const { data: updatedStudent, error } = await supabase
+        .from('students')
+        .update(cleanedForm)
+        .eq('id', editingStudent.id)
+        .eq('school_id', user.school_id)
+        .select('*, classes(name), sections(name)')
+        .single();
+      // --- Update student_class_history: Always update adm_class_id and adm_section_id in ALL records ---
+      // Note: We do NOT update new_class_id and new_section_id - those are only changed by promotion/demotion
+      // Update admission class and section in ALL student_class_history records for this student
+      // This query will update ALL entries for this student (across all sessions) because we filter only by student_id
+      const { error: historyError, data: updatedHistory } = await supabase
+        .from('student_class_history')
+        .update({
+          adm_class_id: cleanedForm.class_id,
+          adm_section_id: cleanedForm.section_id,
+          admission_date: cleanedForm.admission_date
+        })
+        .eq('student_id', editingStudent.id)
+        .eq('school_id', user.school_id)
+        .select('id');
+
+      if (historyError) {
+        console.error('Error updating student_class_history:', historyError);
+        // Don't fail the entire operation, but log the error
+      } else {
+        console.log(`Updated ${updatedHistory?.length || 0} student_class_history record(s) for student ${editingStudent.id}`);
+      }
+      setEditLoading(false);
+      if (error) {
+        showToast('Failed to update student: ' + error.message, 'error');
         return;
       }
-      const { data: publicUrlData } = supabase
-        .storage
-        .from('student-avatars')
-        .getPublicUrl(fileName);
-      cleanedForm.picture_url = publicUrlData?.publicUrl || null;
-    } else if (cleanedForm.picture_url === null) {
-      // Remove avatar
-      cleanedForm.picture_url = null;
-    }
-    // Log the payload for debugging
-    console.log('Supabase update payload:', cleanedForm);
-    const { data: updatedStudent, error } = await supabase
-      .from('students')
-      .update(cleanedForm)
-      .eq('id', editingStudent.id)
-      .eq('school_id', user.school_id)
-      .select('*, classes(name), sections(name)')
-      .single();
-    // --- Update student_class_history: Always update adm_class_id and adm_section_id in ALL records ---
-    // Note: We do NOT update new_class_id and new_section_id - those are only changed by promotion/demotion
-    // Update admission class and section in ALL student_class_history records for this student
-    // This query will update ALL entries for this student (across all sessions) because we filter only by student_id
-    const { error: historyError, data: updatedHistory } = await supabase
-      .from('student_class_history')
-      .update({
-        adm_class_id: cleanedForm.class_id,
-        adm_section_id: cleanedForm.section_id,
-        admission_date: cleanedForm.admission_date
-      })
-      .eq('student_id', editingStudent.id)
-      .eq('school_id', user.school_id)
-      .select('id');
-    
-    if (historyError) {
-      console.error('Error updating student_class_history:', historyError);
-      // Don't fail the entire operation, but log the error
-    } else {
-      console.log(`Updated ${updatedHistory?.length || 0} student_class_history record(s) for student ${editingStudent.id}`);
-    }
-    setEditLoading(false);
-    if (error) {
-      showToast('Failed to update student: ' + error.message, 'error');
-      return;
-    }
-    
-    // Update local state with the complete updated student data including class and section names
-    if (updatedStudent) {
-      setStudents(prev => prev.map(stu => 
-        stu.id === editingStudent.id 
-          ? { ...stu, ...updatedStudent, classes: updatedStudent.classes, sections: updatedStudent.sections } 
-          : stu
-      ));
-      setFiltered(prev => prev.map(stu => 
-        stu.id === editingStudent.id 
-          ? { ...stu, ...updatedStudent, classes: updatedStudent.classes, sections: updatedStudent.sections } 
-          : stu
-      ));
-    }
-    
-    showToast('Student updated successfully!', 'success');
-    setTimeout(() => {
-    setEditingStudent(null);
-    }, 1800);
-    return; // Ensure the function properly resolves
+
+      // Update local state with the complete updated student data including class and section names
+      if (updatedStudent) {
+        setStudents(prev => prev.map(stu =>
+          stu.id === editingStudent.id
+            ? { ...stu, ...updatedStudent, classes: updatedStudent.classes, sections: updatedStudent.sections }
+            : stu
+        ));
+        setFiltered(prev => prev.map(stu =>
+          stu.id === editingStudent.id
+            ? { ...stu, ...updatedStudent, classes: updatedStudent.classes, sections: updatedStudent.sections }
+            : stu
+        ));
+      }
+
+      showToast('Student updated successfully!', 'success');
+      setTimeout(() => {
+        setEditingStudent(null);
+      }, 1800);
+      return; // Ensure the function properly resolves
     } catch (error) {
       console.error('Error updating student:', error);
       showToast('Failed to update student: ' + (error as Error).message, 'error');
@@ -2571,12 +2581,12 @@ const StudentList: React.FC = () => {
 
   const handleExportStudentsPdf = async () => {
     if (!filtered.length) return;
-    
+
     setExportLoading(true);
     try {
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         showToast('Generating PDF for mobile... Please wait.', 'success');
@@ -2587,169 +2597,169 @@ const StudentList: React.FC = () => {
         import('jspdf'),
         import('jspdf-autotable')
       ]);
-      
+
       const { jsPDF } = jsPDFModule;
       const autoTable = autoTableModule.default;
-    
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const margin = 14;
-    const tableTop = 32;
-    
-    // Sort students by ID in ascending order first
-    const sortedStudents = [...filtered].sort((a, b) => Number(a.id) - Number(b.id));
-    
-    // Group students by class-section and sort each group by ID
-    const grouped: Record<string, typeof sortedStudents> = {};
-    sortedStudents.forEach(stu => {
-      const className = stu.classes?.name || '-';
-      const sectionName = stu.sections?.name ? ` (${stu.sections.name})` : '';
-      const groupKey = className + sectionName;
-      if (!grouped[groupKey]) grouped[groupKey] = [];
-      grouped[groupKey].push(stu);
-    });
-    
-    // Sort each group by student ID to ensure proper order
-    Object.keys(grouped).forEach(groupKey => {
-      grouped[groupKey].sort((a, b) => Number(a.id) - Number(b.id));
-    });
-    
-    // Sort group keys using the universal class sorting function
-    const classObjects = Object.keys(grouped).map(groupKey => {
-      // Extract just the class name (remove section part)
-      const className = groupKey.split(' (')[0];
-      return { name: className, groupKey };
-    });
-    const sortedClassObjects = sortClasses(classObjects);
-    const sortedGroupKeys = sortedClassObjects.map(obj => obj.groupKey);
-    
-    let firstPage = true;
-    sortedGroupKeys.forEach((groupKey) => {
-      const students = grouped[groupKey];
-      if (!firstPage) doc.addPage();
-      firstPage = false;
-      
-      // Header
-      doc.setFontSize(18);
-      doc.text('Up-to-Date Students List', 105, margin, { align: 'center' });
-      doc.setFontSize(16);
-      doc.text(groupKey, 105, margin + 10, { align: 'center' });
-      doc.setFontSize(10);
-      doc.text(`Generated on: ${formatDate(new Date())}`, 210 - margin, margin, { align: 'right' });
-      
-      // Table columns
-      const head = [
-        ['S.No', 'ID', 'Name', 'Father Name', 'Mobile', 'DOB', 'Adm. Date', 'Remarks']
-      ];
-      
-      // Table rows - students are already sorted by ID within each group
-      const body = students.map((stu: any, idx: number) => [
-        idx + 1,
-        stu.id,
-        stu.name || '-',
-        stu.father_name || '-',
-        stu.phone || '-',
-        stu.dob ? formatDate(new Date(stu.dob)) : '-',
-        (stu.admission_date || stu.created_at) ? formatDate(new Date(stu.admission_date || stu.created_at)) : '-',
-        '' // Remarks blank
-      ]);
-      
-      autoTable(doc, {
-        head,
-        body,
-        theme: 'grid',
-        startY: tableTop,
-        margin: { top: margin, left: margin, right: margin },
-        headStyles: {
-          fillColor: [99, 102, 241],
-          textColor: [255, 255, 255],
-          fontSize: 10,
-          fontStyle: 'bold',
-          halign: 'center',
-          cellPadding: 2,
-        },
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          halign: 'center',
-          textColor: [60, 60, 60],
-          minCellHeight: 6,
-          lineColor: [200, 200, 200],
-          lineWidth: 0.1,
-        },
-        alternateRowStyles: { fillColor: [232, 240, 254] },
-        columnStyles: {
-          0: { cellWidth: 14, halign: 'center' },
-          1: { cellWidth: 14, halign: 'center' },
-          2: { cellWidth: 32, halign: 'left' },
-          3: { cellWidth: 32, halign: 'left' },
-          4: { cellWidth: 24, halign: 'center' },
-          5: { cellWidth: 20, halign: 'center' },
-          6: { cellWidth: 22, halign: 'center' },
-          7: { cellWidth: 26, halign: 'center' },
-        },
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const margin = 14;
+      const tableTop = 32;
+
+      // Sort students by ID in ascending order first
+      const sortedStudents = [...filtered].sort((a, b) => Number(a.id) - Number(b.id));
+
+      // Group students by class-section and sort each group by ID
+      const grouped: Record<string, typeof sortedStudents> = {};
+      sortedStudents.forEach(stu => {
+        const className = stu.classes?.name || '-';
+        const sectionName = stu.sections?.name ? ` (${stu.sections.name})` : '';
+        const groupKey = className + sectionName;
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+        grouped[groupKey].push(stu);
       });
-    });
-    
-    // Format date as dd-mmm-yyyy
-    const formatDateForFileName = (date: Date) => {
-      const day = date.getDate().toString().padStart(2, '0');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[date.getMonth()];
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;
-    };
 
-    // Save the PDF with mobile-friendly approach
-    const fileName = `Students List (${formatDateForFileName(new Date())}).pdf`;
-    
-    if (isMobileDevice) {
-      // For mobile devices, use Capacitor Filesystem API approach
-      try {
-        // Generate PDF as base64 string
-        const pdfBase64 = doc.output('datauristring').split(',')[1];
-        
-        // Create unique filename with timestamp to prevent overwriting
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const mobileFileName = `students-list-${timestamp}.pdf`;
+      // Sort each group by student ID to ensure proper order
+      Object.keys(grouped).forEach(groupKey => {
+        grouped[groupKey].sort((a, b) => Number(a.id) - Number(b.id));
+      });
 
-        // Check if Capacitor is available (for mobile apps)
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-          try {
-            // Write PDF to documents directory
-            await window.Capacitor.Plugins.Filesystem.writeFile({
-              path: mobileFileName,
-              data: pdfBase64,
-              directory: 'DOCUMENTS'
-            });
+      // Sort group keys using the universal class sorting function
+      const classObjects = Object.keys(grouped).map(groupKey => {
+        // Extract just the class name (remove section part)
+        const className = groupKey.split(' (')[0];
+        return { name: className, groupKey };
+      });
+      const sortedClassObjects = sortClasses(classObjects);
+      const sortedGroupKeys = sortedClassObjects.map(obj => obj.groupKey);
 
-            // Get the file URI
-            const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-              path: mobileFileName,
-              directory: 'DOCUMENTS'
-            });
+      let firstPage = true;
+      sortedGroupKeys.forEach((groupKey) => {
+        const students = grouped[groupKey];
+        if (!firstPage) doc.addPage();
+        firstPage = false;
 
-            // Show success message and trigger native Android "Open with" dialog
-            showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-            
-            // Trigger native Android "Open with" dialog by opening the file URI
-            // This will show the native Android app chooser dialog
-            window.open(uriResult.uri, '_blank');
-            
-          } catch (fsError) {
-            console.error('Filesystem error:', fsError);
-            // If filesystem fails, fallback to regular download
-            doc.save(mobileFileName);
-            showToast('PDF downloaded successfully!', 'success');
-          }
-        } else {
-          // Fallback for web browsers - use the blob approach
-          try {
-            const pdfBlob = doc.output('blob');
-            const url = URL.createObjectURL(pdfBlob);
-            
-            // Create a visible download button for mobile
-            const downloadContainer = document.createElement('div');
-            downloadContainer.style.cssText = `
+        // Header
+        doc.setFontSize(18);
+        doc.text('Up-to-Date Students List', 105, margin, { align: 'center' });
+        doc.setFontSize(16);
+        doc.text(groupKey, 105, margin + 10, { align: 'center' });
+        doc.setFontSize(10);
+        doc.text(`Generated on: ${formatDate(new Date())}`, 210 - margin, margin, { align: 'right' });
+
+        // Table columns
+        const head = [
+          ['S.No', 'ID', 'Name', 'Father Name', 'Mobile', 'DOB', 'Adm. Date', 'Remarks']
+        ];
+
+        // Table rows - students are already sorted by ID within each group
+        const body = students.map((stu: any, idx: number) => [
+          idx + 1,
+          stu.id,
+          stu.name || '-',
+          stu.father_name || '-',
+          stu.phone || '-',
+          stu.dob ? formatDate(new Date(stu.dob)) : '-',
+          (stu.admission_date || stu.created_at) ? formatDate(new Date(stu.admission_date || stu.created_at)) : '-',
+          '' // Remarks blank
+        ]);
+
+        autoTable(doc, {
+          head,
+          body,
+          theme: 'grid',
+          startY: tableTop,
+          margin: { top: margin, left: margin, right: margin },
+          headStyles: {
+            fillColor: [99, 102, 241],
+            textColor: [255, 255, 255],
+            fontSize: 10,
+            fontStyle: 'bold',
+            halign: 'center',
+            cellPadding: 2,
+          },
+          styles: {
+            fontSize: 9,
+            cellPadding: 2,
+            halign: 'center',
+            textColor: [60, 60, 60],
+            minCellHeight: 6,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          alternateRowStyles: { fillColor: [232, 240, 254] },
+          columnStyles: {
+            0: { cellWidth: 14, halign: 'center' },
+            1: { cellWidth: 14, halign: 'center' },
+            2: { cellWidth: 32, halign: 'left' },
+            3: { cellWidth: 32, halign: 'left' },
+            4: { cellWidth: 24, halign: 'center' },
+            5: { cellWidth: 20, halign: 'center' },
+            6: { cellWidth: 22, halign: 'center' },
+            7: { cellWidth: 26, halign: 'center' },
+          },
+        });
+      });
+
+      // Format date as dd-mmm-yyyy
+      const formatDateForFileName = (date: Date) => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
+
+      // Save the PDF with mobile-friendly approach
+      const fileName = `Students List (${formatDateForFileName(new Date())}).pdf`;
+
+      if (isMobileDevice) {
+        // For mobile devices, use Capacitor Filesystem API approach
+        try {
+          // Generate PDF as base64 string
+          const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+          // Create unique filename with timestamp to prevent overwriting
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const mobileFileName = `students-list-${timestamp}.pdf`;
+
+          // Check if Capacitor is available (for mobile apps)
+          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+            try {
+              // Write PDF to documents directory
+              await window.Capacitor.Plugins.Filesystem.writeFile({
+                path: mobileFileName,
+                data: pdfBase64,
+                directory: 'DOCUMENTS'
+              });
+
+              // Get the file URI
+              const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                path: mobileFileName,
+                directory: 'DOCUMENTS'
+              });
+
+              // Show success message and trigger native Android "Open with" dialog
+              showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+
+              // Trigger native Android "Open with" dialog by opening the file URI
+              // This will show the native Android app chooser dialog
+              window.open(uriResult.uri, '_blank');
+
+            } catch (fsError) {
+              console.error('Filesystem error:', fsError);
+              // If filesystem fails, fallback to regular download
+              doc.save(mobileFileName);
+              showToast('PDF downloaded successfully!', 'success');
+            }
+          } else {
+            // Fallback for web browsers - use the blob approach
+            try {
+              const pdfBlob = doc.output('blob');
+              const url = URL.createObjectURL(pdfBlob);
+
+              // Create a visible download button for mobile
+              const downloadContainer = document.createElement('div');
+              downloadContainer.style.cssText = `
               position: fixed;
               top: 50%;
               left: 50%;
@@ -2763,8 +2773,8 @@ const StudentList: React.FC = () => {
               text-align: center;
               max-width: 90vw;
             `;
-            
-            downloadContainer.innerHTML = `
+
+              downloadContainer.innerHTML = `
               <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
               <p style="margin: 0 0 15px 0; color: #666;">Students List Report</p>
               <a href="${url}" download="${fileName}" 
@@ -2779,27 +2789,27 @@ const StudentList: React.FC = () => {
                 Close
               </button>
             `;
-            
-            document.body.appendChild(downloadContainer);
-            
-            // Auto-remove after 30 seconds
-            setTimeout(() => {
-              if (downloadContainer.parentElement) {
-                downloadContainer.remove();
-              }
-              URL.revokeObjectURL(url);
-            }, 30000);
-            
-            showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-            
-          } catch (webError) {
-            console.error('Web download failed, trying data URI method:', webError);
-            
-            // Final fallback: Open PDF in new tab with data URI
-            const pdfDataUri = doc.output('datauristring');
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-              newWindow.document.write(`
+
+              document.body.appendChild(downloadContainer);
+
+              // Auto-remove after 30 seconds
+              setTimeout(() => {
+                if (downloadContainer.parentElement) {
+                  downloadContainer.remove();
+                }
+                URL.revokeObjectURL(url);
+              }, 30000);
+
+              showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
+
+            } catch (webError) {
+              console.error('Web download failed, trying data URI method:', webError);
+
+              // Final fallback: Open PDF in new tab with data URI
+              const pdfDataUri = doc.output('datauristring');
+              const newWindow = window.open('', '_blank');
+              if (newWindow) {
+                newWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
                   <head>
@@ -2830,22 +2840,22 @@ const StudentList: React.FC = () => {
                   </body>
                 </html>
               `);
-              newWindow.document.close();
-              showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-            } else {
-              showToast('Please allow popups for this site to download the PDF', 'error');
+                newWindow.document.close();
+                showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
+              } else {
+                showToast('Please allow popups for this site to download the PDF', 'error');
+              }
             }
           }
+        } catch (error) {
+          console.error('Mobile PDF export error:', error);
+          showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
-      } catch (error) {
-        console.error('Mobile PDF export error:', error);
-        showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
+      } else {
+        // For desktop, use the standard approach
+        doc.save(fileName);
+        showToast('Students list PDF generated successfully', 'success');
       }
-    } else {
-      // For desktop, use the standard approach
-      doc.save(fileName);
-      showToast('Students list PDF generated successfully', 'success');
-    }
     } catch (error) {
       console.error('Error generating PDF:', error);
       showToast('Failed to generate PDF', 'error');
@@ -2938,71 +2948,182 @@ const StudentList: React.FC = () => {
 
   return (
     <>
-    <PageContainer>
-      <Header>
-        {/* Header row: always flex row, header left, toggle right */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            gap: 8,
-            marginBottom: window.innerWidth <= 700 ? 4 : 0,
-          }}
-        >
-        <Title theme={theme === 'dark' ? darkTheme : lightTheme}>
-          All Students <span style={{fontWeight:400, fontSize:'1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a'}}>({filtered.length})</span>
-        </Title>
-          {/* Mobile filter toggle button and add button */}
-          <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
-            <button
-              aria-label="Show/hide filters"
-              style={{
-                background: theme === 'dark' ? '#23242a' : '#f3f4f6',
-                border: 'none',
-                borderRadius: 8,
-                padding: 8,
-                marginLeft: 8,
-                cursor: 'pointer',
-                boxShadow: '0 1px 4px #0002',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onClick={() => setShowMobileFilters(v => !v)}
-            >
-              <FilterListIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
-            </button>
-            <AddHeaderIconButton
-              aria-label="Add Student"
-              onClick={() => navigate('/students/add')}
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-            >
-              <AddIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
-            </AddHeaderIconButton>
-          </div>
-          {/* Desktop filters */}
-          <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
-            <SegmentedGroup>
-              <SegmentedInput
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              type="text"
-              placeholder="Search Student..."
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-                style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
-            />
-              <SegmentedSelect
-            value={classFilter}
-            onChange={handleClassFilterChange}
-                style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+      <PageContainer>
+        <Header>
+          {/* Header row: always flex row, header left, toggle right */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              gap: 8,
+              marginBottom: window.innerWidth <= 700 ? 4 : 0,
+            }}
           >
-            <option value="">All Classes</option>
-            {loadingClasses ? <option>Loading...</option> :
-              classOptions.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+            <Title theme={theme === 'dark' ? darkTheme : lightTheme}>
+              All Students <span style={{ fontWeight: 400, fontSize: '1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a' }}>({filtered.length})</span>
+            </Title>
+            {/* Mobile filter toggle button and add button */}
+            <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
+              <button
+                aria-label="Show/hide filters"
+                style={{
+                  background: theme === 'dark' ? '#23242a' : '#f3f4f6',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: 8,
+                  marginLeft: 8,
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 4px #0002',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onClick={() => setShowMobileFilters(v => !v)}
+              >
+                <FilterListIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
+              </button>
+              <AddHeaderIconButton
+                aria-label="Add Student"
+                onClick={() => navigate('/students/add')}
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+              >
+                <AddIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
+              </AddHeaderIconButton>
+            </div>
+            {/* Desktop filters */}
+            <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
+              <SegmentedGroup>
+                <SegmentedInput
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
+                  type="text"
+                  placeholder="Search Student..."
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
+                />
+                <SegmentedSelect
+                  value={classFilter}
+                  onChange={handleClassFilterChange}
+                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                >
+                  <option value="">All Classes</option>
+                  {loadingClasses ? <option>Loading...</option> :
+                    classOptions.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                </SegmentedSelect>
+                {(() => {
+                  const selectedClass = classOptions.find(c => String(c.id) === String(classFilter));
+                  const hasSections = selectedClass?.has_sections ?? true;
+                  return hasSections ? (
+                    <SegmentedSelect
+                      value={sectionFilter}
+                      onChange={handleSectionFilterChange}
+                      disabled={!classFilter}
+                      style={{ borderRadius: 0 }}
+                    >
+                      <option value="">All Sections</option>
+                      {loadingSections ? <option>Loading...</option> :
+                        sectionOptions.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </SegmentedSelect>
+                  ) : null;
+                })()}
+                <SegmentedSelect
+                  value={sessionFilter}
+                  onChange={handleSessionFilterChange}
+                  style={{ borderRadius: 0 }}
+                >
+                  {loadingSessionsFilter ? <option>Loading...</option> :
+                    sessionOptions.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </SegmentedSelect>
+                <SegmentedSelect
+                  value={statusFilter}
+                  onChange={handleStatusFilterChange}
+                  style={{ borderRadius: 0 }}
+                >
+                  {STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </SegmentedSelect>
+                <SegmentedButton
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
+                  onClick={handleExportStudentsPdf}
+                  disabled={exportLoading}
+                  title="Export students to PDF"
+                  style={{
+                    minWidth: 110,
+                    maxWidth: 130,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: theme === 'dark' ? '#444' : '#f3f4f6',
+                    border: `1.5px solid ${theme === 'dark' ? '#555' : '#e5e7eb'}`,
+                    color: theme === 'dark' ? '#C0C0C0' : '#444',
+                    fontWeight: 700
+                  }}
+                >
+                  {exportLoading ? (
+                    <div style={{
+                      width: 15,
+                      height: 15,
+                      border: '2px solid #e0e7ff',
+                      borderTop: '2px solid #4a6cf7',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                  ) : (
+                    <PictureAsPdf style={{ fontSize: 15 }} />
+                  )}
+                  <span style={{ fontWeight: 700, display: 'inline-block' }}>
+                    {exportLoading ? 'Exporting...' : 'Export'}
+                  </span>
+                </SegmentedButton>
+              </SegmentedGroup>
+            </HeaderFilters>
+          </div>
+          {/* Mobile search bar - always visible */}
+          {window.innerWidth <= 700 && (
+            <div style={{ width: '100%' }}>
+              <SegmentedInput
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                type="text"
+                placeholder="Search Student..."
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+          )}
+          {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
+          {window.innerWidth <= 700 && showMobileFilters && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10,
+                width: '100%',
+                marginTop: 8,
+                marginBottom: 8,
+              }}
+            >
+              <SegmentedSelect
+                value={classFilter}
+                onChange={handleClassFilterChange}
+                style={{ width: '100%' }}
+              >
+                <option value="">All Classes</option>
+                {loadingClasses ? <option>Loading...</option> :
+                  classOptions.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
               </SegmentedSelect>
               {(() => {
                 const selectedClass = classOptions.find(c => String(c.id) === String(classFilter));
@@ -3012,7 +3133,7 @@ const StudentList: React.FC = () => {
                     value={sectionFilter}
                     onChange={handleSectionFilterChange}
                     disabled={!classFilter}
-                    style={{ borderRadius: 0 }}
+                    style={{ width: '100%' }}
                   >
                     <option value="">All Sections</option>
                     {loadingSections ? <option>Loading...</option> :
@@ -3023,276 +3144,165 @@ const StudentList: React.FC = () => {
                 ) : null;
               })()}
               <SegmentedSelect
-            value={sessionFilter}
-            onChange={handleSessionFilterChange}
-                style={{ borderRadius: 0 }}
-          >
-            {loadingSessionsFilter ? <option>Loading...</option> :
-              sessionOptions.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+                value={sessionFilter}
+                onChange={handleSessionFilterChange}
+                style={{ width: '100%' }}
+              >
+                {loadingSessionsFilter ? <option>Loading...</option> :
+                  sessionOptions.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
               </SegmentedSelect>
               <SegmentedSelect
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
-                style={{ borderRadius: 0 }}
+                style={{ width: '100%' }}
               >
                 {STATUS_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </SegmentedSelect>
               <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
+                theme={theme === 'dark' ? darkTheme : lightTheme}
                 onClick={handleExportStudentsPdf}
                 disabled={exportLoading}
                 title="Export students to PDF"
-                style={{
-                  minWidth: 110,
-                  maxWidth: 130,
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  background: theme === 'dark' ? '#444' : '#f3f4f6',
-                  border: `1.5px solid ${theme === 'dark' ? '#555' : '#e5e7eb'}`,
-                  color: theme === 'dark' ? '#C0C0C0' : '#444',
-                  fontWeight: 700
-                }}
+                style={{ width: '100%' }}
               >
                 {exportLoading ? (
-                  <div style={{ 
-                    width: 15, 
-                    height: 15, 
-                    border: '2px solid #e0e7ff', 
-                    borderTop: '2px solid #4a6cf7', 
-                    borderRadius: '50%', 
-                    animation: 'spin 1s linear infinite' 
+                  <div style={{
+                    width: 15,
+                    height: 15,
+                    border: '2px solid #e0e7ff',
+                    borderTop: '2px solid #4a6cf7',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
                   }} />
                 ) : (
-                <PictureAsPdf style={{ fontSize: 15 }} />
+                  <PictureAsPdf style={{ fontSize: 15 }} />
                 )}
-                <span style={{ fontWeight: 700, display: 'inline-block' }}>
+                <span style={{ fontWeight: 700 }}>
                   {exportLoading ? 'Exporting...' : 'Export'}
                 </span>
               </SegmentedButton>
-            </SegmentedGroup>
-          </HeaderFilters>
-        </div>
-        {/* Mobile search bar - always visible */}
-        {window.innerWidth <= 700 && (
-          <div style={{ width: '100%' }}>
-            <SegmentedInput
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              type="text"
-              placeholder="Search Student..."
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              style={{ width: '100%' }}
-            />
-          </div>
-        )}
-        {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
-        {window.innerWidth <= 700 && showMobileFilters && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10,
-              width: '100%',
-              marginTop: 8,
-              marginBottom: 8,
-            }}
-          >
-            <SegmentedSelect
-              value={classFilter}
-              onChange={handleClassFilterChange}
-              style={{ width: '100%' }}
-            >
-              <option value="">All Classes</option>
-              {loadingClasses ? <option>Loading...</option> :
-                classOptions.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-            </SegmentedSelect>
-            {(() => {
-              const selectedClass = classOptions.find(c => String(c.id) === String(classFilter));
-              const hasSections = selectedClass?.has_sections ?? true;
-              return hasSections ? (
-                <SegmentedSelect
-                  value={sectionFilter}
-                  onChange={handleSectionFilterChange}
-                  disabled={!classFilter}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">All Sections</option>
-                  {loadingSections ? <option>Loading...</option> :
-                    sectionOptions.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                </SegmentedSelect>
-              ) : null;
-            })()}
-            <SegmentedSelect
-              value={sessionFilter}
-              onChange={handleSessionFilterChange}
-              style={{ width: '100%' }}
-            >
-              {loadingSessionsFilter ? <option>Loading...</option> :
-                sessionOptions.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-            </SegmentedSelect>
-            <SegmentedSelect
-            value={statusFilter}
-            onChange={handleStatusFilterChange}
-              style={{ width: '100%' }}
-          >
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </SegmentedSelect>
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-            onClick={handleExportStudentsPdf}
-            disabled={exportLoading}
-            title="Export students to PDF"
-              style={{ width: '100%' }}
-          >
-              {exportLoading ? (
-                <div style={{ 
-                  width: 15, 
-                  height: 15, 
-                  border: '2px solid #e0e7ff', 
-                  borderTop: '2px solid #4a6cf7', 
-                  borderRadius: '50%', 
-                  animation: 'spin 1s linear infinite' 
-                }} />
-              ) : (
-              <PictureAsPdf style={{ fontSize: 15 }} />
-              )}
-            <span style={{ fontWeight: 700 }}>
-              {exportLoading ? 'Exporting...' : 'Export'}
-            </span>
-            </SegmentedButton>
-          </div>
-        )}
-      </Header>
+            </div>
+          )}
+        </Header>
         <MainContent ref={mainContentRef}>
-      {filteredStudents.length === 0 ? (
-        <NoResults>No students found matching your search criteria.</NoResults>
-      ) : (
-        mobileOptimizations.enableGlowEffects ? (
-          <GlowingCards enableGlow gap="0.6em" maxWidth="100%" padding="0">
-            <CardGrid cardCount={studentsToShow.length}>
-              {studentsToShow.map((student) => (
-                <GlowingCard key={student.id} className="!max-w-[120px] !w-full !p-0" glowColor="#6366f1">
+          {filteredStudents.length === 0 ? (
+            <NoResults>No students found matching your search criteria.</NoResults>
+          ) : (
+            mobileOptimizations.enableGlowEffects ? (
+              <GlowingCards enableGlow gap="0.6em" maxWidth="100%" padding="0">
+                <CardGrid cardCount={studentsToShow.length}>
+                  {studentsToShow.map((student) => (
+                    <GlowingCard key={student.id} className="!max-w-[120px] !w-full !p-0" glowColor="#6366f1">
+                      <MemoizedStudentCard
+                        student={student}
+                        onClick={(e) => handleCardClickMemo(student, e)}
+                        onEdit={() => handleEditMemo(student)}
+                        onPrint={() => handlePrintMemo(student)}
+                        onProfile={() => handleProfileMemo(student)}
+                      />
+                    </GlowingCard>
+                  ))}
+                </CardGrid>
+              </GlowingCards>
+            ) : (
+              <CardGrid cardCount={studentsToShow.length}>
+                {studentsToShow.map((student) => (
                   <MemoizedStudentCard
+                    key={student.id}
                     student={student}
                     onClick={(e) => handleCardClickMemo(student, e)}
                     onEdit={() => handleEditMemo(student)}
                     onPrint={() => handlePrintMemo(student)}
                     onProfile={() => handleProfileMemo(student)}
                   />
-                </GlowingCard>
-              ))}
-            </CardGrid>
-          </GlowingCards>
-        ) : (
-          <CardGrid cardCount={studentsToShow.length}>
-            {studentsToShow.map((student) => (
-              <MemoizedStudentCard
-                key={student.id}
-                student={student}
-                onClick={(e) => handleCardClickMemo(student, e)}
-                onEdit={() => handleEditMemo(student)}
-                onPrint={() => handlePrintMemo(student)}
-                onProfile={() => handleProfileMemo(student)}
-              />
-            ))}
-          </CardGrid>
-      )
-      )}
-      </MainContent>
-      {editingStudent && (
-        <EditStudentForm
-          key={editingStudent.id} // Force re-render when editing different students
-          open={Boolean(editingStudent)}
-          onSubmit={handleEditSave}
-          onCancel={handleEditCancel}
-          initialData={editForm}
-        />
-      )}
-      <PaginationContainer>
+                ))}
+              </CardGrid>
+            )
+          )}
+        </MainContent>
+        {editingStudent && (
+          <EditStudentForm
+            key={editingStudent.id} // Force re-render when editing different students
+            open={Boolean(editingStudent)}
+            onSubmit={handleEditSave}
+            onCancel={handleEditCancel}
+            initialData={editForm}
+          />
+        )}
+        <PaginationContainer>
           <PaginationInfo style={{ flex: 1, textAlign: 'left', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {window.innerWidth <= 700 
-            ? `${from} to ${to} of ${total}`
-            : `Showing ${from} to ${to} of ${total} students`
-          }
-        </PaginationInfo>
+            {window.innerWidth <= 700
+              ? `${from} to ${to} of ${total}`
+              : `Showing ${from} to ${to} of ${total} students`
+            }
+          </PaginationInfo>
           <PaginationControls style={{ flex: 'none', marginLeft: 'auto', width: 'auto' }}>
             <SegmentedGroup>
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-              first
-              style={{ minWidth: 32 }}
-            >
-              ‹
-            </SegmentedButton>
-            {page > 1 && (
               <SegmentedButton
                 theme={theme === 'dark' ? darkTheme : lightTheme}
                 onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+                first
                 style={{ minWidth: 32 }}
               >
-                {page - 1}
+                ‹
               </SegmentedButton>
-            )}
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              active
-              disabled
-              style={{ minWidth: 32 }}
-            >
-              {page}
-            </SegmentedButton>
-            {page < totalPages && (
+              {page > 1 && (
+                <SegmentedButton
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
+                  onClick={() => handlePageChange(page - 1)}
+                  style={{ minWidth: 32 }}
+                >
+                  {page - 1}
+                </SegmentedButton>
+              )}
+              <SegmentedButton
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                active
+                disabled
+                style={{ minWidth: 32 }}
+              >
+                {page}
+              </SegmentedButton>
+              {page < totalPages && (
+                <SegmentedButton
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
+                  onClick={() => handlePageChange(page + 1)}
+                  style={{ minWidth: 32 }}
+                >
+                  {page + 1}
+                </SegmentedButton>
+              )}
               <SegmentedButton
                 theme={theme === 'dark' ? darkTheme : lightTheme}
                 onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+                last
                 style={{ minWidth: 32 }}
               >
-                {page + 1}
+                ›
               </SegmentedButton>
-            )}
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages}
-              last
-              style={{ minWidth: 32 }}
-            >
-              ›
-            </SegmentedButton>
             </SegmentedGroup>
-        </PaginationControls>
-      </PaginationContainer>
-      {printStudent && (
-        <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'#fff',zIndex:9999,overflow:'auto'}}>
-          <Suspense fallback={<Loader />}>
-            <AdmissionLetterPrint student={printStudent} onClose={() => setPrintStudent(null)} />
-          </Suspense>
-        </div>
-      )}
+          </PaginationControls>
+        </PaginationContainer>
+        {printStudent && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#fff', zIndex: 9999, overflow: 'auto' }}>
+            <Suspense fallback={<Loader />}>
+              <AdmissionLetterPrint student={printStudent} onClose={() => setPrintStudent(null)} />
+            </Suspense>
+          </div>
+        )}
       </PageContainer>
       {showToTop && (
         <ToTopButton onClick={handleToTop} aria-label="Scroll to top">
           <KeyboardArrowUpIcon style={{ fontSize: 32 }} />
         </ToTopButton>
-          )}
-        </>
+      )}
+    </>
   );
 };
 

@@ -123,15 +123,15 @@ const CardGrid = styled.div`
 
 const getStatusColor = (status: string) =>
   status === 'active' ? '34,197,94' : // green
-  status === 'suspended' ? '245,158,11' : // orange
-  status === 'withdrawn' ? '239,68,68' : // red
-  '99,102,241'; // blue
+    status === 'suspended' ? '245,158,11' : // orange
+      status === 'withdrawn' ? '239,68,68' : // red
+        '99,102,241'; // blue
 
 const EmployeeCard = styled.div<{ status: string }>`
   background: ${({ theme }) => theme.CARD};
   border-radius: 14px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+  padding: 0;
   position: relative;
   border: 2.5px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.18s;
@@ -140,6 +140,7 @@ const EmployeeCard = styled.div<{ status: string }>`
   width: 100%;
   cursor: pointer;
   box-sizing: border-box;
+  overflow: hidden;
   
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -148,63 +149,61 @@ const EmployeeCard = styled.div<{ status: string }>`
   
   @media (max-width: 700px) {
     min-width: 200px;
-    padding: 1.2rem 1rem 1rem 1rem;
   }
 `;
 
 const StatusBadge = styled.div<{ status: string }>`
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 0.25rem 0.75rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.65rem;
+  font-weight: 600;
   background: ${({ status }) =>
-    status === 'active' ? 'rgb(34, 197, 94)' :
-    status === 'suspended' ? 'rgb(245, 158, 11)' :
-    status === 'withdrawn' ? 'rgb(239, 68, 68)' :
-    'rgb(99, 102, 241)'};
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.13);
-  z-index: 3;
+    status === 'active' ? 'rgba(34, 197, 94, 0.15)' :
+      status === 'suspended' ? 'rgba(245, 158, 11, 0.15)' :
+        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.15)' :
+          'rgba(99, 102, 241, 0.15)'};
+  color: ${({ status }) =>
+    status === 'active' ? 'rgb(21, 128, 61)' :
+      status === 'suspended' ? 'rgb(161, 98, 7)' :
+        status === 'withdrawn' ? 'rgb(185, 28, 28)' :
+          'rgb(67, 56, 202)'};
+  box-shadow: none;
   letter-spacing: 0.02em;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   line-height: 1;
+  border: 1px solid ${({ status }) =>
+    status === 'active' ? 'rgba(34, 197, 94, 0.3)' :
+      status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
+        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
+          'rgba(99, 102, 241, 0.3)'};
 
   ${({ status }) => status === 'active' && `
     &::before {
       content: '';
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: currentColor;
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.2; }
-      50% { opacity: 0.8; }
+      opacity: 0.6;
     }
   `}
 `;
 
 const Avatar = styled.div`
-  width: 80px;
-  height: 88px;
-  border-radius: 16px;
+  width: 120px;
+  min-height: 140px;
+  align-self: stretch;
+  border-radius: 0;
   background: ${({ theme }) => theme.ACCENT + '22'};
   color: ${({ theme }) => theme.ACCENT};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  margin-right: 1.2rem;
   flex-shrink: 0;
   overflow: hidden;
   cursor: pointer;
@@ -215,31 +214,33 @@ const Avatar = styled.div`
     content: '';
     position: absolute;
     inset: 0;
-    background: ${({ theme }) => theme.BG === '#252525' ? 
-      'linear-gradient(45deg, rgba(255,255,255,0.1), transparent)' : 
-      'linear-gradient(45deg, rgba(0,0,0,0.05), transparent)'};
+    background: ${({ theme }) => theme.BG === '#252525' ?
+    'linear-gradient(45deg, rgba(255,255,255,0.1), transparent)' :
+    'linear-gradient(45deg, rgba(0,0,0,0.05), transparent)'};
     opacity: 0;
     transition: opacity 0.2s ease;
   }
 
-  &:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-
-    &::after {
-      opacity: 1;
-    }
+  &:hover::after {
+    opacity: 1;
   }
-
-  &:active {
-    transform: translateY(0) scale(0.98);
+  
+  @media (max-width: 700px) {
+    width: 90px;
+    min-height: 120px;
+    font-size: 2rem;
   }
 `;
 
 const CardTop = styled.div`
   display: flex;
   align-items: stretch;
-  gap: 0.7rem;
+  gap: 0;
+  max-height: 140px;
+  
+  @media (max-width: 700px) {
+    max-height: 120px;
+  }
 `;
 
 const EmployeeName = styled.h3`
@@ -247,18 +248,30 @@ const EmployeeName = styled.h3`
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
+  
+  @media (max-width: 700px) {
+    font-size: 0.95rem;
+  }
 `;
 
 const RoleName = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.92rem;
   margin-bottom: 0.1rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+  }
 `;
 
 const EmployeeDetails = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.9rem;
   margin: 0.25rem 0;
+  
+  @media (max-width: 700px) {
+    font-size: 0.75rem;
+  }
 `;
 
 const CardActions = styled.div<{ offsetTop?: boolean }>`
@@ -401,6 +414,27 @@ const EmployeeSkeletonLine = styled.div<{ width?: string; height?: string }>`
   margin: 10px auto 0 auto;
 `;
 
+const OnlineDot = styled.div<{ isOnline: boolean }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: ${({ isOnline }) => isOnline ? '#22c55e' : '#9ca3af'};
+  box-shadow: ${({ isOnline }) => isOnline ? '0 0 4px #22c55e' : 'none'};
+  display: inline-block;
+`;
+
+const VersionTag = styled.span`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+`;
+
 const EmployeeListSkeleton: React.FC = () => (
   <EmployeeSkeletonContainer>
     <EmployeeSkeletonGrid>
@@ -423,16 +457,22 @@ const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Check if user has school_id
   if (!user?.school_id) {
     return (
       <PageContainer>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          padding: '2rem', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
           gap: 16,
           color: '#888',
           fontSize: '1.1rem',
@@ -453,7 +493,7 @@ const EmployeeList: React.FC = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('staff')
-        .select('*')
+        .select('*, last_online, is_online, app_version')
         .eq('school_id', user.school_id)
         .order('created_at', { ascending: false });
       if (!error) setEmployees(data || []);
@@ -461,10 +501,40 @@ const EmployeeList: React.FC = () => {
       if (elapsed < minDuration) {
         setTimeout(() => setLoading(false), minDuration - elapsed);
       } else {
-      setLoading(false);
+        setLoading(false);
       }
     };
     fetchEmployees();
+  }, [user?.school_id]);
+
+  // Real-time subscription for staff updates
+  useEffect(() => {
+    if (!user?.school_id) return;
+
+    const subscription = supabase
+      .channel('staff-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'staff',
+          filter: `school_id=eq.${user.school_id}`,
+        },
+        (payload) => {
+          const updatedStaff = payload.new;
+          setEmployees((prev) =>
+            prev.map((emp) =>
+              emp.id === updatedStaff.id ? { ...emp, ...updatedStaff } : emp
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user?.school_id]);
 
   const handleEdit = (employee: any) => {
@@ -498,7 +568,7 @@ const EmployeeList: React.FC = () => {
   return (
     <PageContainer>
       <Header>
-        <Title>All Employees <span style={{fontWeight:400, fontSize:'1rem', color:'#4a4a4a'}}>({employees.length})</span></Title>
+        <Title>All Employees <span style={{ fontWeight: 400, fontSize: '1rem', color: '#4a4a4a' }}>({employees.length})</span></Title>
         <AddHeaderButton onClick={() => navigate('/employees/add')}>
           <AddIcon style={{ fontSize: 18 }} /> Add
         </AddHeaderButton>
@@ -506,15 +576,73 @@ const EmployeeList: React.FC = () => {
       <MainContent>
         <CardGrid>
           {employees.map((employee) => (
-            <EmployeeCard 
-              key={employee.id} 
+            <EmployeeCard
+              key={employee.id}
               status={employee.status || 'active'}
               onClick={() => handleProfile(employee)}
               data-employee-card
             >
-              <StatusBadge status={employee.status || 'active'}>
-                {(employee.status || 'active').charAt(0).toUpperCase() + (employee.status || 'active').slice(1)}
-              </StatusBadge>
+              {(() => {
+                const isOnline = employee.is_online && employee.last_online && (now.getTime() - new Date(employee.last_online).getTime() < 5 * 60 * 1000);
+                return (
+                  <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '4px',
+                    zIndex: 1
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(0, 0, 0, 0.05)',
+                      padding: '4px 8px',
+                      borderRadius: '12px'
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
+                        boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
+                      }} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 500, color: isOnline ? '#22c55e' : 'inherit' }}>
+                          {isOnline ? 'Online' : 'Offline'}
+                        </span>
+                        {!isOnline && employee.last_online && (
+                          <span style={{ fontSize: '9px', color: '#6b7280' }}>
+                            {(() => {
+                              const date = new Date(employee.last_online);
+                              const day = date.getDate().toString().padStart(2, '0');
+                              const month = date.toLocaleString('en-US', { month: 'short' });
+                              const year = date.getFullYear();
+                              const time = date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                              return `${day}-${month}-${year} ${time}`;
+                            })()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {employee.app_version && (
+                      <span style={{
+                        fontSize: '0.6rem',
+                        color: '#6b7280',
+                        fontFamily: 'monospace',
+                        background: 'rgba(0, 0, 0, 0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '8px'
+                      }}>
+                        {employee.app_version}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               <CardTop>
                 <Avatar
                   onClick={(e) => {
@@ -524,35 +652,40 @@ const EmployeeList: React.FC = () => {
                   title="View Employee Profile"
                 >
                   {employee.picture_url ? (
-                    <img 
-                      src={employee.picture_url} 
-                      alt={employee.name} 
-                      style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        borderRadius: '16px', 
-                        objectFit: 'cover', 
-                        display: 'block', 
-                        transform: 'scale(1.1)' 
-                      }} 
+                    <img
+                      src={employee.picture_url}
+                      alt={employee.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'top',
+                        display: 'block'
+                      }}
                     />
                   ) : (
                     <span style={{ width: '100%', textAlign: 'center' }}>
-                      {(employee.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}
+                      {(employee.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}
                     </span>
                   )}
                 </Avatar>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1.2rem 1.5rem 1.2rem 1rem' }}>
                   <EmployeeName>
-                    {employee.name}
-                    <span style={{ 
-                      fontSize: '0.75rem', 
-                      opacity: 0.6, 
-                      marginLeft: '8px',
-                      fontWeight: 'normal'
-                    }}>
-                      #{employee.id}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span>{employee.name}</span>
+                      <StatusBadge status={employee.status || 'active'}>
+                        {(employee.status || 'active').charAt(0).toUpperCase() + (employee.status || 'active').slice(1)}
+                      </StatusBadge>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        opacity: 0.6,
+                        fontWeight: 'normal'
+                      }}>
+                        #{employee.id}
+                      </span>
+                    </div>
                   </EmployeeName>
                   <RoleName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{employee.role || 'N/A'}</span>
@@ -578,8 +711,8 @@ const EmployeeList: React.FC = () => {
                 </div>
               </CardTop>
               <CardActions>
-                <CardActionBtn 
-                  title="View Profile" 
+                <CardActionBtn
+                  title="View Profile"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleProfile(employee);
@@ -588,8 +721,8 @@ const EmployeeList: React.FC = () => {
                 >
                   <PersonIcon fontSize="inherit" />
                 </CardActionBtn>
-                <CardActionBtn 
-                  title="Edit" 
+                <CardActionBtn
+                  title="Edit"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEdit(employee);

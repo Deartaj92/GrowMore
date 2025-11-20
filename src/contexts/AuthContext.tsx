@@ -151,6 +151,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
 
+        // Update staff online status
+        if (user.staff_id) {
+          await supabase
+            .from('staff')
+            .update({
+              is_online: true,
+              last_online: new Date().toISOString(),
+              app_version: process.env.REACT_APP_VERSION || 'v1.3.1'
+            })
+            .eq('id', user.staff_id);
+        }
+
         // Redirect based on user role
         if (userData.role === 'Teacher') {
           navigate('/teacher', { replace: true });
@@ -180,6 +192,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      // Update staff online status if applicable
+      if (user?.staff_id) {
+        await supabase
+          .from('staff')
+          .update({
+            is_online: false,
+            last_online: new Date().toISOString()
+          })
+          .eq('id', user.staff_id);
+      }
+
       localStorage.removeItem('user');
       localStorage.removeItem('auth_credentials');
       setUser(null);

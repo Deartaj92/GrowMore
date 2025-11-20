@@ -59,6 +59,7 @@ import { UpdateService } from '../services/updateService';
 import AboutUsModal from './AboutUsModal';
 import '../utils/testNotifications'; // Import test utilities
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
+import PresenceManager from './PresenceManager';
 
 // Capacitor import for mobile back button handling
 let CapacitorApp: any = null;
@@ -78,14 +79,14 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
-  toggleTheme: () => {},
+  toggleTheme: () => { },
 });
 
 // Mute context for global sound control
-const MuteContext = createContext<{ muted: boolean; toggleMute: () => void }>({ muted: false, toggleMute: () => {} });
+const MuteContext = createContext<{ muted: boolean; toggleMute: () => void }>({ muted: false, toggleMute: () => { } });
 
 // Context for page header
-export const PageHeaderContext = createContext<{ setPageHeader: (header: string) => void }>({ setPageHeader: () => {} });
+export const PageHeaderContext = createContext<{ setPageHeader: (header: string) => void }>({ setPageHeader: () => { } });
 
 // Theme colors
 const darkTheme = {
@@ -768,9 +769,9 @@ const CardStat = styled.div<{ positive?: boolean }>`
   display: flex;
   align-items: center;
   gap: 8px;
-  color: ${props => props.positive 
-    ? props.theme === 'light' 
-      ? '#2e7d32' 
+  color: ${props => props.positive
+    ? props.theme === 'light'
+      ? '#2e7d32'
       : '#4caf50'
     : props.theme.TEXT_SECONDARY};
   font-size: 0.9rem;
@@ -825,8 +826,8 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const Overlay = styled.div<{open: boolean}>`
-  display: ${({open}) => open ? 'block' : 'none'};
+const Overlay = styled.div<{ open: boolean }>`
+  display: ${({ open }) => open ? 'block' : 'none'};
   position: fixed;
   top: 0;
   left: 0;
@@ -1205,7 +1206,7 @@ const NetworkActions = styled.div`
   justify-content: center;
 `;
 
-const NetworkButton = styled(ModalButton)<{ variant?: 'primary' | 'danger' }>`
+const NetworkButton = styled(ModalButton) <{ variant?: 'primary' | 'danger' }>`
   min-width: 120px;
   background: ${({ variant }) => variant === 'danger' ? '#ef4444' : '#4a6cf7'};
   &:hover {
@@ -1287,51 +1288,51 @@ const checkConnection: (
   setIsWeakConnection,
   setIsCheckingConnection
 ) => {
-  try {
-    setIsCheckingConnection(true);
-    const startTime = performance.now();
-    const controller = new AbortController();
-    
-    // Increase timeout to 60 seconds for very slow connections
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-    
-    await fetch('https://www.google.com/favicon.ico', {
-      method: 'HEAD',
-      mode: 'no-cors',
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    const endTime = performance.now();
-    const responseTime = endTime - startTime;
-    
-    // Only mark as weak connection if it's really slow (>20 seconds)
-    setIsWeakConnection(responseTime > 20000);
-    
-    // Always mark as online if we get any response (even slow)
-    setIsOnline(true);
-  } catch (error) {
-    // Only mark as offline if it's a network error, not a timeout
-    if (error instanceof Error && error.name === 'AbortError') {
-      // Timeout occurred - this might be a very slow connection, not necessarily offline
-      // Always assume online for timeouts on slow connections
-      if (navigator.onLine) {
-        setIsOnline(true);
-        setIsWeakConnection(true); // Mark as weak but not offline
+    try {
+      setIsCheckingConnection(true);
+      const startTime = performance.now();
+      const controller = new AbortController();
+
+      // Increase timeout to 60 seconds for very slow connections
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      await fetch('https://www.google.com/favicon.ico', {
+        method: 'HEAD',
+        mode: 'no-cors',
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      const endTime = performance.now();
+      const responseTime = endTime - startTime;
+
+      // Only mark as weak connection if it's really slow (>20 seconds)
+      setIsWeakConnection(responseTime > 20000);
+
+      // Always mark as online if we get any response (even slow)
+      setIsOnline(true);
+    } catch (error) {
+      // Only mark as offline if it's a network error, not a timeout
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Timeout occurred - this might be a very slow connection, not necessarily offline
+        // Always assume online for timeouts on slow connections
+        if (navigator.onLine) {
+          setIsOnline(true);
+          setIsWeakConnection(true); // Mark as weak but not offline
+        } else {
+          // Only mark as offline if navigator.onLine is false
+          setIsOnline(false);
+          setIsWeakConnection(false);
+        }
       } else {
-        // Only mark as offline if navigator.onLine is false
+        // Real network error - definitely offline
         setIsOnline(false);
         setIsWeakConnection(false);
       }
-    } else {
-      // Real network error - definitely offline
-      setIsOnline(false);
-      setIsWeakConnection(false);
+    } finally {
+      setIsCheckingConnection(false);
     }
-  } finally {
-    setIsCheckingConnection(false);
-  }
-};
+  };
 
 const OfflineContainer = styled.div`
   display: flex;
@@ -1421,10 +1422,10 @@ interface ProgressContextType {
 }
 
 const ProgressContext = createContext<ProgressContextType>({
-  startProgress: () => {},
-  setProgress: () => {},
-  completeProgress: () => {},
-  resetProgress: () => {},
+  startProgress: () => { },
+  setProgress: () => { },
+  completeProgress: () => { },
+  resetProgress: () => { },
 });
 
 export const useProgress = () => useContext(ProgressContext);
@@ -1443,23 +1444,23 @@ const ProgressProvider: React.FC<{ children: React.ReactNode }> = ({ children })
     if (isActiveRef.current) {
       return;
     }
-    
+
     // Clear any existing timeout
     if (progressTimeoutRef.current) {
       clearTimeout(progressTimeoutRef.current);
       progressTimeoutRef.current = null;
     }
-    
+
     // Temporarily disable transition to prevent showing previous progress
     setDisableTransition(true);
-    
+
     // Reset progress to 0 immediately without transition
     setProgressState(0);
-    
+
     isActiveRef.current = true;
     setIsVisible(true);
     setIsIndeterminate(indeterminate);
-    
+
     // Re-enable transition after a brief delay
     setTimeout(() => {
       setDisableTransition(false);
@@ -1468,7 +1469,7 @@ const ProgressProvider: React.FC<{ children: React.ReactNode }> = ({ children })
 
   const setProgress = useCallback((newProgress: number) => {
     if (isIndeterminate || !isActiveRef.current) return;
-    
+
     // Ensure progress only goes forward
     setProgressState(prev => {
       const clampedProgress = Math.min(100, Math.max(0, newProgress));
@@ -1480,15 +1481,15 @@ const ProgressProvider: React.FC<{ children: React.ReactNode }> = ({ children })
     if (!isActiveRef.current) {
       return;
     }
-    
+
     setProgressState(100);
     setIsIndeterminate(false);
-    
+
     // Hide progress bar after completion
     if (progressTimeoutRef.current) {
       clearTimeout(progressTimeoutRef.current);
     }
-    
+
     progressTimeoutRef.current = setTimeout(() => {
       setIsVisible(false);
       isActiveRef.current = false;
@@ -1546,14 +1547,14 @@ const Layout: React.FC = () => {
   });
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 700);
-  const [sidebarTooltip, setSidebarTooltip] = useState<{text: string, top: number, left: number} | null>(null);
+  const [sidebarTooltip, setSidebarTooltip] = useState<{ text: string, top: number, left: number } | null>(null);
   const userHasInteracted = useRef(false);
   const [muted, setMuted] = useState(() => {
     const stored = localStorage.getItem('muted');
     return stored === 'true';
   });
   const user = getUser();
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -1586,7 +1587,7 @@ const Layout: React.FC = () => {
   const [pageHeader, setPageHeader] = useState('');
   const [isTitleOverflowing, setIsTitleOverflowing] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  
+
   // Student search state
   const [studentSearchInput, setStudentSearchInput] = useState('');
   const [studentSearchSuggestions, setStudentSearchSuggestions] = useState<Array<{
@@ -1614,15 +1615,15 @@ const Layout: React.FC = () => {
   }>>([]);
   const [classesList, setClassesList] = useState<Array<{ id: number; name: string; has_sections?: boolean }>>([]);
   const [sectionsList, setSectionsList] = useState<Array<{ id: number; name: string }>>([]);
-  
+
   // Check if we're on student profile page and user is Principal
   const isStudentProfilePage = location.pathname.match(/^\/students\/profile\/\d+$/);
   const showStudentSearch = user?.role === 'Principal' && isStudentProfilePage;
-  
+
   // Fetch students, classes, and sections for search
   useEffect(() => {
     if (!showStudentSearch || !user?.school_id) return;
-    
+
     const fetchSearchData = async () => {
       try {
         const [studentsResult, classesResult, sectionsResult] = await Promise.all([
@@ -1639,7 +1640,7 @@ const Layout: React.FC = () => {
             .select('id, name')
             .eq('school_id', user.school_id)
         ]);
-        
+
         if (studentsResult.data) setStudentsList(studentsResult.data);
         if (classesResult.data) setClassesList(classesResult.data);
         if (sectionsResult.data) setSectionsList(sectionsResult.data);
@@ -1647,10 +1648,10 @@ const Layout: React.FC = () => {
         console.error('Error fetching search data:', error);
       }
     };
-    
+
     fetchSearchData();
   }, [showStudentSearch, user?.school_id]);
-  
+
   // Search logic - filter students similar to FineCollection with better ID matching
   useEffect(() => {
     if (!studentSearchExpanded) {
@@ -1658,17 +1659,17 @@ const Layout: React.FC = () => {
       setStudentSearchShowSuggestions(false);
       return;
     }
-    
+
     if (studentSearchInput.trim().length === 0) {
       setStudentSearchSuggestions([]);
       setStudentSearchShowSuggestions(false);
       return;
     }
-    
+
     const searchTerm = studentSearchInput.trim().toLowerCase();
     const isNumericSearch = !isNaN(Number(searchTerm));
     const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
-    
+
     // Filter and score students for better sorting
     const scoredStudents = studentsList
       .map(student => {
@@ -1676,7 +1677,7 @@ const Layout: React.FC = () => {
         const studentNameLower = student.name.toLowerCase();
         let score = 0;
         let matches = false;
-        
+
         if (isNumericSearch && searchTermNum !== null) {
           // ID search - prioritize exact match, then starts with, then contains
           if (student.id === searchTermNum) {
@@ -1698,21 +1699,21 @@ const Layout: React.FC = () => {
             score = 50; // Lower priority for contains
             matches = true;
           }
-          
+
           // Also check ID for non-numeric searches (secondary)
           if (!matches && studentIdStr.includes(searchTerm)) {
             score = 10;
             matches = true;
           }
         }
-        
+
         return matches ? { student, score } : null;
       })
       .filter(item => item !== null)
       .sort((a, b) => b!.score - a!.score) // Sort by score descending
       .slice(0, 8)
       .map(item => item!.student);
-    
+
     // Enrich with class and section names
     const enriched = scoredStudents.map(student => {
       const classObj = classesList.find(c => c.id === student.class_id);
@@ -1723,16 +1724,16 @@ const Layout: React.FC = () => {
         section_name: sectionObj?.name || ''
       };
     });
-    
+
     setStudentSearchSuggestions(enriched);
     setStudentSearchShowSuggestions(enriched.length > 0);
     setStudentSearchActiveSuggestion(0);
   }, [studentSearchInput, studentsList, classesList, sectionsList, studentSearchExpanded]);
-  
+
   // Close search when clicking outside
   useEffect(() => {
     if (!showStudentSearch || !studentSearchExpanded) return;
-    
+
     const handleClickOutside = (event: MouseEvent) => {
       if (studentSearchRef.current && !studentSearchRef.current.contains(event.target as Node)) {
         setStudentSearchExpanded(false);
@@ -1741,11 +1742,11 @@ const Layout: React.FC = () => {
         setStudentSearchShowSuggestions(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showStudentSearch, studentSearchExpanded]);
-  
+
   // Collapse search when route changes
   useEffect(() => {
     setStudentSearchExpanded(false);
@@ -1753,11 +1754,11 @@ const Layout: React.FC = () => {
     setStudentSearchSuggestions([]);
     setStudentSearchShowSuggestions(false);
   }, [location.pathname]);
-  
+
   // Keyboard navigation for suggestions
   const handleStudentSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!studentSearchShowSuggestions) return;
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setStudentSearchActiveSuggestion(prev => Math.min(prev + 1, studentSearchSuggestions.length - 1));
@@ -1776,20 +1777,20 @@ const Layout: React.FC = () => {
       setStudentSearchShowSuggestions(false);
     }
   };
-  
+
   // Helper functions
   const getStudentClassName = (classId: number) => {
     return classesList.find(c => c.id === classId)?.name || '-';
   };
-  
+
   const getStudentSectionName = (sectionId: number) => {
     return sectionsList.find(s => s.id === sectionId)?.name || '';
   };
-  
+
   const getStudentClassHasSections = (classId: number) => {
     return classesList.find(c => c.id === classId)?.has_sections ?? true;
   };
-  
+
   // Handle student selection
   const handleStudentSelect = (student: {
     id: number;
@@ -1803,7 +1804,7 @@ const Layout: React.FC = () => {
     setStudentSearchShowSuggestions(false);
     setStudentSearchExpanded(false);
   };
-  
+
   // Update checking state
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateService] = useState(() => UpdateService.getInstance());
@@ -1843,7 +1844,7 @@ const Layout: React.FC = () => {
           setStudentInfo(null);
           return;
         }
-        
+
         // Only check for student session if no staff user is logged in
         const raw = localStorage.getItem('studentSession');
         const parsed = raw ? JSON.parse(raw) : null;
@@ -1878,7 +1879,7 @@ const Layout: React.FC = () => {
           .select('*')
           .eq('school_id', schoolId)
           .single();
-        
+
         if (!error && data && (data.short_name || data.logo_url)) {
           setInstituteProfile(data);
         } else {
@@ -1889,7 +1890,7 @@ const Layout: React.FC = () => {
               .select('name, logo_url')
               .eq('id', schoolId)
               .single();
-            
+
             if (!schoolError && schoolData) {
               setInstituteProfile({
                 short_name: schoolData.name,
@@ -1931,8 +1932,35 @@ const Layout: React.FC = () => {
     });
   };
 
-  const handleLogout = () => {
-    removeUser();
+  const handleLogout = async () => {
+    // Handle Student Logout
+    const studentSession = localStorage.getItem('studentSession');
+    if (studentSession) {
+      try {
+        const parsed = JSON.parse(studentSession);
+        if (parsed.id) {
+          await supabase
+            .from('students')
+            .update({ is_online: false, last_online: new Date().toISOString() })
+            .eq('id', parsed.id);
+        }
+      } catch (e) {
+        console.error('Error updating student offline status', e);
+      }
+      localStorage.removeItem('studentSession');
+    }
+
+    // Handle Staff Logout
+    if (authUser) {
+      try {
+        await signOut();
+      } catch (error) {
+        console.error('Error signing out staff:', error);
+        removeUser();
+      }
+    } else {
+      removeUser();
+    }
     navigate('/login');
   };
 
@@ -1964,7 +1992,7 @@ const Layout: React.FC = () => {
     const audio = new window.Audio('/hover.mp3?v=' + Date.now());
     audio.volume = 1.0;
     audio.currentTime = 0;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   };
 
   const muiTheme = React.useMemo(() => createTheme({
@@ -2002,9 +2030,9 @@ const Layout: React.FC = () => {
   useEffect(() => {
     const handleBackPress = () => {
       // Close sidebar first if open
-      if (sidebarOpen) { 
-        setSidebarOpen(false); 
-        return; 
+      if (sidebarOpen) {
+        setSidebarOpen(false);
+        return;
       }
 
       // Navigate back in app history if available
@@ -2018,7 +2046,7 @@ const Layout: React.FC = () => {
     };
 
     let removeCapListener: (() => void) | null = null;
-    
+
     // Try to set up Capacitor listener
     const setupCapacitorListener = async () => {
       try {
@@ -2040,14 +2068,14 @@ const Layout: React.FC = () => {
 
     // Set up listener only for Electron/Capacitor
     setupCapacitorListener();
-    
+
     // Fallback for non-Capacitor contexts (Electron/Cordova)
     const handlePopState = (event: PopStateEvent) => {
       // Only prevent navigation in Electron/Capacitor
       event.preventDefault();
       event.stopImmediatePropagation();
       handleBackPress();
-      
+
       // Push the current state back to prevent navigation
       window.history.pushState(null, '', window.location.pathname);
     };
@@ -2083,7 +2111,7 @@ const Layout: React.FC = () => {
     if (isWeb) {
       return;
     }
-    
+
     const handleKeyDown = (event: KeyboardEvent) => {
       // Alt + Left Arrow for back
       if (event.altKey && event.key === 'ArrowLeft') {
@@ -2115,7 +2143,7 @@ const Layout: React.FC = () => {
 
     const handleTouchEnd = () => {
       if (!touchStart || !touchEnd) return;
-      
+
       const dx = touchEnd - touchStart;
       const isRightSwipe = dx > 50;    // left -> right
       const isLeftSwipe = dx < -50;    // right -> left
@@ -2181,7 +2209,7 @@ const Layout: React.FC = () => {
     }
     setModalLoading(true);
     startProgress(true); // Start indeterminate progress for password change
-    
+
     try {
       // Check if student is logged in
       if (studentInfo) {
@@ -2201,9 +2229,9 @@ const Layout: React.FC = () => {
         }
 
         // Check current password (accept both the stored password and default 'aa')
-        const isValidPassword = data.password === currentPassword || 
-                               (data.password === 'aa' && currentPassword === 'aa') ||
-                               (!data.password && currentPassword === 'aa');
+        const isValidPassword = data.password === currentPassword ||
+          (data.password === 'aa' && currentPassword === 'aa') ||
+          (!data.password && currentPassword === 'aa');
 
         if (!isValidPassword) {
           toast.showToast('Current password is incorrect.', 'error');
@@ -2296,23 +2324,23 @@ const Layout: React.FC = () => {
   const filteredMenuItems = React.useMemo(() => {
     if (!user) return [];
     return menuItems.filter(item => {
-    if (!user || !user.role || !item.allowedRoles) return false;
-    // For teachers, show Welcome Page, Attendance, Reports, Examination, and Homework Diary
-    if (user.role === 'Teacher') {
-      return item.text === 'Attendance' || 
-             item.text === 'Welcome Page' || 
-             item.text === 'Reports' || 
-             item.text === 'Examination' ||
-             item.text === 'Daily Diary';
-    }
-    return item.allowedRoles.includes(user.role);
-  });
+      if (!user || !user.role || !item.allowedRoles) return false;
+      // For teachers, show Welcome Page, Attendance, Reports, Examination, and Homework Diary
+      if (user.role === 'Teacher') {
+        return item.text === 'Attendance' ||
+          item.text === 'Welcome Page' ||
+          item.text === 'Reports' ||
+          item.text === 'Examination' ||
+          item.text === 'Daily Diary';
+      }
+      return item.allowedRoles.includes(user.role);
+    });
   }, [user]);
 
   const handleRefresh = () => {
     try {
       startProgress(true); // Start indeterminate progress for page refresh
-      
+
       // For student users, use React Router navigation instead of hard reload
       // Students use studentSession in localStorage, not user in AuthContext
       // Hard reload causes white screen because InitialRouteHandler redirects before student session is checked
@@ -2338,7 +2366,7 @@ const Layout: React.FC = () => {
           // If parsing fails, fall through to normal refresh
         }
       }
-      
+
       // For guest users, also use React Router navigation to avoid routing issues
       // Guest users might have render settings that need to be checked on refresh
       const currentUser = getUser();
@@ -2356,7 +2384,7 @@ const Layout: React.FC = () => {
         }, 100);
         return;
       }
-      
+
       // For other staff users (principal, teacher), use normal hard reload
       // Force a hard reload for all user types
       if (window.location.reload) {
@@ -2401,7 +2429,7 @@ const Layout: React.FC = () => {
 
     const wrappedCheckConnection = async () => {
       if (!isMounted) return;
-      
+
       await checkConnection(
         (online) => {
           setIsOnline(online);
@@ -2482,12 +2510,12 @@ const Layout: React.FC = () => {
   useEffect(() => {
     setIsRouteChanging(true);
     // Remove progress calls to avoid interfering with page-specific progress bars
-    
+
     const timer = setTimeout(() => {
       setIsRouteChanging(false);
       // Remove completeProgress call
     }, 300); // Reduced from 500ms to 300ms
-    
+
     return () => {
       clearTimeout(timer);
       // Remove completeProgress call
@@ -2499,7 +2527,7 @@ const Layout: React.FC = () => {
     // On every route change, check connectivity before showing content
     setIsPageLoading(true);
     // Remove progress calls to avoid interfering with page-specific progress bars
-    
+
     checkConnection(
       (online) => {
         setIsOnline(online);
@@ -2675,17 +2703,17 @@ const Layout: React.FC = () => {
   // Check if title is overflowing on mobile
   useEffect(() => {
     if (!isMobile || !titleRef.current) return;
-    
+
     const checkOverflow = () => {
       if (titleRef.current) {
         const isOverflowing = titleRef.current.scrollWidth > titleRef.current.clientWidth;
         setIsTitleOverflowing(isOverflowing);
       }
     };
-    
+
     // Check immediately with a small delay to ensure DOM is ready
     setTimeout(checkOverflow, 100);
-    
+
     // Check on resize
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
@@ -2694,550 +2722,551 @@ const Layout: React.FC = () => {
   return (
     <PageHeaderContext.Provider value={{ setPageHeader }}>
       <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <PresenceManager />
         <MuteContext.Provider value={{ muted, toggleMute }}>
           <MuiThemeProvider theme={muiTheme}>
             <CssBaseline />
             <ProgressProvider>
               <NotificationProvider>
-          <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
-                {/* Show network error modal only if truly offline (not just slow connection) */}
-                {!isOnline && !isWeakConnection && (
-                  <NetworkModal>
-                    <NetworkModalContent>
-                      <NetworkIcon>
-                        <WifiOffIcon style={{ fontSize: 'inherit' }} />
-                      </NetworkIcon>
-                      <NetworkTitle>No Internet Connection</NetworkTitle>
-                      <NetworkMessage>
-                        Please check your internet connection and try again.
-                        The application requires an internet connection to function properly.
-                      </NetworkMessage>
-                      <NetworkActions>
-                        <NetworkButton 
-                          onClick={handleRetry}
-                          disabled={isCheckingConnection}
-                        >
-                          {isCheckingConnection ? 'Checking...' : 'Retry'}
-                        </NetworkButton>
-                        <NetworkButton variant="danger" onClick={handleExit}>
-                          Exit
-                        </NetworkButton>
-                      </NetworkActions>
-                    </NetworkModalContent>
-                  </NetworkModal>
-                )}
-            <GlobalStyle />
-            <AppContainer>
-              <LayoutWrapper>
-                {/* Sidebar hidden only for teachers and students, shown for staff */}
-                {user?.role !== 'Teacher' && !studentInfo && user && (
-                  <CollapsibleSidebar
-                    navigate={navigate}
-                    theme={theme === 'dark' ? darkTheme : lightTheme}
-                    userRole={user?.role}
-                    instituteProfile={instituteProfile ?? undefined}
-                    open={isMobile ? sidebarOpen : true}
-                    onClose={() => setSidebarOpen(false)}
-                    onAboutUsClick={() => setAboutUsModalOpen(true)}
-                  />
-                )}
-                <MainArea $isTeacher={user?.role === 'Teacher'}>
-                  <Header>
-                    <HeaderLeft>
-                      {user?.role === 'Teacher' ? (
-                        <MenuButton
-                          onClick={() => navigate('/teacher')}
-                          aria-label="Go to Dashboard"
-                          title="Dashboard"
-                        >
-                          <DashboardIcon />
-                        </MenuButton>
-                      ) : !studentInfo ? (
-                        <MenuButton
-                          onClick={() => setSidebarOpen((v) => !v)}
-                          aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-                        >
-                          <MenuIcon />
-                        </MenuButton>
-                      ) : null}
-                      {/* Only show navigation buttons in Electron/Capacitor, not on web */}
-                      {!isWeb && (
-                        <NavigationButtonsContainer>
-                          <HeaderIconCircle 
-                            as="button" 
-                            onClick={handleGoBack} 
-                            title={location.pathname === '/dashboard' ? "Home page" : `Go back (Alt+Left) - ${navHistory.length - 1} pages`}
-                            aria-label={location.pathname === '/dashboard' ? "Home page" : "Go back"}
-                            disabled={location.pathname === '/dashboard'}
-                            style={{ 
-                              opacity: location.pathname === '/dashboard' ? 0.4 : 1,
-                              cursor: location.pathname === '/dashboard' ? 'not-allowed' : 'pointer',
-                              transition: 'opacity 0.2s ease'
-                            }}
+                <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
+                  {/* Show network error modal only if truly offline (not just slow connection) */}
+                  {!isOnline && !isWeakConnection && (
+                    <NetworkModal>
+                      <NetworkModalContent>
+                        <NetworkIcon>
+                          <WifiOffIcon style={{ fontSize: 'inherit' }} />
+                        </NetworkIcon>
+                        <NetworkTitle>No Internet Connection</NetworkTitle>
+                        <NetworkMessage>
+                          Please check your internet connection and try again.
+                          The application requires an internet connection to function properly.
+                        </NetworkMessage>
+                        <NetworkActions>
+                          <NetworkButton
+                            onClick={handleRetry}
+                            disabled={isCheckingConnection}
                           >
-                            <span style={{ display: 'inline-block', transform: 'translateX(-1px)' }}>‹</span>
-                          </HeaderIconCircle>
-                          <HeaderIconCircle 
-                            as="button" 
-                            onClick={handleGoForward} 
-                            title={forwardHistory.length > 0 ? `Go forward (Alt+Right) - ${forwardHistory.length} pages` : "No forward history"}
-                            aria-label="Go forward"
-                            disabled={forwardHistory.length === 0}
-                            style={{ 
-                              opacity: forwardHistory.length === 0 ? 0.4 : 1,
-                              cursor: forwardHistory.length === 0 ? 'not-allowed' : 'pointer',
-                              transition: 'opacity 0.2s ease'
-                            }}
-                          >
-                            <span style={{ display: 'inline-block', transform: 'translateX(1px)' }}>›</span>
-                          </HeaderIconCircle>
-                        </NavigationButtonsContainer>
+                            {isCheckingConnection ? 'Checking...' : 'Retry'}
+                          </NetworkButton>
+                          <NetworkButton variant="danger" onClick={handleExit}>
+                            Exit
+                          </NetworkButton>
+                        </NetworkActions>
+                      </NetworkModalContent>
+                    </NetworkModal>
+                  )}
+                  <GlobalStyle />
+                  <AppContainer>
+                    <LayoutWrapper>
+                      {/* Sidebar hidden only for teachers and students, shown for staff */}
+                      {user?.role !== 'Teacher' && !studentInfo && user && (
+                        <CollapsibleSidebar
+                          navigate={navigate}
+                          theme={theme === 'dark' ? darkTheme : lightTheme}
+                          userRole={user?.role}
+                          instituteProfile={instituteProfile ?? undefined}
+                          open={isMobile ? sidebarOpen : true}
+                          onClose={() => setSidebarOpen(false)}
+                          onAboutUsClick={() => setAboutUsModalOpen(true)}
+                        />
                       )}
-                      {/* Always show school/institute short name in header for both staff and students */}
-                      {(location.pathname === '/dashboard' || location.pathname === '/teacher' || studentInfo) ? (
-                        <>
-                          {isMobile && instituteProfile?.logo_url && (
-                            <InstituteLogo 
-                              src={instituteProfile.logo_url} 
-                              alt="School Logo"
-                            />
-                          )}
-                          {instituteProfile?.short_name && (
-                            <Logo>
-                              <LogoContent>
-                                <LogoName>
-                                  {isMobile ? instituteProfile.short_name : instituteProfile.name || instituteProfile.short_name}
-                                </LogoName>
-                                {instituteProfile.tagline && (
-                                  <LogoTagline>{instituteProfile.tagline}</LogoTagline>
-                                )}
-                              </LogoContent>
-                            </Logo>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <PageTitle 
-                            ref={titleRef}
-                            isMobile={isMobile}
-                            $isOverflowing={isTitleOverflowing}
-                            data-text={getPageHeaderText(location.pathname)}
-                          >
-                            {getPageHeaderText(location.pathname)}
-                          </PageTitle>
-                          {/* School logo - hidden on mobile for non-dashboard pages */}
-                          {!isMobile && instituteProfile?.logo_url && (
-                            <InstituteLogo 
-                              src={instituteProfile.logo_url} 
-                              alt="School Logo"
-                            />
-                          )}
-                          {!isMobile && instituteProfile?.short_name && (
-                            <Logo>
-                              <LogoContent>
-                                <LogoName>{instituteProfile.short_name}</LogoName>
-                                {instituteProfile.tagline && (
-                                  <LogoTagline>{instituteProfile.tagline}</LogoTagline>
-                                )}
-                              </LogoContent>
-                            </Logo>
-                          )}
-                        </>
-                      )}
-                    </HeaderLeft>
-                    <HeaderActions>
-                      {/* Student Search Bar (for Principal on student profile page) */}
-                      {showStudentSearch && (
-                        <StudentSearchWrapper ref={studentSearchRef} $expanded={studentSearchExpanded}>
-                          <StudentSearchInput
-                            $expanded={studentSearchExpanded}
-                            onClick={() => {
-                              if (!studentSearchExpanded) {
-                                setStudentSearchExpanded(true);
-                                setTimeout(() => {
-                                  studentSearchInputRef.current?.focus();
-                                }, 100);
-                              }
-                            }}
-                          >
-                            <div className="search-icon">
-                              <SearchIcon />
-                            </div>
-                            <div className="search-field">
-                              <input
-                                ref={studentSearchInputRef}
-                                type="text"
-                                value={studentSearchInput}
-                                onChange={(e) => setStudentSearchInput(e.target.value)}
-                                onKeyDown={handleStudentSearchKeyDown}
-                                onFocus={() => {
-                                  if (studentSearchSuggestions.length > 0) {
-                                    setStudentSearchShowSuggestions(true);
-                                  }
-                                }}
-                                placeholder="Search by name or ID..."
-                              />
-                            </div>
-                            {studentSearchShowSuggestions && studentSearchSuggestions.length > 0 && (
-                              <StudentSuggestionList $visible={studentSearchShowSuggestions}>
-                                {studentSearchSuggestions.map((student, idx) => (
-                                  <StudentSuggestionItem
-                                    key={student.id}
-                                    $active={idx === studentSearchActiveSuggestion}
-                                    onClick={() => handleStudentSelect(student)}
-                                    onMouseEnter={() => setStudentSearchActiveSuggestion(idx)}
-                                  >
-                                    <StudentSuggestionItemRow>
-                                      <StudentSuggestionMain>
-                                        <StudentSuggestionAvatar>
-                                          {student.picture_url ? (
-                                            <img src={student.picture_url} alt="" />
-                                          ) : (
-                                            <UserIcon style={{ fontSize: '1.4rem' }} />
-                                          )}
-                                        </StudentSuggestionAvatar>
-                                        <StudentSuggestionTextCol>
-                                          <StudentSuggestionName>{student.name}</StudentSuggestionName>
-                                          {student.father_name && (
-                                            <StudentSuggestionFather>{student.father_name}</StudentSuggestionFather>
-                                          )}
-                                        </StudentSuggestionTextCol>
-                                      </StudentSuggestionMain>
-                                      <StudentSuggestionMetaCol>
-                                        <StudentSuggestionClass>
-                                          {getStudentClassName(student.class_id)}
-                                          {getStudentClassHasSections(student.class_id) && getStudentSectionName(student.section_id) 
-                                            ? ` ${getStudentSectionName(student.section_id)}` 
-                                            : ''}
-                                        </StudentSuggestionClass>
-                                        <StudentSuggestionId>ID: {student.id}</StudentSuggestionId>
-                                      </StudentSuggestionMetaCol>
-                                    </StudentSuggestionItemRow>
-                                  </StudentSuggestionItem>
-                                ))}
-                              </StudentSuggestionList>
-                            )}
-                          </StudentSearchInput>
-                        </StudentSearchWrapper>
-                      )}
-                      {isWeakConnection && (
-                        <WeakConnectionIndicator title="Slow internet connection detected">
-                          <WifiOffIcon style={{ color: '#fbbf24' }} />
-                          {!isMobile && 'Slow Connection'}
-                        </WeakConnectionIndicator>
-                      )}
-                      {(user?.role === 'Super Admin' || user?.role === 'Principal' || user?.role === 'Admin') && <NotificationBell />}
-                      <HeaderIconCircle 
-                        as="button" 
-                        onClick={handleRefresh} 
-                        aria-label="Refresh page"
-                      >
-                        <RefreshIcon />
-                      </HeaderIconCircle>
-                      <div style={{ position: 'relative' }}>
-                        <HeaderIconCircle 
-                          as="button" 
-                          ref={profileIconRef} 
-                          onClick={() => setProfileMenuOpen(v => !v)} 
-                          aria-label="Profile"
-                        >
-                          {avatarUrl ? (
-                            <img 
-                              src={avatarUrl} 
-                              alt="avatar" 
-                              style={{ 
-                                width: '100%',
-                                height: '100%',
-                                borderRadius: '50%', 
-                                objectFit: 'cover',
-                                padding: '2px'
-                              }} 
-                            />
-                          ) : (
-                            <UserIcon />
-                          )}
-                        </HeaderIconCircle>
-                        {profileMenuOpen && (
-                          <ProfileDropdown ref={profileDropdownRef}>
-                            <ProfileDropdownHeader>
-                              {studentInfo?.name || staffName || user?.name}
-                              {!studentInfo && user?.role && (
-                                <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>{user?.role}</span>
-                              )}
-                            </ProfileDropdownHeader>
-                            <ProfileDropdownItem onClick={toggleTheme}>
-                              <span>Dark Mode</span>
-                              <ToggleSwitch 
-                                data-checked={theme === 'dark'} 
-                              />
-                            </ProfileDropdownItem>
-                            <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); openChangePasswordModal(); setProfileMenuOpen(false); }}>
-                              Change Password
-                            </ProfileDropdownItem>
-                            {/* Only show "Check for Updates" in Electron/desktop or Capacitor (mobile), not in web */}
+                      <MainArea $isTeacher={user?.role === 'Teacher'}>
+                        <Header>
+                          <HeaderLeft>
+                            {user?.role === 'Teacher' ? (
+                              <MenuButton
+                                onClick={() => navigate('/teacher')}
+                                aria-label="Go to Dashboard"
+                                title="Dashboard"
+                              >
+                                <DashboardIcon />
+                              </MenuButton>
+                            ) : !studentInfo ? (
+                              <MenuButton
+                                onClick={() => setSidebarOpen((v) => !v)}
+                                aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+                              >
+                                <MenuIcon />
+                              </MenuButton>
+                            ) : null}
+                            {/* Only show navigation buttons in Electron/Capacitor, not on web */}
                             {!isWeb && (
-                              <>
-                                <ProfileDropdownDivider />
-                                <ProfileDropdownItem 
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    handleCheckForUpdates(); 
-                                    setProfileMenuOpen(false); 
-                                  }}
-                                  disabled={isCheckingUpdate}
-                                  style={{ 
-                                    opacity: isCheckingUpdate ? 0.6 : 1,
-                                    cursor: isCheckingUpdate ? 'not-allowed' : 'pointer'
+                              <NavigationButtonsContainer>
+                                <HeaderIconCircle
+                                  as="button"
+                                  onClick={handleGoBack}
+                                  title={location.pathname === '/dashboard' ? "Home page" : `Go back (Alt+Left) - ${navHistory.length - 1} pages`}
+                                  aria-label={location.pathname === '/dashboard' ? "Home page" : "Go back"}
+                                  disabled={location.pathname === '/dashboard'}
+                                  style={{
+                                    opacity: location.pathname === '/dashboard' ? 0.4 : 1,
+                                    cursor: location.pathname === '/dashboard' ? 'not-allowed' : 'pointer',
+                                    transition: 'opacity 0.2s ease'
                                   }}
                                 >
-                                  {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
-                                </ProfileDropdownItem>
+                                  <span style={{ display: 'inline-block', transform: 'translateX(-1px)' }}>‹</span>
+                                </HeaderIconCircle>
+                                <HeaderIconCircle
+                                  as="button"
+                                  onClick={handleGoForward}
+                                  title={forwardHistory.length > 0 ? `Go forward (Alt+Right) - ${forwardHistory.length} pages` : "No forward history"}
+                                  aria-label="Go forward"
+                                  disabled={forwardHistory.length === 0}
+                                  style={{
+                                    opacity: forwardHistory.length === 0 ? 0.4 : 1,
+                                    cursor: forwardHistory.length === 0 ? 'not-allowed' : 'pointer',
+                                    transition: 'opacity 0.2s ease'
+                                  }}
+                                >
+                                  <span style={{ display: 'inline-block', transform: 'translateX(1px)' }}>›</span>
+                                </HeaderIconCircle>
+                              </NavigationButtonsContainer>
+                            )}
+                            {/* Always show school/institute short name in header for both staff and students */}
+                            {(location.pathname === '/dashboard' || location.pathname === '/teacher' || studentInfo) ? (
+                              <>
+                                {isMobile && instituteProfile?.logo_url && (
+                                  <InstituteLogo
+                                    src={instituteProfile.logo_url}
+                                    alt="School Logo"
+                                  />
+                                )}
+                                {instituteProfile?.short_name && (
+                                  <Logo>
+                                    <LogoContent>
+                                      <LogoName>
+                                        {isMobile ? instituteProfile.short_name : instituteProfile.name || instituteProfile.short_name}
+                                      </LogoName>
+                                      {instituteProfile.tagline && (
+                                        <LogoTagline>{instituteProfile.tagline}</LogoTagline>
+                                      )}
+                                    </LogoContent>
+                                  </Logo>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <PageTitle
+                                  ref={titleRef}
+                                  isMobile={isMobile}
+                                  $isOverflowing={isTitleOverflowing}
+                                  data-text={getPageHeaderText(location.pathname)}
+                                >
+                                  {getPageHeaderText(location.pathname)}
+                                </PageTitle>
+                                {/* School logo - hidden on mobile for non-dashboard pages */}
+                                {!isMobile && instituteProfile?.logo_url && (
+                                  <InstituteLogo
+                                    src={instituteProfile.logo_url}
+                                    alt="School Logo"
+                                  />
+                                )}
+                                {!isMobile && instituteProfile?.short_name && (
+                                  <Logo>
+                                    <LogoContent>
+                                      <LogoName>{instituteProfile.short_name}</LogoName>
+                                      {instituteProfile.tagline && (
+                                        <LogoTagline>{instituteProfile.tagline}</LogoTagline>
+                                      )}
+                                    </LogoContent>
+                                  </Logo>
+                                )}
                               </>
                             )}
-                            <ProfileDropdownDivider />
-                            <ProfileDropdownItem disabled style={{ opacity: 0.8, cursor: 'default' }}>
-                              Version: v{appVersion}
-                            </ProfileDropdownItem>
-                            {(user?.role === 'Teacher' || studentInfo) && (
-                              <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); setAboutUsModalOpen(true); setProfileMenuOpen(false); }}>
-                                About Us
-                              </ProfileDropdownItem>
+                          </HeaderLeft>
+                          <HeaderActions>
+                            {/* Student Search Bar (for Principal on student profile page) */}
+                            {showStudentSearch && (
+                              <StudentSearchWrapper ref={studentSearchRef} $expanded={studentSearchExpanded}>
+                                <StudentSearchInput
+                                  $expanded={studentSearchExpanded}
+                                  onClick={() => {
+                                    if (!studentSearchExpanded) {
+                                      setStudentSearchExpanded(true);
+                                      setTimeout(() => {
+                                        studentSearchInputRef.current?.focus();
+                                      }, 100);
+                                    }
+                                  }}
+                                >
+                                  <div className="search-icon">
+                                    <SearchIcon />
+                                  </div>
+                                  <div className="search-field">
+                                    <input
+                                      ref={studentSearchInputRef}
+                                      type="text"
+                                      value={studentSearchInput}
+                                      onChange={(e) => setStudentSearchInput(e.target.value)}
+                                      onKeyDown={handleStudentSearchKeyDown}
+                                      onFocus={() => {
+                                        if (studentSearchSuggestions.length > 0) {
+                                          setStudentSearchShowSuggestions(true);
+                                        }
+                                      }}
+                                      placeholder="Search by name or ID..."
+                                    />
+                                  </div>
+                                  {studentSearchShowSuggestions && studentSearchSuggestions.length > 0 && (
+                                    <StudentSuggestionList $visible={studentSearchShowSuggestions}>
+                                      {studentSearchSuggestions.map((student, idx) => (
+                                        <StudentSuggestionItem
+                                          key={student.id}
+                                          $active={idx === studentSearchActiveSuggestion}
+                                          onClick={() => handleStudentSelect(student)}
+                                          onMouseEnter={() => setStudentSearchActiveSuggestion(idx)}
+                                        >
+                                          <StudentSuggestionItemRow>
+                                            <StudentSuggestionMain>
+                                              <StudentSuggestionAvatar>
+                                                {student.picture_url ? (
+                                                  <img src={student.picture_url} alt="" />
+                                                ) : (
+                                                  <UserIcon style={{ fontSize: '1.4rem' }} />
+                                                )}
+                                              </StudentSuggestionAvatar>
+                                              <StudentSuggestionTextCol>
+                                                <StudentSuggestionName>{student.name}</StudentSuggestionName>
+                                                {student.father_name && (
+                                                  <StudentSuggestionFather>{student.father_name}</StudentSuggestionFather>
+                                                )}
+                                              </StudentSuggestionTextCol>
+                                            </StudentSuggestionMain>
+                                            <StudentSuggestionMetaCol>
+                                              <StudentSuggestionClass>
+                                                {getStudentClassName(student.class_id)}
+                                                {getStudentClassHasSections(student.class_id) && getStudentSectionName(student.section_id)
+                                                  ? ` ${getStudentSectionName(student.section_id)}`
+                                                  : ''}
+                                              </StudentSuggestionClass>
+                                              <StudentSuggestionId>ID: {student.id}</StudentSuggestionId>
+                                            </StudentSuggestionMetaCol>
+                                          </StudentSuggestionItemRow>
+                                        </StudentSuggestionItem>
+                                      ))}
+                                    </StudentSuggestionList>
+                                  )}
+                                </StudentSearchInput>
+                              </StudentSearchWrapper>
                             )}
-                            <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); handleLogout(); }} style={{ color: '#ef4444', fontWeight: 600 }}>
-                              Logout
-                            </ProfileDropdownItem>
-                          </ProfileDropdown>
-                        )}
-                      </div>
-                    </HeaderActions>
-                    {window.electronAPI && (
-                      <MacWindowControls>
-                        <MacButton
-                          color="#febc2e"
-                          onClick={() => window.electronAPI?.minimize()}
-                          title="Minimize"
-                        >
-                          <Remove style={{ fontSize: '12px' }} />
-                        </MacButton>
-                        <MacButton
-                          color="#28c840"
-                          onClick={() => {
-                            if (isMaximized) {
-                              window.electronAPI?.unmaximize();
-                            } else {
-                              window.electronAPI?.maximize();
-                            }
-                          }}
-                          title={isMaximized ? "Restore" : "Maximize"}
-                        >
-                          {isMaximized ? (
-                            <CropSquare style={{ fontSize: '10px', transform: 'scale(0.8) translate(-60%, -60%)' }} />
-                          ) : (
-                            <CropSquare style={{ fontSize: '10px' }} />
+                            {isWeakConnection && (
+                              <WeakConnectionIndicator title="Slow internet connection detected">
+                                <WifiOffIcon style={{ color: '#fbbf24' }} />
+                                {!isMobile && 'Slow Connection'}
+                              </WeakConnectionIndicator>
+                            )}
+                            {(user?.role === 'Super Admin' || user?.role === 'Principal' || user?.role === 'Admin') && <NotificationBell />}
+                            <HeaderIconCircle
+                              as="button"
+                              onClick={handleRefresh}
+                              aria-label="Refresh page"
+                            >
+                              <RefreshIcon />
+                            </HeaderIconCircle>
+                            <div style={{ position: 'relative' }}>
+                              <HeaderIconCircle
+                                as="button"
+                                ref={profileIconRef}
+                                onClick={() => setProfileMenuOpen(v => !v)}
+                                aria-label="Profile"
+                              >
+                                {avatarUrl ? (
+                                  <img
+                                    src={avatarUrl}
+                                    alt="avatar"
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      borderRadius: '50%',
+                                      objectFit: 'cover',
+                                      padding: '2px'
+                                    }}
+                                  />
+                                ) : (
+                                  <UserIcon />
+                                )}
+                              </HeaderIconCircle>
+                              {profileMenuOpen && (
+                                <ProfileDropdown ref={profileDropdownRef}>
+                                  <ProfileDropdownHeader>
+                                    {studentInfo?.name || staffName || user?.name}
+                                    {!studentInfo && user?.role && (
+                                      <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>{user?.role}</span>
+                                    )}
+                                  </ProfileDropdownHeader>
+                                  <ProfileDropdownItem onClick={toggleTheme}>
+                                    <span>Dark Mode</span>
+                                    <ToggleSwitch
+                                      data-checked={theme === 'dark'}
+                                    />
+                                  </ProfileDropdownItem>
+                                  <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); openChangePasswordModal(); setProfileMenuOpen(false); }}>
+                                    Change Password
+                                  </ProfileDropdownItem>
+                                  {/* Only show "Check for Updates" in Electron/desktop or Capacitor (mobile), not in web */}
+                                  {!isWeb && (
+                                    <>
+                                      <ProfileDropdownDivider />
+                                      <ProfileDropdownItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCheckForUpdates();
+                                          setProfileMenuOpen(false);
+                                        }}
+                                        disabled={isCheckingUpdate}
+                                        style={{
+                                          opacity: isCheckingUpdate ? 0.6 : 1,
+                                          cursor: isCheckingUpdate ? 'not-allowed' : 'pointer'
+                                        }}
+                                      >
+                                        {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                                      </ProfileDropdownItem>
+                                    </>
+                                  )}
+                                  <ProfileDropdownDivider />
+                                  <ProfileDropdownItem disabled style={{ opacity: 0.8, cursor: 'default' }}>
+                                    Version: v{appVersion}
+                                  </ProfileDropdownItem>
+                                  {(user?.role === 'Teacher' || studentInfo) && (
+                                    <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); setAboutUsModalOpen(true); setProfileMenuOpen(false); }}>
+                                      About Us
+                                    </ProfileDropdownItem>
+                                  )}
+                                  <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); handleLogout(); }} style={{ color: '#ef4444', fontWeight: 600 }}>
+                                    Logout
+                                  </ProfileDropdownItem>
+                                </ProfileDropdown>
+                              )}
+                            </div>
+                          </HeaderActions>
+                          {window.electronAPI && (
+                            <MacWindowControls>
+                              <MacButton
+                                color="#febc2e"
+                                onClick={() => window.electronAPI?.minimize()}
+                                title="Minimize"
+                              >
+                                <Remove style={{ fontSize: '12px' }} />
+                              </MacButton>
+                              <MacButton
+                                color="#28c840"
+                                onClick={() => {
+                                  if (isMaximized) {
+                                    window.electronAPI?.unmaximize();
+                                  } else {
+                                    window.electronAPI?.maximize();
+                                  }
+                                }}
+                                title={isMaximized ? "Restore" : "Maximize"}
+                              >
+                                {isMaximized ? (
+                                  <CropSquare style={{ fontSize: '10px', transform: 'scale(0.8) translate(-60%, -60%)' }} />
+                                ) : (
+                                  <CropSquare style={{ fontSize: '10px' }} />
+                                )}
+                              </MacButton>
+                              <MacButton
+                                color="#ff5f57"
+                                onClick={() => {
+                                  window.electronAPI?.close();
+                                }}
+                                title="Close"
+                              >
+                                <Close style={{ fontSize: '12px' }} />
+                              </MacButton>
+                            </MacWindowControls>
                           )}
-                        </MacButton>
-                        <MacButton
-                          color="#ff5f57"
-                          onClick={() => {
-                            window.electronAPI?.close();
-                          }}
-                          title="Close"
-                        >
-                          <Close style={{ fontSize: '12px' }} />
-                        </MacButton>
-                      </MacWindowControls>
-                    )}
-                  </Header>
-                  <ContentArea>
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={location.pathname}
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -15 }}
-                        transition={{ duration: 0.25, ease: 'easeInOut' }}
-                      >
-                        {isOnline ? (
-                    <Outlet />
-                        ) : (
-                          <OfflineContainer>
-                            <WifiOffIcon style={{fontSize: 64, color: '#ff6b6b'}}/>
-                            <h1>You are offline</h1>
-                            <p>Please check your internet connection.</p>
-                            <p>Last check: {lastChecked.toLocaleTimeString()}</p>
-                            <ActionButton onClick={handleRetry} disabled={isCheckingConnection}>
-                              {isCheckingConnection ? 'Retrying...' : 'Retry Now'}
-                            </ActionButton>
-                          </OfflineContainer>
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-                  </ContentArea>
-                </MainArea>
-              </LayoutWrapper>
-            </AppContainer>
+                        </Header>
+                        <ContentArea>
+                          <AnimatePresence mode="wait">
+                            <motion.div
+                              key={location.pathname}
+                              initial={{ opacity: 0, y: 15 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -15 }}
+                              transition={{ duration: 0.25, ease: 'easeInOut' }}
+                            >
+                              {isOnline ? (
+                                <Outlet />
+                              ) : (
+                                <OfflineContainer>
+                                  <WifiOffIcon style={{ fontSize: 64, color: '#ff6b6b' }} />
+                                  <h1>You are offline</h1>
+                                  <p>Please check your internet connection.</p>
+                                  <p>Last check: {lastChecked.toLocaleTimeString()}</p>
+                                  <ActionButton onClick={handleRetry} disabled={isCheckingConnection}>
+                                    {isCheckingConnection ? 'Retrying...' : 'Retry Now'}
+                                  </ActionButton>
+                                </OfflineContainer>
+                              )}
+                            </motion.div>
+                          </AnimatePresence>
+                        </ContentArea>
+                      </MainArea>
+                    </LayoutWrapper>
+                  </AppContainer>
 
-            {/* Change Password Modal */}
-            {showChangePassword && (
-              <ModalOverlay onClick={closeChangePasswordModal}>
-                <ModalBox onClick={(e) => e.stopPropagation()}>
-                  <ModalClose onClick={closeChangePasswordModal}>&times;</ModalClose>
-                  <ModalTitle>Change Password</ModalTitle>
-                  <form onSubmit={handlePasswordChange}>
-                    <ModalLabel>Current Password</ModalLabel>
-                    <ModalInputGroup>
-                      <ModalInput
-                        type={showCurrent ? 'text' : 'password'}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Enter current password"
-                        required
-                      />
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowCurrent(!showCurrent)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '8px',
-                          color: theme === 'dark' ? '#fff' : '#1e293b'
-                        }}
-                      >
-                        {showCurrent ? <VisibilityOff /> : <Visibility />}
-                      </button>
-                    </ModalInputGroup>
+                  {/* Change Password Modal */}
+                  {showChangePassword && (
+                    <ModalOverlay onClick={closeChangePasswordModal}>
+                      <ModalBox onClick={(e) => e.stopPropagation()}>
+                        <ModalClose onClick={closeChangePasswordModal}>&times;</ModalClose>
+                        <ModalTitle>Change Password</ModalTitle>
+                        <form onSubmit={handlePasswordChange}>
+                          <ModalLabel>Current Password</ModalLabel>
+                          <ModalInputGroup>
+                            <ModalInput
+                              type={showCurrent ? 'text' : 'password'}
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              placeholder="Enter current password"
+                              required
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setShowCurrent(!showCurrent)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '8px',
+                                color: theme === 'dark' ? '#fff' : '#1e293b'
+                              }}
+                            >
+                              {showCurrent ? <VisibilityOff /> : <Visibility />}
+                            </button>
+                          </ModalInputGroup>
 
-                    <ModalLabel>New Password</ModalLabel>
-                    <ModalInputGroup>
-                      <ModalInput
-                        type={showNew ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                        required
-                      />
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowNew(!showNew)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '8px',
-                          color: theme === 'dark' ? '#fff' : '#1e293b'
-                        }}
-                      >
-                        {showNew ? <VisibilityOff /> : <Visibility />}
-                      </button>
-                    </ModalInputGroup>
+                          <ModalLabel>New Password</ModalLabel>
+                          <ModalInputGroup>
+                            <ModalInput
+                              type={showNew ? 'text' : 'password'}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Enter new password"
+                              required
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setShowNew(!showNew)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '8px',
+                                color: theme === 'dark' ? '#fff' : '#1e293b'
+                              }}
+                            >
+                              {showNew ? <VisibilityOff /> : <Visibility />}
+                            </button>
+                          </ModalInputGroup>
 
-                    <ModalLabel>Confirm New Password</ModalLabel>
-                    <ModalInputGroup>
-                      <ModalInput
-                        type={showConfirm ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                        required
-                      />
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '8px',
-                          color: theme === 'dark' ? '#fff' : '#1e293b'
-                        }}
-                      >
-                        {showConfirm ? <VisibilityOff /> : <Visibility />}
-                      </button>
-                    </ModalInputGroup>
+                          <ModalLabel>Confirm New Password</ModalLabel>
+                          <ModalInputGroup>
+                            <ModalInput
+                              type={showConfirm ? 'text' : 'password'}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirm new password"
+                              required
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setShowConfirm(!showConfirm)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '8px',
+                                color: theme === 'dark' ? '#fff' : '#1e293b'
+                              }}
+                            >
+                              {showConfirm ? <VisibilityOff /> : <Visibility />}
+                            </button>
+                          </ModalInputGroup>
 
-                    <ModalActions>
-                      <ModalButton type="button" onClick={closeChangePasswordModal} color="#6b7280">
-                        Cancel
-                      </ModalButton>
-                      <ModalButton type="submit" disabled={modalLoading}>
-                        {modalLoading ? 'Updating...' : 'Update Password'}
-                      </ModalButton>
-                    </ModalActions>
-                  </form>
-                </ModalBox>
-              </ModalOverlay>
-            )}
+                          <ModalActions>
+                            <ModalButton type="button" onClick={closeChangePasswordModal} color="#6b7280">
+                              Cancel
+                            </ModalButton>
+                            <ModalButton type="submit" disabled={modalLoading}>
+                              {modalLoading ? 'Updating...' : 'Update Password'}
+                            </ModalButton>
+                          </ModalActions>
+                        </form>
+                      </ModalBox>
+                    </ModalOverlay>
+                  )}
 
-            {/* Exit Confirmation Modal */}
-            {showExitConfirm && (
-              <ModalOverlay onClick={() => setShowExitConfirm(false)}>
-                <ModalBox onClick={(e) => e.stopPropagation()}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                      width: '64px',
-                      height: '64px',
-                      margin: '0 auto 16px',
-                      background: theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
-                    </div>
-                    <ModalTitle style={{ textAlign: 'center', marginBottom: '8px' }}>
-                      Exit Application
-                    </ModalTitle>
-                    <p style={{
-                      color: theme === 'dark' ? '#9ca3af' : '#6b7280',
-                      marginBottom: '24px',
-                      textAlign: 'center'
-                    }}>
-                      Are you sure you want to exit the application?
-                    </p>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <ModalButton
-                        onClick={() => setShowExitConfirm(false)}
-                        color="#6b7280"
-                        style={{ flex: 1 }}
-                      >
-                        Cancel
-                      </ModalButton>
-                      <ModalButton
-                        onClick={() => {
-                          setShowExitConfirm(false);
-                          handleExit();
-                        }}
-                        color="#ef4444"
-                        style={{ flex: 1 }}
-                      >
-                        Exit
-                      </ModalButton>
-                    </div>
-                  </div>
-                </ModalBox>
-              </ModalOverlay>
-            )}
-          </ThemeProvider>
+                  {/* Exit Confirmation Modal */}
+                  {showExitConfirm && (
+                    <ModalOverlay onClick={() => setShowExitConfirm(false)}>
+                      <ModalBox onClick={(e) => e.stopPropagation()}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{
+                            width: '64px',
+                            height: '64px',
+                            margin: '0 auto 16px',
+                            background: theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
+                          </div>
+                          <ModalTitle style={{ textAlign: 'center', marginBottom: '8px' }}>
+                            Exit Application
+                          </ModalTitle>
+                          <p style={{
+                            color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+                            marginBottom: '24px',
+                            textAlign: 'center'
+                          }}>
+                            Are you sure you want to exit the application?
+                          </p>
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <ModalButton
+                              onClick={() => setShowExitConfirm(false)}
+                              color="#6b7280"
+                              style={{ flex: 1 }}
+                            >
+                              Cancel
+                            </ModalButton>
+                            <ModalButton
+                              onClick={() => {
+                                setShowExitConfirm(false);
+                                handleExit();
+                              }}
+                              color="#ef4444"
+                              style={{ flex: 1 }}
+                            >
+                              Exit
+                            </ModalButton>
+                          </div>
+                        </div>
+                      </ModalBox>
+                    </ModalOverlay>
+                  )}
+                </ThemeProvider>
               </NotificationProvider>
             </ProgressProvider>
           </MuiThemeProvider>
         </MuteContext.Provider>
       </ThemeContext.Provider>
-      
+
       {/* About Us Modal */}
-      <AboutUsModal 
-        isOpen={aboutUsModalOpen} 
-        onClose={() => setAboutUsModalOpen(false)} 
+      <AboutUsModal
+        isOpen={aboutUsModalOpen}
+        onClose={() => setAboutUsModalOpen(false)}
       />
     </PageHeaderContext.Provider>
   );
 };
 
-export default Layout; 
-export { ThemeContext, darkTheme, lightTheme, MuteContext }; 
+export default Layout;
+export { ThemeContext, darkTheme, lightTheme, MuteContext };
 export { ProgressProvider }; 

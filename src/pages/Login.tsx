@@ -238,12 +238,12 @@ const LoginModeSwitch = styled.div`
 
 const SwitchOption = styled.button<{ $active: boolean }>`
   flex: 1;
-  background: ${({ $active, theme }) => 
-    $active 
+  background: ${({ $active, theme }) =>
+    $active
       ? theme.ACCENT || '#4a6cf7'
       : 'transparent'};
-  color: ${({ $active, theme }) => 
-    $active 
+  color: ${({ $active, theme }) =>
+    $active
       ? '#fff'
       : theme.TEXT_SECONDARY};
   border: none;
@@ -303,7 +303,7 @@ const Login: React.FC = () => {
   });
   const [isMobile, setIsMobile] = useState(false);
   const themeObj = themeMode === 'dark' ? darkTheme : lightTheme;
-  
+
   // Lock mode during submission to prevent switching
   const loginModeRef = useRef<'staff' | 'student'>('staff');
   loginModeRef.current = loginMode;
@@ -311,8 +311,8 @@ const Login: React.FC = () => {
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => {
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                            window.innerWidth <= 768;
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        window.innerWidth <= 768;
       setIsMobile(isMobileDevice);
     };
 
@@ -344,10 +344,10 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     // Use ref to get the current mode (locked during submission)
     const currentMode = loginModeRef.current;
-    
+
     // Validate fields based on mode
     if (currentMode === 'staff') {
       if (!username.trim()) {
@@ -368,7 +368,7 @@ const Login: React.FC = () => {
         return;
       }
     }
-    
+
     setLoading(true);
     try {
       if (currentMode === 'staff') {
@@ -386,7 +386,7 @@ const Login: React.FC = () => {
             .select('*')
             .eq('id', studentId)
             .single();
-          
+
           if (!idError && byId) {
             studentLookup = { data: byId, error: null };
           } else {
@@ -396,7 +396,7 @@ const Login: React.FC = () => {
               .select('*')
               .eq('student_number', studentId)
               .single();
-            
+
             studentLookup = { data: byNumber, error: numberError };
           }
         }
@@ -415,6 +415,17 @@ const Login: React.FC = () => {
         }
         // Store student session info (minimal)
         localStorage.setItem('studentSession', JSON.stringify({ id: student.id, isStudent: true }));
+
+        // Update student online status
+        await supabase
+          .from('students')
+          .update({
+            is_online: true,
+            last_online: new Date().toISOString(),
+            app_version: process.env.REACT_APP_VERSION || 'v1.3.1'
+          })
+          .eq('id', student.id);
+
         // Redirect to student profile. Assume route: /student/:id
         navigate(`/student/${student.id}`, { replace: true });
         return;
@@ -442,7 +453,7 @@ const Login: React.FC = () => {
             <div>Welcome to <span style={{ color: '#ff6b35' }}>GROW</span> <span style={{ color: '#4a6cf7' }}>MORE</span>!</div>
           </Logo>
           <LoginModeSwitch>
-            <SwitchOption 
+            <SwitchOption
               $active={loginMode === 'staff'}
               onClick={() => handleModeSwitch('staff')}
               disabled={loading}
@@ -450,7 +461,7 @@ const Login: React.FC = () => {
             >
               <SwitchLabel>Teacher/Staff</SwitchLabel>
             </SwitchOption>
-            <SwitchOption 
+            <SwitchOption
               $active={loginMode === 'student'}
               onClick={() => handleModeSwitch('student')}
               disabled={loading}
@@ -533,7 +544,7 @@ const Login: React.FC = () => {
           {error && <ErrorMsg>{error}</ErrorMsg>}
           <Button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</Button>
         </LoginCard>
-    </Container>
+      </Container>
     </ThemeProvider>
   );
 };
