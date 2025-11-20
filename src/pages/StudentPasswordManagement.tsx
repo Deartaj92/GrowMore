@@ -22,6 +22,9 @@ interface Student {
   sections?: { name: string } | null;
   school_id: number;
   status: string;
+  last_online?: string;
+  is_online?: boolean;
+  app_version?: string;
 }
 
 // Styled Components
@@ -413,9 +416,9 @@ const ActionButton = styled.button<{ $variant?: 'primary' | 'danger' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  background: ${({ $variant, theme }) => 
-    $variant === 'danger' 
-      ? '#ef4444' 
+  background: ${({ $variant, theme }) =>
+    $variant === 'danger'
+      ? '#ef4444'
       : theme.ACCENT || '#6366f1'};
   color: white;
   white-space: nowrap;
@@ -446,8 +449,8 @@ const PasswordModal = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: ${({ theme }) => theme.BG === '#252525' 
-    ? 'rgba(0, 0, 0, 0.5)' 
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(0, 0, 0, 0.5)'
     : 'rgba(255, 255, 255, 0.5)'};
   backdrop-filter: blur(8px);
   WebkitBackdropFilter: blur(8px);
@@ -592,8 +595,8 @@ const PasswordButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  background: ${({ variant, theme }) => 
-    variant === 'secondary' 
+  background: ${({ variant, theme }) =>
+    variant === 'secondary'
       ? (theme.BG === '#252525' ? '#2a2a2a' : '#f3f4f6')
       : (theme.ACCENT || '#6366f1')};
   color: ${({ variant }) => variant === 'secondary' ? 'inherit' : 'white'};
@@ -876,7 +879,7 @@ const StudentPasswordManagement: React.FC = () => {
           const studentIds = Array.from(new Set(historyData.map((sch: any) => sch.student_id)));
           const { data: studentsData, error: studentsError } = await supabase
             .from('students')
-            .select('id, student_number, name, father_name, password, school_id, status')
+            .select('id, student_number, name, father_name, password, school_id, status, last_online, is_online, app_version')
             .eq('school_id', user.school_id)
             .in('id', studentIds);
 
@@ -908,7 +911,7 @@ const StudentPasswordManagement: React.FC = () => {
         .select(`*, classes(name), sections(name)`)
         .eq('school_id', user.school_id)
         .order('id', { ascending: false });
-      
+
       if (!error) {
         // Sort by ID descending (higher IDs first)
         const sorted = (data || []).sort((a: Student, b: Student) => b.id - a.id);
@@ -997,7 +1000,7 @@ const StudentPasswordManagement: React.FC = () => {
       .filter(student => {
         // Search filter (using debounced term)
         const searchLower = debouncedSearchTerm.toLowerCase();
-        const matchesSearch = !debouncedSearchTerm || 
+        const matchesSearch = !debouncedSearchTerm ||
           student.name.toLowerCase().includes(searchLower) ||
           String(student.id).includes(debouncedSearchTerm) ||
           (student.father_name && student.father_name.toLowerCase().includes(searchLower)) ||
@@ -1212,7 +1215,7 @@ const StudentPasswordManagement: React.FC = () => {
           <p>No students found</p>
         </EmptyState>
       ) : (
-        <div style={{ 
+        <div style={{
           width: '100%',
           position: 'relative',
           ...(isMobile ? {
@@ -1247,14 +1250,16 @@ const StudentPasswordManagement: React.FC = () => {
           )}
           <StudentTable style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
             <TableHeader>
-            <TableRow>
-              <TableHeaderCell style={isMobile ? { width: '15%', maxWidth: '50px' } : {}}>ID</TableHeaderCell>
-              <TableHeaderCell style={isMobile ? { width: '28%' } : {}}>Name</TableHeaderCell>
-              {!isMobile && <TableHeaderCell>Father Name</TableHeaderCell>}
-              <TableHeaderCell style={isMobile ? { width: '22%' } : {}}>Class</TableHeaderCell>
-              <TableHeaderCell style={isMobile ? { width: '18%' } : {}}>Status</TableHeaderCell>
-              <TableHeaderCell style={isMobile ? { width: '15%' } : {}}>Actions</TableHeaderCell>
-            </TableRow>
+              <TableRow>
+                <TableHeaderCell style={isMobile ? { width: '15%', maxWidth: '50px' } : {}}>ID</TableHeaderCell>
+                <TableHeaderCell style={isMobile ? { width: '28%' } : {}}>Name</TableHeaderCell>
+                {!isMobile && <TableHeaderCell>Father Name</TableHeaderCell>}
+                <TableHeaderCell style={isMobile ? { width: '22%' } : {}}>Class</TableHeaderCell>
+                <TableHeaderCell style={isMobile ? { width: '18%' } : {}}>Status</TableHeaderCell>
+                {!isMobile && <TableHeaderCell>Online</TableHeaderCell>}
+                {!isMobile && <TableHeaderCell>Version</TableHeaderCell>}
+                <TableHeaderCell style={isMobile ? { width: '15%' } : {}}>Actions</TableHeaderCell>
+              </TableRow>
             </TableHeader>
             <tbody>
               {filteredStudents.map((student) => (
@@ -1270,7 +1275,7 @@ const StudentPasswordManagement: React.FC = () => {
                     <TableCell title={student.father_name || ''}>{student.father_name || '-'}</TableCell>
                   )}
                   <TableCell style={isMobile ? { width: '22%', fontSize: '10px' } : {}}>
-                    {student.classes?.name 
+                    {student.classes?.name
                       ? `${student.classes.name}${student.sections?.name ? ` (${student.sections.name})` : ''}`
                       : '-'}
                   </TableCell>
@@ -1279,6 +1284,42 @@ const StudentPasswordManagement: React.FC = () => {
                       {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
                     </StatusBadge>
                   </TableCell>
+                  {!isMobile && (
+                    <TableCell>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: student.is_online ? '#22c55e' : '#9ca3af',
+                          boxShadow: student.is_online ? '0 0 4px #22c55e' : 'none'
+                        }} />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 500, color: student.is_online ? '#22c55e' : 'inherit' }}>
+                            {student.is_online ? 'Online' : 'Offline'}
+                          </span>
+                          {!student.is_online && student.last_online && (
+                            <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                              {new Date(student.last_online).toLocaleDateString()} {new Date(student.last_online).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                  )}
+                  {!isMobile && (
+                    <TableCell>
+                      <span style={{
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        background: theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}>
+                        {student.app_version || 'v1.0.0'}
+                      </span>
+                    </TableCell>
+                  )}
                   <TableCell style={isMobile ? { width: '15%' } : {}}>
                     <ActionButton onClick={() => handleViewPassword(student)}>
                       <Lock style={{ fontSize: isMobile ? 10 : 14 }} />
@@ -1297,23 +1338,23 @@ const StudentPasswordManagement: React.FC = () => {
         <PasswordModal onClick={() => setShowPasswordModal(false)}>
           <PasswordFormContainer onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
             <PasswordTitle>Manage Student Password</PasswordTitle>
-            <div style={{ 
-              marginBottom: isMobile ? 12 : 16, 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: isMobile ? '8px' : '12px' 
+            <div style={{
+              marginBottom: isMobile ? 12 : 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: isMobile ? '8px' : '12px'
             }}>
               <AccountCircle style={{ fontSize: isMobile ? 32 : 40, color: '#6366f1' }} />
               <div>
-                <div style={{ 
-                  fontWeight: 600, 
+                <div style={{
+                  fontWeight: 600,
                   color: 'inherit',
                   fontSize: isMobile ? '14px' : '16px'
                 }}>
                   {selectedStudent.name}
                 </div>
-                <div style={{ 
-                  fontSize: isMobile ? 11 : 14, 
+                <div style={{
+                  fontSize: isMobile ? 11 : 14,
                   color: '#6b7280',
                   marginTop: isMobile ? 2 : 0
                 }}>
@@ -1353,8 +1394,8 @@ const StudentPasswordManagement: React.FC = () => {
                 <Refresh style={{ fontSize: 16, marginRight: 4 }} />
                 Reset to Default
               </PasswordButton>
-              <PasswordButton 
-                onClick={handleChangePassword} 
+              <PasswordButton
+                onClick={handleChangePassword}
                 disabled={!newPassword || !newPassword.trim()}
               >
                 Change Password
