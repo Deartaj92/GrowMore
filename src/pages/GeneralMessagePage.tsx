@@ -183,9 +183,7 @@ const StudentListContent = styled.div`
 
 const StudentItem = styled.div<{ selected?: boolean }>`
   padding: 0.6rem 0.8rem;
-  border-bottom: ${({ theme }) => isDark(theme)
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -206,7 +204,7 @@ const StudentItem = styled.div<{ selected?: boolean }>`
   }
 
   &:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
   }
 `;
 
@@ -1056,13 +1054,7 @@ const GeneralMessagePage: React.FC = () => {
                                         selected={selectedStudentIds.has(student.id)}
                                         onClick={() => toggleStudentSelection(student.id)}
                                     >
-                                        <Checkbox
-                                            type="checkbox"
-                                            checked={selectedStudentIds.has(student.id)}
-                                            onChange={() => toggleStudentSelection(student.id)}
-                                            onClick={(e) => e.stopPropagation()}
-                                            theme={theme}
-                                        />
+                                        {/* Checkbox hidden as requested */}
                                         <StudentInfo>
                                             <div style={{ fontSize: '0.85rem', color: theme.TEXT_PRIMARY, lineHeight: '1.4' }}>
                                                 <span style={{ opacity: 0.7 }}>{student.id}</span> . <strong>{student.name}</strong> . {student.father_name} . {student.class_name} {student.section_name ? `(${student.section_name})` : ''}
