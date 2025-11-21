@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from './AuthContext';
 import { activityTrackingService, Notification, NotificationPreferences } from '../services/activityTrackingService';
 import { supabase } from '../supabaseClient';
+import { pushNotificationService } from '../services/pushNotificationService';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -28,6 +29,9 @@ interface NotificationContextType {
   // Pagination
   loadMore: () => Promise<void>;
   hasMore: boolean;
+
+  // Desktop Notifications
+  requestPermission: () => Promise<boolean>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -47,6 +51,7 @@ const NotificationContext = createContext<NotificationContextType>({
   closeAnnouncement: () => { },
   loadMore: async () => { },
   hasMore: false,
+  requestPermission: async () => false,
 });
 
 export const useNotifications = () => {
@@ -109,6 +114,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [activeAnnouncementId, setActiveAnnouncementId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const lastNotificationTimeRef = useRef<number>(0);
   const PAGE_SIZE = 20;
 
   // Update student info when it changes
@@ -266,6 +272,43 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
   }, [user?.school_id, user?.staff_id, studentInfo?.school_id, matchesAnnouncementAudience, getViewerIdentifier]);
 
+  // Request notification permission
+  const requestPermission = useCallback(async () => {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support desktop notification');
+      return false;
+    }
+
+    if (window.Notification.permission === 'granted') {
+      return true;
+    }
+
+    if (window.Notification.permission !== 'denied') {
+      const permission = await window.Notification.requestPermission();
+      return permission === 'granted';
+    }
+
+    return false;
+  }, []);
+
+  // Show desktop notification
+  const showNotification = useCallback((title: string, body: string) => {
+    if (!('Notification' in window)) return;
+
+    if (window.Notification.permission === 'granted' && (!preferences || preferences.push_notifications)) {
+      try {
+        new window.Notification(title, {
+          body,
+          icon: '/favicon.ico', // Fallback icon
+          badge: '/favicon.ico',
+          tag: 'school-notification' // Group notifications
+        });
+      } catch (e) {
+        console.error('Error showing notification:', e);
+      }
+    }
+  }, [preferences]);
+
   // Helper to sort notifications
   const sortNotifications = useCallback((notificationsList: Notification[]) => {
     const now = new Date().getTime();
@@ -347,6 +390,28 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       console.log('[NotificationContext] Final notifications:', sortedNotifications.length, 'Unread:', unreadNotifications);
       setNotifications(sortedNotifications);
       setUnreadCount(unreadNotifications);
+
+      // Check for new notifications for desktop alert (Polling)
+      if (sortedNotifications.length > 0) {
+        const latestTime = new Date(sortedNotifications[0].created_at).getTime();
+
+        // If we have a previous time recorded, and the new latest time is greater
+        if (lastNotificationTimeRef.current > 0 && latestTime > lastNotificationTimeRef.current) {
+          // Find all new unread notifications
+          const newNotifications = sortedNotifications.filter(n =>
+            new Date(n.created_at).getTime() > lastNotificationTimeRef.current && !n.is_read
+          );
+
+          newNotifications.forEach(n => {
+            showNotification(n.title, n.message);
+          });
+        }
+
+        // Update the ref to the latest time
+        if (latestTime > lastNotificationTimeRef.current) {
+          lastNotificationTimeRef.current = latestTime;
+        }
+      }
     } catch (error) {
       console.error('[NotificationContext] Failed to refresh notifications:', error);
     } finally {
@@ -518,6 +583,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
             if (!newNotification.is_read) {
               setUnreadCount(prev => prev + 1);
+              showNotification(newNotification.title, newNotification.message);
+
+              // Update ref
+              const newTime = new Date(newNotification.created_at).getTime();
+              if (newTime > lastNotificationTimeRef.current) {
+                lastNotificationTimeRef.current = newTime;
+              }
             }
           }
         )
@@ -585,6 +657,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       subscribeToNotifications();
     }
 
+    // Initialize Push Notifications for all logged-in users
+    if (user?.staff_id && user?.school_id) {
+      pushNotificationService.initCapacitorPush(user.staff_id, user.school_id);
+      
+      // If Electron, we need to handle registration via IPC if we decide to implement it there.
+      // For now, we'll focus on Capacitor as the primary "push" target,
+      // but the service structure supports Electron too.
+      if (window.electronAPI) {
+         pushNotificationService.initElectronPush(user.staff_id, user.school_id);
+      }
+    }
+
     return () => {
       unsubscribeFromNotifications();
     };
@@ -614,6 +698,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     closeAnnouncement,
     loadMore,
     hasMore,
+    requestPermission,
   };
 
   return (

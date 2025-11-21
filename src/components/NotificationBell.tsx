@@ -313,10 +313,12 @@ const NotificationBell: React.FC = () => {
     setPanelOpen,
     openAnnouncement,
     loadMore,
-    hasMore
+    hasMore,
+    requestPermission
   } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [showPermissionButton, setShowPermissionButton] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -341,6 +343,15 @@ const NotificationBell: React.FC = () => {
       }
     };
   }, [hasMore, isLoading, loadMore, isOpen]);
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      console.log('Current notification permission:', Notification.permission);
+      if (Notification.permission === 'default' || Notification.permission === 'denied') {
+        setShowPermissionButton(true);
+      }
+    }
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -450,7 +461,30 @@ const NotificationBell: React.FC = () => {
           >
             <NotificationHeader>
               <NotificationTitle>Notifications</NotificationTitle>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {showPermissionButton && (
+                  <button
+                    onClick={async () => {
+                      const granted = await requestPermission();
+                      if (granted) setShowPermissionButton(false);
+                    }}
+                    style={{
+                      background: '#f0f0f0',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      padding: '4px 8px',
+                      color: '#666',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Enable Desktop Notifications"
+                  >
+                    🔔 Enable
+                  </button>
+                )}
                 <button
                   onClick={refreshNotifications}
                   style={{

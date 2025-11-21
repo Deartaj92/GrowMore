@@ -53,6 +53,10 @@ window.electronAPI = {
   cancelDownload: (fileName) => ipcRenderer.invoke('cancel-download', fileName),
   showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
   showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
+  // Push Notifications (FCM)
+  startPushService: (senderId) => ipcRenderer.send('FCM_START_NOTIFICATION_SERVICE', senderId),
+  onPushTokenReceived: (callback) => ipcRenderer.on('FCM_TOKEN_UPDATED', (event, token) => callback(token)),
+  onPushNotificationReceived: (callback) => ipcRenderer.on('FCM_NOTIFICATION_RECEIVED', (event, notification) => callback(notification)),
 };
 
 console.log('electronAPI exposed to window'); 
