@@ -137,6 +137,31 @@ const MarkAllReadButton = styled.button`
 const NotificationList = styled.div`
   max-height: 400px;
   overflow-y: auto;
+  padding-right: 2px; /* Prevent content from touching scrollbar */
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: ${props => props.theme.TEXT_SECONDARY} transparent;
+
+  /* Chrome/Edge/Safari */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: ${props => props.theme.TEXT_SECONDARY};
+    border-radius: 3px;
+    border: 1px solid transparent; /* Creates padding around thumb */
+    background-clip: content-box;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: ${props => props.theme.ACCENT};
+  }
 `;
 
 const NotificationItem = styled.div<{ $isRead: boolean; $isImportant: boolean }>`
@@ -147,12 +172,18 @@ const NotificationItem = styled.div<{ $isRead: boolean; $isImportant: boolean }>
   position: relative;
   background: ${props =>
     props.$isImportant
-      ? `${props.theme.ACCENT}10`
+      ? `${props.theme.ACCENT}15`
       : props.$isRead
         ? 'transparent'
-        : `${props.theme.ACCENT}05`
+        : `${props.theme.ACCENT}10`
   };
-  border-left: ${props => props.$isImportant ? '4px solid #ef4444' : '4px solid transparent'};
+  border-left: ${props =>
+    props.$isImportant
+      ? '4px solid #ef4444'
+      : props.$isRead
+        ? '4px solid transparent'
+        : `4px solid ${props.theme.ACCENT}`
+  };
   animation: ${props => props.$isImportant && !props.$isRead ? 'pulse-important 2s ease-in-out infinite' : 'none'};
 
   @keyframes pulse-important {
@@ -205,7 +236,6 @@ const NotificationTitleText = styled.div<{ $isRead: boolean }>`
   font-size: 0.9rem;
   color: ${props => props.theme.TEXT_PRIMARY};
   line-height: 1.2;
-  flex: 1;
 `;
 
 const NotificationDate = styled.div<{ $isRead: boolean }>`
@@ -228,6 +258,16 @@ const NotificationTime = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
+`;
+
+const UnreadDot = styled.div`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${props => props.theme.ACCENT};
+  margin-left: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px ${props => props.theme.ACCENT}60;
 `;
 
 
@@ -271,11 +311,36 @@ const NotificationBell: React.FC = () => {
     markAllAsRead,
     refreshNotifications,
     setPanelOpen,
+    openAnnouncement,
+    loadMore,
+    hasMore
   } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, isLoading, loadMore, isOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -303,8 +368,16 @@ const NotificationBell: React.FC = () => {
   const handleNotificationClick = async (notificationId: number) => {
     // Mark notification as read when clicked
     const notification = notifications.find(n => n.id === notificationId);
-    if (notification && !notification.is_read) {
-      await markAsRead([notificationId]);
+    if (notification) {
+      if (!notification.is_read) {
+        await markAsRead([notificationId]);
+      }
+
+      // If it's an announcement, open it
+      if (notification.notification_type === 'announcement') {
+        openAnnouncement(notification.id);
+        setIsOpen(false);
+      }
     }
   };
 
@@ -314,7 +387,7 @@ const NotificationBell: React.FC = () => {
 
   const getNotificationIcon = (type: string, isImportant: boolean) => {
     if (isImportant) return <ErrorIcon />;
-    
+
     switch (type) {
       // Activity types
       case 'attendance': return <PersonIcon />;
@@ -324,12 +397,12 @@ const NotificationBell: React.FC = () => {
       case 'class_management': return <SchoolIcon />;
       case 'student_management': return <GroupIcon />;
       case 'report': return <WarningIcon />;
-      
+
       // System types
       case 'activity': return <BellIcon />;
       case 'system': return <InfoIcon />;
       case 'alert': return <WarningIcon />;
-      
+
       // Default fallback
       default: return <BellIcon />;
     }
@@ -343,7 +416,11 @@ const NotificationBell: React.FC = () => {
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return date.toLocaleDateString();
+
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}-${month}-${year}`;
   };
 
   return (
@@ -374,7 +451,7 @@ const NotificationBell: React.FC = () => {
             <NotificationHeader>
               <NotificationTitle>Notifications</NotificationTitle>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
+                <button
                   onClick={refreshNotifications}
                   style={{
                     background: 'none',
@@ -397,7 +474,7 @@ const NotificationBell: React.FC = () => {
             </NotificationHeader>
 
             <NotificationList>
-              {isLoading ? (
+              {notifications.length === 0 && isLoading ? (
                 <LoadingState>Loading notifications...</LoadingState>
               ) : notifications.length === 0 ? (
                 <EmptyState>
@@ -408,51 +485,83 @@ const NotificationBell: React.FC = () => {
                   <EmptyMessage>You're all caught up!</EmptyMessage>
                 </EmptyState>
               ) : (
-                notifications.map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    $isRead={notification.is_read}
-                    $isImportant={notification.is_important}
-                    onClick={() => handleNotificationClick(notification.id)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <NotificationIcon
-                        $type={notification.notification_type}
-                        $isImportant={notification.is_important}
-                      >
-                        {getNotificationIcon(notification.notification_type, notification.is_important)}
-                      </NotificationIcon>
-                      
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* First line: Teacher name + Time */}
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          marginBottom: '4px'
-                        }}>
-                          <NotificationTitleText $isRead={notification.is_read}>
-                            {notification.title}
-                          </NotificationTitleText>
-                          <NotificationDate $isRead={notification.is_read}>
-                            {formatTime(notification.created_at)}
-                          </NotificationDate>
+                <>
+                  {notifications.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      $isRead={notification.is_read}
+                      $isImportant={notification.is_important}
+                      onClick={() => handleNotificationClick(notification.id)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <NotificationIcon
+                          $type={notification.notification_type}
+                          $isImportant={notification.is_important}
+                        >
+                          {getNotificationIcon(notification.notification_type, notification.is_important)}
+                        </NotificationIcon>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {/* First line: Teacher name + Time */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '4px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, gap: '8px' }}>
+                              <NotificationTitleText $isRead={notification.is_read}>
+                                {notification.title}
+                              </NotificationTitleText>
+                              {!notification.is_read && <UnreadDot />}
+                            </div>
+                            <NotificationDate $isRead={notification.is_read}>
+                              {formatTime(notification.created_at)}
+                            </NotificationDate>
+                          </div>
+
+                          {/* Second line: Description only */}
+                          <NotificationMessage $isRead={notification.is_read}>
+                            {notification.message}
+                          </NotificationMessage>
                         </div>
-                        
-                        {/* Second line: Description only */}
-                        <NotificationMessage $isRead={notification.is_read}>
-                          {notification.message}
-                        </NotificationMessage>
                       </div>
+                    </NotificationItem>
+                  ))}
+
+                  {/* Sentinel for infinite scroll */}
+                  <div ref={observerTarget} style={{ height: '10px', width: '100%' }} />
+
+                  {/* Loading indicator for pagination */}
+                  {isLoading && (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '12px',
+                      color: '#888',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid #888',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Loading more...
                     </div>
-                  </NotificationItem>
-                ))
+                  )}
+                </>
               )}
             </NotificationList>
           </NotificationDropdown>
         )}
       </AnimatePresence>
-    </NotificationBellContainer>
+    </NotificationBellContainer >
   );
 };
 

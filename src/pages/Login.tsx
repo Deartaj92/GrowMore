@@ -413,8 +413,15 @@ const Login: React.FC = () => {
           setLoading(false);
           return;
         }
-        // Store student session info (minimal)
-        localStorage.setItem('studentSession', JSON.stringify({ id: student.id, isStudent: true }));
+        // Store student session info with all necessary fields for notifications
+        localStorage.setItem('studentSession', JSON.stringify({
+          id: student.id,
+          name: student.name,
+          school_id: student.school_id,
+          class_id: student.class_id,
+          section_id: student.section_id,
+          isStudent: true
+        }));
 
         // Update student online status
         await supabase

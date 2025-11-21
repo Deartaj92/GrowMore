@@ -63,6 +63,7 @@ import AboutUsModal from './AboutUsModal';
 import '../utils/testNotifications'; // Import test utilities
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
 import PresenceManager from './PresenceManager';
+import AnnouncementHandler from './AnnouncementHandler';
 
 // Capacitor import for mobile back button handling
 let CapacitorApp: any = null;
@@ -72,27 +73,27 @@ try {
   // Capacitor not available, will use fallback
 }
 
-  const normalizeIdList = (raw: any): number[] => {
-    if (raw === null || raw === undefined) return [];
-    if (Array.isArray(raw)) {
-      return raw
-        .map(value => Number(value))
-        .filter(value => Number.isFinite(value));
-    }
-    if (typeof raw === 'string') {
-      const trimmed = raw.trim();
-      const withoutBraces = trimmed.replace(/[{}]/g, '');
-      if (!withoutBraces) return [];
-      return withoutBraces
-        .split(',')
-        .map(part => Number(part.trim()))
-        .filter(value => Number.isFinite(value));
-    }
-    if (typeof raw === 'number') {
-      return Number.isFinite(raw) ? [raw] : [];
-    }
-    return [];
-  };
+const normalizeIdList = (raw: any): number[] => {
+  if (raw === null || raw === undefined) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .map(value => Number(value))
+      .filter(value => Number.isFinite(value));
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    const withoutBraces = trimmed.replace(/[{}]/g, '');
+    if (!withoutBraces) return [];
+    return withoutBraces
+      .split(',')
+      .map(part => Number(part.trim()))
+      .filter(value => Number.isFinite(value));
+  }
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) ? [raw] : [];
+  }
+  return [];
+};
 
 // Theme context
 type Theme = 'dark' | 'light';
@@ -3265,19 +3266,19 @@ const Layout: React.FC = () => {
 
   type AnnouncementIdentity = ReturnType<typeof getAnnouncementIdentity>;
 
-interface AnnouncementView {
-  id?: number;
-  announcement_id?: number;
-  viewer_identifier: string;
-  viewer_type?: string;
-  viewer_role?: string;
-  viewer_name?: string;
-  student_id?: number;
-  staff_id?: number;
-  user_id?: number;
-  viewer_device_id?: string;
-  seen_at?: string;
-}
+  interface AnnouncementView {
+    id?: number;
+    announcement_id?: number;
+    viewer_identifier: string;
+    viewer_type?: string;
+    viewer_role?: string;
+    viewer_name?: string;
+    student_id?: number;
+    staff_id?: number;
+    user_id?: number;
+    viewer_device_id?: string;
+    seen_at?: string;
+  }
 
   const matchesAnnouncementAudience = (announcement: any, identity: AnnouncementIdentity) => {
     if (!identity) return false;
@@ -3353,6 +3354,30 @@ interface AnnouncementView {
       return [...prev, announcement];
     });
   };
+
+  const handleOpenAnnouncement = useCallback(async (id: number) => {
+    // Check if it's already in the queue
+    const existing = announcementQueue.find(a => a.id === id);
+    if (existing) {
+      const index = announcementQueue.indexOf(existing);
+      setCurrentAnnouncementIndex(index);
+      setShowAnnouncement(true);
+      return;
+    }
+
+    // Fetch from DB
+    try {
+      const { data, error } = await supabase.from('announcements').select('*').eq('id', id).single();
+      if (data && !error) {
+        // Add to queue and show
+        setAnnouncementQueue(prev => [data, ...prev]);
+        setCurrentAnnouncementIndex(0);
+        setShowAnnouncement(true);
+      }
+    } catch (e) {
+      console.error('Error fetching announcement:', e);
+    }
+  }, [announcementQueue]);
 
   const loadAnnouncements = useCallback(async () => {
     const identity = getAnnouncementIdentity();
@@ -3482,6 +3507,7 @@ interface AnnouncementView {
             <CssBaseline />
             <ProgressProvider>
               <NotificationProvider>
+                <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
                 <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
                   {currentAnnouncement && (
                     <AnnouncementOverlay>
@@ -3777,7 +3803,8 @@ interface AnnouncementView {
                                 {!isMobile && 'Slow Connection'}
                               </WeakConnectionIndicator>
                             )}
-                            {(user?.role === 'Super Admin' || user?.role === 'Principal' || user?.role === 'Admin') && <NotificationBell />}
+                            {/* Show notification bell for all authenticated users (staff and students) */}
+                            {(user || studentInfo) && <NotificationBell />}
                             <HeaderIconCircle
                               as="button"
                               onClick={handleRefresh}
