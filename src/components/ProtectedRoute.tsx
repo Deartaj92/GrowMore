@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import styled, { ThemeProvider } from 'styled-components';
-import { darkTheme } from './Layout';
+import styled from 'styled-components';
 import { fetchRenderSettings, isGuestPageAccessible } from '../services/renderSettingsService';
 import { RenderSettings } from '../services/renderSettingsService';
 
@@ -18,7 +17,7 @@ const LoadingContainer = styled.div`
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: ${({ theme }) => theme.BG};
+  background: #1a1a2e;
 `;
 
 const LoadingSpinner = styled.div`
@@ -36,11 +35,11 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-export default function ProtectedRoute({ 
-  children, 
-  allowedRoles, 
+export default function ProtectedRoute({
+  children,
+  allowedRoles,
   redirectTo = '/unauthorized',
-  guestPageKey 
+  guestPageKey
 }: ProtectedRouteProps) {
   const { user, loading, hasPermission } = useAuth();
   const location = useLocation();
@@ -90,7 +89,7 @@ export default function ProtectedRoute({
       // For other routes without guestPageKey, deny access
       return <Navigate to={redirectTo} replace />;
     }
-    
+
     // If settings are still loading, wait
     if (settingsLoading) {
       return (
@@ -99,7 +98,7 @@ export default function ProtectedRoute({
         </LoadingContainer>
       );
     }
-    
+
     // Check if guest can access this page based on render settings
     // If settings haven't loaded yet, allow temporary access (they'll be checked in the component)
     // This prevents premature denial while settings are being fetched
