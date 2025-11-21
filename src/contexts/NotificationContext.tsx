@@ -131,7 +131,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    const customListener = handleStorageChange as EventListener;
+    window.addEventListener('student-session-changed', customListener);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('student-session-changed', customListener);
+    };
   }, []);
 
   const setPanelOpen = useCallback((isOpen: boolean) => {
@@ -651,35 +656,39 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
   }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, refreshNotifications]);
 
-  // Subscribe to real-time updates (only for Principal)
+  // Robust Push Initialization for push notifications
   useEffect(() => {
-    if (user?.role === 'Principal' && user?.staff_id && user?.school_id) {
-      subscribeToNotifications();
-    }
-
-    // Initialize Push Notifications for all logged-in users
-    if (user?.staff_id && user?.school_id) {
-      pushNotificationService.initCapacitorPush(user.staff_id, user.school_id);
+    const checkAndInitPush = () => {
+      const latestStudentInfo = studentInfo || getStudentInfo();
+      const userId = user?.staff_id || latestStudentInfo?.id;
+      const schoolId = user?.school_id || latestStudentInfo?.school_id;
+      const userType: 'staff' | 'student' = latestStudentInfo?.id ? 'student' : 'staff';
       
-      // If Electron, we need to handle registration via IPC if we decide to implement it there.
-      // For now, we'll focus on Capacitor as the primary "push" target,
-      // but the service structure supports Electron too.
-      if (window.electronAPI) {
-         pushNotificationService.initElectronPush(user.staff_id, user.school_id);
+      if (userId && schoolId) {
+        console.log('[NotificationContext] User detected. Initializing Push for:', userId);
+        pushNotificationService.initCapacitorPush(userId, schoolId, userType);
+        if (window.electronAPI) {
+           pushNotificationService.initElectronPush(userId, schoolId, userType);
+        }
+        return true; // Successfully initialized
       }
-    }
-
-    return () => {
-      unsubscribeFromNotifications();
+      return false;
     };
-  }, [user?.staff_id, user?.school_id, user?.role, subscribeToNotifications, unsubscribeFromNotifications]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      unsubscribeFromNotifications();
-    };
-  }, [unsubscribeFromNotifications]);
+    // Try immediately
+    if (checkAndInitPush()) return;
+
+    // Retry every 2 seconds until successful (max 5 attempts)
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (checkAndInitPush() || attempts >= 5) {
+        clearInterval(interval);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [user?.staff_id, user?.school_id, studentInfo?.id, studentInfo?.school_id]);
 
   const value: NotificationContextType = {
     notifications,

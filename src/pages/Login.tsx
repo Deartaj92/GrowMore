@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styled, { ThemeProvider, useTheme } from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '../components/useToast';
-import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/useToast';
+import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
+import { pushNotificationService } from '../services/pushNotificationService';
+import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon } from '@mui/icons-material';
 
 // Mac-style window controls (copied from Layout.tsx)
 const MacWindowControls = styled.div`
@@ -374,7 +375,10 @@ const Login: React.FC = () => {
       if (currentMode === 'staff') {
         // Clear any existing student session when staff logs in
         localStorage.removeItem('studentSession');
-        await signIn(username, password);
+        const staffUser = await signIn(username, password);
+        if (staffUser?.staff_id && staffUser?.school_id) {
+          await pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff');
+        }
       } else {
         // Student authentication: lookup by student id and password
         // Try by id first, then by student_number if id fails
@@ -422,6 +426,9 @@ const Login: React.FC = () => {
           section_id: student.section_id,
           isStudent: true
         }));
+        broadcastStudentSessionChange();
+
+        await pushNotificationService.rehydrateStoredToken(student.id, student.school_id, 'student');
 
         // Update student online status
         await supabase

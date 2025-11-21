@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import * as jose from "https://deno.land/x/jose@v4.13.1/index.ts";
@@ -17,6 +18,12 @@ interface NotificationPayload {
     created_at: string;
   };
   schema: "public";
+}
+
+// Utility: strip HTML tags and nbsp, similar to getPlainText in UserAnnouncements.tsx
+function getPlainText(value?: string | null): string {
+  if (!value) return "";
+  return value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 }
 
 // FCM Access Token Generation (Simplified for Edge Runtime)
@@ -119,12 +126,16 @@ serve(async (req) => {
     // 5. Send Notifications
     const results = await Promise.all(
       tokens.map(async (t) => {
+        // Clean HTML from the title and message so push notifications show plain text
+        const plainTitle = getPlainText(record.title) || record.title;
+        const plainBody = getPlainText(record.message) || record.message;
+
         const message = {
           message: {
             token: t.token,
             notification: {
-              title: record.title,
-              body: record.message,
+              title: plainTitle,
+              body: plainBody,
             },
             data: {
               notification_id: String(record.id),

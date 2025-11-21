@@ -14,12 +14,12 @@ CREATE TABLE IF NOT EXISTS public.device_push_tokens (
 ALTER TABLE public.device_push_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Allow users to insert/update their own tokens
-CREATE POLICY "Users can manage their own device tokens" 
+CREATE POLICY "Users can manage device tokens" 
     ON public.device_push_tokens 
     FOR ALL 
-    USING (auth.uid()::text = user_id::text OR auth.uid() IN (
-        SELECT user_id::uuid FROM staff WHERE id = device_push_tokens.user_id
-    ));
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
 
 -- Create function to update last_seen_at on conflict
 CREATE OR REPLACE FUNCTION public.upsert_device_token(
