@@ -45,7 +45,7 @@
     "eject": "react-scripts eject"
   },
   "main": "main.js",
-  "homepage": ".",
+  "homepage": "/",
   "build": {
     "appId": "com.schoolmanagement.app",
     "productName": "Grow More",
