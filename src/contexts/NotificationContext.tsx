@@ -117,6 +117,31 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const lastNotificationTimeRef = useRef<number>(0);
   const PAGE_SIZE = 20;
 
+  // Helper to clean notification content (strip HTML and entities)
+  const cleanText = useCallback((html: string | undefined | null) => {
+    if (!html) return '';
+    try {
+      const tmp = document.createElement('DIV');
+      tmp.innerHTML = html;
+      return (tmp.textContent || tmp.innerText || '')
+        .replace(/\u00A0/g, ' ') // Replace non-breaking space char
+        .replace(/&nbsp;/g, ' ') // Replace literal &nbsp; string if it survived
+        .replace(/\s+/g, ' ')
+        .trim();
+    } catch (e) {
+      return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+  }, []);
+
+  // Helper to clean notification object
+  const cleanNotification = useCallback((n: Notification): Notification => {
+    return {
+      ...n,
+      title: cleanText(n.title).substring(0, 100) || 'Notification',
+      message: cleanText(n.message).substring(0, 200) || '',
+    };
+  }, [cleanText]);
+
   // Update student info when it changes
   useEffect(() => {
     const info = getStudentInfo();
@@ -256,18 +281,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       console.log('[NotificationContext] Viewed announcements:', viewedAnnouncementIds);
 
       // Transform announcements to notification format
-      const announcementNotifications: Notification[] = filteredAnnouncements.map(announcement => ({
-        id: announcement.id,
-        school_id: announcement.school_id,
-        recipient_id: user?.staff_id || 0, // Use 0 for students
-        notification_type: 'announcement',
-        title: announcement.title?.replace(/<[^>]*>/g, '').substring(0, 100) || 'Announcement',
-        message: announcement.body?.replace(/<[^>]*>/g, '').substring(0, 200) || '',
-        is_read: viewedAnnouncementIds.has(announcement.id),
-        is_important: false,
-        created_at: announcement.created_at,
-        read_at: viewedAnnouncementIds.has(announcement.id) ? announcement.created_at : null,
-      }));
+      // Only include announcements that actually exist in the fetched list
+      const announcementNotifications: Notification[] = filteredAnnouncements
+        .filter(a => a && a.id) // Ensure valid announcement object
+        .map(announcement => ({
+          id: announcement.id,
+          school_id: announcement.school_id,
+          recipient_id: user?.staff_id || 0, // Use 0 for students
+          notification_type: 'announcement',
+          title: cleanText(announcement.title).substring(0, 100) || 'Announcement',
+          message: cleanText(announcement.message).substring(0, 200) || '',
+          is_read: viewedAnnouncementIds.has(announcement.id),
+          is_important: false,
+          created_at: announcement.created_at,
+          read_at: viewedAnnouncementIds.has(announcement.id) ? announcement.created_at : null,
+        }));
 
       console.log('[NotificationContext] Transformed to notifications:', announcementNotifications.length, announcementNotifications);
       return announcementNotifications;
@@ -362,14 +390,36 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // For Principal: Show BOTH teacher activity notifications AND announcements
       if (user?.role === 'Principal' && user?.staff_id && user?.school_id) {
         console.log('[NotificationContext] Fetching for Principal');
-        const [notificationsData, preferencesData, announcementNotifications] = await Promise.all([
+
+        // Fetch preferences with error handling
+        let preferencesData: NotificationPreferences | null = null;
+        try {
+          preferencesData = await activityTrackingService.getNotificationPreferences(user.staff_id, user.school_id);
+        } catch (error) {
+          console.warn('[NotificationContext] Failed to fetch preferences (using defaults):', error);
+          // Use default preferences if fetch fails
+          preferencesData = {
+            id: 0,
+            user_id: user.staff_id,
+            school_id: user.school_id,
+            email_notifications: true,
+            push_notifications: true,
+            activity_notifications: true,
+            system_notifications: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+        }
+
+        const [notificationsData, announcementNotifications] = await Promise.all([
           activityTrackingService.getUserNotifications(user.staff_id, user.school_id, PAGE_SIZE, 0),
-          activityTrackingService.getNotificationPreferences(user.staff_id, user.school_id),
           fetchAnnouncementsAsNotifications()
         ]);
 
         // Merge teacher activity notifications and announcements
-        allNotifications = [...notificationsData, ...announcementNotifications];
+        // Filter out any "announcement" type notifications from the DB notifications to avoid duplicates/stale data
+        const cleanNotificationsData = notificationsData.filter(n => n.notification_type !== 'announcement');
+        allNotifications = [...cleanNotificationsData, ...announcementNotifications];
         setPreferences(preferencesData);
 
         // Check if there are more notifications to load
@@ -442,6 +492,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         offset
       );
 
+      // Filter out announcement type notifications from DB
+      const cleanNewNotifications = newNotifications.filter(n => n.notification_type !== 'announcement');
+
       if (newNotifications.length < PAGE_SIZE) {
         setHasMore(false);
       }
@@ -449,7 +502,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       setNotifications(prev => {
         // Filter out duplicates just in case
         const existingIds = new Set(prev.map(n => n.id));
-        const uniqueNew = newNotifications.filter(n => !existingIds.has(n.id));
+        const uniqueNew = cleanNewNotifications.filter(n => !existingIds.has(n.id));
 
         const combined = [...prev, ...uniqueNew];
 
@@ -486,29 +539,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       }
 
       // For all users: Mark announcements as viewed
-      if (announcementNotifications.length > 0) {
-        const viewerIdentifier = getViewerIdentifier();
-        if (viewerIdentifier) {
-          const schoolId = user?.school_id || studentInfo?.school_id;
-          if (schoolId) {
-            const viewsToInsert = announcementNotifications.map(n => ({
-              announcement_id: n.id,
-              school_id: schoolId,
-              viewer_type: studentInfo ? 'student' : 'staff',
-              viewer_role: studentInfo ? 'Student' : (user?.role || 'Staff'),
-              viewer_name: studentInfo?.name || user?.name || 'Unknown',
-              viewer_identifier: viewerIdentifier,
-              viewer_device_id: 'web',
-              ...(studentInfo ? { student_id: studentInfo.id } : { staff_id: user?.staff_id }),
-            }));
-
-            await supabase
-              .from('announcement_views')
-              .upsert(viewsToInsert, { onConflict: 'announcement_id,viewer_identifier' });
-          }
-        }
-      }
-
       // Update local state
       setNotifications(prev =>
         prev.map(notification =>
@@ -560,41 +590,104 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setActiveAnnouncementId(null);
   }, []);
 
-  // Subscribe to real-time notifications (only for Principal)
+  // Subscribe to real-time notifications
   const subscribeToNotifications = useCallback(() => {
-    if (user?.role !== 'Principal' || !user?.staff_id || !user?.school_id || subscription) {
+    const schoolId = user?.school_id || studentInfo?.school_id;
+    const staffId = user?.staff_id;
+
+    if (!schoolId || subscription) {
       return;
     }
 
     try {
-      const newSubscription = supabase
-        .channel(`notifications-${user.staff_id}`, {
+      console.log('[NotificationContext] Subscribing to real-time updates for school:', schoolId);
+
+      const channel = supabase
+        .channel(`notifications-${schoolId}-${staffId || studentInfo?.id}`, {
           config: {
             broadcast: { self: false },
-            presence: { key: user.staff_id.toString() }
+            presence: { key: (staffId || studentInfo?.id || 'unknown').toString() }
           }
-        })
+        });
+
+      // 1. Subscribe to direct notifications (only for staff with ID)
+      if (staffId) {
+        channel
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notifications',
+              filter: `recipient_id=eq.${staffId}`
+            },
+            (payload) => {
+              const newNotification = cleanNotification(payload.new as Notification);
+              setNotifications(prev => [newNotification, ...prev]);
+
+              if (!newNotification.is_read) {
+                setUnreadCount(prev => prev + 1);
+                showNotification(newNotification.title, newNotification.message);
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'notifications',
+              filter: `recipient_id=eq.${staffId}`
+            },
+            (payload) => {
+              const updatedNotification = cleanNotification(payload.new as Notification);
+              setNotifications(prev =>
+                prev.map(notification =>
+                  notification.id === updatedNotification.id
+                    ? updatedNotification
+                    : notification
+                )
+              );
+
+              if (payload.old.is_read !== updatedNotification.is_read) {
+                setUnreadCount(prev =>
+                  updatedNotification.is_read ? prev - 1 : prev + 1
+                );
+              }
+            }
+          );
+      }
+
+      // 2. Subscribe to announcements (for everyone)
+      channel
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'notifications',
-            filter: `recipient_id=eq.${user.staff_id}`
+            table: 'announcements',
+            filter: `school_id=eq.${schoolId}`
           },
           (payload) => {
-            const newNotification = payload.new as Notification;
-            setNotifications(prev => [newNotification, ...prev]);
+            const newAnnouncement = payload.new;
+            // Check if this announcement targets the current user
+            if (matchesAnnouncementAudience(newAnnouncement)) {
+              const notification: Notification = {
+                id: newAnnouncement.id,
+                school_id: newAnnouncement.school_id,
+                recipient_id: staffId || 0,
+                notification_type: 'announcement',
+                title: cleanText(newAnnouncement.title).substring(0, 100) || 'Announcement',
+                message: cleanText(newAnnouncement.message).substring(0, 200) || '',
+                is_read: false,
+                is_important: false,
+                created_at: newAnnouncement.created_at,
+                read_at: undefined
+              };
 
-            if (!newNotification.is_read) {
+              setNotifications(prev => [notification, ...prev]);
               setUnreadCount(prev => prev + 1);
-              showNotification(newNotification.title, newNotification.message);
-
-              // Update ref
-              const newTime = new Date(newNotification.created_at).getTime();
-              if (newTime > lastNotificationTimeRef.current) {
-                lastNotificationTimeRef.current = newTime;
-              }
+              showNotification(notification.title, notification.message);
             }
           }
         )
@@ -603,38 +696,60 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           {
             event: 'UPDATE',
             schema: 'public',
-            table: 'notifications',
-            filter: `recipient_id=eq.${user.staff_id}`
+            table: 'announcements',
+            filter: `school_id=eq.${schoolId}`
           },
           (payload) => {
-            const updatedNotification = payload.new as Notification;
-            setNotifications(prev =>
-              prev.map(notification =>
-                notification.id === updatedNotification.id
-                  ? updatedNotification
-                  : notification
-              )
-            );
+            const updatedAnnouncement = payload.new;
+            // Update if it exists in our list
+            setNotifications(prev => {
+              const exists = prev.some(n => n.id === updatedAnnouncement.id && n.notification_type === 'announcement');
+              if (!exists) return prev;
 
-            if (payload.old.is_read !== updatedNotification.is_read) {
-              setUnreadCount(prev =>
-                updatedNotification.is_read ? prev - 1 : prev + 1
-              );
-            }
+              return prev.map(n => {
+                if (n.id === updatedAnnouncement.id && n.notification_type === 'announcement') {
+                  return {
+                    ...n,
+                    title: cleanText(updatedAnnouncement.title).substring(0, 100) || 'Announcement',
+                    message: cleanText(updatedAnnouncement.message).substring(0, 200) || '',
+                  };
+                }
+                return n;
+              });
+            });
           }
         )
-        .subscribe();
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'announcements',
+            filter: `school_id=eq.${schoolId}`
+          },
+          (payload) => {
+            const deletedId = payload.old.id;
+            setNotifications(prev => {
+              const wasUnread = prev.find(n => n.id === deletedId && n.notification_type === 'announcement' && !n.is_read);
+              if (wasUnread) {
+                setUnreadCount(count => Math.max(0, count - 1));
+              }
+              return prev.filter(n => !(n.id === deletedId && n.notification_type === 'announcement'));
+            });
+          }
+        );
 
+      const newSubscription = channel.subscribe();
       setSubscription(newSubscription);
     } catch (error) {
       console.error('Failed to subscribe to notifications:', error);
     }
-  }, [user?.staff_id, user?.school_id, user?.role, subscription]);
+  }, [user?.staff_id, user?.school_id, studentInfo, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification]);
 
   // Unsubscribe from notifications
   const unsubscribeFromNotifications = useCallback(() => {
     if (subscription) {
-      subscription.unsubscribe();
+      supabase.removeChannel(subscription);
       setSubscription(null);
     }
   }, [subscription]);
@@ -644,17 +759,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     const schoolId = user?.school_id || studentInfo?.school_id;
     if (schoolId) {
       refreshNotifications();
+      subscribeToNotifications();
 
-      // Set up polling (every 30 seconds for announcements, 10 seconds for Principal)
-      const pollInterval = setInterval(() => {
-        if (!panelOpenRef.current) {
-          refreshNotifications();
-        }
-      }, user?.role === 'Principal' ? 10000 : 30000);
-
-      return () => clearInterval(pollInterval);
+      return () => {
+        unsubscribeFromNotifications();
+      };
     }
-  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, refreshNotifications]);
+  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, refreshNotifications, subscribeToNotifications, unsubscribeFromNotifications]);
 
   // Robust Push Initialization for push notifications
   useEffect(() => {
@@ -663,12 +774,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const userId = user?.staff_id || latestStudentInfo?.id;
       const schoolId = user?.school_id || latestStudentInfo?.school_id;
       const userType: 'staff' | 'student' = latestStudentInfo?.id ? 'student' : 'staff';
-      
+
       if (userId && schoolId) {
         console.log('[NotificationContext] User detected. Initializing Push for:', userId);
         pushNotificationService.initCapacitorPush(userId, schoolId, userType);
         if (window.electronAPI) {
-           pushNotificationService.initElectronPush(userId, schoolId, userType);
+          pushNotificationService.initElectronPush(userId, schoolId, userType);
         }
         return true; // Successfully initialized
       }

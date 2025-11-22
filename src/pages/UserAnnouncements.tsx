@@ -9,10 +9,6 @@ import 'tinymce/tinymce';
 import 'tinymce/icons/default';
 import 'tinymce/themes/silver';
 import 'tinymce/models/dom';
-import 'tinymce/skins/ui/oxide/skin.min.css';
-import 'tinymce/skins/content/default/content.min.css';
-import 'tinymce/skins/ui/oxide-dark/skin.min.css';
-import 'tinymce/skins/content/dark/content.min.css';
 import 'tinymce/plugins/advlist';
 import 'tinymce/plugins/lists';
 import 'tinymce/plugins/link';
@@ -1503,8 +1499,8 @@ const UserAnnouncements: React.FC = () => {
     plugins: 'advlist lists link directionality autoresize charmap wordcount nonbreaking',
     toolbar:
       'undo redo | fontfamily fontsize | bold italic underline forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | ltr rtl | removeformat',
-    skin: isDark ? 'oxide-dark' : 'oxide',
-    content_css: isDark ? 'dark' : 'default',
+    skin_url: `${process.env.PUBLIC_URL || '.'}/tinymce/skins/ui/${isDark ? 'oxide-dark' : 'oxide'}`,
+    content_css: `${process.env.PUBLIC_URL || '.'}/tinymce/skins/content/${isDark ? 'dark' : 'default'}/content.min.css`,
     font_family_formats:
       "Urdu Jameel='JameelNooriNastaleeq', serif;Inter='Inter',sans-serif;Arial=arial,helvetica,sans-serif;'Times New Roman'=times new roman,times,serif;",
     fontsize_formats: '10px 12px 14px 16px 18px 20px 22px 24px 28px 32px 36px 48px 60px 72px 84px 96px 120px',
@@ -1849,34 +1845,34 @@ const UserAnnouncements: React.FC = () => {
             )}
             {filteredAnnouncements.map(a => (
               <AnnouncementRow key={a.id} theme={theme}>
-              <AnnouncementRowHeader>
-                <AnnouncementRowTitle onClick={() => handleOpenPreview(a)}>
-                  {getPlainText(a.title) || 'Untitled announcement'}
-                </AnnouncementRowTitle>
-                <AnnouncementRowActions>
-                  <AnnouncementIconButton
-                    theme={theme}
-                    type="button"
-                    title="View seen list"
-                    onClick={() => handleOpenSeenBy(a)}
-                  >
-                    <VisibilityIcon fontSize="small" />
-                  </AnnouncementIconButton>
-                  <SmallActionButton theme={theme} type="button" onClick={() => handleEdit(a)}>
-                    Edit
-                  </SmallActionButton>
-                  <SmallActionButton theme={theme} type="button" onClick={() => handleDelete(a.id)}>
-                    Delete
-                  </SmallActionButton>
-                </AnnouncementRowActions>
-              </AnnouncementRowHeader>
-              <AnnouncementRowMeta theme={theme}>
-                {getAnnouncementAudienceLabel(a)}
-              </AnnouncementRowMeta>
-              <AnnouncementRowMeta theme={theme}>
-                {a.show_from && `From: ${a.show_from}`} {a.show_until && ` | Until: ${a.show_until}`}
-              </AnnouncementRowMeta>
-            </AnnouncementRow>
+                <AnnouncementRowHeader>
+                  <AnnouncementRowTitle onClick={() => handleOpenPreview(a)}>
+                    {getPlainText(a.title) || 'Untitled announcement'}
+                  </AnnouncementRowTitle>
+                  <AnnouncementRowActions>
+                    <AnnouncementIconButton
+                      theme={theme}
+                      type="button"
+                      title="View seen list"
+                      onClick={() => handleOpenSeenBy(a)}
+                    >
+                      <VisibilityIcon fontSize="small" />
+                    </AnnouncementIconButton>
+                    <SmallActionButton theme={theme} type="button" onClick={() => handleEdit(a)}>
+                      Edit
+                    </SmallActionButton>
+                    <SmallActionButton theme={theme} type="button" onClick={() => handleDelete(a.id)}>
+                      Delete
+                    </SmallActionButton>
+                  </AnnouncementRowActions>
+                </AnnouncementRowHeader>
+                <AnnouncementRowMeta theme={theme}>
+                  {getAnnouncementAudienceLabel(a)}
+                </AnnouncementRowMeta>
+                <AnnouncementRowMeta theme={theme}>
+                  {a.show_from && `From: ${a.show_from}`} {a.show_until && ` | Until: ${a.show_until}`}
+                </AnnouncementRowMeta>
+              </AnnouncementRow>
             ))}
           </ListScrollArea>
         </ListContainer>

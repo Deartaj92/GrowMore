@@ -20,10 +20,14 @@ interface NotificationPayload {
   schema: "public";
 }
 
-// Utility: strip HTML tags and nbsp, similar to getPlainText in UserAnnouncements.tsx
+// Utility: strip HTML tags and nbsp, and collapse whitespace so push text is clean
 function getPlainText(value?: string | null): string {
   if (!value) return "";
-  return value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // FCM Access Token Generation (Simplified for Edge Runtime)
