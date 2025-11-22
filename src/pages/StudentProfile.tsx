@@ -27,6 +27,8 @@ import {
   Badge as MuiBadge,
   Skeleton,
   useMediaQuery,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import {
   Person,
@@ -167,6 +169,7 @@ interface Student {
   name: string;
   class_id: number;
   section_id: number;
+  school_id: number;
   admission_date: string;
   discount_in_fee?: number;
   phone?: string;
@@ -277,7 +280,7 @@ const GlassCard = styled(Paper)(({ theme }) => ({
     : alpha(theme.palette.background.paper, 0.7),
   backdropFilter: 'blur(10px)',
   borderRadius: 16,
-  border: `1px solid ${theme.palette.mode === 'dark' 
+  border: `1px solid ${theme.palette.mode === 'dark'
     ? alpha(theme.palette.divider, 0.1)
     : alpha(theme.palette.divider, 0.1)}`,
   boxShadow: theme.palette.mode === 'dark'
@@ -324,7 +327,7 @@ const ProfileHeader = styled(Box)(({ theme }) => ({
       minWidth: 0,
     }
   },
-  
+
   '&::before, &::after': {
     content: '""',
     position: 'absolute',
@@ -407,7 +410,7 @@ const ProfileAvatar = styled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
     borderRadius: theme.shape.borderRadius * 2,
     marginTop: theme.spacing(0.5),
   },
-  
+
   '&::before': {
     content: '""',
     position: 'absolute',
@@ -493,7 +496,7 @@ const TabPanel = styled(Box)(({ theme }) => ({
 }));
 
 const ModernTabs = styled(Tabs)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.5)
     : alpha(theme.palette.background.paper, 0.8),
   borderRadius: 16,
@@ -618,7 +621,7 @@ const InfoCard = styled(GlassCard)(({ theme }) => ({
 const InfoSection = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius * 2,
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.6)
     : alpha(theme.palette.background.paper, 0.8),
   backdropFilter: 'blur(10px)',
@@ -959,7 +962,7 @@ const MonthlyAttendanceCard = styled(GlassCard)(({ theme }) => ({
 
 const MonthCard = styled(GlassCard)(({ theme }) => ({
   height: '100%',
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`
     : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`,
   backdropFilter: 'blur(10px)',
@@ -993,7 +996,7 @@ const MonthCard = styled(GlassCard)(({ theme }) => ({
 const ReportsCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   borderRadius: theme.spacing(2),
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.6)
     : alpha(theme.palette.background.paper, 0.8),
   backdropFilter: 'blur(10px)',
@@ -1197,7 +1200,7 @@ const ReportItem = styled(Box)<{ $shadeIndex?: number }>(({ theme, $shadeIndex =
       background: hoverShade,
       transform: 'translateY(-1px)',
       boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.05)}`,
-      
+
       '& .homework-icon': {
         opacity: 0.9,
         color: theme.palette.text.primary,
@@ -1441,7 +1444,7 @@ const StatsArcRow = styled(Box)(({ theme }) => ({
 }));
 
 const StatArcWrapper = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.6)
     : alpha(theme.palette.background.paper, 0.8),
   backdropFilter: 'blur(10px)',
@@ -1583,12 +1586,12 @@ function CustomTabPanel(props: TabPanelProps) {
 
 const calculateMonthlyStats = (records: AttendanceData[], halfLeavesMap?: Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>): MonthlyStats[] => {
   const monthlyData: { [key: string]: MonthlyStats } = {};
-  
+
   // Process each record and group by month
   records.forEach(record => {
     const date = new Date(record.date);
     const monthKey = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    
+
     if (!monthlyData[monthKey]) {
       monthlyData[monthKey] = {
         month: monthKey,
@@ -1600,7 +1603,7 @@ const calculateMonthlyStats = (records: AttendanceData[], halfLeavesMap?: Map<st
         halfLeaves: 0
       };
     }
-    
+
     // Increment total and specific status count
     monthlyData[monthKey].total++;
     monthlyData[monthKey][record.status as keyof Pick<MonthlyStats, 'present' | 'absent' | 'late' | 'leave'>]++;
@@ -1611,7 +1614,7 @@ const calculateMonthlyStats = (records: AttendanceData[], halfLeavesMap?: Map<st
     halfLeavesMap.forEach((halfLeave, dateStr) => {
       const date = new Date(dateStr);
       const monthKey = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-      
+
       if (monthlyData[monthKey]) {
         monthlyData[monthKey].halfLeaves++;
       }
@@ -1680,11 +1683,11 @@ const getWeeklyAttendance = (
   records.forEach(record => {
     const recordDate = new Date(record.date);
     const dayIndex = recordDate.getDay() - 1; // Convert to 0-5 index (Mon-Sat)
-    
+
     // Only process Mon-Sat (-1 is Sunday, which we skip)
     if (dayIndex >= 0 && dayIndex < 6) {
       weeklyData[dayIndex].count++;
-      
+
       // Update the details for this day
       if (record.status && weeklyData[dayIndex].details) {
         weeklyData[dayIndex].details[record.status]++;
@@ -1697,7 +1700,7 @@ const getWeeklyAttendance = (
     halfLeavesMap.forEach((halfLeave, dateStr) => {
       const recordDate = new Date(dateStr);
       const dayIndex = recordDate.getDay() - 1;
-      
+
       if (dayIndex >= 0 && dayIndex < 6) {
         weeklyData[dayIndex].details.halfLeave++;
         // Don't increment count for half leaves as they're already counted in records
@@ -1716,7 +1719,7 @@ const getWeeklyAttendance = (
         leave: (day.details.leave / totalItems) * 100,
         halfLeave: (day.details.halfLeave / totalItems) * 100
       };
-      
+
       // Set the dominant status for the day based on the highest count
       const details = day.details;
       const statusCounts = [
@@ -1726,13 +1729,13 @@ const getWeeklyAttendance = (
         { status: 'leave', count: details.leave },
         { status: 'halfLeave', count: details.halfLeave }
       ];
-      
-      const dominantStatus = statusCounts.reduce((prev, current) => 
+
+      const dominantStatus = statusCounts.reduce((prev, current) =>
         current.count > prev.count ? current : prev
       );
-      
-      day.status = dominantStatus.count > 0 ? 
-        dominantStatus.status as AttendanceData['status'] : 
+
+      day.status = dominantStatus.count > 0 ?
+        dominantStatus.status as AttendanceData['status'] :
         null;
     } else {
       day.percentages = {
@@ -1761,32 +1764,32 @@ const getAttendancePattern = (
   const absents = records.filter(r => r.status === 'absent').length;
 
   return [
-    { 
-      label: 'On Time', 
+    {
+      label: 'On Time',
       value: `${Math.round((onTime / total) * 100)}%`,
       count: onTime,
       colorKey: 'success' as const
     },
-    { 
-      label: 'Late Arrivals', 
+    {
+      label: 'Late Arrivals',
       value: `${Math.round((late / total) * 100)}%`,
       count: late,
       colorKey: 'warning' as const
     },
-    { 
-      label: 'Absents', 
+    {
+      label: 'Absents',
       value: `${Math.round((absents / total) * 100)}%`,
       count: absents,
       colorKey: 'error' as const
     },
-    { 
-      label: 'Leaves', 
+    {
+      label: 'Leaves',
       value: `${Math.round((leaves / total) * 100)}%`,
       count: leaves,
       colorKey: 'info' as const
     },
-    { 
-      label: 'Half Leaves', 
+    {
+      label: 'Half Leaves',
       value: `${Math.round((halfLeavesCount / total) * 100)}%`,
       count: halfLeavesCount,
       colorKey: 'secondary' as const
@@ -1909,7 +1912,7 @@ const RecentAttendanceContainer = styled(Box)(({ theme }) => ({
 }));
 
 const AttendanceStatsCard = styled(GlassCard)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`
     : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`,
   backdropFilter: 'blur(10px)',
@@ -2085,7 +2088,7 @@ const CardBlock = styled('div')<{ theme?: Theme }>(({ theme }) => ({
   position: 'relative',
   border: `1px solid ${theme?.palette.divider}`,
   backdropFilter: 'blur(8px)',
-  
+
   '@media (max-width: 900px)': {
     width: '100%',
     maxWidth: '100vw',
@@ -2179,8 +2182,8 @@ const StyledProfileAvatar = styled('div')<ProfileAvatarProps>(({ theme, src }) =
   width: '160px',
   height: '160px',
   borderRadius: '50%',
-  background: src ? 
-    `url(${src}) center/cover no-repeat` : 
+  background: src ?
+    `url(${src}) center/cover no-repeat` :
     theme?.palette.primary.main,
   color: '#fff',
   display: 'flex',
@@ -2402,7 +2405,7 @@ const calculateStudentScore = (
     examSummaries.forEach(exam => {
       // Skip absent exams (they don't count as failed)
       if (exam.status === 'absent') return;
-      
+
       // Deduct 0.5 for each failed exam
       if (exam.status === 'fail') {
         score -= 0.5;
@@ -2422,11 +2425,11 @@ const calculateStudentScore = (
       let passingMarks = 40; // Default to 40% if not available
       if ((test as any).test_records && (test as any).test_records.passing_marks) {
         // Calculate passing percentage from passing_marks and max_marks
-        passingMarks = (test.max_marks > 0) 
-          ? ((test as any).test_records.passing_marks / test.max_marks) * 100 
+        passingMarks = (test.max_marks > 0)
+          ? ((test as any).test_records.passing_marks / test.max_marks) * 100
           : 40;
       }
-      
+
       // A test is considered failed if percentage < passing percentage
       if (test.percentage < passingMarks) {
         score -= 0.05; // Deduct 0.05 for each failed test
@@ -2610,9 +2613,9 @@ const StudentProfileSkeleton: React.FC = () => {
       {/* Profile Header Skeleton */}
       <ProfileHeader>
         <Skeleton variant="circular" width={90} height={90} sx={{ flexShrink: 0, [theme.breakpoints.down('sm')]: { width: 70, height: 70 } }} />
-        <Stack 
-          spacing={0.5} 
-          sx={{ 
+        <Stack
+          spacing={0.5}
+          sx={{
             flex: 1,
             minWidth: 0,
             [theme.breakpoints.down('sm')]: {
@@ -2620,9 +2623,9 @@ const StudentProfileSkeleton: React.FC = () => {
             }
           }}
         >
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: { xs: 'flex-start', sm: 'center' }, 
+          <Box sx={{
+            display: 'flex',
+            alignItems: { xs: 'flex-start', sm: 'center' },
             gap: 1,
             flexWrap: 'wrap',
             width: '100%'
@@ -2630,7 +2633,7 @@ const StudentProfileSkeleton: React.FC = () => {
             <Skeleton variant="text" width={200} height={36} sx={{ [theme.breakpoints.down('sm')]: { width: 150, height: 24 } }} />
             <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: '100px', [theme.breakpoints.down('sm')]: { width: 80, height: 20 } }} />
           </Box>
-          <Box sx={{ 
+          <Box sx={{
             mt: { xs: 0.5, sm: 1 },
             width: '100%',
             textAlign: { xs: 'left', sm: 'left' }
@@ -2639,8 +2642,8 @@ const StudentProfileSkeleton: React.FC = () => {
             <Skeleton variant="text" width={120} height={20} sx={{ [theme.breakpoints.down('sm')]: { width: 100, height: 16 } }} />
           </Box>
         </Stack>
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             display: 'flex',
             alignItems: 'center',
             gap: { xs: 0.8, sm: 1.6 },
@@ -2674,8 +2677,8 @@ const StudentProfileSkeleton: React.FC = () => {
           <Grid item xs={12} sm={6} md={3}>
             <StatCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
               <Box sx={{ position: 'relative', zIndex: 1 }}>
-                <Box sx={{ 
-                  position: 'relative', 
+                <Box sx={{
+                  position: 'relative',
                   width: '180px',
                   height: '180px',
                   margin: '0 auto',
@@ -2715,7 +2718,7 @@ const StudentProfileSkeleton: React.FC = () => {
                   <Skeleton variant="text" width={80} height={16} />
                   <Skeleton variant="text" width={50} height={28} />
                 </Box>
-                
+
                 {/* Stats Grid Skeleton */}
                 <Grid container spacing={0.5} sx={{ mb: 1 }}>
                   {[1, 2, 3].map((i) => (
@@ -2741,10 +2744,10 @@ const StudentProfileSkeleton: React.FC = () => {
                 </Grid>
 
                 {/* Subject Summary Skeleton */}
-                <Box sx={{ 
-                  flex: 1, 
-                  minHeight: 0, 
-                  display: 'flex', 
+                <Box sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  display: 'flex',
                   flexDirection: 'column',
                   borderTop: '1px solid',
                   borderColor: 'divider',
@@ -2788,7 +2791,7 @@ const StudentProfileSkeleton: React.FC = () => {
                   <Skeleton variant="text" width={90} height={16} />
                   <Skeleton variant="text" width={50} height={28} />
                 </Box>
-                
+
                 {/* Stats Grid Skeleton */}
                 <Grid container spacing={1} sx={{ mb: 1.5 }}>
                   {[1, 2, 3].map((i) => (
@@ -2814,10 +2817,10 @@ const StudentProfileSkeleton: React.FC = () => {
                 </Grid>
 
                 {/* Exam Summary Skeleton */}
-                <Box sx={{ 
-                  flex: 1, 
-                  minHeight: 0, 
-                  display: 'flex', 
+                <Box sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  display: 'flex',
                   flexDirection: 'column',
                   borderTop: '1px solid',
                   borderColor: 'divider',
@@ -2969,6 +2972,173 @@ const StudentProfileSkeleton: React.FC = () => {
 };
 // --- Dashboard-style Skeleton Loader for StudentProfile ---
 
+const ExaminationsSkeleton: React.FC = () => {
+  return (
+    <Box>
+      {/* Summary Cards Skeleton */}
+      <Box sx={{ mb: 3 }}>
+        <Grid container spacing={2}>
+          {[1, 2, 3].map((item) => (
+            <Grid item xs={12} sm={6} md={3} key={item}>
+              <GlassCard>
+                <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Skeleton variant="rounded" width={48} height={48} sx={{ borderRadius: '12px' }} />
+                  <Box sx={{ flex: 1 }}>
+                    <Skeleton variant="text" width="40%" height={32} sx={{ mb: 0.5 }} />
+                    <Skeleton variant="text" width="70%" height={20} />
+                  </Box>
+                </Box>
+              </GlassCard>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+
+      {/* Examinations List Skeleton */}
+      <Box sx={{ mb: 3 }}>
+        <Skeleton variant="text" width={200} height={32} sx={{ mb: 2 }} />
+        <Grid container spacing={2}>
+          {[1, 2, 3].map((item) => (
+            <Grid item xs={12} key={item}>
+              <GlassCard sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Skeleton variant="text" width="40%" height={32} />
+                  <Skeleton variant="text" width="20%" height={32} />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Skeleton variant="rounded" width={80} height={24} />
+                  <Skeleton variant="rounded" width={80} height={24} />
+                  <Skeleton variant="rounded" width={80} height={24} />
+                </Box>
+              </GlassCard>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    </Box>
+  );
+};
+
+const TestRecordsSkeleton: React.FC = () => {
+  return (
+    <Box>
+      {/* Session Selector Skeleton */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Skeleton variant="text" width={150} height={32} />
+        <Skeleton variant="rounded" width={200} height={40} />
+      </Box>
+
+      {/* Test Summary Skeleton */}
+      <GlassCard sx={{ p: 3, mb: 3 }}>
+        <Skeleton variant="text" width={150} height={32} sx={{ mb: 2 }} />
+        <Grid container spacing={2}>
+          {[1, 2, 3, 4].map((item) => (
+            <Grid item xs={6} sm={3} key={item}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Skeleton variant="text" width="60%" height={40} sx={{ mb: 0.5 }} />
+                <Skeleton variant="text" width="40%" height={20} />
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </GlassCard>
+
+      {/* Subject-wise Test Records Skeleton */}
+      <Grid container spacing={2}>
+        {[1, 2, 3, 4].map((item) => (
+          <Grid item xs={12} md={6} key={item}>
+            <GlassCard sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Skeleton variant="text" width="50%" height={32} />
+                <Skeleton variant="rounded" width={40} height={24} />
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                {[1, 2, 3].map((subItem) => (
+                  <Box key={subItem} sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                    <Skeleton variant="text" width="30%" />
+                    <Skeleton variant="text" width="20%" />
+                  </Box>
+                ))}
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1 }}>
+                <Skeleton variant="text" width="30%" />
+                <Skeleton variant="text" width="20%" />
+              </Box>
+            </GlassCard>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+const TestRecordsContentSkeleton: React.FC = () => {
+  return (
+    <Box>
+      {/* Test Summary Skeleton */}
+      <GlassCard sx={{ p: 3, mb: 3 }}>
+        <Skeleton variant="text" width={150} height={32} sx={{ mb: 2 }} />
+        <Grid container spacing={2}>
+          {[1, 2, 3, 4].map((item) => (
+            <Grid item xs={6} sm={3} key={item}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Skeleton variant="text" width="60%" height={40} sx={{ mb: 0.5 }} />
+                <Skeleton variant="text" width="40%" height={20} />
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </GlassCard>
+
+      {/* Subject-wise Test Records Skeleton */}
+      <Grid container spacing={2}>
+        {[1, 2, 3, 4, 5, 6].map((item) => (
+          <Grid item xs={12} md={6} lg={4} key={item}>
+            <GlassCard sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Skeleton variant="text" width="60%" height={28} />
+                <Skeleton variant="circular" width={24} height={24} />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Skeleton variant="rounded" width={60} height={24} />
+                <Skeleton variant="rounded" width={60} height={24} />
+              </Box>
+            </GlassCard>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+const AttendanceContentSkeleton: React.FC = () => {
+  return (
+    <Box>
+      {/* Stats Cards Skeleton */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={8}>
+          <Skeleton variant="rounded" height={200} />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Skeleton variant="rounded" height={200} />
+        </Grid>
+      </Grid>
+
+      {/* Monthly Attendance Skeleton */}
+      <Box sx={{ mb: 2 }}>
+        <Skeleton variant="text" width={250} height={32} />
+      </Box>
+      <Grid container spacing={2}>
+        {[1, 2, 3].map((item) => (
+          <Grid item xs={12} key={item}>
+            <Skeleton variant="rounded" height={100} />
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
 export const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const theme = useTheme();
@@ -3008,6 +3178,7 @@ export const StudentProfile: React.FC = () => {
     totalPercentage: 0,
     subjectSummaries: []
   });
+  const [expandedTestCards, setExpandedTestCards] = useState<Set<number>>(new Set());
   const [selectedTestSession, setSelectedTestSession] = useState<number | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState(0);
@@ -3025,9 +3196,13 @@ export const StudentProfile: React.FC = () => {
   const [halfLeavesMap, setHalfLeavesMap] = useState<Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>>(new Map());
   const [tabDataLoaded, setTabDataLoaded] = useState<{ [key: number]: boolean }>({});
   const [tabDataLoading, setTabDataLoading] = useState<{ [key: number]: boolean }>({});
+  const [selectedAttendanceSession, setSelectedAttendanceSession] = useState<number | null>(null);
+  const [attendanceSessions, setAttendanceSessions] = useState<any[]>([]);
+  const [testSessionLoading, setTestSessionLoading] = useState(false);
+  const [attendanceSessionLoading, setAttendanceSessionLoading] = useState(false);
   const { startProgress, setProgress, completeProgress } = useProgress();
   const { user } = useAuth();
-  
+
   // Check if user is logged in as student
   const isStudent = useMemo(() => {
     try {
@@ -3053,9 +3228,11 @@ export const StudentProfile: React.FC = () => {
   };
 
   // Process test records for session-wise display
-  const processTestRecords = useCallback(async () => {
-    if (!selectedTestSession || !student) return;
+  const processTestRecords = useCallback(async (sessionId?: number) => {
+    const targetSession = sessionId || selectedTestSession;
+    if (!targetSession || !student) return;
 
+    setTestSessionLoading(true);
     try {
       // Get school_id from the student data
       const { data: studentData, error: studentError } = await supabase
@@ -3066,34 +3243,50 @@ export const StudentProfile: React.FC = () => {
 
       if (studentError || !studentData) {
         console.error('Error fetching student data:', studentError);
+        setTestSessionLoading(false);
         return;
       }
 
       // Get all test results for the selected student and session
-      const { data: testResults, error: resultsError } = await supabase
-        .from('test_results')
-        .select(`
-          id,
-          obtained_marks,
-          max_marks,
-          percentage,
-          grade,
-          remarks,
-          test_records!inner(
-            id,
-            name,
-            test_date,
-            subject_id,
-            passing_marks
-          )
-        `)
-        .eq('student_id', parseInt(id!))
-        .eq('session_id', selectedTestSession)
-        .eq('school_id', studentData.school_id);
+      let testResults: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
 
-      if (resultsError) {
-        console.error('Error loading test results:', resultsError);
-        return;
+      while (true) {
+        const { data, error } = await supabase
+          .from('test_results')
+          .select(`
+            id,
+            obtained_marks,
+            max_marks,
+            percentage,
+            grade,
+            remarks,
+            test_records!inner(
+              id,
+              name,
+              test_date,
+              subject_id,
+              passing_marks
+            )
+          `)
+          .eq('student_id', parseInt(id!))
+          .eq('session_id', targetSession)
+          .eq('school_id', studentData.school_id)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error('Error loading test results:', error);
+          return;
+        }
+
+        if (data) {
+          testResults = [...testResults, ...data];
+          if (data.length < pageSize) break;
+          page++;
+        } else {
+          break;
+        }
       }
 
       if (!testResults || testResults.length === 0) {
@@ -3123,7 +3316,7 @@ export const StudentProfile: React.FC = () => {
           subject_id
         `)
         .in('id', testRecordIds)
-        .eq('session_id', selectedTestSession)
+        .eq('session_id', targetSession)
         .eq('school_id', studentData.school_id);
 
       if (recordsError) throw recordsError;
@@ -3269,9 +3462,11 @@ export const StudentProfile: React.FC = () => {
 
       setTestSessionData(sessionData);
       setTestSubjects(sortedDates);
+      setTestSessionLoading(false);
 
     } catch (error) {
       console.error('Error processing test records:', error);
+      setTestSessionLoading(false);
     }
   }, [selectedTestSession, student, id]);
 
@@ -3286,6 +3481,138 @@ export const StudentProfile: React.FC = () => {
     return 'F';
   };
 
+  // Load attendance data for a specific session with recursive fetching
+  const loadAttendanceData = useCallback(async (sessionId: number) => {
+    if (!student || !sessionId) return;
+
+    const session = attendanceSessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    setAttendanceSessionLoading(true);
+    try {
+      // Recursively fetch ALL attendance records within session dates
+      let allAttendanceData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('attendance_records')
+          .select('id, date, status, remarks, class_id')
+          .eq('student_id', student.id)
+          .gte('date', session.start_date)
+          .lte('date', session.end_date)
+          .order('date', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data) {
+          allAttendanceData = [...allAttendanceData, ...data];
+          if (data.length < pageSize) break;
+          page++;
+        } else {
+          break;
+        }
+      }
+
+      // Fetch half leaves for the session
+      let hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
+      const { data: halfLeavesData } = await supabase
+        .from('half_leaves')
+        .select('date, leave_type, arrival_time, departure_time')
+        .eq('person_type', 'student')
+        .eq('person_id', student.id)
+        .eq('session_id', sessionId)
+        .eq('school_id', student.school_id);
+
+      (halfLeavesData || []).forEach((hl: any) => {
+        hlMap.set(hl.date, {
+          leave_type: hl.leave_type,
+          arrival_time: hl.arrival_time,
+          departure_time: hl.departure_time
+        });
+      });
+      setHalfLeavesMap(hlMap);
+
+      // Calculate attendance stats
+      if (allAttendanceData) {
+        const stats: AttendanceStats = {
+          present: 0,
+          absent: 0,
+          late: 0,
+          leave: 0,
+          total: allAttendanceData.length
+        };
+
+        allAttendanceData.forEach((record: AttendanceData) => {
+          stats[record.status]++;
+        });
+
+        setAttendanceStats(stats);
+
+        // Calculate monthly stats
+        const monthlyStatsData = calculateMonthlyStats(allAttendanceData, hlMap);
+        setMonthlyStats(monthlyStatsData);
+
+        // Calculate weekly attendance
+        const weeklyStats = getWeeklyAttendance(allAttendanceData, hlMap);
+        setWeeklyAttendance(weeklyStats);
+
+        // Calculate attendance pattern
+        const patternStats = getAttendancePattern(allAttendanceData, hlMap.size);
+        setAttendancePattern(patternStats);
+
+        // Calculate yearly overview
+        const yearlyStats = getYearlyOverview(allAttendanceData, hlMap);
+        setYearlyOverview(yearlyStats);
+
+        // Load fine history
+        const fineRecords = allAttendanceData.filter(record =>
+          record.status === 'absent' || record.status === 'late'
+        );
+
+        const { data: fineData } = await supabase
+          .from('fines')
+          .select('class_id, absent_fine, late_fine, effective_from')
+          .eq('school_id', student.school_id)
+          .order('effective_from', { ascending: true });
+
+        const recordsWithFines = fineRecords.map(record => {
+          const classIdFromRecord = record.class_id || student.class_id;
+          const classFines = fineData?.filter((f: any) => f.class_id === classIdFromRecord) || [];
+
+          let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+          for (const f of classFines) {
+            if (f.effective_from <= record.date) fine = f;
+          }
+          let fineAmount = 0;
+          if (fine) {
+            fineAmount = record.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
+          }
+          return {
+            ...record,
+            fine_amount: fineAmount
+          };
+        });
+
+        setFineHistory(recordsWithFines);
+      }
+
+      setAttendanceSessionLoading(false);
+    } catch (error) {
+      console.error('Error loading attendance:', error);
+      setAttendanceSessionLoading(false);
+    }
+  }, [student, attendanceSessions]);
+
+  // Effect to load attendance when session changes
+  useEffect(() => {
+    if (selectedAttendanceSession) {
+      loadAttendanceData(selectedAttendanceSession);
+    }
+  }, [selectedAttendanceSession, loadAttendanceData]);
+
 
   useEffect(() => {
     if (student && student.name) {
@@ -3298,7 +3625,7 @@ export const StudentProfile: React.FC = () => {
   // Process test records when session changes
   useEffect(() => {
     if (selectedTestSession && student) {
-      processTestRecords();
+      processTestRecords(selectedTestSession);
     }
   }, [selectedTestSession, student, processTestRecords]);
 
@@ -3306,7 +3633,7 @@ export const StudentProfile: React.FC = () => {
     const fetchRenderSettingsData = async () => {
       // Get school_id from student or user
       let schoolId: number | null = null;
-      
+
       if (user?.school_id) {
         schoolId = user.school_id;
       } else if (student?.session_id) {
@@ -3341,24 +3668,32 @@ export const StudentProfile: React.FC = () => {
       startProgress(false);
       setProgress(10);
       try {
-        // Fetch student details and attendance in parallel
+        // Fetch student details only (attendance will be loaded per session)
         setProgress(20);
-        const [studentResult, attendanceResult] = await Promise.all([
-          supabase
+        const studentResult = await supabase
           .from('students')
           .select('*')
           .eq('id', id)
-            .single(),
-          supabase
-            .from('attendance_records')
-            .select('id, date, status, remarks, class_id')
-            .eq('student_id', id)
-            .order('date', { ascending: false })
-        ]);
+          .single();
 
         if (studentResult.error) throw studentResult.error;
         let studentData = studentResult.data;
-        
+
+        // Fetch sessions for attendance tab
+        const { data: sessionsData } = await supabase
+          .from('sessions')
+          .select('id, name, start_date, end_date, is_active')
+          .eq('school_id', studentData.school_id)
+          .order('start_date', { ascending: false })
+          .range(0, 99999);
+
+        if (sessionsData && sessionsData.length > 0) {
+          setAttendanceSessions(sessionsData);
+          const activeSession = sessionsData.find((s: any) => s.is_active);
+          const initialSessionId = activeSession ? activeSession.id : sessionsData[0].id;
+          setSelectedAttendanceSession(initialSessionId);
+        }
+
         // Get current class from student_class_history
         setProgress(25);
         const { data: historyData } = await supabase
@@ -3373,24 +3708,24 @@ export const StudentProfile: React.FC = () => {
           .eq('student_id', id)
           .eq('school_id', studentData.school_id)
           .order('id', { ascending: true });
-        
+
         // Get the latest record (current class)
         let currentClass = null;
         let currentSection = null;
         let currentClassObj = null;
         let currentSectionObj = null;
-        
+
         if (historyData && historyData.length > 0) {
           const lastRecord = historyData[historyData.length - 1];
           currentClass = lastRecord.new_class_id || studentData.class_id;
           currentSection = lastRecord.new_section_id !== null ? lastRecord.new_section_id : (studentData.section_id !== null ? studentData.section_id : null);
-          
+
           // Handle class object (can be single object or array from Supabase join)
           const classObj = lastRecord.new_classes;
           if (classObj) {
             currentClassObj = Array.isArray(classObj) ? classObj[0] : classObj;
           }
-          
+
           // Handle section object (can be single object or array from Supabase join)
           const sectionObj = lastRecord.new_sections;
           if (sectionObj) {
@@ -3418,7 +3753,7 @@ export const StudentProfile: React.FC = () => {
             currentSectionObj = sectionData;
           }
         }
-        
+
         // Merge current class information into student data
         studentData = {
           ...studentData,
@@ -3427,114 +3762,14 @@ export const StudentProfile: React.FC = () => {
           class: currentClassObj && currentClassObj.name ? { name: currentClassObj.name } : null,
           section: currentSectionObj && currentSectionObj.name ? { name: currentSectionObj.name } : null
         };
-        
+
         setStudent(studentData);
-
-        if (attendanceResult.error) throw attendanceResult.error;
-        const allAttendanceData = attendanceResult.data;
-
-        // Fetch half leaves in parallel with other critical data
-        setProgress(30);
-        let hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
-        if (studentData.session_id) {
-          const { data: halfLeavesData } = await supabase
-            .from('half_leaves')
-            .select('date, leave_type, arrival_time, departure_time')
-            .eq('person_type', 'student')
-            .eq('person_id', parseInt(id!))
-            .eq('session_id', studentData.session_id)
-            .eq('school_id', studentData.school_id);
-
-          (halfLeavesData || []).forEach((hl: any) => {
-            hlMap.set(hl.date, {
-              leave_type: hl.leave_type,
-              arrival_time: hl.arrival_time,
-              departure_time: hl.departure_time
-            });
-          });
-        }
-        setHalfLeavesMap(hlMap);
-
-        // Calculate basic attendance stats (critical for initial render)
-        setProgress(40);
-        if (allAttendanceData) {
-          const stats: AttendanceStats = {
-            present: 0,
-            absent: 0,
-            late: 0,
-            leave: 0,
-            total: allAttendanceData.length
-          };
-
-          allAttendanceData.forEach((record: AttendanceData) => {
-            stats[record.status]++;
-          });
-
-          setAttendanceStats(stats);
-
-          // Defer heavy calculations to avoid blocking initial render
-          setTimeout(() => {
-          // Calculate monthly stats
-            const monthlyStatsData = calculateMonthlyStats(allAttendanceData, hlMap);
-          setMonthlyStats(monthlyStatsData);
-
-          // Calculate weekly attendance
-            const weeklyStats = getWeeklyAttendance(allAttendanceData, hlMap);
-          setWeeklyAttendance(weeklyStats);
-
-          // Calculate attendance pattern
-            const patternStats = getAttendancePattern(allAttendanceData, hlMap.size);
-          setAttendancePattern(patternStats);
-
-          // Calculate yearly overview
-            const yearlyStats = getYearlyOverview(allAttendanceData, hlMap);
-          setYearlyOverview(yearlyStats);
-          }, 0);
-
-          // Load fine history for attendance tab (used in Recent Attendance section)
-          // Defer fine calculations to avoid blocking
-          setTimeout(async () => {
-            try {
-              const fineRecords = allAttendanceData.filter(record => 
-          record.status === 'absent' || record.status === 'late'
-              );
-
-              const { data: fineData } = await supabase
-          .from('fines')
-          .select('class_id, absent_fine, late_fine, effective_from')
-          .eq('school_id', studentData.school_id)
-          .order('effective_from', { ascending: true });
-
-        const recordsWithFines = fineRecords.map(record => {
-          const classIdFromRecord = record.class_id || studentData.class_id;
-          const classFines = fineData?.filter((f: any) => f.class_id === classIdFromRecord) || [];
-          
-          let fine = classFines && classFines.length > 0 ? classFines[0] : null;
-          for (const f of classFines) {
-            if (f.effective_from <= record.date) fine = f;
-          }
-          let fineAmount = 0;
-          if (fine) {
-            fineAmount = record.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
-          }
-          return {
-            ...record,
-            fine_amount: fineAmount
-          };
-        });
-
-        setFineHistory(recordsWithFines);
-            } catch (error) {
-              console.error('Error loading fine history:', error);
-            }
-          }, 100);
-        }
 
         // Load minimal data for summary cards (counts only)
         setProgress(50);
         const studentId = parseInt(id!);
         const schoolId = studentData.school_id;
-        
+
         // Load reports count for summary cards
         try {
           const reportsCountResult = await supabase
@@ -3542,7 +3777,7 @@ export const StudentProfile: React.FC = () => {
             .select('id, status, created_at, severity, category:report_categories(id, name), reporter:staff!reports_reported_by_fkey(id, name)')
             .eq('student_id', studentId)
             .order('created_at', { ascending: false });
-          
+
           if (!reportsCountResult.error && reportsCountResult.data) {
             // Set reports data for summary cards (minimal data for counts)
             setReports(reportsCountResult.data.map((r: any) => ({
@@ -3554,7 +3789,7 @@ export const StudentProfile: React.FC = () => {
               category: r.category,
               reporter: r.reporter
             })));
-            
+
             // Calculate report categories for summary card
             const categoryMap = new Map<string, ReportCategory>();
             reportsCountResult.data.forEach((report: any) => {
@@ -3576,7 +3811,7 @@ export const StudentProfile: React.FC = () => {
         } catch (error) {
           console.error('Error loading reports count:', error);
         }
-        
+
         // Load exam summaries count for summary cards
         try {
           // Try to load from examination_summaries table first (same as tab loading)
@@ -3599,7 +3834,7 @@ export const StudentProfile: React.FC = () => {
             .eq('student_id', studentId)
             .eq('school_id', schoolId)
             .order('examination_id', { ascending: false });
-          
+
           let filteredSummaries = examinationSummaries || [];
           if (isStudent) {
             filteredSummaries = filteredSummaries.filter(summary => {
@@ -3612,7 +3847,7 @@ export const StudentProfile: React.FC = () => {
               return examination?.status === 'archived' || examination?.status === 'published';
             });
           }
-          
+
           if (filteredSummaries && filteredSummaries.length > 0) {
             // Create minimal exam summaries from examination_summaries
             const summaries = filteredSummaries.map(summary => {
@@ -3630,25 +3865,25 @@ export const StudentProfile: React.FC = () => {
                 subjects: []
               } as ExamSummary;
             });
-            
+
             setExamSummaries(summaries);
           } else {
             // Fallback: Load from exam_results and calculate
             const examResultsData = await examinationService.getExamResults({
               student_id: studentId
             }, schoolId);
-            
+
             if (examResultsData && examResultsData.length > 0) {
               // Get unique exam IDs
               const examIds = Array.from(new Set(examResultsData.map((result: any) => result.exam_id)));
-              
+
               // Fetch exam details with status filtering
               const { data: examsData } = await supabase
                 .from('examinations')
                 .select('id, name, exam_type, status')
                 .in('id', examIds)
                 .eq('school_id', schoolId);
-              
+
               // Filter exams by status
               let filteredExams = examsData || [];
               if (isStudent) {
@@ -3656,7 +3891,7 @@ export const StudentProfile: React.FC = () => {
               } else {
                 filteredExams = filteredExams.filter(exam => exam.status === 'archived' || exam.status === 'published');
               }
-              
+
               if (filteredExams.length > 0) {
                 const filteredExamIds = new Set(filteredExams.map(e => e.id));
                 const summaries = examIds
@@ -3667,7 +3902,7 @@ export const StudentProfile: React.FC = () => {
                     const totalMarks = examResults.reduce((sum: number, r: any) => sum + (r.max_marks || 0), 0);
                     const obtainedMarks = examResults.reduce((sum: number, r: any) => sum + (r.obtained_marks || 0), 0);
                     const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-                    
+
                     return {
                       exam_id: examId,
                       exam_name: exam?.name || 'Unknown',
@@ -3680,7 +3915,7 @@ export const StudentProfile: React.FC = () => {
                       subjects: []
                     } as ExamSummary;
                   });
-                
+
                 setExamSummaries(summaries);
               } else {
                 setExamSummaries([]);
@@ -3693,7 +3928,7 @@ export const StudentProfile: React.FC = () => {
           console.error('Error loading exam summaries count:', error);
           setExamSummaries([]);
         }
-        
+
         // Load test results count for summary cards
         try {
           // Fetch test results with test_records join (matching TestRecordMasterSheet pattern)
@@ -3721,7 +3956,7 @@ export const StudentProfile: React.FC = () => {
             `)
             .eq('student_id', studentId)
             .eq('school_id', schoolId);
-          
+
           if (testResultsData && testResultsData.length > 0) {
             // Get unique subject IDs from test_records
             const subjectIds = Array.from(new Set(
@@ -3729,7 +3964,7 @@ export const StudentProfile: React.FC = () => {
                 .map((r: any) => r.test_records?.subject_id)
                 .filter((id: any) => id != null)
             ));
-            
+
             // Fetch subjects separately (matching TestRecordMasterSheet pattern)
             let subjectsMap = new Map();
             if (subjectIds.length > 0) {
@@ -3738,14 +3973,14 @@ export const StudentProfile: React.FC = () => {
                 .select('id, name')
                 .in('id', subjectIds)
                 .eq('school_id', schoolId);
-              
+
               if (subjectsData) {
                 subjectsData.forEach(subject => {
                   subjectsMap.set(subject.id, subject);
                 });
               }
             }
-            
+
             // Set minimal test results for count (with proper structure)
             setTestResults(testResultsData.map((r: any) => ({
               id: r.id,
@@ -3762,22 +3997,22 @@ export const StudentProfile: React.FC = () => {
               // Add test_records for compatibility with score calculation
               test_records: r.test_records || { passing_marks: 40 } as any
             })));
-            
+
             // Calculate test summary data
             const subjectMap = new Map<number, { name: string; obtained: number; total: number; count: number }>();
             let totalObtained = 0;
             let totalMax = 0;
-            
+
             testResultsData.forEach((result: any) => {
               const subjectId = result.test_records?.subject_id;
               const subject = subjectsMap.get(subjectId);
               const subjectName = subject?.name || 'Unknown';
               const obtained = result.obtained_marks || 0;
               const max = result.max_marks || 0;
-              
+
               totalObtained += obtained;
               totalMax += max;
-              
+
               if (subjectId) {
                 const existing = subjectMap.get(subjectId);
                 if (existing) {
@@ -3794,7 +4029,7 @@ export const StudentProfile: React.FC = () => {
                 }
               }
             });
-            
+
             const subjectSummaries = Array.from(subjectMap.entries()).map(([subjectId, data]) => ({
               subject_id: subjectId,
               subject_name: data.name,
@@ -3803,7 +4038,7 @@ export const StudentProfile: React.FC = () => {
               percentage: data.total > 0 ? (data.obtained / data.total) * 100 : 0,
               test_count: data.count
             }));
-            
+
             setTestSummaryData({
               totalSubjects: subjectMap.size,
               totalTests: testResultsData.length,
@@ -3926,7 +4161,7 @@ export const StudentProfile: React.FC = () => {
     STUDENT_PROFILE_TABS.forEach((tabConfig) => {
       // Check if tab should be visible based on render settings
       const isVisible = isStudentTabVisible(renderSettings, tabConfig.key);
-      
+
       // Fines tab is only for non-students
       if (tabConfig.key === 'fines_tab' && isStudent) {
         return; // Skip fines tab for students
@@ -3940,12 +4175,12 @@ export const StudentProfile: React.FC = () => {
             label: tabConfig.label.replace(' Tab', ''), // Remove "Tab" suffix for display
             icon: (
               originalIndex === 0 ? <Person /> :
-              originalIndex === 1 ? <Assignment /> :
-              originalIndex === 2 ? <Quiz /> :
-              originalIndex === 3 ? <Assessment /> :
-              originalIndex === 4 ? <AttachMoney /> :
-              originalIndex === 5 ? <CalendarToday /> :
-              <Person />
+                originalIndex === 1 ? <Assignment /> :
+                  originalIndex === 2 ? <Quiz /> :
+                    originalIndex === 3 ? <Assessment /> :
+                      originalIndex === 4 ? <AttachMoney /> :
+                        originalIndex === 5 ? <CalendarToday /> :
+                          <Person />
             )
           });
         }
@@ -3991,8 +4226,8 @@ export const StudentProfile: React.FC = () => {
           case 1: // Reports tab
             const [reportsResult] = await Promise.all([
               supabase
-          .from('reports')
-          .select(`
+                .from('reports')
+                .select(`
             *,
             category:report_categories(id, name),
             reporter:staff!reports_reported_by_fkey(
@@ -4019,71 +4254,71 @@ export const StudentProfile: React.FC = () => {
 
             if (reportsResult.error) throw reportsResult.error;
             const reportsData = reportsResult.data;
-        
-        const reportsWithSortedUpdates = reportsData?.map(report => ({
-          ...report,
-          updates: report.updates?.sort((a: ReportUpdate, b: ReportUpdate) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )
-        })) || [];
-        
-        setReports(reportsWithSortedUpdates);
 
-        const categoryMap = new Map<string, ReportCategory>();
-        reportsData?.forEach(report => {
-          if (report.category) {
-            const existing = categoryMap.get(report.category.id);
-            if (existing) {
-              existing.count++;
-            } else {
-              categoryMap.set(report.category.id, {
-                id: report.category.id,
-                name: report.category.name,
-                count: 1
-              });
-            }
-          }
-        });
-        setReportCategories(Array.from(categoryMap.values()));
+            const reportsWithSortedUpdates = reportsData?.map(report => ({
+              ...report,
+              updates: report.updates?.sort((a: ReportUpdate, b: ReportUpdate) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )
+            })) || [];
+
+            setReports(reportsWithSortedUpdates);
+
+            const categoryMap = new Map<string, ReportCategory>();
+            reportsData?.forEach(report => {
+              if (report.category) {
+                const existing = categoryMap.get(report.category.id);
+                if (existing) {
+                  existing.count++;
+                } else {
+                  categoryMap.set(report.category.id, {
+                    id: report.category.id,
+                    name: report.category.name,
+                    count: 1
+                  });
+                }
+              }
+            });
+            setReportCategories(Array.from(categoryMap.values()));
             break;
 
           case 2: // Examinations tab
-          try {
-            const examResultsData = await examinationService.getExamResults({
+            try {
+              const examResultsData = await examinationService.getExamResults({
                 student_id: studentId
               });
-              
+
               if (examResultsData && examResultsData.length > 0) {
-            const enrichedExamResults = await Promise.all(
-              examResultsData.map(async (result) => {
-                try {
-                  const { data: studentData } = await supabase
-                    .from('students')
-                    .select('name, father_name, picture_url')
-                    .eq('id', result.student_id)
-                    .eq('school_id', result.school_id)
-                    .single();
-                  
-                  return {
-                    ...result,
-                    student: studentData ? {
-                      name: studentData.name,
-                      father_name: studentData.father_name,
-                      picture_url: studentData.picture_url
-                    } : undefined
-                  } as ExamResult;
-                } catch (error) {
-                  console.warn(`Failed to fetch student data for result ${result.id}:`, error);
-                  return result;
-                }
-              })
-            );
-            
-            setExamResults(enrichedExamResults);
-            
+                const enrichedExamResults = await Promise.all(
+                  examResultsData.map(async (result) => {
+                    try {
+                      const { data: studentData } = await supabase
+                        .from('students')
+                        .select('name, father_name, picture_url')
+                        .eq('id', result.student_id)
+                        .eq('school_id', result.school_id)
+                        .single();
+
+                      return {
+                        ...result,
+                        student: studentData ? {
+                          name: studentData.name,
+                          father_name: studentData.father_name,
+                          picture_url: studentData.picture_url
+                        } : undefined
+                      } as ExamResult;
+                    } catch (error) {
+                      console.warn(`Failed to fetch student data for result ${result.id}:`, error);
+                      return result;
+                    }
+                  })
+                );
+
+                setExamResults(enrichedExamResults);
+
                 const { data: examinationSummaries } = await supabase
-                .from('examination_summaries')
-                .select(`
+                  .from('examination_summaries')
+                  .select(`
                   examination_id,
                   total_marks,
                   obtained_marks,
@@ -4103,152 +4338,182 @@ export const StudentProfile: React.FC = () => {
                 `)
                   .eq('student_id', studentId)
                   .eq('school_id', schoolId)
-                .order('examination_id', { ascending: false });
-              
-              let filteredSummaries = examinationSummaries || [];
-              if (isStudent) {
-                filteredSummaries = filteredSummaries.filter(summary => {
-                  const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
-                  return examination?.status === 'archived';
-                });
-              } else {
-                filteredSummaries = filteredSummaries.filter(summary => {
-                  const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
-                  return examination?.status === 'archived' || examination?.status === 'published';
-                });
-              }
-              
-              if (filteredSummaries && filteredSummaries.length > 0) {
-                const examSummariesData = await Promise.all(
-                  filteredSummaries.map(async (summary) => {
-                    const { data: subjectResults } = await supabase
-                      .from('exam_results')
-                      .select(`
+                  .order('examination_id', { ascending: false });
+
+                let filteredSummaries = examinationSummaries || [];
+                if (isStudent) {
+                  filteredSummaries = filteredSummaries.filter(summary => {
+                    const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+                    return examination?.status === 'archived';
+                  });
+                } else {
+                  filteredSummaries = filteredSummaries.filter(summary => {
+                    const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+                    return examination?.status === 'archived' || examination?.status === 'published';
+                  });
+                }
+
+                if (filteredSummaries && filteredSummaries.length > 0) {
+                  const examSummariesData = await Promise.all(
+                    filteredSummaries.map(async (summary) => {
+                      const { data: subjectResults } = await supabase
+                        .from('exam_results')
+                        .select(`
                         *,
                         subject:subjects!inner(
                           id,
                           name
                         )
                       `)
-                      .eq('exam_id', summary.examination_id)
+                        .eq('exam_id', summary.examination_id)
                         .eq('student_id', studentId)
                         .eq('school_id', schoolId);
-                    
-                    const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
-                    return {
-                      exam_id: summary.examination_id,
-                      exam_name: examination?.name || `Exam ${summary.examination_id}`,
-                      exam_type: examination?.exam_type || 'Examination',
-                      total_subjects: subjectResults?.length || 0,
-                      total_marks: summary.total_marks,
-                      obtained_marks: summary.obtained_marks,
-                      percentage: summary.percentage,
-                      grade: summary.grade,
-                      status: summary.status as 'pass' | 'fail',
-                      position: summary.position,
-                      rank_in_class: summary.rank_in_class,
-                      rank_in_section: summary.rank_in_section,
-                      total_strength: summary.total_strength,
-                      subjects: subjectResults || []
-                    } as ExamSummary;
-                  })
-                );
-                
-                setExamSummaries(examSummariesData);
-              } else {
+
+                      const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+                      return {
+                        exam_id: summary.examination_id,
+                        exam_name: examination?.name || `Exam ${summary.examination_id}`,
+                        exam_type: examination?.exam_type || 'Examination',
+                        total_subjects: subjectResults?.length || 0,
+                        total_marks: summary.total_marks,
+                        obtained_marks: summary.obtained_marks,
+                        percentage: summary.percentage,
+                        grade: summary.grade,
+                        status: summary.status as 'pass' | 'fail',
+                        position: summary.position,
+                        rank_in_class: summary.rank_in_class,
+                        rank_in_section: summary.rank_in_section,
+                        total_strength: summary.total_strength,
+                        subjects: subjectResults || []
+                      } as ExamSummary;
+                    })
+                  );
+
+                  setExamSummaries(examSummariesData);
+                } else {
                   // Fallback calculation
-            const examIds = Array.from(new Set(enrichedExamResults.map(result => result.exam_id)));
-            const examDetails = new Map();
-            
-            for (const examId of examIds) {
-              try {
-                const exam = await examinationService.getExaminationById(examId);
-                if (exam) {
-                  if (isStudent) {
+                  const examIds = Array.from(new Set(enrichedExamResults.map(result => result.exam_id)));
+                  const examDetails = new Map();
+
+                  for (const examId of examIds) {
+                    try {
+                      const exam = await examinationService.getExaminationById(examId);
+                      if (exam) {
+                        if (isStudent) {
                           if (exam.status === 'archived') examDetails.set(examId, exam);
-                  } else {
+                        } else {
                           if (exam.status === 'archived' || exam.status === 'published') examDetails.set(examId, exam);
+                        }
+                      }
+                    } catch (error) {
+                      console.warn(`Failed to fetch exam ${examId}:`, error);
+                    }
                   }
-                }
-              } catch (error) {
-                console.warn(`Failed to fetch exam ${examId}:`, error);
-              }
-            }
-            
-            const examMap = new Map<number, ExamSummary>();
-            enrichedExamResults.forEach(result => {
+
+                  const examMap = new Map<number, ExamSummary>();
+                  enrichedExamResults.forEach(result => {
                     if (!examDetails.has(result.exam_id)) return;
-              
-              if (!examMap.has(result.exam_id)) {
-                const exam = examDetails.get(result.exam_id);
-                examMap.set(result.exam_id, {
-                  exam_id: result.exam_id,
-                  exam_name: exam?.name || `Exam ${result.exam_id}`,
-                  exam_type: exam?.exam_type || 'Examination',
-                  total_subjects: 0,
-                  total_marks: 0,
-                  obtained_marks: 0,
-                  percentage: 0,
-                  status: 'pass',
-                  subjects: []
-                });
-              }
-              
-              const exam = examMap.get(result.exam_id)!;
-              exam.subjects.push(result);
-              exam.total_subjects++;
-              exam.total_marks += result.max_marks;
-              exam.obtained_marks += result.obtained_marks;
-            });
-            
-            examMap.forEach(exam => {
-              exam.percentage = exam.total_marks > 0 ? (exam.obtained_marks / exam.total_marks) * 100 : 0;
-                  exam.status = exam.percentage >= 33 ? 'pass' : 'fail';
-            });
-            
-            setExamSummaries(Array.from(examMap.values()));
-              }
+
+                    if (!examMap.has(result.exam_id)) {
+                      const exam = examDetails.get(result.exam_id);
+                      examMap.set(result.exam_id, {
+                        exam_id: result.exam_id,
+                        exam_name: exam?.name || `Exam ${result.exam_id}`,
+                        exam_type: exam?.exam_type || 'Examination',
+                        total_subjects: 0,
+                        total_marks: 0,
+                        obtained_marks: 0,
+                        percentage: 0,
+                        status: 'pass',
+                        subjects: []
+                      });
+                    }
+
+                    const exam = examMap.get(result.exam_id)!;
+                    exam.subjects.push(result);
+                    exam.total_subjects++;
+                    exam.total_marks += result.max_marks;
+                    exam.obtained_marks += result.obtained_marks;
+                  });
+
+                  examMap.forEach(exam => {
+                    exam.percentage = exam.total_marks > 0 ? (exam.obtained_marks / exam.total_marks) * 100 : 0;
+                    exam.status = exam.percentage >= 33 ? 'pass' : 'fail';
+                  });
+
+                  setExamSummaries(Array.from(examMap.values()));
+                }
               } else {
-              setExamSummaries([]);
-            }
-          } catch (examError) {
-            console.error('Error fetching examination results:', examError);
+                setExamSummaries([]);
+              }
+            } catch (examError) {
+              console.error('Error fetching examination results:', examError);
               setExamSummaries([]);
             }
             break;
 
           case 3: // Test Records tab
-            const [sessionsResult, testResultsResult] = await Promise.all([
-              supabase
-              .from('sessions')
-              .select('id, name, start_date, end_date, is_active')
-                .eq('school_id', schoolId)
-                .order('start_date', { ascending: false }),
-              supabase
-              .from('test_results')
-              .select(`
-                *,
-                test_records!inner(
-                  passing_marks
-                )
-              `)
-                .eq('student_id', studentId)
-                .eq('school_id', schoolId)
-                .order('created_at', { ascending: false })
+            const fetchAllSessions = async () => {
+              let allData: any[] = [];
+              let page = 0;
+              while (true) {
+                const { data, error } = await supabase
+                  .from('sessions')
+                  .select('id, name, start_date, end_date, is_active')
+                  .eq('school_id', schoolId)
+                  .order('start_date', { ascending: false })
+                  .range(page * 1000, (page + 1) * 1000 - 1);
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                allData.push(...data);
+                if (data.length < 1000) break;
+                page++;
+              }
+              return allData;
+            };
+
+            const fetchAllTestResults = async () => {
+              let allData: any[] = [];
+              let page = 0;
+              while (true) {
+                const { data, error } = await supabase
+                  .from('test_results')
+                  .select(`
+                    *,
+                    test_records!inner(
+                      passing_marks
+                    )
+                  `)
+                  .eq('student_id', studentId)
+                  .eq('school_id', schoolId)
+                  .order('created_at', { ascending: false })
+                  .range(page * 1000, (page + 1) * 1000 - 1);
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                allData.push(...data);
+                if (data.length < 1000) break;
+                page++;
+              }
+              return allData;
+            };
+
+            const [sessionsData, testResultsData] = await Promise.all([
+              fetchAllSessions(),
+              fetchAllTestResults()
             ]);
 
-            if (sessionsResult.data && sessionsResult.data.length > 0) {
-              setSessions(sessionsResult.data);
-              const activeSession = sessionsResult.data.find(s => s.is_active);
-              if (activeSession) {
-                setSelectedTestSession(activeSession.id);
-        } else {
-                setSelectedTestSession(sessionsResult.data[0].id);
-              }
+            if (sessionsData && sessionsData.length > 0) {
+              setSessions(sessionsData);
+              const activeSession = sessionsData.find((s: any) => s.is_active);
+              const targetSessionId = activeSession ? activeSession.id : sessionsData[0].id;
+              setSelectedTestSession(targetSessionId);
+
+              // Pre-load session data to avoid "No Records" flash
+              await processTestRecords(targetSessionId);
             }
 
-            if (testResultsResult.data) {
-              setTestResults(testResultsResult.data);
+            if (testResultsData) {
+              setTestResults(testResultsData);
             }
             break;
 
@@ -4360,10 +4625,10 @@ export const StudentProfile: React.FC = () => {
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { currentTarget, clientX, clientY } = e;
     const { left, top } = currentTarget.getBoundingClientRect();
-    
+
     const x = clientX - left;
     const y = clientY - top;
-    
+
     currentTarget.style.setProperty('--mouse-x', `${x}px`);
     currentTarget.style.setProperty('--mouse-y', `${y}px`);
   };
@@ -4374,9 +4639,9 @@ export const StudentProfile: React.FC = () => {
         <ProfileAvatar src={student.picture_url} alt={student.name}>
           {!student.picture_url && student.name?.[0]}
         </ProfileAvatar>
-        <Stack 
-          spacing={0.5} 
-          sx={{ 
+        <Stack
+          spacing={0.5}
+          sx={{
             flex: 1,
             minWidth: 0,
             [theme.breakpoints.down('sm')]: {
@@ -4384,15 +4649,15 @@ export const StudentProfile: React.FC = () => {
             }
           }}
         >
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: { xs: 'flex-start', sm: 'center' }, 
+          <Box sx={{
+            display: 'flex',
+            alignItems: { xs: 'flex-start', sm: 'center' },
             gap: 1,
             flexWrap: 'wrap',
             width: '100%'
           }}>
-            <Typography 
-              variant="h4" 
+            <Typography
+              variant="h4"
               fontWeight="600"
               sx={{
                 fontSize: { xs: '1.25rem', sm: '2rem' },
@@ -4420,20 +4685,20 @@ export const StudentProfile: React.FC = () => {
                 border: '1px solid',
                 borderColor: theme => alpha(
                   student.status === 'active' ? theme.palette.success.main :
-                  student.status === 'inactive' ? theme.palette.error.main :
-                  student.status === 'suspended' ? theme.palette.warning.main :
-                  theme.palette.info.main, 0.2
+                    student.status === 'inactive' ? theme.palette.error.main :
+                      student.status === 'suspended' ? theme.palette.warning.main :
+                        theme.palette.info.main, 0.2
                 ),
-                color: theme => 
+                color: theme =>
                   student.status === 'active' ? theme.palette.success.main :
-                  student.status === 'inactive' ? theme.palette.error.main :
-                  student.status === 'suspended' ? theme.palette.warning.main :
-                  theme.palette.info.main,
+                    student.status === 'inactive' ? theme.palette.error.main :
+                      student.status === 'suspended' ? theme.palette.warning.main :
+                        theme.palette.info.main,
                 bgcolor: theme => alpha(
                   student.status === 'active' ? theme.palette.success.main :
-                  student.status === 'inactive' ? theme.palette.error.main :
-                  student.status === 'suspended' ? theme.palette.warning.main :
-                  theme.palette.info.main, 0.1
+                    student.status === 'inactive' ? theme.palette.error.main :
+                      student.status === 'suspended' ? theme.palette.warning.main :
+                        theme.palette.info.main, 0.1
                 ),
                 position: 'relative',
                 overflow: 'hidden',
@@ -4458,30 +4723,30 @@ export const StudentProfile: React.FC = () => {
                 }
               }}
             >
-              <Box component="span" sx={{ 
-                width: 6, 
-                height: 6, 
+              <Box component="span" sx={{
+                width: 6,
+                height: 6,
                 borderRadius: '50%',
                 bgcolor: 'currentColor',
                 mr: 1,
                 boxShadow: theme => `0 0 8px ${alpha(
                   student.status === 'active' ? theme.palette.success.main :
-                  student.status === 'inactive' ? theme.palette.error.main :
-                  student.status === 'suspended' ? theme.palette.warning.main :
-                  theme.palette.info.main, 0.4
+                    student.status === 'inactive' ? theme.palette.error.main :
+                      student.status === 'suspended' ? theme.palette.warning.main :
+                        theme.palette.info.main, 0.4
                 )}`,
               }} />
               {student.status || 'Unknown'}
             </Box>
           </Box>
-          <Box sx={{ 
+          <Box sx={{
             mt: { xs: 0.5, sm: 1 },
             width: '100%',
             textAlign: { xs: 'left', sm: 'left' }
           }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
+            <Typography
+              variant="h6"
+              sx={{
                 opacity: 0.8,
                 fontSize: { xs: '0.875rem', sm: '1.25rem' },
                 whiteSpace: 'nowrap',
@@ -4494,9 +4759,9 @@ export const StudentProfile: React.FC = () => {
             >
               Class {student.class?.name} {student.section?.name && `- ${student.section.name}`}
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
+            <Typography
+              variant="body2"
+              sx={{
                 opacity: 0.6,
                 fontSize: { xs: '0.875rem', sm: '1rem' },
                 whiteSpace: 'nowrap',
@@ -4510,8 +4775,8 @@ export const StudentProfile: React.FC = () => {
             </Typography>
           </Box>
         </Stack>
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             display: 'flex',
             alignItems: 'center',
             gap: { xs: 0.8, sm: 1.6 },
@@ -4552,11 +4817,11 @@ export const StudentProfile: React.FC = () => {
             }
           }}
         >
-          <Box sx={{ 
-            width: { xs: 32, sm: 38 }, 
+          <Box sx={{
+            width: { xs: 32, sm: 38 },
             height: { xs: 32, sm: 38 },
             position: 'relative',
-            zIndex: 1 
+            zIndex: 1
           }}>
             <CircularProgress
               variant="determinate"
@@ -4582,7 +4847,7 @@ export const StudentProfile: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Typography 
+              <Typography
                 variant="h6"
                 sx={{
                   fontSize: { xs: '0.6rem', sm: '0.8rem' },
@@ -4595,7 +4860,7 @@ export const StudentProfile: React.FC = () => {
             </Box>
           </Box>
           <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Typography 
+            <Typography
               variant="body2"
               sx={{
                 fontSize: { xs: '0.6rem', sm: '0.7rem' },
@@ -4606,7 +4871,7 @@ export const StudentProfile: React.FC = () => {
             >
               Student Score
             </Typography>
-            <Typography 
+            <Typography
               variant="h6"
               sx={{
                 fontSize: { xs: '0.7rem', sm: '1rem' },
@@ -4650,14 +4915,14 @@ export const StudentProfile: React.FC = () => {
               {/* Main Content */}
               <Box sx={{ position: 'relative', zIndex: 1 }}>
                 {/* Progress Ring */}
-                <Box sx={{ 
-                  position: 'relative', 
+                <Box sx={{
+                  position: 'relative',
                   width: '180px', // Reduced from original size
                   height: '180px', // Reduced from original size
                   margin: '0 auto',
                   mb: 3
                 }}>
-                  <Box sx={{ 
+                  <Box sx={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
@@ -4675,7 +4940,7 @@ export const StudentProfile: React.FC = () => {
                       borderRadius: '50%',
                       border: theme => `10px solid ${alpha(theme.palette.divider, 0.08)}`, // Reduced border width
                     }} />
-                    
+
                     {/* Progress Circle */}
                     <Box sx={{
                       position: 'absolute',
@@ -4684,9 +4949,9 @@ export const StudentProfile: React.FC = () => {
                       borderRadius: '50%',
                       border: theme => `10px solid ${  // Reduced border width
                         attendancePercentage >= 75 ? theme.palette.success.main :
-                        attendancePercentage >= 65 ? theme.palette.warning.main :
-                        theme.palette.error.main
-                      }`,
+                          attendancePercentage >= 65 ? theme.palette.warning.main :
+                            theme.palette.error.main
+                        }`,
                       borderTop: 'none',
                       borderLeft: 'none',
                       transform: `rotate(${45 + (attendancePercentage * 1.8)}deg)`,
@@ -4698,18 +4963,18 @@ export const StudentProfile: React.FC = () => {
                       position: 'relative',
                       textAlign: 'center'
                     }}>
-                      <Typography variant="h3" sx={{ 
+                      <Typography variant="h3" sx={{
                         fontWeight: 700,
-                        color: theme => 
+                        color: theme =>
                           attendancePercentage >= 75 ? theme.palette.success.main :
-                          attendancePercentage >= 65 ? theme.palette.warning.main :
-                          theme.palette.error.main,
+                            attendancePercentage >= 65 ? theme.palette.warning.main :
+                              theme.palette.error.main,
                         mb: 0.5,
                         fontSize: '2.5rem' // Reduced font size
                       }}>
                         {attendancePercentage}%
                       </Typography>
-                      <Typography variant="caption" sx={{ 
+                      <Typography variant="caption" sx={{
                         color: 'text.secondary',
                         display: 'block',
                         fontSize: '0.75rem',
@@ -4725,20 +4990,20 @@ export const StudentProfile: React.FC = () => {
                 {/* Stats Grid */}
                 <Grid container spacing={2}>
                   {([
-                    { 
-                      label: 'Present', 
+                    {
+                      label: 'Present',
                       value: attendanceStats?.present || 0,
                       icon: <CheckCircle />,
                       color: 'success' as ColorKey
                     },
-                    { 
-                      label: 'Late', 
+                    {
+                      label: 'Late',
                       value: attendanceStats?.late || 0,
                       icon: <Timer />,
                       color: 'warning' as ColorKey
                     },
-                    { 
-                      label: 'Absent / Leave', 
+                    {
+                      label: 'Absent / Leave',
                       value: (attendanceStats?.absent || 0) + (attendanceStats?.leave || 0),
                       icon: <Cancel />,
                       color: 'error' as ColorKey,
@@ -4746,8 +5011,8 @@ export const StudentProfile: React.FC = () => {
                       absentCount: attendanceStats?.absent || 0,
                       leaveCount: attendanceStats?.leave || 0
                     },
-                    { 
-                      label: 'Half Leaves', 
+                    {
+                      label: 'Half Leaves',
                       value: halfLeavesMap.size,
                       icon: <AccessTime />,
                       color: 'secondary' as ColorKey,
@@ -4759,7 +5024,7 @@ export const StudentProfile: React.FC = () => {
                         p: 1.5,
                         borderRadius: 1,
                         border: '1px solid',
-                        borderColor: stat.customColor 
+                        borderColor: stat.customColor
                           ? alpha(stat.customColor, 0.2)
                           : theme => {
                             const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
@@ -4777,7 +5042,7 @@ export const StudentProfile: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          bgcolor: stat.customColor 
+                          bgcolor: stat.customColor
                             ? alpha(stat.customColor, 0.1)
                             : theme => {
                               const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
@@ -4796,7 +5061,7 @@ export const StudentProfile: React.FC = () => {
                           justifyContent: 'center',
                           textAlign: 'center'
                         }}>
-                          <Typography variant="h6" sx={{ 
+                          <Typography variant="h6" sx={{
                             color: stat.customColor || `${stat.color}.main`,
                             fontWeight: 600,
                             lineHeight: 1,
@@ -4820,7 +5085,7 @@ export const StudentProfile: React.FC = () => {
                               stat.value
                             )}
                           </Typography>
-                          <Typography variant="caption" sx={{ 
+                          <Typography variant="caption" sx={{
                             color: 'text.secondary',
                             fontSize: '0.7rem',
                             letterSpacing: '0.4px'
@@ -4872,7 +5137,7 @@ export const StudentProfile: React.FC = () => {
                   borderBottom: '1px solid',
                   borderColor: 'divider'
                 }}>
-                  <Typography variant="caption" sx={{ 
+                  <Typography variant="caption" sx={{
                     color: 'text.secondary',
                     fontSize: '0.7rem',
                     fontWeight: 600,
@@ -4881,7 +5146,7 @@ export const StudentProfile: React.FC = () => {
                   }}>
                     Test Records
                   </Typography>
-                  <Typography variant="h6" sx={{ 
+                  <Typography variant="h6" sx={{
                     color: theme => {
                       const percentage = testSummaryData.totalPercentage;
                       if (percentage >= 80) return theme.palette.success.main;
@@ -4948,7 +5213,7 @@ export const StudentProfile: React.FC = () => {
                         }}>
                           {item.icon}
                         </Box>
-                        <Typography variant="body2" sx={{ 
+                        <Typography variant="body2" sx={{
                           color: `${item.color}.main`,
                           fontWeight: 600,
                           fontSize: '0.875rem',
@@ -4957,7 +5222,7 @@ export const StudentProfile: React.FC = () => {
                         }}>
                           {item.value}
                         </Typography>
-                        <Typography variant="caption" sx={{ 
+                        <Typography variant="caption" sx={{
                           color: 'text.secondary',
                           fontSize: '0.65rem',
                           lineHeight: 1
@@ -4971,16 +5236,16 @@ export const StudentProfile: React.FC = () => {
 
                 {/* Subject-wise Summary */}
                 {testSummaryData.subjectSummaries.length > 0 && (
-                  <Box sx={{ 
-                    flex: 1, 
-                    minHeight: 0, 
-                    display: 'flex', 
+                  <Box sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    display: 'flex',
                     flexDirection: 'column',
                     borderTop: '1px solid',
                     borderColor: 'divider',
                     pt: 1.5
                   }}>
-                    <Typography variant="caption" sx={{ 
+                    <Typography variant="caption" sx={{
                       color: 'text.secondary',
                       fontSize: '0.7rem',
                       fontWeight: 600,
@@ -4990,7 +5255,7 @@ export const StudentProfile: React.FC = () => {
                     }}>
                       Subject Summary
                     </Typography>
-                    <Box sx={{ 
+                    <Box sx={{
                       flex: 1,
                       overflowY: 'auto',
                       minHeight: 0,
@@ -5029,7 +5294,7 @@ export const StudentProfile: React.FC = () => {
                                 transform: 'translateY(-1px)',
                               }
                             }}>
-                              <Typography variant="caption" sx={{ 
+                              <Typography variant="caption" sx={{
                                 color: 'text.primary',
                                 fontSize: '0.6rem',
                                 fontWeight: 600,
@@ -5042,7 +5307,7 @@ export const StudentProfile: React.FC = () => {
                               }}>
                                 {subject.subject_name} ({subject.test_count})
                               </Typography>
-                              <Typography variant="caption" sx={{ 
+                              <Typography variant="caption" sx={{
                                 color: 'info.main',
                                 fontSize: '0.6rem',
                                 fontWeight: 600,
@@ -5099,7 +5364,7 @@ export const StudentProfile: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: 'divider'
                   }}>
-                    <Typography variant="caption" sx={{ 
+                    <Typography variant="caption" sx={{
                       color: 'text.secondary',
                       fontSize: '0.7rem',
                       fontWeight: 600,
@@ -5108,7 +5373,7 @@ export const StudentProfile: React.FC = () => {
                     }}>
                       Test Records
                     </Typography>
-                    <Typography variant="h6" sx={{ 
+                    <Typography variant="h6" sx={{
                       color: theme => {
                         const percentage = testSummaryData.totalPercentage;
                         if (percentage >= 80) return theme.palette.success.main;
@@ -5175,7 +5440,7 @@ export const StudentProfile: React.FC = () => {
                           }}>
                             {item.icon}
                           </Box>
-                          <Typography variant="body2" sx={{ 
+                          <Typography variant="body2" sx={{
                             color: `${item.color}.main`,
                             fontWeight: 600,
                             fontSize: '0.875rem',
@@ -5184,7 +5449,7 @@ export const StudentProfile: React.FC = () => {
                           }}>
                             {item.value}
                           </Typography>
-                          <Typography variant="caption" sx={{ 
+                          <Typography variant="caption" sx={{
                             color: 'text.secondary',
                             fontSize: '0.65rem',
                             lineHeight: 1
@@ -5198,16 +5463,16 @@ export const StudentProfile: React.FC = () => {
 
                   {/* Subject-wise Summary */}
                   {testSummaryData.subjectSummaries.length > 0 && (
-                    <Box sx={{ 
-                      flex: 1, 
-                      minHeight: 0, 
-                      display: 'flex', 
+                    <Box sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      display: 'flex',
                       flexDirection: 'column',
                       borderTop: '1px solid',
                       borderColor: 'divider',
                       pt: 1.5
                     }}>
-                      <Typography variant="caption" sx={{ 
+                      <Typography variant="caption" sx={{
                         color: 'text.secondary',
                         fontSize: '0.7rem',
                         fontWeight: 600,
@@ -5217,7 +5482,7 @@ export const StudentProfile: React.FC = () => {
                       }}>
                         Subject Summary
                       </Typography>
-                      <Box sx={{ 
+                      <Box sx={{
                         flex: 1,
                         overflowY: 'auto',
                         minHeight: 0,
@@ -5256,7 +5521,7 @@ export const StudentProfile: React.FC = () => {
                                   transform: 'translateY(-1px)',
                                 }
                               }}>
-                                <Typography variant="caption" sx={{ 
+                                <Typography variant="caption" sx={{
                                   color: 'text.primary',
                                   fontSize: '0.6rem',
                                   fontWeight: 600,
@@ -5269,7 +5534,7 @@ export const StudentProfile: React.FC = () => {
                                 }}>
                                   {subject.subject_name} ({subject.test_count})
                                 </Typography>
-                                <Typography variant="caption" sx={{ 
+                                <Typography variant="caption" sx={{
                                   color: 'info.main',
                                   fontSize: '0.6rem',
                                   fontWeight: 600,
@@ -5326,7 +5591,7 @@ export const StudentProfile: React.FC = () => {
                   borderBottom: '1px solid',
                   borderColor: 'divider'
                 }}>
-                  <Typography variant="caption" sx={{ 
+                  <Typography variant="caption" sx={{
                     color: 'text.secondary',
                     fontSize: '0.7rem',
                     fontWeight: 600,
@@ -5335,7 +5600,7 @@ export const StudentProfile: React.FC = () => {
                   }}>
                     Examinations
                   </Typography>
-                  <Typography variant="h6" sx={{ 
+                  <Typography variant="h6" sx={{
                     color: theme => {
                       const percentage = averageExamPercentage;
                       if (percentage >= 80) return theme.palette.success.main;
@@ -5402,7 +5667,7 @@ export const StudentProfile: React.FC = () => {
                         }}>
                           {item.icon}
                         </Box>
-                        <Typography variant="body2" sx={{ 
+                        <Typography variant="body2" sx={{
                           color: `${item.color}.main`,
                           fontWeight: 600,
                           fontSize: '0.875rem',
@@ -5411,7 +5676,7 @@ export const StudentProfile: React.FC = () => {
                         }}>
                           {item.value}
                         </Typography>
-                        <Typography variant="caption" sx={{ 
+                        <Typography variant="caption" sx={{
                           color: 'text.secondary',
                           fontSize: '0.65rem',
                           lineHeight: 1
@@ -5425,10 +5690,10 @@ export const StudentProfile: React.FC = () => {
 
                 {/* Exam-wise Summary */}
                 {examSummaries.length > 0 && (
-                  <Box sx={{ 
-                    flex: '1 !important', 
-                    minHeight: '0 !important', 
-                    display: 'flex !important', 
+                  <Box sx={{
+                    flex: '1 !important',
+                    minHeight: '0 !important',
+                    display: 'flex !important',
                     flexDirection: 'column !important',
                     borderTop: '1px solid',
                     borderColor: 'divider',
@@ -5436,7 +5701,7 @@ export const StudentProfile: React.FC = () => {
                     width: '100% !important',
                     boxSizing: 'border-box !important'
                   }}>
-                    <Typography variant="caption" sx={{ 
+                    <Typography variant="caption" sx={{
                       color: 'text.secondary',
                       fontSize: '0.7rem',
                       fontWeight: 600,
@@ -5446,7 +5711,7 @@ export const StudentProfile: React.FC = () => {
                     }}>
                       Exam Summary
                     </Typography>
-                    <Box sx={{ 
+                    <Box sx={{
                       flex: 1,
                       overflowY: 'auto',
                       minHeight: 0,
@@ -5465,7 +5730,7 @@ export const StudentProfile: React.FC = () => {
                         background: theme => alpha(theme.palette.text.secondary, 0.3),
                       }
                     }}>
-                      <Grid container spacing={1} sx={{ 
+                      <Grid container spacing={1} sx={{
                         margin: '0 !important',
                         width: '100% !important',
                         '& > .MuiGrid-item': {
@@ -5474,7 +5739,7 @@ export const StudentProfile: React.FC = () => {
                         }
                       }}>
                         {examSummaries.map((exam) => (
-                          <Grid item xs={12} key={exam.exam_id} sx={{ 
+                          <Grid item xs={12} key={exam.exam_id} sx={{
                             padding: '0 !important',
                             margin: '0 !important',
                             width: '100% !important'
@@ -5498,28 +5763,28 @@ export const StudentProfile: React.FC = () => {
                                 transform: 'translateY(-1px)',
                               }
                             }}>
-                            <Typography variant="caption" sx={{ 
-                              color: 'text.primary',
-                              fontSize: '0.6rem',
-                              fontWeight: 600,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              flex: 1,
-                              minWidth: 0,
-                              mr: 1
-                            }}>
-                              {exam.exam_name}
-                            </Typography>
-                            <Typography variant="caption" sx={{ 
-                              color: 'primary.main',
-                              fontSize: '0.6rem',
-                              fontWeight: 600,
-                              whiteSpace: 'nowrap',
-                              flexShrink: 0
-                            }}>
-                              {exam.obtained_marks}/{exam.total_marks} - {exam.percentage.toFixed(1)}%
-                            </Typography>
+                              <Typography variant="caption" sx={{
+                                color: 'text.primary',
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flex: 1,
+                                minWidth: 0,
+                                mr: 1
+                              }}>
+                                {exam.exam_name}
+                              </Typography>
+                              <Typography variant="caption" sx={{
+                                color: 'primary.main',
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
+                              }}>
+                                {exam.obtained_marks}/{exam.total_marks} - {exam.percentage.toFixed(1)}%
+                              </Typography>
                             </Box>
                           </Grid>
                         ))}
@@ -5599,14 +5864,14 @@ export const StudentProfile: React.FC = () => {
                       {/* Show entries for selected date only */}
                       {homeworkDiaryEntries.map((entry, idx) => (
                         <ReportItem key={`${entry.id}-${idx}`} $shadeIndex={idx}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'flex-start', 
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
                             gap: 1.5,
                             flex: 1,
                             minWidth: 0
                           }}>
-                            <Box 
+                            <Box
                               className="homework-icon"
                               sx={{
                                 width: 32,
@@ -5625,16 +5890,16 @@ export const StudentProfile: React.FC = () => {
                               <HomeWork sx={{ fontSize: 18 }} />
                             </Box>
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Box sx={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
+                              <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
                                 gap: 0.5,
                                 mb: 0.25,
                                 flexWrap: 'wrap'
                               }}>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
+                                <Typography
+                                  variant="body2"
+                                  sx={{
                                     color: 'text.primary',
                                     fontWeight: 600,
                                     fontSize: '0.75rem',
@@ -5643,25 +5908,25 @@ export const StudentProfile: React.FC = () => {
                                   {entry.subject_name || 'General'}
                                 </Typography>
                                 {entry.assigned_by_name && (
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
                                       color: 'text.secondary',
                                       fontSize: '0.65rem',
                                       fontWeight: 400,
                                     }}
                                   >
-                                    • {entry.assigned_by_gender === 'Female' || entry.assigned_by_gender === 'female' 
-                                      ? 'Ms.' 
+                                    • {entry.assigned_by_gender === 'Female' || entry.assigned_by_gender === 'female'
+                                      ? 'Ms.'
                                       : entry.assigned_by_gender === 'Male' || entry.assigned_by_gender === 'male'
-                                      ? 'Mr.'
-                                      : ''} {entry.assigned_by_name}
+                                        ? 'Mr.'
+                                        : ''} {entry.assigned_by_name}
                                   </Typography>
                                 )}
                               </Box>
-                              <Typography 
-                                variant="caption" 
-                                sx={{ 
+                              <Typography
+                                variant="caption"
+                                sx={{
                                   color: 'text.secondary',
                                   fontSize: '0.7rem',
                                   display: '-webkit-box',
@@ -5713,9 +5978,9 @@ export const StudentProfile: React.FC = () => {
                     <Box className="scroll-container">
                       {reportCategories.map(category => (
                         <ReportItem key={category.id}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: 1.5,
                             flex: 1,
                             minWidth: 0
@@ -5732,9 +5997,9 @@ export const StudentProfile: React.FC = () => {
                             }}>
                               <Assignment sx={{ fontSize: 18 }} />
                             </Box>
-                            <Typography 
-                              variant="body2" 
-                              sx={{ 
+                            <Typography
+                              variant="body2"
+                              sx={{
                                 color: 'text.primary',
                                 fontWeight: 500,
                                 overflow: 'hidden',
@@ -5745,22 +6010,22 @@ export const StudentProfile: React.FC = () => {
                               {category.name}
                             </Typography>
                           </Box>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1 
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
                           }}>
-                            <Typography 
-                              variant="body2" 
-                              sx={{ 
+                            <Typography
+                              variant="body2"
+                              sx={{
                                 color: 'primary.main',
                                 fontWeight: 500
                               }}
                             >
                               {category.count || 1}
                             </Typography>
-                            <ArrowForwardIcon sx={{ 
-                              fontSize: 18, 
+                            <ArrowForwardIcon sx={{
+                              fontSize: 18,
                               color: 'primary.main',
                               opacity: 0.8
                             }} />
@@ -5809,11 +6074,11 @@ export const StudentProfile: React.FC = () => {
           ))}
         </ModernTabs>
 
-        <Box sx={{ 
-          mt: { xs: 2, sm: 3 }, 
-          bgcolor: 'background.paper', 
-          borderRadius: { xs: 1.5, sm: 2 }, 
-          overflow: 'hidden' 
+        <Box sx={{
+          mt: { xs: 2, sm: 3 },
+          bgcolor: 'background.paper',
+          borderRadius: { xs: 1.5, sm: 2 },
+          overflow: 'hidden'
         }}>
           <CustomTabPanel value={activeTab} index={0}>
             <FormBlocks>
@@ -5825,7 +6090,7 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <Person />
                     </Box>
-                    <Typography variant="h6" sx={{ 
+                    <Typography variant="h6" sx={{
                       fontSize: { xs: '0.95rem', sm: '1.25rem' }
                     }}>
                       Basic Information
@@ -5834,61 +6099,61 @@ export const StudentProfile: React.FC = () => {
 
                   <Grid container spacing={2}>
                     {student.form_b && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Badge fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Form-B/NIC</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Badge fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Form-B/NIC</Typography>
                             <Typography className="info-value">{student.form_b}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.dob && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <CalendarMonth fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Date of Birth</Typography>
-                        <Typography className="info-value">
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <CalendarMonth fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Date of Birth</Typography>
+                            <Typography className="info-value">
                               {new Date(student.dob).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                            </Typography>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.gender && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Wc fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Gender</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Wc fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Gender</Typography>
                             <Typography className="info-value">{student.gender}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.blood_group && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <LocalHospital fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Blood Group</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <LocalHospital fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Blood Group</Typography>
                             <Typography className="info-value">{student.blood_group}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
                   </Grid>
                 </SectionContainer>
@@ -5899,7 +6164,7 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <ContactPhone />
                     </Box>
-                    <Typography variant="h6" sx={{ 
+                    <Typography variant="h6" sx={{
                       fontSize: { xs: '0.95rem', sm: '1.25rem' }
                     }}>
                       Contact Details
@@ -5908,59 +6173,59 @@ export const StudentProfile: React.FC = () => {
 
                   <Grid container spacing={2}>
                     {student.phone && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Phone fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Student Phone</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Phone fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Student Phone</Typography>
                             <Typography className="info-value">{student.phone}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.father_mobile && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Phone fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Father's Mobile</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Phone fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Father's Mobile</Typography>
                             <Typography className="info-value">{student.father_mobile}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.mother_mobile && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Phone fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Mother's Mobile</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Phone fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Mother's Mobile</Typography>
                             <Typography className="info-value">{student.mother_mobile}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.address && (
-                    <Grid item xs={12}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Home fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Address</Typography>
+                      <Grid item xs={12}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Home fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Address</Typography>
                             <Typography className="info-value">{student.address}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
                   </Grid>
                 </SectionContainer>
@@ -5976,65 +6241,65 @@ export const StudentProfile: React.FC = () => {
 
                   <Grid container spacing={2}>
                     {student.admission_date && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <CalendarMonth fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Admission Date</Typography>
-                        <Typography className="info-value">
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <CalendarMonth fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Admission Date</Typography>
+                            <Typography className="info-value">
                               {new Date(student.admission_date).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                            </Typography>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.previous_school && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <School fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Previous School</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <School fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Previous School</Typography>
                             <Typography className="info-value">{student.previous_school}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.discount_in_fee !== undefined && student.discount_in_fee !== null && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <AttachMoney fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Fee Discount</Typography>
-                        <Typography className="info-value">
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <AttachMoney fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Fee Discount</Typography>
+                            <Typography className="info-value">
                               {student.discount_in_fee}%
-                        </Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                            </Typography>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.class?.name && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Class fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Current Class</Typography>
-                        <Typography className="info-value">
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Class fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Current Class</Typography>
+                            <Typography className="info-value">
                               {student.class.name} {student.section?.name && `- ${student.section.name}`}
-                        </Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                            </Typography>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
                   </Grid>
                 </SectionContainer>
@@ -6045,7 +6310,7 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <PostAdd />
                     </Box>
-                    <Typography variant="h6" sx={{ 
+                    <Typography variant="h6" sx={{
                       fontSize: { xs: '0.95rem', sm: '1.25rem' }
                     }}>
                       Additional Details
@@ -6054,31 +6319,31 @@ export const StudentProfile: React.FC = () => {
 
                   <Grid container spacing={2}>
                     {student.religion && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Church fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Religion</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Church fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Religion</Typography>
                             <Typography className="info-value">{student.religion}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.cast && (
-                    <Grid item xs={12} md={6}>
-                      <InfoItem>
-                        <Box className="icon-container">
-                          <Groups fontSize="small" />
-                        </Box>
-                        <Box className="info-content">
-                        <Typography className="info-label">Cast</Typography>
+                      <Grid item xs={12} md={6}>
+                        <InfoItem>
+                          <Box className="icon-container">
+                            <Groups fontSize="small" />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Cast</Typography>
                             <Typography className="info-value">{student.cast}</Typography>
-                      </Box>
-                      </InfoItem>
-                    </Grid>
+                          </Box>
+                        </InfoItem>
+                      </Grid>
                     )}
 
                     {student.disease && (
@@ -6088,9 +6353,9 @@ export const StudentProfile: React.FC = () => {
                             <MedicalInformation fontSize="small" />
                           </Box>
                           <Box className="info-content">
-                          <Typography className="info-label">Medical Conditions</Typography>
-                          <Typography className="info-value">{student.disease}</Typography>
-                        </Box>
+                            <Typography className="info-label">Medical Conditions</Typography>
+                            <Typography className="info-value">{student.disease}</Typography>
+                          </Box>
                         </InfoItem>
                       </Grid>
                     )}
@@ -6102,9 +6367,9 @@ export const StudentProfile: React.FC = () => {
                             <Psychology fontSize="small" />
                           </Box>
                           <Box className="info-content">
-                          <Typography className="info-label">Identification Mark</Typography>
-                          <Typography className="info-value">{student.id_mark}</Typography>
-                        </Box>
+                            <Typography className="info-label">Identification Mark</Typography>
+                            <Typography className="info-value">{student.id_mark}</Typography>
+                          </Box>
                         </InfoItem>
                       </Grid>
                     )}
@@ -6116,9 +6381,9 @@ export const StudentProfile: React.FC = () => {
                             <Groups fontSize="small" />
                           </Box>
                           <Box className="info-content">
-                          <Typography className="info-label">Total Siblings</Typography>
-                          <Typography className="info-value">{student.total_siblings}</Typography>
-                        </Box>
+                            <Typography className="info-label">Total Siblings</Typography>
+                            <Typography className="info-value">{student.total_siblings}</Typography>
+                          </Box>
                         </InfoItem>
                       </Grid>
                     )}
@@ -6130,9 +6395,9 @@ export const StudentProfile: React.FC = () => {
                             <Diversity3 fontSize="small" />
                           </Box>
                           <Box className="info-content">
-                          <Typography className="info-label">OSC Status</Typography>
-                          <Typography className="info-value">{student.osc}</Typography>
-                        </Box>
+                            <Typography className="info-label">OSC Status</Typography>
+                            <Typography className="info-value">{student.osc}</Typography>
+                          </Box>
                         </InfoItem>
                       </Grid>
                     )}
@@ -6144,9 +6409,9 @@ export const StudentProfile: React.FC = () => {
                             <Note fontSize="small" />
                           </Box>
                           <Box className="info-content">
-                          <Typography className="info-label">Additional Notes</Typography>
-                          <Typography className="info-value">{student.additional_note}</Typography>
-                        </Box>
+                            <Typography className="info-label">Additional Notes</Typography>
+                            <Typography className="info-value">{student.additional_note}</Typography>
+                          </Box>
                         </InfoItem>
                       </Grid>
                     )}
@@ -6162,7 +6427,7 @@ export const StudentProfile: React.FC = () => {
                     <Box className="icon-wrapper">
                       <FamilyRestroom />
                     </Box>
-                    <Typography variant="h6" sx={{ 
+                    <Typography variant="h6" sx={{
                       fontSize: { xs: '0.95rem', sm: '1.25rem' }
                     }}>
                       Family Information
@@ -6179,84 +6444,84 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Grid container spacing={2}>
                         {student.father_name && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Person fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Name</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Person fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Name</Typography>
                                 <Typography className="info-value">{student.father_name}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.father_national_id && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Badge fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">National ID</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Badge fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">National ID</Typography>
                                 <Typography className="info-value">{student.father_national_id}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.father_occupation && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Work fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Occupation</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Work fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Occupation</Typography>
                                 <Typography className="info-value">{student.father_occupation}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.father_income !== undefined && student.father_income !== null && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <AccountBalance fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Income</Typography>
-                              <Typography className="info-value">
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <AccountBalance fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Income</Typography>
+                                <Typography className="info-value">
                                   Rs. {student.father_income.toLocaleString()}
-                              </Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                                </Typography>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.father_education && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <School fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Education</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <School fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Education</Typography>
                                 <Typography className="info-value">{student.father_education}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.father_profession && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Work fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Profession</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Work fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Profession</Typography>
                                 <Typography className="info-value">{student.father_profession}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                       </Grid>
                     </Grid>
@@ -6270,84 +6535,84 @@ export const StudentProfile: React.FC = () => {
                       </Box>
                       <Grid container spacing={2}>
                         {student.mother_name && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Person fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Name</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Person fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Name</Typography>
                                 <Typography className="info-value">{student.mother_name}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.mother_national_id && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Badge fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">National ID</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Badge fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">National ID</Typography>
                                 <Typography className="info-value">{student.mother_national_id}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.mother_occupation && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Work fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Occupation</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Work fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Occupation</Typography>
                                 <Typography className="info-value">{student.mother_occupation}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.mother_profession && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <Work fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Profession</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <Work fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Profession</Typography>
                                 <Typography className="info-value">{student.mother_profession}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.mother_education && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
-                              <School fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
-                              <Typography className="info-label">Education</Typography>
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
+                                <School fontSize="small" />
+                              </Box>
+                              <Box className="info-content">
+                                <Typography className="info-label">Education</Typography>
                                 <Typography className="info-value">{student.mother_education}</Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                         {student.mother_income !== undefined && student.mother_income !== null && (
-                        <Grid item xs={12} md={6}>
-                          <InfoItem>
-                            <Box className="icon-container">
+                          <Grid item xs={12} md={6}>
+                            <InfoItem>
+                              <Box className="icon-container">
                                 <AccountBalance fontSize="small" />
-                            </Box>
-                            <Box className="info-content">
+                              </Box>
+                              <Box className="info-content">
                                 <Typography className="info-label">Income</Typography>
                                 <Typography className="info-value">
                                   Rs. {student.mother_income.toLocaleString()}
                                 </Typography>
-                            </Box>
-                          </InfoItem>
-                        </Grid>
+                              </Box>
+                            </InfoItem>
+                          </Grid>
                         )}
                       </Grid>
                     </Grid>
@@ -6366,1887 +6631,2011 @@ export const StudentProfile: React.FC = () => {
               </Box>
             ) : (
               <>
-            {/* Reports Summary Cards */}
-            <Box sx={{ mb: 3 }}>
-              <Grid container spacing={2}>
-                {/* Total Reports Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <Assignment sx={{ color: 'primary.main', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="primary.main" fontWeight={600}>
-                          {reports.length}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Reports
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-
-                {/* Active Reports Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.warning.main, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <Timer sx={{ color: 'warning.main', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="warning.main" fontWeight={600}>
-                          {activeReportsCount}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Active Reports
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-
-                {/* Resolved Reports Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.success.main, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <CheckCircle sx={{ color: 'success.main', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="success.main" fontWeight={600}>
-                          {resolvedReportsCount}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Resolved Reports
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-
-                {/* Dismissed Reports Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.grey[500], 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <Cancel sx={{ color: 'grey.500', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="grey.500" fontWeight={600}>
-                          {dismissedReportsCount}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Dismissed Reports
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Reports List */}
-            <Grid container spacing={2}>
-              {reports.map((report, index) => (
-                <Grid item xs={12} key={report.id}>
-                  <ReportCard>
-                    <Box className="report-header">
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography 
-                            variant="subtitle2" 
-                            sx={{ 
-                              color: 'text.secondary',
-                              minWidth: 'auto',
-                              fontWeight: 600,
-                              mr: 1
-                            }}
-                          >
-                            #{reports.length - index}
-                          </Typography>
-                          <CategoryChip
-                            label={report.category?.name}
-                            size="small"
-                            icon={<Assignment fontSize="small" />}
-                          />
+                {/* Reports Summary Cards */}
+                <Box sx={{ mb: 3 }}>
+                  <Grid container spacing={2}>
+                    {/* Total Reports Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Assignment sx={{ color: 'primary.main', fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4" color="primary.main" fontWeight={600}>
+                              {reports.length}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Total Reports
+                            </Typography>
+                          </Box>
                         </Box>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            color: 'text.secondary',
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Active Reports Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.warning.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Timer sx={{ color: 'warning.main', fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4" color="warning.main" fontWeight={600}>
+                              {activeReportsCount}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Active Reports
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Resolved Reports Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.success.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CheckCircle sx={{ color: 'success.main', fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4" color="success.main" fontWeight={600}>
+                              {resolvedReportsCount}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Resolved Reports
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Dismissed Reports Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.grey[500], 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Cancel sx={{ color: 'grey.500', fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4" color="grey.500" fontWeight={600}>
+                              {dismissedReportsCount}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Dismissed Reports
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {/* Reports List */}
+                <Grid container spacing={2}>
+                  {reports.map((report, index) => (
+                    <Grid item xs={12} key={report.id}>
+                      <ReportCard>
+                        <Box className="report-header">
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  color: 'text.secondary',
+                                  minWidth: 'auto',
+                                  fontWeight: 600,
+                                  mr: 1
+                                }}
+                              >
+                                #{reports.length - index}
+                              </Typography>
+                              <CategoryChip
+                                label={report.category?.name}
+                                size="small"
+                                icon={<Assignment fontSize="small" />}
+                              />
+                            </Box>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'text.secondary',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                ml: 1
+                              }}
+                            >
+                              {new Date(report.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                              <Box component="span" sx={{ color: 'text.disabled' }}>|</Box>
+                              <Box
+                                component="span"
+                                sx={{
+                                  color: theme => {
+                                    switch (report.status) {
+                                      case 'pending': return theme.palette.warning.main;
+                                      case 'in_review': return theme.palette.info.main;
+                                      case 'resolved': return theme.palette.success.main;
+                                      case 'dismissed': return theme.palette.grey[500];
+                                      case 'in_progress': return theme.palette.primary.main;
+                                      default: return theme.palette.text.secondary;
+                                    }
+                                  },
+                                  fontWeight: 600,
+                                  textTransform: 'capitalize'
+                                }}
+                              >
+                                {formatStatus(report.status)}
+                              </Box>
+                              {report.reporter?.name && (
+                                <>
+                                  <Box component="span" sx={{ color: 'text.disabled' }}>|</Box>
+                                  <Box component="span" sx={{ color: 'text.secondary' }}>
+                                    by {report.reporter.name}
+                                  </Box>
+                                </>
+                              )}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        <Box className="report-content">
+                          <Typography variant="body1" gutterBottom>
+                            {report.description}
+                          </Typography>
+                          {report.action_taken && (
+                            <Box sx={{ mt: 2 }}>
+                              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                Action Taken:
+                              </Typography>
+                              <Typography variant="body2">
+                                {report.action_taken}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+
+                        <Box
+                          onClick={() => toggleUpdates(report.id)}
+                          sx={{
+                            p: 2,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
-                            ml: 1
+                            cursor: report.updates?.length ? 'pointer' : 'default',
+                            borderTop: '1px solid',
+                            borderColor: 'divider',
+                            bgcolor: theme => alpha(theme.palette.background.default, 0.5),
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              bgcolor: theme => report.updates?.length ? alpha(theme.palette.primary.main, 0.05) : 'inherit'
+                            },
+                            borderBottomLeftRadius: expandedUpdates[report.id] ? 0 : 'inherit',
+                            borderBottomRightRadius: expandedUpdates[report.id] ? 0 : 'inherit'
                           }}
                         >
-                          {new Date(report.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                          <Box component="span" sx={{ color: 'text.disabled' }}>|</Box>
-                          <Box
-                            component="span"
-                            sx={{
-                              color: theme => {
-                                switch (report.status) {
-                                  case 'pending': return theme.palette.warning.main;
-                                  case 'in_review': return theme.palette.info.main;
-                                  case 'resolved': return theme.palette.success.main;
-                                  case 'dismissed': return theme.palette.grey[500];
-                                  case 'in_progress': return theme.palette.primary.main;
-                                  default: return theme.palette.text.secondary;
-                                }
-                              },
-                              fontWeight: 600,
-                              textTransform: 'capitalize'
-                            }}
-                          >
-                            {formatStatus(report.status)}
-                          </Box>
-                          {report.reporter?.name && (
-                            <>
-                              <Box component="span" sx={{ color: 'text.disabled' }}>|</Box>
-                              <Box component="span" sx={{ color: 'text.secondary' }}>
-                                by {report.reporter.name}
-                              </Box>
-                            </>
-                          )}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box className="report-content">
-                      <Typography variant="body1" gutterBottom>
-                        {report.description}
-                      </Typography>
-                      {report.action_taken && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            Action Taken:
-                          </Typography>
-                          <Typography variant="body2">
-                            {report.action_taken}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-
-                    <Box 
-                      onClick={() => toggleUpdates(report.id)}
-                      sx={{ 
-                        p: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        cursor: report.updates?.length ? 'pointer' : 'default',
-                        borderTop: '1px solid',
-                        borderColor: 'divider',
-                        bgcolor: theme => alpha(theme.palette.background.default, 0.5),
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: theme => report.updates?.length ? alpha(theme.palette.primary.main, 0.05) : 'inherit'
-                        },
-                        borderBottomLeftRadius: expandedUpdates[report.id] ? 0 : 'inherit',
-                        borderBottomRightRadius: expandedUpdates[report.id] ? 0 : 'inherit'
-                      }}
-                    >
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1,
-                        flex: 1
-                      }}>
-                        {report.updates && report.updates.length > 0 && (
-                          <KeyboardArrowDownIcon
-                            sx={{
-                              transform: expandedUpdates[report.id] ? 'rotate(180deg)' : 'none',
-                              transition: 'transform 0.2s ease',
-                              color: 'primary.main'
-                            }}
-                          />
-                        )}
-                        <Typography variant="subtitle2" color="primary.main">
-                          Report Updates
-                        </Typography>
-                        <Chip 
-                          size="small"
-                          label={report.updates?.length || 0}
-                          sx={{ 
-                            ml: 1,
-                            bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
-                            color: 'primary.main'
-                          }}
-                        />
-                      </Box>
-                      {report.updates && report.updates.length > 0 && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <AccessTime fontSize="small" sx={{ color: 'text.secondary', opacity: 0.7 }} />
-                          <Typography variant="caption" color="text.secondary">
-                            Last updated: {report.updates[0] && new Date(report.updates[0].created_at).toLocaleDateString()}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-
-                    {report.updates && report.updates.length > 0 && (
-                      <Collapse in={expandedUpdates[report.id]}>
-                        <Box sx={{ 
-                          position: 'relative',
-                          p: 2,
-                          bgcolor: theme => alpha(theme.palette.background.default, 0.5)
-                        }}>
-                          {report.updates.map((update, index, updates) => (
-                            <Box
-                              key={update.id}
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            flex: 1
+                          }}>
+                            {report.updates && report.updates.length > 0 && (
+                              <KeyboardArrowDownIcon
+                                sx={{
+                                  transform: expandedUpdates[report.id] ? 'rotate(180deg)' : 'none',
+                                  transition: 'transform 0.2s ease',
+                                  color: 'primary.main'
+                                }}
+                              />
+                            )}
+                            <Typography variant="subtitle2" color="primary.main">
+                              Report Updates
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={report.updates?.length || 0}
                               sx={{
-                                position: 'relative',
-                                pl: 6,
-                                pb: index === updates.length - 1 ? 0 : 3,
-                                '&::before': {
-                                  content: '""',
-                                  position: 'absolute',
-                                  left: 24,
-                                  top: 6,
-                                  width: 12,
-                                  height: 12,
-                                  borderRadius: '50%',
-                                  bgcolor: 'primary.main',
-                                  boxShadow: theme => `0 0 0 4px ${alpha(theme.palette.primary.main, 0.1)}`,
-                                  zIndex: 1
-                                },
-                                '&::after': index !== updates.length - 1 ? {
-                                  content: '""',
-                                  position: 'absolute',
-                                  left: 29,
-                                  top: 18,
-                                  width: 2,
-                                  height: 'calc(100% - 6px)',
-                                  background: theme => `linear-gradient(180deg, 
+                                ml: 1,
+                                bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+                                color: 'primary.main'
+                              }}
+                            />
+                          </Box>
+                          {report.updates && report.updates.length > 0 && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <AccessTime fontSize="small" sx={{ color: 'text.secondary', opacity: 0.7 }} />
+                              <Typography variant="caption" color="text.secondary">
+                                Last updated: {report.updates[0] && new Date(report.updates[0].created_at).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+
+                        {report.updates && report.updates.length > 0 && (
+                          <Collapse in={expandedUpdates[report.id]}>
+                            <Box sx={{
+                              position: 'relative',
+                              p: 2,
+                              bgcolor: theme => alpha(theme.palette.background.default, 0.5)
+                            }}>
+                              {report.updates.map((update, index, updates) => (
+                                <Box
+                                  key={update.id}
+                                  sx={{
+                                    position: 'relative',
+                                    pl: 6,
+                                    pb: index === updates.length - 1 ? 0 : 3,
+                                    '&::before': {
+                                      content: '""',
+                                      position: 'absolute',
+                                      left: 24,
+                                      top: 6,
+                                      width: 12,
+                                      height: 12,
+                                      borderRadius: '50%',
+                                      bgcolor: 'primary.main',
+                                      boxShadow: theme => `0 0 0 4px ${alpha(theme.palette.primary.main, 0.1)}`,
+                                      zIndex: 1
+                                    },
+                                    '&::after': index !== updates.length - 1 ? {
+                                      content: '""',
+                                      position: 'absolute',
+                                      left: 29,
+                                      top: 18,
+                                      width: 2,
+                                      height: 'calc(100% - 6px)',
+                                      background: theme => `linear-gradient(180deg, 
                                     ${alpha(theme.palette.primary.main, 0.3)} 0%, 
                                     ${alpha(theme.palette.primary.main, 0.1)} 100%
                                   )`,
-                                  borderRadius: '4px'
-                                } : {}
-                              }}
-                            >
-                              <Box sx={{ mb: 1 }}>
-                                <Typography variant="subtitle2">
-                                  Status changed from{' '}
-                                  <Box
-                                    component="span"
-                                    sx={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      px: 1,
-                                      py: 0.5,
-                                      borderRadius: 1,
-                                      bgcolor: theme => alpha(theme.palette.grey[500], 0.1),
-                                      color: 'text.secondary',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    {formatStatus(update.previous_status)}
-                                  </Box>
-                                  {' '}to{' '}
-                                  <Box
-                                    component="span"
-                                    sx={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      px: 1,
-                                      py: 0.5,
-                                      borderRadius: 1,
-                                      bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
-                                      color: 'primary.main',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    {formatStatus(update.new_status)}
-                                  </Box>
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                  by {update.staff?.name} • {new Date(update.created_at).toLocaleString()}
-                                </Typography>
-                              </Box>
-                              {update.update_note && (
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    color: 'text.secondary',
-                                    bgcolor: theme => alpha(theme.palette.background.paper, 0.5),
-                                    p: 1.5,
-                                    borderRadius: 1,
-                                    border: '1px solid',
-                                    borderColor: 'divider'
+                                      borderRadius: '4px'
+                                    } : {}
                                   }}
                                 >
-                                  {update.update_note}
-                                </Typography>
-                              )}
+                                  <Box sx={{ mb: 1 }}>
+                                    <Typography variant="subtitle2">
+                                      Status changed from{' '}
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          px: 1,
+                                          py: 0.5,
+                                          borderRadius: 1,
+                                          bgcolor: theme => alpha(theme.palette.grey[500], 0.1),
+                                          color: 'text.secondary',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600
+                                        }}
+                                      >
+                                        {formatStatus(update.previous_status)}
+                                      </Box>
+                                      {' '}to{' '}
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          px: 1,
+                                          py: 0.5,
+                                          borderRadius: 1,
+                                          bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+                                          color: 'primary.main',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600
+                                        }}
+                                      >
+                                        {formatStatus(update.new_status)}
+                                      </Box>
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                      by {update.staff?.name} • {new Date(update.created_at).toLocaleString()}
+                                    </Typography>
+                                  </Box>
+                                  {update.update_note && (
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        color: 'text.secondary',
+                                        bgcolor: theme => alpha(theme.palette.background.paper, 0.5),
+                                        p: 1.5,
+                                        borderRadius: 1,
+                                        border: '1px solid',
+                                        borderColor: 'divider'
+                                      }}
+                                    >
+                                      {update.update_note}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ))}
                             </Box>
-                          ))}
-                        </Box>
-                      </Collapse>
-                    )}
-                  </ReportCard>
-                </Grid>
-              ))}
+                          </Collapse>
+                        )}
+                      </ReportCard>
+                    </Grid>
+                  ))}
 
-              {reports.length === 0 && (
-                <Grid item xs={12}>
-                  <Box sx={{ 
-                    p: 4, 
-                    textAlign: 'center',
-                    bgcolor: theme => alpha(theme.palette.background.paper, 0.6),
-                    borderRadius: 2
-                  }}>
-                    <Assignment sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
-                      No Reports Found
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      There are no reports recorded for this student.
-                    </Typography>
-                  </Box>
+                  {reports.length === 0 && (
+                    <Grid item xs={12}>
+                      <Box sx={{
+                        p: 4,
+                        textAlign: 'center',
+                        bgcolor: theme => alpha(theme.palette.background.paper, 0.6),
+                        borderRadius: 2
+                      }}>
+                        <Assignment sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
+                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                          No Reports Found
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          There are no reports recorded for this student.
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
                 </Grid>
-              )}
-            </Grid>
               </>
             )}
           </CustomTabPanel>
 
           <CustomTabPanel value={activeTab} index={2}>
             {tabDataLoading[2] ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-                <CircularProgress />
-              </Box>
+              <ExaminationsSkeleton />
             ) : (
               <>
-            {/* Examinations Summary */}
-            <Box sx={{ mb: 3 }}>
-              <Grid container spacing={2}>
-                {/* Total Examinations Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <Quiz sx={{ color: 'primary.main', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="primary.main" fontWeight={600}>
-                          {examSummaries.length}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Examinations
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-
-                {/* Average Performance Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.success.main, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <TrendingUp sx={{ color: 'success.main', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="success.main" fontWeight={600}>
-                          {averageExamPercentage}%
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Average Performance
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-
-                {/* Pass Rate Card */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <GlassCard>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        bgcolor: theme => alpha(theme.palette.info.main, 0.1),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <CheckCircle sx={{ color: 'info.main', fontSize: 24 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="h4" color="info.main" fontWeight={600}>
-                          {passRate}%
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Pass Rate
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </GlassCard>
-                </Grid>
-
-              </Grid>
-            </Box>
-
-            {/* Examinations List */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Examination Records
-              </Typography>
-              {examSummaries.length === 0 ? (
-                <GlassCard sx={{ p: 4, textAlign: 'center' }}>
-                  <Quiz sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                    No Examination Records Found
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    This student has not appeared in any examinations yet.
-                  </Typography>
-                </GlassCard>
-              ) : (
-                <Grid container spacing={2}>
-                  {examSummaries.map((exam) => (
-                    <Grid item xs={12} md={12} key={exam.exam_id}>
-                      <GlassCard sx={{ p: 3 }}>
-                        <Box 
-                          sx={{ 
-                            cursor: 'pointer',
-                            '&:hover': {
-                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                              borderRadius: 1
-                            },
-                            p: { xs: 1, sm: 1.5 },
-                            mx: { xs: -1.5, sm: -1 },
-                            my: { xs: -0.5, sm: 0 },
-                            mb: 2,
-                            transition: 'background-color 0.2s ease'
-                          }}
-                          onClick={() => toggleExamExpansion(exam.exam_id)}
-                        >
-                          {/* Top Row: Exam Name on Left, Marks and Expand Icon on Right */}
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            mb: { xs: 1, sm: 0.75 },
-                            gap: 1
+                {/* Examinations Summary */}
+                <Box sx={{ mb: 3 }}>
+                  <Grid container spacing={2}>
+                    {/* Total Examinations Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}>
-                            <Typography 
-                              variant="h6" 
-                              fontWeight={600}
-                              sx={{
-                                fontSize: { xs: '1rem', sm: '1.25rem' },
-                                flex: 1,
-                                minWidth: 0,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {exam.exam_name}
-                            </Typography>
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: { xs: 0.5, sm: 1 },
-                              flexShrink: 0
-                            }}>
-                              <Typography 
-                                variant="h5"
-                                fontWeight={700} 
-                                color={exam.status === 'pass' ? 'success.main' : 'error.main'}
-                                sx={{
-                                  fontSize: { xs: '1.25rem', sm: '1.75rem' },
-                                  lineHeight: 1,
-                                  whiteSpace: 'nowrap'
-                                }}
-                              >
-                                {exam.obtained_marks}/{exam.total_marks}
-                              </Typography>
-                              {expandedExams[exam.exam_id] ? 
-                                <KeyboardArrowDownIcon fontSize="small" sx={{ flexShrink: 0 }} /> : 
-                                <KeyboardArrowRightIcon fontSize="small" sx={{ flexShrink: 0 }} />
-                              }
-                            </Box>
+                            <Quiz sx={{ color: 'primary.main', fontSize: 24 }} />
                           </Box>
-
-                          {/* Middle Row: Chips (Type, Status, Percentage, Position) */}
-                          <Box sx={{ 
-                            display: 'flex', 
-                            gap: { xs: 0.5, sm: 1 }, 
-                            mb: { xs: 1, sm: 1 }, 
-                            flexWrap: 'wrap', 
-                            alignItems: 'center' 
-                          }}>
-                            <Chip 
-                              label={exam.exam_type} 
-                              color="info"
-                              variant="outlined"
-                              size="small"
-                              sx={{
-                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                height: { xs: 20, sm: 24 },
-                                '& .MuiChip-label': {
-                                  px: { xs: 0.75, sm: 1 }
-                                }
-                              }}
-                            />
-                            <Chip 
-                              label={exam.status === 'pass' ? 'Passed' : 'Failed'} 
-                              color={exam.status === 'pass' ? 'success' : 'error'}
-                              size="small"
-                              sx={{
-                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                height: { xs: 20, sm: 24 },
-                                '& .MuiChip-label': {
-                                  px: { xs: 0.75, sm: 1 }
-                                }
-                              }}
-                            />
-                            <Chip 
-                              label={`${exam.percentage.toFixed(1)}%`} 
-                              color={exam.status === 'pass' ? 'success' : 'error'}
-                              variant="filled"
-                              size="small"
-                              sx={{
-                                fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                height: { xs: 20, sm: 24 },
-                                fontWeight: 600,
-                                '& .MuiChip-label': {
-                                  px: { xs: 0.75, sm: 1 }
-                                }
-                              }}
-                            />
-                            {exam.position && exam.total_strength && (
-                              <Chip 
-                                label={`Position: ${exam.position}/${exam.total_strength}`} 
-                                color="warning"
-                                variant="outlined"
-                                size="small"
-                                sx={{
-                                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                                  height: { xs: 20, sm: 24 },
-                                  '& .MuiChip-label': {
-                                    px: { xs: 0.75, sm: 1 }
-                                  }
-                                }}
-                              />
-                            )}
+                          <Box>
+                            <Typography variant="h4" color="primary.main" fontWeight={600}>
+                              {examSummaries.length}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Total Examinations
+                            </Typography>
                           </Box>
                         </Box>
-                        
-                        <Collapse in={expandedExams[exam.exam_id]}>
-                          <Box>
-                        <Divider sx={{ my: 2 }} />
-                        
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, fontSize: '0.75rem' }}>
-                            Subject-wise Performance
-                          </Typography>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            gap: 0.5,
-                            '& > *': {
-                              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                              '&:last-child': {
-                                borderBottom: 'none'
-                              }
-                            }
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Average Performance Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.success.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}>
-                            {exam.subjects.map((subject) => (
-                              <Box 
-                                key={subject.subject_id}
-                                sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'space-between',
-                                  py: 0.75,
-                                  px: 0.5,
-                                  '&:hover': {
-                                    bgcolor: theme => alpha(theme.palette.primary.main, 0.03)
-                                  }
-                                }}
-                              >
-                                <Typography 
-                                  variant="caption" 
-                                  sx={{ 
-                                    fontWeight: 500,
-                                    fontSize: '0.75rem',
-                                    flex: '1 1 auto',
+                            <TrendingUp sx={{ color: 'success.main', fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4" color="success.main" fontWeight={600}>
+                              {averageExamPercentage}%
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Average Performance
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Pass Rate Card */}
+                    <Grid item xs={12} sm={6} md={3}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '12px',
+                            bgcolor: theme => alpha(theme.palette.info.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CheckCircle sx={{ color: 'info.main', fontSize: 24 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h4" color="info.main" fontWeight={600}>
+                              {passRate}%
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Pass Rate
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+
+                  </Grid>
+                </Box>
+
+                {/* Examinations List */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Examination Records
+                  </Typography>
+                  {examSummaries.length === 0 ? (
+                    <GlassCard sx={{ p: 4, textAlign: 'center' }}>
+                      <Quiz sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                      <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                        No Examination Records Found
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        This student has not appeared in any examinations yet.
+                      </Typography>
+                    </GlassCard>
+                  ) : (
+                    <Grid container spacing={2}>
+                      {examSummaries.map((exam) => (
+                        <Grid item xs={12} md={12} key={exam.exam_id}>
+                          <GlassCard sx={{ p: 3 }}>
+                            <Box
+                              sx={{
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                  borderRadius: 1
+                                },
+                                p: { xs: 1, sm: 1.5 },
+                                mx: { xs: -1.5, sm: -1 },
+                                my: { xs: -0.5, sm: 0 },
+                                mb: 2,
+                                transition: 'background-color 0.2s ease'
+                              }}
+                              onClick={() => toggleExamExpansion(exam.exam_id)}
+                            >
+                              {/* Top Row: Exam Name on Left, Marks and Expand Icon on Right */}
+                              <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                mb: { xs: 1, sm: 0.75 },
+                                gap: 1
+                              }}>
+                                <Typography
+                                  variant="h6"
+                                  fontWeight={600}
+                                  sx={{
+                                    fontSize: { xs: '1rem', sm: '1.25rem' },
+                                    flex: 1,
                                     minWidth: 0,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                   }}
                                 >
-                                  {subject.subject?.name || 'Unknown Subject'}
+                                  {exam.exam_name}
                                 </Typography>
-                                <Box sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: 1,
-                                  flexShrink: 0,
-                                  ml: 1
+                                <Box sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: { xs: 0.5, sm: 1 },
+                                  flexShrink: 0
                                 }}>
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
-                                      fontSize: '0.7rem',
-                                      color: 'text.secondary',
+                                  <Typography
+                                    variant="h5"
+                                    fontWeight={700}
+                                    color={exam.status === 'pass' ? 'success.main' : 'error.main'}
+                                    sx={{
+                                      fontSize: { xs: '1.25rem', sm: '1.75rem' },
+                                      lineHeight: 1,
                                       whiteSpace: 'nowrap'
                                     }}
                                   >
-                                    {subject.obtained_marks}/{subject.max_marks}
+                                    {exam.obtained_marks}/{exam.total_marks}
                                   </Typography>
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
-                                      fontSize: '0.7rem',
-                                      fontWeight: 600,
-                                      color: theme => 
-                                        subject.percentage >= 80 ? theme.palette.success.main :
-                                        subject.percentage >= 60 ? theme.palette.info.main :
-                                        subject.percentage >= 40 ? theme.palette.warning.main :
-                                        theme.palette.error.main,
-                                      minWidth: '32px',
-                                      textAlign: 'right'
-                                    }}
-                                  >
-                                    {subject.percentage.toFixed(0)}%
-                                  </Typography>
-                                  {subject.grade && (
-                                    <Chip 
-                                      label={subject.grade} 
-                                      size="small" 
-                                      sx={{ 
-                                        height: 18,
-                                        fontSize: '0.65rem',
-                                        '& .MuiChip-label': {
-                                          px: 0.75,
-                                          py: 0
-                                        }
-                                      }}
-                                    />
-                                  )}
+                                  {expandedExams[exam.exam_id] ?
+                                    <KeyboardArrowDownIcon fontSize="small" sx={{ flexShrink: 0 }} /> :
+                                    <KeyboardArrowRightIcon fontSize="small" sx={{ flexShrink: 0 }} />
+                                  }
                                 </Box>
                               </Box>
-                            ))}
-                          </Box>
-                        </Box>
-                          </Box>
-                        </Collapse>
-                      </GlassCard>
+
+                              {/* Middle Row: Chips (Type, Status, Percentage, Position) */}
+                              <Box sx={{
+                                display: 'flex',
+                                gap: { xs: 0.5, sm: 1 },
+                                mb: { xs: 1, sm: 1 },
+                                flexWrap: 'wrap',
+                                alignItems: 'center'
+                              }}>
+                                <Chip
+                                  label={exam.exam_type}
+                                  color="info"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{
+                                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                    height: { xs: 20, sm: 24 },
+                                    '& .MuiChip-label': {
+                                      px: { xs: 0.75, sm: 1 }
+                                    }
+                                  }}
+                                />
+                                <Chip
+                                  label={exam.status === 'pass' ? 'Passed' : 'Failed'}
+                                  color={exam.status === 'pass' ? 'success' : 'error'}
+                                  size="small"
+                                  sx={{
+                                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                    height: { xs: 20, sm: 24 },
+                                    '& .MuiChip-label': {
+                                      px: { xs: 0.75, sm: 1 }
+                                    }
+                                  }}
+                                />
+                                <Chip
+                                  label={`${exam.percentage.toFixed(1)}%`}
+                                  color={exam.status === 'pass' ? 'success' : 'error'}
+                                  variant="filled"
+                                  size="small"
+                                  sx={{
+                                    fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                    height: { xs: 20, sm: 24 },
+                                    fontWeight: 600,
+                                    '& .MuiChip-label': {
+                                      px: { xs: 0.75, sm: 1 }
+                                    }
+                                  }}
+                                />
+                                {exam.position && exam.total_strength && (
+                                  <Chip
+                                    label={`Position: ${exam.position}/${exam.total_strength}`}
+                                    color="warning"
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{
+                                      fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                      height: { xs: 20, sm: 24 },
+                                      '& .MuiChip-label': {
+                                        px: { xs: 0.75, sm: 1 }
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+
+                            <Collapse in={expandedExams[exam.exam_id]}>
+                              <Box>
+                                <Divider sx={{ my: 2 }} />
+
+                                <Box sx={{ mb: 2 }}>
+                                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, fontSize: '0.75rem' }}>
+                                    Subject-wise Performance
+                                  </Typography>
+                                  <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 0.5,
+                                    '& > *': {
+                                      borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                                      '&:last-child': {
+                                        borderBottom: 'none'
+                                      }
+                                    }
+                                  }}>
+                                    {exam.subjects.map((subject) => (
+                                      <Box
+                                        key={subject.subject_id}
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          py: 0.75,
+                                          px: 0.5,
+                                          '&:hover': {
+                                            bgcolor: theme => alpha(theme.palette.primary.main, 0.03)
+                                          }
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            fontWeight: 500,
+                                            fontSize: '0.75rem',
+                                            flex: '1 1 auto',
+                                            minWidth: 0,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                          }}
+                                        >
+                                          {subject.subject?.name || 'Unknown Subject'}
+                                        </Typography>
+                                        <Box sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 1,
+                                          flexShrink: 0,
+                                          ml: 1
+                                        }}>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              fontSize: '0.7rem',
+                                              color: 'text.secondary',
+                                              whiteSpace: 'nowrap'
+                                            }}
+                                          >
+                                            {subject.obtained_marks}/{subject.max_marks}
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              fontSize: '0.7rem',
+                                              fontWeight: 600,
+                                              color: theme =>
+                                                subject.percentage >= 80 ? theme.palette.success.main :
+                                                  subject.percentage >= 60 ? theme.palette.info.main :
+                                                    subject.percentage >= 40 ? theme.palette.warning.main :
+                                                      theme.palette.error.main,
+                                              minWidth: '32px',
+                                              textAlign: 'right'
+                                            }}
+                                          >
+                                            {subject.percentage.toFixed(0)}%
+                                          </Typography>
+                                          {subject.grade && (
+                                            <Chip
+                                              label={subject.grade}
+                                              size="small"
+                                              sx={{
+                                                height: 18,
+                                                fontSize: '0.65rem',
+                                                '& .MuiChip-label': {
+                                                  px: 0.75,
+                                                  py: 0
+                                                }
+                                              }}
+                                            />
+                                          )}
+                                        </Box>
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                </Box>
+                              </Box>
+                            </Collapse>
+                          </GlassCard>
+                        </Grid>
+                      ))}
                     </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Box>
+                  )}
+                </Box>
               </>
             )}
           </CustomTabPanel>
 
           <CustomTabPanel value={activeTab} index={3}>
             {tabDataLoading[3] ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-                <CircularProgress />
-              </Box>
+              <TestRecordsSkeleton />
             ) : (
               <>
-            {/* Session Selector */}
-            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Test Records
-              </Typography>
-              <Box sx={{ minWidth: 200 }}>
-                <select
-                  value={selectedTestSession || ''}
-                  onChange={(e) => setSelectedTestSession(e.target.value ? parseInt(e.target.value) : null)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    backgroundColor: 'white',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="">Select Session</option>
-                  {sessions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {session.name} {session.is_active ? '(Active)' : ''} - {new Date(session.start_date).getFullYear()}
-                    </option>
-                  ))}
-                </select>
-              </Box>
-            </Box>
-
-            {!selectedTestSession ? (
-              <GlassCard sx={{ p: 4, textAlign: 'center' }}>
-                <Assessment sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                  Select a Session
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Please select a session from the dropdown above to view test records
-                </Typography>
-              </GlassCard>
-            ) : testSessionData.length > 0 ? (
-              <>
-                {/* Test Summary */}
-                <GlassCard sx={{ p: 3, mb: 3 }}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    Test Summary
+                {/* Session Selector */}
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Test Records
                   </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6} sm={3}>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h4" color="primary.main" fontWeight={700}>
-                          {testSummaryData.totalSubjects}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Subjects
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h4" color="success.main" fontWeight={700}>
-                          {testSummaryData.totalTests}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Tests
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h4" color="info.main" fontWeight={700}>
-                          {testSummaryData.totalObtainedMarks}/{testSummaryData.totalMaxMarks}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Marks
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h4" color="warning.main" fontWeight={700}>
-                          {testSummaryData.totalPercentage.toFixed(1)}%
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Overall %
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </GlassCard>
+                  <Box sx={{ minWidth: 200 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      value={selectedTestSession || ''}
+                      onChange={(e) => setSelectedTestSession(e.target.value ? parseInt(e.target.value as string) : null)}
+                      variant="outlined"
+                      sx={{
+                        bgcolor: 'background.paper',
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2
+                        }
+                      }}
+                    >
+                      {sessions.map((session) => (
+                        <MenuItem key={session.id} value={session.id}>
+                          {session.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                </Box>
 
-                {/* Subject-wise Test Records */}
-                <Grid container spacing={2}>
-                  {testSessionData.map((subjectData, index) => (
-                    <Grid item xs={12} md={6} key={index}>
-                      <GlassCard sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" fontWeight={600}>
-                            {subjectData.test_date} ({testSubjects.filter(date => subjectData.subject_scores[date] !== '-').length})
-                          </Typography>
-                          <Chip 
-                            label={subjectData.average_grade} 
-                            color={subjectData.average_grade === 'A+' || subjectData.average_grade === 'A' ? 'success' : 
-                                   subjectData.average_grade === 'B+' || subjectData.average_grade === 'B' ? 'warning' : 'error'}
-                            variant="filled"
-                            size="small"
-                          />
-                        </Box>
-                        
-                        <Box sx={{ mb: 2 }}>
-                          {testSubjects
-                            .filter(date => subjectData.subject_scores[date] !== '-')
-                            .map((date) => (
-                              <Box key={date} sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                py: 1,
-                                borderBottom: '1px solid',
-                                borderColor: 'divider'
-                              }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  {new Date(date).toLocaleDateString('en-GB')}
-                                </Typography>
-                                <Typography variant="body2" fontWeight={600} color="primary.main">
-                                  {subjectData.subject_scores[date]}
-                                </Typography>
+                {!selectedTestSession ? (
+                  <GlassCard sx={{ p: 4, textAlign: 'center' }}>
+                    <Assessment sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                      Select a Session
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Please select a session from the dropdown above to view test records
+                    </Typography>
+                  </GlassCard>
+                ) : testSessionLoading ? (
+                  <TestRecordsContentSkeleton />
+                ) : testSessionData.length > 0 ? (
+                  <>
+                    {/* Test Summary */}
+                    <GlassCard sx={{ p: 3, mb: 3 }}>
+                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        Test Summary
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6} sm={3}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h4" color="primary.main" fontWeight={700}>
+                              {testSummaryData.totalSubjects}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Total Subjects
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h4" color="success.main" fontWeight={700}>
+                              {testSummaryData.totalTests}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Total Tests
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h4" color="info.main" fontWeight={700}>
+                              {testSummaryData.totalObtainedMarks}/{testSummaryData.totalMaxMarks}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Total Marks
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h4" color="warning.main" fontWeight={700}>
+                              {testSummaryData.totalPercentage.toFixed(1)}%
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Overall %
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </GlassCard>
+
+                    {/* Subject-wise Test Records */}
+                    <Grid container spacing={2}>
+                      {testSessionData.map((subjectData, index) => {
+                        const isExpanded = expandedTestCards.has(index);
+                        const toggleCard = () => {
+                          setExpandedTestCards(prev => {
+                            const newSet = new Set(prev);
+                            if (newSet.has(index)) {
+                              newSet.delete(index);
+                            } else {
+                              newSet.add(index);
+                            }
+                            return newSet;
+                          });
+                        };
+
+                        return (
+                          <Grid item xs={12} md={6} lg={4} key={index}>
+                            <GlassCard
+                              sx={{
+                                p: 2,
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                                }
+                              }}
+                            >
+                              <Box
+                                onClick={toggleCard}
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  mb: isExpanded ? 1.5 : 0,
+                                  pb: isExpanded ? 1 : 0,
+                                  borderBottom: isExpanded ? '1px solid' : 'none',
+                                  borderColor: 'divider',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                  '&:hover': {
+                                    bgcolor: theme => alpha(theme.palette.divider, 0.1),
+                                    borderRadius: 1,
+                                    mx: -1,
+                                    px: 1
+                                  },
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, minWidth: 0 }}>
+                                  <Typography variant="subtitle1" fontWeight={600} noWrap>
+                                    {subjectData.test_date} ({testSubjects.filter(date => subjectData.subject_scores[date] !== '-').length})
+                                  </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                                  <Box sx={{
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: 1,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+                                    color: 'primary.main',
+                                    border: '1px solid',
+                                    borderColor: theme => alpha(theme.palette.primary.main, 0.2),
+                                    whiteSpace: 'nowrap',
+                                    display: { xs: 'none', sm: 'block' }
+                                  }}>
+                                    {subjectData.obtained_marks}/{subjectData.total_marks}
+                                  </Box>
+                                  <Box sx={{
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: 1,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
+                                    color: 'primary.main',
+                                    border: '1px solid',
+                                    borderColor: theme => alpha(theme.palette.primary.main, 0.2),
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {subjectData.percentage.toFixed(1)}%
+                                  </Box>
+                                  <Box sx={{
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: 1,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    bgcolor: subjectData.average_grade === 'A+' || subjectData.average_grade === 'A' ? '#10b981' :
+                                      subjectData.average_grade === 'B+' || subjectData.average_grade === 'B' ? '#f59e0b' :
+                                        subjectData.average_grade === 'C+' || subjectData.average_grade === 'C' ? '#f97316' : '#ef4444',
+                                    color: 'white',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {subjectData.average_grade}
+                                  </Box>
+                                  <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'text.secondary',
+                                    transition: 'transform 0.2s ease',
+                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                                  }}>
+                                    <KeyboardArrowDownIcon fontSize="small" />
+                                  </Box>
+                                </Box>
                               </Box>
-                            ))}
-                        </Box>
-                        
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Total
-                          </Typography>
-                          <Typography variant="body2" fontWeight={600} color="primary.main">
-                            {subjectData.obtained_marks}/{subjectData.total_marks}
-                          </Typography>
-                        </Box>
-                        
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Percentage
-                          </Typography>
-                          <Typography variant="body2" fontWeight={600} color="primary.main">
-                            {subjectData.percentage.toFixed(1)}%
-                          </Typography>
-                        </Box>
-                      </GlassCard>
+
+                              <Collapse in={isExpanded}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  {testSubjects
+                                    .filter(date => subjectData.subject_scores[date] !== '-')
+                                    .map((date) => {
+                                      const scoreStr = String(subjectData.subject_scores[date]);
+                                      let scoreColor = 'text.primary';
+                                      if (scoreStr.includes('/')) {
+                                        const [obtained, max] = scoreStr.split('/').map(Number);
+                                        const percentage = (obtained / max) * 100;
+                                        if (percentage >= 80) scoreColor = '#10b981';
+                                        else if (percentage >= 60) scoreColor = '#f59e0b';
+                                        else scoreColor = '#ef4444';
+                                      }
+
+                                      return (
+                                        <Box key={date} sx={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          p: 1,
+                                          bgcolor: 'background.default',
+                                          borderRadius: 1,
+                                          border: '1px solid',
+                                          borderColor: 'divider'
+                                        }}>
+                                          <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                                            {new Date(date).toLocaleDateString('en-GB')}
+                                          </Typography>
+                                          <Typography variant="body2" fontWeight={600} sx={{ color: scoreColor }}>
+                                            {subjectData.subject_scores[date]}
+                                          </Typography>
+                                        </Box>
+                                      );
+                                    })}
+                                </Box>
+                              </Collapse>
+                            </GlassCard>
+                          </Grid>
+                        );
+                      })}
                     </Grid>
-                  ))}
-                </Grid>
-              </>
-            ) : (
-              <GlassCard sx={{ p: 4, textAlign: 'center' }}>
-                <Assessment sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                  No Test Records Found
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  This student has not appeared in any tests for the selected session.
-                </Typography>
-              </GlassCard>
-            )}
+                  </>
+                ) : (
+                  <GlassCard sx={{ p: 4, textAlign: 'center' }}>
+                    <Assessment sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                      No Test Records Found
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      This student has not appeared in any tests for the selected session.
+                    </Typography>
+                  </GlassCard>
+                )}
               </>
             )}
           </CustomTabPanel>
 
           {!isStudent && (
-          <CustomTabPanel value={activeTab} index={5}>
-            {tabDataLoading[5] ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <>
-            <Grid container spacing={3}>
-              {/* Top Row - Summary Cards */}
-              <Grid item xs={12}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={4}>
-                    <StatBox status="total">
-                      <AttachMoney className="stat-icon" />
-                      <Box className="stat-header">
-                        <AttachMoney className="icon" />
-                        <Typography className="stat-label">Total Fine Generated</Typography>
-                      </Box>
-                      <Typography className="stat-value">Rs. {totalFines}</Typography>
-                      <Box className="stat-percentage">
-                        <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                        {fineHistory.length} Records
-                      </Box>
-                    </StatBox>
-                  </Grid>
+            <CustomTabPanel value={activeTab} index={5}>
+              {tabDataLoading[5] ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <>
+                  <Grid container spacing={3}>
+                    {/* Top Row - Summary Cards */}
+                    <Grid item xs={12}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={4}>
+                          <StatBox status="total">
+                            <AttachMoney className="stat-icon" />
+                            <Box className="stat-header">
+                              <AttachMoney className="icon" />
+                              <Typography className="stat-label">Total Fine Generated</Typography>
+                            </Box>
+                            <Typography className="stat-value">Rs. {totalFines}</Typography>
+                            <Box className="stat-percentage">
+                              <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                              {fineHistory.length} Records
+                            </Box>
+                          </StatBox>
+                        </Grid>
 
-                  <Grid item xs={12} sm={6} md={4}>
-                    <StatBox status="present">
-                      <CheckCircle className="stat-icon" />
-                      <Box className="stat-header">
-                        <CheckCircle className="icon" />
-                        <Typography className="stat-label">Total Paid</Typography>
-                      </Box>
-                      <Typography className="stat-value">Rs. {fineDetails?.totalPaid || 0}</Typography>
-                      <Box className="stat-percentage">
-                        <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                        {totalFines > 0 ? Math.round(((fineDetails?.totalPaid || 0) / totalFines) * 100) : 0}% Paid
-                      </Box>
-                    </StatBox>
-                  </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                          <StatBox status="present">
+                            <CheckCircle className="stat-icon" />
+                            <Box className="stat-header">
+                              <CheckCircle className="icon" />
+                              <Typography className="stat-label">Total Paid</Typography>
+                            </Box>
+                            <Typography className="stat-value">Rs. {fineDetails?.totalPaid || 0}</Typography>
+                            <Box className="stat-percentage">
+                              <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                              {totalFines > 0 ? Math.round(((fineDetails?.totalPaid || 0) / totalFines) * 100) : 0}% Paid
+                            </Box>
+                          </StatBox>
+                        </Grid>
 
-                  <Grid item xs={12} sm={6} md={4}>
-                    <StatBox status="absence">
-                      <Cancel className="stat-icon" />
-                      <Box className="stat-header">
-                        <Cancel className="icon" />
-                        <Typography className="stat-label">Outstanding Balance</Typography>
-                      </Box>
-                      <Typography className="stat-value">
-                        Rs. {totalFines - (fineDetails?.totalPaid || 0) - (fineDetails?.totalRemission || 0)}
-                      </Typography>
-                      <Box className="stat-subvalue">
-                        <EventBusy sx={{ fontSize: '0.9rem', opacity: 0.7 }} />
-                        Remission: Rs. {fineDetails?.totalRemission || 0}
-                      </Box>
-                    </StatBox>
-                  </Grid>
-                </Grid>
-              </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                          <StatBox status="absence">
+                            <Cancel className="stat-icon" />
+                            <Box className="stat-header">
+                              <Cancel className="icon" />
+                              <Typography className="stat-label">Outstanding Balance</Typography>
+                            </Box>
+                            <Typography className="stat-value">
+                              Rs. {totalFines - (fineDetails?.totalPaid || 0) - (fineDetails?.totalRemission || 0)}
+                            </Typography>
+                            <Box className="stat-subvalue">
+                              <EventBusy sx={{ fontSize: '0.9rem', opacity: 0.7 }} />
+                              Remission: Rs. {fineDetails?.totalRemission || 0}
+                            </Box>
+                          </StatBox>
+                        </Grid>
+                      </Grid>
+                    </Grid>
 
-              {/* Bottom Row - History Tables */}
-              <Grid item xs={12} md={5}>
-                <GlassCard>
-                  <Box sx={{ 
-                    p: 2, 
-                    borderBottom: 1, 
-                    borderColor: 'divider',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <HistoryIcon color="primary" />
-                    <Typography variant="h6" fontWeight={600}>
-                      Fine History
-                    </Typography>
-                  </Box>
-                  <Box sx={{ 
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`,
-                    '&::-webkit-scrollbar': {
-                      width: '12px',
-                      background: 'transparent'
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: 'transparent'
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      backgroundColor: theme => alpha(theme.palette.primary.main, 0.2),
-                      borderRadius: '6px',
-                      border: theme => `3px solid ${theme.palette.background.paper}`,
-                      '&:hover': {
-                        backgroundColor: theme => alpha(theme.palette.primary.main, 0.3)
-                      }
-                    },
-                    // Firefox specific styling
-                    '@supports (-moz-appearance: none)': {
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`
-                    }
-                  }}>
-                    {fineHistory.map((record) => (
-                      <Box
-                        key={record.id}
-                        sx={{
+                    {/* Bottom Row - History Tables */}
+                    <Grid item xs={12} md={5}>
+                      <GlassCard>
+                        <Box sx={{
                           p: 2,
-                          borderBottom: '1px solid',
+                          borderBottom: 1,
                           borderColor: 'divider',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 2,
-                          '&:hover': {
-                            bgcolor: theme => alpha(theme.palette.primary.main, 0.02)
-                          }
-                        }}
-                      >
-                        <Box sx={{ minWidth: 100 }}>
-                          <Typography variant="caption" color="textSecondary" display="block">
-                            {new Date(record.date).toLocaleDateString('en-US', { 
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary" display="block">
-                            {new Date(record.date).getFullYear()}
-                          </Typography>
-                        </Box>
-                        
-                        <Box sx={{ flex: 1 }}>
-                          <StatusChip status={record.status}>
-                            {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                          </StatusChip>
-                          {record.remarks && (
-                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>
-                              {record.remarks}
-                            </Typography>
-                          )}
-                        </Box>
-
-                        <Typography 
-                          variant="subtitle2" 
-                          sx={{ 
-                            color: 'error.main',
-                            fontWeight: 600,
-                            minWidth: 100,
-                            textAlign: 'right'
-                          }}
-                        >
-                          Rs. {record.fine_amount || 0}
-                        </Typography>
-                      </Box>
-                    ))}
-                    {fineHistory.length === 0 && (
-                      <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-                        <Typography>No fine records found</Typography>
-                      </Box>
-                    )}
-                  </Box>
-                </GlassCard>
-              </Grid>
-
-              <Grid item xs={12} md={7}>
-                <GlassCard>
-                  <Box sx={{ 
-                    p: 2, 
-                    borderBottom: 1, 
-                    borderColor: 'divider',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <AttachMoney color="primary" />
-                    <Typography variant="h6" fontWeight={600}>
-                      Payment History
-                    </Typography>
-                  </Box>
-                  <Box sx={{ 
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    overflowX: 'auto',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`,
-                    '&::-webkit-scrollbar': {
-                      width: '12px',
-                      height: '12px',
-                      background: 'transparent'
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: 'transparent'
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      backgroundColor: theme => alpha(theme.palette.primary.main, 0.2),
-                      borderRadius: '6px',
-                      border: theme => `3px solid ${theme.palette.background.paper}`,
-                      '&:hover': {
-                        backgroundColor: theme => alpha(theme.palette.primary.main, 0.3)
-                      }
-                    },
-                    // Firefox specific styling
-                    '@supports (-moz-appearance: none)': {
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`
-                    }
-                  }}>
-                    <Box sx={{ overflowX: 'auto' }}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Date</TableCell>
-                            <TableCell>Amount</TableCell>
-                            <TableCell>Remission</TableCell>
-                            <TableCell>Method</TableCell>
-                            <TableCell>Remarks</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {fineDetails?.payments?.map((payment: any) => (
-                            <TableRow key={payment.id}>
-                              <TableCell>
-                                {payment.payment_date 
-                                  ? new Date(payment.payment_date).toLocaleDateString('en-GB', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric'
-                                    })
-                                  : '-'}
-                              </TableCell>
-                              <TableCell sx={{ color: 'success.main', fontWeight: 600 }}>
-                                Rs. {payment.amount}
-                              </TableCell>
-                              <TableCell>Rs. {payment.remission || 0}</TableCell>
-                              <TableCell>{payment.payment_method}</TableCell>
-                              <TableCell>{payment.remarks || '-'}</TableCell>
-                            </TableRow>
-                          ))}
-                          {(!fineDetails?.payments || fineDetails.payments.length === 0) && (
-                            <TableRow>
-                              <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
-                                No payment records found
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </Box>
-                  </Box>
-                </GlassCard>
-              </Grid>
-            </Grid>
-              </>
-            )}
-          </CustomTabPanel>
-          )}
-
-          <CustomTabPanel value={activeTab} index={4}>
-            <Grid container spacing={3}>
-              {/* Left Column */}
-              <Grid item xs={12} md={8}>
-                {/* Attendance Stats */}
-                <AttendanceStatsCard sx={{ mb: 3 }}>
-                  <StatsHeader>
-                    <Box>
-                      <Typography variant="h5" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <CalendarToday sx={{ fontSize: '1.8rem', color: 'primary.main' }} />
-                        Attendance Overview
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        {attendanceStats?.total || 0} total tracked days
-                      </Typography>
-                    </Box>
-                  </StatsHeader>
-
-                  <StatsGrid container>
-                    <Grid item>
-                      <StatBox status="present">
-                        <CheckCircle className="stat-icon" />
-                        <Box className="stat-header">
-                          <CheckCircle className="icon" />
-                          <Typography className="stat-label">Present Days</Typography>
-                        </Box>
-                        <Typography className="stat-value">{attendanceStats?.present || 0}</Typography>
-                        <Box className="stat-percentage">
-                          <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                          {attendanceStats && attendanceStats.total > 0 
-                            ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100) 
-                            : 0}% Attendance Rate
-                        </Box>
-                      </StatBox>
-                    </Grid>
-
-                    <Grid item>
-                      <StatBox status="late">
-                        <Timer className="stat-icon" />
-                        <Box className="stat-header">
-                          <Timer className="icon" />
-                          <Typography className="stat-label">Late Arrivals</Typography>
-                        </Box>
-                        <Typography className="stat-value">{attendanceStats?.late || 0}</Typography>
-                        <Box className="stat-percentage">
-                          <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                          {attendanceStats ? Math.round((attendanceStats.late / attendanceStats.total) * 100) : 0}% Tardiness Rate
-                        </Box>
-                      </StatBox>
-                    </Grid>
-
-                    <Grid item>
-                      <StatBox status="absence">
-                        <Cancel className="stat-icon" />
-                        <Box className="stat-header">
-                          <Cancel className="icon" />
-                          <Typography className="stat-label">Total Absences</Typography>
-                        </Box>
-                        <Typography className="stat-value">
-                          {(attendanceStats?.absent || 0) + (attendanceStats?.leave || 0)}
-                        </Typography>
-                        <Box className="stat-subvalue">
-                          <EventBusy sx={{ fontSize: '0.9rem', opacity: 0.7 }} />
-                          Including {attendanceStats?.leave || 0} granted leaves
-                        </Box>
-                        <Box className="stat-percentage">
-                          <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                          {attendanceStats && attendanceStats.total > 0 
-                            ? Math.round(((attendanceStats.absent + attendanceStats.leave) / attendanceStats.total) * 100) 
-                            : 0}% Absence Rate
-                        </Box>
-                      </StatBox>
-                    </Grid>
-
-                    <Grid item>
-                      <Box
-                        sx={{
-                          padding: theme.spacing(2.5),
-                          borderRadius: theme.shape.borderRadius,
-                          background: alpha('#ec4899', 0.08),
-                          border: `1px solid ${alpha('#ec4899', 0.12)}`,
-                          position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.3s ease',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: theme.spacing(1),
-                          height: '100%',
-                          '&:hover': {
-                            transform: 'translateY(-2px)',
-                            boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
-                            background: alpha('#ec4899', 0.12),
-                            '& .stat-icon': {
-                              transform: 'scale(1.1) rotate(10deg)',
-                              opacity: 0.2,
-                            }
-                          },
-                          '& .stat-icon': {
-                            position: 'absolute',
-                            right: -10,
-                            bottom: -10,
-                            fontSize: '5rem',
-                            color: '#ec4899',
-                            opacity: 0.1,
-                            transition: 'all 0.3s ease',
-                            transform: 'rotate(-10deg)',
-                          },
-                          '& .stat-header': {
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: theme.spacing(1),
-                            '& .icon': {
-                              fontSize: '1.2rem',
-                              color: '#ec4899',
-                              background: alpha('#ec4899', 0.1),
-                              padding: theme.spacing(0.8),
-                              borderRadius: '8px',
-                            }
-                          },
-                          '& .stat-value': {
-                            fontSize: '2.2rem',
-                            fontWeight: 700,
-                            color: '#ec4899',
-                            lineHeight: 1,
-                          },
-                          '& .stat-label': {
-                            fontSize: '0.85rem',
-                            fontWeight: 500,
-                            color: theme.palette.text.secondary,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                          },
-                        }}
-                      >
-                        <AccessTime className="stat-icon" />
-                        <Box className="stat-header">
-                          <AccessTime className="icon" />
-                          <Typography className="stat-label">Half Leaves</Typography>
-                        </Box>
-                        <Typography className="stat-value">{halfLeavesMap.size}</Typography>
-                        <Box className="stat-percentage" sx={{
-                          fontSize: '0.9rem',
-                          fontWeight: 600,
-                          color: '#ec4899',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: theme.spacing(0.5),
-                          marginTop: 'auto',
-                          background: alpha('#ec4899', 0.08),
-                          padding: theme.spacing(0.5, 1),
-                          borderRadius: '4px',
-                          width: 'fit-content',
+                          gap: 1
                         }}>
-                          <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                          {attendanceStats?.total ? Math.round((halfLeavesMap.size / attendanceStats.total) * 100) : 0}% of total days
+                          <HistoryIcon color="primary" />
+                          <Typography variant="h6" fontWeight={600}>
+                            Fine History
+                          </Typography>
                         </Box>
-                      </Box>
-                    </Grid>
-                  </StatsGrid>
-                </AttendanceStatsCard>
-
-                {/* Monthly Attendance */}
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight="600">
-                    Monthly Attendance Breakdown
-                  </Typography>
-                </Box>
-                <Grid container spacing={2}>
-                  {monthlyStats.map((month) => (
-                    <Grid item xs={12} key={month.month}>
-                      <MonthCard>
-                        <MonthHeader>
-                          <MonthTitle>
-                            <Typography variant="h6" fontWeight="600">
-                              {month.month.split(' ')[0]}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                              {month.month.split(' ')[1]}
-                            </Typography>
-                          </MonthTitle>
-                          <MonthBadge>
-                            <CalendarToday sx={{ fontSize: '0.875rem' }} />
-                            <Box component="span">
-                              {month.total} Days • {month.total > 0 ? Math.round(((month.present + month.late) / month.total) * 100) : 0}% Attendance
-                            </Box>
-                          </MonthBadge>
-                        </MonthHeader>
-
-                        <StatGrid container spacing={2}>
-                          <Grid item xs={6} sm={3}>
-                            <StatBox status="present">
-                              <CheckCircle className="stat-icon" />
-                              <StatValue color={theme.palette.success.main}>
-                                {month.present}
-                                <span className="percentage">
-                                  ({((month.present / month.total) * 100).toFixed(1)}%)
-                                </span>
-                              </StatValue>
-                              <StatLabel>Present</StatLabel>
-                            </StatBox>
-                          </Grid>
-                          <Grid item xs={6} sm={3}>
-                            <StatBox status="absence">
-                              <Cancel className="stat-icon" />
-                              <StatValue color={theme.palette.error.main}>
-                                {month.absent + month.leave}
-                                <span className="percentage">
-                                  ({(((month.absent + month.leave) / month.total) * 100).toFixed(1)}%)
-                                </span>
-                              </StatValue>
-                              <StatLabel>Absences</StatLabel>
-                            </StatBox>
-                          </Grid>
-                          <Grid item xs={6} sm={3}>
-                            <StatBox status="late">
-                              <Timer className="stat-icon" />
-                              <StatValue color={theme.palette.warning.main}>
-                                {month.late}
-                                <span className="percentage">
-                                  ({((month.late / month.total) * 100).toFixed(1)}%)
-                                </span>
-                              </StatValue>
-                              <StatLabel>Late</StatLabel>
-                            </StatBox>
-                          </Grid>
-                          <Grid item xs={6} sm={3}>
+                        <Box sx={{
+                          maxHeight: '400px',
+                          overflowY: 'auto',
+                          overflowX: 'hidden',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`,
+                          '&::-webkit-scrollbar': {
+                            width: '12px',
+                            background: 'transparent'
+                          },
+                          '&::-webkit-scrollbar-track': {
+                            background: 'transparent'
+                          },
+                          '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: theme => alpha(theme.palette.primary.main, 0.2),
+                            borderRadius: '6px',
+                            border: theme => `3px solid ${theme.palette.background.paper}`,
+                            '&:hover': {
+                              backgroundColor: theme => alpha(theme.palette.primary.main, 0.3)
+                            }
+                          },
+                          // Firefox specific styling
+                          '@supports (-moz-appearance: none)': {
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`
+                          }
+                        }}>
+                          {fineHistory.map((record) => (
                             <Box
+                              key={record.id}
                               sx={{
-                                padding: theme.spacing(2.5),
-                                borderRadius: theme.shape.borderRadius,
-                                background: alpha('#ec4899', 0.08),
-                                border: `1px solid ${alpha('#ec4899', 0.12)}`,
-                                position: 'relative',
-                                overflow: 'hidden',
-                                transition: 'all 0.3s ease',
+                                p: 2,
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
                                 display: 'flex',
-                                flexDirection: 'column',
-                                gap: theme.spacing(1),
-                                height: '100%',
+                                alignItems: 'center',
+                                gap: 2,
                                 '&:hover': {
-                                  transform: 'translateY(-2px)',
-                                  boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
-                                  background: alpha('#ec4899', 0.12),
-                                  '& .stat-icon': {
-                                    transform: 'scale(1.1) rotate(10deg)',
-                                    opacity: 0.2,
-                                  }
-                                },
-                                '& .stat-icon': {
-                                  position: 'absolute',
-                                  right: -10,
-                                  bottom: -10,
-                                  fontSize: '5rem',
-                                  color: '#ec4899',
-                                  opacity: 0.1,
-                                  transition: 'all 0.3s ease',
-                                  transform: 'rotate(-10deg)',
-                                },
+                                  bgcolor: theme => alpha(theme.palette.primary.main, 0.02)
+                                }
                               }}
                             >
-                              <AccessTime className="stat-icon" />
-                              <StatValue color="#ec4899">
-                                {month.halfLeaves || 0}
-                                <span className="percentage">
-                                  ({month.total > 0 ? ((month.halfLeaves || 0) / month.total * 100).toFixed(1) : 0}%)
-                                </span>
-                              </StatValue>
-                              <StatLabel>Half Leaves</StatLabel>
-                            </Box>
-                          </Grid>
-                        </StatGrid>
-                      </MonthCard>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Grid>
+                              <Box sx={{ minWidth: 100 }}>
+                                <Typography variant="caption" color="textSecondary" display="block">
+                                  {new Date(record.date).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary" display="block">
+                                  {new Date(record.date).getFullYear()}
+                                </Typography>
+                              </Box>
 
-              {/* Right Column */}
-              <Grid item xs={12} md={4}>
-                <Grid container spacing={3}>
-                  {/* Recent Attendance Section */}
-                  <Grid item xs={12}>
-                    <GlassCard>
-                      <Box sx={{ 
-                        p: 2, 
-                        borderBottom: 1, 
-                        borderColor: 'divider',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <Typography variant="subtitle1" fontWeight="600">
-                          Recent Attendance
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          Last {Math.min(fineHistory.length, 20)} records
-                        </Typography>
-                      </Box>
-                      <RecentAttendanceContainer>
-                        {fineHistory.slice(0, 20).map((record) => {
-                          const recordDate = new Date(record.date);
-                          const dayName = recordDate.toLocaleDateString('en-US', { weekday: 'long' });
-                          const formattedDate = recordDate.toLocaleDateString('en-US', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          });
-                          const dateStr = record.date;
-                          const halfLeave = halfLeavesMap.get(dateStr);
-                          
-                          return (
-                            <RecentAttendanceItem key={record.id}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                <Box>
-                                  <DayLabel>{dayName}</DayLabel>
-                                  <DateLabel>
-                                    <CalendarToday sx={{ fontSize: '0.875rem', opacity: 0.7 }} />
-                                    {formattedDate}
-                                  </DateLabel>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  {halfLeave && (
-                                    <Box
-                                      sx={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        px: 0.75,
-                                        py: 0.25,
-                                        borderRadius: '4px',
-                                        bgcolor: '#ec4899',
-                                        color: 'white',
-                                        fontSize: '0.65rem',
-                                        fontWeight: 700,
-                                        lineHeight: 1,
-                                      }}
-                                      title="Half Leave"
-                                    >
-                                      HL
-                                    </Box>
-                                  )}
+                              <Box sx={{ flex: 1 }}>
                                 <StatusChip status={record.status}>
                                   {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                                 </StatusChip>
+                                {record.remarks && (
+                                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>
+                                    {record.remarks}
+                                  </Typography>
+                                )}
                               </Box>
-                              </Box>
-                              {halfLeave && (
-                                <Box sx={{ 
-                                  mt: 0.5,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 0.5,
-                                  color: '#ec4899',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 500,
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  bgcolor: alpha('#ec4899', 0.1),
-                                  width: 'fit-content'
-                                }}>
-                                  <AccessTime sx={{ fontSize: '0.75rem' }} />
-                                  Half Leave
-                                  {halfLeave.departure_time && ` (Departed: ${halfLeave.departure_time})`}
-                                </Box>
-                              )}
-                              {record.remarks && (
-                                <Typography 
-                                  variant="caption" 
-                                  color="textSecondary"
-                                  sx={{
-                                    display: 'block',
-                                    mt: 0.5,
-                                    fontSize: '0.75rem',
-                                    fontStyle: 'italic'
-                                  }}
-                                >
-                                  {record.remarks}
-                                </Typography>
-                              )}
-                              {(record.fine_amount ?? 0) > 0 && (
-                                <Box sx={{ 
-                                  mt: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 0.5,
+
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
                                   color: 'error.main',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 500,
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  bgcolor: theme => alpha(theme.palette.error.main, 0.08),
-                                  width: 'fit-content'
-                                }}>
-                                  <AttachMoney sx={{ fontSize: '0.875rem' }} />
-                                  Fine: Rs. {record.fine_amount}
-                                </Box>
-                              )}
-                            </RecentAttendanceItem>
-                          );
-                        })}
-                        {fineHistory.length === 0 && (
-                          <Box sx={{ 
-                            p: 4, 
-                            textAlign: 'center',
-                            color: 'text.secondary'
-                          }}>
-                            <Typography variant="body2">
-                              No attendance records found
-                            </Typography>
-                          </Box>
-                        )}
-                      </RecentAttendanceContainer>
-                    </GlassCard>
-                  </Grid>
-
-                  {/* Weekly Trend */}
-                  <Grid item xs={12}>
-                    <GlassCard>
-                      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                        <Typography variant="subtitle1" fontWeight="600">
-                          Weekly Day Patterns
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          Attendance patterns by day of week
-                        </Typography>
-                      </Box>
-                      <Box sx={{ p: 2, height: '250px', display: 'flex', alignItems: 'flex-end' }}>
-                        <Box sx={{ 
-                          width: '100%', 
-                          display: 'flex', 
-                          alignItems: 'flex-end', 
-                          gap: 2,
-                          height: '200px',
-                          position: 'relative'
-                        }}>
-                          {weeklyAttendance.map((data) => {
-                            const { day, status, count, details, percentages } = data;
-                            
-                            const getStatusColor = (status: string | null, theme: Theme) => {
-                              if (!status) return alpha(theme.palette.divider, 0.1);
-                              switch (status.toLowerCase()) {
-                                case 'present': return theme.palette.success.main;
-                                case 'late': return theme.palette.warning.main;
-                                case 'absent': return theme.palette.error.main;
-                                case 'leave': return theme.palette.info.main;
-                                case 'halfleave': return '#ec4899';
-                                default: return alpha(theme.palette.divider, 0.1);
-                              }
-                            };
-
-                            return (
-                              <Box 
-                                key={day} 
-                                sx={{ 
-                                  flex: 1, 
-                                  display: 'flex', 
-                                  flexDirection: 'column', 
-                                  alignItems: 'center',
-                                  gap: 1,
-                                  position: 'relative'
+                                  fontWeight: 600,
+                                  minWidth: 100,
+                                  textAlign: 'right'
                                 }}
                               >
-                                <Tooltip
-                                  title={
-                                    <Box sx={{ p: 1 }}>
-                                      <Typography variant="caption" display="block" sx={{ fontWeight: 600, mb: 1 }}>
-                                        {day} Statistics
-                                      </Typography>
+                                Rs. {record.fine_amount || 0}
+                              </Typography>
+                            </Box>
+                          ))}
+                          {fineHistory.length === 0 && (
+                            <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+                              <Typography>No fine records found</Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+
+                    <Grid item xs={12} md={7}>
+                      <GlassCard>
+                        <Box sx={{
+                          p: 2,
+                          borderBottom: 1,
+                          borderColor: 'divider',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
+                        }}>
+                          <AttachMoney color="primary" />
+                          <Typography variant="h6" fontWeight={600}>
+                            Payment History
+                          </Typography>
+                        </Box>
+                        <Box sx={{
+                          maxHeight: '400px',
+                          overflowY: 'auto',
+                          overflowX: 'auto',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`,
+                          '&::-webkit-scrollbar': {
+                            width: '12px',
+                            height: '12px',
+                            background: 'transparent'
+                          },
+                          '&::-webkit-scrollbar-track': {
+                            background: 'transparent'
+                          },
+                          '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: theme => alpha(theme.palette.primary.main, 0.2),
+                            borderRadius: '6px',
+                            border: theme => `3px solid ${theme.palette.background.paper}`,
+                            '&:hover': {
+                              backgroundColor: theme => alpha(theme.palette.primary.main, 0.3)
+                            }
+                          },
+                          // Firefox specific styling
+                          '@supports (-moz-appearance: none)': {
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.2)} transparent`
+                          }
+                        }}>
+                          <Box sx={{ overflowX: 'auto' }}>
+                            <Table>
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>Date</TableCell>
+                                  <TableCell>Amount</TableCell>
+                                  <TableCell>Remission</TableCell>
+                                  <TableCell>Method</TableCell>
+                                  <TableCell>Remarks</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {fineDetails?.payments?.map((payment: any) => (
+                                  <TableRow key={payment.id}>
+                                    <TableCell>
+                                      {payment.payment_date
+                                        ? new Date(payment.payment_date).toLocaleDateString('en-GB', {
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric'
+                                        })
+                                        : '-'}
+                                    </TableCell>
+                                    <TableCell sx={{ color: 'success.main', fontWeight: 600 }}>
+                                      Rs. {payment.amount}
+                                    </TableCell>
+                                    <TableCell>Rs. {payment.remission || 0}</TableCell>
+                                    <TableCell>{payment.payment_method}</TableCell>
+                                    <TableCell>{payment.remarks || '-'}</TableCell>
+                                  </TableRow>
+                                ))}
+                                {(!fineDetails?.payments || fineDetails.payments.length === 0) && (
+                                  <TableRow>
+                                    <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
+                                      No payment records found
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
+                  </Grid>
+                </>
+              )}
+            </CustomTabPanel>
+          )}
+
+          <CustomTabPanel value={activeTab} index={4}>
+            {/* Session Selector */}
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Attendance Records
+              </Typography>
+              <Box sx={{ minWidth: 200 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  value={selectedAttendanceSession || ''}
+                  onChange={(e) => setSelectedAttendanceSession(e.target.value ? parseInt(e.target.value as string) : null)}
+                  variant="outlined"
+                  sx={{
+                    bgcolor: 'background.paper',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2
+                    }
+                  }}
+                >
+                  {attendanceSessions.map((session) => (
+                    <MenuItem key={session.id} value={session.id}>
+                      {session.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            </Box>
+
+            {attendanceSessionLoading ? (
+              <AttendanceContentSkeleton />
+            ) : (
+              <Grid container spacing={3}>
+                {/* Left Column */}
+                <Grid item xs={12} md={8}>
+                  {/* Attendance Stats */}
+                  <AttendanceStatsCard sx={{ mb: 3 }}>
+                    <StatsHeader>
+                      <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CalendarToday sx={{ fontSize: '1.8rem', color: 'primary.main' }} />
+                          Attendance Overview
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                          {attendanceStats?.total || 0} total tracked days
+                        </Typography>
+                      </Box>
+                    </StatsHeader>
+
+                    <StatsGrid container>
+                      <Grid item>
+                        <StatBox status="present">
+                          <CheckCircle className="stat-icon" />
+                          <Box className="stat-header">
+                            <CheckCircle className="icon" />
+                            <Typography className="stat-label">Present Days</Typography>
+                          </Box>
+                          <Typography className="stat-value">{attendanceStats?.present || 0}</Typography>
+                          <Box className="stat-percentage">
+                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                            {attendanceStats && attendanceStats.total > 0
+                              ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100)
+                              : 0}% Attendance Rate
+                          </Box>
+                        </StatBox>
+                      </Grid>
+
+                      <Grid item>
+                        <StatBox status="late">
+                          <Timer className="stat-icon" />
+                          <Box className="stat-header">
+                            <Timer className="icon" />
+                            <Typography className="stat-label">Late Arrivals</Typography>
+                          </Box>
+                          <Typography className="stat-value">{attendanceStats?.late || 0}</Typography>
+                          <Box className="stat-percentage">
+                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                            {attendanceStats ? Math.round((attendanceStats.late / attendanceStats.total) * 100) : 0}% Tardiness Rate
+                          </Box>
+                        </StatBox>
+                      </Grid>
+
+                      <Grid item>
+                        <StatBox status="absence">
+                          <Cancel className="stat-icon" />
+                          <Box className="stat-header">
+                            <Cancel className="icon" />
+                            <Typography className="stat-label">Total Absences</Typography>
+                          </Box>
+                          <Typography className="stat-value">
+                            {(attendanceStats?.absent || 0) + (attendanceStats?.leave || 0)}
+                          </Typography>
+                          <Box className="stat-subvalue">
+                            <EventBusy sx={{ fontSize: '0.9rem', opacity: 0.7 }} />
+                            Including {attendanceStats?.leave || 0} granted leaves
+                          </Box>
+                          <Box className="stat-percentage">
+                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                            {attendanceStats && attendanceStats.total > 0
+                              ? Math.round(((attendanceStats.absent + attendanceStats.leave) / attendanceStats.total) * 100)
+                              : 0}% Absence Rate
+                          </Box>
+                        </StatBox>
+                      </Grid>
+
+                      <Grid item>
+                        <Box
+                          sx={{
+                            padding: theme.spacing(2.5),
+                            borderRadius: theme.shape.borderRadius,
+                            background: alpha('#ec4899', 0.08),
+                            border: `1px solid ${alpha('#ec4899', 0.12)}`,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transition: 'all 0.3s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: theme.spacing(1),
+                            height: '100%',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
+                              background: alpha('#ec4899', 0.12),
+                              '& .stat-icon': {
+                                transform: 'scale(1.1) rotate(10deg)',
+                                opacity: 0.2,
+                              }
+                            },
+                            '& .stat-icon': {
+                              position: 'absolute',
+                              right: -10,
+                              bottom: -10,
+                              fontSize: '5rem',
+                              color: '#ec4899',
+                              opacity: 0.1,
+                              transition: 'all 0.3s ease',
+                              transform: 'rotate(-10deg)',
+                            },
+                            '& .stat-header': {
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: theme.spacing(1),
+                              '& .icon': {
+                                fontSize: '1.2rem',
+                                color: '#ec4899',
+                                background: alpha('#ec4899', 0.1),
+                                padding: theme.spacing(0.8),
+                                borderRadius: '8px',
+                              }
+                            },
+                            '& .stat-value': {
+                              fontSize: '2.2rem',
+                              fontWeight: 700,
+                              color: '#ec4899',
+                              lineHeight: 1,
+                            },
+                            '& .stat-label': {
+                              fontSize: '0.85rem',
+                              fontWeight: 500,
+                              color: theme.palette.text.secondary,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            },
+                          }}
+                        >
+                          <AccessTime className="stat-icon" />
+                          <Box className="stat-header">
+                            <AccessTime className="icon" />
+                            <Typography className="stat-label">Half Leaves</Typography>
+                          </Box>
+                          <Typography className="stat-value">{halfLeavesMap.size}</Typography>
+                          <Box className="stat-percentage" sx={{
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            color: '#ec4899',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: theme.spacing(0.5),
+                            marginTop: 'auto',
+                            background: alpha('#ec4899', 0.08),
+                            padding: theme.spacing(0.5, 1),
+                            borderRadius: '4px',
+                            width: 'fit-content',
+                          }}>
+                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                            {attendanceStats?.total ? Math.round((halfLeavesMap.size / attendanceStats.total) * 100) : 0}% of total days
+                          </Box>
+                        </Box>
+                      </Grid>
+                    </StatsGrid>
+                  </AttendanceStatsCard>
+
+                  {/* Monthly Attendance */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight="600">
+                      Monthly Attendance Breakdown
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={2}>
+                    {monthlyStats.map((month) => (
+                      <Grid item xs={12} key={month.month}>
+                        <MonthCard>
+                          <MonthHeader>
+                            <MonthTitle>
+                              <Typography variant="h6" fontWeight="600">
+                                {month.month.split(' ')[0]}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                {month.month.split(' ')[1]}
+                              </Typography>
+                            </MonthTitle>
+                            <MonthBadge>
+                              <CalendarToday sx={{ fontSize: '0.875rem' }} />
+                              <Box component="span">
+                                {month.total} Days • {month.total > 0 ? Math.round(((month.present + month.late) / month.total) * 100) : 0}% Attendance
+                              </Box>
+                            </MonthBadge>
+                          </MonthHeader>
+
+                          <StatGrid container spacing={2}>
+                            <Grid item xs={6} sm={3}>
+                              <StatBox status="present">
+                                <CheckCircle className="stat-icon" />
+                                <StatValue color={theme.palette.success.main}>
+                                  {month.present}
+                                  <span className="percentage">
+                                    ({((month.present / month.total) * 100).toFixed(1)}%)
+                                  </span>
+                                </StatValue>
+                                <StatLabel>Present</StatLabel>
+                              </StatBox>
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                              <StatBox status="absence">
+                                <Cancel className="stat-icon" />
+                                <StatValue color={theme.palette.error.main}>
+                                  {month.absent + month.leave}
+                                  <span className="percentage">
+                                    ({(((month.absent + month.leave) / month.total) * 100).toFixed(1)}%)
+                                  </span>
+                                </StatValue>
+                                <StatLabel>Absences</StatLabel>
+                              </StatBox>
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                              <StatBox status="late">
+                                <Timer className="stat-icon" />
+                                <StatValue color={theme.palette.warning.main}>
+                                  {month.late}
+                                  <span className="percentage">
+                                    ({((month.late / month.total) * 100).toFixed(1)}%)
+                                  </span>
+                                </StatValue>
+                                <StatLabel>Late</StatLabel>
+                              </StatBox>
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                              <Box
+                                sx={{
+                                  padding: theme.spacing(2.5),
+                                  borderRadius: theme.shape.borderRadius,
+                                  background: alpha('#ec4899', 0.08),
+                                  border: `1px solid ${alpha('#ec4899', 0.12)}`,
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                  transition: 'all 0.3s ease',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: theme.spacing(1),
+                                  height: '100%',
+                                  '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
+                                    background: alpha('#ec4899', 0.12),
+                                    '& .stat-icon': {
+                                      transform: 'scale(1.1) rotate(10deg)',
+                                      opacity: 0.2,
+                                    }
+                                  },
+                                  '& .stat-icon': {
+                                    position: 'absolute',
+                                    right: -10,
+                                    bottom: -10,
+                                    fontSize: '5rem',
+                                    color: '#ec4899',
+                                    opacity: 0.1,
+                                    transition: 'all 0.3s ease',
+                                    transform: 'rotate(-10deg)',
+                                  },
+                                }}
+                              >
+                                <AccessTime className="stat-icon" />
+                                <StatValue color="#ec4899">
+                                  {month.halfLeaves || 0}
+                                  <span className="percentage">
+                                    ({month.total > 0 ? ((month.halfLeaves || 0) / month.total * 100).toFixed(1) : 0}%)
+                                  </span>
+                                </StatValue>
+                                <StatLabel>Half Leaves</StatLabel>
+                              </Box>
+                            </Grid>
+                          </StatGrid>
+                        </MonthCard>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Grid>
+
+                {/* Right Column */}
+                <Grid item xs={12} md={4}>
+                  <Grid container spacing={3}>
+                    {/* Recent Attendance Section */}
+                    <Grid item xs={12}>
+                      <GlassCard>
+                        <Box sx={{
+                          p: 2,
+                          borderBottom: 1,
+                          borderColor: 'divider',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <Typography variant="subtitle1" fontWeight="600">
+                            Recent Attendance
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            Last {Math.min(fineHistory.length, 20)} records
+                          </Typography>
+                        </Box>
+                        <RecentAttendanceContainer>
+                          {fineHistory.slice(0, 20).map((record) => {
+                            const recordDate = new Date(record.date);
+                            const dayName = recordDate.toLocaleDateString('en-US', { weekday: 'long' });
+                            const formattedDate = recordDate.toLocaleDateString('en-US', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            });
+                            const dateStr = record.date;
+                            const halfLeave = halfLeavesMap.get(dateStr);
+
+                            return (
+                              <RecentAttendanceItem key={record.id}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                  <Box>
+                                    <DayLabel>{dayName}</DayLabel>
+                                    <DateLabel>
+                                      <CalendarToday sx={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                      {formattedDate}
+                                    </DateLabel>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {halfLeave && (
+                                      <Box
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          px: 0.75,
+                                          py: 0.25,
+                                          borderRadius: '4px',
+                                          bgcolor: '#ec4899',
+                                          color: 'white',
+                                          fontSize: '0.65rem',
+                                          fontWeight: 700,
+                                          lineHeight: 1,
+                                        }}
+                                        title="Half Leave"
+                                      >
+                                        HL
+                                      </Box>
+                                    )}
+                                    <StatusChip status={record.status}>
+                                      {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                    </StatusChip>
+                                  </Box>
+                                </Box>
+                                {halfLeave && (
+                                  <Box sx={{
+                                    mt: 0.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    color: '#ec4899',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 500,
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    bgcolor: alpha('#ec4899', 0.1),
+                                    width: 'fit-content'
+                                  }}>
+                                    <AccessTime sx={{ fontSize: '0.75rem' }} />
+                                    Half Leave
+                                    {halfLeave.departure_time && ` (Departed: ${halfLeave.departure_time})`}
+                                  </Box>
+                                )}
+                                {record.remarks && (
+                                  <Typography
+                                    variant="caption"
+                                    color="textSecondary"
+                                    sx={{
+                                      display: 'block',
+                                      mt: 0.5,
+                                      fontSize: '0.75rem',
+                                      fontStyle: 'italic'
+                                    }}
+                                  >
+                                    {record.remarks}
+                                  </Typography>
+                                )}
+                                {(record.fine_amount ?? 0) > 0 && (
+                                  <Box sx={{
+                                    mt: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    color: 'error.main',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    bgcolor: theme => alpha(theme.palette.error.main, 0.08),
+                                    width: 'fit-content'
+                                  }}>
+                                    <AttachMoney sx={{ fontSize: '0.875rem' }} />
+                                    Fine: Rs. {record.fine_amount}
+                                  </Box>
+                                )}
+                              </RecentAttendanceItem>
+                            );
+                          })}
+                          {fineHistory.length === 0 && (
+                            <Box sx={{
+                              p: 4,
+                              textAlign: 'center',
+                              color: 'text.secondary'
+                            }}>
+                              <Typography variant="body2">
+                                No attendance records found
+                              </Typography>
+                            </Box>
+                          )}
+                        </RecentAttendanceContainer>
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Weekly Trend */}
+                    <Grid item xs={12}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                          <Typography variant="subtitle1" fontWeight="600">
+                            Weekly Day Patterns
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            Attendance patterns by day of week
+                          </Typography>
+                        </Box>
+                        <Box sx={{ p: 2, height: '250px', display: 'flex', alignItems: 'flex-end' }}>
+                          <Box sx={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            gap: 2,
+                            height: '200px',
+                            position: 'relative'
+                          }}>
+                            {weeklyAttendance.map((data) => {
+                              const { day, status, count, details, percentages } = data;
+
+                              const getStatusColor = (status: string | null, theme: Theme) => {
+                                if (!status) return alpha(theme.palette.divider, 0.1);
+                                switch (status.toLowerCase()) {
+                                  case 'present': return theme.palette.success.main;
+                                  case 'late': return theme.palette.warning.main;
+                                  case 'absent': return theme.palette.error.main;
+                                  case 'leave': return theme.palette.info.main;
+                                  case 'halfleave': return '#ec4899';
+                                  default: return alpha(theme.palette.divider, 0.1);
+                                }
+                              };
+
+                              return (
+                                <Box
+                                  key={day}
+                                  sx={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    position: 'relative'
+                                  }}
+                                >
+                                  <Tooltip
+                                    title={
+                                      <Box sx={{ p: 1 }}>
+                                        <Typography variant="caption" display="block" sx={{ fontWeight: 600, mb: 1 }}>
+                                          {day} Statistics
+                                        </Typography>
+                                        {details && (
+                                          <>
+                                            <Typography variant="caption" display="block" color="success.main">
+                                              Present: {details.present} ({percentages.present.toFixed(1)}%)
+                                            </Typography>
+                                            <Typography variant="caption" display="block" color="warning.main">
+                                              Late: {details.late} ({percentages.late.toFixed(1)}%)
+                                            </Typography>
+                                            <Typography variant="caption" display="block" color="error.main">
+                                              Absent: {details.absent} ({percentages.absent.toFixed(1)}%)
+                                            </Typography>
+                                            <Typography variant="caption" display="block" color="info.main">
+                                              Leave: {details.leave} ({percentages.leave.toFixed(1)}%)
+                                            </Typography>
+                                            <Typography variant="caption" display="block" sx={{ color: '#ec4899' }}>
+                                              Half Leave: {details.halfLeave} ({percentages.halfLeave.toFixed(1)}%)
+                                            </Typography>
+                                            <Divider sx={{ my: 1 }} />
+                                            <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
+                                              Total Records: {count + details.halfLeave}
+                                            </Typography>
+                                          </>
+                                        )}
+                                      </Box>
+                                    }
+                                    arrow
+                                    placement="top"
+                                  >
+                                    <Box sx={{
+                                      width: '100%',
+                                      height: '150px',
+                                      position: 'relative',
+                                      borderRadius: '4px',
+                                      overflow: 'hidden',
+                                      border: theme => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                      cursor: 'pointer',
+                                      transition: 'transform 0.2s ease',
+                                      '&:hover': {
+                                        transform: 'translateY(-2px)'
+                                      }
+                                    }}>
+                                      {/* Stacked bars for each status */}
                                       {details && (
                                         <>
-                                          <Typography variant="caption" display="block" color="success.main">
-                                            Present: {details.present} ({percentages.present.toFixed(1)}%)
-                                          </Typography>
-                                          <Typography variant="caption" display="block" color="warning.main">
-                                            Late: {details.late} ({percentages.late.toFixed(1)}%)
-                                          </Typography>
-                                          <Typography variant="caption" display="block" color="error.main">
-                                            Absent: {details.absent} ({percentages.absent.toFixed(1)}%)
-                                          </Typography>
-                                          <Typography variant="caption" display="block" color="info.main">
-                                            Leave: {details.leave} ({percentages.leave.toFixed(1)}%)
-                                          </Typography>
-                                          <Typography variant="caption" display="block" sx={{ color: '#ec4899' }}>
-                                            Half Leave: {details.halfLeave} ({percentages.halfLeave.toFixed(1)}%)
-                                          </Typography>
-                                          <Divider sx={{ my: 1 }} />
-                                          <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
-                                            Total Records: {count + details.halfLeave}
-                                          </Typography>
+                                          <Box sx={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${percentages.present}%`,
+                                            bgcolor: theme => alpha(theme.palette.success.main, 0.3),
+                                            transition: 'height 0.3s ease'
+                                          }} />
+                                          <Box sx={{
+                                            position: 'absolute',
+                                            bottom: `${percentages.present}%`,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${percentages.late}%`,
+                                            bgcolor: theme => alpha(theme.palette.warning.main, 0.3),
+                                            transition: 'height 0.3s ease'
+                                          }} />
+                                          <Box sx={{
+                                            position: 'absolute',
+                                            bottom: `${percentages.present + percentages.late}%`,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${percentages.absent}%`,
+                                            bgcolor: theme => alpha(theme.palette.error.main, 0.3),
+                                            transition: 'height 0.3s ease'
+                                          }} />
+                                          <Box sx={{
+                                            position: 'absolute',
+                                            bottom: `${percentages.present + percentages.late + percentages.absent}%`,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${percentages.leave}%`,
+                                            bgcolor: theme => alpha(theme.palette.info.main, 0.3),
+                                            transition: 'height 0.3s ease'
+                                          }} />
+                                          <Box sx={{
+                                            position: 'absolute',
+                                            bottom: `${percentages.present + percentages.late + percentages.absent + percentages.leave}%`,
+                                            left: 0,
+                                            width: '100%',
+                                            height: `${percentages.halfLeave}%`,
+                                            bgcolor: alpha('#ec4899', 0.3),
+                                            transition: 'height 0.3s ease'
+                                          }} />
                                         </>
                                       )}
                                     </Box>
-                                  }
-                                  arrow
-                                  placement="top"
-                                >
-                                  <Box sx={{
-                                    width: '100%',
-                                    height: '150px',
-                                    position: 'relative',
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                    border: theme => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s ease',
-                                    '&:hover': {
-                                      transform: 'translateY(-2px)'
-                                    }
-                                  }}>
-                                    {/* Stacked bars for each status */}
-                                    {details && (
-                                      <>
-                                        <Box sx={{
-                                          position: 'absolute',
-                                          bottom: 0,
-                                          left: 0,
-                                          width: '100%',
-                                          height: `${percentages.present}%`,
-                                          bgcolor: theme => alpha(theme.palette.success.main, 0.3),
-                                          transition: 'height 0.3s ease'
-                                        }} />
-                                        <Box sx={{
-                                          position: 'absolute',
-                                          bottom: `${percentages.present}%`,
-                                          left: 0,
-                                          width: '100%',
-                                          height: `${percentages.late}%`,
-                                          bgcolor: theme => alpha(theme.palette.warning.main, 0.3),
-                                          transition: 'height 0.3s ease'
-                                        }} />
-                                        <Box sx={{
-                                          position: 'absolute',
-                                          bottom: `${percentages.present + percentages.late}%`,
-                                          left: 0,
-                                          width: '100%',
-                                          height: `${percentages.absent}%`,
-                                          bgcolor: theme => alpha(theme.palette.error.main, 0.3),
-                                          transition: 'height 0.3s ease'
-                                        }} />
-                                        <Box sx={{
-                                          position: 'absolute',
-                                          bottom: `${percentages.present + percentages.late + percentages.absent}%`,
-                                          left: 0,
-                                          width: '100%',
-                                          height: `${percentages.leave}%`,
-                                          bgcolor: theme => alpha(theme.palette.info.main, 0.3),
-                                          transition: 'height 0.3s ease'
-                                        }} />
-                                        <Box sx={{
-                                          position: 'absolute',
-                                          bottom: `${percentages.present + percentages.late + percentages.absent + percentages.leave}%`,
-                                          left: 0,
-                                          width: '100%',
-                                          height: `${percentages.halfLeave}%`,
-                                          bgcolor: alpha('#ec4899', 0.3),
-                                          transition: 'height 0.3s ease'
-                                        }} />
-                                      </>
-                                    )}
+                                  </Tooltip>
+                                  <Box sx={{ textAlign: 'center' }}>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: 'text.primary',
+                                        fontWeight: 600,
+                                        display: 'block'
+                                      }}
+                                    >
+                                      {day}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: theme => getStatusColor(status, theme),
+                                        fontSize: '0.7rem',
+                                        display: 'block',
+                                        mt: 0.5,
+                                        fontWeight: 500
+                                      }}
+                                    >
+                                      {count + details.halfLeave > 0 ? `${count + details.halfLeave} Days` : 'No Data'}
+                                    </Typography>
                                   </Box>
-                                </Tooltip>
-                                <Box sx={{ textAlign: 'center' }}>
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
-                                      color: 'text.primary',
-                                      fontWeight: 600,
-                                      display: 'block'
-                                    }}
-                                  >
-                                    {day}
-                                  </Typography>
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
-                                      color: theme => getStatusColor(status, theme),
-                                      fontSize: '0.7rem',
-                                      display: 'block',
-                                      mt: 0.5,
-                                      fontWeight: 500
-                                    }}
-                                  >
-                                    {count + details.halfLeave > 0 ? `${count + details.halfLeave} Days` : 'No Data'}
-                                  </Typography>
                                 </Box>
-                              </Box>
-                            );
-                          })}
+                              );
+                            })}
+                          </Box>
                         </Box>
-                      </Box>
-                    </GlassCard>
-                  </Grid>
+                      </GlassCard>
+                    </Grid>
 
-                  {/* Attendance Pattern */}
-                  <Grid item xs={12}>
-                    <GlassCard>
-                      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                        <Typography variant="subtitle1" fontWeight="600">
-                          Attendance Pattern
-                        </Typography>
-                      </Box>
-                      <Box sx={{ p: 2 }}>
-                        <Grid container spacing={2}>
-                          {attendancePattern.map((stat) => {
-                            const color = stat.colorKey === 'secondary' ? '#ec4899' : undefined;
-                            
-                            return (
-                            <Grid item xs={12} key={stat.label}>
-                              <Box sx={{ mb: 1 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                  <Typography variant="caption" color="textSecondary">
-                                    {stat.label}
-                                  </Typography>
-                                    <Typography variant="caption" sx={{ 
-                                      color: color || (theme => {
+                    {/* Attendance Pattern */}
+                    <Grid item xs={12}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                          <Typography variant="subtitle1" fontWeight="600">
+                            Attendance Pattern
+                          </Typography>
+                        </Box>
+                        <Box sx={{ p: 2 }}>
+                          <Grid container spacing={2}>
+                            {attendancePattern.map((stat) => {
+                              const color = stat.colorKey === 'secondary' ? '#ec4899' : undefined;
+
+                              return (
+                                <Grid item xs={12} key={stat.label}>
+                                  <Box sx={{ mb: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                      <Typography variant="caption" color="textSecondary">
+                                        {stat.label}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{
+                                        color: color || (theme => {
+                                          const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                          return paletteColor?.main || theme.palette.primary.main;
+                                        })
+                                      }}>
+                                        {stat.count} days ({stat.value})
+                                      </Typography>
+                                    </Box>
+                                    <Box sx={{
+                                      width: '100%',
+                                      height: '4px',
+                                      bgcolor: color ? alpha(color, 0.1) : (theme => {
                                         const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
-                                        return paletteColor?.main || theme.palette.primary.main;
-                                      })
-                                    }}>
-                                    {stat.count} days ({stat.value})
-                                  </Typography>
-                                </Box>
-                                <Box sx={{ 
-                                  width: '100%', 
-                                  height: '4px', 
-                                    bgcolor: color ? alpha(color, 0.1) : (theme => {
-                                      const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
-                                      return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
-                                    }),
-                                  borderRadius: '2px',
-                                  overflow: 'hidden'
-                                }}>
-                                  <Box sx={{ 
-                                    width: stat.value,
-                                    height: '100%',
-                                      bgcolor: color || (theme => {
-                                        const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
-                                        return paletteColor?.main || theme.palette.primary.main;
+                                        return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
                                       }),
-                                    transition: 'width 1s ease-in-out'
-                                  }} />
-                                </Box>
-                              </Box>
-                            </Grid>
-                            );
-                          })}
-                        </Grid>
-                      </Box>
-                    </GlassCard>
-                  </Grid>
-
-                  {/* Yearly Overview */}
-                  <Grid item xs={12}>
-                    <GlassCard>
-                      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                        <Typography variant="subtitle1" fontWeight="600">
-                          Yearly Overview
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {new Date().getFullYear()} Attendance
-                        </Typography>
-                      </Box>
-                      <Box sx={{ p: 2 }}>
-                        <Box sx={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(20px, 1fr))', 
-                          gap: 0.5 
-                        }}>
-                          {yearlyOverview.map((week, i) => (
-                            <Tooltip
-                              key={i}
-                              title={
-                                <>
-                                  <Typography variant="caption" display="block">
-                                    {week.startDate.toLocaleDateString()} - {week.endDate.toLocaleDateString()}
-                                  </Typography>
-                                  <Typography variant="caption" display="block">
-                                    Attendance: {Math.round(week.percentage * 100)}%
-                                  </Typography>
-                                </>
-                              }
-                              arrow
-                            >
-                              <Box
-                                sx={{
-                                  width: '100%',
-                                  paddingBottom: '100%',
-                                  bgcolor: theme => {
-                                    if (week.percentage === 0) return alpha(theme.palette.divider, 0.1);
-                                    if (week.percentage > 0.8) return alpha(theme.palette.success.main, 0.8);
-                                    if (week.percentage > 0.6) return alpha(theme.palette.success.main, 0.6);
-                                    if (week.percentage > 0.4) return alpha(theme.palette.success.main, 0.4);
-                                    return alpha(theme.palette.success.main, 0.2);
-                                  },
-                                  borderRadius: '2px',
-                                  transition: 'all 0.2s ease',
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    transform: 'scale(1.2)',
-                                    zIndex: 1
-                                  }
-                                }}
-                              />
-                            </Tooltip>
-                          ))}
+                                      borderRadius: '2px',
+                                      overflow: 'hidden'
+                                    }}>
+                                      <Box sx={{
+                                        width: stat.value,
+                                        height: '100%',
+                                        bgcolor: color || (theme => {
+                                          const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                          return paletteColor?.main || theme.palette.primary.main;
+                                        }),
+                                        transition: 'width 1s ease-in-out'
+                                      }} />
+                                    </Box>
+                                  </Box>
+                                </Grid>
+                              );
+                            })}
+                          </Grid>
                         </Box>
-                      </Box>
-                    </GlassCard>
+                      </GlassCard>
+                    </Grid>
+
+                    {/* Yearly Overview */}
+                    <Grid item xs={12}>
+                      <GlassCard>
+                        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                          <Typography variant="subtitle1" fontWeight="600">
+                            Yearly Overview
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {new Date().getFullYear()} Attendance
+                          </Typography>
+                        </Box>
+                        <Box sx={{ p: 2 }}>
+                          <Box sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(20px, 1fr))',
+                            gap: 0.5
+                          }}>
+                            {yearlyOverview.map((week, i) => (
+                              <Tooltip
+                                key={i}
+                                title={
+                                  <>
+                                    <Typography variant="caption" display="block">
+                                      {week.startDate.toLocaleDateString()} - {week.endDate.toLocaleDateString()}
+                                    </Typography>
+                                    <Typography variant="caption" display="block">
+                                      Attendance: {Math.round(week.percentage * 100)}%
+                                    </Typography>
+                                  </>
+                                }
+                                arrow
+                              >
+                                <Box
+                                  sx={{
+                                    width: '100%',
+                                    paddingBottom: '100%',
+                                    bgcolor: theme => {
+                                      if (week.percentage === 0) return alpha(theme.palette.divider, 0.1);
+                                      if (week.percentage > 0.8) return alpha(theme.palette.success.main, 0.8);
+                                      if (week.percentage > 0.6) return alpha(theme.palette.success.main, 0.6);
+                                      if (week.percentage > 0.4) return alpha(theme.palette.success.main, 0.4);
+                                      return alpha(theme.palette.success.main, 0.2);
+                                    },
+                                    borderRadius: '2px',
+                                    transition: 'all 0.2s ease',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                      transform: 'scale(1.2)',
+                                      zIndex: 1
+                                    }
+                                  }}
+                                />
+                              </Tooltip>
+                            ))}
+                          </Box>
+                        </Box>
+                      </GlassCard>
+                    </Grid>
                   </Grid>
                 </Grid>
               </Grid>
-            </Grid>
+            )}
           </CustomTabPanel>
         </Box>
       </GlassCard>
