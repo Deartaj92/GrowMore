@@ -137,7 +137,6 @@ export const EditUpdateForm: React.FC<EditUpdateFormProps> = ({
             await onSubmit(update.id.toString(), updateNote.trim());
             onClose();
         } catch (error) {
-            console.error('Error updating report update:', error);
         } finally {
             setLoading(false);
         }

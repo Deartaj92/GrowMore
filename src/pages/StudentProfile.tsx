@@ -3267,7 +3267,6 @@ export const StudentProfile: React.FC = () => {
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
-          console.error('Error loading test results:', error);
           setTestSessionLoading(false);
           return;
         }
@@ -3443,7 +3442,6 @@ export const StudentProfile: React.FC = () => {
       setTestSessionLoading(false);
 
     } catch (error) {
-      console.error('Error processing test records:', error);
       setTestSessionLoading(false);
     }
   }, [selectedTestSession, student, id]);
@@ -3579,7 +3577,6 @@ export const StudentProfile: React.FC = () => {
 
       setAttendanceSessionLoading(false);
     } catch (error) {
-      console.error('Error loading attendance:', error);
       setAttendanceSessionLoading(false);
     }
   }, [student, attendanceSessions]);
@@ -3787,7 +3784,6 @@ export const StudentProfile: React.FC = () => {
             setReportCategories(Array.from(categoryMap.values()));
           }
         } catch (error) {
-          console.error('Error loading reports count:', error);
         }
 
         // Load exam summaries count for summary cards
@@ -3903,7 +3899,6 @@ export const StudentProfile: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Error loading exam summaries count:', error);
           setExamSummaries([]);
         }
 
@@ -4037,7 +4032,6 @@ export const StudentProfile: React.FC = () => {
             });
           }
         } catch (error) {
-          console.error('Error loading test results count:', error);
           setTestResults([]);
           setTestSummaryData({
             totalSubjects: 0,
@@ -4051,7 +4045,6 @@ export const StudentProfile: React.FC = () => {
 
         setProgress(100);
       } catch (error: any) {
-        console.error('Error fetching student data:', error);
         showToast('Failed to load student data', 'error');
       } finally {
         const elapsed = Date.now() - start;
@@ -4090,7 +4083,6 @@ export const StudentProfile: React.FC = () => {
         }
 
         if (!schoolId) {
-          console.warn('School ID not found for student');
           return;
         }
 
@@ -4108,7 +4100,6 @@ export const StudentProfile: React.FC = () => {
 
         setHomeworkDiaryEntries(homeworkResponse.data || []);
       } catch (homeworkError) {
-        console.error('Error fetching homework diary:', homeworkError);
         setHomeworkDiaryEntries([]);
       }
     };
@@ -4286,7 +4277,6 @@ export const StudentProfile: React.FC = () => {
                         } : undefined
                       } as ExamResult;
                     } catch (error) {
-                      console.warn(`Failed to fetch student data for result ${result.id}:`, error);
                       return result;
                     }
                   })
@@ -4384,7 +4374,6 @@ export const StudentProfile: React.FC = () => {
                         }
                       }
                     } catch (error) {
-                      console.warn(`Failed to fetch exam ${examId}:`, error);
                     }
                   }
 
@@ -4425,7 +4414,6 @@ export const StudentProfile: React.FC = () => {
                 setExamSummaries([]);
               }
             } catch (examError) {
-              console.error('Error fetching examination results:', examError);
               setExamSummaries([]);
             }
             break;
@@ -4521,7 +4509,6 @@ export const StudentProfile: React.FC = () => {
 
         setTabDataLoaded(prev => ({ ...prev, [tabIndex]: true }));
       } catch (error: any) {
-        console.error(`Error loading tab ${tabIndex} data:`, error);
         showToast(`Failed to load tab data`, 'error');
       } finally {
         setTabDataLoading(prev => ({ ...prev, [tabIndex]: false }));

@@ -301,7 +301,6 @@ const GuestDashboard: React.FC = () => {
           const settings = await fetchRenderSettings(user.school_id);
           setRenderSettings(settings);
         } catch (error) {
-          console.error('Error fetching render settings:', error);
         } finally {
           setLoading(false);
         }

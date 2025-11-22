@@ -661,7 +661,6 @@ const TeacherSubjectManager = () => {
       .order('name');
 
     if (error) {
-      console.error('Error fetching teachers:', error);
       showToast('Error fetching teachers', 'error');
       return;
     }
@@ -742,9 +741,6 @@ const TeacherSubjectManager = () => {
     setAssignSelectedSections(sectionAssignments);
     
     // Debug logging
-    console.log('Preselecting for teacher:', teacher.name);
-    console.log('Selected class subjects:', uniqueAssigned);
-    console.log('Selected sections:', sectionAssignments);
     
     setAssignModalOpen(true);
   };
@@ -906,14 +902,12 @@ const TeacherSubjectManager = () => {
           classCount
         );
       } catch (activityError) {
-        console.error('Failed to log subject assignment activity:', activityError);
         // Don't fail the save operation if activity logging fails
       }
       
     fetchTeacherClassSubjects();
     closeAssignModal();
     } catch (error) {
-      console.error('Error saving assignments:', error);
       showToast('Error saving assignments.', 'error');
     }
   };

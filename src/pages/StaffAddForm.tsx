@@ -455,7 +455,6 @@ const StaffAddForm: React.FC = () => {
         }
       }
       // Log the file size for debugging
-      console.log('Compressed file size:', file.size / 1024, 'KB');
       // For preview
       const reader = new FileReader();
       reader.onload = ev => setImage(ev.target?.result as string);
@@ -556,7 +555,6 @@ const StaffAddForm: React.FC = () => {
           .single();
         
         if (updateError) {
-          console.error('Error updating staff record:', updateError);
           throw updateError;
         }
         result = data;
@@ -570,7 +568,6 @@ const StaffAddForm: React.FC = () => {
           .single();
 
         if (insertError) {
-          console.error('Error inserting staff record:', insertError);
           throw insertError;
         }
         result = data;
@@ -579,7 +576,6 @@ const StaffAddForm: React.FC = () => {
 
       navigate('/employees');
     } catch (error: any) {
-      console.error('Error saving staff member:', error);
       showToast(error.message || 'Failed to save staff member', 'error');
     } finally {
       setLoading(false);

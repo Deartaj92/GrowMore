@@ -55,7 +55,7 @@ export default function ProtectedRoute({
           setRenderSettings(settings);
         })
         .catch(error => {
-          console.error('Error fetching render settings for guest:', error);
+          // Error fetching render settings for guest
         })
         .finally(() => {
           setSettingsLoading(false);

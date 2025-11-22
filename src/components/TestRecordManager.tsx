@@ -754,7 +754,6 @@ const TestRecordManager: React.FC = () => {
           .eq('school_id', user?.school_id!);
 
         if (resultsError) {
-          console.error('Error checking existing results:', resultsError);
           showToast('Error checking existing marks', 'error');
           return;
         }
@@ -822,7 +821,6 @@ const TestRecordManager: React.FC = () => {
           resultsData.length
         );
       } catch (activityError) {
-        console.error('Failed to log test marks activity:', activityError);
         // Don't fail the save operation if activity logging fails
       }
       
@@ -831,7 +829,6 @@ const TestRecordManager: React.FC = () => {
       setMarksData({});
       setSelectedStudents(new Set());
     } catch (error) {
-      console.error('Error saving test:', error);
       showToast('Failed to save test', 'error');
     } finally {
       setSaving(false);
@@ -892,7 +889,6 @@ const TestRecordManager: React.FC = () => {
       const { data: testRecords, error: testRecordsError } = await trQuery;
 
       if (testRecordsError) {
-        console.error('Error finding test record:', testRecordsError);
         showToast('Error finding test record', 'error');
         return;
       }
@@ -914,7 +910,6 @@ const TestRecordManager: React.FC = () => {
         .in('student_id', studentIds);
 
       if (deleteError) {
-        console.error('Error deleting test results:', deleteError);
         showToast('Failed to delete marks from database', 'error');
         return;
       }
@@ -928,7 +923,6 @@ const TestRecordManager: React.FC = () => {
         .limit(1);
 
       if (checkError) {
-        console.error('Error checking remaining results:', checkError);
         // Continue even if check fails - we'll just not delete the test record
       }
 
@@ -941,7 +935,6 @@ const TestRecordManager: React.FC = () => {
           .eq('school_id', user?.school_id!);
 
         if (deleteTestRecordError) {
-          console.error('Error deleting test record:', deleteTestRecordError);
           showToast('Marks deleted but failed to delete test record', 'error');
         } else {
           // Test record deleted, reset the form
@@ -963,7 +956,6 @@ const TestRecordManager: React.FC = () => {
               studentIds.length
             );
           } catch (activityError) {
-            console.error('Failed to log test marks delete activity:', activityError);
             // Don't fail the delete operation if activity logging fails
           }
           
@@ -996,11 +988,9 @@ const TestRecordManager: React.FC = () => {
           studentIds.length
         );
       } catch (activityError) {
-        console.error('Failed to log test marks delete activity:', activityError);
         // Don't fail the delete operation if activity logging fails
       }
     } catch (error) {
-      console.error('Error deleting marks:', error);
       showToast('Failed to delete marks', 'error');
     } finally {
       setDeleting(false);
@@ -1048,11 +1038,9 @@ const TestRecordManager: React.FC = () => {
           error.message?.includes('multiple (or no) rows returned') ||
           error.details?.includes('contains 0 rows')
         )) {
-          console.error('Error fetching active session:', error);
           setHasActiveSession(false);
         }
       } catch (error) {
-        console.error('Error fetching active session:', error);
         setHasActiveSession(false);
       } finally {
         setLoadingSessions(false);
@@ -1196,7 +1184,6 @@ const TestRecordManager: React.FC = () => {
         setClasses(sortedClasses);
       }
     } catch (error) {
-      console.error('Error loading classes:', error);
       showToast('Failed to load classes', 'error');
     } finally {
       setLoading(false);
@@ -1262,7 +1249,6 @@ const TestRecordManager: React.FC = () => {
         setSections(data || []);
       }
     } catch (error) {
-      console.error('Error loading sections:', error);
       showToast('Failed to load sections', 'error');
     }
   };
@@ -1284,7 +1270,6 @@ const TestRecordManager: React.FC = () => {
           .eq('class_subjects.class_id', classId);
         
         if (error) {
-          console.error('Error fetching teacher class subjects:', error);
           throw error;
         }
         
@@ -1308,7 +1293,6 @@ const TestRecordManager: React.FC = () => {
           .eq('school_id', user?.school_id);
         
         if (error) {
-          console.error('Error fetching class subjects:', error);
           throw error;
         }
         
@@ -1319,7 +1303,6 @@ const TestRecordManager: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error loading subjects:', error);
       showToast('Failed to load subjects', 'error');
     }
   };
@@ -1327,7 +1310,6 @@ const TestRecordManager: React.FC = () => {
   const loadStudents = async (classId: number, sectionId: number | null) => {
     try {
       if (!activeSessionId) {
-        console.error('No active session found');
         showToast('No active session found. Please contact administrator.', 'error');
         setStudents([]);
         return;
@@ -1350,7 +1332,6 @@ const TestRecordManager: React.FC = () => {
       const { data: schData, error: schError } = await schQuery;
 
       if (schError) {
-        console.error('Error fetching student_class_history:', schError);
         throw schError;
       }
 
@@ -1371,7 +1352,6 @@ const TestRecordManager: React.FC = () => {
         .in('id', studentIds);
       
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         throw studentsError;
       }
 
@@ -1390,11 +1370,9 @@ const TestRecordManager: React.FC = () => {
           { createNotification: false } // Don't create notification for view
         );
       } catch (activityError) {
-        console.error('Failed to log test marks view activity:', activityError);
         // Don't fail the operation if activity logging fails
       }
     } catch (error) {
-      console.error('Error loading students:', error);
       showToast('Failed to load students', 'error');
     }
   };
@@ -1436,7 +1414,6 @@ const TestRecordManager: React.FC = () => {
       const { data: existingTestRecords, error: testRecordsError } = await trQuery;
 
       if (testRecordsError) {
-        console.error('Error loading existing test records:', testRecordsError);
         return;
       }
 
@@ -1463,7 +1440,6 @@ const TestRecordManager: React.FC = () => {
         .in('student_id', students.map(s => s.id));
 
       if (resultsError) {
-        console.error('Error loading existing test results:', resultsError);
         return;
       }
 
@@ -1495,7 +1471,6 @@ const TestRecordManager: React.FC = () => {
         showToast('No existing marks found for this test', 'success');
       }
     } catch (error) {
-      console.error('Error loading existing marks:', error);
       showToast('Failed to load existing marks', 'error');
     } finally {
       setLoadingExistingMarks(false);

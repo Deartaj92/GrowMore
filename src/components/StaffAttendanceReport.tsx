@@ -777,7 +777,6 @@ const StaffAttendanceReport: React.FC = () => {
         error.message?.includes('multiple (or no) rows returned') ||
         error.details?.includes('contains 0 rows')
       )) {
-        console.error('Error fetching active session:', error);
         toast.showToast('Failed to fetch active session for your school', 'error');
         setHasActiveSession(false);
       }
@@ -961,11 +960,6 @@ const StaffAttendanceReport: React.FC = () => {
       const endDate = format(new Date(parseISO(startDate).getFullYear(), parseISO(startDate).getMonth(), daysInMonth), 'yyyy-MM-dd');
 
       try {
-        console.log('Fetching staff holidays with params:', {
-          sessionId,
-          startDate,
-          endDate
-        });
 
         // Fetch all holidays for the period - staff holidays are global (no class/section filtering needed)
         const { data: allHolidaysData, error: allHolidaysError } = await supabase
@@ -983,7 +977,6 @@ const StaffAttendanceReport: React.FC = () => {
 
         if (allHolidaysError) throw allHolidaysError;
 
-        console.log('Raw staff holidays data:', allHolidaysData);
 
         // For staff, we include all holidays (global holidays apply to all staff)
         const relevantHolidays = (allHolidaysData || []).map(h => ({
@@ -993,10 +986,8 @@ const StaffAttendanceReport: React.FC = () => {
           end_date: h.end_date
         }));
 
-        console.log('Final processed staff holidays:', relevantHolidays);
         setHolidays(relevantHolidays);
       } catch (error) {
-        console.error('Error fetching staff holidays:', error);
         setHolidays([]);
       }
     };
@@ -1080,7 +1071,6 @@ const StaffAttendanceReport: React.FC = () => {
     // Debounce rapid clicks (prevent clicks within 500ms)
     const now = Date.now();
     if (now - lastClickTimeRef.current < 500) {
-      console.log('Click too soon, ignoring');
       return;
     }
     lastClickTimeRef.current = now;
@@ -1090,7 +1080,6 @@ const StaffAttendanceReport: React.FC = () => {
     
     // Prevent duplicate calls
     if (updatingStatusRef.current.has(updateKey)) {
-      console.log('Update already in progress for:', updateKey);
       return;
     }
     
@@ -1098,7 +1087,6 @@ const StaffAttendanceReport: React.FC = () => {
     updatingStatusRef.current.add(updateKey);
     setIsUpdatingStatus(true);
     
-    console.log('Starting status change for:', updateKey);
     
     try {
       if (opt.value === 'DELETE') {
@@ -1137,12 +1125,6 @@ const StaffAttendanceReport: React.FC = () => {
           throw new Error(`Missing required fields for delete: staff_id=${staff.id}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
         }
         
-        console.log('Attempting to delete staff attendance record:', {
-          staff_id: staff.id,
-          school_id: user.school_id,
-          session_id: sessionId,
-          date: dateStr
-        });
         
         const { data, error } = await supabase
           .from('staff_attendance_records')
@@ -1153,17 +1135,9 @@ const StaffAttendanceReport: React.FC = () => {
           .eq('date', dateStr);
           
         if (error) {
-          console.error('Supabase delete error:', error);
-          console.error('Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
           throw error;
         }
         
-        console.log('Delete successful:', data);
         toast.showToast('Staff attendance record deleted.', 'success');
         return;
       }
@@ -1228,7 +1202,6 @@ const StaffAttendanceReport: React.FC = () => {
         session_id: sessionId
       };
       
-      console.log('Attempting to upsert staff attendance record:', upsertPayload);
       
       // First, check if record already exists
       const { data: existingRecord, error: checkError } = await supabase
@@ -1241,7 +1214,6 @@ const StaffAttendanceReport: React.FC = () => {
         .single();
       
       if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing record:', checkError);
         throw checkError;
       }
       
@@ -1249,7 +1221,6 @@ const StaffAttendanceReport: React.FC = () => {
       
       if (existingRecord) {
         // Record exists, update it
-        console.log('Record exists, updating:', existingRecord);
         const updateResult = await supabase
           .from('staff_attendance_records')
           .update({ status: dbStatus })
@@ -1258,7 +1229,6 @@ const StaffAttendanceReport: React.FC = () => {
         error = updateResult.error;
       } else {
         // Record doesn't exist, insert it
-        console.log('Record does not exist, inserting new record');
         const insertResult = await supabase
           .from('staff_attendance_records')
           .insert([upsertPayload]);
@@ -1267,23 +1237,12 @@ const StaffAttendanceReport: React.FC = () => {
       }
       
       if (error) {
-        console.error('Supabase upsert error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
         throw error;
       }
       
-      console.log('Upsert successful:', data);
       toast.showToast('Staff attendance updated successfully.', 'success');
       
     } catch (err: any) {
-      console.error('Full error object:', err);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
       
       // Revert the UI state on error
       setAttendanceMatrix(prev => {
@@ -1297,7 +1256,6 @@ const StaffAttendanceReport: React.FC = () => {
       // Clean up
       updatingStatusRef.current.delete(updateKey);
       setIsUpdatingStatus(false);
-      console.log('Status change completed for:', updateKey);
     }
   };
 
@@ -1320,7 +1278,6 @@ const StaffAttendanceReport: React.FC = () => {
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       if (updatingStatusRef.current.size > 0) {
-        console.log('Cleaning up updatingStatusRef, current size:', updatingStatusRef.current.size);
         updatingStatusRef.current.clear();
         setIsUpdatingStatus(false);
       }
@@ -1624,7 +1581,6 @@ const StaffAttendanceReport: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               doc.save(mobileFileName);
               toast.showToast('PDF downloaded successfully!', 'success');
             }
@@ -1678,7 +1634,6 @@ const StaffAttendanceReport: React.FC = () => {
               toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               const pdfDataUri = doc.output('datauristring');
               const newWindow = window.open('', '_blank');
@@ -1722,7 +1677,6 @@ const StaffAttendanceReport: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -1731,7 +1685,6 @@ const StaffAttendanceReport: React.FC = () => {
         toast.showToast('Staff attendance report PDF generated successfully', 'success');
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.showToast('Failed to generate PDF', 'error');
     } finally {
       setExportLoading(false);

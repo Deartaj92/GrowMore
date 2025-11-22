@@ -17,7 +17,6 @@ export const useActivityTracking = () => {
     } = {}
   ) => {
     if (!user?.staff_id || !user?.school_id) {
-      console.warn('Cannot log activity: user not authenticated');
       return;
     }
 
@@ -36,10 +35,8 @@ export const useActivityTracking = () => {
         }
       );
 
-      console.log(`Activity logged: ${activityType} - ${activityAction}`, { activityId });
       return activityId;
     } catch (error) {
-      console.error('Failed to log activity:', error);
       throw error;
     }
   }, [user?.staff_id, user?.school_id]);

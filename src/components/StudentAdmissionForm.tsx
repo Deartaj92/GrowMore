@@ -1388,21 +1388,16 @@ const StudentAdmissionForm: React.FC = () => {
         .limit(1);
 
       if (error) {
-        console.error('Error getting highest student ID:', error);
         throw new Error('Failed to generate student ID: ' + error.message);
       }
-
-      console.log('Highest existing student ID:', existingStudents);
 
       // Calculate the next student ID (global sequential)
       const nextStudentId = existingStudents && existingStudents.length > 0 
         ? existingStudents[0].id + 1 
         : 1;
 
-      console.log(`Generated next student ID: ${nextStudentId}`);
       return nextStudentId;
     } catch (error) {
-      console.error('Error generating student ID:', error);
       throw error;
     }
   };
@@ -1419,8 +1414,6 @@ const StudentAdmissionForm: React.FC = () => {
         const freshStudentId = await generateNextStudentId();
         studentData.id = freshStudentId;
         
-        console.log(`Attempt ${attempt}: Inserting student with ID ${freshStudentId}`);
-        
         const { data: newStudent, error: insertError } = await supabase
           .from('students')
           .insert([studentData])
@@ -1428,10 +1421,8 @@ const StudentAdmissionForm: React.FC = () => {
           .single();
 
         if (insertError) {
-          console.error(`Attempt ${attempt} failed with error:`, insertError);
           // Check if it's a unique constraint violation (race condition)
           if (insertError.code === '23505' && attempt < maxRetries) {
-            console.log(`Attempt ${attempt} failed due to duplicate ID ${freshStudentId}, will retry with new ID...`);
             // Add exponential backoff delay before next attempt
             await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
             continue;
@@ -1439,10 +1430,8 @@ const StudentAdmissionForm: React.FC = () => {
           throw insertError;
         }
 
-        console.log(`Attempt ${attempt} successful, student inserted with ID: ${newStudent.id}`);
         return newStudent;
       } catch (error) {
-        console.error(`Attempt ${attempt} failed with exception:`, error);
         if (attempt === maxRetries) {
           throw error;
         }
@@ -1505,7 +1494,7 @@ const StudentAdmissionForm: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching last added student:', error);
+      // Error fetching last added student
     }
   };
 
@@ -1513,14 +1502,12 @@ const StudentAdmissionForm: React.FC = () => {
   useEffect(() => {
     const checkPrerequisites = async () => {
       if (!user?.school_id) {
-        console.error('No school_id found for user');
         showToast('User school information not found', 'error');
         return;
       }
 
       // Prevent multiple simultaneous calls
       if (progressActiveRef.current) {
-        console.log('checkPrerequisites already in progress, skipping...');
         return;
       }
 
@@ -1586,7 +1573,7 @@ const StudentAdmissionForm: React.FC = () => {
 
         setProgress(100);
       } catch (error) {
-        console.error('Error checking prerequisites:', error);
+        // Error checking prerequisites
       } finally {
         const elapsed = Date.now() - start;
         if (elapsed < minDuration) {
@@ -1625,7 +1612,6 @@ const StudentAdmissionForm: React.FC = () => {
       .then(({ data, error }) => {
       setLoadingClasses(false);
       if (error) {
-        console.error('Error fetching classes:', error);
         return;
       }
       const sortedClasses = sortClasses(data || []);
@@ -1648,7 +1634,7 @@ const StudentAdmissionForm: React.FC = () => {
       .then(({ data, error }) => {
         setLoadingSections(false);
         if (error) {
-          console.error('Section fetch error:', error);
+          // Section fetch error
         }
         setSections(data || []);
     });
@@ -1664,7 +1650,6 @@ const StudentAdmissionForm: React.FC = () => {
       focusAttempts.forEach((delay) => {
         const timer = setTimeout(() => {
           if (nameRef.current) {
-            console.log(`Attempting to focus name field after ${delay}ms`);
             nameRef.current.focus();
             // Scroll into view if needed
             nameRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1679,19 +1664,12 @@ const StudentAdmissionForm: React.FC = () => {
     }
   }, [loading, activeSession, hasClasses, hasSections]);
   
-  // Debug: Log form state changes
-  useEffect(() => {
-    console.log('Form state changed:', form);
-  }, [form]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    console.log('Input change:', e.target.name, '=', e.target.value);
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    console.log('Select change:', e.target.name, '=', e.target.value);
-    
     if (e.target.name === 'class') {
       const selectedClass = classes.find(c => c.id === e.target.value);
       const hasSections = selectedClass?.has_sections ?? true; // Default to true if not specified
@@ -1726,7 +1704,6 @@ const StudentAdmissionForm: React.FC = () => {
         }
       }
       // Log the file size for debugging
-      console.log('Compressed file size:', file.size / 1024, 'KB');
       // For preview
       const reader = new FileReader();
       reader.onload = ev => setImage(ev.target?.result as string);
@@ -1813,7 +1790,6 @@ const StudentAdmissionForm: React.FC = () => {
     e.preventDefault();
     
     // Debug: Log form state before validation
-    console.log('Form state before submission:', form);
     
     if (!form.name.trim()) {
       handleVibrate('name');
@@ -1853,7 +1829,6 @@ const StudentAdmissionForm: React.FC = () => {
     }
     
     // Debug: Log form state after validation
-    console.log('Form validation passed, form state:', form);
     
     setShowConfirm(true);
   };
@@ -1961,32 +1936,18 @@ const StudentAdmissionForm: React.FC = () => {
       };
 
       // Debug: Log the data being sent to database
-      console.log('Form data being sent to database:', {
-        form: form,
-        studentData: studentData,
-        gender: form.gender,
-        religion: form.religion,
-        nationality: form.nationality
-      });
-
       // 5. Insert student with custom ID
       setProgress(85);
-      
-      // Debug: Log the exact data being sent to insertStudentWithRetry
-      console.log('Calling insertStudentWithRetry with data:', studentData);
       
       const newStudent = await insertStudentWithRetry(studentData);
 
       if (!newStudent) {
-        console.error('Student insert error: No student returned');
         showToast('Failed to add student: Unknown error', 'error');
         setSubmitting(false);
         completeProgress();
         return;
       }
       
-      // Debug: Log the returned student data
-      console.log('Student successfully inserted:', newStudent);
 
       // 6. Insert into student_class_history with school_id
       // For new admissions: adm_class_id and new_class_id are the same (admission = current)
@@ -2010,7 +1971,6 @@ const StudentAdmissionForm: React.FC = () => {
         ]);
 
       if (historyError) {
-        console.error('History insert error:', historyError);
         showToast('Failed to add to session history: ' + historyError.message, 'error');
         setSubmitting(false);
         completeProgress();
@@ -2036,7 +1996,6 @@ const StudentAdmissionForm: React.FC = () => {
       showToast(`Student added successfully with ID: ${newStudent.id}!`, 'success');
       handleReset();
     } catch (err: any) {
-      console.error('Submission error:', err);
       showToast('Error: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setSubmitting(false);

@@ -57,7 +57,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
       } catch (error) {
-        console.error('Error parsing stored user:', error);
         localStorage.removeItem('user');
       }
     }
@@ -90,7 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err) {
         // Ignore errors from super_admins table (might not exist)
-        console.log('Super admins table not accessible, continuing with users table');
       }
 
       if (superAdminData && superAdminData.password === password && superAdminData.status === 'active') {
@@ -118,7 +116,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Handle case where user is not found (PGRST116 = no rows returned)
       if (userError && userError.code !== 'PGRST116') {
-        console.error('Error fetching user:', userError);
         // Don't throw here - let it fall through to show "Invalid username or password"
       }
 
@@ -183,7 +180,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       // On any error, remove credentials
       localStorage.removeItem('auth_credentials');
-      console.error('Error logging in:', error);
       throw error;
     } finally {
       setLoading(false);

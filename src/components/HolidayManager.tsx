@@ -1449,7 +1449,6 @@ const HolidayManager: React.FC = () => {
 
       setHolidays(transformedHolidays);
     } catch (error: any) {
-      console.error('Error fetching holidays:', error);
       toast.showToast('Failed to fetch holidays: ' + error.message);
     } finally {
       setLoading(false);

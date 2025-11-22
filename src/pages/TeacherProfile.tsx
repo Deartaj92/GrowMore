@@ -2251,7 +2251,6 @@ export const TeacherProfile: React.FC = () => {
         const settings = await fetchRenderSettings(user.school_id);
         setRenderSettings(settings);
       } catch (error) {
-        console.error('Error fetching render settings:', error);
       }
     };
 
@@ -2285,7 +2284,6 @@ export const TeacherProfile: React.FC = () => {
           setEnableTestDeduction(false);
         }
       } catch (error) {
-        console.error('Error fetching teacher score deduction settings:', error);
         // Default values on error
         setEnableAttendanceDeduction(true);
         setEnableDiaryScoreDeduction(false);
@@ -2559,7 +2557,6 @@ export const TeacherProfile: React.FC = () => {
                   .order('homework_date', { ascending: false });
 
                 if (homeworkError) {
-                  console.error('Error fetching homework entries:', homeworkError);
                 }
 
                 const totalAssignments = homeworkEntries?.length || 0;
@@ -2616,7 +2613,6 @@ export const TeacherProfile: React.FC = () => {
                   };
                 }
               } catch (error) {
-                console.error('Error fetching homework summary:', error);
                 return {
                   totalAssignments: 0,
                   averagePerDay: 0,
@@ -2645,7 +2641,6 @@ export const TeacherProfile: React.FC = () => {
                   .order('test_date', { ascending: false });
 
                 if (testRecordsError) {
-                  console.error('Error fetching test records:', testRecordsError);
                 }
 
                 const testRecordIds = testRecords?.map(r => r.id) || [];
@@ -2685,7 +2680,6 @@ export const TeacherProfile: React.FC = () => {
                     .eq('school_id', user.school_id);
 
                   if (testResultsError) {
-                    console.error('Error fetching test results:', testResultsError);
                   }
 
                   const uniqueStudents = new Set(testResults?.map(r => r.student_id) || []);
@@ -2735,7 +2729,6 @@ export const TeacherProfile: React.FC = () => {
                   };
                 }
               } catch (error) {
-                console.error('Error fetching test summary:', error);
                 return {
                   totalTests: 0,
                   totalStudents: 0,
@@ -2777,7 +2770,6 @@ export const TeacherProfile: React.FC = () => {
         setProgress(100);
         completeProgress();
       } catch (error: any) {
-        console.error('Error fetching teacher data:', error);
         showToast('Failed to load teacher profile', 'error');
         completeProgress();
       } finally {
@@ -3021,7 +3013,6 @@ export const TeacherProfile: React.FC = () => {
 
         setTabDataLoaded(prev => ({ ...prev, [3]: true }));
       } catch (error) {
-        console.error('Error loading test data:', error);
         lastSessionIdRef.current = null; // Reset on error so it can retry
       } finally {
         isLoadingRef.current = false;
@@ -3147,7 +3138,6 @@ export const TeacherProfile: React.FC = () => {
           .order('homework_date', { ascending: false });
 
         if (homeworkError) {
-          console.error('Error fetching homework entries:', homeworkError);
           setDiaryAnalysisData({
             totalAssignments: 0,
             totalStudents: 0,
@@ -3336,7 +3326,6 @@ export const TeacherProfile: React.FC = () => {
 
         setTabDataLoaded(prev => ({ ...prev, [4]: true }));
       } catch (error) {
-        console.error('Error loading diary data:', error);
         lastDiarySessionIdRef.current = null; // Reset on error so it can retry
       } finally {
         diaryLoadingRef.current = false;
@@ -3477,7 +3466,6 @@ export const TeacherProfile: React.FC = () => {
         setTeacher(updatedTeacher);
       }
     } catch (error: any) {
-      console.error('Error updating profile:', error);
       showToast(error.message || 'Failed to update profile', 'error');
     } finally {
       setEditLoading(false);

@@ -1169,7 +1169,6 @@ const MasterSheetManager: React.FC = () => {
       
       setClasses(sortedClasses);
     } catch (error) {
-      console.error('Error loading classes:', error);
       showToast('Failed to load classes', 'error');
     }
   };
@@ -1187,7 +1186,6 @@ const MasterSheetManager: React.FC = () => {
       if (error) throw error;
       setSections(data || []);
     } catch (error) {
-      console.error('Error loading sections:', error);
       showToast('Failed to load sections', 'error');
     }
   };
@@ -1213,7 +1211,6 @@ const MasterSheetManager: React.FC = () => {
       });
       setExaminations(uniqueExaminations);
     } catch (error) {
-      console.error('Error loading examinations:', error);
       showToast('Failed to load examinations', 'error');
     } finally {
       setLoading(false);
@@ -1432,7 +1429,6 @@ const MasterSheetManager: React.FC = () => {
 
       setMasterSheetData(masterSheetData);
     } catch (error) {
-      console.error('Error loading master sheet data:', error);
       showToast('Failed to load master sheet data', 'error');
     } finally {
       setLoading(false);
@@ -1489,7 +1485,6 @@ const MasterSheetManager: React.FC = () => {
         remarks: summary.remarks
       }));
     } catch (error) {
-      console.error('Error loading examination summaries:', error);
       return [];
     }
   };
@@ -1530,9 +1525,7 @@ const MasterSheetManager: React.FC = () => {
       // Bulk upsert examination summaries
       await examinationSummaryService.bulkUpsertExaminationSummaries(examinationSummaries);
       
-      console.log(`Stored ${examinationSummaries.length} examination summaries for exam ${selectedExam.id} (${hasSections ? 'sectioned' : 'non-sectioned'} class)`);
     } catch (error) {
-      console.error('Error storing examination summaries:', error);
       // Don't show error to user as this is a background operation
     }
   };
@@ -1563,7 +1556,6 @@ const MasterSheetManager: React.FC = () => {
       showToast('Master sheet generated successfully', 'success');
       loadMasterSheetData();
     } catch (error) {
-      console.error('Error generating master sheet:', error);
       showToast('Failed to generate master sheet', 'error');
     } finally {
       setGenerating(false);
@@ -1585,7 +1577,6 @@ const MasterSheetManager: React.FC = () => {
       
       showToast('Examination summaries refreshed successfully', 'success');
     } catch (error) {
-      console.error('Error refreshing examination summaries:', error);
       showToast('Failed to refresh examination summaries', 'error');
     } finally {
       setLoading(false);
@@ -2018,7 +2009,6 @@ const MasterSheetManager: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               showToast('PDF downloaded successfully!', 'success');
@@ -2075,7 +2065,6 @@ const MasterSheetManager: React.FC = () => {
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -2120,7 +2109,6 @@ const MasterSheetManager: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -2129,7 +2117,6 @@ const MasterSheetManager: React.FC = () => {
         showToast('Master sheet PDF exported successfully', 'success');
       }
     } catch (error) {
-      console.error('Error exporting master sheet PDF:', error);
       showToast('Failed to export master sheet PDF', 'error');
     } finally {
       setExportLoading(false);
@@ -2163,7 +2150,6 @@ const MasterSheetManager: React.FC = () => {
 
       showToast('Master sheet exported successfully', 'success');
     } catch (error) {
-      console.error('Error exporting master sheet:', error);
       showToast('Failed to export master sheet', 'error');
     }
   };
@@ -2233,7 +2219,6 @@ const MasterSheetManager: React.FC = () => {
 
       showToast('Remarks updated successfully', 'success');
     } catch (error) {
-      console.error('Error saving remarks:', error);
       showToast('Failed to save remarks', 'error');
     }
   };

@@ -1030,7 +1030,6 @@ const SubjectManager = () => {
       .order('name');
     
     if (error) {
-      console.error('Error fetching subjects:', error);
         setError('Failed to fetch subjects');
       return;
     }
@@ -1038,7 +1037,6 @@ const SubjectManager = () => {
     setSubjects(data || []);
       setError(null);
     } catch (err) {
-      console.error('Error fetching subjects:', err);
       setError('Failed to fetch subjects');
     } finally {
       setLoading(false);
@@ -1055,13 +1053,11 @@ const SubjectManager = () => {
       .order('name');
     
     if (error) {
-      console.error('Error fetching classes:', error);
       return;
     }
     
     setClasses(data || []);
     } catch (err) {
-      console.error('Error fetching classes:', err);
     }
   };
 
@@ -1079,13 +1075,11 @@ const SubjectManager = () => {
       .eq('school_id', user.school_id);
     
     if (error) {
-      console.error('Error fetching class subjects:', error);
       return;
     }
     
     setClassSubjects(data || []);
     } catch (err) {
-      console.error('Error fetching class subjects:', err);
     }
   };
 
@@ -1269,7 +1263,6 @@ const SubjectManager = () => {
     handleCloseDialog();
     fetchSubjects();
     } catch (err) {
-      console.error('Error saving subject:', err);
       showToast('Error saving subject.', 'error');
     } finally {
       setIsSaving(false);
@@ -1312,7 +1305,6 @@ const SubjectManager = () => {
       .eq('class_id', selectedClass);
 
     if (deleteError) {
-      console.error('Error removing existing assignments:', deleteError);
       return;
     }
 
@@ -1327,7 +1319,6 @@ const SubjectManager = () => {
       .insert(assignments);
 
     if (insertError) {
-      console.error('Error assigning subjects:', insertError);
       return;
     }
 
@@ -1390,7 +1381,6 @@ const SubjectManager = () => {
       
       setSubjectDependencies(dependencies);
     } catch (error) {
-      console.error('Error loading dependencies:', error);
     } finally {
       setLoadingDependencies(false);
     }
@@ -1511,7 +1501,6 @@ const SubjectManager = () => {
     fetchClassSubjects();
     closeAssignModal();
     } catch (error) {
-      console.error('Error updating assignments:', error);
       showToast('Error updating assignments.', 'error');
     }
   };
@@ -1554,7 +1543,6 @@ const SubjectManager = () => {
         .eq('school_id', user.school_id);
 
       if (examError) {
-        console.error('Error checking exam results:', examError);
       }
 
       // Check for teacher assignments
@@ -1573,7 +1561,6 @@ const SubjectManager = () => {
         .eq('school_id', user.school_id);
 
       if (teacherError) {
-        console.error('Error checking teacher assignments:', teacherError);
       }
 
       return {
@@ -1583,7 +1570,6 @@ const SubjectManager = () => {
         teacherCount: teacherAssignments?.length || 0
       };
     } catch (error) {
-      console.error('Error checking dependencies:', error);
       return { hasExams: false, hasTeachers: false, examCount: 0, teacherCount: 0 };
     }
   };

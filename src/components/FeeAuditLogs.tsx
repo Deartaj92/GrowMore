@@ -444,7 +444,6 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
       setLogs(combinedData);
       setCurrentPage(page);
     } catch (err: any) {
-      console.error('Error loading audit logs:', err);
       
       // Check for specific error types
       if (err.message?.includes('relation "fee_audit_logs" does not exist') || 
@@ -693,7 +692,6 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error loading student/class data:', error);
     }
   };
 

@@ -1379,7 +1379,6 @@ const MarksEntryManager: React.FC = () => {
         .eq('school_id', user?.school_id);
 
       if (classesError) {
-        console.error('Error fetching classes:', classesError);
         showToast('Failed to fetch classes', 'error');
         return;
       }
@@ -1394,7 +1393,6 @@ const MarksEntryManager: React.FC = () => {
         .order('name');
 
       if (sectionsError) {
-        console.error('Error fetching sections:', sectionsError);
         showToast('Failed to fetch sections', 'error');
         return;
       }
@@ -1417,7 +1415,6 @@ const MarksEntryManager: React.FC = () => {
         .order('new_section_id');
 
       if (schError) {
-        console.error('Error fetching student_class_history:', schError);
         showToast('Failed to fetch students from database', 'error');
         return;
       }
@@ -1640,7 +1637,6 @@ const MarksEntryManager: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               showToast('PDF downloaded successfully!', 'success');
@@ -1697,7 +1693,6 @@ const MarksEntryManager: React.FC = () => {
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -1743,7 +1738,6 @@ const MarksEntryManager: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -1752,7 +1746,6 @@ const MarksEntryManager: React.FC = () => {
         showToast(`Marks sheet PDF generated successfully with ${totalStudents} students across all classes`, 'success');
       }
     } catch (error) {
-      console.error('Error generating marks sheet PDF:', error);
       showToast('Failed to generate marks sheet PDF', 'error');
     } finally {
       setPdfLoading(false);
@@ -1779,7 +1772,6 @@ const MarksEntryManager: React.FC = () => {
         .in('student_id', studentIds);
 
       if (error) {
-        console.error('Error loading existing marks:', error);
         showToast(`Failed to load existing marks: ${error.message}`, 'error');
         return;
       }
@@ -1805,7 +1797,6 @@ const MarksEntryManager: React.FC = () => {
         showToast('No existing marks found', 'success');
       }
     } catch (error) {
-      console.error('Error loading existing marks:', error);
       showToast('Failed to load existing marks', 'error');
     }
   };
@@ -1876,7 +1867,6 @@ const MarksEntryManager: React.FC = () => {
         .in('student_id', studentIds);
 
       if (deleteError) {
-        console.error('Error deleting existing marks:', deleteError);
         // Continue with insert even if delete fails
       }
       
@@ -1886,7 +1876,6 @@ const MarksEntryManager: React.FC = () => {
         .insert(marksToSave);
 
       if (error) {
-        console.error('Error saving marks:', error);
         showToast(`Failed to save marks: ${error.message}`, 'error');
         return;
       }
@@ -1904,14 +1893,12 @@ const MarksEntryManager: React.FC = () => {
           marksToSave.length
         );
       } catch (activityError) {
-        console.error('Failed to log examination marks activity:', activityError);
         // Don't fail the save operation if activity logging fails
       }
       
       // Clear selection after successful save
       setSelectedStudents(new Set());
     } catch (error) {
-      console.error('Error saving marks:', error);
       showToast('Failed to save marks', 'error');
     } finally {
       setSaving(false);
@@ -1949,7 +1936,6 @@ const MarksEntryManager: React.FC = () => {
         .in('student_id', studentIds);
 
       if (error) {
-        console.error('Error deleting marks:', error);
         showToast(`Failed to delete marks: ${error.message}`, 'error');
         return;
       }
@@ -1965,7 +1951,6 @@ const MarksEntryManager: React.FC = () => {
       // Clear selection after successful delete
       setSelectedStudents(new Set());
     } catch (error) {
-      console.error('Error deleting marks:', error);
       showToast('Failed to delete marks', 'error');
     } finally {
       setDeleting(false);
@@ -2091,7 +2076,6 @@ const MarksEntryManager: React.FC = () => {
         setClasses(sortedClasses);
       }
     } catch (error) {
-      console.error('Error loading classes:', error);
       showToast('Failed to load classes', 'error');
     } finally {
       setLoading(false);
@@ -2157,7 +2141,6 @@ const MarksEntryManager: React.FC = () => {
         setSections(data || []);
       }
     } catch (error) {
-      console.error('Error loading sections:', error);
       showToast('Failed to load sections', 'error');
     }
   };
@@ -2167,7 +2150,6 @@ const MarksEntryManager: React.FC = () => {
       const data = await examinationService.getExaminations({ status: 'published' }, user?.school_id);
       setExaminations(data);
     } catch (error) {
-      console.error('Error loading examinations:', error);
       showToast('Failed to load examinations', 'error');
     }
   };
@@ -2191,7 +2173,6 @@ const MarksEntryManager: React.FC = () => {
             .eq('class_subjects.class_id', selectedClass.id);
           
           if (error) {
-            console.error('Error fetching teacher class subjects:', error);
             throw error;
           }
           
@@ -2215,7 +2196,6 @@ const MarksEntryManager: React.FC = () => {
             .eq('school_id', user?.school_id);
           
           if (error) {
-            console.error('Error fetching class subjects:', error);
             throw error;
           }
           
@@ -2229,7 +2209,6 @@ const MarksEntryManager: React.FC = () => {
         setSubjects([]);
       }
     } catch (error) {
-      console.error('Error loading subjects:', error);
       showToast('Failed to load subjects', 'error');
     }
   };
@@ -2245,7 +2224,6 @@ const MarksEntryManager: React.FC = () => {
         .single();
 
       if (sessionError || !sessionData) {
-        console.error('No active session found:', sessionError);
         setActiveSessionId(null);
         setHasActiveSession(false);
         return;
@@ -2254,7 +2232,6 @@ const MarksEntryManager: React.FC = () => {
       setActiveSessionId(sessionData.id);
       setHasActiveSession(true);
     } catch (error) {
-      console.error('Error loading active session:', error);
       setActiveSessionId(null);
       setHasActiveSession(false);
     }
@@ -2263,7 +2240,6 @@ const MarksEntryManager: React.FC = () => {
   const loadStudents = async (classId: number, sectionId: number | null) => {
     try {
       if (!activeSessionId) {
-        console.error('No active session found');
         showToast('No active session found. Please contact administrator.', 'error');
         setStudents([]);
         return;
@@ -2286,7 +2262,6 @@ const MarksEntryManager: React.FC = () => {
       const { data: schData, error: schError } = await schQuery;
 
       if (schError) {
-        console.error('Error fetching student_class_history:', schError);
         throw schError;
       }
 
@@ -2307,7 +2282,6 @@ const MarksEntryManager: React.FC = () => {
         .in('id', studentIds);
       
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         throw studentsError;
       }
 
@@ -2326,11 +2300,9 @@ const MarksEntryManager: React.FC = () => {
           { createNotification: false } // Don't create notification for view
         );
       } catch (activityError) {
-        console.error('Failed to log examination marks view activity:', activityError);
         // Don't fail the operation if activity logging fails
       }
     } catch (error) {
-      console.error('Error loading students:', error);
       showToast('Failed to load students', 'error');
     }
   };

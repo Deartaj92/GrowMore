@@ -184,7 +184,6 @@ const DMCManager: React.FC = () => {
       setExaminations(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching examinations:', err);
       setError('Failed to fetch examinations');
     } finally {
       setLoading(false);
@@ -200,7 +199,6 @@ const DMCManager: React.FC = () => {
         setSelectedTemplate(data[0]);
       }
     } catch (err) {
-      console.error('Error fetching templates:', err);
     }
   };
 
@@ -223,7 +221,6 @@ const DMCManager: React.FC = () => {
       });
       showToast('DMC generated successfully', 'success');
     } catch (err) {
-      console.error('Error generating DMC:', err);
       showToast('Failed to generate DMC', 'error');
     }
   };

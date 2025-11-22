@@ -995,7 +995,6 @@ const DetailedMarksCertificate: React.FC = () => {
           .single();
 
         if (schoolError) {
-          console.error('Error fetching school data:', schoolError);
         }
 
         // Merge school data with institute profile data (same logic as InstituteProfile.tsx)
@@ -1053,7 +1052,6 @@ const DetailedMarksCertificate: React.FC = () => {
       setExaminations(examinationsData || []);
 
     } catch (err) {
-      console.error('Error loading initial data:', err);
       toast.error('Failed to load initial data');
     } finally {
       setLoading(false);
@@ -1072,7 +1070,6 @@ const DetailedMarksCertificate: React.FC = () => {
       if (error) throw error;
       setSections(data || []);
     } catch (err) {
-      console.error('Error loading sections:', err);
       toast.error('Failed to load sections');
     }
   };
@@ -1255,7 +1252,6 @@ const DetailedMarksCertificate: React.FC = () => {
 
     } catch (err) {
       setError('Failed to load DMC data');
-      console.error('Error loading DMC data:', err);
       toast.error('Failed to load DMC data');
     } finally {
       setLoading(false);
@@ -1273,7 +1269,6 @@ const DetailedMarksCertificate: React.FC = () => {
         .order('date', { ascending: false });
 
       if (error) {
-        console.error('Error fetching attendance data:', error);
         return 100; // Default to 100% if error
       }
 
@@ -1306,7 +1301,6 @@ const DetailedMarksCertificate: React.FC = () => {
       const attendancePercentage = Math.round((stats.present / stats.total) * 100);
       return attendancePercentage;
     } catch (error) {
-      console.error('Error calculating attendance percentage:', error);
       return 100; // Default to 100% if error
     }
   };
@@ -1685,7 +1679,6 @@ const DetailedMarksCertificate: React.FC = () => {
         const watermarkY = tableY + 20; // Position higher to avoid table data
         
         // Use same logo logic as header - check if logo_url exists
-        console.log('Logo URL:', instituteProfile?.logo_url);
         if (instituteProfile?.logo_url) {
           try {
             // Add the actual logo image to the watermark (no overlay)
@@ -1700,7 +1693,6 @@ const DetailedMarksCertificate: React.FC = () => {
               'FAST' // Fast rendering
             );
           } catch (error) {
-            console.log('PNG logo loading failed:', error);
             // Try JPEG if PNG fails
             try {
               doc.addImage(
@@ -1714,7 +1706,6 @@ const DetailedMarksCertificate: React.FC = () => {
                 'FAST' // Fast rendering
               );
             } catch (error2) {
-              console.log('JPEG logo loading failed:', error2);
               // Try without format specification
               try {
                 doc.addImage(
@@ -1725,7 +1716,6 @@ const DetailedMarksCertificate: React.FC = () => {
                   watermarkSize // Smaller size
                 );
               } catch (error3) {
-                console.log('All logo loading attempts failed:', error3);
                 // If all attempts fail, fallback to text version
                 doc.setFontSize(24);
                 doc.setFont('helvetica', 'bold');
@@ -1926,7 +1916,6 @@ const DetailedMarksCertificate: React.FC = () => {
       toast.success(`PDF exported successfully with ${allDmcData.length} DMCs!`, { id: 'pdf-export' });
 
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.error('Failed to generate PDF', { id: 'pdf-export' });
     }
   };

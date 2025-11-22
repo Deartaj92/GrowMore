@@ -91,7 +91,6 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
       
       return true;
     } catch (error) {
-      console.error('Failed to open WhatsApp Web:', error);
       return false;
     }
   }, [formatPhoneNumber]);
@@ -134,7 +133,6 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
           results.push(message);
         }
       } catch (error) {
-        console.error(`Failed to send message to ${message.phone}:`, error);
         message.status = 'failed';
         results.push(message);
       }
@@ -189,8 +187,6 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
       
       // Check if popup was blocked
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        console.warn('Popup blocked, trying alternative method...');
-        
         // Fallback: Create a temporary link and click it
         const link = document.createElement('a');
         link.href = whatsappUrl;
@@ -212,7 +208,6 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
       
       return true;
     } catch (error) {
-      console.error('Failed to open WhatsApp:', error);
       return false;
     }
   }, [formatPhoneNumber]);
@@ -301,13 +296,11 @@ export const useWhatsAppBulkSender = (options: UseWhatsAppBulkSenderOptions = {}
       window.location.href = smsUrl;
       return true;
     } catch (error) {
-      console.error('Failed to open SMS app:', error);
       // Fallback: try with tel: protocol
       try {
         window.location.href = `tel:${localPhone}`;
         return true;
       } catch (fallbackError) {
-        console.error('Failed to open tel link:', fallbackError);
         return false;
       }
     }

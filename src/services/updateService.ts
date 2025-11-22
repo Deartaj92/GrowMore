@@ -47,12 +47,6 @@ export class UpdateService {
     
     this.GITHUB_TOKEN = token || null;
     
-    // Debug logging (remove in production if needed)
-    if (this.GITHUB_TOKEN) {
-      console.log('[UpdateService] GitHub token loaded, using authenticated API (5,000 req/hour)');
-    } else {
-      console.warn('[UpdateService] No GitHub token found, using unauthenticated API (60 req/hour limit)');
-    }
   }
 
   // Get current app version from package.json
@@ -212,7 +206,6 @@ export class UpdateService {
       // No newer version found with the required asset
       return { updateAvailable: false };
     } catch (error: any) {
-      console.error('Update check failed:', error);
       return { 
         updateAvailable: false,
         error: error.message || 'Failed to check for updates. Please verify the repository exists and is accessible.'
@@ -232,8 +225,6 @@ export class UpdateService {
   ): Promise<{ filePath?: string; fileName?: string }> {
     const isDesktop = this.isElectron();
     const platform = Capacitor.getPlatform();
-    
-    console.log('[Update] Detected platform:', platform, 'isDesktop:', isDesktop);
 
     if (isDesktop && window.electronAPI) {
       // Desktop/Electron: Look for installer (.exe)
@@ -243,13 +234,10 @@ export class UpdateService {
       );
       
       if (!installerAsset) {
-        console.error('No installer .exe found in the latest release.');
         alert('No installer found in the latest release. Please upload a valid installer.');
         throw new Error('No installer found in the latest release.');
       }
 
-      console.log('[Update] Found installer:', installerAsset.name);
-      
       // Use Electron's download API with progress tracking
       // Note: Save dialog is shown BEFORE download in electron.js handler
       try {
@@ -261,7 +249,6 @@ export class UpdateService {
         // Progress is handled via the onDownloadProgress listener in UpdateNotification
         return result;
       } catch (error: any) {
-        console.error('[Update] Download failed:', error);
         throw new Error(`Download failed: ${error.message}`);
       }
     }
@@ -288,7 +275,6 @@ export class UpdateService {
     );
     
     if (!apkAsset) {
-      console.error('No APK asset found in the latest release.');
       alert('No APK asset found in the latest release. Please upload a valid APK.');
       throw new Error('No APK asset found in the latest release.');
     }
@@ -308,7 +294,6 @@ export class UpdateService {
       return {};
     }
     
-    console.log('[Update] Not Android/iOS, opening APK in browser tab.');
     window.open(apkAsset.browser_download_url, '_blank');
     return {};
   }

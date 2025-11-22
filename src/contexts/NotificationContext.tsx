@@ -74,7 +74,7 @@ const getStudentInfo = () => {
       return JSON.parse(studentSession);
     }
   } catch (e) {
-    console.error('Error parsing student session:', e);
+    // Error parsing student session
   }
   return null;
 };
@@ -146,13 +146,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   useEffect(() => {
     const info = getStudentInfo();
     setStudentInfo(info);
-    console.log('[NotificationContext] Student info loaded:', info);
 
     // Listen for storage changes (when student logs in/out)
     const handleStorageChange = () => {
       const updatedInfo = getStudentInfo();
       setStudentInfo(updatedInfo);
-      console.log('[NotificationContext] Student info updated:', updatedInfo);
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -231,16 +229,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Fetch announcements and convert them to notifications
   const fetchAnnouncementsAsNotifications = useCallback(async (): Promise<Notification[]> => {
     const schoolId = user?.school_id || studentInfo?.school_id;
-    console.log('[NotificationContext] Fetching announcements for school:', schoolId, 'User:', user?.role, 'Student:', studentInfo?.id);
 
     if (!schoolId) {
-      console.log('[NotificationContext] No school ID found, skipping announcement fetch');
       return [];
     }
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      console.log('[NotificationContext] Today:', today);
 
       const { data: announcements, error } = await supabase
         .from('announcements')
@@ -252,22 +247,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         .order('created_at', { ascending: false });
 
       if (error || !announcements) {
-        console.error('[NotificationContext] Error fetching announcements:', error);
         return [];
       }
 
-      console.log('[NotificationContext] Found announcements:', announcements.length, announcements);
-
       // Filter announcements that match the user's audience
       const filteredAnnouncements = announcements.filter(matchesAnnouncementAudience);
-      console.log('[NotificationContext] Filtered announcements:', filteredAnnouncements.length, filteredAnnouncements);
 
       // Get viewer identifier for checking read status
       const viewerIdentifier = getViewerIdentifier();
-      console.log('[NotificationContext] Viewer identifier:', viewerIdentifier);
 
       if (!viewerIdentifier) {
-        console.log('[NotificationContext] No viewer identifier, skipping');
         return [];
       }
 
@@ -278,7 +267,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         .eq('viewer_identifier', viewerIdentifier);
 
       const viewedAnnouncementIds = new Set(views?.map(v => v.announcement_id) || []);
-      console.log('[NotificationContext] Viewed announcements:', viewedAnnouncementIds);
 
       // Transform announcements to notification format
       // Only include announcements that actually exist in the fetched list
@@ -297,10 +285,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           read_at: viewedAnnouncementIds.has(announcement.id) ? announcement.created_at : null,
         }));
 
-      console.log('[NotificationContext] Transformed to notifications:', announcementNotifications.length, announcementNotifications);
       return announcementNotifications;
     } catch (error) {
-      console.error('[NotificationContext] Error fetching announcements as notifications:', error);
       return [];
     }
   }, [user?.school_id, user?.staff_id, studentInfo?.school_id, matchesAnnouncementAudience, getViewerIdentifier]);
@@ -308,7 +294,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Request notification permission
   const requestPermission = useCallback(async () => {
     if (!('Notification' in window)) {
-      console.log('This browser does not support desktop notification');
       return false;
     }
 
@@ -345,7 +330,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           tag: 'school-notification' // Group notifications
         });
       } catch (e) {
-        console.error('Error showing notification:', e);
+        // Error showing notification
       }
     }
   }, [preferences]);
@@ -381,10 +366,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Load notifications
   const refreshNotifications = useCallback(async () => {
     const schoolId = user?.school_id || studentInfo?.school_id;
-    console.log('[NotificationContext] refreshNotifications called - schoolId:', schoolId, 'user:', user?.role, 'student:', studentInfo?.id);
-
     if (!schoolId) {
-      console.log('[NotificationContext] No school ID, skipping refresh');
       return;
     }
 
@@ -397,14 +379,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       // For Principal: Show BOTH teacher activity notifications AND announcements
       if (user?.role === 'Principal' && user?.staff_id && user?.school_id) {
-        console.log('[NotificationContext] Fetching for Principal');
-
         // Fetch preferences with error handling
         let preferencesData: NotificationPreferences | null = null;
         try {
           preferencesData = await activityTrackingService.getNotificationPreferences(user.staff_id, user.school_id);
         } catch (error) {
-          console.warn('[NotificationContext] Failed to fetch preferences (using defaults):', error);
           // Use default preferences if fetch fails
           preferencesData = {
             id: 0,
@@ -432,14 +411,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
         // Check if there are more notifications to load
         hasMoreNotifications = notificationsData.length >= PAGE_SIZE;
-        console.log('[NotificationContext] Principal notifications:', allNotifications.length, 'Has more:', hasMoreNotifications);
       } else {
         // For all other users (Teachers, Students, etc.): Show announcements as notifications only
-        console.log('[NotificationContext] Fetching announcements for non-Principal user');
         const announcementNotifications = await fetchAnnouncementsAsNotifications();
         allNotifications = announcementNotifications;
         hasMoreNotifications = false; // Announcements are all loaded at once
-        console.log('[NotificationContext] Non-Principal notifications:', allNotifications.length);
       }
 
       setHasMore(hasMoreNotifications);
@@ -450,7 +426,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // Calculate unread count
       const unreadNotifications = sortedNotifications.filter(n => !n.is_read).length;
 
-      console.log('[NotificationContext] Final notifications:', sortedNotifications.length, 'Unread:', unreadNotifications);
       setNotifications(sortedNotifications);
       setUnreadCount(unreadNotifications);
 
@@ -476,7 +451,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         }
       }
     } catch (error) {
-      console.error('[NotificationContext] Failed to refresh notifications:', error);
+      // Failed to refresh notifications
     } finally {
       setIsLoading(false);
     }
@@ -490,8 +465,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     try {
       const nextPage = page + 1;
       const offset = nextPage * PAGE_SIZE;
-
-      console.log('[NotificationContext] Loading more notifications, page:', nextPage, 'offset:', offset);
 
       const newNotifications = await activityTrackingService.getUserNotifications(
         user.staff_id,
@@ -520,7 +493,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       setPage(nextPage);
     } catch (error) {
-      console.error('[NotificationContext] Failed to load more notifications:', error);
+      // Failed to load more notifications
     } finally {
       setIsLoading(false);
     }
@@ -559,7 +532,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // Update unread count
       setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
     } catch (error) {
-      console.error('Failed to mark notifications as read:', error);
+      // Failed to mark notifications as read
     }
   }, [user?.staff_id, user?.school_id, user?.role, user?.name, studentInfo, notifications, getViewerIdentifier]);
 
@@ -584,7 +557,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       setPreferences(updatedPreferences);
     } catch (error) {
-      console.error('Failed to update notification preferences:', error);
+      // Failed to update notification preferences
     }
   }, [user?.staff_id, user?.school_id, user?.role]);
 
@@ -608,7 +581,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
 
     try {
-      console.log('[NotificationContext] Subscribing to real-time updates for school:', schoolId);
 
       const channel = supabase
         .channel(`notifications-${schoolId}-${staffId || studentInfo?.id}`, {
@@ -750,7 +722,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const newSubscription = channel.subscribe();
       setSubscription(newSubscription);
     } catch (error) {
-      console.error('Failed to subscribe to notifications:', error);
+      // Failed to subscribe to notifications
     }
   }, [user?.staff_id, user?.school_id, studentInfo, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification]);
 
@@ -784,7 +756,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const userType: 'staff' | 'student' = latestStudentInfo?.id ? 'student' : 'staff';
 
       if (userId && schoolId) {
-        console.log('[NotificationContext] User detected. Initializing Push for:', userId);
         pushNotificationService.initCapacitorPush(userId, schoolId, userType);
         if (window.electronAPI) {
           pushNotificationService.initElectronPush(userId, schoolId, userType);

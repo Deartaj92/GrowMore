@@ -29,7 +29,6 @@ export const feeAuditService = {
       });
 
     if (error) {
-      console.error('Error creating audit log:', error);
       throw error;
     }
   },
@@ -83,7 +82,6 @@ export const feeAuditService = {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching audit logs:', error);
       throw error;
     }
 
@@ -136,7 +134,6 @@ export const feeAuditService = {
     const { count, error } = await query;
 
     if (error) {
-      console.error('Error counting audit logs:', error);
       throw error;
     }
 

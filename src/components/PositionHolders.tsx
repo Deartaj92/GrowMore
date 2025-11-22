@@ -1017,7 +1017,6 @@ const PositionHolders: React.FC = () => {
       const data = await examinationService.getExaminations({}, user?.school_id);
       setExaminations(data);
     } catch (error) {
-      console.error('Error loading examinations:', error);
       showToast('Failed to load examinations', 'error');
     } finally {
       setLoading(false);
@@ -1112,7 +1111,6 @@ const PositionHolders: React.FC = () => {
 
       setPositionData(positionData);
     } catch (error) {
-      console.error('Error loading position data:', error);
       showToast('Failed to load position data', 'error');
     } finally {
       setLoading(false);
@@ -1276,7 +1274,6 @@ const PositionHolders: React.FC = () => {
           position_holders: topThreeStudents
       };
     } catch (error) {
-      console.error('Error processing class section:', error);
       return null;
     }
   };
@@ -1528,7 +1525,6 @@ const PositionHolders: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               showToast('PDF downloaded successfully!', 'success');
@@ -1585,7 +1581,6 @@ const PositionHolders: React.FC = () => {
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -1630,7 +1625,6 @@ const PositionHolders: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -1639,7 +1633,6 @@ const PositionHolders: React.FC = () => {
         showToast('Position Holders PDF generated successfully', 'success');
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
       showToast('Failed to generate PDF', 'error');
     } finally {
       setPdfLoading(false);

@@ -91,7 +91,6 @@ class ActivityTrackingService {
       });
 
       if (error) {
-        console.error('Error logging activity:', error);
         throw error;
       }
 
@@ -108,14 +107,12 @@ class ActivityTrackingService {
             options.details
           );
         } catch (notificationError) {
-          console.error('Failed to create notification:', notificationError);
           // Don't fail the activity logging if notification fails
         }
       }
 
       return data;
     } catch (error) {
-      console.error('Activity logging failed:', error);
       throw error;
     }
   }
@@ -140,7 +137,6 @@ class ActivityTrackingService {
         .single();
 
       if (teacherError || !teacher) {
-        console.error('Error fetching teacher:', teacherError);
         return;
       }
 
@@ -152,7 +148,6 @@ class ActivityTrackingService {
         .in('role', ['Super Admin', 'Principal', 'Admin']);
 
       if (adminError || !admins) {
-        console.error('Error fetching admins:', adminError);
         return;
       }
 
@@ -176,11 +171,11 @@ class ActivityTrackingService {
           .insert(notifications);
 
         if (insertError) {
-          console.error('Error creating notifications:', insertError);
+          // Error creating notifications
         }
       }
     } catch (error) {
-      console.error('Failed to create admin notifications:', error);
+      // Failed to create admin notifications
     }
   }
 
@@ -296,13 +291,11 @@ class ActivityTrackingService {
       });
 
       if (error) {
-        console.error('Error creating notification:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Notification creation failed:', error);
       throw error;
     }
   }
@@ -318,13 +311,11 @@ class ActivityTrackingService {
       });
 
       if (error) {
-        console.error('Error getting unread notifications count:', error);
         throw error;
       }
 
       return data || 0;
     } catch (error) {
-      console.error('Failed to get unread notifications count:', error);
       return 0;
     }
   }
@@ -347,13 +338,19 @@ class ActivityTrackingService {
       });
 
       if (error) {
-        console.error('Error getting user notifications:', error);
-        throw error;
+        // If function doesn't exist (42883) or other errors, return empty array gracefully
+        // This prevents breaking the app if the database function hasn't been created yet
+        if (error.code === '42883' || error.message?.includes('function') || error.message?.includes('does not exist')) {
+          // Database function doesn't exist - return empty array
+          return [];
+        }
+        // For other errors, also return empty array to prevent breaking the app
+        return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error('Failed to get user notifications:', error);
+      // Return empty array on any error to prevent breaking the app
       return [];
     }
   }
@@ -374,13 +371,11 @@ class ActivityTrackingService {
       });
 
       if (error) {
-        console.error('Error marking notifications as read:', error);
         throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('Failed to mark notifications as read:', error);
       throw error;
     }
   }
@@ -401,13 +396,11 @@ class ActivityTrackingService {
       });
 
       if (error) {
-        console.error('Error getting teacher activities:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Failed to get teacher activities:', error);
       return [];
     }
   }
@@ -423,26 +416,27 @@ class ActivityTrackingService {
         .select('*')
         .eq('user_id', userId)
         .eq('school_id', schoolId)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no rows found
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        // If table doesn't exist or RLS blocks access (406 error), return null gracefully
-        if (error.code === 'PGRST406' || error.message?.includes('406')) {
-          // Silently handle - table might not exist or RLS might be blocking
+      // Handle 406 errors gracefully (table doesn't exist or RLS blocking)
+      if (error) {
+        // PGRST116 = no rows returned (this is fine, return null)
+        if (error.code === 'PGRST116') {
           return null;
         }
-        // Only log non-406 errors
-        console.error('Error getting notification preferences:', error);
-        throw error;
+        // PGRST406 = Not Acceptable (table doesn't exist or RLS blocking)
+        // Check for 406 in message or code
+        if (error.code === 'PGRST406' || error.message?.includes('406') || (error as any).status === 406) {
+          return null;
+        }
+        // For other errors, still return null gracefully to avoid breaking the app
+        return null;
       }
 
       return data;
     } catch (error: any) {
-      // Handle 406 errors gracefully (table doesn't exist or RLS blocking)
-      if (error?.code === 'PGRST406' || error?.message?.includes('406')) {
-        return null;
-      }
-      console.error('Failed to get notification preferences:', error);
+      // Handle all errors gracefully - return null instead of throwing
+      // This prevents console errors from breaking the app
       return null;
     }
   }
@@ -465,26 +459,22 @@ class ActivityTrackingService {
           ...preferences
         })
         .select()
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
 
+      // Handle 406 errors gracefully (table doesn't exist or RLS blocking)
       if (error) {
-        // If table doesn't exist or RLS blocks access (406 error), return null gracefully
-        if (error.code === 'PGRST406' || error.message?.includes('406')) {
-          // Silently handle - table might not exist or RLS might be blocking
+        // PGRST406 = Not Acceptable (table doesn't exist or RLS blocking)
+        // Check for 406 in message or code
+        if (error.code === 'PGRST406' || error.message?.includes('406') || (error as any).status === 406) {
           return null;
         }
-        // Only log non-406 errors
-        console.error('Error updating notification preferences:', error);
-        throw error;
+        // For other errors, still return null gracefully
+        return null;
       }
 
       return data;
     } catch (error: any) {
-      // Handle 406 errors gracefully (table doesn't exist or RLS blocking)
-      if (error?.code === 'PGRST406' || error?.message?.includes('406')) {
-        return null;
-      }
-      console.error('Failed to update notification preferences:', error);
+      // Handle all errors gracefully - return null instead of throwing
       return null;
     }
   }

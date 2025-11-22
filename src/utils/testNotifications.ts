@@ -21,14 +21,11 @@ export const createTestNotification = async (userId: number, schoolId: number) =
       .single();
 
     if (error) {
-      console.error('Error creating test notification:', error);
       return null;
     }
 
-    console.log('Test notification created:', data);
     return data;
   } catch (error) {
-    console.error('Failed to create test notification:', error);
     return null;
   }
 };
@@ -56,14 +53,11 @@ export const createMultipleTestNotifications = async (userId: number, schoolId: 
       .select();
 
     if (error) {
-      console.error('Error creating test notifications:', error);
       return null;
     }
 
-    console.log(`Created ${count} test notifications:`, data);
     return data;
   } catch (error) {
-    console.error('Failed to create test notifications:', error);
     return null;
   }
 };

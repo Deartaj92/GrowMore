@@ -2,8 +2,6 @@ const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-console.log('Preload script loaded');
-
 // Try to read GitHub token for development mode
 try {
   const tokenPath = path.join(__dirname, '..', '.github_token.txt');
@@ -11,7 +9,6 @@ try {
     const token = fs.readFileSync(tokenPath, 'utf8').trim();
     if (token) {
       window.__GITHUB_TOKEN__ = token;
-      console.log('GitHub token loaded from file for development mode');
     }
   }
 } catch (e) {
@@ -21,19 +18,15 @@ try {
 // Expose the window control functions directly to the window object
 window.electronAPI = {
   minimize: () => {
-    console.log('Minimize called from preload');
     ipcRenderer.send('window-minimize');
   },
   maximize: () => {
-    console.log('Maximize called from preload');
     ipcRenderer.send('window-maximize');
   },
   unmaximize: () => {
-    console.log('Unmaximize called from preload');
     ipcRenderer.send('window-unmaximize');
   },
   close: () => {
-    console.log('Close called from preload');
     ipcRenderer.send('window-close');
   },
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
@@ -60,6 +53,8 @@ window.electronAPI = {
     ipcRenderer.on('TOKEN_UPDATED', (_, token) => callback(token));
   },
   onPushNotificationReceived: (callback) => ipcRenderer.on('NOTIFICATION_RECEIVED', (_, notification) => callback(notification)),
-};
-
-console.log('electronAPI exposed to window'); 
+  // Listen for show download modal on close event
+  onShowDownloadModalOnClose: (callback) => {
+    ipcRenderer.on('show-download-modal-on-close', callback);
+  },
+}; 

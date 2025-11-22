@@ -937,7 +937,6 @@ const TestAnalytics: React.FC = () => {
 
       if (subjectsData) setSubjects(subjectsData);
     } catch (error) {
-      console.error('Error loading initial data:', error);
     } finally {
       setLoading(false);
     }
@@ -968,7 +967,6 @@ const TestAnalytics: React.FC = () => {
         await loadTeacherMonthlyTests();
       }
     } catch (error) {
-      console.error('Error loading analytics:', error);
     } finally {
       setIsLoadingAnalytics(false);
     }
@@ -1086,7 +1084,6 @@ const TestAnalytics: React.FC = () => {
       setTopPerformers(analyticsArray.slice(0, 5));
       setBottomPerformers(analyticsArray.slice(-5).reverse());
     } catch (error) {
-      console.error('Error loading student analytics:', error);
     }
   };
 
@@ -1244,7 +1241,6 @@ const TestAnalytics: React.FC = () => {
 
       setTeacherAnalytics(analyticsArray);
     } catch (error) {
-      console.error('Error loading teacher analytics:', error);
     }
   };
 
@@ -1352,7 +1348,6 @@ const TestAnalytics: React.FC = () => {
         averagePercentage,
       });
     } catch (error) {
-      console.error('Error loading overall stats:', error);
     }
   };
 
@@ -1451,7 +1446,6 @@ const TestAnalytics: React.FC = () => {
       );
       setSubjectAnalytics(analyticsArray);
     } catch (error) {
-      console.error('Error loading subject analytics:', error);
     }
   };
 
@@ -1554,7 +1548,6 @@ const TestAnalytics: React.FC = () => {
       );
       setClassAnalytics(analyticsArray);
     } catch (error) {
-      console.error('Error loading class analytics:', error);
     }
   };
 
@@ -1633,7 +1626,6 @@ const TestAnalytics: React.FC = () => {
       );
       setTestTypeAnalytics(analyticsArray);
     } catch (error) {
-      console.error('Error loading test type analytics:', error);
     }
   };
 
@@ -1694,7 +1686,6 @@ const TestAnalytics: React.FC = () => {
 
       setGradeDistribution(distribution);
     } catch (error) {
-      console.error('Error loading grade distribution:', error);
     }
   };
 
@@ -1780,7 +1771,6 @@ const TestAnalytics: React.FC = () => {
 
       setMonthlyTrends(trendsArray);
     } catch (error) {
-      console.error('Error loading monthly trends:', error);
     }
   };
 
@@ -1843,7 +1833,6 @@ const TestAnalytics: React.FC = () => {
 
       setPassFailStats({ pass: passCount, fail: failCount, passRate });
     } catch (error) {
-      console.error('Error loading pass/fail stats:', error);
     }
   };
 
@@ -2084,7 +2073,6 @@ const TestAnalytics: React.FC = () => {
 
       setTeacherMonthlyTests(monthlyTestsArray);
     } catch (error) {
-      console.error('Error loading teacher monthly tests:', error);
     }
   };
 
@@ -2421,7 +2409,6 @@ const TestAnalytics: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -2431,7 +2418,6 @@ const TestAnalytics: React.FC = () => {
         toast.showToast('PDF exported successfully!', 'success');
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.showToast('Failed to generate PDF', 'error');
     } finally {
       setIsExportingPDF(false);

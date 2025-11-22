@@ -20,7 +20,7 @@ const persistToken = (platform: string, token: string) => {
   try {
     localStorage.setItem(getTokenStorageKey(platform), token);
   } catch (error) {
-    console.warn('[PushService] Failed to persist token:', error);
+    // Failed to persist token
   }
 };
 
@@ -28,7 +28,6 @@ const retrieveToken = (platform: string): string | null => {
   try {
     return localStorage.getItem(getTokenStorageKey(platform));
   } catch (error) {
-    console.warn('[PushService] Failed to read stored token:', error);
     return null;
   }
 };
@@ -50,10 +49,9 @@ export const pushNotificationService = {
       });
 
       if (error) throw error;
-      console.log('[PushService] Token registered successfully');
       persistToken(platform, token);
     } catch (error) {
-      console.error('[PushService] Failed to register token:', error);
+      // Failed to register token
     }
   },
 
@@ -61,7 +59,6 @@ export const pushNotificationService = {
     const platform = getPlatformLabel();
     const storedToken = retrieveToken(platform);
     if (storedToken) {
-      console.log('[PushService] Rehydrating stored token for platform:', platform);
       await this.registerDeviceToken(userId, schoolId, storedToken, userType);
     }
   },
@@ -78,7 +75,7 @@ export const pushNotificationService = {
 
       if (error) throw error;
     } catch (error) {
-      console.error('[PushService] Failed to unregister token:', error);
+      // Failed to unregister token
     }
   },
 
@@ -89,56 +86,46 @@ export const pushNotificationService = {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-      console.log('[PushService] Checking permissions...');
       // Always check permission on each app run
       let permStatus = await PushNotifications.checkPermissions();
-      console.log('[PushService] Current permission:', permStatus.receive);
 
       // If not granted ("prompt" or "denied"), actively request again
       if (permStatus.receive !== 'granted') {
-        console.log('[PushService] Requesting permission (not granted)...');
         permStatus = await PushNotifications.requestPermissions();
       }
 
       if (permStatus.receive !== 'granted') {
-        console.log('[PushService] Permission still not granted after request:', permStatus.receive);
         return;
       }
-
-      console.log('[PushService] Permission granted. Registering with FCM...');
 
       // Rehydrate existing token (if any) so it points to current user before requesting a new one
       await this.rehydrateStoredToken(userId, schoolId, userType);
 
       // Register
       await PushNotifications.register();
-      console.log('[PushService] Register call made. Waiting for listener...');
 
       // Listeners
       PushNotifications.addListener('registration', (token) => {
-        console.log('[PushService] Push registration success! Token:', token.value);
         this.registerDeviceToken(userId, schoolId, token.value, userType);
       });
 
       PushNotifications.addListener('registrationError', (error) => {
-        console.error('[PushService] Error on registration:', error);
+        // Error on registration
       });
 
       // Foreground notification
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.log('[PushService] Notification received:', notification);
         // The NotificationContext will handle showing the announcement modal
         // No need for alert here
       });
 
       // Action performed (tap)
       PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('[PushService] Notification action performed:', notification);
         // Navigate to specific page if needed
       });
 
     } catch (error) {
-      console.error('[PushService] Failed to init capacitor push:', error);
+      // Failed to init capacitor push
     }
   },
 
@@ -159,13 +146,11 @@ export const pushNotificationService = {
 
       // Listen for token updates
       (window as any).electronAPI.onPushTokenReceived((token: string) => {
-        console.log('[PushService] Electron Push Token:', token);
         this.registerDeviceToken(userId, schoolId, token, userType);
       });
 
       // Listen for notifications
       (window as any).electronAPI.onPushNotificationReceived((notification: any) => {
-        console.log('[PushService] Electron Notification Received:', notification);
 
         // Show native notification if window is not focused or just to be sure
         if (notification.notification) {
@@ -177,7 +162,7 @@ export const pushNotificationService = {
       });
 
     } catch (error) {
-      console.error('[PushService] Failed to init electron push:', error);
+      // Failed to init electron push
     }
   }
 };

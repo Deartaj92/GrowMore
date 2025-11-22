@@ -782,7 +782,6 @@ const WithdrawalRegister: React.FC = () => {
           setStudents(studentsData);
         }
       } else {
-        console.error('Error fetching students:', error);
         showToast('Failed to load students', 'error');
       }
       
@@ -803,7 +802,6 @@ const WithdrawalRegister: React.FC = () => {
     };
     
     fetchStudents().catch((error) => {
-      console.error('Error in fetchStudents:', error);
       setLoading(false);
       completeProgress();
       setHasFetchedStudents(true);
@@ -858,7 +856,6 @@ const WithdrawalRegister: React.FC = () => {
         .select('id, name, is_active')
         .eq('school_id', user.school_id);
       if (sessionsError) {
-        console.error('Error fetching sessions:', sessionsError);
       } else {
         setSessionOptions(sessionsData || []);
         // Don't set default session filter - show all students from all sessions
@@ -950,7 +947,6 @@ const WithdrawalRegister: React.FC = () => {
           schoolAddress = profileData?.address || schoolData?.address || '';
           schoolPhone = profileData?.phone || schoolData?.contact || '';
         } catch (error) {
-          console.error('Error fetching school details:', error);
         }
       }
     
@@ -1239,7 +1235,6 @@ const WithdrawalRegister: React.FC = () => {
       doc.save(fileName);
       showToast('Register exported successfully', 'success');
     } catch (error) {
-      console.error('Error generating PDF:', error);
       showToast('Failed to generate PDF', 'error');
     } finally {
       setExportLoading(false);

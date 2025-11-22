@@ -1187,7 +1187,6 @@ const ClassesManager: React.FC = () => {
 
   const fetchClasses = async () => {
     if (!user?.school_id) {
-      console.error('No school_id found for user');
       showToast('User school information not found', 'error');
       return;
     }

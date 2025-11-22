@@ -64,7 +64,6 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
       const idSet = new Set<number>(ids);
       applySentIds(idSet);
     } catch (error) {
-      console.error('Failed to load local sent status:', error);
     }
   }, [applySentIds, selectedDate]);
 
@@ -77,7 +76,6 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
         .eq('school_id', user.school_id)
         .eq('notification_date', selectedDate);
     } catch (error) {
-      console.error('Failed to clear remote sent status:', error);
     }
   }, [selectedDate, user?.school_id]);
 
@@ -240,7 +238,6 @@ ${data.school_short_name || schoolName}`;
             onConflict: 'school_id,student_id,notification_date,channel'
           });
       } catch (error) {
-        console.error('Failed to persist sent status:', error);
       }
     }
   }, [customMessages, formatMessage, persistSentIds, selectedDate, user?.school_id, user?.staff_id]);
@@ -258,14 +255,12 @@ ${data.school_short_name || schoolName}`;
 
     if (success) {
       recordSentStatus(currentStudent, currentStudentIndex);
-      console.log(`✅ Sent ${channel.toUpperCase()} message to ${currentStudent.student_name}`);
 
       // Auto-advance to next student after a short delay
       setTimeout(() => {
         handleNextStudent();
       }, 1000);
     } else {
-      console.error(`❌ Failed to send ${channel.toUpperCase()} message to ${currentStudent.student_name}`);
     }
   };
 
@@ -273,7 +268,6 @@ ${data.school_short_name || schoolName}`;
     if (!currentStudent) return;
 
     setSkippedStudents(prev => new Set(Array.from(prev).concat(currentStudentIndex)));
-    console.log(`⏭️ Skipped ${currentStudent.student_name}`);
 
     // Auto-advance to next student
     handleNextStudent();
@@ -369,7 +363,6 @@ ${data.school_short_name || schoolName}`;
           persistSentIds(idSet);
         }
       } catch (error) {
-        console.error('Failed to load sent statuses:', error);
         if (!cancelled) {
           loadSentStatusFromLocal();
         }

@@ -1084,14 +1084,12 @@ const BulkPromoteDemote: React.FC = () => {
           .limit(1);
         
       if (error) {
-        console.error('Error checking for students:', error);
         setHasAnyStudents(false);
         return;
       }
       
       setHasAnyStudents(data && data.length > 0);
     } catch (err: any) {
-      console.error('Error checking for students:', err);
       setHasAnyStudents(false);
     }
   };
@@ -1113,7 +1111,6 @@ const BulkPromoteDemote: React.FC = () => {
       if (error) throw error;
       setActiveSession(data);
     } catch (err: any) {
-      console.error('Error fetching active session:', err);
       // Don't show error toast for this as it's not critical
     }
   };
@@ -1247,7 +1244,6 @@ const BulkPromoteDemote: React.FC = () => {
         setSourceStudents(sortedStudents);
         setSelectedStudents(new Set(sortedStudents.map((s) => s.id)));
       } catch (err: any) {
-        console.error('Error fetching students:', err);
         toast.showToast('Failed to fetch students', 'error');
           setSourceStudents([]);
           setSelectedStudents(new Set());
@@ -1405,7 +1401,6 @@ const BulkPromoteDemote: React.FC = () => {
         
         setTargetStudents(sortedStudents);
       } catch (err: any) {
-        console.error('Error fetching target students:', err);
         toast.showToast('Failed to fetch target students', 'error');
           setTargetStudents([]);
       } finally {
@@ -1437,7 +1432,6 @@ const BulkPromoteDemote: React.FC = () => {
 
   // Helper function to update student_class_history (same as StudentStatusManager)
   const updateStudentClassHistory = async (studentId: string, sessionId: string, newClassId: number, newSectionId: number | null) => {
-    console.log('Updating student_class_history for student:', studentId, 'session:', sessionId);
     
     // First, get the original admission class from the first record (minimum id) for this student
     // This preserves the admission class which should never change
@@ -1454,7 +1448,6 @@ const BulkPromoteDemote: React.FC = () => {
     const admClassId = admissionRecord?.adm_class_id || newClassId;
     const admSectionId = admissionRecord?.adm_section_id !== null ? admissionRecord?.adm_section_id : newSectionId;
     
-    console.log('Admission class preserved:', admClassId, 'Admission section:', admSectionId);
     
     // Check if an entry exists for this student in this session
     const { data: existingEntry, error: checkError } = await supabase
@@ -1465,10 +1458,7 @@ const BulkPromoteDemote: React.FC = () => {
       .eq('school_id', user?.school_id)
       .maybeSingle();
 
-    console.log('Existing entry check:', existingEntry, 'Error:', checkError);
-    
     if (existingEntry) {
-      console.log('Updating existing student_class_history entry:', existingEntry.id);
       // Update existing entry - preserve admission class, update only new/current class
       const { error: schError } = await supabase
         .from('student_class_history')
@@ -1481,12 +1471,9 @@ const BulkPromoteDemote: React.FC = () => {
         .eq('id', existingEntry.id);
       
       if (schError) {
-        console.warn('Failed to update student_class_history:', schError);
-      } else {
-        console.log('Successfully updated student_class_history');
+        // Failed to update student_class_history
       }
     } else {
-      console.log('Creating new student_class_history entry');
       // Create new entry - preserve admission class, set new class to promoted class
       const { error: schError } = await supabase
         .from('student_class_history')
@@ -1501,9 +1488,7 @@ const BulkPromoteDemote: React.FC = () => {
         });
       
       if (schError) {
-        console.warn('Failed to create student_class_history entry:', schError);
-      } else {
-        console.log('Successfully created student_class_history entry');
+        // Failed to create student_class_history entry
       }
     }
   };
@@ -1555,7 +1540,6 @@ const BulkPromoteDemote: React.FC = () => {
       
       return activeStudents?.length || 0;
     } catch (error) {
-      console.error('Error checking target class students:', error);
       return 0;
     }
   };
@@ -1597,10 +1581,7 @@ const BulkPromoteDemote: React.FC = () => {
           // Update or create student_class_history for the active session
           // Note: We do NOT update class_id and section_id in students table - only update student_class_history
           if (activeSession) {
-            console.log('Updating student_class_history for active session:', activeSession.id);
             await updateStudentClassHistory(studentId, activeSession.id, parseInt(targetClass), finalSectionId);
-          } else {
-            console.log('No active session found - skipping student_class_history update');
           }
           
           // 2. Record in student_status_history
@@ -1619,7 +1600,6 @@ const BulkPromoteDemote: React.FC = () => {
 
           processedCount++;
         } catch (error) {
-          console.error(`Error processing student ${studentId}:`, error);
         }
       }
 

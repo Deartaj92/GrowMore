@@ -127,7 +127,6 @@ class ExaminationConfigurationService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching examination configuration:', error);
       throw error;
     }
   }
@@ -163,7 +162,6 @@ class ExaminationConfigurationService {
           .single();
         
         if (error) {
-          console.error('Update error:', error);
           throw error;
         }
         result = data;
@@ -183,7 +181,6 @@ class ExaminationConfigurationService {
           .single();
         
         if (error) {
-          console.error('Insert error:', error);
           throw error;
         }
         result = data;
@@ -191,7 +188,6 @@ class ExaminationConfigurationService {
 
       return result;
     } catch (error) {
-      console.error('Error saving examination configuration:', error);
       throw error;
     }
   }
@@ -208,7 +204,6 @@ class ExaminationConfigurationService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error deleting examination configuration:', error);
       throw error;
     }
   }

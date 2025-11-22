@@ -18,6 +18,7 @@ declare global {
       cancelDownload: (fileName: string) => Promise<{ success: boolean }>;
       showSaveDialog: (options: { title?: string; defaultPath?: string; fileName?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ canceled: boolean; filePath?: string }>;
       showItemInFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      onShowDownloadModalOnClose: (callback: () => void) => void;
     };
   }
 } 

@@ -541,7 +541,6 @@ const BulkStudentAdmission: React.FC = () => {
   useEffect(() => {
     const checkPrerequisites = async () => {
       if (!user?.school_id) {
-        console.error('No school_id found for user');
         showToast('User school information not found', 'error');
         return;
       }
@@ -588,7 +587,6 @@ const BulkStudentAdmission: React.FC = () => {
 
         setProgress(100);
       } catch (error) {
-        console.error('Error checking prerequisites:', error);
       } finally {
         setLoading(false);
         completeProgress();
@@ -610,7 +608,6 @@ const BulkStudentAdmission: React.FC = () => {
       .then(({ data, error }) => {
         setLoadingClasses(false);
         if (error) {
-          console.error('Error fetching classes:', error);
           return;
         }
         const sortedClasses = sortClasses(data || []);
@@ -628,19 +625,16 @@ const BulkStudentAdmission: React.FC = () => {
     
     // Check if selected class has sections
     const selectedClass = classes.find(c => String(c.id) === String(formData.class));
-    console.log('Selected class:', selectedClass, 'Has sections:', selectedClass?.has_sections);
     const hasSections = selectedClass?.has_sections ?? true;
     setSelectedClassHasSections(hasSections);
     
     // Only fetch sections if class has sections
     if (!hasSections) {
-      console.log('Class has no sections, clearing section field');
       setSections([]);
       setFormData(prev => ({ ...prev, section: '' }));
       return;
     }
     
-    console.log('Class has sections, fetching sections...');
     setLoadingSections(true);
     supabase
       .from('sections')
@@ -650,7 +644,6 @@ const BulkStudentAdmission: React.FC = () => {
       .then(({ data, error }) => {
         setLoadingSections(false);
         if (error) {
-          console.error('Section fetch error:', error);
         }
         setSections(data || []);
       });
@@ -840,7 +833,6 @@ const BulkStudentAdmission: React.FC = () => {
         .insert(historyData);
 
       if (historyError) {
-        console.error('History insert error:', historyError);
         showToast('Students added but history update failed: ' + historyError.message, 'error');
       }
 
@@ -861,7 +853,6 @@ const BulkStudentAdmission: React.FC = () => {
       setStudents(defaultStudents);
       
     } catch (err: any) {
-      console.error('Submission error:', err);
       showToast('Error: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setSubmitting(false);

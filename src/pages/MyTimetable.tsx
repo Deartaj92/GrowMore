@@ -308,13 +308,11 @@ const MyTimetable: React.FC = () => {
           .eq('day_of_week', 1); // Monday only
 
         if (error) {
-          console.error('Error fetching timetable:', error);
           setTimetableData([]);
         } else {
           setTimetableData(timetable || []);
         }
       } catch (error) {
-        console.error('Error fetching timetable data:', error);
         setTimetableData([]);
       } finally {
         setLoading(false);

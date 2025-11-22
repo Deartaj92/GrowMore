@@ -42,7 +42,6 @@ export function useCapacitorPdfSave() {
 
       return { success: true, uri: uriResult.uri };
     } catch (err: any) {
-      console.error('Error saving PDF:', err);
       alert('Failed to save PDF: ' + (err.message || err));
       return { success: false, error: err.message || err };
     }

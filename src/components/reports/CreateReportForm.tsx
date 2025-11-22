@@ -400,7 +400,6 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             setCategories(data);
         } catch (error) {
             showToast('Failed to load categories', 'error');
-            console.error('Error loading categories:', error);
         }
     };
 
@@ -411,7 +410,6 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             setClasses(data);
         } catch (error) {
             showToast('Failed to load classes', 'error');
-            console.error('Error loading classes:', error);
         } finally {
             setLoadingClasses(false);
         }
@@ -424,7 +422,6 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             setSections(data);
         } catch (error) {
             showToast('Failed to load sections', 'error');
-            console.error('Error loading sections:', error);
         } finally {
             setLoadingSections(false);
         }
@@ -437,7 +434,6 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             setStudents(data);
         } catch (error) {
             showToast('Failed to load students', 'error');
-            console.error('Error loading students:', error);
         } finally {
             setLoadingStudents(false);
         }
@@ -449,7 +445,6 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             setStaffMembers(data);
         } catch (error) {
             showToast('Failed to load staff members', 'error');
-            console.error('Error loading staff:', error);
         }
     };
 
@@ -500,7 +495,6 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             await onSubmit(reportData);
             handleClose();
         } catch (error: any) {
-            console.error('Error submitting report:', error);
             showToast(error.message || 'Error creating report', 'error');
         } finally {
             setLoading(false);

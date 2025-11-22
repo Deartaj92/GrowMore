@@ -771,7 +771,6 @@ const GeneralMessagePage: React.FC = () => {
                 setStudents(targetStudents);
                 setSelectedStudentIds(new Set(targetStudents.map(s => s.id)));
             } catch (error) {
-                console.error('Error fetching students:', error);
             } finally {
                 setLoading(false);
             }
@@ -803,7 +802,6 @@ const GeneralMessagePage: React.FC = () => {
                 setSchoolName(data.short_name || data.name);
             }
         } catch (error) {
-            console.error('Error fetching school profile:', error);
         }
     };
 
@@ -820,7 +818,6 @@ const GeneralMessagePage: React.FC = () => {
                 setClasses(data);
             }
         } catch (error) {
-            console.error('Error fetching classes:', error);
         }
     };
 
@@ -838,7 +835,6 @@ const GeneralMessagePage: React.FC = () => {
                 setSections(data);
             }
         } catch (error) {
-            console.error('Error fetching sections:', error);
         }
     };
 
@@ -864,7 +860,6 @@ const GeneralMessagePage: React.FC = () => {
                 setHistory(uniqueHistory);
             }
         } catch (error) {
-            console.error('Error fetching history:', error);
         }
     };
 

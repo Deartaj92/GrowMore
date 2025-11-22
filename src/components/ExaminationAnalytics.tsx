@@ -1167,7 +1167,6 @@ const ExaminationAnalytics: React.FC = () => {
       });
       setExaminations(uniqueExaminations);
     } catch (error) {
-      console.error('Error loading examinations:', error);
       showToast('Failed to load examinations', 'error');
     } finally {
       setLoading(false);
@@ -1183,7 +1182,6 @@ const ExaminationAnalytics: React.FC = () => {
       setAnalytics(analyticsData);
       setClasses(classesData);
     } catch (error) {
-      console.error('Error loading analytics:', error);
       showToast('Failed to load analytics', 'error');
     } finally {
       setAnalyticsLoading(false);
@@ -1689,7 +1687,6 @@ const ExaminationAnalytics: React.FC = () => {
             schoolName = schoolData.name;
           }
         } catch (err) {
-          console.error('Error fetching school name:', err);
         }
       }
 
@@ -2107,7 +2104,6 @@ const ExaminationAnalytics: React.FC = () => {
           showToast('PDF saved to Documents folder', 'success');
         } catch (mobileError) {
           // Fallback to regular download if mobile save fails
-          console.error('Mobile save failed:', mobileError);
           doc.save(fileName);
           showToast('PDF exported successfully', 'success');
         }
@@ -2116,7 +2112,6 @@ const ExaminationAnalytics: React.FC = () => {
         showToast('PDF exported successfully', 'success');
       }
     } catch (error) {
-      console.error('Error exporting PDF:', error);
       showToast('Failed to export PDF', 'error');
     } finally {
       setExportLoading(false);

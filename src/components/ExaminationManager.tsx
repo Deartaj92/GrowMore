@@ -1396,7 +1396,6 @@ const ExaminationManager: React.FC = () => {
       setExaminations(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching examinations:', err);
       setError('Failed to fetch examinations');
     } finally {
       setLoading(false);
@@ -1426,7 +1425,6 @@ const ExaminationManager: React.FC = () => {
       
       setActiveSession(active || data?.[0] || null);
     } catch (error) {
-      console.error('Error fetching sessions:', error);
     }
   };
 
@@ -1577,7 +1575,6 @@ const ExaminationManager: React.FC = () => {
       handleCloseDialog();
       fetchExaminations();
     } catch (err) {
-      console.error('Error saving examination:', err);
       showToast('Error saving examination.', 'error');
     } finally {
       setIsSaving(false);
@@ -1592,7 +1589,6 @@ const ExaminationManager: React.FC = () => {
       showToast('Examination deleted.', 'success');
       fetchExaminations();
     } catch (err) {
-      console.error('Error deleting examination:', err);
       showToast('Error deleting examination.', 'error');
     }
   };

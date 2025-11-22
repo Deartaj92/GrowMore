@@ -104,12 +104,9 @@ Thank you for informing us.
 
         if (!profileError && profileData?.short_name) {
           schoolShortName = profileData.short_name;
-          console.log('Using school short name:', schoolShortName);
-        } else {
-          console.log('No short name found, using full school name:', schoolName);
         }
       } catch (error) {
-        console.warn('Error fetching school short name:', error);
+        // Error fetching school short name
       }
 
       const notificationData: AttendanceNotificationData[] = [];
@@ -129,7 +126,6 @@ Thank you for informing us.
         .eq('school_id', schoolId);
 
       if (studentsBatchError) {
-        console.error('Error fetching students batch:', studentsBatchError);
         return [];
       }
 
@@ -185,15 +181,11 @@ Thank you for informing us.
             school_short_name: schoolShortName,
             notification_channel: (studentInfo.notification_channel as 'whatsapp' | 'sms') || 'whatsapp'
           });
-        } else {
-          console.warn(`No phone number found for student ID ${att.id} (${studentInfo?.name})`);
         }
       }
 
-      console.log(`Prepared ${notificationData.length} notifications out of ${eligible.length} eligible attendance entries`);
       return notificationData;
     } catch (error) {
-      console.error('Failed to prepare attendance notifications:', error);
       throw error;
     }
   }
@@ -273,7 +265,6 @@ ${data.school_short_name || schoolName}`;
         URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Error downloading CSV:', error);
       throw error;
     }
   }
@@ -303,16 +294,8 @@ ${data.school_short_name || schoolName}`;
   ): Promise<void> {
     try {
       // Simple activity logging
-      console.log(`WhatsApp notification activity: ${action}`, {
-        class: className,
-        section: sectionName,
-        notification_count: notificationCount,
-        date: date,
-        method: 'semi_automated',
-        timestamp: new Date().toISOString()
-      });
     } catch (error) {
-      console.error('Error logging WhatsApp notification activity:', error);
+      // Error logging WhatsApp notification activity
     }
   }
 }

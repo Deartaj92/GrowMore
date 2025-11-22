@@ -282,10 +282,17 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const [showComplete, setShowComplete] = useState(false);
   const [internalIsMinimized, setInternalIsMinimized] = useState(false);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState<number | null>(null);
   
   // Use external minimized state if provided, otherwise use internal
   const isMinimized = externalIsMinimized !== undefined ? externalIsMinimized : internalIsMinimized;
+
+  // Reset start time when download actually starts (first progress > 0)
+  useEffect(() => {
+    if (progress > 0 && downloadedBytes > 0 && startTime === null && !isPaused) {
+      setStartTime(Date.now());
+    }
+  }, [progress, downloadedBytes, startTime, isPaused]);
   
   const handleMinimizeChange = (minimized: boolean) => {
     if (externalIsMinimized !== undefined && onMinimizeChange) {
@@ -317,6 +324,47 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
+
+  const formatTime = (seconds: number): string => {
+    if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) return 'Calculating...';
+    
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return `${mins}m ${secs}s`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${mins}m`;
+    }
+  };
+
+  // Calculate download speed and estimated time
+  const calculateSpeedAndTime = () => {
+    if (progress === 0 || downloadedBytes === 0 || isPaused || showComplete || startTime === null) {
+      return { speed: 0, timeRemaining: null };
+    }
+
+    const elapsedTime = (Date.now() - startTime) / 1000; // in seconds
+    if (elapsedTime <= 0) {
+      return { speed: 0, timeRemaining: null };
+    }
+
+    const speed = downloadedBytes / elapsedTime; // bytes per second
+    const remainingBytes = totalBytes - downloadedBytes;
+    
+    if (speed <= 0 || remainingBytes <= 0) {
+      return { speed: 0, timeRemaining: null };
+    }
+
+    const timeRemaining = remainingBytes / speed; // seconds
+
+    return { speed, timeRemaining };
+  };
+
+  const { speed, timeRemaining } = calculateSpeedAndTime();
 
   const modalContent = (
     <ThemeProvider theme={theme}>
@@ -374,10 +422,17 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
 
               <SizeInfo>
                 {formatBytes(downloadedBytes)} / {formatBytes(totalBytes)}
-                {!showComplete && progress > 0 && downloadedBytes > 0 && (
-                  <span style={{ marginLeft: '8px' }}>
-                    • {formatBytes(((downloadedBytes / (Date.now() - startTime)) * 1000))}/s
-                  </span>
+                {!showComplete && progress > 0 && downloadedBytes > 0 && speed > 0 && (
+                  <>
+                    <span style={{ marginLeft: '8px' }}>
+                      • {formatBytes(speed)}/s
+                    </span>
+                    {timeRemaining !== null && timeRemaining > 0 && (
+                      <span style={{ marginLeft: '8px', color: theme.TEXT_SECONDARY }}>
+                        • {formatTime(timeRemaining)} remaining
+                      </span>
+                    )}
+                  </>
                 )}
               </SizeInfo>
             </ProgressContainer>

@@ -416,7 +416,6 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
         }
       }
       // Log the file size for debugging
-      console.log('Compressed file size:', file.size / 1024, 'KB');
       // For preview
       const reader = new FileReader();
       reader.onload = (ev) => setEditAvatar(ev.target?.result as string);
@@ -444,7 +443,6 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
         onCancel();
       }, 1500);
     } catch (error) {
-      console.error('Error updating student:', error);
       showToast('Failed to update student', 'error');
     } finally {
       setIsSubmitting(false);

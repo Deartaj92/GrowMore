@@ -1290,7 +1290,6 @@ const DetailedMarksCertificate: React.FC = () => {
               };
               await examinationConfigurationService.upsertExaminationConfiguration(updatedConfig);
             } catch (migrationError) {
-              console.error('Error updating configuration:', migrationError);
             }
             
             setCustomColors(colorConfig);
@@ -1359,13 +1358,11 @@ const DetailedMarksCertificate: React.FC = () => {
                   };
                   await examinationConfigurationService.upsertExaminationConfiguration(updatedConfig);
                 } catch (migrationError) {
-                  console.error('Error migrating configuration:', migrationError);
                 }
               }
               setCustomColors(colorConfig);
             }
           } catch (createError) {
-            console.error('Error creating default configuration:', createError);
             // If database table doesn't exist, set a fallback configuration
             setCustomColors({
               header_gradient_start: '#667eea',
@@ -1408,7 +1405,6 @@ const DetailedMarksCertificate: React.FC = () => {
       } else {
       }
     } catch (error) {
-      console.error('Error loading custom colors:', error);
     }
   };
 
@@ -1465,7 +1461,6 @@ const DetailedMarksCertificate: React.FC = () => {
           .single();
 
         if (schoolError) {
-          console.error('Error fetching school data:', schoolError);
         }
 
         // Merge school data with institute profile data (same logic as InstituteProfile.tsx)
@@ -1528,7 +1523,6 @@ const DetailedMarksCertificate: React.FC = () => {
       await loadCustomColors();
 
     } catch (err) {
-      console.error('Error loading initial data:', err);
       toast.error('Failed to load initial data');
     } finally {
       setLoading(false);
@@ -1547,7 +1541,6 @@ const DetailedMarksCertificate: React.FC = () => {
       if (error) throw error;
       setSections(data || []);
     } catch (err) {
-      console.error('Error loading sections:', err);
       toast.error('Failed to load sections');
     }
   };
@@ -1824,7 +1817,6 @@ const DetailedMarksCertificate: React.FC = () => {
 
     } catch (err) {
       setError('Failed to load DMC data');
-      console.error('Error loading DMC data:', err);
       toast.error('Failed to load DMC data');
     } finally {
       setLoadingProgress(100);
@@ -1853,7 +1845,6 @@ const DetailedMarksCertificate: React.FC = () => {
       const { data: attendanceData, error } = await query;
 
       if (error) {
-        console.error('Error fetching attendance data:', error);
         return 100; // Default to 100% if error
       }
 
@@ -1886,7 +1877,6 @@ const DetailedMarksCertificate: React.FC = () => {
       const attendancePercentage = Math.round((stats.present / stats.total) * 100);
       return attendancePercentage;
     } catch (error) {
-      console.error('Error calculating attendance percentage:', error);
       return 100; // Default to 100% if error
     }
   };
@@ -3181,7 +3171,6 @@ const DetailedMarksCertificate: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               toast.success('PDF downloaded successfully!', { id: 'pdf-export' });
@@ -3238,7 +3227,6 @@ const DetailedMarksCertificate: React.FC = () => {
               toast.success(`PDF ready! Click the download button that appeared on screen.`, { id: 'pdf-export' });
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -3283,7 +3271,6 @@ const DetailedMarksCertificate: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           toast.error('Failed to export PDF on mobile. Please try on desktop.', { id: 'pdf-export' });
         }
       } else {
@@ -3294,7 +3281,6 @@ const DetailedMarksCertificate: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.error('Failed to generate PDF', { id: 'pdf-export' });
     } finally {
       setPdfProgress(100);
@@ -4603,7 +4589,6 @@ const DetailedMarksCertificate: React.FC = () => {
                   await loadCustomColors();
                 }
               } catch (error) {
-                console.error('Error clearing configuration:', error);
               }
             }}
             variant="contained"

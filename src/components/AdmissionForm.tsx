@@ -132,7 +132,6 @@ const Container = styled.div`
 `;
 
 const AdmissionForm: React.FC = () => {
-  console.log('AdmissionForm component rendered');
   const theme = useTheme();
   const [form, setForm] = useState({
     name: '',
@@ -188,12 +187,9 @@ const AdmissionForm: React.FC = () => {
       const { data, error } = await supabase.from('classes').select('id, name');
       setLoadingClasses(false);
       if (error) {
-        console.error('Error fetching classes:', error);
       }
-      console.log('Fetched classes:', data);
       if (data && data.length > 0 && typeof data[0].id === 'string' && data[0].id.match(/\d(th|st|nd|rd)$/i)) {
         setClassIdWarning('Class id looks like a class name, not a UUID/number. This will cause section fetch to fail!');
-        console.warn('Class id looks like a class name, not a UUID/number. This will cause section fetch to fail!');
       } else {
         setClassIdWarning('');
       }
@@ -209,7 +205,6 @@ const AdmissionForm: React.FC = () => {
       return;
     }
     // Debug: log classFilter value and type
-    console.log('Fetching sections for classFilter:', classFilter, 'type:', typeof classFilter);
     if (typeof classFilter !== 'string' || !classFilter.trim()) {
       setSectionOptions([]);
       setSectionFilter('');
@@ -223,7 +218,6 @@ const AdmissionForm: React.FC = () => {
         .eq('class_id', classFilter);
       setLoadingSections(false);
       if (error) {
-        console.error('Error fetching sections:', error);
       }
       setSectionOptions(data || []);
     };

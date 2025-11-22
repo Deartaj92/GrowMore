@@ -684,7 +684,6 @@ const SchoolsManagement: React.FC = () => {
       setSchools(data || []);
     } catch (error: any) {
       showToast('Failed to load schools', 'error');
-      console.error('Error loading schools:', error);
     } finally {
       setLoading(false);
     }
@@ -708,7 +707,6 @@ const SchoolsManagement: React.FC = () => {
         }
       }
 
-      console.log('Compressed logo size:', file.size / 1024, 'KB');
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
     }
@@ -819,12 +817,9 @@ const SchoolsManagement: React.FC = () => {
         const match = url.match(/school-logos\/([^?\s]+)/);
         if (match && match[1]) {
           const path = match[1];
-          console.log('Attempting to delete old logo:', path);
           const { error: removeError } = await supabase.storage.from('school-logos').remove([path]);
           if (removeError) {
-            console.error('Failed to delete old logo:', removeError);
-          } else {
-            console.log('Deleted old logo:', path);
+            // Failed to delete old logo
           }
         }
         logoUrl = '';
@@ -838,12 +833,9 @@ const SchoolsManagement: React.FC = () => {
           const match = url.match(/school-logos\/([^?\s]+)/);
           if (match && match[1]) {
             const path = match[1];
-            console.log('Attempting to delete old logo:', path);
             const { error: removeError } = await supabase.storage.from('school-logos').remove([path]);
             if (removeError) {
-              console.error('Failed to delete old logo:', removeError);
-            } else {
-              console.log('Deleted old logo:', path);
+              // Failed to delete old logo
             }
           }
         }
@@ -901,7 +893,6 @@ const SchoolsManagement: React.FC = () => {
       handleCloseDialog();
       loadSchools();
     } catch (error: any) {
-      console.error('Error saving school:', error);
       
       // Provide more specific error messages based on error type
       let errorMessage = 'Failed to save school';
@@ -1005,7 +996,6 @@ const SchoolsManagement: React.FC = () => {
       handleCloseAdminDialog();
       loadSchools();
     } catch (error: any) {
-      console.error('Error creating admin:', error);
       
       // Provide more specific error messages based on error type
       let errorMessage = 'Failed to create admin';
@@ -1050,7 +1040,6 @@ const SchoolsManagement: React.FC = () => {
       loadSchools();
     } catch (error: any) {
       showToast(error.message || 'Failed to delete school', 'error');
-      console.error('Error deleting school:', error);
     } finally {
       setLoading(false);
     }
@@ -1076,7 +1065,6 @@ const SchoolsManagement: React.FC = () => {
       loadSchools();
     } catch (error: any) {
       showToast(error.message || 'Failed to delete school', 'error');
-      console.error('Error deleting school:', error);
     } finally {
       setLoading(false);
       setDeleteConfirmOpen(false);
@@ -1137,7 +1125,6 @@ const SchoolsManagement: React.FC = () => {
       loadSchools();
     } catch (error: any) {
       showToast(error.message || 'Failed to remove admin', 'error');
-      console.error('Error removing admin:', error);
     } finally {
       setLoading(false);
       setRemoveAdminConfirmOpen(false);
@@ -1163,7 +1150,6 @@ const SchoolsManagement: React.FC = () => {
       loadSchools();
     } catch (error: any) {
       showToast(error.message || 'Failed to update school status', 'error');
-      console.error('Error updating school status:', error);
     } finally {
       setLoading(false);
     }

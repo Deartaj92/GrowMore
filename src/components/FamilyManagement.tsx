@@ -1268,7 +1268,6 @@ const FamilyManagement: React.FC = () => {
         }
       }
       // Log the file size for debugging
-      console.log('Compressed file size:', file.size / 1024, 'KB');
       // For preview
       const reader = new FileReader();
       reader.onload = (ev: ProgressEvent<FileReader>) => setAvatarPreview(ev.target?.result as string);
@@ -1390,7 +1389,6 @@ const FamilyManagement: React.FC = () => {
       fetchFamilies();
       showToast('Student unlinked from family!', 'success');
     } catch (error: any) {
-      console.error('Error unlinking student:', error);
       showToast('Failed to unlink student: ' + (error?.message || 'Unknown error'), 'error');
     } finally {
       setUnlinkingId(null);
@@ -1495,7 +1493,6 @@ const FamilyManagement: React.FC = () => {
       fetchFamilies();
       showToast('Family deleted successfully!', 'success');
     } catch (error: any) {
-      console.error('Error deleting family:', error);
       showToast('Failed to delete family: ' + (error?.message || 'Unknown error'), 'error');
     } finally {
       setShowDeleteModal(false);

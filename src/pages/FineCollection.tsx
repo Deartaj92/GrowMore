@@ -1449,17 +1449,8 @@ const FineCollection: React.FC = () => {
           // If class_id is not available in the record (old records), fall back to student's current class
           const classIdFromRecord = rec.class_id || selectedStudent.class_id;
           
-          // Debug logging
-          console.log('Attendance record:', rec);
-          console.log('Class ID from record:', rec.class_id);
-          console.log('Student current class:', selectedStudent.class_id);
-          console.log('Using class ID:', classIdFromRecord);
-          console.log('All fine data:', fineData);
-          
           // Find fines for that specific class
           const classFines = fineData?.filter((f: any) => f.class_id === classIdFromRecord) || [];
-          
-          console.log('Fines for class', classIdFromRecord, ':', classFines);
           
           // Find the latest fine setting with effective_from <= rec.date
           let fine = classFines && classFines.length > 0 ? classFines[0] : null;
@@ -1470,8 +1461,6 @@ const FineCollection: React.FC = () => {
           if (fine) {
             fineAmount = rec.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
           }
-          
-          console.log('Final fine amount:', fineAmount);
           
           return {
             date: rec.date,
@@ -1510,7 +1499,6 @@ const FineCollection: React.FC = () => {
           .order('payment_date', { ascending: false });
 
         if (error) {
-          console.error("Error fetching payment history:", error);
           throw error;
         }
         setPaymentHistory(data || []);
@@ -1590,7 +1578,6 @@ const FineCollection: React.FC = () => {
         .select(); 
 
       if (error) {
-        console.error("Error collecting payment:", error);
         showToast("Failed to collect payment: " + error.message, 'error');
         throw error;
       }
@@ -1634,7 +1621,6 @@ const FineCollection: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (error) {
-        console.error("Error deleting payment:", error);
         showToast("Failed to delete payment: " + error.message, 'error');
         throw error;
       }
@@ -1702,7 +1688,6 @@ const FineCollection: React.FC = () => {
           setSessionId(sessionData.id);
         }
       } catch (err) {
-        console.error('Failed to fetch current session:', err);
       }
     };
     

@@ -248,7 +248,6 @@ const RenderSettings: React.FC = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error fetching render settings:', error);
       toast.showToast('Failed to load render settings: ' + error.message, 'error');
       // Use defaults on error
       setSettings(getDefaultSettings());
@@ -288,7 +287,6 @@ const RenderSettings: React.FC = () => {
       toast.showToast('Render settings saved successfully!', 'success');
       setHasChanges(false);
     } catch (error: any) {
-      console.error('Error saving render settings:', error);
       toast.showToast('Failed to save render settings: ' + error.message, 'error');
     } finally {
       setSaving(false);

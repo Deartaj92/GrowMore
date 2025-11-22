@@ -1383,7 +1383,6 @@ const FeeCollectionNew: React.FC = () => {
             if (invoicesData) setFeeInvoices(invoicesData);
             if (paymentData) setPaymentHistory(paymentData);
           } catch (err) {
-            console.error('Error refreshing data:', err);
             showToast("Payment collected but failed to refresh data. Please refresh the page.", 'error');
           }
         };
@@ -1467,7 +1466,6 @@ const FeeCollectionNew: React.FC = () => {
           // Update payment history
           if (paymentData) setPaymentHistory(paymentData);
         } catch (err) {
-          console.error('Error refreshing payment data:', err);
           showToast("Payment deleted but failed to refresh data. Please refresh the page.", 'error');
         }
       };

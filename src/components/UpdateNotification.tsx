@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useContext, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { ThemeProvider } from 'styled-components';
 import ReactMarkdown from 'react-markdown';
@@ -403,6 +403,8 @@ const CloseButton = styled.button`
 // Export interface for manual trigger
 export interface UpdateNotificationRef {
   checkForUpdates: () => Promise<void>;
+  isDownloadActive: () => boolean;
+  restoreDownloadModal: () => void;
 }
 
 const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
@@ -424,6 +426,17 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
   });
   const DISMISSED_KEY = 'gm_dismissed_release_tag';
   const STARTUP_CHECK_KEY = 'gm_startup_update_checked';
+  const DOWNLOAD_STATE_KEY = 'gm_download_state';
+  
+  // Use refs to access latest state in event handlers
+  const isDownloadingRef = useRef(isDownloading);
+  const downloadProgressRef = useRef(downloadProgress);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    isDownloadingRef.current = isDownloading;
+    downloadProgressRef.current = downloadProgress;
+  }, [isDownloading, downloadProgress]);
 
   const checkForUpdates = useCallback(async (isManual: boolean = false, isStartup: boolean = false) => {
     // If download is in progress, restore the download modal instead of checking for updates
@@ -445,7 +458,6 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       const result = await updateService.checkForUpdates();
 
       if (result.error) {
-        console.error('Update check error:', result.error);
         // Only show error alerts for manual checks
         // Startup and automatic checks should fail silently
         if (isManual) {
@@ -485,20 +497,28 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
         // For startup/automatic checks, fail silently (no alert)
       }
     } catch (error) {
-      console.error('Update check failed:', error);
       if (isManual) {
         alert('Failed to check for updates. Please try again later.');
       }
     }
   }, [updateService, showDownloadModal, isDownloading, downloadProgress]);
 
-  // Expose checkForUpdates method for external use
+  // Expose methods for external use
   useImperativeHandle(ref, () => ({
     checkForUpdates: async () => {
-      console.log('[UpdateNotification] checkForUpdates called via ref (manual check)');
       await checkForUpdates(true);
+    },
+    isDownloadActive: () => {
+      // Consider download active if progress < 100, even if paused
+      return isDownloading && downloadProgress < 100;
+    },
+    restoreDownloadModal: () => {
+      if (isDownloading && downloadProgress < 100) {
+        setShowDownloadModal(true);
+        setIsDownloadModalMinimized(false);
+      }
     }
-  }), [checkForUpdates]);
+  }), [checkForUpdates, isDownloading, downloadProgress]);
 
   // Check for updates on every app startup (only for desktop/Electron and mobile/Capacitor, not web)
   useEffect(() => {
@@ -516,7 +536,6 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
     const startupCheck = setTimeout(() => {
       // Check for updates on every startup (desktop/mobile only)
       // Check silently (don't show error if offline)
-      console.log('[UpdateNotification] Running startup update check');
       checkForUpdates(false, true); // Pass isStartup=true so it always shows on startup
     }, 1500); // 1.5 second delay to ensure app is ready
 
@@ -524,6 +543,96 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       clearTimeout(startupCheck);
     };
   }, [checkForUpdates]);
+
+  // Persist download state to localStorage
+  useEffect(() => {
+    if (isDownloading && downloadInfo.fileName) {
+      const downloadState = {
+        fileName: downloadInfo.fileName,
+        downloadedBytes: downloadInfo.downloadedBytes,
+        totalBytes: downloadInfo.totalBytes,
+        progress: downloadProgress,
+        isPaused: isPaused,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(DOWNLOAD_STATE_KEY, JSON.stringify(downloadState));
+    } else if (!isDownloading && downloadProgress === 0) {
+      // Clear download state when download is complete or canceled
+      localStorage.removeItem(DOWNLOAD_STATE_KEY);
+    }
+  }, [isDownloading, downloadInfo, downloadProgress, isPaused]);
+
+  // Restore download state on mount if download was in progress
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    try {
+      const savedState = localStorage.getItem(DOWNLOAD_STATE_KEY);
+      if (savedState) {
+        const downloadState = JSON.parse(savedState);
+        // Check if download state is recent (within last hour)
+        const stateAge = Date.now() - downloadState.timestamp;
+        if (stateAge < 3600000 && downloadState.progress < 100) {
+          // Restore download state
+          setDownloadInfo({
+            fileName: downloadState.fileName,
+            downloadedBytes: downloadState.downloadedBytes,
+            totalBytes: downloadState.totalBytes,
+            filePath: ''
+          });
+          setDownloadProgress(downloadState.progress);
+          setIsPaused(downloadState.isPaused || false);
+          setIsDownloading(true);
+          setShowDownloadModal(true);
+        } else {
+          // State is too old, clear it
+          localStorage.removeItem(DOWNLOAD_STATE_KEY);
+        }
+      }
+    } catch (error) {
+      localStorage.removeItem(DOWNLOAD_STATE_KEY);
+    }
+  }, []);
+
+  // Listen for close attempt when download is active
+  // Set up listener immediately on mount, not dependent on download state
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    const handleShowModalOnClose = () => {
+      // Use refs to get latest state values
+      const currentIsDownloading = isDownloadingRef.current;
+      const currentProgress = downloadProgressRef.current;
+      // Show download modal when user tries to close app during download
+      // Check both state and localStorage as fallback
+      const hasActiveDownload = currentIsDownloading && currentProgress < 100;
+      let hasStoredDownload = false;
+      
+      try {
+        const downloadState = localStorage.getItem('gm_download_state');
+        if (downloadState) {
+          const state = JSON.parse(downloadState);
+          hasStoredDownload = state.progress < 100;
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+
+      if (hasActiveDownload || hasStoredDownload) {
+        setShowDownloadModal(true);
+        setIsDownloadModalMinimized(false);
+      }
+    };
+
+    // Set up listener if available
+    if (window.electronAPI.onShowDownloadModalOnClose) {
+      window.electronAPI.onShowDownloadModalOnClose(handleShowModalOnClose);
+    }
+
+    return () => {
+      // Cleanup is handled by preload.js
+    };
+  }, []); // Set up once on mount, use refs for state
 
   // Set up download progress listener for Electron
   useEffect(() => {
@@ -550,6 +659,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
             totalBytes: 0,
             filePath: ''
           });
+          localStorage.removeItem(DOWNLOAD_STATE_KEY);
           return;
         }
 
@@ -560,6 +670,13 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
           downloadedBytes: data.downloadedBytes,
           totalBytes: data.totalBytes
         });
+
+        // Clear download state when download completes
+        if (data.progress >= 100) {
+          setTimeout(() => {
+            localStorage.removeItem(DOWNLOAD_STATE_KEY);
+          }, 2000); // Wait 2 seconds after completion to allow user to see completion
+        }
       };
 
       window.electronAPI.onDownloadProgress(progressHandler);
@@ -604,11 +721,14 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
           setDownloadProgress(progress);
         });
 
-        // Download complete - store file path for completion handler
-        // Note: Save dialog was shown before download started
-        if (result.filePath) {
-          setDownloadInfo(prev => ({ ...prev, filePath: result.filePath }));
-        }
+      // Download complete - store file path for completion handler
+      // Note: Save dialog was shown before download started
+      if (result.filePath) {
+        setDownloadInfo(prev => ({ ...prev, filePath: result.filePath }));
+      }
+      
+      // Clear download state on completion
+      localStorage.removeItem(DOWNLOAD_STATE_KEY);
       } catch (error: any) {
         setIsDownloading(false);
         setShowDownloadModal(false);
@@ -626,7 +746,6 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       setDownloadProgress(0);
 
       try {
-        console.log('[UpdateNotification] Starting mobile/fallback download');
         await updateService.downloadUpdate(release, (progress) => {
           setDownloadProgress(progress);
         });
@@ -639,7 +758,6 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
         }
       } catch (error: any) {
         setIsDownloading(false);
-        console.error('[UpdateNotification] Download failed:', error);
         alert('Download or install failed. Please try again from the update menu or use Downloads to install.');
       }
     }
@@ -654,7 +772,6 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       try {
         await window.electronAPI.showItemInFolder(finalFilePath);
       } catch (error) {
-        console.error('Failed to open file location:', error);
         // Fallback: just close the modal
       }
     }
@@ -662,6 +779,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
     setShowDownloadModal(false);
     setIsDownloading(false);
     setShowUpdate(false);
+    localStorage.removeItem(DOWNLOAD_STATE_KEY);
   };
 
   const handleDownloadCancel = async () => {
@@ -670,7 +788,6 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       try {
         await window.electronAPI.cancelDownload(downloadInfo.fileName);
       } catch (error) {
-        console.error('Failed to cancel download:', error);
       }
     }
 
@@ -689,6 +806,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       totalBytes: 0,
       filePath: ''
     });
+    localStorage.removeItem(DOWNLOAD_STATE_KEY);
   };
 
   const handleCancel = () => {

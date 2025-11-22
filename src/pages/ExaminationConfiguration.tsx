@@ -554,7 +554,6 @@ const ExaminationConfiguration: React.FC = () => {
         setConfig(newConfig);
       }
     } catch (error) {
-      console.error('Error loading configuration:', error);
       showToast('Failed to load configuration', 'error');
     } finally {
       setLoading(false);
@@ -580,7 +579,6 @@ const ExaminationConfiguration: React.FC = () => {
 
       showToast('Configuration saved successfully', 'success');
     } catch (error) {
-      console.error('Error saving configuration:', error);
       showToast('Failed to save configuration', 'error');
     } finally {
       setSaving(false);
@@ -812,7 +810,6 @@ const ExaminationConfiguration: React.FC = () => {
               await loadConfiguration();
               showToast('Configuration reset to defaults successfully', 'success');
             } catch (error) {
-              console.error('Error resetting configuration:', error);
               showToast('Failed to reset configuration', 'error');
             }
           }}
@@ -827,7 +824,6 @@ const ExaminationConfiguration: React.FC = () => {
               await loadConfiguration();
               showToast('Configuration reloaded successfully', 'success');
             } catch (error) {
-              console.error('Error reloading configuration:', error);
               showToast('Failed to reload configuration', 'error');
             }
           }}

@@ -1460,7 +1460,6 @@ const MarkAttendance: React.FC = () => {
         error.message?.includes('multiple (or no) rows returned') ||
         error.details?.includes('contains 0 rows')
       )) {
-        console.error('Error fetching active session:', error);
         setHasActiveSession(false);
       }
       setLoadingSession(false);
@@ -1520,7 +1519,6 @@ const MarkAttendance: React.FC = () => {
       } catch (error) {
         setStaffId(null);
         toast.showToast('Failed to fetch staff ID for your user.', 'error');
-        console.error('Error fetching staff_id:', error);
       }
     };
     fetchStaffId();
@@ -1559,7 +1557,6 @@ const MarkAttendance: React.FC = () => {
           toast.showToast('No section assigned to you. Please contact admin.', 'error');
         }
       } catch (error) {
-        console.error('Error fetching teacher sections:', error);
         toast.showToast('Failed to fetch your assigned sections', 'error');
       }
     };
@@ -1583,7 +1580,6 @@ const MarkAttendance: React.FC = () => {
         setTeacherClasses(data || []);
       } catch (error) {
         setTeacherClasses([]);
-        console.error('Error fetching teacher classes:', error);
       }
     };
     fetchTeacherClasses();
@@ -1599,14 +1595,12 @@ const MarkAttendance: React.FC = () => {
       
       const { data, error } = await query;
       if (error) {
-        console.error('Error fetching classes:', error);
         toast.showToast('Failed to fetch classes (see console)', 'error');
       }
       const sortedClasses = sortClasses(data || []);
       setClasses(sortedClasses);
     } catch (error) {
       toast.showToast('Failed to fetch classes (exception)', 'error');
-      console.error('Exception in fetchClasses:', error);
     } finally {
       setLoadingClasses(false);
     }
@@ -1628,13 +1622,11 @@ const MarkAttendance: React.FC = () => {
       }
       const { data, error } = await query;
       if (error) {
-        console.error('Error fetching sections:', error);
         toast.showToast('Failed to fetch sections (see console)', 'error');
       }
       setSections(data || []);
     } catch (error) {
       toast.showToast('Failed to fetch sections (exception)', 'error');
-      console.error('Exception in fetchSections:', error);
     } finally {
       setLoadingSections(false);
     }
@@ -1791,12 +1783,10 @@ const MarkAttendance: React.FC = () => {
           { createNotification: false } // Don't create notification for view
         );
       } catch (activityError) {
-        console.error('Failed to log attendance view activity:', activityError);
         // Don't fail the operation if activity logging fails
       }
     } catch (error) {
       toast.showToast('Failed to fetch students', 'error');
-      console.error('Error:', error);
     } finally {
       setLoadingStudents(false);
     }
@@ -1883,12 +1873,10 @@ const MarkAttendance: React.FC = () => {
           date
         );
 
-        console.log(`Prepared ${notificationData.length} WhatsApp notifications`);
         return notificationData.length;
       }
       return 0;
     } catch (error) {
-      console.error('Error preparing attendance notifications:', error);
       throw error;
     }
   };
@@ -1986,7 +1974,6 @@ const MarkAttendance: React.FC = () => {
           date
         );
       } catch (activityError) {
-        console.error('Failed to log attendance activity:', activityError);
         // Don't fail the save operation if activity logging fails
       }
       
@@ -2009,7 +1996,6 @@ const MarkAttendance: React.FC = () => {
             toast.showToast('Attendance saved successfully', 'success');
           }
         } catch (whatsappError) {
-          console.error('Failed to prepare WhatsApp notifications:', whatsappError);
           toast.showToast('Attendance saved but WhatsApp preparation failed', 'error');
         } finally {
           setWhatsappProcessing(false);
@@ -2024,7 +2010,6 @@ const MarkAttendance: React.FC = () => {
       setProgress(100);
       completeProgress();
     } catch (error: any) {
-      console.error('Error saving attendance:', error);
       toast.showToast(error.message || 'Failed to save attendance', 'error');
       completeProgress();
     } finally {
@@ -2219,7 +2204,6 @@ const MarkAttendance: React.FC = () => {
       toast.showToast('Attendance records deleted successfully', 'success');
     } catch (error) {
       toast.showToast('Failed to delete attendance records', 'error');
-      console.error('Error:', error);
       completeProgress();
     } finally {
       setDeleting(false);

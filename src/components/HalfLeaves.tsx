@@ -787,7 +787,6 @@ const HalfLeaves: React.FC = () => {
       } catch (error) {
         setStaffId(null);
         toast.showToast('Failed to fetch staff ID for your user.', 'error');
-        console.error('Error fetching staff_id:', error);
       }
     };
     fetchStaffId();
@@ -826,7 +825,6 @@ const HalfLeaves: React.FC = () => {
           toast.showToast('No section assigned to you. Please contact admin.', 'error');
         }
       } catch (error) {
-        console.error('Error fetching teacher sections:', error);
         toast.showToast('Failed to fetch your assigned sections', 'error');
       }
     };
@@ -851,7 +849,6 @@ const HalfLeaves: React.FC = () => {
         setTeacherClasses(sortedClasses.map(c => ({ ...c, id: String(c.id) })));
       } catch (error) {
         setTeacherClasses([]);
-        console.error('Error fetching teacher classes:', error);
       }
     };
     fetchTeacherClasses();
@@ -880,7 +877,6 @@ const HalfLeaves: React.FC = () => {
           setClasses(sortedClasses);
         }
       } catch (error) {
-        console.error('Error fetching classes:', error);
       }
     };
     fetchClasses();
@@ -911,7 +907,6 @@ const HalfLeaves: React.FC = () => {
           setSections(data);
         }
       } catch (error) {
-        console.error('Error fetching sections:', error);
       }
     };
     fetchSections();
@@ -1068,7 +1063,6 @@ const HalfLeaves: React.FC = () => {
       }
     } catch (error) {
       toast.showToast('Failed to fetch ' + personType + 's', 'error');
-      console.error('Error:', error);
     } finally {
       setLoadingPersons(false);
     }
@@ -1233,7 +1227,6 @@ const HalfLeaves: React.FC = () => {
       fetchPersons();
     } catch (error) {
       toast.showToast('Failed to save half leaves', 'error');
-      console.error('Error:', error);
     } finally {
       setSaving(false);
     }
@@ -1283,7 +1276,6 @@ const HalfLeaves: React.FC = () => {
       fetchPersons();
     } catch (error) {
       toast.showToast('Failed to delete half leaves', 'error');
-      console.error('Error:', error);
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);

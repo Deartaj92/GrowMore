@@ -489,7 +489,6 @@ const WelcomePage: React.FC = () => {
   // Reset navigation history when WelcomePage is mounted/navigated to
   useEffect(() => {
     if (location.pathname === '/teacher') {
-      console.log('WelcomePage mounted/navigated to, resetting navigation history');
       
       // Clear any existing navigation history by replacing current entry
       // This ensures back button always shows exit dialog instead of navigating to previous pages
@@ -498,7 +497,6 @@ const WelcomePage: React.FC = () => {
       // Push a new state to enable back button handling
       setTimeout(() => {
         window.history.pushState(null, '', '/teacher');
-        console.log('Navigation history reset and new state pushed');
       }, 0);
     }
   }, [location.pathname]); // Run whenever pathname changes to /teacher
@@ -512,7 +510,6 @@ const WelcomePage: React.FC = () => {
     // If somehow we navigated away while dialog is open, force back to /teacher
     const checkLocation = () => {
       if (location.pathname !== '/teacher' && showExitConfirmRef.current) {
-        console.log('Preventing navigation away from /teacher while exit dialog is open');
         navigate('/teacher', { replace: true });
         // Reset history again after navigation
         window.history.replaceState(null, '', '/teacher');
@@ -676,29 +673,13 @@ const WelcomePage: React.FC = () => {
   // Debug: Log when exit confirm state changes and verify modal is in DOM
   useEffect(() => {
     if (showExitConfirm) {
-      console.log('Exit confirmation dialog should now be visible');
-      
-      // Verify modal is actually in the DOM
-      setTimeout(() => {
-        const modal = document.querySelector('[role="dialog"], .modal-overlay');
-        if (modal) {
-          console.log('Modal found in DOM:', modal);
-          const styles = window.getComputedStyle(modal as Element);
-          console.log('Modal display:', styles.display, 'visibility:', styles.visibility, 'opacity:', styles.opacity, 'z-index:', styles.zIndex);
-        } else {
-          console.warn('Modal not found in DOM!');
-        }
-      }, 100);
     }
   }, [showExitConfirm]);
 
   // Stable handler using useCallback
   const handleBackPress = React.useCallback(() => {
-    console.log('Back button pressed on WelcomePage, showing exit dialog');
-    
     // Use ref to check if already showing to prevent duplicate calls
     if (showExitConfirmRef.current) {
-      console.log('Exit dialog already showing, ignoring duplicate back press');
       return;
     }
     
@@ -711,8 +692,6 @@ const WelcomePage: React.FC = () => {
     // Show exit confirmation dialog
     showExitConfirmRef.current = true;
     setShowExitConfirm(true);
-    
-    console.log('Exit confirmation dialog state set to true');
   }, []);
 
   // Mobile back button handling (similar to Layout.tsx)
@@ -722,7 +701,6 @@ const WelcomePage: React.FC = () => {
       return;
     }
 
-    console.log('Setting up back button handler for /teacher route');
 
     let removeCapListener: (() => void) | null = null;
     
@@ -732,7 +710,6 @@ const WelcomePage: React.FC = () => {
         if (CapacitorApp) {
           const listener = await CapacitorApp.addListener('backButton', () => {
             // Always show exit dialog for welcome page
-            console.log('Capacitor backButton event received, showing exit dialog');
             handleBackPress();
           });
           removeCapListener = () => {
@@ -740,7 +717,6 @@ const WelcomePage: React.FC = () => {
           };
         }
       } catch (error) {
-        console.log('Capacitor not available or error setting up listener:', error);
       }
     };
 
@@ -749,8 +725,6 @@ const WelcomePage: React.FC = () => {
 
     // Fallback for non-Capacitor contexts (web/Cordova)
     const handlePopState = (event: PopStateEvent) => {
-      console.log('popstate event triggered on WelcomePage, current path:', window.location.pathname);
-      
       // Immediately prevent navigation
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -766,7 +740,6 @@ const WelcomePage: React.FC = () => {
       // Force React Router to stay on current route if it tried to navigate
       setTimeout(() => {
         if (window.location.pathname !== '/teacher') {
-          console.log('React Router tried to navigate, forcing back to /teacher');
           navigate('/teacher', { replace: true });
           window.history.pushState(null, '', '/teacher');
         }
@@ -1067,7 +1040,6 @@ const WelcomePage: React.FC = () => {
       {/* Exit Confirmation Modal - Rendered via Portal */}
       {showExitConfirm && ReactDOM.createPortal(
         <ModalOverlay onClick={() => {
-            console.log('Modal overlay clicked, closing dialog');
             showExitConfirmRef.current = false;
             setShowExitConfirm(false);
           }}>
@@ -1098,7 +1070,6 @@ const WelcomePage: React.FC = () => {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <ModalButton
                   onClick={() => {
-                    console.log('Cancel button clicked, closing dialog');
                     showExitConfirmRef.current = false;
                     setShowExitConfirm(false);
                   }}
@@ -1109,7 +1080,6 @@ const WelcomePage: React.FC = () => {
                 </ModalButton>
                 <ModalButton
                   onClick={() => {
-                    console.log('Exit button clicked');
                     showExitConfirmRef.current = false;
                     setShowExitConfirm(false);
                     try { 

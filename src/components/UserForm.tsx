@@ -370,7 +370,6 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
           }]);
 
         if (error) {
-          console.error('Error saving user:', error);
           throw error;
         }
         toast.showToast('User created successfully', 'success');
@@ -378,7 +377,6 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error saving user:', error);
       
       // Handle specific database errors
       if (error.code === '23505' && error.message.includes('username')) {

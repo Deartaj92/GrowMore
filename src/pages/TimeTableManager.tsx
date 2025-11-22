@@ -449,7 +449,6 @@ const TimeTableManager: React.FC = () => {
           toast.showToast('No active session found. Timetable saving is disabled.', 'warning');
         }
       } catch (error) {
-        console.error('Error fetching session:', error);
         toast.showToast('No active session found. Timetable saving is disabled.', 'warning');
       }
     };
@@ -494,11 +493,6 @@ const TimeTableManager: React.FC = () => {
           supabase.from('teacher_class_subjects').select('id, teacher_id, class_subject_id, class_subjects (class_id, subject_id)').eq('school_id', user.school_id),
           supabase.from('sections').select('id, class_id, teacher_id').eq('school_id', user.school_id),
         ]);
-        if (cls.error) console.error('Classes fetch error:', cls.error);
-        if (subs.error) console.error('Subjects fetch error:', subs.error);
-        if (tchs.error) console.error('Teachers fetch error:', tchs.error);
-        if (tcs.error) console.error('TeacherClassSubjects fetch error:', tcs.error);
-        if (secs.error) console.error('Sections fetch error:', secs.error);
         setClasses(cls.data || []);
         setSubjects(subs.data || []);
         setTeachers(tchs.data || []);
@@ -519,7 +513,7 @@ const TimeTableManager: React.FC = () => {
         });
         setClassAssignments(assignments);
       } catch (err) {
-        console.error('Timetable fetchAll error:', err);
+        // Timetable fetchAll error
       } finally {
         setLoading(false);
         setAllDataLoaded(true);
@@ -675,14 +669,6 @@ const TimeTableManager: React.FC = () => {
       });
     });
 
-    // Debug logging
-    console.log('=== SAVE TIMETABLE DEBUG ===');
-    console.log('Cell selections:', cellSelections);
-    console.log('Timetable data to save:', timetableDataToSave);
-    console.log('Number of records to save:', timetableDataToSave.length);
-    console.log('Session ID:', sessionId);
-    console.log('School ID:', user.school_id);
-    console.log('Break index:', breakIdx);
 
     try {
       // Get unique class_ids and day_of_week present in current selections to delete existing records
@@ -691,8 +677,6 @@ const TimeTableManager: React.FC = () => {
 
       // Delete existing records for the classes being saved, current session, and specific day
       if (uniqueClassIds.length > 0) {
-        console.log('Deleting existing records for classes:', uniqueClassIds, 'day:', dayOfWeek);
-        
         // First, check what records exist before deletion
         const { data: existingRecords, error: checkError } = await supabase
           .from('timetable')
@@ -703,9 +687,7 @@ const TimeTableManager: React.FC = () => {
           .in('class_id', uniqueClassIds);
         
         if (checkError) {
-          console.error('Error checking existing records:', checkError);
-        } else {
-          console.log('Existing records before deletion:', existingRecords);
+          // Error checking existing records
         }
         
         const { error: deleteError } = await supabase
@@ -717,36 +699,19 @@ const TimeTableManager: React.FC = () => {
           .in('class_id', uniqueClassIds);
         
         if (deleteError) {
-          console.error('Delete error:', deleteError);
           throw deleteError;
-        } else {
-          console.log('Successfully deleted existing records');
         }
       }
 
       // Insert the new data
       if (timetableDataToSave.length > 0) {
-        console.log('Inserting timetable data:', timetableDataToSave);
-        console.log('About to insert data:', JSON.stringify(timetableDataToSave, null, 2));
-        
         const { data: insertData, error: insertError } = await supabase
           .from('timetable')
           .insert(timetableDataToSave);
 
-        console.log('Insert operation completed');
-        console.log('Insert response data:', insertData);
-        console.log('Insert error:', insertError);
-
         if (insertError) {
-          console.error('Insert error:', insertError);
-          console.error('Insert error details:', insertError.details);
-          console.error('Insert error hint:', insertError.hint);
-          console.error('Insert error code:', insertError.code);
-          console.error('Insert error message:', insertError.message);
           throw insertError;
         }
-        
-        console.log('Successfully inserted timetable data');
         
         // Verify the data was actually inserted
         const { data: verifyData, error: verifyError } = await supabase
@@ -758,18 +723,12 @@ const TimeTableManager: React.FC = () => {
           .in('class_id', uniqueClassIds);
         
         if (verifyError) {
-          console.error('Verify error:', verifyError);
-        } else {
-          console.log('Data verification after insert:', verifyData);
-          console.log('Number of records after insert:', verifyData.length);
+          // Verify error
         }
-      } else {
-        console.log('No timetable data to insert');
       }
 
       toast.showToast('Timetable saved successfully!', 'success');
     } catch (error: any) {
-      console.error('Error saving timetable:', error);
       toast.showToast(`Failed to save timetable: ${error.message || error}`, 'error');
     } finally {
       setLoading(false);
@@ -791,9 +750,6 @@ const TimeTableManager: React.FC = () => {
 
         if (error) throw error;
 
-        console.log('=== LOAD TIMETABLE DEBUG ===');
-        console.log('Raw data from database:', data);
-        console.log('Number of records loaded:', data.length);
 
         const loadedSelections: Record<string, string[]> = {};
         let loadedBreakIndex: number | undefined;
@@ -811,8 +767,6 @@ const TimeTableManager: React.FC = () => {
           }
         });
 
-        console.log('Processed selections:', loadedSelections);
-        console.log('Break index:', loadedBreakIndex);
 
         setCellSelections(loadedSelections);
         if (loadedBreakIndex !== undefined) {
@@ -820,7 +774,6 @@ const TimeTableManager: React.FC = () => {
         }
         toast.showToast('Timetable loaded successfully!', 'success');
       } catch (error: any) {
-        console.error('Error loading timetable:', error);
         toast.showToast(`Failed to load timetable: ${error.message || error}`, 'error');
       } finally {
         setLoading(false);
@@ -1199,7 +1152,6 @@ const TimeTableManager: React.FC = () => {
       
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
-        console.log('Generating PDF for mobile... Please wait.');
       }
       
       // Format date as dd-mmm-yyyy for filename
@@ -1240,17 +1192,14 @@ const TimeTableManager: React.FC = () => {
               });
 
               // Show success message and trigger native Android "Open with" dialog
-              console.log(`PDF saved successfully as ${mobileFileName}`);
               
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
-              console.log('PDF downloaded successfully!');
             }
           } else {
             // Fallback for web browsers - use the blob approach
@@ -1301,10 +1250,8 @@ const TimeTableManager: React.FC = () => {
                 URL.revokeObjectURL(url);
               }, 30000);
               
-              console.log(`PDF ready! Click the download button that appeared on screen.`);
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -1342,25 +1289,18 @@ const TimeTableManager: React.FC = () => {
                   </html>
                 `);
                 newWindow.document.close();
-                console.log(`PDF opened in new tab. Use the download button in the new tab.`);
-              } else {
-                console.log('Please allow popups for this site to download the PDF');
               }
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
-          console.log('Failed to export PDF on mobile. Please try on desktop.');
         }
       } else {
         // For desktop, use the standard approach
         doc.save(fileName);
-        console.log('Timetable PDF generated successfully');
       }
       
       toast.showToast('PDF generated successfully!', 'success');
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.showToast('Failed to generate PDF', 'error');
     } finally {
       setExportLoading(false);
@@ -1553,7 +1493,6 @@ const TimeTableManager: React.FC = () => {
       
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
-        console.log('Generating teacher slips for mobile... Please wait.');
       }
       
       // Format date as dd-mmm-yyyy for filename
@@ -1594,17 +1533,14 @@ const TimeTableManager: React.FC = () => {
               });
 
               // Show success message and trigger native Android "Open with" dialog
-              console.log(`PDF saved successfully as ${mobileFileName}`);
               
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
-              console.log('PDF downloaded successfully!');
             }
           } else {
             // Fallback for web browsers - use the blob approach
@@ -1655,10 +1591,8 @@ const TimeTableManager: React.FC = () => {
                 URL.revokeObjectURL(url);
               }, 30000);
               
-              console.log(`PDF ready! Click the download button that appeared on screen.`);
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -1696,25 +1630,18 @@ const TimeTableManager: React.FC = () => {
                   </html>
                 `);
                 newWindow.document.close();
-                console.log(`PDF opened in new tab. Use the download button in the new tab.`);
-              } else {
-                console.log('Please allow popups for this site to download the PDF');
               }
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
-          console.log('Failed to export PDF on mobile. Please try on desktop.');
         }
       } else {
         // For desktop, use the standard approach
         doc.save(fileName);
-        console.log('Teacher schedules PDF generated successfully');
       }
       
       toast.showToast('Teacher slips generated successfully!', 'success');
     } catch (error) {
-      console.error('Error generating teacher slips:', error);
       toast.showToast('Failed to generate teacher slips', 'error');
     } finally {
       setTeacherSlipsLoading(false);
@@ -1914,32 +1841,25 @@ const TimeTableManager: React.FC = () => {
                                             setCellSelections(s => {
                                               const current = s[cellKey] || [];
                                               const [newSubjectId, newTeacherId] = opt.value.split('_');
-                                              console.log('Adding selection:', { cellKey, optValue: opt.value, current, newSubjectId, newTeacherId });
-                                              
                                               if (current.length === 0) {
                                                 // No selection yet, just add
                                                 const newSelections = { ...s, [cellKey]: [opt.value] };
-                                                console.log('No current selection, adding first:', newSelections);
                                                 return newSelections;
                                               }
                                               // Get teacherId of current selection(s)
                                               const [, currentTeacherId] = current[0].split('_');
-                                              console.log('Current teacher ID:', currentTeacherId, 'New teacher ID:', newTeacherId);
                                               
                                               if (current.every(sel => sel.split('_')[1] === newTeacherId)) {
                                                 // Same teacher, add if not already present
                                                 if (!current.includes(opt.value)) {
                                                   const newSelections = { ...s, [cellKey]: [...current, opt.value] };
-                                                  console.log('Same teacher, adding subject:', newSelections);
                                                   return newSelections;
                                                 } else {
-                                                  console.log('Subject already selected');
                                                   return s; // Already selected
                                                 }
                                               } else {
                                                 // Different teacher, replace selection
                                                 const newSelections = { ...s, [cellKey]: [opt.value] };
-                                                console.log('Different teacher, replacing selection:', newSelections);
                                                 return newSelections;
                                               }
                                             });

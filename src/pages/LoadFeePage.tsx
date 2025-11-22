@@ -1098,7 +1098,6 @@ export default function LoadFeePage() {
       const studentsWithCurrentClass = await mergeCurrentClassFromHistory(stu || []);
       setStudents(studentsWithCurrentClass);
     } catch (error) {
-      console.error('Error loading students:', error);
     } finally {
       setStudentsLoading(false);
     }
@@ -1645,7 +1644,6 @@ export default function LoadFeePage() {
         .eq('school_id', schoolId);
 
       if (schError) {
-        console.error('Error fetching student_class_history:', schError);
         throw schError;
       }
 
@@ -1671,7 +1669,6 @@ export default function LoadFeePage() {
           .eq('school_id', schoolId);
 
         if (sectionError) {
-          console.error('Error fetching section data:', sectionError);
           throw sectionError;
         }
 
@@ -1688,7 +1685,6 @@ export default function LoadFeePage() {
         .order('name', { ascending: true });
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         throw studentsError;
       }
 
@@ -1698,7 +1694,6 @@ export default function LoadFeePage() {
       // Select all students by default
       setSelectedStudents(filtered.map(stu => stu.id));
     } catch (error) {
-      console.error('Error in handlePreview:', error);
       showToast('Failed to load students for the selected session', 'error');
       setPreview([]);
       setSelectedStudents([]);
@@ -1728,7 +1723,6 @@ export default function LoadFeePage() {
           .eq('school_id', schoolId);
 
         if (schError) {
-          console.error('Error fetching student_class_history:', schError);
           throw schError;
         }
 
@@ -1754,7 +1748,6 @@ export default function LoadFeePage() {
             .eq('school_id', schoolId);
 
           if (sectionError) {
-            console.error('Error fetching section data:', sectionError);
             throw sectionError;
           }
 
@@ -1771,7 +1764,6 @@ export default function LoadFeePage() {
           .order('name', { ascending: true });
 
         if (studentsError) {
-          console.error('Error fetching students:', studentsError);
           throw studentsError;
         }
 
@@ -1781,7 +1773,6 @@ export default function LoadFeePage() {
         // Select all students by default
         setSelectedStudents(filtered.map(stu => stu.id));
       } catch (error) {
-        console.error('Error in auto-preview:', error);
         showToast('Failed to load students for the selected session', 'error');
         setPreview([]);
         setSelectedStudents([]);

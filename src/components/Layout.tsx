@@ -2057,7 +2057,7 @@ const Layout: React.FC = () => {
         if (classesResult.data) setClassesList(classesResult.data);
         if (sectionsResult.data) setSectionsList(sectionsResult.data);
       } catch (error) {
-        console.error('Error fetching search data:', error);
+        // Error fetching search data
       }
     };
 
@@ -2219,6 +2219,7 @@ const Layout: React.FC = () => {
 
   // Update checking state
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isDownloadActive, setIsDownloadActive] = useState(false);
   const [updateService] = useState(() => UpdateService.getInstance());
   const appVersion = process.env.REACT_APP_VERSION || 'dev';
 
@@ -2321,13 +2322,11 @@ const Layout: React.FC = () => {
               setInstituteProfile(null);
             }
           } catch (fallbackError) {
-            console.error('Error fetching school data:', fallbackError);
             setInstituteProfile(null);
           }
         }
         // Remove completeProgress call
       } catch (error) {
-        console.error('Error fetching institute profile:', error);
         setInstituteProfile(null);
         // Remove completeProgress call
       }
@@ -2387,7 +2386,6 @@ const Layout: React.FC = () => {
         );
       seenAnnouncementsRef.current.add(announcement.id);
     } catch (error) {
-      console.error('Failed to track announcement view:', error);
     }
   }, [authUser?.name, authUser?.role, studentInfo?.name, staffName, staffId]);
 
@@ -2403,7 +2401,6 @@ const Layout: React.FC = () => {
       if (error) throw error;
       setSeenByEntries(data || []);
     } catch (error) {
-      console.error('Failed to load announcement viewers:', error);
       setSeenByError('Unable to load viewers right now.');
     } finally {
       setSeenByLoading(false);
@@ -2446,7 +2443,6 @@ const Layout: React.FC = () => {
             .eq('id', parsed.id);
         }
       } catch (e) {
-        console.error('Error updating student offline status', e);
       }
       localStorage.removeItem('studentSession');
     }
@@ -2456,7 +2452,6 @@ const Layout: React.FC = () => {
       try {
         await signOut();
       } catch (error) {
-        console.error('Error signing out staff:', error);
         removeUser();
       }
     } else {
@@ -2558,7 +2553,6 @@ const Layout: React.FC = () => {
           };
         }
       } catch (error) {
-        console.log('Capacitor not available or error setting up listener:', error);
       }
     };
 
@@ -2722,7 +2716,6 @@ const Layout: React.FC = () => {
           .single();
 
         if (error) {
-          console.error('Password fetch error:', error);
           toast.showToast('Failed to verify current password.', 'error');
           completeProgress();
           setModalLoading(false);
@@ -2749,7 +2742,6 @@ const Layout: React.FC = () => {
           .eq('school_id', studentInfo.school_id);
 
         if (updateError) {
-          console.error('Password update error:', updateError);
           toast.showToast('Failed to update password.', 'error');
           completeProgress();
           return;
@@ -2784,7 +2776,6 @@ const Layout: React.FC = () => {
         .eq('id', user.id);
 
       if (updateError) {
-        console.error('Password update error:', updateError);
         toast.showToast('Failed to update password.', 'error');
         completeProgress();
         return;
@@ -2796,7 +2787,6 @@ const Layout: React.FC = () => {
         closeChangePasswordModal();
       }, 600); // Delay to allow toast to show
     } catch (err) {
-      console.error('Password change error:', err);
       toast.showToast('Something went wrong.', 'error');
       completeProgress();
     } finally {
@@ -2839,6 +2829,12 @@ const Layout: React.FC = () => {
   }, [user]);
 
   const handleRefresh = () => {
+    // Prevent refresh if download is active
+    if (isDownloadActive) {
+      toast.showToast('Please wait for the download to complete before refreshing', 'error');
+      return;
+    }
+
     try {
       startProgress(true); // Start indeterminate progress for page refresh
 
@@ -2895,27 +2891,92 @@ const Layout: React.FC = () => {
         window.location.href = window.location.href;
       }
     } catch (error) {
-      console.error('Error during refresh:', error);
       // Fallback: try alternative reload method
       window.location.href = window.location.href;
     }
   };
 
+  // Check download state periodically
+  useEffect(() => {
+    const checkDownloadState = () => {
+      if ((window as any).updateNotificationRef?.current) {
+        const isActive = (window as any).updateNotificationRef.current.isDownloadActive();
+        setIsDownloadActive(isActive);
+      } else {
+        // Fallback: check localStorage
+        try {
+          const downloadState = localStorage.getItem('gm_download_state');
+          if (downloadState) {
+            const state = JSON.parse(downloadState);
+            // Consider download active if progress < 100, even if paused
+            setIsDownloadActive(state.progress < 100);
+          } else {
+            setIsDownloadActive(false);
+          }
+        } catch {
+          setIsDownloadActive(false);
+        }
+      }
+    };
+
+    // Check immediately
+    checkDownloadState();
+
+    // Check periodically
+    const interval = setInterval(checkDownloadState, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Prevent page refresh/reload when download is active
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDownloadActive) {
+        e.preventDefault();
+        // Get download details for better warning
+        let downloadInfo = '';
+        try {
+          const downloadState = localStorage.getItem('gm_download_state');
+          if (downloadState) {
+            const state = JSON.parse(downloadState);
+            const progress = state.totalBytes > 0 
+              ? Math.round((state.downloadedBytes / state.totalBytes) * 100) 
+              : 0;
+            const status = state.isPaused ? ' - Paused' : '';
+            downloadInfo = ` (${state.fileName} - ${progress}%${status})`;
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+        e.returnValue = `⚠️ Download in progress${downloadInfo}. Are you sure you want to leave? The download will be canceled.`;
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDownloadActive]);
+
   // Update checking functions - use the global update notification modal
   const handleCheckForUpdates = async () => {
+    // If download is active, restore the modal instead of checking for updates
+    if (isDownloadActive && (window as any).updateNotificationRef?.current) {
+      (window as any).updateNotificationRef.current.restoreDownloadModal();
+      setProfileMenuOpen(false);
+      return;
+    }
+
     if (isCheckingUpdate) return; // debounce concurrent checks
     setIsCheckingUpdate(true);
     try {
       // Use the global update check function that shows the modal
       if ((window as any).checkForAppUpdates) {
-        console.log('[Layout] Calling checkForAppUpdates');
         (window as any).checkForAppUpdates();
       } else {
-        console.warn('[Layout] checkForAppUpdates function not available');
         toast.showToast('Update service not available', 'error');
       }
     } catch (error) {
-      console.error('[Layout] Failed to check for updates:', error);
       toast.showToast('Failed to check for updates', 'error');
     } finally {
       setIsCheckingUpdate(false);
@@ -2968,6 +3029,35 @@ const Layout: React.FC = () => {
   };
 
   const handleExit = () => {
+    // Check if download is active
+    if (isDownloadActive) {
+      // Get download details for better warning message
+      let downloadDetails = '';
+      try {
+        const downloadState = localStorage.getItem('gm_download_state');
+        if (downloadState) {
+          const state = JSON.parse(downloadState);
+          const progress = state.totalBytes > 0 
+            ? Math.round((state.downloadedBytes / state.totalBytes) * 100) 
+            : 0;
+          const status = state.isPaused ? ' (Paused)' : '';
+          downloadDetails = `\n\nDownload: ${state.fileName}\nProgress: ${progress}%${status}`;
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+
+      const confirmClose = window.confirm(
+        '⚠️ Download in Progress!\n\n' +
+        'A download is currently in progress (or paused).' + downloadDetails +
+        '\n\nIf you close the application now, the download will be canceled.\n\n' +
+        'Are you sure you want to close?'
+      );
+      if (!confirmClose) {
+        return;
+      }
+    }
+
     try {
       if (CapacitorApp) {
         CapacitorApp.exitApp();
@@ -2989,7 +3079,6 @@ const Layout: React.FC = () => {
         window.close();
       }
     } catch (error) {
-      console.error('Failed to exit app:', error);
       // Fallback: try window.close() or navigate away
       try {
         window.close();
@@ -3075,7 +3164,6 @@ const Layout: React.FC = () => {
             setAvatarUrl(null);
           }
         } catch (error) {
-          console.error('Error fetching staff profile:', error);
           setStaffId(null);
           setStaffName(null);
           setAvatarUrl(null);
@@ -3375,7 +3463,6 @@ const Layout: React.FC = () => {
         setShowAnnouncement(true);
       }
     } catch (e) {
-      console.error('Error fetching announcement:', e);
     }
   }, [announcementQueue]);
 
@@ -3453,7 +3540,6 @@ const Layout: React.FC = () => {
       )
       .subscribe(status => {
         if (process.env.NODE_ENV === 'development') {
-          console.debug('[Announcements] realtime status:', status);
         }
       });
 
@@ -3809,6 +3895,13 @@ const Layout: React.FC = () => {
                               as="button"
                               onClick={handleRefresh}
                               aria-label="Refresh page"
+                              disabled={isDownloadActive}
+                              style={{
+                                opacity: isDownloadActive ? 0.5 : 1,
+                                cursor: isDownloadActive ? 'not-allowed' : 'pointer',
+                                pointerEvents: isDownloadActive ? 'none' : 'auto'
+                              }}
+                              title={isDownloadActive ? 'Download in progress. Please wait before refreshing.' : 'Refresh page'}
                             >
                               <RefreshIcon />
                             </HeaderIconCircle>
@@ -3862,13 +3955,14 @@ const Layout: React.FC = () => {
                                           handleCheckForUpdates();
                                           setProfileMenuOpen(false);
                                         }}
-                                        disabled={isCheckingUpdate}
+                                        disabled={isCheckingUpdate && !isDownloadActive}
                                         style={{
-                                          opacity: isCheckingUpdate ? 0.6 : 1,
-                                          cursor: isCheckingUpdate ? 'not-allowed' : 'pointer'
+                                          opacity: (isCheckingUpdate && !isDownloadActive) ? 0.6 : 1,
+                                          cursor: (isCheckingUpdate && !isDownloadActive) ? 'not-allowed' : 'pointer',
+                                          color: isDownloadActive ? (theme === 'dark' ? '#60a5fa' : '#2563eb') : undefined
                                         }}
                                       >
-                                        {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                                        {isDownloadActive ? 'Downloading Update...' : (isCheckingUpdate ? 'Checking...' : 'Check for Updates')}
                                       </ProfileDropdownItem>
                                     </>
                                   )}

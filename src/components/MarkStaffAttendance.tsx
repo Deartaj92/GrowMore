@@ -544,7 +544,6 @@ const MarkStaffAttendance: React.FC = () => {
         .select('id')
         .eq('school_id', user.school_id);
       
-      console.log('Initial staff check - data:', staffData, 'error:', staffError);
       setHasAnyStaff(staffData && staffData.length > 0);
       
       setProgress(100);
@@ -587,7 +586,6 @@ const MarkStaffAttendance: React.FC = () => {
         error.message?.includes('multiple (or no) rows returned') ||
         error.details?.includes('contains 0 rows')
       )) {
-        console.error('Error fetching active session:', error);
         setHasActiveSession(false);
       }
       setLoadingSession(false);
@@ -604,7 +602,6 @@ const MarkStaffAttendance: React.FC = () => {
         .select('id')
         .eq('school_id', user.school_id);
       
-      console.log('Staff check effect - data:', staffData, 'error:', staffError, 'school_id:', user.school_id);
       
       if (!staffError && staffData && staffData.length > 0) {
         setHasAnyStaff(true);
@@ -617,7 +614,6 @@ const MarkStaffAttendance: React.FC = () => {
 
   const fetchStaff = async () => {
     if (!date || !user?.school_id || !sessionId) {
-      console.log('fetchStaff early return - date:', date, 'school_id:', user?.school_id, 'sessionId:', sessionId);
       return;
     }
     setLoadingStaff(true);
@@ -659,11 +655,9 @@ const MarkStaffAttendance: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (staffError) {
-        console.error('Error fetching staff:', staffError);
         throw staffError;
       }
 
-      console.log('Staff data:', staffData);
 
       // Fetch attendance records for this date
       const { data: attendanceData, error: attendanceError } = await supabase
@@ -674,12 +668,8 @@ const MarkStaffAttendance: React.FC = () => {
         .eq('session_id', sessionId);
 
       if (attendanceError) {
-        console.error('Error fetching attendance records:', attendanceError);
         // Don't throw error for attendance records as table might not exist yet
-        console.log('Continuing without attendance records...');
       }
-
-      console.log('Attendance data:', attendanceData);
 
       // Merge attendance status into staff
       const attendanceMap = new Map();
@@ -699,17 +689,14 @@ const MarkStaffAttendance: React.FC = () => {
         };
       }).sort((a, b) => a.id - b.id);
       
-      console.log('Formatted staff:', formattedStaff);
       setStaffMembers(formattedStaff);
       if (formattedStaff.length === 0) {
         toast.showToast('No staff members found', 'success');
       } else {
-        console.log('Successfully loaded', formattedStaff.length, 'staff members');
       }
       setHasAttendanceRecords((attendanceData || []).length > 0);
     } catch (error) {
       toast.showToast('Failed to fetch staff', 'error');
-      console.error('Error:', error);
     } finally {
       setLoadingStaff(false);
     }
@@ -741,7 +728,6 @@ const MarkStaffAttendance: React.FC = () => {
   );
 
   useEffect(() => {
-    console.log('fetchStaff useEffect triggered - date:', date, 'user:', user?.school_id, 'sessionId:', sessionId);
     if (date && user?.school_id && sessionId) {
       fetchStaff();
     }
@@ -835,7 +821,6 @@ const MarkStaffAttendance: React.FC = () => {
       setProgress(100);
       completeProgress();
     } catch (error: any) {
-      console.error('Error saving staff attendance:', error);
       toast.showToast(error.message || 'Failed to save staff attendance', 'error');
       completeProgress();
     } finally {
@@ -872,7 +857,6 @@ const MarkStaffAttendance: React.FC = () => {
       toast.showToast('Staff attendance records deleted successfully', 'success');
     } catch (error) {
       toast.showToast('Failed to delete staff attendance records', 'error');
-      console.error('Error:', error);
       completeProgress();
     } finally {
       setDeleting(false);

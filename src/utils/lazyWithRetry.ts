@@ -16,15 +16,9 @@ export function lazyWithRetry<T extends ComponentType<any>>(
                     .then(resolve)
                     .catch((error) => {
                         if (attemptsLeft === 0) {
-                            console.error('Failed to load component after retries:', error);
                             reject(error);
                             return;
                         }
-
-                        console.warn(
-                            `Failed to load component, retrying... (${attemptsLeft} attempts left)`,
-                            error
-                        );
 
                         setTimeout(() => {
                             attemptLoad(attemptsLeft - 1);
@@ -48,7 +42,6 @@ export function handleChunkError(error: Error): void {
         error.message.includes('Failed to fetch dynamically imported module');
 
     if (isChunkError) {
-        console.error('Chunk loading error detected, refreshing page...', error);
         window.location.reload();
     }
 }

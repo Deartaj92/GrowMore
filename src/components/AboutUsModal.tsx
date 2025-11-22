@@ -276,7 +276,6 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) => {
             src={`${process.env.PUBLIC_URL || ''}/aboutus.png`} 
             alt="About Grow More - School Management System"
             onError={(e) => {
-              console.error('Failed to load About Us image:', e);
               // Try fallback paths
               const target = e.target as HTMLImageElement;
               const fallbackPaths = [

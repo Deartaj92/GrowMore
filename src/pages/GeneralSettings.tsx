@@ -275,7 +275,6 @@ const GeneralSettings: React.FC = () => {
 
       setTeacherSettings(settingsMap);
     } catch (error: any) {
-      console.error('Error fetching data:', error);
       toast.showToast('Failed to load settings: ' + error.message, 'error');
     } finally {
       setLoading(false);
@@ -327,7 +326,6 @@ const GeneralSettings: React.FC = () => {
       toast.showToast('Settings saved successfully!', 'success');
       setHasChanges(false);
     } catch (error: any) {
-      console.error('Error saving settings:', error);
       toast.showToast('Failed to save settings: ' + error.message, 'error');
     } finally {
       setSaving(false);

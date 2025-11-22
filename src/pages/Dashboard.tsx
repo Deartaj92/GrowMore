@@ -1632,7 +1632,7 @@ function useExpandedState(key: string, defaultValue: boolean = false) {
     try {
       localStorage.setItem(key, JSON.stringify(isExpanded));
     } catch (error) {
-      console.error(`Failed to save ${key} state:`, error);
+      // Failed to save state
     }
   }, [isExpanded, key]);
 
@@ -2618,7 +2618,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (error) {
-        console.error('Error deleting fine payment:', error);
         toast.showToast('Failed to delete fine payment', 'error');
         return;
       }
@@ -2665,13 +2664,12 @@ const Dashboard: React.FC = () => {
             setFineDetails([]);
           }
         } catch (error) {
-          console.error('Error refreshing fine details:', error);
+          // Error refreshing fine details
         }
       };
 
       fetchFineDetails();
     } catch (error) {
-      console.error('Error deleting fine payment:', error);
       toast.showToast('Failed to delete fine payment', 'error');
     }
   };
@@ -2732,7 +2730,6 @@ const Dashboard: React.FC = () => {
           setPageHeader(`${schoolData.name} - Dashboard`);
         }
       } catch (error) {
-        console.error('Error fetching school name:', error);
         setPageHeader('Dashboard');
       }
     };
@@ -2749,7 +2746,7 @@ const Dashboard: React.FC = () => {
           setRenderSettings(settings);
         })
         .catch(error => {
-          console.error('Error fetching render settings for guest:', error);
+          // Error fetching render settings for guest
         })
         .finally(() => {
           setSettingsLoading(false);
@@ -2813,16 +2810,12 @@ const Dashboard: React.FC = () => {
             .order('created_at', { ascending: false })
             .limit(20);
           
-          console.log('Recent fine payments:', allPayments);
-          
           // Try to find payments that might match the date (in case of timezone issues)
           if (allPayments && allPayments.length > 0) {
             const matchingPayments = allPayments.filter(payment => {
               const paymentCreatedDate = new Date(payment.created_at).toISOString().slice(0, 10);
               return paymentCreatedDate === fineDate;
             });
-            
-            console.log('Matching payments for date:', matchingPayments);
             
             if (matchingPayments.length > 0) {
               // Get full details for matching payments
@@ -2889,7 +2882,7 @@ const Dashboard: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Error fetching fine details:', error);
+        // Error fetching fine details
       }
     };
 
@@ -2925,7 +2918,6 @@ const Dashboard: React.FC = () => {
           .order('subject_id', { ascending: true, nullsFirst: true });
         
         if (error) {
-          console.error('Error fetching homework diary:', error);
           return;
         }
         
@@ -2937,7 +2929,7 @@ const Dashboard: React.FC = () => {
         
         setHomeworkDiaryData(processedData);
       } catch (error) {
-        console.error('Error fetching homework diary:', error);
+        // Error fetching homework diary
       }
     };
     
@@ -3013,7 +3005,6 @@ const Dashboard: React.FC = () => {
         return false;
       }
     } catch (error) {
-      console.error('Error checking for students:', error);
       setHasAnyStudents(false);
       return false;
     }
@@ -3021,7 +3012,6 @@ const Dashboard: React.FC = () => {
 
   const fetchAll = useCallback(async () => {
       if (!user?.school_id) {
-        console.error('No school_id found for user');
         toast.showToast('User school information not found', 'error');
         return;
       }
@@ -3051,7 +3041,6 @@ const Dashboard: React.FC = () => {
       .maybeSingle();
       
     if (sessionError && !isNoSessionError(sessionError)) {
-        console.error('Error fetching active session:', sessionError);
         toast.showToast('Failed to fetch active session', 'error');
         setAllDataLoaded(true);
         const elapsed = Date.now() - start;
@@ -3221,7 +3210,6 @@ const Dashboard: React.FC = () => {
           .single();
 
         if (sessionError && !isNoSessionError(sessionError)) {
-          console.error('Error fetching active session:', sessionError);
           toast.showToast('Failed to fetch active session', 'error');
           return;
         }
@@ -3250,7 +3238,6 @@ const Dashboard: React.FC = () => {
           .or('status.eq.absent,status.eq.leave'); // Fetch both absent and leave records
 
         if (attendanceError) {
-          console.error('Error fetching attendance:', attendanceError);
           throw attendanceError;
         }
 
@@ -3289,7 +3276,6 @@ const Dashboard: React.FC = () => {
           .eq('school_id', user.school_id);
 
         if (studentsError) {
-          console.error('Error fetching students:', studentsError);
           throw studentsError;
         }
 
@@ -3307,7 +3293,6 @@ const Dashboard: React.FC = () => {
           .eq('school_id', user.school_id);
 
         if (monthlyError) {
-          console.error('Error fetching monthly attendance:', monthlyError);
           throw monthlyError;
         }
 
@@ -3356,7 +3341,6 @@ const Dashboard: React.FC = () => {
         
         setAbsentees(sortedAbsentees);
       } catch (error) {
-        console.error('Error fetching absentees:', error);
         toast.showToast('Failed to fetch absentees', 'error');
       }
     };
@@ -3455,7 +3439,6 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (sessionError && !isNoSessionError(sessionError)) {
-        console.error('Error fetching active session:', sessionError);
         toast.showToast('Failed to fetch active session', 'error');
         return;
       }
@@ -3483,7 +3466,6 @@ const Dashboard: React.FC = () => {
         .or('status.eq.absent,status.eq.leave'); // Fetch both absent and leave records
 
       if (attendanceError) {
-        console.error('Error fetching attendance:', attendanceError);
       toast.showToast('Failed to fetch absentees for export.', 'error');
       return;
     }
@@ -3518,7 +3500,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         toast.showToast('Failed to fetch absentees details.', 'error');
         return;
       }
@@ -3534,7 +3515,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (classesError) {
-        console.error('Error fetching classes:', classesError);
         toast.showToast('Failed to fetch class details.', 'error');
         return;
       }
@@ -3546,7 +3526,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (sectionsError) {
-        console.error('Error fetching sections:', sectionsError);
         toast.showToast('Failed to fetch section details.', 'error');
         return;
       }
@@ -3568,7 +3547,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (monthlyError) {
-        console.error('Error fetching monthly attendance:', monthlyError);
       }
 
       // Combine data and calculate statistics
@@ -3608,7 +3586,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (completeAttendanceError) {
-        console.error('Error fetching complete attendance data:', completeAttendanceError);
       }
 
       const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
@@ -3784,7 +3761,6 @@ const Dashboard: React.FC = () => {
                 window.open(uriResult.uri, '_blank');
                 
               } catch (fsError) {
-                console.error('Filesystem error:', fsError);
                 // If filesystem fails, fallback to regular download
                 doc.save(mobileFileName);
                 toast.showToast('PDF downloaded successfully!', 'success');
@@ -3841,7 +3817,6 @@ const Dashboard: React.FC = () => {
                 toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
                 
               } catch (webError) {
-                console.error('Web download failed, trying data URI method:', webError);
                 
                 // Final fallback: Open PDF in new tab with data URI
                 const pdfDataUri = doc.output('datauristring');
@@ -3886,7 +3861,6 @@ const Dashboard: React.FC = () => {
               }
             }
           } catch (error) {
-            console.error('Mobile PDF export error:', error);
             toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
           }
         } else {
@@ -3942,7 +3916,6 @@ const Dashboard: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               toast.showToast('PDF downloaded successfully!', 'success');
@@ -3999,7 +3972,6 @@ const Dashboard: React.FC = () => {
               toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -4044,7 +4016,6 @@ const Dashboard: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -4054,7 +4025,6 @@ const Dashboard: React.FC = () => {
       }
     }
     } catch (error: any) {
-      console.error('Error in exportAbsenteesPDF:', error);
       toast.showToast(error.message || 'Failed to export absent students', 'error');
     } finally {
       setExportAbsentLoading(false);
@@ -4085,7 +4055,6 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (sessionError && !isNoSessionError(sessionError)) {
-        console.error('Error fetching active session:', sessionError);
         toast.showToast('Failed to fetch active session', 'error');
         return;
       }
@@ -4113,7 +4082,6 @@ const Dashboard: React.FC = () => {
         .or('status.eq.present,status.eq.late'); // Fetch both present and late records
 
       if (attendanceError) {
-        console.error('Error fetching attendance:', attendanceError);
         toast.showToast('Failed to fetch present students for export.', 'error');
         return;
       }
@@ -4148,7 +4116,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         toast.showToast('Failed to fetch present students details.', 'error');
         return;
       }
@@ -4164,7 +4131,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (classesError) {
-        console.error('Error fetching classes:', classesError);
         toast.showToast('Failed to fetch class details.', 'error');
         return;
       }
@@ -4176,7 +4142,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (sectionsError) {
-        console.error('Error fetching sections:', sectionsError);
         toast.showToast('Failed to fetch section details.', 'error');
         return;
       }
@@ -4198,7 +4163,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (monthlyError) {
-        console.error('Error fetching monthly attendance:', monthlyError);
       }
 
       // Combine data and calculate statistics
@@ -4238,7 +4202,6 @@ const Dashboard: React.FC = () => {
       .eq('school_id', user.school_id);
 
     if (completeAttendanceError) {
-      console.error('Error fetching complete attendance data:', completeAttendanceError);
     }
 
     const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
@@ -4415,7 +4378,6 @@ const Dashboard: React.FC = () => {
                 window.open(uriResult.uri, '_blank');
                 
               } catch (fsError) {
-                console.error('Filesystem error:', fsError);
                 // If filesystem fails, fallback to regular download
                 doc.save(mobileFileName);
                 toast.showToast('PDF downloaded successfully!', 'success');
@@ -4472,7 +4434,6 @@ const Dashboard: React.FC = () => {
                 toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
                 
               } catch (webError) {
-                console.error('Web download failed, trying data URI method:', webError);
                 
                 // Final fallback: Open PDF in new tab with data URI
                 const pdfDataUri = doc.output('datauristring');
@@ -4517,7 +4478,6 @@ const Dashboard: React.FC = () => {
               }
             }
           } catch (error) {
-            console.error('Mobile PDF export error:', error);
             toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
           }
         } else {
@@ -4573,7 +4533,6 @@ const Dashboard: React.FC = () => {
               window.open(uriResult.uri, '_blank');
               
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               toast.showToast('PDF downloaded successfully!', 'success');
@@ -4630,7 +4589,6 @@ const Dashboard: React.FC = () => {
               toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
               
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
               
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -4675,7 +4633,6 @@ const Dashboard: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -4685,7 +4642,6 @@ const Dashboard: React.FC = () => {
       }
     }
     } catch (error: any) {
-      console.error('Error in exportPresentStudentsPDF:', error);
       toast.showToast(error.message || 'Failed to export present students', 'error');
     } finally {
       setExportPresentLoading(false);
@@ -4695,7 +4651,6 @@ const Dashboard: React.FC = () => {
 
   const handleStatusUpdate = async (absentee: any) => {
     if (!absentee.id || !absentee.student_id || !user?.school_id) {
-      console.error('Invalid attendance record data or missing school_id:', absentee);
       toast.showToast('Invalid attendance record or missing school information', 'error');
       return;
     }
@@ -4710,7 +4665,6 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (studentError || !studentData) {
-        console.error('Student verification error:', studentError);
         toast.showToast('Student not found in database', 'error');
         return;
       }
@@ -4724,7 +4678,6 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (sessionError || !sessionData?.id) {
-        console.error('Session error:', sessionError);
         toast.showToast('No active session found', 'error');
         return;
       }
@@ -4742,7 +4695,6 @@ const Dashboard: React.FC = () => {
         });
 
       if (updateError) {
-        console.error('Update error:', updateError);
         throw updateError;
       }
 
@@ -4755,7 +4707,6 @@ const Dashboard: React.FC = () => {
           : a
       ));
     } catch (error: any) {
-      console.error('Error updating status:', error);
       toast.showToast(error.message || 'Failed to update status', 'error');
     }
   };
@@ -4786,13 +4737,11 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (error) {
-        console.error('Error fetching student details:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in fetchStudentDetails:', error);
       return null;
     }
   };
@@ -4811,7 +4760,6 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (sessionError && !isNoSessionError(sessionError)) {
-        console.error('Error fetching active session:', sessionError);
         toast.showToast('Failed to fetch active session', 'error');
         return;
       }
@@ -4840,7 +4788,6 @@ const Dashboard: React.FC = () => {
         .or('status.eq.absent,status.eq.leave'); // Fetch both absent and leave records
 
       if (attendanceError) {
-        console.error('Error fetching attendance:', attendanceError);
         throw attendanceError;
       }
 
@@ -4878,7 +4825,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         throw studentsError;
       }
 
@@ -4895,7 +4841,6 @@ const Dashboard: React.FC = () => {
         .eq('school_id', user.school_id);
 
       if (monthlyError) {
-        console.error('Error fetching monthly attendance:', monthlyError);
         throw monthlyError;
       }
 
@@ -4945,7 +4890,6 @@ const Dashboard: React.FC = () => {
       setAbsentees(sortedAbsentees);
 
     } catch (error) {
-      console.error('Error fetching absentees:', error);
       toast.showToast('Failed to fetch absentees', 'error');
     }
   };
@@ -5290,7 +5234,6 @@ const Dashboard: React.FC = () => {
                         toast.showToast('No students with phone numbers found', 'success');
                       }
                     } catch (error) {
-                      console.error('Error preparing notifications:', error);
                       toast.showToast('Failed to prepare notifications', 'error');
                     } finally {
                       setWhatsappProcessing(false);
@@ -5704,7 +5647,6 @@ const Dashboard: React.FC = () => {
 
                                         toast.showToast('Status updated successfully', 'success');
                                         } catch (err) {
-                                          console.error('Error updating status:', err);
                                           toast.showToast('Failed to update status', 'error');
                                         }
                                         setDropdownIdx(null);
@@ -5770,7 +5712,6 @@ const Dashboard: React.FC = () => {
 
                                       toast.showToast('Attendance record deleted', 'success');
                                     } catch (err) {
-                                      console.error('Error deleting record:', err);
                                       toast.showToast('Failed to delete record', 'error');
                                     }
                                     setDropdownIdx(null);

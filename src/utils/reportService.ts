@@ -17,35 +17,26 @@ import { sortClasses } from './classUtils';
 export const reportService = {
     // Categories
     async getCategories(type?: string, schoolId?: number): Promise<ReportCategory[]> {
-        console.log('getCategories called with:', { type, schoolId });
-        
         let query = supabase
             .from('report_categories')
             .select('*');
         
         if (type) {
             query = query.eq('type', type);
-            console.log('Filtering by type:', type);
         }
         
         if (schoolId) {
             query = query.eq('school_id', schoolId);
-            console.log('Filtering by school_id:', schoolId);
         }
         
         const { data, error } = await query;
         
         if (error) {
-            console.error('Error fetching categories:', error);
             throw error;
         }
         
-        console.log('Categories fetched for school_id:', schoolId, data);
-        
         // If no categories found for the specific school_id, try to get default categories (school_id = 1)
         if ((!data || data.length === 0) && schoolId && schoolId !== 1) {
-            console.log('No categories found for school_id:', schoolId, 'falling back to default categories');
-            
             let fallbackQuery = supabase
                 .from('report_categories')
                 .select('*')
@@ -58,11 +49,9 @@ export const reportService = {
             const { data: fallbackData, error: fallbackError } = await fallbackQuery;
             
             if (fallbackError) {
-                console.error('Error fetching fallback categories:', fallbackError);
                 return [];
             }
             
-            console.log('Fallback categories fetched:', fallbackData);
             return fallbackData || [];
         }
 
@@ -99,7 +88,6 @@ export const reportService = {
         const { data, error } = await query.limit(1).single();
 
         if (error) {
-            console.error('No active session found:', error);
             return null;
         }
         return data;
@@ -133,7 +121,6 @@ export const reportService = {
                 .eq('status', 'active');
 
             if (error) {
-                console.error('Error fetching classes:', error);
                 return [];
             }
 
@@ -158,7 +145,6 @@ export const reportService = {
                 return cls;
             });
         } catch (error) {
-            console.error('Error in getClasses:', error);
             return [];
         }
     },
@@ -192,7 +178,6 @@ export const reportService = {
                 .eq('status', 'active');
             
             if (error) {
-                console.error('Error fetching sections:', error);
                 return [];
             }
 
@@ -210,7 +195,6 @@ export const reportService = {
             // 4. Sort sections alphabetically
             return uniqueSections.sort((a, b) => a.name.localeCompare(b.name));
         } catch (error) {
-            console.error('Error in getSections:', error);
             return [];
         }
     },
@@ -246,7 +230,6 @@ export const reportService = {
         const { data, error } = await query;
 
         if (error) {
-            console.error('Error fetching students:', error);
             return [];
         }
 
@@ -266,7 +249,6 @@ export const reportService = {
             .in('id', studentIds);
 
         if (studentsError) {
-            console.error('Error fetching student details:', studentsError);
             return [];
         }
 

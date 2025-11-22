@@ -138,16 +138,15 @@ const App: React.FC = () => {
   // Expose update check function globally for manual checks
   useEffect(() => {
     (window as any).checkForAppUpdates = () => {
-      console.log('[App] checkForAppUpdates called, ref:', updateNotificationRef.current);
       if (updateNotificationRef.current) {
         updateNotificationRef.current.checkForUpdates();
-      } else {
-        console.warn('[App] UpdateNotification ref is not available yet');
       }
     };
-    console.log('[App] checkForAppUpdates function exposed to window');
+    // Expose ref for Layout component to check download state
+    (window as any).updateNotificationRef = updateNotificationRef;
     return () => {
       delete (window as any).checkForAppUpdates;
+      delete (window as any).updateNotificationRef;
     };
   }, []);
   // Remove all storage permission code: no useEffect needed!
@@ -162,15 +161,6 @@ const App: React.FC = () => {
     },
   }), [theme]);
 
-  // Debug: Log platform detection
-  useEffect(() => {
-    console.log('[App] Platform detection:', {
-      isWeb: isWeb(),
-      electronAPI: !!(window as any).electronAPI,
-      Capacitor: !!(window as any).Capacitor,
-      shouldRenderUpdateNotification: !isWeb()
-    });
-  }, []);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>

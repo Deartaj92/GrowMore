@@ -60,7 +60,6 @@ const ReportCards: React.FC = () => {
             });
             setReportCards(data);
         } catch (error) {
-            console.error('Error loading report cards:', error);
             showToast('Failed to load report cards', 'error');
         } finally {
             setLoading(false);
@@ -75,7 +74,6 @@ const ReportCards: React.FC = () => {
             setReportCards(prev => prev.filter(rc => rc.id !== id));
             showToast('Report card deleted successfully', 'success');
         } catch (error) {
-            console.error('Error deleting report card:', error);
             showToast('Failed to delete report card', 'error');
         }
     };

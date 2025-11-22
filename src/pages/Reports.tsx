@@ -615,7 +615,6 @@ export const Reports = (): JSX.Element => {
                     .eq('school_id', user?.school_id);
                 
                 if (sessionsError) {
-                    console.error('Error fetching sessions:', sessionsError);
                     setHasAnyStudents(false);
                     setLoadingStudents(false);
                     return;
@@ -639,7 +638,6 @@ export const Reports = (): JSX.Element => {
                     .limit(1);
                 
                 if (schError) {
-                    console.error('Error checking student_class_history:', schError);
                     setHasAnyStudents(false);
                     setLoadingStudents(false);
                     return;
@@ -662,7 +660,6 @@ export const Reports = (): JSX.Element => {
                     .limit(1);
                 
                 if (studentsError) {
-                    console.error('Error checking students:', studentsError);
                     setHasAnyStudents(false);
                     setLoadingStudents(false);
                     return;
@@ -671,7 +668,6 @@ export const Reports = (): JSX.Element => {
                 setHasAnyStudents(studentsData && studentsData.length > 0);
                 setLoadingStudents(false);
             } catch (err: any) {
-                console.error('Error checking for students:', err);
                 setHasAnyStudents(false);
                 setLoadingStudents(false);
             }
@@ -763,7 +759,6 @@ export const Reports = (): JSX.Element => {
             
             setReports(transformedData);
         } catch (error) {
-            console.error('Error loading reports:', error);
         }
     };
 
@@ -772,7 +767,6 @@ export const Reports = (): JSX.Element => {
             const data = await reportService.getCategories(filters.type || undefined, user?.school_id);
             setCategories(data);
         } catch (error) {
-            console.error('Error loading categories:', error);
             // TODO: Show error notification
         }
     };
@@ -855,7 +849,6 @@ export const Reports = (): JSX.Element => {
             setReportToDelete(undefined);
             showToast('Report deleted successfully', 'success');
         } catch (error) {
-            console.error('Error deleting report:', error);
             showToast('Failed to delete report', 'error');
         } finally {
             setDeleteLoading(false);
@@ -899,7 +892,6 @@ export const Reports = (): JSX.Element => {
             setCreateDialogOpen(false);
             showToast('Report created successfully', 'success');
         } catch (error) {
-            console.error('Error creating report:', error);
             showToast('Failed to create report', 'error');
             throw error;
         }
@@ -918,7 +910,6 @@ export const Reports = (): JSX.Element => {
             await loadReports();
             setModifyingReport(undefined);
         } catch (error) {
-            console.error('Error updating report:', error);
         }
     };
 
@@ -951,7 +942,6 @@ export const Reports = (): JSX.Element => {
             setEditingReport(undefined);
             showToast('Report updated successfully', 'success');
         } catch (error) {
-            console.error('Error updating report:', error);
             showToast('Failed to update report', 'error');
         }
     };
@@ -981,7 +971,6 @@ export const Reports = (): JSX.Element => {
             setEditingUpdate(undefined);
             showToast('Update note updated successfully', 'success');
         } catch (error) {
-            console.error('Error updating report update:', error);
             showToast('Failed to update update note', 'error');
             throw error;
         }

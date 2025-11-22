@@ -12,8 +12,6 @@ import {
 
 // Helper function to set current user for audit logging
 const setAuditUser = async (userId: number) => {
-  console.log('Setting audit user context:', userId);
-  
   // Set a unique session identifier for this browser session
   const sessionId = `browser_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
@@ -27,9 +25,7 @@ const setAuditUser = async (userId: number) => {
   // Then set the user context
   const { error } = await supabase.rpc('set_audit_user_id', { user_id: userId });
   if (error) {
-    console.error('Error setting audit user context:', error);
-  } else {
-    console.log('Audit user context set successfully for session:', sessionId);
+    // Error setting audit user context
   }
 };
 

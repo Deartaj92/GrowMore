@@ -817,7 +817,6 @@ const RemainingFine: React.FC = () => {
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         // You can add a toast notification here if you have access to it
-        console.log('Generating PDF for mobile... Please wait.');
       }
       
     // Group students by class-section
@@ -965,17 +964,14 @@ const RemainingFine: React.FC = () => {
             });
 
             // Show success message and trigger native Android "Open with" dialog
-            console.log(`PDF saved successfully as ${mobileFileName}`);
             
             // Trigger native Android "Open with" dialog by opening the file URI
             // This will show the native Android app chooser dialog
             window.open(uriResult.uri, '_blank');
             
           } catch (fsError) {
-            console.error('Filesystem error:', fsError);
             // If filesystem fails, fallback to regular download
             doc.save(mobileFileName);
-            console.log('PDF downloaded successfully!');
           }
         } else {
           // Fallback for web browsers - use the blob approach
@@ -1026,10 +1022,8 @@ const RemainingFine: React.FC = () => {
               URL.revokeObjectURL(url);
             }, 30000);
             
-            console.log(`PDF ready! Click the download button that appeared on screen.`);
             
           } catch (webError) {
-            console.error('Web download failed, trying data URI method:', webError);
             
             // Final fallback: Open PDF in new tab with data URI
             const pdfDataUri = doc.output('datauristring');
@@ -1067,24 +1061,18 @@ const RemainingFine: React.FC = () => {
                 </html>
               `);
               newWindow.document.close();
-              console.log(`PDF opened in new tab. Use the download button in the new tab.`);
-            } else {
-              console.log('Please allow popups for this site to download the PDF');
             }
           }
         }
       } catch (error) {
-        console.error('Mobile PDF export error:', error);
-        console.log('Failed to export PDF on mobile. Please try on desktop.');
+        // Error handling for mobile PDF export
       }
     } else {
       // For desktop, use the standard approach
       doc.save(fileName);
-      console.log('Remaining fine PDF generated successfully');
     }
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      console.log('Failed to generate PDF');
+      // Error handling for PDF generation
     } finally {
       setExportLoading(false);
     }

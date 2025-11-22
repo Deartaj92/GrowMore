@@ -173,7 +173,6 @@ export const EditReportForm: React.FC<EditReportFormProps> = ({
             });
             onClose();
         } catch (error) {
-            console.error('Error updating report:', error);
         } finally {
             setLoading(false);
         }

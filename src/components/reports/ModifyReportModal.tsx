@@ -117,7 +117,6 @@ export const ModifyReportModal: React.FC<ModifyReportModalProps> = ({
             await onSubmit(report.id.toString(), status, notes.trim());
             onClose();
         } catch (error) {
-            console.error('Error updating report:', error);
         } finally {
             setLoading(false);
         }

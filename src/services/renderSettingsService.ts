@@ -20,7 +20,6 @@ export const fetchRenderSettings = async (schoolId: number): Promise<RenderSetti
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 is "no rows returned"
-      console.warn('Error fetching render settings:', error);
       return getDefaultSettings();
     }
 
@@ -32,7 +31,6 @@ export const fetchRenderSettings = async (schoolId: number): Promise<RenderSetti
     // Return defaults if no settings exist
     return getDefaultSettings();
   } catch (error) {
-    console.error('Error fetching render settings:', error);
     return getDefaultSettings();
   }
 };

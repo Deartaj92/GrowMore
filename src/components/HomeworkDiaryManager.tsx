@@ -1230,7 +1230,6 @@ const HomeworkDiaryManager: React.FC = () => {
         .order('name', { ascending: false });
       
       if (error) {
-        console.error('Error fetching sessions:', error);
         return;
       }
       
@@ -1294,7 +1293,6 @@ const HomeworkDiaryManager: React.FC = () => {
           setClasses(sortedClasses);
         }
       } catch (error: any) {
-        console.error('Error fetching classes:', error);
         toast.showToast('Failed to load classes', 'error');
       } finally {
         setLoading(false);
@@ -1390,7 +1388,6 @@ const HomeworkDiaryManager: React.FC = () => {
             .order('name');
           
           if (error) {
-            console.error('Error fetching sections:', error);
             toast.showToast('Failed to load sections', 'error');
             return;
           }
@@ -1403,7 +1400,6 @@ const HomeworkDiaryManager: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Error fetching sections:', error);
         toast.showToast('Failed to load sections', 'error');
       }
     };
@@ -1466,7 +1462,6 @@ const HomeworkDiaryManager: React.FC = () => {
           setSubjects(fixedData);
         }
       } catch (error) {
-        console.error('Error fetching subjects:', error);
         toast.showToast('Failed to load subjects', 'error');
       }
     };
@@ -1514,11 +1509,9 @@ const HomeworkDiaryManager: React.FC = () => {
           { createNotification: false } // Don't create notification for view
         );
       } catch (activityError) {
-        console.error('Failed to log homework diary view activity:', activityError);
         // Don't fail the operation if activity logging fails
       }
     } catch (error: any) {
-      console.error('Error fetching homework:', error);
       toast.showToast('Failed to load homework entries', 'error');
     } finally {
       setLoading(false);
@@ -1629,7 +1622,6 @@ const HomeworkDiaryManager: React.FC = () => {
             1
           );
         } catch (activityError) {
-          console.error('Failed to log homework diary update activity:', activityError);
           // Don't fail the operation if activity logging fails
         }
       } else {
@@ -1662,7 +1654,6 @@ const HomeworkDiaryManager: React.FC = () => {
             1
           );
         } catch (activityError) {
-          console.error('Failed to log homework diary create activity:', activityError);
           // Don't fail the operation if activity logging fails
         }
       }
@@ -1677,7 +1668,6 @@ const HomeworkDiaryManager: React.FC = () => {
       // Refresh homework entries
       await fetchHomeworkEntries();
     } catch (error: any) {
-      console.error('Error saving homework:', error);
       toast.showToast(error.message || 'Failed to save homework', 'error');
     } finally {
       setSaving(false);
@@ -1754,7 +1744,6 @@ const HomeworkDiaryManager: React.FC = () => {
           validAssignments.length
         );
       } catch (activityError) {
-        console.error('Failed to log homework diary bulk create activity:', activityError);
         // Don't fail the operation if activity logging fails
       }
       
@@ -1762,7 +1751,6 @@ const HomeworkDiaryManager: React.FC = () => {
       setBulkAssignments([]);
       await fetchHomeworkEntries();
     } catch (error: any) {
-      console.error('Error bulk saving homework:', error);
       toast.showToast(error.message || 'Failed to save homework', 'error');
     } finally {
       setSaving(false);
@@ -1833,7 +1821,6 @@ const HomeworkDiaryManager: React.FC = () => {
             1
           );
         } catch (activityError) {
-          console.error('Failed to log homework diary delete activity:', activityError);
           // Don't fail the operation if activity logging fails
         }
       }
@@ -1842,7 +1829,6 @@ const HomeworkDiaryManager: React.FC = () => {
       setEntryToDelete(null);
       await fetchHomeworkEntries();
     } catch (error: any) {
-      console.error('Error deleting homework:', error);
       toast.showToast('Failed to delete homework', 'error');
       setDeleteModalOpen(false);
       setEntryToDelete(null);

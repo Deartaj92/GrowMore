@@ -98,7 +98,6 @@ const TeacherAssignmentCheck: React.FC<TeacherAssignmentCheckProps> = ({ childre
           .eq('school_id', user.school_id);
 
         if (classError) {
-          console.error('Error checking class assignments:', classError);
           setIsAssigned(false);
           setLoading(false);
           return;
@@ -108,12 +107,9 @@ const TeacherAssignmentCheck: React.FC<TeacherAssignmentCheckProps> = ({ childre
         // Teachers assigned to subjects but not as class teachers shouldn't access attendance
         const hasClassAssignments = classAssignments && classAssignments.length > 0;
         
-        console.log('Class assignments found:', classAssignments);
-        console.log('Has class assignments:', hasClassAssignments);
         
         setIsAssigned(hasClassAssignments);
       } catch (error) {
-        console.error('Error checking teacher assignment:', error);
         setIsAssigned(false);
       } finally {
         setLoading(false);

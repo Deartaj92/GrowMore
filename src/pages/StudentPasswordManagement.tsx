@@ -827,7 +827,6 @@ const StudentPasswordManagement: React.FC = () => {
         setClasses(data);
       }
     } catch (error) {
-      console.error('Error fetching classes:', error);
     }
   }, [user?.school_id]);
 
@@ -843,7 +842,6 @@ const StudentPasswordManagement: React.FC = () => {
         setSections(data);
       }
     } catch (error) {
-      console.error('Error fetching sections:', error);
     }
   }, [user?.school_id]);
 
@@ -923,12 +921,10 @@ const StudentPasswordManagement: React.FC = () => {
         const sorted = (data || []).sort((a: Student, b: Student) => b.id - a.id);
         setStudents(sorted);
       } else {
-        console.error('Error fetching students:', error);
         toast.showToast('Failed to load students', 'error');
         setStudents([]);
       }
     } catch (error) {
-      console.error('Error in fetchStudents:', error);
       toast.showToast('Failed to fetch students', 'error');
       setStudents([]);
     } finally {

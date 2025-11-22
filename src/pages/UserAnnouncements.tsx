@@ -924,7 +924,6 @@ const UserAnnouncements: React.FC = () => {
         if (studentData) setStudents(studentData);
         if (staffData) setStaffMembers(staffData);
       } catch (error) {
-        console.error('Error loading targeting data:', error);
       }
     };
     loadTargetingData();
@@ -1217,7 +1216,6 @@ const UserAnnouncements: React.FC = () => {
         resetForm();
         await loadAnnouncements();
       } catch (error: any) {
-        console.error('Error saving announcement:', error);
         toast.showToast('Failed to save announcement: ' + (error.message || ''), 'error');
       } finally {
         setSending(false);
@@ -1254,7 +1252,6 @@ const UserAnnouncements: React.FC = () => {
         resetForm();
         await loadAnnouncements();
       } catch (error: any) {
-        console.error('Error saving announcement:', error);
         toast.showToast('Failed to save announcement: ' + (error.message || ''), 'error');
       } finally {
         setSending(false);
@@ -1291,7 +1288,6 @@ const UserAnnouncements: React.FC = () => {
         resetForm();
         await loadAnnouncements();
       } catch (error: any) {
-        console.error('Error saving announcement:', error);
         toast.showToast('Failed to save announcement: ' + (error.message || ''), 'error');
       } finally {
         setSending(false);
@@ -1320,7 +1316,6 @@ const UserAnnouncements: React.FC = () => {
       setEditingId(null);
       await loadAnnouncements();
     } catch (error: any) {
-      console.error('Error saving announcement:', error);
       toast.showToast('Failed to save announcement: ' + (error.message || ''), 'error');
     } finally {
       setSending(false);
@@ -1339,7 +1334,6 @@ const UserAnnouncements: React.FC = () => {
       if (error) throw error;
       setAnnouncements(data || []);
     } catch (e) {
-      console.error('Error loading announcements:', e);
     } finally {
       setLoadingList(false);
     }
@@ -1429,7 +1423,6 @@ const UserAnnouncements: React.FC = () => {
       if (editingId === id) setEditingId(null);
       await loadAnnouncements();
     } catch (e: any) {
-      console.error('Error deleting announcement:', e);
       toast.showToast('Failed to delete announcement: ' + (e.message || ''), 'error');
     }
   };
@@ -1446,7 +1439,6 @@ const UserAnnouncements: React.FC = () => {
       if (error) throw error;
       setSeenByEntries(data || []);
     } catch (error) {
-      console.error('Failed to load announcement viewers:', error);
       setSeenByError('Unable to load viewers right now.');
     } finally {
       setSeenByLoading(false);

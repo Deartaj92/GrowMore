@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 /**
  * Platform detection utility
  * Determines if the app is running on web, Electron, or Capacitor
@@ -9,8 +11,9 @@ export const isElectron = (): boolean => {
 };
 
 export const isCapacitor = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return !!(window as any).Capacitor;
+  // usage of Capacitor.isNativePlatform() ensures we only identify as capacitor
+  // when running on native iOS or Android, not when running in web with capacitor core installed
+  return Capacitor.isNativePlatform();
 };
 
 export const isWeb = (): boolean => {

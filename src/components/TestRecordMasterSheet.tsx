@@ -996,7 +996,6 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
           hasInitializedRef.current = true;
         }
       } catch (error) {
-        console.error('Error loading initial data:', error);
         showToast('Failed to load data', 'error');
       } finally {
         setLoadingSessions(false);
@@ -1393,7 +1392,6 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
       setSubjects(sortedDates);
 
     } catch (error) {
-      console.error('Error loading master sheet data:', error);
       showToast('Failed to load master sheet data', 'error');
     } finally {
       setLoading(false);

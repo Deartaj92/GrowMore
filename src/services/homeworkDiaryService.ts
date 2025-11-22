@@ -483,7 +483,6 @@ class HomeworkDiaryService {
         .eq('class_subjects.class_id', classId);
       
       if (teacherSubjectsError) {
-        console.error('Error fetching teacher subjects:', teacherSubjectsError);
         // If there's an error, return empty array to be safe
         return [];
       }

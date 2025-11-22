@@ -65,6 +65,26 @@ function createWindow() {
 
   // Handle window close (minimize to tray)
   mainWindow.on('close', (event) => {
+    // Check if download is in progress (including paused)
+    if (activeDownloads.size > 0) {
+      event.preventDefault();
+      
+      // Show the download modal in the renderer instead of closing
+      // Send a message to show the download modal
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('show-download-modal-on-close');
+        // Focus the window to make sure user sees the modal
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
+        mainWindow.show();
+        mainWindow.focus();
+      }
+      
+      // Don't close - user must cancel download first
+      return;
+    }
+
     if (!isQuitting) {
       event.preventDefault();
       mainWindow.hide();
@@ -85,7 +105,6 @@ function createWindow() {
 
   // Handle loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    console.error('Failed to load:', errorCode, errorDescription, validatedURL);
     if (!isDev) {
       mainWindow.loadURL(`file://${path.join(__dirname, 'index.html')}`);
     }
@@ -104,7 +123,6 @@ function createTray() {
   };
 
   const iconPath = getResourcePath('assets/New Icon Fixed.ico');
-  console.log('Tray icon path:', iconPath);
   const trayIcon = require('electron').nativeImage.createFromPath(iconPath);
 
   tray = new Menu.buildFromTemplate([
@@ -166,6 +184,12 @@ if (!gotTheLock) {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    // Check if download is in progress before quitting
+    if (activeDownloads.size > 0 && !isQuitting) {
+      // Don't quit if download is active and user hasn't explicitly chosen to close
+      // The close handler will show the warning dialog
+      return;
+    }
     // Do not quit, keep running in tray
     // app.quit(); 
   }
@@ -189,6 +213,22 @@ ipcMain.on('window-unmaximize', () => {
 });
 ipcMain.on('window-close', () => {
   // This is the custom close button in the UI
+  // Check if download is in progress (including paused)
+  if (activeDownloads.size > 0) {
+    // Show the download modal instead of closing
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('show-download-modal-on-close');
+      // Focus the window to make sure user sees the modal
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+    // Don't close - user must cancel download first
+    return;
+  }
+
   if (mainWindow) {
     mainWindow.hide(); // Minimize to tray instead of destroy
   }
@@ -197,66 +237,108 @@ ipcMain.handle('window-is-maximized', () => {
   return mainWindow ? mainWindow.isMaximized() : false;
 });
 
+// Track active downloads for pause/resume/cancel support
+const activeDownloads = new Map(); // Map of fileName -> download state
+
 // Download file with progress tracking
 ipcMain.handle('download-file', async (event, url, fileName) => {
   return new Promise((resolve, reject) => {
     // Download directly to Downloads folder (default Windows location)
     const filePath = path.join(app.getPath('downloads'), fileName);
-    const file = fs.createWriteStream(filePath);
+    let file = null;
     let downloadedBytes = 0;
     let totalBytes = 0;
+    let currentRequest = null;
+    let currentResponse = null;
+    let isResolved = false;
+    let isPaused = false;
+    let isCanceled = false;
 
-    // Determine if http or https
-    const urlObj = new URL(url);
-    const httpModule = urlObj.protocol === 'https:' ? require('https') : require('http');
-
-    const requestOptions = {
-      headers: {
-        'User-Agent': 'GrowMore-Updater/1.0'
+    // Helper function to clean up resources
+    const cleanup = () => {
+      if (file && !file.destroyed) {
+        try {
+          file.destroy();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     };
 
-    const req = httpModule.get(url, requestOptions, (response) => {
-      // Handle redirects
-      if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307 || response.statusCode === 308) {
-        const redirectUrl = response.headers.location;
-        if (redirectUrl) {
-          // Resolve relative redirects
-          const absoluteUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, url).href;
-          file.close();
-          // Delete file if it exists
-          if (fs.existsSync(filePath)) {
-            try {
-              fs.unlinkSync(filePath);
-            } catch (e) {
-              // Ignore deletion errors
-            }
-          }
-          // Retry with new URL
-          const redirectUrlObj = new URL(absoluteUrl);
-          const redirectHttpModule = redirectUrlObj.protocol === 'https:' ? require('https') : require('http');
-          redirectHttpModule.get(absoluteUrl, requestOptions, handleDownload).on('error', reject);
-          return;
-        }
-      }
-      handleDownload(response);
-    });
+    // Store download state
+    const downloadState = {
+      fileName,
+      filePath,
+      url,
+      file: null,
+      downloadedBytes: 0,
+      totalBytes: 0,
+      request: null,
+      response: null,
+      isPaused: false,
+      isCanceled: false,
+      resolve,
+      reject
+    };
+    activeDownloads.set(fileName, downloadState);
 
-    req.on('error', (err) => {
-      file.close();
-      if (fs.existsSync(filePath)) {
+    // Helper function to make request with redirect support
+    const makeRequest = (requestUrl) => {
+      // Determine if http or https
+      const urlObj = new URL(requestUrl);
+      const httpModule = urlObj.protocol === 'https:' ? require('https') : require('http');
+
+      const requestOptions = {
+        headers: {
+          'User-Agent': 'GrowMore-Updater/1.0',
+          'Accept': '*/*'
+        },
+        timeout: 30000 // 30 second timeout
+      };
+
+      // Create new file stream for each request (in case of redirect)
+      if (file) {
         try {
-          fs.unlinkSync(filePath);
+          file.destroy();
         } catch (e) {
-          // Ignore deletion errors
+          // Ignore
         }
       }
-      reject(err);
-    });
+      file = fs.createWriteStream(filePath);
+      downloadState.file = file;
 
-    function handleDownload(response) {
-      if (response.statusCode !== 200) {
-        file.close();
+      const req = httpModule.get(requestUrl, requestOptions, (response) => {
+        currentResponse = response;
+        downloadState.response = response;
+        // Handle redirects
+        if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307 || response.statusCode === 308) {
+          const redirectUrl = response.headers.location;
+          if (redirectUrl) {
+            // Resolve relative redirects
+            const absoluteUrl = redirectUrl.startsWith('http') ? redirectUrl : new URL(redirectUrl, requestUrl).href;
+            
+            // Clean up current file
+            cleanup();
+            if (fs.existsSync(filePath)) {
+              try {
+                fs.unlinkSync(filePath);
+              } catch (e) {
+                // Ignore deletion errors
+              }
+            }
+            
+            // Retry with new URL
+            setTimeout(() => {
+              makeRequest(absoluteUrl);
+            }, 100);
+            return;
+          }
+        }
+        handleDownload(response);
+      });
+
+      req.on('error', (err) => {
+        cleanup();
         if (fs.existsSync(filePath)) {
           try {
             fs.unlinkSync(filePath);
@@ -264,18 +346,65 @@ ipcMain.handle('download-file', async (event, url, fileName) => {
             // Ignore deletion errors
           }
         }
-        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+        activeDownloads.delete(fileName);
+        if (!isResolved) {
+          isResolved = true;
+          reject(err);
+        }
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        cleanup();
+        activeDownloads.delete(fileName);
+        if (!isResolved) {
+          isResolved = true;
+          reject(new Error('Download timeout'));
+        }
+      });
+
+      currentRequest = req;
+      downloadState.request = req;
+      return req;
+    };
+
+    function handleDownload(response) {
+      // Check if canceled
+      if (isCanceled || downloadState.isCanceled) {
+        return;
+      }
+      // Handle non-200 status codes
+      if (response.statusCode !== 200 && response.statusCode !== 206) {
+        cleanup();
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (e) {
+            // Ignore deletion errors
+          }
+        }
+        activeDownloads.delete(fileName);
+        if (!isResolved) {
+          isResolved = true;
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+        }
         return;
       }
 
       totalBytes = parseInt(response.headers['content-length'] || '0', 10);
+      downloadState.totalBytes = totalBytes;
+
+      // Ensure response is not paused
+      if (response.isPaused()) {
+        response.resume();
+      }
 
       // Send initial progress update (0%)
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('download-progress', {
           progress: 0,
           downloadedBytes: 0,
-          totalBytes: totalBytes,
+          totalBytes: downloadState.totalBytes || totalBytes,
           fileName
         });
       }
@@ -284,31 +413,54 @@ ipcMain.handle('download-file', async (event, url, fileName) => {
       let bytesSinceLastUpdate = 0;
       const UPDATE_THRESHOLD = 10 * 1024; // 10KB
 
-      // Manually handle data chunks instead of using pipe to track progress
+      // Handle data chunks
       response.on('data', (chunk) => {
+        if (isResolved || isCanceled || downloadState.isCanceled) return; // Don't process if already resolved/rejected/canceled
+        
+        // Check if paused
+        if (isPaused || downloadState.isPaused) {
+          return; // Don't process data when paused
+        }
+        
         downloadedBytes += chunk.length;
+        downloadState.downloadedBytes = downloadedBytes;
         bytesSinceLastUpdate += chunk.length;
 
         // Write chunk to file
-        if (!file.write(chunk)) {
-          // If write returns false, pause until drain event
-          response.pause();
-          file.once('drain', () => {
-            response.resume();
-          });
+        try {
+          if (!file.write(chunk)) {
+            // If write returns false, pause until drain event
+            response.pause();
+            file.once('drain', () => {
+              if (!isResolved) {
+                response.resume();
+              }
+            });
+          }
+        } catch (err) {
+          cleanup();
+          if (!isResolved) {
+            isResolved = true;
+            reject(err);
+          }
+          return;
         }
 
         // Send progress update every 10KB
         if (bytesSinceLastUpdate >= UPDATE_THRESHOLD) {
-          const progress = totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : Math.min(99, Math.round((downloadedBytes / (downloadedBytes + 1024 * 1024)) * 100));
+          const currentTotalBytes = downloadState.totalBytes || totalBytes;
+          const progress = currentTotalBytes > 0 
+            ? Math.round((downloadedBytes / currentTotalBytes) * 100) 
+            : Math.min(99, Math.round((downloadedBytes / (downloadedBytes + 1024 * 1024)) * 100));
 
           // Send progress updates to renderer in real-time
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('download-progress', {
               progress,
               downloadedBytes,
-              totalBytes: totalBytes || downloadedBytes,
-              fileName
+              totalBytes: currentTotalBytes || downloadedBytes,
+              fileName,
+              isPaused: downloadState.isPaused
             });
           }
 
@@ -317,27 +469,13 @@ ipcMain.handle('download-file', async (event, url, fileName) => {
       });
 
       response.on('end', () => {
-        // Finish writing file
-        file.end();
-      });
-
-      file.on('finish', () => {
-        file.close();
-
-        // Send final 100% progress update
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('download-progress', {
-            progress: 100,
-            downloadedBytes: totalBytes || downloadedBytes,
-            totalBytes: totalBytes || downloadedBytes,
-            fileName
-          });
+        if (file && !file.destroyed) {
+          file.end();
         }
-
-        resolve({ filePath, fileName });
       });
 
-      file.on('error', (err) => {
+      response.on('error', (err) => {
+        cleanup();
         if (fs.existsSync(filePath)) {
           try {
             fs.unlinkSync(filePath);
@@ -345,10 +483,195 @@ ipcMain.handle('download-file', async (event, url, fileName) => {
             // Ignore deletion errors
           }
         }
-        reject(err);
+        activeDownloads.delete(fileName);
+        if (!isResolved) {
+          isResolved = true;
+          reject(err);
+        }
+      });
+
+      file.on('finish', () => {
+        // Check if download was canceled before proceeding
+        const currentState = activeDownloads.get(fileName);
+        if (currentState && currentState.isCanceled) {
+          // Download was canceled, don't open file or resolve
+          activeDownloads.delete(fileName);
+          if (!isResolved) {
+            isResolved = true;
+            reject(new Error('Download was canceled'));
+          }
+          return;
+        }
+        
+        if (file) {
+          file.close();
+        }
+
+        // Send final 100% progress update
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('download-progress', {
+            progress: 100,
+            downloadedBytes: totalBytes || downloadedBytes,
+            totalBytes: totalBytes || downloadedBytes,
+            fileName,
+            isPaused: false
+          });
+        }
+
+        // Remove from active downloads
+        activeDownloads.delete(fileName);
+
+        if (!isResolved) {
+          isResolved = true;
+          resolve({ filePath, fileName });
+        }
+      });
+
+      file.on('error', (err) => {
+        cleanup();
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (e) {
+            // Ignore deletion errors
+          }
+        }
+        activeDownloads.delete(fileName);
+        if (!isResolved) {
+          isResolved = true;
+          reject(err);
+        }
       });
     }
+
+    // Start the download
+    makeRequest(url);
   });
+});
+
+// Pause download
+ipcMain.handle('pause-download', async (event, fileName) => {
+  const downloadState = activeDownloads.get(fileName);
+  if (downloadState && downloadState.response && !downloadState.isPaused) {
+    downloadState.isPaused = true;
+    downloadState.response.pause();
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('download-progress', {
+        progress: downloadState.totalBytes > 0 ? Math.round((downloadState.downloadedBytes / downloadState.totalBytes) * 100) : 0,
+        downloadedBytes: downloadState.downloadedBytes,
+        totalBytes: downloadState.totalBytes,
+        fileName,
+        isPaused: true
+      });
+    }
+
+    return { success: true };
+  }
+  return { success: false };
+});
+
+// Resume download
+ipcMain.handle('resume-download', async (event, fileName) => {
+  const downloadState = activeDownloads.get(fileName);
+  if (downloadState && downloadState.response && downloadState.isPaused) {
+    downloadState.isPaused = false;
+    downloadState.response.resume();
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('download-progress', {
+        progress: downloadState.totalBytes > 0 ? Math.round((downloadState.downloadedBytes / downloadState.totalBytes) * 100) : 0,
+        downloadedBytes: downloadState.downloadedBytes,
+        totalBytes: downloadState.totalBytes,
+        fileName,
+        isPaused: false
+      });
+    }
+
+    return { success: true };
+  }
+  return { success: false };
+});
+
+// Cancel download
+ipcMain.handle('cancel-download', async (event, fileName) => {
+  const downloadState = activeDownloads.get(fileName);
+  if (downloadState) {
+    // Mark as canceled to prevent completion handlers from running
+    downloadState.isCanceled = true;
+
+    // Abort the request if it exists
+    if (downloadState.request) {
+      downloadState.request.abort();
+    }
+
+    // Destroy the response stream if it exists (this stops any data from being written)
+    if (downloadState.response) {
+      downloadState.response.destroy();
+    }
+
+    // Close the file stream properly before deletion
+    if (downloadState.file && !downloadState.file.destroyed) {
+      try {
+        // End the stream (flushes any pending data)
+        if (downloadState.file.writable && !downloadState.file.destroyed) {
+          downloadState.file.end();
+        }
+        // Wait a bit for stream to finish closing
+        await new Promise(resolve => setTimeout(resolve, 50));
+        // Destroy the stream if still open
+        if (!downloadState.file.destroyed) {
+          downloadState.file.destroy();
+        }
+      } catch (e) {
+        // Ignore stream errors during cancellation
+      }
+    }
+
+    // Wait a moment to ensure file stream is fully closed before deletion
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Delete the partial file (multiple attempts to ensure it's deleted)
+    let attempts = 0;
+    while (fs.existsSync(downloadState.filePath) && attempts < 5) {
+      try {
+        fs.unlinkSync(downloadState.filePath);
+        break; // Successfully deleted
+      } catch (e) {
+        attempts++;
+        if (attempts < 5) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    }
+
+    // Reject the promise if it's still pending
+    if (downloadState.reject) {
+      try {
+        downloadState.reject(new Error('Download was canceled by user'));
+      } catch (e) {
+        // Ignore if promise already resolved/rejected
+      }
+    }
+
+    // Remove from active downloads
+    activeDownloads.delete(fileName);
+
+    // Send cancellation notification
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('download-progress', {
+        progress: 0,
+        downloadedBytes: 0,
+        totalBytes: downloadState.totalBytes || 0,
+        fileName,
+        isPaused: false,
+        canceled: true
+      });
+    }
+
+    return { success: true };
+  }
+  return { success: false };
 });
 
 // Show save dialog for installer

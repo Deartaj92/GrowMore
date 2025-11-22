@@ -352,7 +352,6 @@ const InstituteProfile: React.FC = () => {
         .single();
 
       if (schoolError) {
-        console.error('Error fetching school data:', schoolError);
         showToast('Failed to fetch school information', 'error');
         return;
       }
@@ -386,7 +385,6 @@ const InstituteProfile: React.FC = () => {
         setDataSource('school');
       }
     } catch (error) {
-      console.error('Error in fetchProfile:', error);
       showToast('Failed to fetch profile information', 'error');
       setProfile(dummyProfile);
       setForm(dummyProfile);
@@ -416,7 +414,6 @@ const InstituteProfile: React.FC = () => {
         }
       }
       // Log the file size for debugging
-      console.log('Compressed file size:', file.size / 1024, 'KB');
       // For preview
       const reader = new FileReader();
       reader.onload = (ev: ProgressEvent<FileReader>) => setLogoPreview(ev.target?.result as string);
@@ -468,12 +465,9 @@ const InstituteProfile: React.FC = () => {
         const match = url.match(/institute-logos\/([^?\s]+)/);
         if (match && match[1]) {
           const path = match[1];
-          console.log('Attempting to delete old logo:', path);
           const { error: removeError } = await supabase.storage.from('institute-logos').remove([path]);
           if (removeError) {
-            console.error('Failed to delete old logo:', removeError);
-          } else {
-            console.log('Deleted old logo:', path);
+            // Failed to delete old logo
           }
         }
         logo_url = null;
@@ -487,12 +481,9 @@ const InstituteProfile: React.FC = () => {
           const match = url.match(/institute-logos\/([^?\s]+)/);
           if (match && match[1]) {
             const path = match[1];
-            console.log('Attempting to delete old logo:', path);
             const { error: removeError } = await supabase.storage.from('institute-logos').remove([path]);
             if (removeError) {
-              console.error('Failed to delete old logo:', removeError);
-            } else {
-              console.log('Deleted old logo:', path);
+              // Failed to delete old logo
             }
           }
         }
@@ -525,7 +516,6 @@ const InstituteProfile: React.FC = () => {
           school_id: user.school_id
         };
         
-        console.log('Inserting new institute profile:', insertData);
         const { data: insertResult, error: insertError } = await supabase
           .from('institute_profile')
           .insert([insertData])
@@ -537,7 +527,6 @@ const InstituteProfile: React.FC = () => {
         } else if (insertResult) {
           // Set the profile ID for future updates
           setProfileId(insertResult.id);
-          console.log('New profile created with ID:', insertResult.id);
         }
       } else {
         // Update existing profile - preserve existing data and update with form data
@@ -552,7 +541,6 @@ const InstituteProfile: React.FC = () => {
           logo_url: logo_url
         };
         
-        console.log('Updating institute profile ID:', profileId, 'with data:', updateData);
         const { error: updateError } = await supabase
           .from('institute_profile')
           .update(updateData)
@@ -561,7 +549,6 @@ const InstituteProfile: React.FC = () => {
         error = updateError;
       }
       if (error) {
-        console.error('Database operation error:', error);
         throw error;
       }
       

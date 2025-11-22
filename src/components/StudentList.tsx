@@ -2160,7 +2160,6 @@ const StudentList: React.FC = () => {
         .order('name');
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
         showToast('Failed to load students', 'error');
         setLoading(false);
         completeProgress();
@@ -2262,7 +2261,6 @@ const StudentList: React.FC = () => {
     };
 
     fetchStudents().catch((error) => {
-      console.error('Error in fetchStudents:', error);
       setLoading(false);
       completeProgress();
       setHasFetchedStudents(true);
@@ -2314,7 +2312,6 @@ const StudentList: React.FC = () => {
         .select('id, name, is_active')
         .eq('school_id', user.school_id);
       if (sessionsError) {
-        console.error('Error fetching sessions:', sessionsError);
       } else {
         setSessionOptions(sessionsData || []);
         const activeSession = sessionsData?.find(session => session.is_active);
@@ -2428,15 +2425,10 @@ const StudentList: React.FC = () => {
           const match = url.match(/student-avatars\/([^?\s]+)/);
           if (match && match[1]) {
             const path = match[1];
-            console.log('Attempting to delete old avatar:', path);
             const { error: removeError } = await supabase.storage.from('student-avatars').remove([path]);
             if (removeError) {
-              console.error('Failed to delete old avatar:', removeError);
-            } else {
-              console.log('Deleted old avatar:', path);
+              // Failed to delete old avatar
             }
-          } else {
-            console.warn('Could not extract old avatar path from URL:', url);
           }
         }
         const file = formData._newAvatarFile;
@@ -2460,7 +2452,6 @@ const StudentList: React.FC = () => {
         cleanedForm.picture_url = null;
       }
       // Log the payload for debugging
-      console.log('Supabase update payload:', cleanedForm);
       const { data: updatedStudent, error } = await supabase
         .from('students')
         .update(cleanedForm)
@@ -2484,10 +2475,7 @@ const StudentList: React.FC = () => {
         .select('id');
 
       if (historyError) {
-        console.error('Error updating student_class_history:', historyError);
-        // Don't fail the entire operation, but log the error
-      } else {
-        console.log(`Updated ${updatedHistory?.length || 0} student_class_history record(s) for student ${editingStudent.id}`);
+        // Don't fail the entire operation
       }
       setEditLoading(false);
       if (error) {
@@ -2515,7 +2503,6 @@ const StudentList: React.FC = () => {
       }, 1800);
       return; // Ensure the function properly resolves
     } catch (error) {
-      console.error('Error updating student:', error);
       showToast('Failed to update student: ' + (error as Error).message, 'error');
       setEditLoading(false);
       throw error; // Re-throw to let the form handle it
@@ -2746,7 +2733,6 @@ const StudentList: React.FC = () => {
               window.open(uriResult.uri, '_blank');
 
             } catch (fsError) {
-              console.error('Filesystem error:', fsError);
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
               showToast('PDF downloaded successfully!', 'success');
@@ -2803,7 +2789,6 @@ const StudentList: React.FC = () => {
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
 
             } catch (webError) {
-              console.error('Web download failed, trying data URI method:', webError);
 
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
@@ -2848,7 +2833,6 @@ const StudentList: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('Mobile PDF export error:', error);
           showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
       } else {
@@ -2857,7 +2841,6 @@ const StudentList: React.FC = () => {
         showToast('Students list PDF generated successfully', 'success');
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
       showToast('Failed to generate PDF', 'error');
     } finally {
       setExportLoading(false);
@@ -2867,7 +2850,6 @@ const StudentList: React.FC = () => {
   // Add a debug log to print all unique statuses in the students array for troubleshooting
   useEffect(() => {
     const uniqueStatuses = Array.from(new Set(students.map(stu => stu.status)));
-    console.log('Unique student statuses:', uniqueStatuses);
   }, [students]);
 
 

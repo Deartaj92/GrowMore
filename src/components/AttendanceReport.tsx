@@ -976,7 +976,6 @@ const AttendanceReport: React.FC = () => {
         error.message?.includes('multiple (or no) rows returned') ||
         error.details?.includes('contains 0 rows')
       )) {
-        console.error('Error fetching active session:', error);
         toast.showToast('Failed to fetch active session for your school', 'error');
         setHasActiveSession(false);
       }
@@ -1300,7 +1299,6 @@ const AttendanceReport: React.FC = () => {
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       if (updatingStatusRef.current.size > 0) {
-        console.log('Cleaning up updatingStatusRef, current size:', updatingStatusRef.current.size);
         updatingStatusRef.current.clear();
         setIsUpdatingStatus(false);
       }
@@ -1320,7 +1318,6 @@ const AttendanceReport: React.FC = () => {
     // Debounce rapid clicks (prevent clicks within 500ms)
     const now = Date.now();
     if (now - lastClickTimeRef.current < 500) {
-      console.log('Click too soon, ignoring');
       return;
     }
     lastClickTimeRef.current = now;
@@ -1328,7 +1325,6 @@ const AttendanceReport: React.FC = () => {
     // Find the student's index in the original students array for attendanceMatrix lookup
     const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
     if (studentIndexInOriginal === -1) {
-      console.error('Student not found in original students array');
       return;
     }
     
@@ -1337,7 +1333,6 @@ const AttendanceReport: React.FC = () => {
     
     // Prevent duplicate calls
     if (updatingStatusRef.current.has(updateKey)) {
-      console.log('Update already in progress for:', updateKey);
       return;
     }
     
@@ -1345,7 +1340,6 @@ const AttendanceReport: React.FC = () => {
     updatingStatusRef.current.add(updateKey);
     setIsUpdatingStatus(true);
     
-    console.log('Starting status change for:', updateKey);
     
     try {
       if (opt.value === 'DELETE') {
@@ -1391,14 +1385,6 @@ const AttendanceReport: React.FC = () => {
           throw new Error(`Section is required for this class: section_id=${selectedSection}`);
         }
         
-        console.log('Attempting to delete attendance record:', {
-          student_id: student.id,
-          class_id: selectedClass,
-          section_id: hasSections ? selectedSection : null,
-          school_id: user.school_id,
-          session_id: sessionId,
-          date: dateStr
-        });
         
         let deleteQuery = supabase
           .from('attendance_records')
@@ -1418,17 +1404,9 @@ const AttendanceReport: React.FC = () => {
         const { data, error } = await deleteQuery;
           
         if (error) {
-          console.error('Supabase delete error:', error);
-          console.error('Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          });
           throw error;
         }
         
-        console.log('Delete successful:', data);
         toast.showToast('Attendance record deleted.', 'success');
         return;
       }
@@ -1501,7 +1479,6 @@ const AttendanceReport: React.FC = () => {
         session_id: sessionId
       };
       
-      console.log('Attempting to upsert attendance record:', upsertPayload);
       
       // First, check if record already exists
       let checkQuery = supabase
@@ -1522,7 +1499,6 @@ const AttendanceReport: React.FC = () => {
       const { data: existingRecord, error: checkError } = await checkQuery.single();
       
       if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing record:', checkError);
         throw checkError;
       }
       
@@ -1530,7 +1506,6 @@ const AttendanceReport: React.FC = () => {
       
       if (existingRecord) {
         // Record exists, update it
-        console.log('Record exists, updating:', existingRecord);
         const updateResult = await supabase
           .from('attendance_records')
           .update({ status: dbStatus })
@@ -1539,7 +1514,6 @@ const AttendanceReport: React.FC = () => {
         error = updateResult.error;
       } else {
         // Record doesn't exist, insert it
-        console.log('Record does not exist, inserting new record');
         const insertResult = await supabase
           .from('attendance_records')
           .insert([upsertPayload]);
@@ -1548,23 +1522,12 @@ const AttendanceReport: React.FC = () => {
       }
       
       if (error) {
-        console.error('Supabase upsert error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
         throw error;
       }
       
-      console.log('Upsert successful:', data);
       toast.showToast('Attendance updated successfully.', 'success');
       
     } catch (err: any) {
-      console.error('Full error object:', err);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
       
       // Revert the UI state on error
       setAttendanceMatrix(prev => {
@@ -1578,7 +1541,6 @@ const AttendanceReport: React.FC = () => {
       // Clean up
       updatingStatusRef.current.delete(updateKey);
       setIsUpdatingStatus(false);
-      console.log('Status change completed for:', updateKey);
     }
   };
 
@@ -1767,7 +1729,6 @@ const AttendanceReport: React.FC = () => {
       const endDate = parseISO(holiday.end_date);
       const isInRange = date >= startDate && date <= endDate;
       if (isInRange) {
-        console.log('Found holiday for date:', date, 'Holiday:', holiday.name);
       }
       return isInRange;
     });
@@ -1781,7 +1742,6 @@ const AttendanceReport: React.FC = () => {
       return date >= startDate && date <= endDate;
     });
     if (holiday) {
-      console.log('Getting holiday name for date:', date, 'Name:', holiday.name);
     }
     return holiday?.name || '';
   };
@@ -2123,7 +2083,6 @@ const AttendanceReport: React.FC = () => {
             window.open(uriResult.uri, '_blank');
             
           } catch (fsError) {
-            console.error('Filesystem error:', fsError);
             // If filesystem fails, fallback to regular download
             doc.save(mobileFileName);
             toast.showToast('PDF downloaded successfully!', 'success');
@@ -2180,7 +2139,6 @@ const AttendanceReport: React.FC = () => {
             toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
             
           } catch (webError) {
-            console.error('Web download failed, trying data URI method:', webError);
             
             // Final fallback: Open PDF in new tab with data URI
             const pdfDataUri = doc.output('datauristring');
@@ -2225,7 +2183,6 @@ const AttendanceReport: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Mobile PDF export error:', error);
         toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
       }
     } else {
@@ -2238,7 +2195,6 @@ const AttendanceReport: React.FC = () => {
       toast.showToast('Class/section names not loaded, using IDs in PDF.', 'error');
     }
     } catch (error) {
-      console.error('Error generating PDF:', error);
       toast.showToast('Failed to generate PDF', 'error');
     } finally {
       setExportLoading(false);
