@@ -100,6 +100,7 @@ import GlobalBackHandler from './components/GlobalBackHandler';
 import { NavigationProvider } from './contexts/NavigationContext';
 import InitialRouteHandler from './components/InitialRouteHandler';
 import { Capacitor } from '@capacitor/core';
+import { isWeb } from './utils/platformDetection';
 
 // Use HashRouter in Electron, BrowserRouter in web
 const isElectron = Boolean((window as any).electronAPI);
@@ -160,6 +161,17 @@ const App: React.FC = () => {
       },
     },
   }), [theme]);
+
+  // Debug: Log platform detection
+  useEffect(() => {
+    console.log('[App] Platform detection:', {
+      isWeb: isWeb(),
+      electronAPI: !!(window as any).electronAPI,
+      Capacitor: !!(window as any).Capacitor,
+      shouldRenderUpdateNotification: !isWeb()
+    });
+  }, []);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <AppRouter>
@@ -922,7 +934,8 @@ const App: React.FC = () => {
                       </Routes>
                     </ToastProvider>
                   </AuthProvider>
-                  <UpdateNotification ref={updateNotificationRef} />
+                  {/* Only render UpdateNotification on Electron/Capacitor, not on web */}
+                  {!isWeb() && <UpdateNotification ref={updateNotificationRef} />}
                 </NavigationProvider>
               </LoadingProvider>
             </ProgressProvider>

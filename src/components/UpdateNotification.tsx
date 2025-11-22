@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { UpdateService } from '../services/updateService';
 import { ThemeContext, darkTheme, lightTheme } from './Layout';
 import DownloadProgressModal from './DownloadProgressModal';
+import { isWeb } from '../utils/platformDetection';
 
 interface GitHubRelease {
   tag_name: string;
@@ -431,7 +432,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       setIsDownloadModalMinimized(false);
       return;
     }
-    
+
     // Check if there's a dismissed version - if so, don't check during session (unless manual or startup)
     const dismissedTag = localStorage.getItem(DISMISSED_KEY);
     if (!isManual && !isStartup && dismissedTag) {
@@ -439,10 +440,10 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       // Only startup checks and manual checks can override dismissed status
       return;
     }
-    
+
     try {
       const result = await updateService.checkForUpdates();
-      
+
       if (result.error) {
         console.error('Update check error:', result.error);
         // Only show error alerts for manual checks
@@ -454,10 +455,10 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
         // For startup/automatic checks, fail silently (just return)
         return;
       }
-      
+
       if (result.updateAvailable && result.release) {
         const dismissedTag = localStorage.getItem(DISMISSED_KEY);
-        
+
         if (isManual) {
           // Manual check: show update even if previously dismissed
           // User explicitly requested to check, so show it
@@ -499,23 +500,18 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
     }
   }), [checkForUpdates]);
 
-  // Check for updates on every app startup (only for desktop/Electron, not web)
+  // Check for updates on every app startup (only for desktop/Electron and mobile/Capacitor, not web)
   useEffect(() => {
-    // Check if running in Electron/Desktop or Capacitor (mobile)
-    // Use the same detection logic as UpdateService
-    const isDesktop = !!(window as any).electronAPI || !!(window as any).require || navigator.userAgent.includes('Electron');
-    const isCapacitor = !!(window as any).Capacitor;
-    
     // Only check for updates in Electron/desktop or Capacitor (mobile), not in web browser
-    if (!isDesktop && !isCapacitor) {
-      // Web: Don't check for updates
+    if (isWeb()) {
+      // Web: Don't check for updates at all
       return;
     }
-    
+
     // Clear dismissed flag on startup so updates can show again after app restart
     // This ensures users are always notified of updates on each app launch
     localStorage.removeItem(DISMISSED_KEY);
-    
+
     // Add a small delay to ensure component is fully mounted and app is ready
     const startupCheck = setTimeout(() => {
       // Check for updates on every startup (desktop/mobile only)
@@ -523,7 +519,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       console.log('[UpdateNotification] Running startup update check');
       checkForUpdates(false, true); // Pass isStartup=true so it always shows on startup
     }, 1500); // 1.5 second delay to ensure app is ready
-    
+
     return () => {
       clearTimeout(startupCheck);
     };
@@ -543,7 +539,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
             }
             return currentRelease; // Don't change release, just use it for dismissal
           });
-          
+
           setShowDownloadModal(false);
           setIsDownloading(false);
           setDownloadProgress(0);
@@ -556,7 +552,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
           });
           return;
         }
-        
+
         setDownloadProgress(data.progress);
         setIsPaused(data.isPaused || false);
         setDownloadInfo({
@@ -565,9 +561,9 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
           totalBytes: data.totalBytes
         });
       };
-      
+
       window.electronAPI.onDownloadProgress(progressHandler);
-      
+
       return () => {
         // Cleanup if needed
       };
@@ -576,11 +572,11 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
 
   const handleDownload = async () => {
     if (!release) return;
-    
+
     // Check if running in Electron/Desktop
     const isDesktop = !!(window as any).electronAPI || !!(window as any).require || navigator.userAgent.includes('Electron');
     const isCapacitor = !!(window as any).Capacitor;
-    
+
     if (isDesktop && window.electronAPI) {
       // Desktop: Show download modal and use Electron download
       // Hide the update notification modal when download starts
@@ -588,13 +584,13 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       setIsDownloading(true);
       setShowDownloadModal(true);
       setDownloadProgress(0);
-      
+
       // Find installer name for display
-      const installerAsset = release.assets.find(a => 
+      const installerAsset = release.assets.find(a =>
         (a.name && a.name.toLowerCase().endsWith('.exe') && a.name.toLowerCase().includes('setup')) ||
         (a.name && a.name.toLowerCase().includes('growmore') && a.name.toLowerCase().endsWith('.exe'))
       );
-      
+
       if (installerAsset) {
         setDownloadInfo({
           fileName: installerAsset.name,
@@ -602,12 +598,12 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
           totalBytes: installerAsset.size || 0
         });
       }
-      
+
       try {
         const result = await updateService.downloadUpdate(release, (progress) => {
           setDownloadProgress(progress);
         });
-        
+
         // Download complete - store file path for completion handler
         // Note: Save dialog was shown before download started
         if (result.filePath) {
@@ -616,7 +612,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       } catch (error: any) {
         setIsDownloading(false);
         setShowDownloadModal(false);
-        
+
         // Don't show error alert if download was canceled by user
         if (!error.message || !error.message.includes('canceled')) {
           alert(`Download failed: ${error.message || 'Please try again later.'}`);
@@ -628,14 +624,14 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
       setShowUpdate(false);
       setIsDownloading(true);
       setDownloadProgress(0);
-      
+
       try {
         console.log('[UpdateNotification] Starting mobile/fallback download');
         await updateService.downloadUpdate(release, (progress) => {
           setDownloadProgress(progress);
         });
         setIsDownloading(false);
-        
+
         // For mobile, the download opens in browser/external app
         // Show a helpful message
         if (isCapacitor) {
@@ -652,7 +648,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
   const handleDownloadComplete = async (filePath: string) => {
     // Use the provided filePath or the stored one from downloadInfo
     const finalFilePath = filePath || downloadInfo.filePath;
-    
+
     // Open file location in explorer if we have a path
     if (finalFilePath && window.electronAPI) {
       try {
@@ -662,7 +658,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
         // Fallback: just close the modal
       }
     }
-    
+
     setShowDownloadModal(false);
     setIsDownloading(false);
     setShowUpdate(false);
@@ -677,12 +673,12 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
         console.error('Failed to cancel download:', error);
       }
     }
-    
+
     // Mark this version as dismissed to prevent it from showing again immediately
     if (release) {
       localStorage.setItem(DISMISSED_KEY, release.tag_name);
     }
-    
+
     setShowDownloadModal(false);
     setIsDownloading(false);
     setDownloadProgress(0);
@@ -707,34 +703,40 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
   // Don't return null if download modal is visible - we still need to render it
   const shouldShowUpdateModal = showUpdate && release;
 
+  // IMPORTANT: Don't render anything on web platform
+  // This prevents the modal from showing even if state was somehow persisted
+  if (isWeb()) {
+    return null;
+  }
+
   return (
     <>
-             {shouldShowUpdateModal && ReactDOM.createPortal(
-               <ThemeProvider theme={theme}>
-                 <ModalOverlay>
-                   <UpdateContainer onClick={(e) => e.stopPropagation()}>
+      {shouldShowUpdateModal && ReactDOM.createPortal(
+        <ThemeProvider theme={theme}>
+          <ModalOverlay>
+            <UpdateContainer onClick={(e) => e.stopPropagation()}>
               <CloseButton onClick={handleCancel}>
                 ×
               </CloseButton>
-              
+
               <UpdateTitle>
                 <UpdateIcon>!</UpdateIcon>
                 Update Available
               </UpdateTitle>
-              
+
               <UpdateMessage>
                 A new version is available. Download now to get the latest features and improvements.
               </UpdateMessage>
-              
+
               <ReleaseInfo>
                 <ReleaseVersion>Version {updateService.getReleaseVersion(release)}</ReleaseVersion>
                 <ReleaseNotes>
                   <ReactMarkdown>
-                  {updateService.getReleaseNotes(release)}
+                    {updateService.getReleaseNotes(release)}
                   </ReactMarkdown>
                 </ReleaseNotes>
               </ReleaseInfo>
-              
+
               <ButtonContainer>
                 <Button
                   variant="primary"
