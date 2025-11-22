@@ -3234,18 +3234,8 @@ export const StudentProfile: React.FC = () => {
 
     setTestSessionLoading(true);
     try {
-      // Get school_id from the student data
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('school_id')
-        .eq('id', parseInt(id!))
-        .single();
-
-      if (studentError || !studentData) {
-        console.error('Error fetching student data:', studentError);
-        setTestSessionLoading(false);
-        return;
-      }
+      // Use school_id from student object directly
+      const schoolId = student.school_id;
 
       // Get all test results for the selected student and session
       let testResults: any[] = [];
@@ -3272,11 +3262,13 @@ export const StudentProfile: React.FC = () => {
           `)
           .eq('student_id', parseInt(id!))
           .eq('session_id', targetSession)
-          .eq('school_id', studentData.school_id)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
           console.error('Error loading test results:', error);
+          setTestSessionLoading(false);
           return;
         }
 
@@ -3300,26 +3292,12 @@ export const StudentProfile: React.FC = () => {
           totalPercentage: 0,
           subjectSummaries: []
         });
+        setTestSessionLoading(false);
         return;
       }
 
-      // Get unique test record IDs
-      const testRecordIds = Array.from(new Set(testResults.map(result => (result.test_records as any).id)));
-
-      // Get test records for the selected session
-      const { data: testRecords, error: recordsError } = await supabase
-        .from('test_records')
-        .select(`
-          id,
-          name,
-          test_date,
-          subject_id
-        `)
-        .in('id', testRecordIds)
-        .eq('session_id', targetSession)
-        .eq('school_id', studentData.school_id);
-
-      if (recordsError) throw recordsError;
+      // Extract test records from the joined data (already fetched)
+      const testRecords = testResults.map(result => result.test_records).filter(Boolean);
 
       // Get subject information separately
       const uniqueSubjectIds = new Set(testRecords?.map(record => record.subject_id) || []);
@@ -3328,7 +3306,7 @@ export const StudentProfile: React.FC = () => {
         .from('subjects')
         .select('id, name')
         .in('id', subjectIds)
-        .eq('school_id', studentData.school_id);
+        .eq('school_id', schoolId);
 
       if (subjectsError) throw subjectsError;
 
