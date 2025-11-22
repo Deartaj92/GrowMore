@@ -6,22 +6,22 @@ import { FamilyRestroom, PersonAdd, Person, Add as AddIcon, Close as CloseIcon, 
 import { useAuth } from '../contexts/AuthContext';
 import { sortClasses } from '../utils/classUtils';
 import {
-    Box,
-    Button as MuiButton,
-    FormControl,
-    Grid,
-    InputLabel,
-    MenuItem,
-    Select,
-    TextField,
-    Typography,
-    Dialog,
-    DialogContent,
-    IconButton as MuiIconButton,
-    useTheme,
-    useMediaQuery,
-    styled as muiStyled,
-    Avatar
+  Box,
+  Button as MuiButton,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+  Dialog,
+  DialogContent,
+  IconButton as MuiIconButton,
+  useTheme,
+  useMediaQuery,
+  styled as muiStyled,
+  Avatar
 } from '@mui/material';
 import { Theme as MuiTheme } from '@mui/material/styles';
 import imageCompression from 'browser-image-compression';
@@ -567,9 +567,9 @@ const ToastContainer = styled.div`
   align-items: flex-end;
 `;
 
-const ToastMsg = styled.div<{type: 'error' | 'success', themeMode: 'dark' | 'light'}>`
+const ToastMsg = styled.div<{ type: 'error' | 'success', themeMode: 'dark' | 'light' }>`
   min-width: 220px;
-  background: ${({type, themeMode}) => type === 'error' ? (themeMode === 'dark' ? '#ff3b3b' : '#ff5252') : (themeMode === 'dark' ? '#4caf50' : '#43a047')};
+  background: ${({ type, themeMode }) => type === 'error' ? (themeMode === 'dark' ? '#ff3b3b' : '#ff5252') : (themeMode === 'dark' ? '#4caf50' : '#43a047')};
   color: #fff;
   padding: 14px 32px;
   border-radius: 12px;
@@ -605,8 +605,8 @@ const DeleteModalOverlay = styled.div`
   }
 `;
 const DeleteModalBox = styled.div`
-  background: ${({theme}) => theme.CARD};
-  color: ${({theme}) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => theme.CARD};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
   border-radius: 16px;
   box-shadow: 0 8px 32px #0007;
   padding: 24px 28px 20px 28px;
@@ -616,7 +616,7 @@ const DeleteModalBox = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1.5px solid ${({theme}) => theme.FIELD_BORDER};
+  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
   @media (max-width: 700px) {
     min-width: 0;
     width: calc(100vw - 32px);
@@ -649,8 +649,8 @@ const DeleteModalCancel = styled(DeleteModalButton)`
 
 // Add sound effects for toasts
 // Use local files in public directory
-const successSoundUrl = '/success.mp3';
-const errorSoundUrl = '/error.mp3';
+const successSoundUrl = `${process.env.PUBLIC_URL || '.'}/success.mp3`;
+const errorSoundUrl = `${process.env.PUBLIC_URL || '.'}/error.mp3`;
 
 const FamilyAvatarPreview = styled.div<{ $top: number; $left: number; $themeObj: any }>`
   position: fixed;
@@ -749,161 +749,161 @@ const MemberItemSmall = styled(MemberItem)`
 
 // Enhanced Modal Components (copied from CreateReportForm)
 const StyledDialog = muiStyled(Dialog)(({ theme }: { theme: MuiTheme }) => ({
-    zIndex: 1300,
-    '& .MuiDialog-paper': {
-        borderRadius: '16px',
-        background: theme.palette.mode === 'dark' 
-            ? theme.palette.background.paper 
-            : theme.palette.background.paper,
-        maxWidth: '600px',
-        width: '95%',
-        margin: 0,
-        overflow: 'hidden',
-        boxShadow: theme.palette.mode === 'dark'
-            ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
-            : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)',
-        border: theme.palette.mode === 'dark'
-            ? '1px solid rgba(255, 255, 255, 0.05)'
-            : '1px solid rgba(0, 0, 0, 0.05)',
-        transform: 'translateY(0)',
-        transition: 'all 0.3s ease-in-out',
-        position: 'relative',
-        zIndex: 1301,
-        [theme.breakpoints.down('sm')]: {
-            width: 'calc(100% - 32px)',
-            height: 'auto',
-            margin: 0,
-            borderRadius: '16px',
-            maxHeight: 'calc(100% - 48px)'
-        }
-    },
-    '& .MuiBackdrop-root': {
-        backgroundColor: theme.palette.mode === 'dark'
-            ? 'rgba(0, 0, 0, 0.5)'
-            : 'rgba(255, 255, 255, 0.5)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        position: 'fixed',
-        zIndex: 1300
+  zIndex: 1300,
+  '& .MuiDialog-paper': {
+    borderRadius: '16px',
+    background: theme.palette.mode === 'dark'
+      ? theme.palette.background.paper
+      : theme.palette.background.paper,
+    maxWidth: '600px',
+    width: '95%',
+    margin: 0,
+    overflow: 'hidden',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
+      : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)',
+    border: theme.palette.mode === 'dark'
+      ? '1px solid rgba(255, 255, 255, 0.05)'
+      : '1px solid rgba(0, 0, 0, 0.05)',
+    transform: 'translateY(0)',
+    transition: 'all 0.3s ease-in-out',
+    position: 'relative',
+    zIndex: 1301,
+    [theme.breakpoints.down('sm')]: {
+      width: 'calc(100% - 32px)',
+      height: 'auto',
+      margin: 0,
+      borderRadius: '16px',
+      maxHeight: 'calc(100% - 48px)'
     }
+  },
+  '& .MuiBackdrop-root': {
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(0, 0, 0, 0.5)'
+      : 'rgba(255, 255, 255, 0.5)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    position: 'fixed',
+    zIndex: 1300
+  }
 }));
 
 const DialogHeader = muiStyled(Box)(({ theme }: { theme: MuiTheme }) => ({
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '20px 24px',
-    borderBottom: `1px solid ${theme.palette.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.05)' 
-        : 'rgba(0, 0, 0, 0.05)'}`,
-    background: theme.palette.mode === 'dark'
-        ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-        : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
-    backdropFilter: 'blur(8px)',
-    position: 'relative',
-    zIndex: 1
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '20px 24px',
+  borderBottom: `1px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'}`,
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+  backdropFilter: 'blur(8px)',
+  position: 'relative',
+  zIndex: 1
 }));
 
 const DialogTitle = muiStyled(Typography)(({ theme }: { theme: MuiTheme }) => ({
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    color: theme.palette.mode === 'dark'
-        ? theme.palette.primary.light
-        : theme.palette.primary.main,
-    textShadow: theme.palette.mode === 'dark'
-        ? '0 2px 4px rgba(0, 0, 0, 0.5)'
-        : 'none'
+  fontSize: '1.1rem',
+  fontWeight: 600,
+  color: theme.palette.mode === 'dark'
+    ? theme.palette.primary.light
+    : theme.palette.primary.main,
+  textShadow: theme.palette.mode === 'dark'
+    ? '0 2px 4px rgba(0, 0, 0, 0.5)'
+    : 'none'
 }));
 
 const StyledDialogContent = muiStyled(DialogContent)(({ theme }: { theme: MuiTheme }) => ({
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    maxHeight: 'calc(100vh - 180px)',
-    overflowY: 'auto',
-    scrollbarWidth: 'thin',
-    scrollbarColor: theme.palette.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.2) transparent'
-        : 'rgba(0, 0, 0, 0.2) transparent',
-    '&::-webkit-scrollbar': {
-        width: '8px',
-        backgroundColor: 'transparent'
-    },
-    '&::-webkit-scrollbar-track': {
-        background: 'transparent',
-        borderRadius: '4px',
-        margin: '4px'
-    },
-    '&::-webkit-scrollbar-thumb': {
-        backgroundColor: theme.palette.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.2)'
-            : 'rgba(0, 0, 0, 0.2)',
-        borderRadius: '4px',
-        border: `2px solid ${theme.palette.mode === 'dark'
-            ? theme.palette.background.paper
-            : theme.palette.background.paper}`,
-        '&:hover': {
-            backgroundColor: theme.palette.mode === 'dark'
-                ? 'rgba(255, 255, 255, 0.3)'
-                : 'rgba(0, 0, 0, 0.3)'
-        }
-    },
-    background: theme.palette.mode === 'dark'
-        ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
-        : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)',
-    '& .MuiFormControl-root': {
-        transition: 'background-color 0.2s ease',
-    },
-    '& .MuiInputBase-root': {
-        background: theme.palette.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.03)'
-            : 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(8px)',
-        borderRadius: '8px',
-        border: theme.palette.mode === 'dark'
-            ? '1px solid rgba(255, 255, 255, 0.05)'
-            : '1px solid rgba(0, 0, 0, 0.05)',
-        transition: 'background-color 0.2s ease',
-        '&:hover, &.Mui-focused': {
-            background: theme.palette.mode === 'dark'
-                ? 'rgba(255, 255, 255, 0.05)'
-                : 'rgba(255, 255, 255, 0.9)',
-        },
-        '& .MuiSelect-select, & .MuiInputBase-input': {
-            padding: '12px 14px',
-            fontSize: '0.95rem',
-            '&::placeholder': {
-                color: theme.palette.mode === 'dark'
-                    ? 'rgba(255, 255, 255, 0.3)'
-                    : 'rgba(0, 0, 0, 0.3)',
-                opacity: 1
-            }
-        },
-        '& .MuiOutlinedInput-notchedOutline': {
-            border: 'none'
-        }
+  padding: '24px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '20px',
+  maxHeight: 'calc(100vh - 180px)',
+  overflowY: 'auto',
+  scrollbarWidth: 'thin',
+  scrollbarColor: theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.2) transparent'
+    : 'rgba(0, 0, 0, 0.2) transparent',
+  '&::-webkit-scrollbar': {
+    width: '8px',
+    backgroundColor: 'transparent'
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'transparent',
+    borderRadius: '4px',
+    margin: '4px'
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.2)'
+      : 'rgba(0, 0, 0, 0.2)',
+    borderRadius: '4px',
+    border: `2px solid ${theme.palette.mode === 'dark'
+      ? theme.palette.background.paper
+      : theme.palette.background.paper}`,
+    '&:hover': {
+      backgroundColor: theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)'
     }
+  },
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
+    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)',
+  '& .MuiFormControl-root': {
+    transition: 'background-color 0.2s ease',
+  },
+  '& .MuiInputBase-root': {
+    background: theme.palette.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(8px)',
+    borderRadius: '8px',
+    border: theme.palette.mode === 'dark'
+      ? '1px solid rgba(255, 255, 255, 0.05)'
+      : '1px solid rgba(0, 0, 0, 0.05)',
+    transition: 'background-color 0.2s ease',
+    '&:hover, &.Mui-focused': {
+      background: theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(255, 255, 255, 0.9)',
+    },
+    '& .MuiSelect-select, & .MuiInputBase-input': {
+      padding: '12px 14px',
+      fontSize: '0.95rem',
+      '&::placeholder': {
+        color: theme.palette.mode === 'dark'
+          ? 'rgba(255, 255, 255, 0.3)'
+          : 'rgba(0, 0, 0, 0.3)',
+        opacity: 1
+      }
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      border: 'none'
+    }
+  }
 }));
 
 const FormActions = muiStyled(Box)(({ theme }: { theme: MuiTheme }) => ({
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '12px',
-    padding: '16px 24px',
-    borderTop: `1px solid ${theme.palette.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(0, 0, 0, 0.05)'}`,
-    background: theme.palette.mode === 'dark'
-        ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-        : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
-    '& .MuiButton-root': {
-        borderRadius: '8px',
-        textTransform: 'none',
-        padding: '8px 20px',
-        fontWeight: 500,
-        transition: 'background-color 0.2s ease'
-    }
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '12px',
+  padding: '16px 24px',
+  borderTop: `1px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'}`,
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+  '& .MuiButton-root': {
+    borderRadius: '8px',
+    textTransform: 'none',
+    padding: '8px 20px',
+    fontWeight: 500,
+    transition: 'background-color 0.2s ease'
+  }
 }));
 
 // Avatar Upload Section - matching SchoolsManagement exactly
@@ -913,8 +913,8 @@ const AvatarUploadBox = muiStyled(Box)(({ theme }: { theme: MuiTheme }) => ({
   alignItems: 'center',
   gap: '12px',
   padding: '20px',
-  border: `2px dashed ${theme.palette.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.2)' 
+  border: `2px dashed ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.2)'
     : 'rgba(0, 0, 0, 0.2)'}`,
   borderRadius: '12px',
   background: theme.palette.mode === 'dark'
@@ -1092,7 +1092,7 @@ const FamilyManagement: React.FC = () => {
   const previewTimeout = useRef<NodeJS.Timeout | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingFamily, setEditingFamily] = useState<any>(null);
-  const [toasts, setToasts] = useState<Array<{msg: string, type: 'error' | 'success', id: number}>>([]);
+  const [toasts, setToasts] = useState<Array<{ msg: string, type: 'error' | 'success', id: number }>>([]);
   const toastId = useRef(0);
   const themeMode = theme === 'dark' ? 'dark' : 'light';
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1146,7 +1146,7 @@ const FamilyManagement: React.FC = () => {
 
   const fetchStudents = async () => {
     if (!user?.school_id) return;
-    
+
     let sessionToUse = null;
     // Get active session
     const { data: sessionsData } = await supabase
@@ -1157,10 +1157,10 @@ const FamilyManagement: React.FC = () => {
       const activeSession = sessionsData.find((s) => s.is_active);
       if (activeSession) sessionToUse = String(activeSession.id);
     }
-    
+
     if (sessionToUse) {
       // Fetch from student_class_history for the active session
-    const { data, error } = await supabase
+      const { data, error } = await supabase
         .from('student_class_history')
         .select(`
           student_id,
@@ -1177,16 +1177,16 @@ const FamilyManagement: React.FC = () => {
         .eq('session_id', sessionToUse)
         .eq('school_id', user.school_id)
         .order('id', { ascending: false });
-      
+
       if (!error && data) {
         // Fetch student data separately since we can't use automatic joins with composite keys
         const studentIds = Array.from(new Set(data.map((sch: any) => sch.student_id)));
         const { data: studentsData, error: studentsError } = await supabase
-      .from('students')
-      .select('*')
+          .from('students')
+          .select('*')
           .eq('school_id', user.school_id)
           .in('id', studentIds);
-        
+
         if (!studentsError && studentsData) {
           // Create a map of student data by ID
           const studentsMap = new Map(studentsData.map((student: any) => [student.id, student]));
@@ -1247,7 +1247,7 @@ const FamilyManagement: React.FC = () => {
   const showToast = (msg: string, type: 'error' | 'success' = 'success') => {
     playToastSound(type);
     const id = toastId.current++;
-    setToasts(prev => [...prev, {msg, type, id}]);
+    setToasts(prev => [...prev, { msg, type, id }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2200);
   };
 
@@ -1566,8 +1566,8 @@ const FamilyManagement: React.FC = () => {
       {showDeleteModal && (
         <DeleteModalOverlay>
           <DeleteModalBox theme={themeObj}>
-            <div style={{fontSize: '1.15rem', fontWeight: 600, marginBottom: 10}}>Delete Family</div>
-            <div style={{marginBottom: 10}}>Are you sure you want to delete <b>{familyToDelete?.name}</b> and unlink all its students?</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: 10 }}>Delete Family</div>
+            <div style={{ marginBottom: 10 }}>Are you sure you want to delete <b>{familyToDelete?.name}</b> and unlink all its students?</div>
             <DeleteModalActions>
               <DeleteModalCancel onClick={() => { setShowDeleteModal(false); setFamilyToDelete(null); }}>Cancel</DeleteModalCancel>
               <DeleteModalButton onClick={confirmDeleteFamily}>Delete</DeleteModalButton>
@@ -1578,8 +1578,8 @@ const FamilyManagement: React.FC = () => {
       {confirm && (
         <DeleteModalOverlay>
           <DeleteModalBox theme={themeObj}>
-            <div style={{fontSize: '1.1rem', fontWeight: 600, marginBottom: 10}}>{confirm.title}</div>
-            <div style={{marginBottom: 10}}>{confirm.message}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 10 }}>{confirm.title}</div>
+            <div style={{ marginBottom: 10 }}>{confirm.message}</div>
             <DeleteModalActions>
               <DeleteModalCancel onClick={() => setConfirm(null)}>Cancel</DeleteModalCancel>
               <DeleteModalButton onClick={async () => { await confirm.onConfirm(); setConfirm(null); }}>Yes</DeleteModalButton>
@@ -1601,41 +1601,41 @@ const FamilyManagement: React.FC = () => {
               </HeaderActions>
             </PageHeader>
             <FamiliesGrid>
-            {families.map(family => (
-              <FamilyCard key={family.id} $accent={stringToColor(family.name)}>
-                {family.contact_number && (
-                  <ContactBadge>
-                    <span style={{ opacity: 0.8 }}>📞</span>
-                    <span>{family.contact_number}</span>
-                  </ContactBadge>
-                )}
-                <FamilyHeader>
-                  <Avatar src={family.avatar_url || undefined} sx={{ width: 44, height: 44, fontSize: '1.3rem', fontWeight: 600, bgcolor: stringToColor(family.name) }}>
-                    {!family.avatar_url && getInitials(family.name)}
-                  </Avatar>
-                  <FamilyInfo>
-                    <FamilyName>{family.name}</FamilyName>
-                    <FamilyDetails>
-                      {family.address && (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
-                          <span style={{ opacity: 0.7 }}>📍</span>
-                          <span style={{ flex: 1, lineHeight: 1.3 }}>{family.address}</span>
-                        </div>
-                      )}
-                    </FamilyDetails>
-                  </FamilyInfo>
-                </FamilyHeader>
-                <div style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  color: themeObj.TEXT_SECONDARY,
-                  marginBottom: '0.5rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Students ({family.family_members?.length || 0})
-                </div>
-                {family.family_members && family.family_members.length > 0 ? (
+              {families.map(family => (
+                <FamilyCard key={family.id} $accent={stringToColor(family.name)}>
+                  {family.contact_number && (
+                    <ContactBadge>
+                      <span style={{ opacity: 0.8 }}>📞</span>
+                      <span>{family.contact_number}</span>
+                    </ContactBadge>
+                  )}
+                  <FamilyHeader>
+                    <Avatar src={family.avatar_url || undefined} sx={{ width: 44, height: 44, fontSize: '1.3rem', fontWeight: 600, bgcolor: stringToColor(family.name) }}>
+                      {!family.avatar_url && getInitials(family.name)}
+                    </Avatar>
+                    <FamilyInfo>
+                      <FamilyName>{family.name}</FamilyName>
+                      <FamilyDetails>
+                        {family.address && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+                            <span style={{ opacity: 0.7 }}>📍</span>
+                            <span style={{ flex: 1, lineHeight: 1.3 }}>{family.address}</span>
+                          </div>
+                        )}
+                      </FamilyDetails>
+                    </FamilyInfo>
+                  </FamilyHeader>
+                  <div style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: themeObj.TEXT_SECONDARY,
+                    marginBottom: '0.5rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Students ({family.family_members?.length || 0})
+                  </div>
+                  {family.family_members && family.family_members.length > 0 ? (
                     (family.family_members.length > 3 ? (
                       <MemberGrid>
                         {[...family.family_members]
@@ -1678,13 +1678,13 @@ const FamilyManagement: React.FC = () => {
                                   color="primary"
                                   size="small"
                                   disabled={member.is_primary_contact || loading}
-                                  sx={{ 
-                                    minWidth: 0, 
-                                    px: 1, 
-                                    fontSize: '0.75rem', 
-                                    fontWeight: 500, 
-                                    textTransform: 'none', 
-                                    height: 22, 
+                                  sx={{
+                                    minWidth: 0,
+                                    px: 1,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    textTransform: 'none',
+                                    height: 22,
                                     borderRadius: '6px'
                                   }}
                                   onClick={async () => {
@@ -1714,8 +1714,10 @@ const FamilyManagement: React.FC = () => {
                                   <MuiIconButton
                                     title="Unset primary"
                                     size="small"
-                                    sx={{ width: 20, height: 20, ml: 0.3,
-                                      '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}}
+                                    sx={{
+                                      width: 20, height: 20, ml: 0.3,
+                                      '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }
+                                    }}
                                     onClick={async () => {
                                       setLoading(true);
                                       try {
@@ -1741,9 +1743,9 @@ const FamilyManagement: React.FC = () => {
                                   disabled={unlinkingId === member.id}
                                   title="Unlink student from family"
                                   size="small"
-                                  sx={{ 
-                                    width: 20, 
-                                    height: 20, 
+                                  sx={{
+                                    width: 20,
+                                    height: 20,
                                     ml: 0.2,
                                     '&:hover': {
                                       background: 'rgba(239, 68, 68, 0.1)',
@@ -1763,434 +1765,436 @@ const FamilyManagement: React.FC = () => {
                           .sort((a, b) => (b.is_primary_contact ? 1 : 0) - (a.is_primary_contact ? 1 : 0))
                           .map((member: any) => (
                             <MemberItem key={member.id} className={member.is_primary_contact ? 'primary-contact' : ''}>
-                          <StudentAvatar
-                            $src={member.student?.picture_url}
-                            $bg={stringToColor(member.student?.name || '')}
-                            onMouseEnter={e => {
-                              if (previewTimeout.current) clearTimeout(previewTimeout.current);
-                              const rect = (e.target as HTMLElement).getBoundingClientRect();
-                              setStudentAvatarPreview({
-                                src: member.student?.picture_url,
-                                initials: getStudentInitials(member.student?.name || ''),
-                                bg: stringToColor(member.student?.name || ''),
-                                top: rect.top - 110 < 0 ? rect.bottom + 8 : rect.top - 110,
-                                left: rect.left - 32 < 0 ? rect.right + 8 : rect.left - 32,
-                              });
-                            }}
-                            onMouseLeave={() => {
-                              previewTimeout.current = setTimeout(() => setStudentAvatarPreview(null), 120);
-                            }}
-                          >
-                            {member.student?.picture_url ? (
-                              <img src={member.student.picture_url} alt={member.student.name} />
-                            ) : (
-                              getStudentInitials(member.student?.name || '')
-                            )}
-                          </StudentAvatar>
-                          <span>
-                            {member.student?.name}
-                            {getClassSectionString(member.student) && (
-                              <ClassSectionInfo>{getClassSectionString(member.student)}</ClassSectionInfo>
-                            )}
-                          </span>
-                          <div className="member-actions">
-                            <MuiButton
-                              variant={member.is_primary_contact ? 'contained' : 'outlined'}
-                              color="primary"
-                              size="small"
-                              disabled={member.is_primary_contact || loading}
-                              sx={{ 
-                                minWidth: 0, 
-                                px: 1, 
-                                fontSize: '0.75rem', 
-                                fontWeight: 500, 
-                                textTransform: 'none', 
-                                height: 22, 
-                                borderRadius: '6px'
-                              }}
-                              onClick={async () => {
-                                if (member.is_primary_contact) return;
-                                setLoading(true);
-                                try {
-                                  await supabase
-                                    .from('family_members')
-                                    .update({ is_primary_contact: false })
-                                    .eq('family_id', family.id);
-                                  await supabase
-                                    .from('family_members')
-                                    .update({ is_primary_contact: true })
-                                    .eq('id', member.id);
-                                  fetchFamilies();
-                                  showToast('Primary contact updated!', 'success');
-                                } catch (error) {
-                                  showToast('Failed to update primary contact', 'error');
-                                } finally {
-                                  setLoading(false);
-                                }
-                              }}
-                            >
-                              {member.is_primary_contact ? 'Primary' : 'Make Primary'}
-                            </MuiButton>
-                            {member.is_primary_contact && (
-                              <MuiIconButton
-                                title="Unset primary"
-                                size="small"
-                                sx={{ width: 20, height: 20, ml: 0.3,
-                                  '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}}
-                                onClick={() => setConfirm({
-                                  title: 'Remove Primary Contact',
-                                  message: `Unset ${member.student?.name || 'this student'} as the primary contact?`,
-                                  onConfirm: async () => {
+                              <StudentAvatar
+                                $src={member.student?.picture_url}
+                                $bg={stringToColor(member.student?.name || '')}
+                                onMouseEnter={e => {
+                                  if (previewTimeout.current) clearTimeout(previewTimeout.current);
+                                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                  setStudentAvatarPreview({
+                                    src: member.student?.picture_url,
+                                    initials: getStudentInitials(member.student?.name || ''),
+                                    bg: stringToColor(member.student?.name || ''),
+                                    top: rect.top - 110 < 0 ? rect.bottom + 8 : rect.top - 110,
+                                    left: rect.left - 32 < 0 ? rect.right + 8 : rect.left - 32,
+                                  });
+                                }}
+                                onMouseLeave={() => {
+                                  previewTimeout.current = setTimeout(() => setStudentAvatarPreview(null), 120);
+                                }}
+                              >
+                                {member.student?.picture_url ? (
+                                  <img src={member.student.picture_url} alt={member.student.name} />
+                                ) : (
+                                  getStudentInitials(member.student?.name || '')
+                                )}
+                              </StudentAvatar>
+                              <span>
+                                {member.student?.name}
+                                {getClassSectionString(member.student) && (
+                                  <ClassSectionInfo>{getClassSectionString(member.student)}</ClassSectionInfo>
+                                )}
+                              </span>
+                              <div className="member-actions">
+                                <MuiButton
+                                  variant={member.is_primary_contact ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  size="small"
+                                  disabled={member.is_primary_contact || loading}
+                                  sx={{
+                                    minWidth: 0,
+                                    px: 1,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    textTransform: 'none',
+                                    height: 22,
+                                    borderRadius: '6px'
+                                  }}
+                                  onClick={async () => {
+                                    if (member.is_primary_contact) return;
                                     setLoading(true);
                                     try {
                                       await supabase
                                         .from('family_members')
                                         .update({ is_primary_contact: false })
+                                        .eq('family_id', family.id);
+                                      await supabase
+                                        .from('family_members')
+                                        .update({ is_primary_contact: true })
                                         .eq('id', member.id);
                                       fetchFamilies();
-                                      showToast('Primary contact removed', 'success');
+                                      showToast('Primary contact updated!', 'success');
                                     } catch (error) {
-                                      showToast('Failed to remove primary', 'error');
+                                      showToast('Failed to update primary contact', 'error');
                                     } finally {
                                       setLoading(false);
                                     }
-                                  }
-                                })}
-                              >
-                                <CloseIcon sx={{ fontSize: '0.9rem' }} />
-                              </MuiIconButton>
-                            )}
-                            <MuiIconButton
-                              className="unlink-btn"
-                              onClick={() => setConfirm({
-                                title: 'Unlink Student',
-                                message: `Are you sure you want to unlink ${member.student?.name || 'this student'} from ${family.name}?`,
-                                onConfirm: async () => handleUnlinkStudent(member.id)
-                              })}
-                              disabled={unlinkingId === member.id}
-                              title="Unlink student from family"
-                              size="small"
-                              sx={{ 
-                                width: 20, 
-                                height: 20, 
-                                ml: 0.2,
-                                '&:hover': {
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  color: '#ef4444'
-                                }
-                              }}
-                            >
-                              <CloseIcon sx={{ fontSize: '0.9rem' }} />
-                            </MuiIconButton>
-                          </div>
-                        </MemberItem>
-                      ))}
+                                  }}
+                                >
+                                  {member.is_primary_contact ? 'Primary' : 'Make Primary'}
+                                </MuiButton>
+                                {member.is_primary_contact && (
+                                  <MuiIconButton
+                                    title="Unset primary"
+                                    size="small"
+                                    sx={{
+                                      width: 20, height: 20, ml: 0.3,
+                                      '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }
+                                    }}
+                                    onClick={() => setConfirm({
+                                      title: 'Remove Primary Contact',
+                                      message: `Unset ${member.student?.name || 'this student'} as the primary contact?`,
+                                      onConfirm: async () => {
+                                        setLoading(true);
+                                        try {
+                                          await supabase
+                                            .from('family_members')
+                                            .update({ is_primary_contact: false })
+                                            .eq('id', member.id);
+                                          fetchFamilies();
+                                          showToast('Primary contact removed', 'success');
+                                        } catch (error) {
+                                          showToast('Failed to remove primary', 'error');
+                                        } finally {
+                                          setLoading(false);
+                                        }
+                                      }
+                                    })}
+                                  >
+                                    <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                                  </MuiIconButton>
+                                )}
+                                <MuiIconButton
+                                  className="unlink-btn"
+                                  onClick={() => setConfirm({
+                                    title: 'Unlink Student',
+                                    message: `Are you sure you want to unlink ${member.student?.name || 'this student'} from ${family.name}?`,
+                                    onConfirm: async () => handleUnlinkStudent(member.id)
+                                  })}
+                                  disabled={unlinkingId === member.id}
+                                  title="Unlink student from family"
+                                  size="small"
+                                  sx={{
+                                    width: 20,
+                                    height: 20,
+                                    ml: 0.2,
+                                    '&:hover': {
+                                      background: 'rgba(239, 68, 68, 0.1)',
+                                      color: '#ef4444'
+                                    }
+                                  }}
+                                >
+                                  <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                                </MuiIconButton>
+                              </div>
+                            </MemberItem>
+                          ))}
                       </MemberList>
                     ))
-                ) : (
-                  <div style={{ 
-                    color: themeObj.TEXT_SECONDARY, 
-                    fontStyle: 'italic',
-                    fontSize: '0.85rem',
-                    padding: '0.75rem',
-                    textAlign: 'center',
-                    background: themeObj.BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
-                    borderRadius: '8px'
-                  }}>
-                    No students linked
-                  </div>
-                )}
-                <CardActions>
-                  <StyledIconButton onClick={() => startEditFamily(family)} title="Edit Family">
-                    <EditIcon fontSize="small" />
-                  </StyledIconButton>
-                  <DeleteButton onClick={() => handleDeleteFamily(family)} title={Array.isArray(family.family_members) && family.family_members.length > 0 ? 'Unlink all students first' : 'Delete Family'} disabled={Array.isArray(family.family_members) && family.family_members.length > 0}>
-                    <DeleteIcon fontSize="small" />
-                  </DeleteButton>
-                  <Button onClick={() => { setSelectedFamily(family); setShowLinkModal(true); }}>
-                    <PersonAdd style={{ fontSize: 18 }} /> Link Student
-                  </Button>
-                </CardActions>
-              </FamilyCard>
-            ))}
-          </FamiliesGrid>
+                  ) : (
+                    <div style={{
+                      color: themeObj.TEXT_SECONDARY,
+                      fontStyle: 'italic',
+                      fontSize: '0.85rem',
+                      padding: '0.75rem',
+                      textAlign: 'center',
+                      background: themeObj.BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+                      borderRadius: '8px'
+                    }}>
+                      No students linked
+                    </div>
+                  )}
+                  <CardActions>
+                    <StyledIconButton onClick={() => startEditFamily(family)} title="Edit Family">
+                      <EditIcon fontSize="small" />
+                    </StyledIconButton>
+                    <DeleteButton onClick={() => handleDeleteFamily(family)} title={Array.isArray(family.family_members) && family.family_members.length > 0 ? 'Unlink all students first' : 'Delete Family'} disabled={Array.isArray(family.family_members) && family.family_members.length > 0}>
+                      <DeleteIcon fontSize="small" />
+                    </DeleteButton>
+                    <Button onClick={() => { setSelectedFamily(family); setShowLinkModal(true); }}>
+                      <PersonAdd style={{ fontSize: 18 }} /> Link Student
+                    </Button>
+                  </CardActions>
+                </FamilyCard>
+              ))}
+            </FamiliesGrid>
           </>
         )}
 
         {/* Enhanced Add Family Modal */}
         <StyledDialog
-            open={showAddModal}
-            onClose={handleCloseModal}
-            fullScreen={fullScreen}
-            maxWidth="sm"
-            slotProps={{
-                backdrop: {
-                    sx: {
-                        position: 'fixed',
-                        zIndex: 1300
-                    }
-                }
-            }}
-            PaperProps={{
-                sx: {
-                    maxHeight: {
-                        xs: 'calc(100% - 96px)',
-                        sm: 'calc(100% - 100px)'
-                    }
-                }
-            }}
+          open={showAddModal}
+          onClose={handleCloseModal}
+          fullScreen={fullScreen}
+          maxWidth="sm"
+          slotProps={{
+            backdrop: {
+              sx: {
+                position: 'fixed',
+                zIndex: 1300
+              }
+            }
+          }}
+          PaperProps={{
+            sx: {
+              maxHeight: {
+                xs: 'calc(100% - 96px)',
+                sm: 'calc(100% - 100px)'
+              }
+            }
+          }}
         >
-            <DialogHeader>
-                <DialogTitle>Add New Family</DialogTitle>
-                <MuiIconButton onClick={handleCloseModal} size="small">
-                    <CloseIcon fontSize="small" />
-                </MuiIconButton>
-            </DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add New Family</DialogTitle>
+            <MuiIconButton onClick={handleCloseModal} size="small">
+              <CloseIcon fontSize="small" />
+            </MuiIconButton>
+          </DialogHeader>
 
-            <StyledDialogContent>
-              <form onSubmit={handleAddFamily}>
-                    <AvatarUploadBox component="label">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                            style={{ display: 'none' }}
-                        />
-                      {avatarPreview ? (
-                            <Box sx={{ position: 'relative' }}>
-                                <Avatar src={avatarPreview} sx={{ width: 80, height: 80, fontSize: '2.5rem' }}>
-                                    {!avatarPreview && getInitials(form.name)}
-                                </Avatar>
-                                <MuiIconButton 
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        removeAvatar();
-                                    }} 
-                                    size="small"
-                                    sx={{ 
-                                        position: 'absolute', 
-                                        top: -8, 
-                                        right: -8, 
-                                        background: '#ef4444', 
-                                        color: '#fff',
-                                        width: 24,
-                                        height: 24,
-                                        '&:hover': { background: '#dc2626' }
-                                    }}
-                                >
-                          <CloseIcon fontSize="small" />
-                                </MuiIconButton>
-                            </Box>
-                        ) : (
-                            <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                        )}
-                        <Typography variant="body2" color="text.secondary">
-                            {avatarPreview ? 'Click to change avatar' : 'Click to upload avatar'}
-                        </Typography>
-                    </AvatarUploadBox>
+          <StyledDialogContent>
+            <form onSubmit={handleAddFamily}>
+              <AvatarUploadBox component="label">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  style={{ display: 'none' }}
+                />
+                {avatarPreview ? (
+                  <Box sx={{ position: 'relative' }}>
+                    <Avatar src={avatarPreview} sx={{ width: 80, height: 80, fontSize: '2.5rem' }}>
+                      {!avatarPreview && getInitials(form.name)}
+                    </Avatar>
+                    <MuiIconButton
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeAvatar();
+                      }}
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        background: '#ef4444',
+                        color: '#fff',
+                        width: 24,
+                        height: 24,
+                        '&:hover': { background: '#dc2626' }
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </MuiIconButton>
+                  </Box>
+                ) : (
+                  <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+                )}
+                <Typography variant="body2" color="text.secondary">
+                  {avatarPreview ? 'Click to change avatar' : 'Click to upload avatar'}
+                </Typography>
+              </AvatarUploadBox>
 
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Family Name"
-                                value={form.name}
-                                onChange={e => setForm({ ...form, name: e.target.value })}
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Family Name"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
                     required
-                                fullWidth
-                                size="small"
+                    fullWidth
+                    size="small"
                   />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Address"
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Address"
                     value={form.address}
                     onChange={e => setForm({ ...form, address: e.target.value })}
-                                fullWidth
-                                size="small"
-                                multiline
-                                rows={2}
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={2}
                   />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Contact Number"
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Contact Number"
                     value={form.contact_number}
                     onChange={e => setForm({ ...form, contact_number: e.target.value })}
-                                fullWidth
-                                size="small"
-                                type="tel"
-                            />
-                        </Grid>
-                    </Grid>
-              </form>
-            </StyledDialogContent>
+                    fullWidth
+                    size="small"
+                    type="tel"
+                  />
+                </Grid>
+              </Grid>
+            </form>
+          </StyledDialogContent>
 
-            <FormActions>
-                <MuiButton 
-                    onClick={handleCloseModal}
-                    variant="outlined"
-                    size="small"
-                    sx={{ 
-                        borderRadius: '6px',
-                        textTransform: 'none',
-                        px: 2
-                    }}
-                >
-                    Cancel
-                </MuiButton>
-                <MuiButton 
-                    onClick={handleAddFamily}
-                    variant="contained"
-                    size="small"
-                    disabled={loading}
-                    sx={{ 
-                        borderRadius: '6px',
-                        textTransform: 'none',
-                        px: 2
-                    }}
-                >
-                    {loading ? 'Saving...' : 'Add Family'}
-                </MuiButton>
-            </FormActions>
+          <FormActions>
+            <MuiButton
+              onClick={handleCloseModal}
+              variant="outlined"
+              size="small"
+              sx={{
+                borderRadius: '6px',
+                textTransform: 'none',
+                px: 2
+              }}
+            >
+              Cancel
+            </MuiButton>
+            <MuiButton
+              onClick={handleAddFamily}
+              variant="contained"
+              size="small"
+              disabled={loading}
+              sx={{
+                borderRadius: '6px',
+                textTransform: 'none',
+                px: 2
+              }}
+            >
+              {loading ? 'Saving...' : 'Add Family'}
+            </MuiButton>
+          </FormActions>
         </StyledDialog>
 
         {/* Enhanced Edit Family Modal */}
         <StyledDialog
-            open={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            fullScreen={fullScreen}
-            maxWidth="sm"
-            slotProps={{
-                backdrop: {
-                    sx: {
-                        position: 'fixed',
-                        zIndex: 1300
-                    }
-                }
-            }}
-            PaperProps={{
-                sx: {
-                    maxHeight: {
-                        xs: 'calc(100% - 96px)',
-                        sm: 'calc(100% - 100px)'
-                    }
-                }
-            }}
+          open={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          fullScreen={fullScreen}
+          maxWidth="sm"
+          slotProps={{
+            backdrop: {
+              sx: {
+                position: 'fixed',
+                zIndex: 1300
+              }
+            }
+          }}
+          PaperProps={{
+            sx: {
+              maxHeight: {
+                xs: 'calc(100% - 96px)',
+                sm: 'calc(100% - 100px)'
+              }
+            }
+          }}
         >
-            <DialogHeader>
-                <DialogTitle>Edit Family</DialogTitle>
-                <MuiIconButton onClick={() => setShowEditModal(false)} size="small">
-                    <CloseIcon fontSize="small" />
-                </MuiIconButton>
-            </DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit Family</DialogTitle>
+            <MuiIconButton onClick={() => setShowEditModal(false)} size="small">
+              <CloseIcon fontSize="small" />
+            </MuiIconButton>
+          </DialogHeader>
 
-            <StyledDialogContent>
-              <form onSubmit={handleEditFamily}>
-                    <AvatarUploadBox component="label">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                            style={{ display: 'none' }}
-                        />
-                      {avatarPreview ? (
-                            <Box sx={{ position: 'relative' }}>
-                                <Avatar src={avatarPreview} sx={{ width: 80, height: 80, fontSize: '2.5rem' }}>
-                                    {!avatarPreview && getInitials(form.name)}
-                                </Avatar>
-                                <MuiIconButton 
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        removeAvatar();
-                                    }} 
-                                    size="small"
-                                    sx={{ 
-                                        position: 'absolute', 
-                                        top: -8, 
-                                        right: -8, 
-                                        background: '#ef4444', 
-                                        color: '#fff',
-                                        width: 24,
-                                        height: 24,
-                                        '&:hover': { background: '#dc2626' }
-                                    }}
-                                >
-                          <CloseIcon fontSize="small" />
-                                </MuiIconButton>
-                            </Box>
-                        ) : (
-                            <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                        )}
-                        <Typography variant="body2" color="text.secondary">
-                            {avatarPreview ? 'Click to change avatar' : 'Click to upload avatar'}
-                        </Typography>
-                    </AvatarUploadBox>
+          <StyledDialogContent>
+            <form onSubmit={handleEditFamily}>
+              <AvatarUploadBox component="label">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  style={{ display: 'none' }}
+                />
+                {avatarPreview ? (
+                  <Box sx={{ position: 'relative' }}>
+                    <Avatar src={avatarPreview} sx={{ width: 80, height: 80, fontSize: '2.5rem' }}>
+                      {!avatarPreview && getInitials(form.name)}
+                    </Avatar>
+                    <MuiIconButton
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeAvatar();
+                      }}
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        background: '#ef4444',
+                        color: '#fff',
+                        width: 24,
+                        height: 24,
+                        '&:hover': { background: '#dc2626' }
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </MuiIconButton>
+                  </Box>
+                ) : (
+                  <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+                )}
+                <Typography variant="body2" color="text.secondary">
+                  {avatarPreview ? 'Click to change avatar' : 'Click to upload avatar'}
+                </Typography>
+              </AvatarUploadBox>
 
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Family Name"
-                                value={form.name}
-                                onChange={e => setForm({ ...form, name: e.target.value })}
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Family Name"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
                     required
-                                fullWidth
-                                size="small"
+                    fullWidth
+                    size="small"
                   />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Address"
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Address"
                     value={form.address}
                     onChange={e => setForm({ ...form, address: e.target.value })}
-                                fullWidth
-                                size="small"
-                                multiline
-                                rows={2}
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={2}
                   />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Contact Number"
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Contact Number"
                     value={form.contact_number}
                     onChange={e => setForm({ ...form, contact_number: e.target.value })}
-                                fullWidth
-                                size="small"
-                                type="tel"
-                            />
-                        </Grid>
-                    </Grid>
-              </form>
-            </StyledDialogContent>
+                    fullWidth
+                    size="small"
+                    type="tel"
+                  />
+                </Grid>
+              </Grid>
+            </form>
+          </StyledDialogContent>
 
-            <FormActions>
-                <MuiButton 
-                    onClick={() => setShowEditModal(false)}
-                    variant="outlined"
-                    size="small"
-                    sx={{ 
-                        borderRadius: '6px',
-                        textTransform: 'none',
-                        px: 2
-                    }}
-                >
-                    Cancel
-                </MuiButton>
-                <MuiButton 
-                    onClick={handleEditFamily}
-                    variant="contained"
-                    size="small"
-                    disabled={loading}
-                    sx={{ 
-                        borderRadius: '6px',
-                        textTransform: 'none',
-                        px: 2
-                    }}
-                >
-                    {loading ? 'Saving...' : 'Update Family'}
-                </MuiButton>
-            </FormActions>
+          <FormActions>
+            <MuiButton
+              onClick={() => setShowEditModal(false)}
+              variant="outlined"
+              size="small"
+              sx={{
+                borderRadius: '6px',
+                textTransform: 'none',
+                px: 2
+              }}
+            >
+              Cancel
+            </MuiButton>
+            <MuiButton
+              onClick={handleEditFamily}
+              variant="contained"
+              size="small"
+              disabled={loading}
+              sx={{
+                borderRadius: '6px',
+                textTransform: 'none',
+                px: 2
+              }}
+            >
+              {loading ? 'Saving...' : 'Update Family'}
+            </MuiButton>
+          </FormActions>
         </StyledDialog>
 
         {/* Link Student Modal (centered to viewport via MUI Dialog) */}
@@ -2264,7 +2268,7 @@ const FamilyManagement: React.FC = () => {
               </form>
             </StyledDialogContent>
             <FormActions>
-              <MuiButton 
+              <MuiButton
                 onClick={() => setShowLinkModal(false)}
                 variant="outlined"
                 size="small"
@@ -2272,7 +2276,7 @@ const FamilyManagement: React.FC = () => {
               >
                 Cancel
               </MuiButton>
-              <MuiButton 
+              <MuiButton
                 onClick={handleLinkStudent}
                 variant="contained"
                 size="small"

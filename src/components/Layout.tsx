@@ -2490,7 +2490,7 @@ const Layout: React.FC = () => {
   // Helper to play hover sound
   const playHoverSound = () => {
     if (!userHasInteracted.current || muted) return;
-    const audio = new window.Audio('/hover.mp3?v=' + Date.now());
+    const audio = new window.Audio(`${process.env.PUBLIC_URL || '.'}/hover.mp3?v=` + Date.now());
     audio.volume = 1.0;
     audio.currentTime = 0;
     audio.play().catch(() => { });

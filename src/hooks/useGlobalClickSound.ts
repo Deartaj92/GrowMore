@@ -21,9 +21,9 @@ export default function useGlobalClickSound() {
       while (el && el !== document.body) {
         if (isButtonLike(el)) {
           if (!muted) {
-            const audio = new window.Audio('/click.mp3');
+            const audio = new window.Audio(`${process.env.PUBLIC_URL || '.'}/click.mp3`);
             audio.volume = 1.0;
-            audio.play().catch(() => {});
+            audio.play().catch(() => { });
           }
           break;
         }

@@ -75,7 +75,7 @@ export const pushNotificationService = {
         .from('device_push_tokens')
         .delete()
         .eq('token', token);
-      
+
       if (error) throw error;
     } catch (error) {
       console.error('[PushService] Failed to unregister token:', error);
@@ -127,8 +127,8 @@ export const pushNotificationService = {
       // Foreground notification
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.log('[PushService] Notification received:', notification);
-        // Show an alert for testing purposes so we know it arrived
-        alert(`Notification: ${notification.title}\n${notification.body}`);
+        // The NotificationContext will handle showing the announcement modal
+        // No need for alert here
       });
 
       // Action performed (tap)
@@ -154,7 +154,7 @@ export const pushNotificationService = {
 
       // Start the service (Replace with your Firebase Sender ID)
       // You can get this from your Firebase Console -> Project Settings -> Cloud Messaging
-      const SENDER_ID = "165947503568"; 
+      const SENDER_ID = "165947503568";
       (window as any).electronAPI.startPushService(SENDER_ID);
 
       // Listen for token updates
@@ -166,13 +166,13 @@ export const pushNotificationService = {
       // Listen for notifications
       (window as any).electronAPI.onPushNotificationReceived((notification: any) => {
         console.log('[PushService] Electron Notification Received:', notification);
-        
+
         // Show native notification if window is not focused or just to be sure
         if (notification.notification) {
-           new Notification(notification.notification.title, {
-             body: notification.notification.body,
-             icon: '/favicon.ico'
-           });
+          new Notification(notification.notification.title, {
+            body: notification.notification.body,
+            icon: '/favicon.ico'
+          });
         }
       });
 

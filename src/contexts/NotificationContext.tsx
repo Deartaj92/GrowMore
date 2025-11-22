@@ -330,10 +330,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
     if (window.Notification.permission === 'granted' && (!preferences || preferences.push_notifications)) {
       try {
-        new window.Notification(title, {
+        // Get the correct icon path
+        const iconPath = window.electronAPI
+          ? `${process.env.PUBLIC_URL || '.'}/notification-icon.png`
+          : '/notification-icon.png';
+
+        // Windows will handle the app name in the header now that AUMID matches
+        const notificationTitle = title;
+
+        new window.Notification(notificationTitle, {
           body,
-          icon: '/favicon.ico', // Fallback icon
-          badge: '/favicon.ico',
+          icon: iconPath,
+          badge: iconPath,
           tag: 'school-notification' // Group notifications
         });
       } catch (e) {

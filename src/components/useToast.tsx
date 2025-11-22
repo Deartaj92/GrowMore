@@ -12,11 +12,11 @@ interface ToastContextType {
   showToast: (msg: string, type?: ToastType) => void;
 }
 
-const ToastContext = createContext<ToastContextType>({ showToast: () => {} });
+const ToastContext = createContext<ToastContextType>({ showToast: () => { } });
 
 export const useToast = () => useContext(ToastContext);
 
-export const ToastProvider: React.FC<{children: React.ReactNode, theme: 'dark' | 'light', muted?: boolean}> = ({ children, theme, muted = false }) => {
+export const ToastProvider: React.FC<{ children: React.ReactNode, theme: 'dark' | 'light', muted?: boolean }> = ({ children, theme, muted = false }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
 
@@ -25,14 +25,14 @@ export const ToastProvider: React.FC<{children: React.ReactNode, theme: 'dark' |
     setToasts(prev => [...prev, { msg, type, id }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2200);
     if (type === 'success' && !muted) {
-      const audio = new window.Audio('/success.mp3');
+      const audio = new window.Audio(`${process.env.PUBLIC_URL || '.'}/success.mp3`);
       audio.volume = 1.0;
-      audio.play().catch(() => {});
+      audio.play().catch(() => { });
     }
     if (type === 'error' && !muted) {
-      const audio = new window.Audio('/error.mp3');
+      const audio = new window.Audio(`${process.env.PUBLIC_URL || '.'}/error.mp3`);
       audio.volume = 1.0;
-      audio.play().catch(() => {});
+      audio.play().catch(() => { });
     }
   };
 
