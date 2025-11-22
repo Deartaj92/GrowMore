@@ -42,7 +42,8 @@ function createWindow() {
   // Log the URL being loaded
   console.log('Loading URL:', startUrl);
 
-  if (isDev) {
+  // Force DevTools open (temporarily for debugging packaged build)
+  if (true) {
     mainWindow.webContents.openDevTools();
   }
 

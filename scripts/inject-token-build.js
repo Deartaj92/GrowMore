@@ -25,7 +25,8 @@ const pkg = require('../package.json');
 const githubToken = getGitHubToken();
 const buildEnv = {
   ...process.env,
-  REACT_APP_VERSION: pkg.version
+  REACT_APP_VERSION: pkg.version,
+  PUBLIC_URL: '.'
 };
 
 // Add GitHub token if available
@@ -42,7 +43,8 @@ try {
   // This ensures the token is properly passed even with special characters
   const buildEnvWithToken = {
     ...process.env,
-    REACT_APP_VERSION: pkg.version
+    REACT_APP_VERSION: pkg.version,
+    PUBLIC_URL: '.'
   };
   
   // Add token to environment if available

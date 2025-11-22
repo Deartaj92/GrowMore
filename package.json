@@ -20,6 +20,7 @@
     "electron-pack-win-ps": "rimraf dist && powershell -ExecutionPolicy Bypass -File scripts/build-electron.ps1",
     "electron-pack-win-simple": "rimraf dist && npm run build && node scripts/copy-aboutus-image.js && electron-builder --win",
     "electron-pack-win-packager": "rimraf dist && npm run build && electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
+    "electron-pack-win-fast": "rimraf dist && node scripts/copy-aboutus-image.js && node scripts/generate-asset-manifest.js && electron-builder --win",
     "win-pack": "rimraf dist && npm run build && electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
     "electron-pack-mac": "rimraf dist && npm run build && electron-builder --mac",
     "electron-pack-linux": "rimraf dist && npm run build && electron-builder --linux",
