@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import NoSessionsFound from './NoSessionsFound';
@@ -1132,7 +1133,7 @@ const AttendanceReport: React.FC = () => {
       setProgress(60);
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('id, name')
+        .select('id, name, roll_number')
         .eq('school_id', user.school_id)
         .in('id', studentIds);
 
@@ -1546,8 +1547,10 @@ const AttendanceReport: React.FC = () => {
 
   // Filter students based on search query and attendance records
   const filteredStudents = students.filter(student => {
-    // First check if student matches search query
-    const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase());
+    // First check if student matches search query (name or roll_number)
+    const nameMatch = student.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const idMatch = matchesStudentSearch(student, searchQuery);
+    const matchesSearch = nameMatch || idMatch.matches;
     if (!matchesSearch) return false;
 
     // Then check if student has any attendance records for the month
@@ -1847,7 +1850,7 @@ const AttendanceReport: React.FC = () => {
       const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
       const row = [
         (idx + 1).toString(),
-        student.id.toString(),
+        getStudentDisplayId(student).toString(),
         student.name,
         ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
           const date = new Date(parseISO(selectedMonth + '-01'));
@@ -2348,7 +2351,7 @@ const AttendanceReport: React.FC = () => {
                </SegmentedSelect>
                <SegmentedInput
             type="text"
-            placeholder="Search by name..."
+            placeholder="Search by name or roll number..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
                  style={{ minWidth: '120px' }}
@@ -2470,7 +2473,7 @@ const AttendanceReport: React.FC = () => {
              </SegmentedSelect>
              <SegmentedInput
                type="text"
-               placeholder="Search by name..."
+               placeholder="Search by name or roll number..."
                value={searchQuery}
                onChange={e => setSearchQuery(e.target.value)}
                style={{ width: '100%' }}
@@ -2544,7 +2547,7 @@ const AttendanceReport: React.FC = () => {
               return (
               <tr key={student.id}>
                 <NarrowTd>{idx + 1}</NarrowTd>
-                <NarrowTd>{student.id}</NarrowTd>
+                <NarrowTd>{getStudentDisplayId(student)}</NarrowTd>
                 <StudentNameCell>{student.name}</StudentNameCell>
                 {Array.from({ length: daysInMonth }, (_, dayIdx) => {
                     if (skipCols > 0) {

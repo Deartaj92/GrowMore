@@ -8,6 +8,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import { darkTheme, lightTheme, useProgress } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 import Loader from '../components/Loader';
 // Reuse styled components from StudentStatusManager or redefine as needed
@@ -1872,7 +1873,7 @@ const BulkPromoteDemote: React.FC = () => {
                       )}
                     </Avatar>
                           <div>
-                            <StudentName>{student.id} - {student.name}</StudentName>
+                            <StudentName>{getStudentDisplayId(student)} - {student.name}</StudentName>
                           </div>
                         </StudentInfo>
                   </Td>
@@ -1931,7 +1932,7 @@ const BulkPromoteDemote: React.FC = () => {
                       )}
                     </Avatar>
                           <div>
-                            <StudentName>{student.id} - {student.name}</StudentName>
+                            <StudentName>{getStudentDisplayId(student)} - {student.name}</StudentName>
                           </div>
                         </StudentInfo>
                   </Td>
@@ -2002,7 +2003,7 @@ const BulkPromoteDemote: React.FC = () => {
                     .map(student => (
                       <StudentItem key={student.id}>
                         <StudentListItemName>
-                          {student.id} - {student.name}
+                          {getStudentDisplayId(student)} - {student.name}
                         </StudentListItemName>
                       </StudentItem>
                     ))}

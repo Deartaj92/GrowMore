@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo, useCallback, memo, useRef } from 'react';
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 // Spinner animation
 const spin = keyframes`
@@ -1406,7 +1407,7 @@ const MarksEntryManager: React.FC = () => {
           new_section_id,
           adm_class_id,
           adm_section_id,
-          students!inner(id, name, father_name, status)
+          students!inner(id, name, father_name, status, roll_number)
         `)
         .eq('session_id', sessionData.id)
         .eq('school_id', user?.school_id)
@@ -1439,6 +1440,7 @@ const MarksEntryManager: React.FC = () => {
           id: student.id,
           name: student.name,
           father_name: student.father_name,
+          roll_number: student.roll_number,
           class_id: classId,
           section_id: sectionId
         });
@@ -1538,10 +1540,17 @@ const MarksEntryManager: React.FC = () => {
         doc.line(15, 50, pageWidth - 15, 50);
         
         // Table data - sorted by ID
-        const sortedStudents = students.sort((a, b) => a.id - b.id);
+        const sortedStudents = students.sort((a, b) => {
+          const aId = getStudentDisplayId(a);
+          const bId = getStudentDisplayId(b);
+          if (typeof aId === 'number' && typeof bId === 'number') {
+            return aId - bId;
+          }
+          return String(aId).localeCompare(String(bId));
+        });
         const tableData = sortedStudents.map((student, index) => [
           index + 1,
-          student.id.toString(),
+          getStudentDisplayId(student).toString(),
           student.name,
           student.father_name || '',
           '', // Total marks (blank for teacher to fill)
@@ -2276,7 +2285,7 @@ const MarksEntryManager: React.FC = () => {
       // Fetch full student details
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('id, name, father_name, picture_url, class_id, section_id, school_id')
+        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('status', 'active')
         .in('id', studentIds);
@@ -2621,14 +2630,14 @@ const MarksEntryManager: React.FC = () => {
                       <StudentName>{student.name}</StudentName>
                       <StudentDetails>
                         <span>{student.father_name}</span>
-                        <StudentId>ID: {student.id}</StudentId>
+                        <StudentId>ID: {getStudentDisplayId(student)}</StudentId>
                       </StudentDetails>
                     </DesktopLayout>
                     
                     {/* Mobile layout - vertical layout */}
                     <MobileStudentLayout>
                       <MobileStudentName>
-                        {student.name} - <StudentId>ID: {student.id}</StudentId>
+                        {student.name} - <StudentId>ID: {getStudentDisplayId(student)}</StudentId>
                       </MobileStudentName>
                       <MobileFatherName>{student.father_name}</MobileFatherName>
                     </MobileStudentLayout>

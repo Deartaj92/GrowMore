@@ -23,6 +23,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { CircularProgress, Button, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 // ===== STYLED COMPONENTS =====
 
@@ -405,7 +406,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
           .gte('payment_date', '2020-01-01'), // Get all payments for comparisons
         supabase
           .from('students')
-          .select('id, name, class_id, section_id')
+          .select('id, name, class_id, section_id, roll_number')
           .eq('school_id', user.school_id)
           .eq('status', 'active'),
         supabase
@@ -1210,7 +1211,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
                     <TableCell>
                       <div style={{ fontWeight: '600' }}>{defaulter.name}</div>
                       <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY }}>
-                        ID: {defaulter.id}
+                        ID: {getStudentDisplayId(defaulter)}
                       </div>
                     </TableCell>
                     <TableCell>

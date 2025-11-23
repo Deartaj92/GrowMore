@@ -3,6 +3,7 @@ import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { ThemeContext, darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabaseClient';
 import { testRecordService } from '../services/testRecordService';
@@ -53,6 +54,7 @@ interface Student {
   id: number;
   name: string;
   father_name?: string;
+  roll_number?: string | null;
   picture_url?: string;
   class_id: number;
   section_id: number;
@@ -950,7 +952,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
           fetchAllRows(async (from, to) => {
             return await supabase
               .from('students')
-              .select('id, name, father_name, class_id, section_id, picture_url, school_id')
+              .select('id, name, father_name, class_id, section_id, picture_url, school_id, roll_number')
               .eq('status', 'active')
               .eq('school_id', user.school_id)
               .range(from, to);
@@ -1059,7 +1061,11 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
      
     const s = search.trim().toLowerCase();
     let filtered = students.filter(
-      (stu: Student) => stu.name.toLowerCase().includes(s) || String(stu.id).includes(s)
+      (stu: Student) => {
+        const nameMatch = stu.name.toLowerCase().includes(s);
+        const idMatch = matchesStudentSearch(stu, s);
+        return nameMatch || idMatch.matches;
+      }
     );
     // If searching by digits, sort by id ascending; otherwise keep name order
     if (/^\d+$/.test(s)) {
@@ -1521,7 +1527,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
                             {student.name} • <span className="father-name">{student.father_name}</span>
                           </SuggestionName>
                           <SuggestionDetails>
-                            Class: {getClassName(student.class_id)} {getSectionName(student.section_id)} | ID: {student.id}
+                            Class: {getClassName(student.class_id)} {getSectionName(student.section_id)} | ID: {getStudentDisplayId(student)}
                           </SuggestionDetails>
                         </SuggestionInfo>
                       </SuggestionItem>
@@ -1650,7 +1656,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
                       {student.name} • <span className="father-name">{student.father_name}</span>
                     </SuggestionName>
                     <SuggestionDetails>
-                      Class: {getClassName(student.class_id)} {getSectionName(student.section_id)} | ID: {student.id}
+                      Class: {getClassName(student.class_id)} {getSectionName(student.section_id)} | ID: {getStudentDisplayId(student)}
                     </SuggestionDetails>
                   </SuggestionInfo>
                 </SuggestionItem>

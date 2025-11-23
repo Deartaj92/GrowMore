@@ -7,6 +7,7 @@ import { AccountCircle, Add, Edit, Delete, Search, FilterList, Visibility, Visib
 import { Tabs, Tab, Box } from '@mui/material';
 import UserForm from '../components/UserForm';
 import { useAuth } from '../contexts/AuthContext';
+import { getStudentDisplayId } from '../utils/studentUtils';
 import NoSessionsFound from '../components/NoSessionsFound';
 import Loader from '../components/Loader';
 
@@ -1241,7 +1242,7 @@ const UserManagement: React.FC = () => {
               
               return (
                 <UserCard key={student.id} status={student.status}>
-                  <RoleBadge role="Student">ID: {student.id}</RoleBadge>
+                  <RoleBadge role="Student">ID: {getStudentDisplayId(student)}</RoleBadge>
                   <CardTop>
                     <Avatar src={student.picture_url}>
                       {!student.picture_url && student.name.charAt(0).toUpperCase()}
@@ -1433,7 +1434,7 @@ const UserManagement: React.FC = () => {
                   color: '#6b7280',
                   marginTop: 2
                 }}>
-                  ID: {selectedStudent.id} {selectedStudent.father_name && `| Father: ${selectedStudent.father_name}`}
+                  ID: {getStudentDisplayId(selectedStudent)} {selectedStudent.father_name && `| Father: ${selectedStudent.father_name}`}
                 </div>
               </div>
             </div>

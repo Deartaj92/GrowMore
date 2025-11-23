@@ -33,7 +33,6 @@ import PageNotFound from './pages/PageNotFound';
 import StudentStatusManager from './pages/StudentStatusManager';
 import BulkPromoteDemote from './pages/BulkPromoteDemote';
 import UserManagement from './pages/UserManagement';
-import StudentPasswordManagement from './pages/StudentPasswordManagement';
 import GeneralSettings from './pages/GeneralSettings';
 import UserAnnouncements from './pages/UserAnnouncements';
 import NotificationSettings from './pages/NotificationSettings';
@@ -456,15 +455,6 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
                                 <UserManagement />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/student-passwords"
-                            element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                                <StudentPasswordManagement />
                               </ProtectedRoute>
                             }
                           />
@@ -933,7 +923,7 @@ const App: React.FC = () => {
                           <Route
                             path="schools"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin']}>
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal']}>
                                 <SchoolsManagement />
                               </ProtectedRoute>
                             }

@@ -1235,7 +1235,7 @@ const MasterSheetManager: React.FC = () => {
       // Get all students for the selected class/section (regardless of status)
       const studentQuery = supabase
         .from('students')
-        .select('id, name, father_name, picture_url, class_id, section_id, school_id')
+        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('class_id', selectedClass.id);
       

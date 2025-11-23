@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import styled, { useTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { supabase } from '../supabaseClient';
 import {
   AccountCircle,
@@ -1603,7 +1604,7 @@ const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmi
               marginLeft: '6px',
               fontWeight: 'normal'
             }}>
-              #{student.id}
+              #{getStudentDisplayId(student)}
             </span>
           </StudentName>
           <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.5rem' : '1rem', flexDirection: isMobile ? 'column' : 'row' }}>
@@ -1916,19 +1917,11 @@ const StudentStatusManager: React.FC = () => {
       if (searchLower && shouldInclude) {
         let searchMatch = false;
 
-        if (isNumericSearch && searchTermNum !== null) {
-          // ID search - prioritize exact match, then starts with, then contains
-          const studentIdStr = String(stu.id);
-          if (stu.id === searchTermNum) {
-            searchScore = 1000; // Highest priority for exact match
-            searchMatch = true;
-          } else if (studentIdStr.startsWith(searchTerm)) {
-            searchScore = 500; // High priority for starts with
-            searchMatch = true;
-          } else if (studentIdStr.includes(searchTerm)) {
-            searchScore = 100; // Lower priority for contains
-            searchMatch = true;
-          }
+        // Check ID/roll_number search using utility function
+        const idMatch = matchesStudentSearch(stu, searchTerm);
+        if (idMatch.matches) {
+          searchScore = idMatch.score;
+          searchMatch = true;
         }
 
         // Name and other field searches
@@ -1942,19 +1935,13 @@ const StudentStatusManager: React.FC = () => {
             // Prioritize name matches
             if (nameMatch) {
               if (stu.name?.toLowerCase().startsWith(searchLower)) {
-                searchScore = 100; // High priority for name starts with
+                searchScore = Math.max(searchScore, 100); // High priority for name starts with
               } else {
-                searchScore = 50; // Lower priority for name contains
+                searchScore = Math.max(searchScore, 50); // Lower priority for name contains
               }
             } else {
-              searchScore = 25; // Lower priority for class/section matches
+              searchScore = Math.max(searchScore, 25); // Lower priority for class/section matches
             }
-          }
-
-          // Also check ID for non-numeric searches (secondary)
-          if (!searchMatch && String(stu.id).includes(searchTerm)) {
-            searchScore = 10;
-            searchMatch = true;
           }
         }
 

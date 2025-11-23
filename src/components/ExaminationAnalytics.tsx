@@ -1354,7 +1354,7 @@ const ExaminationAnalytics: React.FC = () => {
     const allStudents = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('students')
-        .select('id, name, father_name, class_id, section_id')
+          .select('id, name, father_name, class_id, section_id, roll_number')
         .in('class_id', classIds)
         .eq('school_id', schoolId)
         .range(from, to);

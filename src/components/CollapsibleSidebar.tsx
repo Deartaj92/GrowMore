@@ -141,7 +141,7 @@ const SidebarMenu = styled.ul`
 `;
 
 // Simple About Us button
-const AboutUsButton = styled.button`
+const AboutUsButton = styled.button<{ expanded: boolean }>`
   position: absolute;
   bottom: 16px;
   right: 16px;
@@ -151,7 +151,7 @@ const AboutUsButton = styled.button`
   border: none;
   border-radius: 50%;
   color: white;
-  display: flex;
+  display: ${({ expanded }) => expanded ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -633,7 +633,7 @@ const allPages = [
     text: 'Schools Management',
     icon: <BusinessIcon />,
     path: '/schools',
-    allowedRoles: ['Super Admin'],
+    allowedRoles: ['Super Admin', 'Principal'],
     category: 'Main',
     keywords: ['schools', 'institutions', 'management', 'multi-school']
   },
@@ -1393,19 +1393,22 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
         </SidebarMenu>
         
         {/* Simple About Us Button */}
-        <AboutUsButton 
-          onClick={() => {
-            if (onAboutUsClick) {
-              onAboutUsClick();
-            } else {
-              handleNavigate('/about');
-            }
-            onClose();
-          }}
-          title="About Grow More"
-        >
-          <InfoIcon />
-        </AboutUsButton>
+        {expanded && (
+          <AboutUsButton 
+            onClick={() => {
+              if (onAboutUsClick) {
+                onAboutUsClick();
+              } else {
+                handleNavigate('/about');
+              }
+              onClose();
+            }}
+            title="About Grow More"
+            expanded={expanded}
+          >
+            <InfoIcon />
+          </AboutUsButton>
+        )}
       </SidebarContainer>
     </ThemeProvider>
   );

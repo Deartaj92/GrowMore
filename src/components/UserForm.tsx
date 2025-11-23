@@ -181,11 +181,31 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
         setUsernameStatus('idle');
       }
     } else {
-      // For new users, reset username status
+      // For new users, reset username status and fetch default password
       setUsernameStatus('idle');
+      fetchDefaultPassword();
     }
     fetchStaff();
   }, [user]);
+
+  const fetchDefaultPassword = async () => {
+    if (!currentUser?.school_id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('default_passwords')
+        .select('staff_password')
+        .eq('school_id', currentUser.school_id)
+        .single();
+      
+      if (!error && data) {
+        setForm(prev => ({ ...prev, password: data.staff_password || 'aa' }));
+      }
+    } catch (error) {
+      // Use default 'aa' if fetch fails
+      setForm(prev => ({ ...prev, password: 'aa' }));
+    }
+  };
 
   useEffect(() => {
     if (form.role && form.role !== 'Guest') {

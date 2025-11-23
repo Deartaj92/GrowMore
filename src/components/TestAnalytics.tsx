@@ -669,6 +669,7 @@ interface Teacher {
 interface StudentAnalytics {
   student_id: number;
   student_name: string;
+  roll_number?: string | null;
   class_name: string;
   section_name: string;
   total_tests: number;
@@ -1016,7 +1017,7 @@ const TestAnalytics: React.FC = () => {
       // Get student details
       const { data: studentsData } = await supabase
         .from('students')
-        .select('id, name, class_id, section_id')
+        .select('id, name, class_id, section_id, roll_number')
         .in('id', studentIds)
         .eq('school_id', user.school_id);
 
@@ -1052,6 +1053,7 @@ const TestAnalytics: React.FC = () => {
           analyticsMap.set(studentId, {
             student_id: studentId,
             student_name: student.name,
+            roll_number: student.roll_number,
             class_name: classesMap.get(student.class_id) || '-',
             section_name: sectionsMap.get(student.section_id) || '-',
             total_tests: 0,

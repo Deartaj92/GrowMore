@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { AccountCircle } from '@mui/icons-material';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 const PrintGlobal = createGlobalStyle`
   @media print {
@@ -252,7 +253,7 @@ const AdmissionLetterPrint = ({ student, onClose }: { student: any, onClose: () 
           </Avatar>
           <TopCell>
             <Label>Admission ID</Label>
-            <Value>{student.id || '-'}</Value>
+            <Value>{getStudentDisplayId(student) || '-'}</Value>
           </TopCell>
           <TopCell>
             <Label>Date of Birth</Label>

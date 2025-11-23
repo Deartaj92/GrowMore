@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styled, { ThemeProvider, useTheme } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { supabase, setAuthContext } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
@@ -193,6 +193,17 @@ const Input = styled.input`
   padding: 13px 0;
   width: 100%;
   &:focus { outline: none; }
+  
+  /* Prevent autofill from changing theme style */
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus,
+  &:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px ${({ theme }) => theme.FIELD_BG} inset !important;
+    -webkit-text-fill-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
+    caret-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
 `;
 const ToggleButton = styled.button`
   background: none;
@@ -457,30 +468,92 @@ const Login: React.FC = () => {
         navigate('/landing-page', { replace: true });
         return;
       } else {
-        // Student authentication: lookup by student id and password
-        // Try by id first, then by student_number if id fails
+        // Student authentication: lookup by roll_number (e.g., "S1-1") or id
+        // Priority: 1. Full roll_number format (S1-1), 2. Sequence number (1), 3. Numeric ID
         let studentLookup = null;
-        if (!isNaN(Number(studentId))) {
-          // First try by id
-          const { data: byId, error: idError } = await supabase
-            .from('students')
-            .select('*')
-            .eq('id', studentId)
-            .single();
+        const trimmedId = studentId.trim();
+        
+        // First try by full roll_number format (e.g., "S1-1")
+        // Normalize input: convert to uppercase for case-insensitive matching
+        const normalizedId = trimmedId.toUpperCase();
+        const { data: byRollNumber, error: rollNumberError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('roll_number', normalizedId)
+          .single();
 
-          if (!idError && byId) {
-            studentLookup = { data: byId, error: null };
+        if (!rollNumberError && byRollNumber) {
+          studentLookup = { data: byRollNumber, error: null };
+        } else {
+          // If roll_number fails, try by sequence number (extract number after dash)
+          // Handle formats: "S1-1" -> "1", "1" -> "1", "S1" -> try as roll_number prefix
+          let sequenceNum: string | null = null;
+          
+          // Try to extract sequence from "S1-1" format
+          const rollNumberMatch = normalizedId.match(/^[Ss]?\d+\-(\d+)$/);
+          if (rollNumberMatch) {
+            sequenceNum = rollNumberMatch[1];
           } else {
-            // If id fails, try by student_number
-            const { data: byNumber, error: numberError } = await supabase
+            // Try pure numeric sequence
+            const pureNumberMatch = normalizedId.match(/^(\d+)$/);
+            if (pureNumberMatch) {
+              sequenceNum = pureNumberMatch[1];
+            }
+          }
+          
+          if (sequenceNum) {
+            // Search for roll_number ending with "-{sequence}"
+            const { data: bySequence, error: sequenceError } = await supabase
               .from('students')
               .select('*')
-              .eq('student_number', studentId)
-              .single();
+              .like('roll_number', `%-${sequenceNum}`)
+              .limit(1);
 
-            studentLookup = { data: byNumber, error: numberError };
+            if (!sequenceError && bySequence && bySequence.length > 0) {
+              // Find exact match by sequence
+              const exactMatch = bySequence.find((s: any) => {
+                const seq = s.roll_number?.match(/-(\d+)$/)?.[1];
+                return seq === sequenceNum;
+              });
+              studentLookup = { data: exactMatch || bySequence[0], error: null };
+            } else {
+              // Last fallback: try by numeric ID
+              if (!isNaN(Number(trimmedId))) {
+                const { data: byId, error: idError } = await supabase
+                  .from('students')
+                  .select('*')
+                  .eq('id', parseInt(trimmedId))
+                  .single();
+
+                if (!idError && byId) {
+                  studentLookup = { data: byId, error: null };
+                } else {
+                  studentLookup = { data: null, error: idError };
+                }
+              } else {
+                studentLookup = { data: null, error: { message: 'Invalid student ID format' } };
+              }
+            }
+          } else {
+            // Last fallback: try by numeric ID if input is numeric
+            if (!isNaN(Number(trimmedId))) {
+              const { data: byId, error: idError } = await supabase
+                .from('students')
+                .select('*')
+                .eq('id', parseInt(trimmedId))
+                .single();
+
+              if (!idError && byId) {
+                studentLookup = { data: byId, error: null };
+              } else {
+                studentLookup = { data: null, error: idError };
+              }
+            } else {
+              studentLookup = { data: null, error: { message: 'Invalid student ID format' } };
+            }
           }
         }
+        
         if (!studentLookup || studentLookup.error || !studentLookup.data) {
           setError('Student not found. Please check your ID.');
           setLoading(false);
@@ -659,19 +732,24 @@ const Login: React.FC = () => {
                 <Input
                   id="studentId"
                   type="text"
-                  inputMode="numeric"
                   value={studentId}
                   onChange={e => {
-                    const value = e.target.value;
-                    // Only allow numeric characters
-                    if (value === '' || /^\d+$/.test(value)) {
+                    let value = e.target.value;
+                    // Convert lowercase 's' to uppercase 'S' at the start
+                    if (value.startsWith('s')) {
+                      value = 'S' + value.slice(1);
+                    }
+                    // Allow roll_number format (S1-1, S2-15, etc.) or numeric ID/sequence
+                    // Allow progressive typing: S, S1, S1-, S1-1, or just digits
+                    // Pattern: (S/s + digits + optional dash + optional digits) OR (just digits)
+                    if (value === '' || /^([Ss]\d*\-?\d*|\d+)$/.test(value)) {
                       setStudentId(value);
                     }
                   }}
                   autoFocus={!isMobile}
                   autoComplete="off"
                   required
-                  placeholder="Enter your Student ID"
+                  placeholder="Enter your Student ID (e.g., S1-1)"
                 />
               </InputGroup>
               <Label htmlFor="studentPassword">Password</Label>
@@ -691,7 +769,12 @@ const Login: React.FC = () => {
             </>
           )}
           {error && <ErrorMsg>{error}</ErrorMsg>}
-          <Button type="submit" disabled={loading || !loginMode}>{loading ? 'Signing in...' : 'Sign In'}</Button>
+          <Button 
+            type="submit" 
+            disabled={loading || !loginMode}
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </Button>
         </LoginCard>
       </Container>
     </ThemeProvider>

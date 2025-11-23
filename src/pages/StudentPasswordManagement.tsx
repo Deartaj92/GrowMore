@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from '../components/NoSessionsFound';
 import Loader from '../components/Loader';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 // Types
 interface Student {
@@ -1406,7 +1407,7 @@ const StudentPasswordManagement: React.FC = () => {
                   color: '#6b7280',
                   marginTop: isMobile ? 2 : 0
                 }}>
-                  ID: {selectedStudent.id} {selectedStudent.father_name && `| Father: ${selectedStudent.father_name}`}
+                  ID: {getStudentDisplayId(selectedStudent)} {selectedStudent.father_name && `| Father: ${selectedStudent.father_name}`}
                 </div>
               </div>
             </div>

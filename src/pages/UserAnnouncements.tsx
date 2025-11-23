@@ -21,6 +21,7 @@ import { ThemeContext, darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 
 const Container = styled.div`
   width: 100%;
@@ -942,13 +943,13 @@ const UserAnnouncements: React.FC = () => {
         if (selectedSectionId && student.section_id !== selectedSectionId) return false;
       }
       if (!needle) return true;
-      const idMatch = String(student.id).includes(needle);
+      const idMatch = matchesStudentSearch(student, needle);
       const nameMatch = student.name.toLowerCase().includes(needle);
       const fatherMatch = (student.father_name || '').toLowerCase().includes(needle);
       const className = classes.find(cls => cls.id === student.class_id)?.name?.toLowerCase() || '';
       const sectionName = student.section_id ? (sections.find(sec => sec.id === student.section_id)?.name?.toLowerCase() || '') : '';
       const classMatch = className.includes(needle) || sectionName.includes(needle);
-      return idMatch || nameMatch || fatherMatch || classMatch;
+      return idMatch.matches || nameMatch || fatherMatch || classMatch;
     });
   }, [students, audience, selectedClassId, selectedSectionId, studentSearchTerm, classes, sections]);
 
@@ -1640,7 +1641,7 @@ const UserAnnouncements: React.FC = () => {
                 {filteredStudents.map(student => {
                   const sectionName = student.section_id ? sections.find(sec => sec.id === student.section_id)?.name : '';
                   const className = classes.find(cls => cls.id === student.class_id)?.name || '';
-                  const label = `${student.id} · ${student.name} · ${student.father_name || '—'} · ${className}${sectionName ? ` (${sectionName})` : ''}`;
+                  const label = `${getStudentDisplayId(student)} · ${student.name} · ${student.father_name || '—'} · ${className}${sectionName ? ` (${sectionName})` : ''}`;
                   return (
                     <option key={student.id} value={student.id}>
                       {label}

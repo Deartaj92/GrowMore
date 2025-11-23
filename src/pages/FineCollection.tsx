@@ -11,6 +11,7 @@ import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 
 import Loader from '../components/Loader';
+import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier } from '../utils/studentUtils';
 const Container = styled.div`
   width: 100%;
   max-width: 1400px;
@@ -1209,7 +1210,7 @@ const FineCollection: React.FC = () => {
       // Start data fetch and timer in parallel
       const dataPromise = (async () => {
         const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url').eq('status', 'active').eq('school_id', user.school_id),
+          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
           supabase.from('sections').select('id, name').eq('school_id', user.school_id),
         ]);
@@ -1257,9 +1258,21 @@ const FineCollection: React.FC = () => {
   }, [user?.school_id]);
 
   useEffect(() => {
-    // If navigated with a studentId, auto-select that student after students are loaded
+    // If navigated with a studentId (can be ID or roll_number sequence), auto-select that student after students are loaded
     if (students.length > 0 && location.state && location.state.studentId) {
-      const student = students.find((s: any) => String(s.id) === String(location.state.studentId));
+      const identifier = location.state.studentId;
+      // Try to find by ID first, then by roll_number sequence
+      let student = students.find((s: any) => String(s.id) === String(identifier));
+      if (!student) {
+        // Try to find by roll_number sequence (exact match only)
+        for (const s of students) {
+          const match = matchesStudentSearch(s, String(identifier));
+          if (match.matches && match.score >= 1000) {
+            student = s;
+            break;
+          }
+        }
+      }
       if (student) {
         handleSelectStudent(student);
       }
@@ -1310,44 +1323,28 @@ const FineCollection: React.FC = () => {
      
     const searchTerm = search.trim();
     const searchLower = searchTerm.toLowerCase();
-    const isNumericSearch = !isNaN(Number(searchTerm));
-    const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
     
     // Filter and score students for better sorting
     const scoredStudents = students
       .map(student => {
-        const studentIdStr = String(student.id);
         const studentNameLower = student.name.toLowerCase();
         let score = 0;
         let matches = false;
-        
-        if (isNumericSearch && searchTermNum !== null) {
-          // ID search - prioritize exact match, then starts with, then contains
-          if (student.id === searchTermNum) {
-            score = 1000; // Highest priority for exact match
-            matches = true;
-          } else if (studentIdStr.startsWith(searchTerm)) {
-            score = 500; // High priority for starts with
-            matches = true;
-          } else if (studentIdStr.includes(searchTerm)) {
-            score = 100; // Lower priority for contains
-            matches = true;
-          }
-        } else {
-          // Name search
-          if (studentNameLower.startsWith(searchLower)) {
-            score = 100; // High priority for name starts with
-            matches = true;
-          } else if (studentNameLower.includes(searchLower)) {
-            score = 50; // Lower priority for name contains
-            matches = true;
-          }
-          
-          // Also check ID for non-numeric searches (secondary)
-          if (!matches && studentIdStr.includes(searchTerm)) {
-            score = 10;
-            matches = true;
-          }
+
+        // Check ID/roll_number search using utility function
+        const idMatch = matchesStudentSearch(student, searchTerm);
+        if (idMatch.matches) {
+          score = idMatch.score;
+          matches = true;
+        }
+
+        // Also check name search
+        if (studentNameLower.startsWith(searchLower)) {
+          score = Math.max(score, 100); // High priority for name starts with
+          matches = true;
+        } else if (studentNameLower.includes(searchLower)) {
+          score = Math.max(score, 50); // Lower priority for name contains
+          matches = true;
         }
         
         return matches ? { student, score } : null;
@@ -1740,7 +1737,7 @@ const FineCollection: React.FC = () => {
                 onChange={handleSearchChange}
                 onFocus={handleSearchFocus}
                 onKeyDown={handleKeyDown}
-                placeholder="Search by name or ID..."
+                placeholder="Search by name or roll number..."
               />
               {/* Show circle loader when suggestions are loading */}
               {suggestionsLoading && <CircleLoader />}
@@ -1769,7 +1766,7 @@ const FineCollection: React.FC = () => {
                         </SuggestionMain>
                         <SuggestionMetaCol>
                           <SuggestionClass>{getClassName(student.class_id)} {getClassHasSections(student.class_id) && getSectionName(student.section_id) ? getSectionName(student.section_id) : ''}</SuggestionClass>
-                          <SuggestionId>ID: {student.id}</SuggestionId>
+                          <SuggestionId>ID: {getStudentDisplayId(student)}</SuggestionId>
                         </SuggestionMetaCol>
                       </SuggestionItemRow>
                     </SuggestionItem>
@@ -1796,7 +1793,7 @@ const FineCollection: React.FC = () => {
                 </StudentInfoMain>
                 <StudentInfoMetaCol>
                   <StudentInfoClass>{getClassName(selectedStudent.class_id)} {getClassHasSections(selectedStudent.class_id) && getSectionName(selectedStudent.section_id) ? getSectionName(selectedStudent.section_id) : ''}</StudentInfoClass>
-                  <StudentInfoId>ID: {selectedStudent.id}</StudentInfoId>
+                  <StudentInfoId>ID: {getStudentDisplayId(selectedStudent)}</StudentInfoId>
                 </StudentInfoMetaCol>
               </StudentInfoRow>
             )}

@@ -52,6 +52,7 @@ import useGlobalClickSound from '../hooks/useGlobalClickSound';
 import { getUser, removeUser } from '../utils/auth';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import CollapsibleSidebar from './CollapsibleSidebar';
 import { useBackNavigation } from '../hooks/useBackNavigation';
@@ -309,11 +310,13 @@ const HeaderLeft = styled.div`
   min-width: 0;
   flex: 1;
   overflow: hidden;
+  margin-right: 24px;
   
   @media (max-width: 700px) {
     gap: 8px;
     max-width: calc(100% - 100px);
     flex: 0 1 auto;
+    margin-right: 0;
   }
 `;
 
@@ -343,6 +346,10 @@ const PageTitle = styled.h1<{ isMobile: boolean; $isOverflowing?: boolean }>`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  @media (min-width: 701px) {
+    padding-left: 16px;
+  }
 `;
 
 const Logo = styled.div`
@@ -2088,44 +2095,28 @@ const Layout: React.FC = () => {
     }
 
     const searchTerm = studentSearchInput.trim().toLowerCase();
-    const isNumericSearch = !isNaN(Number(searchTerm));
-    const searchTermNum = isNumericSearch ? parseInt(searchTerm) : null;
 
     // Filter and score students for better sorting
     const scoredStudents = studentsList
       .map(student => {
-        const studentIdStr = String(student.id);
         const studentNameLower = student.name.toLowerCase();
         let score = 0;
         let matches = false;
 
-        if (isNumericSearch && searchTermNum !== null) {
-          // ID search - prioritize exact match, then starts with, then contains
-          if (student.id === searchTermNum) {
-            score = 1000; // Highest priority for exact match
-            matches = true;
-          } else if (studentIdStr.startsWith(searchTerm)) {
-            score = 500; // High priority for starts with
-            matches = true;
-          } else if (studentIdStr.includes(searchTerm)) {
-            score = 100; // Lower priority for contains
-            matches = true;
-          }
-        } else {
-          // Name search
-          if (studentNameLower.startsWith(searchTerm)) {
-            score = 100; // High priority for starts with
-            matches = true;
-          } else if (studentNameLower.includes(searchTerm)) {
-            score = 50; // Lower priority for contains
-            matches = true;
-          }
+        // Check ID/roll_number search using utility function
+        const idMatch = matchesStudentSearch(student, searchTerm);
+        if (idMatch.matches) {
+          score = idMatch.score;
+          matches = true;
+        }
 
-          // Also check ID for non-numeric searches (secondary)
-          if (!matches && studentIdStr.includes(searchTerm)) {
-            score = 10;
-            matches = true;
-          }
+        // Also check name search
+        if (studentNameLower.startsWith(searchTerm)) {
+          score = Math.max(score, 100); // High priority for name starts with
+          matches = true;
+        } else if (studentNameLower.includes(searchTerm)) {
+          score = Math.max(score, 50); // Lower priority for name contains
+          matches = true;
         }
 
         return matches ? { student, score } : null;
@@ -3967,7 +3958,7 @@ const Layout: React.FC = () => {
                                                   ? ` ${getStudentSectionName(student.section_id)}`
                                                   : ''}
                                               </StudentSuggestionClass>
-                                              <StudentSuggestionId>ID: {student.id}</StudentSuggestionId>
+                                              <StudentSuggestionId>ID: {getStudentDisplayId(student)}</StudentSuggestionId>
                                             </StudentSuggestionMetaCol>
                                           </StudentSuggestionItemRow>
                                         </StudentSuggestionItem>

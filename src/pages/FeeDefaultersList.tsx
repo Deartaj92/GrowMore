@@ -17,6 +17,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import { useProgress } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1361,7 +1362,7 @@ const FeeDefaultersList: React.FC = () => {
       
       const body = allDefaulters.map((defaulter) => [
         defaulter.globalIndex,
-        defaulter.id,
+        getStudentDisplayId(defaulter),
         defaulter.name,
         defaulter.father_name || '-',
         `${getClassName(defaulter.class_id)} (${getSectionName(defaulter.section_id)})`,
@@ -2332,7 +2333,7 @@ const FeeDefaultersList: React.FC = () => {
       
       try {
         const [{ data: studentsData }, { data: classesData }, { data: allSectionsData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url').eq('status', 'active').eq('school_id', user.school_id),
+          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name').eq('school_id', user.school_id),
           supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
         ]);
@@ -2527,13 +2528,14 @@ const FeeDefaultersList: React.FC = () => {
     // Apply search filter
     if (search.trim()) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(defaulter => 
-        defaulter.name.toLowerCase().includes(searchLower) ||
-        defaulter.father_name?.toLowerCase().includes(searchLower) ||
-        String(defaulter.id).includes(searchLower) ||
-        getClassName(defaulter.class_id).toLowerCase().includes(searchLower) ||
-        getSectionName(defaulter.section_id).toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter(defaulter => {
+        const nameMatch = defaulter.name.toLowerCase().includes(searchLower);
+        const fatherMatch = defaulter.father_name?.toLowerCase().includes(searchLower);
+        const idMatch = matchesStudentSearch(defaulter, search);
+        const classMatch = getClassName(defaulter.class_id).toLowerCase().includes(searchLower);
+        const sectionMatch = getSectionName(defaulter.section_id).toLowerCase().includes(searchLower);
+        return nameMatch || fatherMatch || idMatch.matches || classMatch || sectionMatch;
+      });
     }
     
     // Apply class filter
@@ -2569,7 +2571,7 @@ const FeeDefaultersList: React.FC = () => {
       // Reload students data
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('id, name, father_name, class_id, section_id, picture_url')
+        .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
         .eq('status', 'active')
         .eq('school_id', user.school_id);
       
@@ -2982,7 +2984,7 @@ const FeeDefaultersList: React.FC = () => {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }}>
-                {selectedStudent?.id} - {selectedStudent?.name} - {selectedStudent?.father_name || 'N/A'}
+                {selectedStudent ? getStudentDisplayId(selectedStudent) : ''} - {selectedStudent?.name} - {selectedStudent?.father_name || 'N/A'}
               </div>
               <div style={{ 
                 fontSize: '0.9rem', 

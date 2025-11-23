@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo, useCallback, memo, useRef } from 'react';
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 // Responsive grid component for single line layout
 const SingleLineGrid = styled.div`
@@ -1346,7 +1347,7 @@ const TestRecordManager: React.FC = () => {
       // Fetch full student details
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('id, name, father_name, picture_url, class_id, section_id, school_id')
+        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('status', 'active')
         .in('id', studentIds);
@@ -2177,7 +2178,7 @@ const TestRecordManager: React.FC = () => {
                           fontSize: '0.7rem',
                           fontWeight: '500'
                         }}>
-                          ID: {student.id}
+                          ID: {getStudentDisplayId(student)}
                         </span>
                       </div>
                     </div>
@@ -2334,21 +2335,28 @@ const TestRecordManager: React.FC = () => {
                   minWidth: '60px'
                 }}
               >
-                Delete
+                {deleting ? (
+                  <>
+                    <Spinner />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </button>
               <button
                 onClick={handleSaveTest}
-                disabled={saving || selectedStudents.size === 0}
+                disabled={saving || deleting || selectedStudents.size === 0}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
                   fontWeight: '500',
                   fontSize: '0.8rem',
-                  cursor: (saving || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                  cursor: (saving || deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
                   border: 'none',
                   backgroundColor: '#4a6cf7',
                   color: 'white',
-                  opacity: (saving || selectedStudents.size === 0) ? 0.7 : 1,
+                  opacity: (saving || deleting || selectedStudents.size === 0) ? 0.7 : 1,
                   minWidth: '60px'
                 }}
               >
@@ -2430,18 +2438,18 @@ const TestRecordManager: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSaveFromModal}
-                  disabled={saving}
+                  disabled={saving || deleting}
                   style={{
                     padding: '12px 24px',
                     borderRadius: '8px',
                     fontWeight: '600',
                     fontSize: '0.9rem',
-                    cursor: saving ? 'not-allowed' : 'pointer',
+                    cursor: (saving || deleting) ? 'not-allowed' : 'pointer',
                     border: 'none',
                     minWidth: '100px',
                     background: '#4a6cf7',
                     color: 'white',
-                    opacity: saving ? 0.7 : 1
+                    opacity: (saving || deleting) ? 0.7 : 1
                   }}
                 >
                   {saving ? (

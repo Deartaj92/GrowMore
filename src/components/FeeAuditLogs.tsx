@@ -15,6 +15,7 @@ import { useToast } from './useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { FeeAuditLog } from '../types/fee';
 import FeeAuditSetupInstructions from './FeeAuditSetupInstructions';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 // Styled Components
 const Container = styled.div`
@@ -612,7 +613,7 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
       if (studentIds.size > 0) {
         const { data: students } = await supabase
           .from('students')
-          .select('id, name, class_id, section_id')
+          .select('id, name, class_id, section_id, roll_number')
           .in('id', Array.from(studentIds))
           .eq('school_id', user.school_id);
 
@@ -710,8 +711,9 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
     const className = classData[student.class_id]?.name || 'Unknown Class';
     const sectionName = student.section_id ? sectionData[student.section_id]?.name || `Section ${student.section_id}` : '';
     const sectionDisplay = sectionName ? `(${sectionName})` : '';
+    const displayId = getStudentDisplayId(student);
     
-    return `ID-${studentId}-${student.name} (${className}${sectionDisplay})`;
+    return `ID-${displayId}-${student.name} (${className}${sectionDisplay})`;
   };
 
   // Helper function to get relevant details

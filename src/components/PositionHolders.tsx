@@ -19,6 +19,7 @@ import {
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 // Spinner animation
 const spin = keyframes`
@@ -1128,7 +1129,7 @@ const PositionHolders: React.FC = () => {
       // Get students for this class/section
       const studentQuery = supabase
         .from('students')
-        .select('id, name, father_name, picture_url, class_id, section_id, school_id')
+        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('class_id', classInfo.id);
       
@@ -1225,6 +1226,7 @@ const PositionHolders: React.FC = () => {
           picture_url: student.picture_url,
           class_id: student.class_id,
           section_id: student.section_id,
+          roll_number: student.roll_number,
           class_name: classInfo.name,
           section_name: hasSections ? (section?.name || '') : '',
           total_marks: totalExamMarks,
@@ -1391,7 +1393,7 @@ const PositionHolders: React.FC = () => {
         // Prepare table data
         const tableData = classData.position_holders.map((holder, index) => [
           index + 1,
-          holder.student_id.toString(),
+          getStudentDisplayId({ id: holder.student_id, roll_number: holder.roll_number }).toString(),
           holder.student_name,
           holder.father_name || '',
           `${holder.obtained_marks}/${holder.total_marks}`,
@@ -1962,7 +1964,7 @@ const PositionHolders: React.FC = () => {
                             <StudentName>{holder.student_name}</StudentName>
                             <StudentDetails>
                               <span>{holder.father_name}</span>
-                              <StudentId>ID: {holder.student_id}</StudentId>
+                              <StudentId>ID: {getStudentDisplayId({ id: holder.student_id, roll_number: holder.roll_number })}</StudentId>
                             </StudentDetails>
                           </StudentInfo>
                           

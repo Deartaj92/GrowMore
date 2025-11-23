@@ -42,6 +42,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import { useProgress } from '../components/Layout';
 import { PageHeaderContext } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId } from '../utils/studentUtils';
 import Loader from '../components/Loader';
 import { homeworkDiaryService } from '../services/homeworkDiaryService';
 import WhatsAppBulkSender from '../components/WhatsAppBulkSender';
@@ -2595,7 +2596,7 @@ const Dashboard: React.FC = () => {
     setFineToDelete({ 
       id: fine.id, 
       studentName: student.name,
-      studentId: student.id,
+      studentId: String(getStudentDisplayId(student)),
       className: classLabel,
       amount: Number(fine.amount),
       date: date
@@ -3632,7 +3633,7 @@ const Dashboard: React.FC = () => {
       head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Status', 'M.A', 'Att%']],
       body: absentStudents.map((student, idx) => [
         idx + 1,
-        student.id,
+        getStudentDisplayId(student),
         student.name,
         student.father_name,
         student.phone,
@@ -4249,7 +4250,7 @@ const Dashboard: React.FC = () => {
       head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Status', 'M.A', 'Att%']],
       body: presentStudents.map((student, idx) => [
         idx + 1,
-        student.id,
+        getStudentDisplayId(student),
         student.name,
         student.father_name,
         student.phone,
@@ -5088,7 +5089,7 @@ const Dashboard: React.FC = () => {
                         </FineStudentAvatar>
                         <FineCardContent>
                           <FineRow>
-                            <FineStudentId>{student.id}</FineStudentId>
+                            <FineStudentId>{getStudentDisplayId(student)}</FineStudentId>
                             <FineDot />
                             <FineStudentName>{student.name}</FineStudentName>
                             {student.father_name && (
@@ -5495,7 +5496,7 @@ const Dashboard: React.FC = () => {
                         </StudentAvatar>
                         <AbsenteeCardContent>
                           <AbsenteeRow>
-                            <AbsenteeId>{student.id}</AbsenteeId>
+                            <AbsenteeId>{getStudentDisplayId(student)}</AbsenteeId>
                             <Dot />
                             <AbsenteeName>{student.name}</AbsenteeName>
                             {student.father_name && (

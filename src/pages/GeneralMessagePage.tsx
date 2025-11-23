@@ -8,6 +8,7 @@ import WhatsAppBulkSender from '../components/WhatsAppBulkSender';
 import { AttendanceNotificationData } from '../services/whatsappSemiAuto';
 import { format } from 'date-fns';
 import { useToast } from '../components/useToast';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -594,11 +595,13 @@ const GeneralMessagePage: React.FC = () => {
             setFilteredStudents(students);
         } else {
             const lowerTerm = searchTerm.toLowerCase();
-            const filtered = students.filter(s =>
-                s.name.toLowerCase().includes(lowerTerm) ||
-                (s.father_name && s.father_name.toLowerCase().includes(lowerTerm)) ||
-                (s.class_name && s.class_name.toLowerCase().includes(lowerTerm))
-            );
+            const filtered = students.filter(s => {
+                const nameMatch = s.name.toLowerCase().includes(lowerTerm);
+                const fatherMatch = s.father_name && s.father_name.toLowerCase().includes(lowerTerm);
+                const classMatch = s.class_name && s.class_name.toLowerCase().includes(lowerTerm);
+                const idMatch = matchesStudentSearch(s, searchTerm);
+                return nameMatch || fatherMatch || classMatch || idMatch.matches;
+            });
             setFilteredStudents(filtered);
         }
     }, [searchTerm, students]);
@@ -670,7 +673,7 @@ const GeneralMessagePage: React.FC = () => {
                     // Fetch full student details (excluding withdrawn)
                     const { data: studentsData } = await supabase
                         .from('students')
-                        .select('id, name, father_name, phone, notification_channel')
+                        .select('id, name, father_name, phone, notification_channel, roll_number')
                         .eq('school_id', user.school_id)
                         .neq('status', 'withdrawn')
                         .in('id', studentIds);
@@ -750,7 +753,7 @@ const GeneralMessagePage: React.FC = () => {
                     // Fetch full student details (excluding withdrawn)
                     const { data: studentsData } = await supabase
                         .from('students')
-                        .select('id, name, father_name, phone, notification_channel')
+                        .select('id, name, father_name, phone, notification_channel, roll_number')
                         .eq('school_id', user.school_id)
                         .neq('status', 'withdrawn')
                         .in('id', studentIds);
@@ -1052,7 +1055,7 @@ const GeneralMessagePage: React.FC = () => {
                                         {/* Checkbox hidden as requested */}
                                         <StudentInfo>
                                             <div style={{ fontSize: '0.85rem', color: theme.TEXT_PRIMARY, lineHeight: '1.4' }}>
-                                                <span style={{ opacity: 0.7 }}>{student.id}</span> . <strong>{student.name}</strong> . {student.father_name} . {student.class_name} {student.section_name ? `(${student.section_name})` : ''}
+                                                <span style={{ opacity: 0.7 }}>{getStudentDisplayId(student)}</span> . <strong>{student.name}</strong> . {student.father_name} . {student.class_name} {student.section_name ? `(${student.section_name})` : ''}
                                             </div>
                                         </StudentInfo>
                                     </StudentItem>

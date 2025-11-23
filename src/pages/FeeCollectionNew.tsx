@@ -10,6 +10,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
+import { getStudentDisplayId, matchesStudentSearch, getSequenceNumber } from '../utils/studentUtils';
 import { ThemeProvider } from 'styled-components';
 import { useTheme as useMuiTheme, useMediaQuery } from '@mui/material';
 import { CircularProgress, TextField, Button, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, SelectChangeEvent } from '@mui/material';
@@ -820,7 +821,7 @@ const FeeCollectionNew: React.FC = () => {
       
       const dataPromise = (async () => {
         const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: sessionsData }, { data: usersData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url').eq('status', 'active').eq('school_id', user.school_id),
+          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name').eq('school_id', user.school_id),
           supabase.from('sections').select('id, name').eq('school_id', user.school_id),
           supabase.from('sessions').select('id, name, is_active').eq('school_id', user.school_id).order('is_active', { ascending: false }),
@@ -936,11 +937,19 @@ const FeeCollectionNew: React.FC = () => {
      
     const s = search.trim().toLowerCase();
     let filtered = students.filter(
-      (stu: any) => stu.name.toLowerCase().includes(s) || String(stu.id).includes(s)
+      (stu: any) => {
+        const nameMatch = stu.name.toLowerCase().includes(s);
+        const idMatch = matchesStudentSearch(stu, s);
+        return nameMatch || idMatch.matches;
+      }
     );
-    // If searching by digits, sort by id ascending; otherwise keep name order
+    // If searching by digits, sort by roll_number sequence ascending; otherwise keep name order
     if (/^\d+$/.test(s)) {
-      filtered = filtered.sort((a: any, b: any) => Number(a.id) - Number(b.id));
+      filtered = filtered.sort((a: any, b: any) => {
+        const aSeq = parseInt(getSequenceNumber(a.roll_number) || '0');
+        const bSeq = parseInt(getSequenceNumber(b.roll_number) || '0');
+        return aSeq - bSeq;
+      });
     }
     filtered = filtered.slice(0, 8);
     setSuggestions(filtered);
@@ -1647,7 +1656,7 @@ const FeeCollectionNew: React.FC = () => {
                         {student.name} • <span className="father-name">{student.father_name}</span>
                       </SuggestionName>
                       <SuggestionDetails>
-                        Class: {getClassName(student.class_id)} {getSectionName(student.section_id)} | ID: {student.id}
+                        Class: {getClassName(student.class_id)} {getSectionName(student.section_id)} | ID: {getStudentDisplayId(student)}
                       </SuggestionDetails>
                     </SuggestionInfo>
                   </SuggestionItem>
@@ -1885,7 +1894,7 @@ const FeeCollectionNew: React.FC = () => {
                     <StudentName>
                       {selectedStudent.name} • <span style={{ fontWeight: '400', color: (theme as any).TEXT_SECONDARY }}>{selectedStudent.father_name}</span>
                     </StudentName>
-                    <StudentInfoText>Class: 9th B | ID: {selectedStudent.id}</StudentInfoText>
+                    <StudentInfoText>Class: 9th B | ID: {getStudentDisplayId(selectedStudent)}</StudentInfoText>
                   </StudentDetails>
                 </StudentInfo>
                 

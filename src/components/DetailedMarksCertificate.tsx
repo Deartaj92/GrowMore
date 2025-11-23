@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, getSequenceNumber } from '../utils/studentUtils';
 import { toast } from 'react-hot-toast';
 import { examinationConfigurationService, DMCColorConfiguration, ExaminationConfig } from '../services/examinationConfigurationService';
 import {
@@ -1598,7 +1599,7 @@ const DetailedMarksCertificate: React.FC = () => {
       // Get all students for the selected class/section
       let studentQuery = supabase
         .from('students')
-        .select('id, name, father_name, picture_url, class_id, section_id, school_id')
+        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('class_id', selectedClass.id)
         .eq('status', 'active');
@@ -1754,12 +1755,12 @@ const DetailedMarksCertificate: React.FC = () => {
         const attendancePercentage = await calculateStudentAttendancePercentage(student.id, selectedExamination.end_date);
 
         dmcDataArray.push({
-          student_id: student.id,
+          student_id: String(student.id),
           student_name: student.name,
           father_name: student.father_name || '',
           class: selectedClass.name,
           section: hasSections ? (selectedSection?.name || 'All') : '',
-          roll_number: (index + 1).toString(), // Sequential R. No based on sorted student order
+          roll_number: getSequenceNumber(student.roll_number) || (index + 1).toString(), // Use roll_number sequence or fallback to index
           examination: selectedExamination.name,
           student_image: student.picture_url,
           attendance_percentage: attendancePercentage,
@@ -3566,7 +3567,7 @@ const DetailedMarksCertificate: React.FC = () => {
                       fontWeight: '500',
                       flexShrink: 0
                     }}>
-                      ID: {dmcData.student_id}
+                      ID: {dmcData.roll_number || dmcData.student_id}
                     </span>
                     <MobileStudentName style={{ margin: 0, flex: 1, minWidth: 0 }}>
                       {dmcData.student_name}

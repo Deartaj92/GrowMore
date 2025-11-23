@@ -5,6 +5,7 @@ import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { FamilyRestroom, PersonAdd, Person, Add as AddIcon, Close as CloseIcon, Edit as EditIcon, Delete as DeleteIcon, CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId } from '../utils/studentUtils';
 import {
   Box,
   Button as MuiButton,
@@ -681,12 +682,43 @@ const ClassSectionInfo = styled.span`
 `;
 
 const MemberGrid = styled.ul`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.4rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   list-style: none;
   padding: 0;
+  margin: 0;
+`;
+
+const ScrollableMemberContainer = styled.div`
+  max-height: 140px;
+  overflow-y: auto;
   margin: 1rem 0 0 0;
+  padding-right: 0.5rem;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'} ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
 `;
 
 const MemberItemSmall = styled(MemberItem)`
@@ -1112,6 +1144,26 @@ const FamilyManagement: React.FC = () => {
   const { startProgress, setProgress, completeProgress } = useProgress();
   const [loadingFamilies, setLoadingFamilies] = useState(true);
 
+  // Helper function to get default password
+  const getDefaultPassword = async (type: 'student' | 'staff' | 'family'): Promise<string> => {
+    if (!user?.school_id) return 'aa';
+    
+    try {
+      const { data, error } = await supabase
+        .from('default_passwords')
+        .select(`${type}_password`)
+        .eq('school_id', user.school_id)
+        .single();
+      
+      if (error || !data) return 'aa';
+      
+      const passwordKey = `${type}_password` as keyof typeof data;
+      return (data[passwordKey] as string) || 'aa';
+    } catch (error) {
+      return 'aa';
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const fetchAll = async () => {
@@ -1303,9 +1355,11 @@ const FamilyManagement: React.FC = () => {
         avatar_url = publicUrl;
       }
       setProgress(70);
+      // Get default password for families
+      const defaultPassword = await getDefaultPassword('family');
       const { error } = await supabase
         .from('families')
-        .insert([{ ...form, avatar_url, password: 'aa', school_id: user?.school_id }]);
+        .insert([{ ...form, avatar_url, password: defaultPassword, school_id: user?.school_id }]);
       if (error) throw error;
       setShowAddModal(false);
       setForm({ name: '', address: '', contact_number: '', avatar_url: '' });
@@ -1633,129 +1687,131 @@ const FamilyManagement: React.FC = () => {
                     Students ({family.family_members?.length || 0})
                   </div>
                   {family.family_members && family.family_members.length > 0 ? (
-                    (family.family_members.length > 3 ? (
-                      <MemberGrid>
-                        {[...family.family_members]
-                          .sort((a, b) => (b.is_primary_contact ? 1 : 0) - (a.is_primary_contact ? 1 : 0))
-                          .map((member: any) => (
-                            <MemberItemSmall key={member.id} className={member.is_primary_contact ? 'primary-contact' : ''}>
-                              <StudentAvatar
-                                $src={member.student?.picture_url}
-                                $bg={stringToColor(member.student?.name || '')}
-                                onMouseEnter={e => {
-                                  if (previewTimeout.current) clearTimeout(previewTimeout.current);
-                                  const rect = (e.target as HTMLElement).getBoundingClientRect();
-                                  setStudentAvatarPreview({
-                                    src: member.student?.picture_url,
-                                    initials: getStudentInitials(member.student?.name || ''),
-                                    bg: stringToColor(member.student?.name || ''),
-                                    top: rect.top - 110 < 0 ? rect.bottom + 8 : rect.top - 110,
-                                    left: rect.left - 32 < 0 ? rect.right + 8 : rect.left - 32,
-                                  });
-                                }}
-                                onMouseLeave={() => {
-                                  previewTimeout.current = setTimeout(() => setStudentAvatarPreview(null), 120);
-                                }}
-                              >
-                                {member.student?.picture_url ? (
-                                  <img src={member.student.picture_url} alt={member.student.name} />
-                                ) : (
-                                  getStudentInitials(member.student?.name || '')
-                                )}
-                              </StudentAvatar>
-                              <span>
-                                {member.student?.name}
-                                {getClassSectionString(member.student) && (
-                                  <ClassSectionInfo>{getClassSectionString(member.student)}</ClassSectionInfo>
-                                )}
-                              </span>
-                              <div className="member-actions">
-                                <MuiButton
-                                  variant={member.is_primary_contact ? 'contained' : 'outlined'}
-                                  color="primary"
-                                  size="small"
-                                  disabled={member.is_primary_contact || loading}
-                                  sx={{
-                                    minWidth: 0,
-                                    px: 1,
-                                    fontSize: '0.75rem',
-                                    fontWeight: 500,
-                                    textTransform: 'none',
-                                    height: 22,
-                                    borderRadius: '6px'
+                    family.family_members.length >= 3 ? (
+                      <ScrollableMemberContainer theme={themeObj}>
+                        <MemberGrid>
+                          {[...family.family_members]
+                            .sort((a, b) => (b.is_primary_contact ? 1 : 0) - (a.is_primary_contact ? 1 : 0))
+                            .map((member: any) => (
+                              <MemberItemSmall key={member.id} className={member.is_primary_contact ? 'primary-contact' : ''}>
+                                <StudentAvatar
+                                  $src={member.student?.picture_url}
+                                  $bg={stringToColor(member.student?.name || '')}
+                                  onMouseEnter={e => {
+                                    if (previewTimeout.current) clearTimeout(previewTimeout.current);
+                                    const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                    setStudentAvatarPreview({
+                                      src: member.student?.picture_url,
+                                      initials: getStudentInitials(member.student?.name || ''),
+                                      bg: stringToColor(member.student?.name || ''),
+                                      top: rect.top - 110 < 0 ? rect.bottom + 8 : rect.top - 110,
+                                      left: rect.left - 32 < 0 ? rect.right + 8 : rect.left - 32,
+                                    });
                                   }}
-                                  onClick={async () => {
-                                    if (member.is_primary_contact) return;
-                                    setLoading(true);
-                                    try {
-                                      await supabase
-                                        .from('family_members')
-                                        .update({ is_primary_contact: false })
-                                        .eq('family_id', family.id);
-                                      await supabase
-                                        .from('family_members')
-                                        .update({ is_primary_contact: true })
-                                        .eq('id', member.id);
-                                      fetchFamilies();
-                                      showToast('Primary contact updated!', 'success');
-                                    } catch (error) {
-                                      showToast('Failed to update primary contact', 'error');
-                                    } finally {
-                                      setLoading(false);
-                                    }
+                                  onMouseLeave={() => {
+                                    previewTimeout.current = setTimeout(() => setStudentAvatarPreview(null), 120);
                                   }}
                                 >
-                                  {member.is_primary_contact ? 'Primary' : 'Make Primary'}
-                                </MuiButton>
-                                {member.is_primary_contact && (
-                                  <MuiIconButton
-                                    title="Unset primary"
+                                  {member.student?.picture_url ? (
+                                    <img src={member.student.picture_url} alt={member.student.name} />
+                                  ) : (
+                                    getStudentInitials(member.student?.name || '')
+                                  )}
+                                </StudentAvatar>
+                                <span>
+                                  {member.student?.name}
+                                  {getClassSectionString(member.student) && (
+                                    <ClassSectionInfo>{getClassSectionString(member.student)}</ClassSectionInfo>
+                                  )}
+                                </span>
+                                <div className="member-actions">
+                                  <MuiButton
+                                    variant={member.is_primary_contact ? 'contained' : 'outlined'}
+                                    color="primary"
                                     size="small"
+                                    disabled={member.is_primary_contact || loading}
                                     sx={{
-                                      width: 20, height: 20, ml: 0.3,
-                                      '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }
+                                      minWidth: 0,
+                                      px: 1,
+                                      fontSize: '0.75rem',
+                                      fontWeight: 500,
+                                      textTransform: 'none',
+                                      height: 22,
+                                      borderRadius: '6px'
                                     }}
                                     onClick={async () => {
+                                      if (member.is_primary_contact) return;
                                       setLoading(true);
                                       try {
                                         await supabase
                                           .from('family_members')
                                           .update({ is_primary_contact: false })
+                                          .eq('family_id', family.id);
+                                        await supabase
+                                          .from('family_members')
+                                          .update({ is_primary_contact: true })
                                           .eq('id', member.id);
                                         fetchFamilies();
-                                        showToast('Primary contact removed', 'success');
+                                        showToast('Primary contact updated!', 'success');
                                       } catch (error) {
-                                        showToast('Failed to remove primary', 'error');
+                                        showToast('Failed to update primary contact', 'error');
                                       } finally {
                                         setLoading(false);
                                       }
                                     }}
                                   >
+                                    {member.is_primary_contact ? 'Primary' : 'Make Primary'}
+                                  </MuiButton>
+                                  {member.is_primary_contact && (
+                                    <MuiIconButton
+                                      title="Unset primary"
+                                      size="small"
+                                      sx={{
+                                        width: 20, height: 20, ml: 0.3,
+                                        '&:hover': { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }
+                                      }}
+                                      onClick={async () => {
+                                        setLoading(true);
+                                        try {
+                                          await supabase
+                                            .from('family_members')
+                                            .update({ is_primary_contact: false })
+                                            .eq('id', member.id);
+                                          fetchFamilies();
+                                          showToast('Primary contact removed', 'success');
+                                        } catch (error) {
+                                          showToast('Failed to remove primary', 'error');
+                                        } finally {
+                                          setLoading(false);
+                                        }
+                                      }}
+                                    >
+                                      <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                                    </MuiIconButton>
+                                  )}
+                                  <MuiIconButton
+                                    className="unlink-btn"
+                                    onClick={() => handleUnlinkStudent(member.id)}
+                                    disabled={unlinkingId === member.id}
+                                    title="Unlink student from family"
+                                    size="small"
+                                    sx={{
+                                      width: 20,
+                                      height: 20,
+                                      ml: 0.2,
+                                      '&:hover': {
+                                        background: 'rgba(239, 68, 68, 0.1)',
+                                        color: '#ef4444'
+                                      }
+                                    }}
+                                  >
                                     <CloseIcon sx={{ fontSize: '0.9rem' }} />
                                   </MuiIconButton>
-                                )}
-                                <MuiIconButton
-                                  className="unlink-btn"
-                                  onClick={() => handleUnlinkStudent(member.id)}
-                                  disabled={unlinkingId === member.id}
-                                  title="Unlink student from family"
-                                  size="small"
-                                  sx={{
-                                    width: 20,
-                                    height: 20,
-                                    ml: 0.2,
-                                    '&:hover': {
-                                      background: 'rgba(239, 68, 68, 0.1)',
-                                      color: '#ef4444'
-                                    }
-                                  }}
-                                >
-                                  <CloseIcon sx={{ fontSize: '0.9rem' }} />
-                                </MuiIconButton>
-                              </div>
-                            </MemberItemSmall>
-                          ))}
-                      </MemberGrid>
+                                </div>
+                              </MemberItemSmall>
+                            ))}
+                        </MemberGrid>
+                      </ScrollableMemberContainer>
                     ) : (
                       <MemberList>
                         {[...family.family_members]
@@ -1887,7 +1943,7 @@ const FamilyManagement: React.FC = () => {
                             </MemberItem>
                           ))}
                       </MemberList>
-                    ))
+                    )
                   ) : (
                     <div style={{
                       color: themeObj.TEXT_SECONDARY,
@@ -2252,7 +2308,7 @@ const FamilyManagement: React.FC = () => {
                       <option value="">Select a student</option>
                       {filteredStudents.map((student: any) => {
                         const isLinked = linkedStudentIds.has(student.id);
-                        const displayText = `#${student.id} - ${student.name}${student.father_name ? ` - ${student.father_name}` : ''}${isLinked ? ' (Linked)' : ''}`;
+                        const displayText = `#${getStudentDisplayId(student)} - ${student.name}${student.father_name ? ` - ${student.father_name}` : ''}${isLinked ? ' (Linked)' : ''}`;
                         return (
                           <option key={student.id} value={student.id} disabled={isLinked}>
                             {displayText}

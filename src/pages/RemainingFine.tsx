@@ -11,6 +11,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 
 import Loader from '../components/Loader';
 const Container = styled.div`
@@ -697,7 +698,7 @@ const RemainingFine: React.FC = () => {
         { data: paymentsData },
         { data: attendanceData },
       ] = await Promise.all([
-        supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url').eq('status', 'active').eq('school_id', user.school_id),
+        supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
         supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
         supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
         supabase.from('fines').select('class_id, absent_fine, late_fine, effective_from').eq('school_id', user.school_id),
@@ -751,14 +752,16 @@ const RemainingFine: React.FC = () => {
   // Filtered students
   const filteredStudents = useMemo(() => {
     return students.filter(stu => {
-      const matchesName = stu.name.toLowerCase().includes(search.toLowerCase());
+      const nameMatch = stu.name.toLowerCase().includes(search.toLowerCase());
+      const idMatch = matchesStudentSearch(stu, search);
+      const matchesSearch = nameMatch || idMatch.matches;
       const matchesClass = !selectedClass || String(stu.class_id) === selectedClass;
       const matchesSection = !selectedSection || String(stu.section_id) === selectedSection;
       // Calculate remaining fine
       const totalFine = calculateFine(stu);
       const { paid, remission } = calculatePayments(stu);
       const remaining = totalFine - paid - remission;
-      return matchesName && matchesClass && matchesSection && remaining !== 0;
+      return matchesSearch && matchesClass && matchesSection && remaining !== 0;
     });
   }, [students, search, selectedClass, selectedSection, payments, fines, attendanceRecords, sections]);
 
@@ -871,7 +874,7 @@ const RemainingFine: React.FC = () => {
         totalRemaining += remaining;
         return [
           idx + 1,
-          stu.id,
+          getStudentDisplayId(stu),
           stu.name,
           stu.father_name,
           totalFine,
@@ -1132,7 +1135,7 @@ const RemainingFine: React.FC = () => {
         <FilterBar>
           <FilterInput
             type="text"
-            placeholder="Search by name..."
+            placeholder="Search by name or roll number..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -1211,7 +1214,7 @@ const RemainingFine: React.FC = () => {
                   return (
                     <AnimatedTableRow key={stu.id} $index={idx}>
                       <CenterTd>{idx + 1}</CenterTd>
-                      <CenterTd>{stu.id}</CenterTd>
+                      <CenterTd>{getStudentDisplayId(stu)}</CenterTd>
                       <LeftTd
                         style={{
                           display: 'flex',

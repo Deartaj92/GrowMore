@@ -363,13 +363,6 @@ const settingsItems = [
     color: '#ef4444' // Red
   },
   {
-    title: 'Student Password Management',
-    description: 'Manage and reset student login passwords, view current passwords, and set default credentials for students',
-    icon: <LockIcon />,
-    path: '/settings/student-passwords',
-    color: '#06b6d4' // Cyan
-  },
-  {
     title: 'Landing Page Configuration',
     description: 'Configure custom landing page widgets for different user roles (Principal, Admin, Teacher, Student, etc.)',
     icon: <DashboardIcon />,

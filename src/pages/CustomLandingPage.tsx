@@ -11,6 +11,7 @@ import Loader from '../components/Loader';
 import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
 import { fetchRenderSettings, isTeacherCardVisible, isStudentCardVisible, isParentCardVisible, RenderSettings } from '../services/renderSettingsService';
+import { getStudentDisplayId } from '../utils/studentUtils';
 
 const Container = styled.div`
   padding: 2rem;
@@ -2316,7 +2317,7 @@ const CustomLandingPage: React.FC = () => {
                   borderRadius: '8px',
                   zIndex: 1
                 }}>
-                  #{student.id}
+                  #{getStudentDisplayId(student)}
                 </div>
                 <StudentCardTop>
                   <StudentCardAvatar

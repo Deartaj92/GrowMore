@@ -4,6 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Card, InputAdornment, LinearProgress
 } from '@mui/material';
 import { sortClasses } from '../utils/classUtils';
+import { matchesStudentSearch, getStudentDisplayId } from '../utils/studentUtils';
 import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth, AttachMoney, School, Commute, FamilyRestroom, Loyalty, Delete, Edit, Close as CloseIcon, CheckCircleOutline } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -1088,7 +1089,7 @@ export default function LoadFeePage() {
     try {
       const { data: stu, error } = await supabase
         .from('students')
-        .select('id, name, class_id, section_id, father_name, picture_url')
+        .select('id, name, class_id, section_id, father_name, picture_url, roll_number')
         .eq('school_id', schoolId)
         .order('name', { ascending: true });
       
@@ -1678,7 +1679,7 @@ export default function LoadFeePage() {
       // Fetch full student details
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('id, name, class_id, section_id, father_name, picture_url')
+        .select('id, name, class_id, section_id, father_name, picture_url, roll_number')
         .eq('school_id', schoolId)
         .eq('status', 'active')
         .in('id', filteredStudentIds)
@@ -1757,7 +1758,7 @@ export default function LoadFeePage() {
         // Fetch full student details
         const { data: studentsData, error: studentsError } = await supabase
           .from('students')
-          .select('id, name, class_id, section_id, father_name, picture_url')
+          .select('id, name, class_id, section_id, father_name, picture_url, roll_number')
           .eq('school_id', schoolId)
           .eq('status', 'active')
           .in('id', filteredStudentIds)
@@ -2122,7 +2123,7 @@ export default function LoadFeePage() {
       (async () => {
         const { data, error } = await supabase
           .from('students')
-          .select('*, class:classes(name), section:sections(name)')
+          .select('*, class:classes(name), section:sections(name), roll_number')
           .eq('id', singleStudent.id)
           .single();
         if (!error && data) {
@@ -2928,7 +2929,7 @@ export default function LoadFeePage() {
                                   width: '100%',
                                   lineHeight: 1.2,
                                 }}>
-                                  <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.id}</Box> . {stu.name}{stu.father_name ? (
+                                  <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{getStudentDisplayId(stu)}</Box> . {stu.name}{stu.father_name ? (
                                     <> . <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.father_name}</Box></>
                                   ) : ''}
                                 </Typography>
@@ -3071,14 +3072,15 @@ export default function LoadFeePage() {
               <Autocomplete
                 options={students}
                 loading={studentsLoading}
-                getOptionLabel={(option: any) => `${option.name} (${option.id})`}
-                filterOptions={(options, { inputValue }) =>
-                  options.filter(
-                    (s: any) =>
-                      s.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-                      String(s.id).includes(inputValue)
-                  )
-                }
+                getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
+                filterOptions={(options, { inputValue }) => {
+                  const searchLower = inputValue.toLowerCase();
+                  return options.filter((s: any) => {
+                    const nameMatch = s.name.toLowerCase().includes(searchLower);
+                    const idMatch = matchesStudentSearch(s, inputValue);
+                    return nameMatch || idMatch.matches;
+                  });
+                }}
                 onChange={(_, value) => setSingleStudent(value ? { id: value.id } : null)}
                 onOpen={() => {
                   if (students.length === 0 && !studentsLoading) {
@@ -3119,7 +3121,7 @@ export default function LoadFeePage() {
                       </Box>
                       <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
                         <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                          ID: {option.id}
+                          ID: {getStudentDisplayId(option)}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
                           {formatClassSectionDisplay(option.class_id, option.section_id)}
@@ -3154,14 +3156,15 @@ export default function LoadFeePage() {
                   <Autocomplete
                     options={students}
                     loading={studentsLoading}
-                    getOptionLabel={(option: any) => `${option.name} (${option.id})`}
-                    filterOptions={(options, { inputValue }) =>
-                      options.filter(
-                        (s: any) =>
-                          s.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-                          String(s.id).includes(inputValue)
-                      )
-                    }
+                    getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
+                    filterOptions={(options, { inputValue }) => {
+                      const searchLower = inputValue.toLowerCase();
+                      return options.filter((s: any) => {
+                        const nameMatch = s.name.toLowerCase().includes(searchLower);
+                        const idMatch = matchesStudentSearch(s, inputValue);
+                        return nameMatch || idMatch.matches;
+                      });
+                    }}
                     value={singleStudent ? students.find(s => s.id === singleStudent.id) : null}
                     onChange={(_, value) => setSingleStudent(value ? { id: value.id } : null)}
                     onOpen={() => {
@@ -3204,7 +3207,7 @@ export default function LoadFeePage() {
                           </Box>
                           <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                              ID: {option.id}
+                              ID: {getStudentDisplayId(option)}
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
                               {formatClassSectionDisplay(option.class_id, option.section_id)}
@@ -3516,7 +3519,7 @@ export default function LoadFeePage() {
                           </Typography>
                         </Box>
                         <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                          ID: {option.id}
+                          ID: {getStudentDisplayId(option)}
                         </Typography>
                       </Box>
                     </li>
@@ -3872,14 +3875,15 @@ export default function LoadFeePage() {
                 <Autocomplete
                   options={students}
                   loading={studentsLoading}
-                  getOptionLabel={(option: any) => `${option.name} (${option.id})`}
-                  filterOptions={(options, { inputValue }) =>
-                    options.filter(
-                      (s: any) =>
-                        s.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-                        String(s.id).includes(inputValue)
-                    )
-                  }
+                  getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
+                  filterOptions={(options, { inputValue }) => {
+                    const searchLower = inputValue.toLowerCase();
+                    return options.filter((s: any) => {
+                      const nameMatch = s.name.toLowerCase().includes(searchLower);
+                      const idMatch = matchesStudentSearch(s, inputValue);
+                      return nameMatch || idMatch.matches;
+                    });
+                  }}
                   value={concessionStudent}
                   onChange={(_, value) => setConcessionStudent(value)}
                   onOpen={() => {
@@ -3897,7 +3901,7 @@ export default function LoadFeePage() {
                       </ProfileAvatar>
                       <Box>
                         <Typography variant="body1">
-                          {option.name} <Typography component="span" variant="body2" color="text.secondary">({option.id})</Typography>
+                          {option.name} <Typography component="span" variant="body2" color="text.secondary">({getStudentDisplayId(option)})</Typography>
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                           {option.father_name && `Father: ${option.father_name} • `}
@@ -3954,7 +3958,7 @@ export default function LoadFeePage() {
                           {concessionStudent?.name || 'Student Name'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
-                          #{concessionStudent?.id || '--'}
+                          #{concessionStudent ? getStudentDisplayId(concessionStudent) : '--'}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -4806,7 +4810,7 @@ export default function LoadFeePage() {
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              <strong>Student:</strong> {singleStudent?.name || 'N/A'} (ID: {singleStudent?.id || 'N/A'})
+              <strong>Student:</strong> {singleStudent?.name || 'N/A'} (ID: {singleStudent ? getStudentDisplayId(singleStudent) : 'N/A'})
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               <strong>Session:</strong> {sessions.find(s => s.id === parseInt(singleSession))?.name || 'N/A'}

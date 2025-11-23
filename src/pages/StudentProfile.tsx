@@ -95,6 +95,7 @@ import { useProgress } from '../components/Layout';
 import { PageHeaderContext } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, isStudentTabVisible, isStudentSummaryCardVisible, RenderSettings } from '../services/renderSettingsService';
+import { getStudentDisplayId, fetchStudentByIdentifier } from '../utils/studentUtils';
 import { STUDENT_PROFILE_TABS } from '../config/renderSettingsConfig';
 import { examinationService } from '../services/examinationService';
 import { testRecordService } from '../services/testRecordService';
@@ -3260,7 +3261,7 @@ export const StudentProfile: React.FC = () => {
               passing_marks
             )
           `)
-          .eq('student_id', parseInt(id!))
+          .eq('student_id', student?.id || parseInt(id!))
           .eq('session_id', targetSession)
           .eq('school_id', schoolId)
           .order('id', { ascending: false })
@@ -3644,15 +3645,21 @@ export const StudentProfile: React.FC = () => {
       setProgress(10);
       try {
         // Fetch student details only (attendance will be loaded per session)
+        // Support both ID and roll_number sequence in URL
         setProgress(20);
-        const studentResult = await supabase
-          .from('students')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (studentResult.error) throw studentResult.error;
-        let studentData = studentResult.data;
+        if (!user?.school_id) {
+          throw new Error('School ID not found');
+        }
+        
+        if (!id) {
+          throw new Error('Student ID not found');
+        }
+        
+        let studentData = await fetchStudentByIdentifier(supabase, id, user.school_id);
+        
+        if (!studentData) {
+          throw new Error('Student not found');
+        }
 
         // Fetch sessions for attendance tab
         const { data: sessionsData } = await supabase
@@ -3680,7 +3687,7 @@ export const StudentProfile: React.FC = () => {
             new_classes:new_class_id(id, name),
             new_sections:new_section_id(id, name)
           `)
-          .eq('student_id', id)
+          .eq('student_id', studentData.id)
           .eq('school_id', studentData.school_id)
           .order('id', { ascending: true });
 
@@ -3736,13 +3743,13 @@ export const StudentProfile: React.FC = () => {
           section_id: currentSection,
           class: currentClassObj && currentClassObj.name ? { name: currentClassObj.name } : null,
           section: currentSectionObj && currentSectionObj.name ? { name: currentSectionObj.name } : null
-        };
+        } as typeof studentData;
 
         setStudent(studentData);
 
         // Load minimal data for summary cards (counts only)
         setProgress(50);
-        const studentId = parseInt(id!);
+        const studentId = studentData.id;
         const schoolId = studentData.school_id;
 
         // Load reports count for summary cards
@@ -4188,7 +4195,7 @@ export const StudentProfile: React.FC = () => {
       setTabDataLoading(prev => ({ ...prev, [tabIndex]: true }));
 
       try {
-        const studentId = parseInt(id!);
+        const studentId = typeof student.id === 'string' ? parseInt(student.id, 10) : student.id;
         const schoolId = (student as any).school_id;
 
         switch (tabIndex) {
@@ -4736,7 +4743,7 @@ export const StudentProfile: React.FC = () => {
                 color: theme => alpha(theme.palette.text.primary, 0.6),
               }}
             >
-              ID: {student.id}
+              ID: {getStudentDisplayId(student)}
             </Typography>
           </Box>
         </Stack>

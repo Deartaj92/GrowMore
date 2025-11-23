@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, memo } from '
 import styled, { css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './useToast';
@@ -519,19 +520,12 @@ const WithdrawalRegister: React.FC = () => {
       // Search filter
       if (searchLower && shouldInclude) {
         let searchMatch = false;
-        
-        if (isNumericSearch && searchTermNum !== null) {
-          const studentIdStr = String(stu.id);
-          if (stu.id === searchTermNum) {
-            searchScore = 1000;
-            searchMatch = true;
-          } else if (studentIdStr.startsWith(searchTerm)) {
-            searchScore = 500;
-            searchMatch = true;
-          } else if (studentIdStr.includes(searchTerm)) {
-            searchScore = 100;
-            searchMatch = true;
-          }
+
+        // Check ID/roll_number search using utility function
+        const idMatch = matchesStudentSearch(stu, searchTerm);
+        if (idMatch.matches) {
+          searchScore = idMatch.score;
+          searchMatch = true;
         }
         
         if (!searchMatch) {
@@ -544,18 +538,13 @@ const WithdrawalRegister: React.FC = () => {
             searchMatch = true;
             if (nameMatch) {
               if (stu.name?.toLowerCase().startsWith(searchLower)) {
-                searchScore = 100;
+                searchScore = Math.max(searchScore, 100);
               } else {
-                searchScore = 50;
+                searchScore = Math.max(searchScore, 50);
               }
             } else {
-              searchScore = 25;
+              searchScore = Math.max(searchScore, 25);
             }
-          }
-          
-          if (!searchMatch && String(stu.id).includes(searchTerm)) {
-            searchScore = 10;
-            searchMatch = true;
           }
         }
         
@@ -1033,7 +1022,7 @@ const WithdrawalRegister: React.FC = () => {
         
         return [
           idx + 1,
-          stu.id,
+          getStudentDisplayId(stu),
           stu.name || '-',
           stu.father_name || '-',
           formatDate(stu.admission_date || stu.created_at),
@@ -1529,7 +1518,7 @@ const WithdrawalRegister: React.FC = () => {
                     onClick={() => navigate(`/students/profile/${student.id}`)}
                   >
                     <Td>{(page - 1) * perPage + index + 1}</Td>
-                    <Td>{student.id}</Td>
+                    <Td>{getStudentDisplayId(student)}</Td>
                     <Td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <span style={{ fontWeight: 600 }}>{student.name || '-'}</span>

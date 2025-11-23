@@ -15,13 +15,16 @@ import {
     useTheme,
     useMediaQuery,
     styled,
-    Avatar
+    Avatar,
+    Paper
 } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { reportService } from '../../utils/reportService';
 import { Report, ReportCategory, CreateReportDTO, ReportSeverity } from '../../types/reports';
 import { useAuth } from '../../contexts/AuthContext';
+import { getStudentDisplayId, matchesStudentSearch } from '../../utils/studentUtils';
 import { useToast } from '../../components/useToast';
 import dayjs, { Dayjs } from 'dayjs';
 import { Theme } from '@mui/material/styles';
@@ -668,54 +671,82 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                             )}
 
                             <Grid item xs={12}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Student</InputLabel>
-                                    <Select
-                                        value={formData.student_id ? formData.student_id.toString() : ''}
-                                        label="Student"
-                                        onChange={(e) => setFormData({ 
-                                            ...formData, 
-                                            student_id: Number(e.target.value) 
-                                        })}
-                                        required
-                                        disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
-                                        MenuProps={selectMenuProps}
-                                    >
-                                        <MenuItem value="">Select Student</MenuItem>
-                                        {loadingStudents ? (
-                                            <MenuItem disabled>Loading students...</MenuItem>
-                                        ) : (
-                                            students.map((student) => (
-                                                <MenuItem key={student.id} value={student.id.toString()}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                                                        <Avatar 
-                                                            src={student.picture_url || undefined} 
-                                                            sx={{ width: 40, height: 40 }}
-                                                        >
-                                                            {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
-                                                        </Avatar>
-                                                        <Box>
-                                                            <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                                                                {student.name}
-                                                            </Typography>
-                                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                                {student.father_name || 'N/A'}
-                                                            </Typography>
-                                                        </Box>
-                                                        <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                                ID: {student.id}
-                                                            </Typography>
-                                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                                {student.address || 'No address'}
-                                                            </Typography>
-                                                        </Box>
-                                                    </Box>
-                                                </MenuItem>
-                                            ))
-                                        )}
-                                    </Select>
-                                </FormControl>
+                                <Autocomplete
+                                    options={students}
+                                    loading={loadingStudents}
+                                    disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
+                                    value={students.find(s => s.id === formData.student_id) || null}
+                                    onChange={(_, newValue) => setFormData({ 
+                                        ...formData, 
+                                        student_id: newValue ? newValue.id : undefined 
+                                    })}
+                                    getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
+                                    filterOptions={(options, { inputValue }) => {
+                                        const searchLower = inputValue.toLowerCase();
+                                        return options.filter((s: any) => {
+                                            const nameMatch = s.name.toLowerCase().includes(searchLower);
+                                            const idMatch = matchesStudentSearch(s, inputValue);
+                                            return nameMatch || idMatch.matches;
+                                        });
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Student"
+                                            required
+                                            size="small"
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                endAdornment: (
+                                                    <>
+                                                        {loadingStudents ? <Typography variant="body2" sx={{ mr: 2 }}>Loading...</Typography> : null}
+                                                        {params.InputProps.endAdornment}
+                                                    </>
+                                                ),
+                                            }}
+                                        />
+                                    )}
+                                    renderOption={(props, student) => (
+                                        <Box component="li" {...props} key={student.id}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
+                                                <Avatar 
+                                                    src={student.picture_url || undefined} 
+                                                    sx={{ width: 40, height: 40 }}
+                                                >
+                                                    {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
+                                                </Avatar>
+                                                <Box>
+                                                    <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                                                        {student.name}
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                        {student.father_name || 'N/A'}
+                                                    </Typography>
+                                                </Box>
+                                                <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                        ID: {getStudentDisplayId(student)}
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                        {student.address || 'No address'}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Box>
+                                    )}
+                                    PaperComponent={(props) => (
+                                        <Paper
+                                            {...props}
+                                            sx={{
+                                                ...selectMenuProps.PaperProps?.sx,
+                                                maxHeight: 300,
+                                                backgroundColor: theme.palette.mode === 'dark' 
+                                                    ? theme.palette.background.paper
+                                                    : theme.palette.background.paper,
+                                            }}
+                                        />
+                                    )}
+                                />
                             </Grid>
                         </>
                     ) : (

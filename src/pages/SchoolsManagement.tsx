@@ -660,6 +660,7 @@ const SchoolsManagement: React.FC = () => {
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>('');
+  const [nextCustomId, setNextCustomId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSchools();
@@ -717,7 +718,7 @@ const SchoolsManagement: React.FC = () => {
     setLogoPreview(null);
   };
 
-  const handleOpenDialog = (school?: School) => {
+  const handleOpenDialog = async (school?: School) => {
     if (school) {
       setEditingSchool(school);
       setForm({ 
@@ -728,11 +729,26 @@ const SchoolsManagement: React.FC = () => {
       });
       setLogoPreview(school.logo_url || null);
       setLogoFile(null);
+      setNextCustomId(null);
     } else {
       setEditingSchool(null);
       setForm({ name: '', address: '', contact: '', email: '' });
       setLogoPreview(null);
       setLogoFile(null);
+      
+      // Fetch next custom ID for new school
+      try {
+        const { data: customIdData, error: customIdError } = await supabase
+          .rpc('get_next_school_custom_id');
+        
+        if (!customIdError && customIdData) {
+          setNextCustomId(customIdData);
+        } else {
+          setNextCustomId('S1');
+        }
+      } catch (error) {
+        setNextCustomId('001');
+      }
     }
     setDialogOpen(true);
   };
@@ -874,6 +890,15 @@ const SchoolsManagement: React.FC = () => {
         if (error) throw error;
         showToast('School updated successfully', 'success');
       } else {
+        // Create new school with custom_id
+        // Get the next sequential custom_id
+        const { data: customIdData, error: customIdError } = await supabase
+          .rpc('get_next_school_custom_id');
+
+        if (customIdError) throw customIdError;
+
+        const customId = customIdData || 'S1';
+
         // Create new school
         const { error } = await supabase
           .from('schools')
@@ -883,7 +908,8 @@ const SchoolsManagement: React.FC = () => {
             contact: form.contact.trim(),
             email: form.email.trim(),
             logo_url: logoUrl,
-            status: 'active'
+            status: 'active',
+            custom_id: customId
           });
 
         if (error) throw error;
@@ -1405,6 +1431,39 @@ const SchoolsManagement: React.FC = () => {
         </DialogHeader>
 
         <StyledDialogContent>
+          {!editingSchool && nextCustomId && (
+            <Box sx={{ 
+              mb: 2, 
+              p: 1.5, 
+              background: theme.palette.mode === 'dark' 
+                ? 'rgba(74, 108, 247, 0.15)' 
+                : 'rgba(74, 108, 247, 0.1)',
+              borderRadius: '8px',
+              border: `1px solid ${theme.palette.mode === 'dark' 
+                ? 'rgba(74, 108, 247, 0.3)' 
+                : 'rgba(74, 108, 247, 0.2)'}`
+            }}>
+              <Typography variant="body2" sx={{ 
+                fontSize: '0.75rem', 
+                fontWeight: 600, 
+                color: theme.palette.mode === 'dark' 
+                  ? 'rgba(255, 255, 255, 0.6)' 
+                  : 'rgba(0, 0, 0, 0.6)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                mb: 0.5
+              }}>
+                Next School ID
+              </Typography>
+              <Typography variant="h6" sx={{ 
+                fontSize: '1.25rem', 
+                fontWeight: 700, 
+                color: theme.palette.primary.main 
+              }}>
+                {nextCustomId}
+              </Typography>
+            </Box>
+          )}
           <LogoUploadBox component="label">
             <input
               type="file"

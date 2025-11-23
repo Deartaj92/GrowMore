@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, memo, lazy, S
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { useNavigate } from 'react-router-dom';
 import { EditStudentForm } from './students/EditStudentForm';
@@ -1681,83 +1682,87 @@ const MemoizedStudentCard = memo(({
   onEdit: () => void;
   onPrint: () => void;
   onProfile: () => void;
-}) => (
-  <StudentCard status={student.status || 'active'} onClick={onClick} data-student-card>
-    <div style={{
-      position: 'absolute',
-      top: '12px',
-      right: '12px',
-      fontSize: '0.85rem',
-      opacity: 0.6,
-      fontWeight: 600,
-      color: 'inherit',
-      background: 'rgba(0, 0, 0, 0.05)',
-      padding: '4px 8px',
-      borderRadius: '8px',
-      zIndex: 1
-    }}>
-      #{student.id}
-    </div>
-    <CardTop>
-      <Avatar
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick(e);
-        }}
-        title="View Student Profile"
-      >
-        {student.picture_url ? (
-          <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
-        ) : (
-          <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}</span>
-        )}
-      </Avatar>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1.2rem 1.5rem 1.2rem 1rem' }}>
-        <StudentName>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span>{student.name}</span>
-            <StatusBadge status={student.status || 'active'}>
-              {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
-            </StatusBadge>
-          </div>
-        </StudentName>
-        <FatherName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>{student.father_name || 'N/A'}</span>
-          {(student.phone || student.father_mobile) && (
-            <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {student.notification_channel === 'whatsapp' ? (
-                <WhatsAppIcon style={{ fontSize: '0.9rem', color: '#25D366' }} />
-              ) : student.notification_channel === 'sms' ? (
-                <SmsIcon style={{ fontSize: '0.9rem', color: '#4CAF50' }} />
-              ) : (
-                <PhoneIcon style={{ fontSize: '0.9rem' }} />
-              )}
-              {student.phone || student.father_mobile}
-            </span>
-          )}
-        </FatherName>
-        <StudentDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <span>
-            {student.classes?.name || 'N/A'}
-            {student.sections?.name && ` (${student.sections.name})`}
-          </span>
-          {student.address && (
-            <span style={{ fontSize: '0.8rem', opacity: 0.7, textAlign: 'right', maxWidth: '50%', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-              <LocationIcon style={{ fontSize: '0.9rem' }} />
-              {student.address}
-            </span>
-          )}
-        </StudentDetails>
+}) => {
+  const displayId = getStudentDisplayId(student);
+  
+  return (
+    <StudentCard status={student.status || 'active'} onClick={onClick} data-student-card>
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        right: '12px',
+        fontSize: '0.85rem',
+        opacity: 0.6,
+        fontWeight: 600,
+        color: 'inherit',
+        background: 'rgba(0, 0, 0, 0.05)',
+        padding: '4px 8px',
+        borderRadius: '8px',
+        zIndex: 1
+      }}>
+        #{displayId}
       </div>
-    </CardTop>
-    <MemoizedCardActions
-      student={student}
-      onEdit={onEdit}
-      onPrint={onPrint}
-      onProfile={onProfile}
-    />
-  </StudentCard>
-));
+      <CardTop>
+        <Avatar
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick(e);
+          }}
+          title="View Student Profile"
+        >
+          {student.picture_url ? (
+            <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+          ) : (
+            <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}</span>
+          )}
+        </Avatar>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1.2rem 1.5rem 1.2rem 1rem' }}>
+          <StudentName>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span>{student.name}</span>
+              <StatusBadge status={student.status || 'active'}>
+                {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
+              </StatusBadge>
+            </div>
+          </StudentName>
+          <FatherName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{student.father_name || 'N/A'}</span>
+            {(student.phone || student.father_mobile) && (
+              <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {student.notification_channel === 'whatsapp' ? (
+                  <WhatsAppIcon style={{ fontSize: '0.9rem', color: '#25D366' }} />
+                ) : student.notification_channel === 'sms' ? (
+                  <SmsIcon style={{ fontSize: '0.9rem', color: '#4CAF50' }} />
+                ) : (
+                  <PhoneIcon style={{ fontSize: '0.9rem' }} />
+                )}
+                {student.phone || student.father_mobile}
+              </span>
+            )}
+          </FatherName>
+          <StudentDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <span>
+              {student.classes?.name || 'N/A'}
+              {student.sections?.name && ` (${student.sections.name})`}
+            </span>
+            {student.address && (
+              <span style={{ fontSize: '0.8rem', opacity: 0.7, textAlign: 'right', maxWidth: '50%', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                <LocationIcon style={{ fontSize: '0.9rem' }} />
+                {student.address}
+              </span>
+            )}
+          </StudentDetails>
+        </div>
+      </CardTop>
+      <MemoizedCardActions
+        student={student}
+        onEdit={onEdit}
+        onPrint={onPrint}
+        onProfile={onProfile}
+      />
+    </StudentCard>
+  );
+});
 
 const StudentList: React.FC = () => {
   const { theme } = React.useContext(ThemeContext);
@@ -1993,19 +1998,11 @@ const StudentList: React.FC = () => {
       if (searchLower && shouldInclude) {
         let searchMatch = false;
 
-        if (isNumericSearch && searchTermNum !== null) {
-          // ID search - prioritize exact match, then starts with, then contains
-          const studentIdStr = String(stu.id);
-          if (stu.id === searchTermNum) {
-            searchScore = 1000; // Highest priority for exact match
-            searchMatch = true;
-          } else if (studentIdStr.startsWith(searchTerm)) {
-            searchScore = 500; // High priority for starts with
-            searchMatch = true;
-          } else if (studentIdStr.includes(searchTerm)) {
-            searchScore = 100; // Lower priority for contains
-            searchMatch = true;
-          }
+        // Check ID/roll_number search using utility function
+        const idMatch = matchesStudentSearch(stu, searchTerm);
+        if (idMatch.matches) {
+          searchScore = idMatch.score;
+          searchMatch = true;
         }
 
         // Name and other field searches
@@ -2020,19 +2017,13 @@ const StudentList: React.FC = () => {
             // Prioritize name matches
             if (nameMatch) {
               if (stu.name?.toLowerCase().startsWith(searchLower)) {
-                searchScore = 100; // High priority for name starts with
+                searchScore = Math.max(searchScore, 100); // High priority for name starts with
               } else {
-                searchScore = 50; // Lower priority for name contains
+                searchScore = Math.max(searchScore, 50); // Lower priority for name contains
               }
             } else {
-              searchScore = 25; // Lower priority for class/section/session matches
+              searchScore = Math.max(searchScore, 25); // Lower priority for class/section/session matches
             }
-          }
-
-          // Also check ID for non-numeric searches (secondary)
-          if (!searchMatch && String(stu.id).includes(searchTerm)) {
-            searchScore = 10;
-            searchMatch = true;
           }
         }
 
@@ -2639,16 +2630,19 @@ const StudentList: React.FC = () => {
         ];
 
         // Table rows - students are already sorted by ID within each group
-        const body = students.map((stu: any, idx: number) => [
-          idx + 1,
-          stu.id,
-          stu.name || '-',
-          stu.father_name || '-',
-          stu.phone || '-',
-          stu.dob ? formatDate(new Date(stu.dob)) : '-',
-          (stu.admission_date || stu.created_at) ? formatDate(new Date(stu.admission_date || stu.created_at)) : '-',
-          '' // Remarks blank
-        ]);
+        const body = students.map((stu: any, idx: number) => {
+          const displayId = getStudentDisplayId(stu);
+          return [
+            idx + 1,
+            displayId,
+            stu.name || '-',
+            stu.father_name || '-',
+            stu.phone || '-',
+            stu.dob ? formatDate(new Date(stu.dob)) : '-',
+            (stu.admission_date || stu.created_at) ? formatDate(new Date(stu.admission_date || stu.created_at)) : '-',
+            '' // Remarks blank
+          ];
+        });
 
         autoTable(doc, {
           head,

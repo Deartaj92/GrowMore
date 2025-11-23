@@ -243,7 +243,8 @@ export const reportService = {
                 id,
                 name,
                 father_name,
-                picture_url
+                picture_url,
+                roll_number
             `)
             .eq('school_id', schoolId)
             .in('id', studentIds);
