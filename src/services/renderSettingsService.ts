@@ -47,6 +47,17 @@ export const isTeacherCardVisible = (
 };
 
 /**
+ * Check if a student menu card should be visible
+ */
+export const isStudentCardVisible = (
+  settings: RenderSettings | null,
+  cardKey: string
+): boolean => {
+  if (!settings) return true; // Default to visible if settings not loaded
+  return settings.student[cardKey] !== false;
+};
+
+/**
  * Check if a student profile tab should be visible
  */
 export const isStudentTabVisible = (

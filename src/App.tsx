@@ -34,10 +34,11 @@ import StudentStatusManager from './pages/StudentStatusManager';
 import BulkPromoteDemote from './pages/BulkPromoteDemote';
 import UserManagement from './pages/UserManagement';
 import StudentPasswordManagement from './pages/StudentPasswordManagement';
-import RenderSettings from './pages/RenderSettings';
 import GeneralSettings from './pages/GeneralSettings';
 import UserAnnouncements from './pages/UserAnnouncements';
 import NotificationSettings from './pages/NotificationSettings';
+import LandingPageConfiguration from './pages/LandingPageConfiguration';
+import CustomLandingPage from './pages/CustomLandingPage';
 import StaffAddForm from './pages/StaffAddForm';
 import { useAuth } from './contexts/AuthContext';
 import HolidayManager from './components/HolidayManager';
@@ -496,14 +497,6 @@ const App: React.FC = () => {
                           />
 
                           <Route
-                            path="settings/render-settings"
-                            element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                                <RenderSettings />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
                             path="settings/general-settings"
                             element={
                               <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
@@ -526,6 +519,24 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
                                 <NotificationSettings />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/landing-page-config"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal']}>
+                                <LandingPageConfiguration />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="landing-page"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Student', 'Parent', 'Accountant', 'Guest']}>
+                                <CustomLandingPage />
                               </ProtectedRoute>
                             }
                           />

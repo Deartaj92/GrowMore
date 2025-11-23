@@ -261,13 +261,17 @@ export const useActivityTracking = () => {
       entityId?: number;
       entityName?: string;
       createNotification?: boolean;
+      studentId?: number;
+      staffId?: number;
     } = {}
   ) => {
     const details = {
       category_name: categoryName,
       subject_name: subjectName,
       subject_type: subjectType,
-      severity: severity
+      severity: severity,
+      student_id: options.studentId,
+      staff_id: options.staffId
     };
 
     return logActivity(

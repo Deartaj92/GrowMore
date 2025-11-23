@@ -24,6 +24,7 @@ export interface Notification {
   title: string;
   message: string;
   activity_log_id?: number;
+  activity_action?: string; // Include activity_action to identify delete actions
   is_read: boolean;
   is_important: boolean;
   expires_at?: string;
@@ -104,9 +105,26 @@ class ActivityTrackingService {
       }
 
       // Create notification for admins if requested (only for create/update/delete, not view)
+      console.log('[ActivityTracking] Checking if notification should be created:', {
+        createNotification: options.createNotification,
+        activityAction,
+        activityType,
+        shouldCreate: options.createNotification !== false && 
+          (activityAction === 'create' || activityAction === 'update' || activityAction === 'delete')
+      });
+      
       if (options.createNotification !== false && 
           (activityAction === 'create' || activityAction === 'update' || activityAction === 'delete')) {
         try {
+          console.log('[ActivityTracking] Creating notification for admins:', {
+            teacherId,
+            schoolId,
+            activityType,
+            activityAction,
+            entityName: options.entityName,
+            activityLogId: data
+          });
+          
           await this.createNotificationForAdmins(
             teacherId,
             schoolId,
@@ -116,9 +134,14 @@ class ActivityTrackingService {
             options.details,
             data // Pass the activity_log_id (returned from log_teacher_activity)
           );
+          
+          console.log('[ActivityTracking] Notification creation completed');
         } catch (notificationError) {
           // Don't fail the activity logging if notification fails
+          console.error('[ActivityTracking] Error creating notification:', notificationError);
         }
+      } else {
+        console.log('[ActivityTracking] Notification not created - conditions not met');
       }
 
       return data;
@@ -140,10 +163,10 @@ class ActivityTrackingService {
     activityLogId?: number
   ): Promise<void> {
     try {
-      // Get teacher name
+      // Get teacher name and role
       const { data: teacher, error: teacherError } = await supabase
         .from('staff')
-        .select('name')
+        .select('name, role')
         .eq('id', teacherId)
         .single();
 
@@ -151,43 +174,107 @@ class ActivityTrackingService {
         return;
       }
 
-      // Get all admins for this school
+      const isImportant = activityType === 'report' && activityAction === 'create';
+      const message = this.getNotificationMessage(activityType, activityAction, entityName, details);
+      const notifications: any[] = [];
+
+      // 1. Create notifications for all admins
       const { data: admins, error: adminError } = await supabase
         .from('staff')
         .select('id')
         .eq('school_id', schoolId)
         .in('role', ['Super Admin', 'Principal', 'Admin']);
 
-      if (adminError || !admins) {
-        return;
+      if (!adminError && admins) {
+        admins.forEach(admin => {
+          notifications.push({
+            recipient_id: admin.id,
+            school_id: schoolId,
+            notification_type: activityType,
+            title: teacher.name,
+            message: message,
+            activity_log_id: activityLogId || null,
+            is_important: isImportant,
+            expires_at: null
+          });
+        });
       }
 
-      // Create notification for each admin
-      // Mark report notifications as important for high attention
-      const isImportant = activityType === 'report' && activityAction === 'create';
-      
-      const notifications = admins.map(admin => ({
-        recipient_id: admin.id,
-        school_id: schoolId,
-        notification_type: activityType, // Use the actual activity type for specific icons
-        title: teacher.name,
-        message: this.getNotificationMessage(activityType, activityAction, entityName, details),
-        activity_log_id: activityLogId || null, // Include activity_log_id to link back to the activity
-        is_important: isImportant,
-        expires_at: null
-      }));
+      // 2. For reports, also notify the teacher who created it (if not an admin) and the subject
+      if (activityType === 'report' && activityAction === 'create' && activityLogId && details) {
+        // Notify the teacher who created the report (if not an admin)
+        const isAdmin = teacher.role === 'Super Admin' || teacher.role === 'Principal' || teacher.role === 'Admin';
+        if (!isAdmin) {
+          notifications.push({
+            recipient_id: teacherId,
+            school_id: schoolId,
+            notification_type: activityType,
+            title: teacher.name,
+            message: message,
+            activity_log_id: activityLogId,
+            is_important: isImportant,
+            expires_at: null
+          });
+        }
+
+        // Notify the subject (student or staff) if it's a report
+        // For staff reports: notify the staff member
+        if (details.subject_type === 'staff' && details.staff_id) {
+          notifications.push({
+            recipient_id: details.staff_id,
+            school_id: schoolId,
+            notification_type: activityType,
+            title: teacher.name,
+            message: message,
+            activity_log_id: activityLogId,
+            is_important: isImportant,
+            expires_at: null
+          });
+        }
+        // For student reports: we can't directly notify students via notifications table
+        // because recipient_id references staff(id). However, the filtering logic in
+        // NotificationContext will show reports to students by querying the reports table.
+      }
 
       if (notifications.length > 0) {
-        const { error: insertError } = await supabase
-          .from('notifications')
-          .insert(notifications);
+        // Validate that all recipient_ids are staff members (for FK constraint)
+        const recipientIds = Array.from(new Set(notifications.map(n => n.recipient_id)));
+        const { data: validStaff } = await supabase
+          .from('staff')
+          .select('id')
+          .in('id', recipientIds);
+        
+        if (validStaff) {
+          const validStaffIds = new Set(validStaff.map(s => s.id));
+          const validNotifications = notifications.filter(n => validStaffIds.has(n.recipient_id));
+          
+          if (validNotifications.length > 0) {
+            const { error: insertError } = await supabase
+              .from('notifications')
+              .insert(validNotifications);
 
-        if (insertError) {
-          // Error creating notifications
+            if (insertError) {
+              console.error('[ActivityTracking] Error creating notifications:', insertError);
+            } else {
+              console.log('[ActivityTracking] Created notifications:', {
+                count: validNotifications.length,
+                activityType,
+                activityAction,
+                entityName,
+                notificationTypes: validNotifications.map(n => n.notification_type)
+              });
+            }
+          }
         }
+      } else {
+        console.warn('[ActivityTracking] No notifications to create:', {
+          activityType,
+          activityAction,
+          adminsCount: admins?.length || 0
+        });
       }
     } catch (error) {
-      // Failed to create admin notifications
+      console.error('[ActivityTracking] Failed to create admin notifications:', error);
     }
   }
 
@@ -262,8 +349,10 @@ class ActivityTrackingService {
       case 'report':
         const severityText = details?.severity ? ` [${details.severity.toUpperCase()}]` : '';
         const subjectTypeText = details?.subject_type === 'student' ? 'Student' : 'Staff';
+        // For delete, show the report title (entityName) prominently
         if (activityAction === 'delete') {
-          return `Deleted ${subjectTypeText} Report - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
+          // entityName is like "Report #123", show it as the main message
+          return `${entityName || `Report`} - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
         } else if (activityAction === 'update') {
           return `Updated ${subjectTypeText} Report - ${details?.category_name || 'Report'}${severityText} - ${details?.subject_name || 'Subject'}`;
         } else if (activityAction === 'create') {
@@ -364,6 +453,157 @@ class ActivityTrackingService {
     } catch (error) {
       // Return empty array on any error to prevent breaking the app
       return [];
+    }
+  }
+
+  /**
+   * Enrich notifications with activity_action by querying activity_logs
+   * This is a fallback for notifications that don't have activity_log_id set
+   */
+  private async enrichNotificationsWithActivityAction(
+    notifications: Notification[],
+    schoolId: number
+  ): Promise<Notification[]> {
+    // Find notifications that need enrichment (have null activity_action but are activity-based)
+    const needsEnrichment = notifications.filter(
+      n => !n.activity_action && n.notification_type !== 'announcement' && n.notification_type !== 'system'
+    );
+
+    if (needsEnrichment.length === 0) {
+      return notifications;
+    }
+
+    // Get all staff names to match with notification titles
+    const { data: staffData } = await supabase
+      .from('staff')
+      .select('id, name')
+      .eq('school_id', schoolId);
+
+    if (!staffData) {
+      return notifications;
+    }
+
+    const staffMap = new Map(staffData.map(s => [s.name, s.id]));
+
+    // For each notification, try to find matching activity log
+    const enrichedNotifications = await Promise.all(
+      notifications.map(async (notification) => {
+        // If already has activity_action, return as is
+        if (notification.activity_action) {
+          return notification;
+        }
+
+        // Skip if not an activity-based notification
+        if (notification.notification_type === 'announcement' || notification.notification_type === 'system') {
+          return notification;
+        }
+
+        // Try to find matching activity log
+        const teacherId = staffMap.get(notification.title);
+        if (!teacherId) {
+          return notification;
+        }
+
+        // Query activity_logs to find a match
+        // Match on: activity_type, teacher_id, school_id, and time proximity
+        const { data: activityLogs } = await supabase
+          .from('activity_logs')
+          .select('id, activity_action, entity_id, entity_name, created_at')
+          .eq('teacher_id', teacherId)
+          .eq('school_id', schoolId)
+          .eq('activity_type', notification.notification_type)
+          .gte('created_at', new Date(new Date(notification.created_at).getTime() - 5 * 60 * 1000).toISOString())
+          .lte('created_at', new Date(new Date(notification.created_at).getTime() + 5 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (!activityLogs || activityLogs.length === 0) {
+          return notification;
+        }
+
+        // Try to match by entity_name in message (for reports: "Report #123")
+        if (notification.notification_type === 'report') {
+          const reportIdMatch = notification.message.match(/Report #(\d+)/);
+          if (reportIdMatch) {
+            const reportId = parseInt(reportIdMatch[1]);
+            const matchingLog = activityLogs.find(
+              log => log.entity_id === reportId || log.entity_name?.includes(`Report #${reportId}`)
+            );
+            if (matchingLog) {
+              return { ...notification, activity_action: matchingLog.activity_action, activity_log_id: matchingLog.id };
+            }
+          }
+        }
+
+        // For other types, try to match by entity_name in message
+        const matchingLog = activityLogs.find(log => {
+          if (log.entity_name && notification.message.includes(log.entity_name)) {
+            return true;
+          }
+          return false;
+        });
+
+        if (matchingLog) {
+          return { ...notification, activity_action: matchingLog.activity_action, activity_log_id: matchingLog.id };
+        }
+
+        // If no exact match, use the most recent activity log (best guess)
+        return { ...notification, activity_action: activityLogs[0].activity_action, activity_log_id: activityLogs[0].id };
+      })
+    );
+
+    return enrichedNotifications;
+  }
+
+  /**
+   * Get all notifications for a user (fetches in batches to handle Supabase 1000 row limit)
+   * Fetches all notifications first, then filters by type if specified
+   */
+  async getAllUserNotifications(
+    userId: number,
+    schoolId: number,
+    notificationType?: string
+  ): Promise<Notification[]> {
+    const BATCH_SIZE = 1000; // Supabase limit per query
+    const allNotifications: Notification[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    try {
+      // Fetch all notifications in batches
+      while (hasMore) {
+        const batch = await this.getUserNotifications(userId, schoolId, BATCH_SIZE, offset);
+        
+        if (batch.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        allNotifications.push(...batch);
+
+        // If we got less than BATCH_SIZE, we've reached the end
+        if (batch.length < BATCH_SIZE) {
+          hasMore = false;
+        } else {
+          offset += BATCH_SIZE;
+        }
+      }
+
+      // Enrich notifications with activity_action if missing (fallback for old notifications)
+      const enrichedNotifications = await this.enrichNotificationsWithActivityAction(allNotifications, schoolId);
+
+      // Filter by notification type if specified (after fetching all)
+      if (notificationType) {
+        return enrichedNotifications.filter(n => n.notification_type === notificationType);
+      }
+
+      return enrichedNotifications;
+    } catch (error) {
+      // Return what we have so far on error, filtered if needed
+      if (notificationType) {
+        return allNotifications.filter(n => n.notification_type === notificationType);
+      }
+      return allNotifications;
     }
   }
 

@@ -10,10 +10,10 @@ import {
   BeachAccess as BeachAccessIcon,
   People as PeopleIcon,
   Lock as LockIcon,
-  Visibility as VisibilityIcon,
   Settings as SettingsIcon,
   Campaign as CampaignIcon,
   Notifications as NotificationsIcon,
+  Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 
 // Styled Components
@@ -370,11 +370,11 @@ const settingsItems = [
     color: '#06b6d4' // Cyan
   },
   {
-    title: 'Render Settings',
-    description: 'Control which menu cards and tabs are visible to teachers and students in their respective dashboards',
-    icon: <VisibilityIcon />,
-    path: '/settings/render-settings',
-    color: '#9333ea' // Purple
+    title: 'Landing Page Configuration',
+    description: 'Configure custom landing page widgets for different user roles (Principal, Admin, Teacher, Student, etc.)',
+    icon: <DashboardIcon />,
+    path: '/settings/landing-page-config',
+    color: '#ec4899' // Pink
   },
   {
     title: 'General Settings',

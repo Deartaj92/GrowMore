@@ -822,27 +822,47 @@ export const Reports = (): JSX.Element => {
         
         setDeleteLoading(true);
         try {
-            await reportService.deleteReport(parseInt(reportToDelete.id), user?.school_id);
-            
-            // Log activity
+            // Log activity FIRST, BEFORE deleting the report
+            // This ensures the activity log is created with the report ID while it still exists
             if (reportToDelete.category?.name && user?.staff_id) {
                 const subjectName = reportToDelete.subject_type === 'student' 
                     ? reportToDelete.student?.name || 'Unknown Student'
                     : reportToDelete.staff?.name || 'Unknown Staff';
                 
-                await logReportActivity(
-                    'delete',
-                    reportToDelete.category.name,
-                    subjectName,
-                    reportToDelete.subject_type,
-                    reportToDelete.severity,
-                    {
-                        entityId: parseInt(reportToDelete.id),
-                        entityName: `Report #${reportToDelete.id}`,
-                        createNotification: false // Don't notify on delete
-                    }
-                );
+                try {
+                    console.log('[Reports] Logging report delete activity:', {
+                        reportId: reportToDelete.id,
+                        category: reportToDelete.category.name,
+                        subjectName,
+                        subjectType: reportToDelete.subject_type,
+                        severity: reportToDelete.severity
+                    });
+                    
+                    const activityLogId = await logReportActivity(
+                        'delete',
+                        reportToDelete.category.name,
+                        subjectName,
+                        reportToDelete.subject_type,
+                        reportToDelete.severity,
+                        {
+                            entityId: parseInt(reportToDelete.id),
+                            entityName: `Report #${reportToDelete.id}`,
+                            createNotification: true // Show delete activity in notifications
+                        }
+                    );
+                    
+                    console.log('[Reports] Report delete activity logged successfully:', {
+                        activityLogId,
+                        reportId: reportToDelete.id
+                    });
+                } catch (activityError) {
+                    // Log error but don't fail the delete operation
+                    console.error('[Reports] Failed to log report delete activity:', activityError);
+                }
             }
+            
+            // Now delete the report
+            await reportService.deleteReport(parseInt(reportToDelete.id), user?.school_id);
             
             await loadReports();
             setDeleteDialogOpen(false);
@@ -883,7 +903,9 @@ export const Reports = (): JSX.Element => {
                     {
                         entityId: createdReport.id,
                         entityName: `Report #${createdReport.id}`,
-                        createNotification: true // Create high-priority notification
+                        createNotification: true, // Create high-priority notification
+                        studentId: reportData.student_id,
+                        staffId: reportData.staff_id
                     }
                 );
             }

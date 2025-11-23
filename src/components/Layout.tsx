@@ -3692,8 +3692,8 @@ const Layout: React.FC = () => {
                   <GlobalStyle />
                   <AppContainer>
                     <LayoutWrapper>
-                      {/* Sidebar hidden only for teachers and students, shown for staff */}
-                      {user?.role !== 'Teacher' && !studentInfo && user && (
+                      {/* Sidebar shown only for Principal, Admin, or Super Admin */}
+                      {user && ['Principal', 'Admin', 'Super Admin'].includes(user.role) && (
                         <CollapsibleSidebar
                           navigate={navigate}
                           theme={theme === 'dark' ? darkTheme : lightTheme}
@@ -3704,23 +3704,23 @@ const Layout: React.FC = () => {
                           onAboutUsClick={() => setAboutUsModalOpen(true)}
                         />
                       )}
-                      <MainArea $isTeacher={user?.role === 'Teacher'}>
+                      <MainArea $isTeacher={!user || !['Principal', 'Admin', 'Super Admin'].includes(user.role)}>
                         <Header>
                           <HeaderLeft>
-                            {user?.role === 'Teacher' ? (
-                              <MenuButton
-                                onClick={() => navigate('/teacher')}
-                                aria-label="Go to Dashboard"
-                                title="Dashboard"
-                              >
-                                <DashboardIcon />
-                              </MenuButton>
-                            ) : !studentInfo ? (
+                            {user && ['Principal', 'Admin', 'Super Admin'].includes(user.role) ? (
                               <MenuButton
                                 onClick={() => setSidebarOpen((v) => !v)}
                                 aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
                               >
                                 <MenuIcon />
+                              </MenuButton>
+                            ) : (user || studentInfo) ? (
+                              <MenuButton
+                                onClick={() => navigate('/landing-page')}
+                                aria-label="Go to Dashboard"
+                                title="Dashboard"
+                              >
+                                <DashboardIcon />
                               </MenuButton>
                             ) : null}
                             {/* Only show navigation buttons in Electron/Capacitor, not on web */}

@@ -60,9 +60,15 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient_id ON notifications(recip
 CREATE INDEX IF NOT EXISTS idx_notifications_school_id ON notifications(school_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_activity_log_id ON notifications(activity_log_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_notification_type ON notifications(notification_type);
 
 CREATE INDEX IF NOT EXISTS idx_notification_preferences_user_id ON notification_preferences(user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_preferences_school_id ON notification_preferences(school_id);
+
+-- Additional indexes for report activities
+CREATE INDEX IF NOT EXISTS idx_activity_logs_activity_action ON activity_logs(activity_action);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_entity_id ON activity_logs(entity_id);
 
 -- 5. Create function to log teacher activities
 CREATE OR REPLACE FUNCTION log_teacher_activity(
@@ -210,6 +216,8 @@ CREATE OR REPLACE FUNCTION get_user_notifications(
     notification_type VARCHAR(50),
     title VARCHAR(255),
     message TEXT,
+    activity_log_id INTEGER,
+    activity_action VARCHAR(50),
     is_read BOOLEAN,
     is_important BOOLEAN,
     created_at TIMESTAMP WITH TIME ZONE,
@@ -222,11 +230,14 @@ BEGIN
         n.notification_type,
         n.title,
         n.message,
+        n.activity_log_id,
+        al.activity_action, -- Include activity_action to identify delete actions
         n.is_read,
         n.is_important,
         n.created_at,
         n.read_at
     FROM notifications n
+    LEFT JOIN activity_logs al ON n.activity_log_id = al.id
     WHERE n.recipient_id = p_user_id 
     AND n.school_id = p_school_id
     AND (n.expires_at IS NULL OR n.expires_at > NOW())

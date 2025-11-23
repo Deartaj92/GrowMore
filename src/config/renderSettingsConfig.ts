@@ -144,6 +144,17 @@ export const FEE_DASHBOARD_CARDS_GUEST: MenuItemConfig[] = [
   { key: 'fee_dash_analytics', label: 'Fee Analytics Card', description: 'Show "Fee Analytics" card on Fee Management Dashboard.', defaultEnabled: true, category: 'guest' },
 ];
 
+// Student menu cards configuration (CustomLandingPage.tsx)
+export const STUDENT_MENU_CARDS: MenuItemConfig[] = [
+  {
+    key: 'my_profile',
+    label: 'My Profile',
+    description: 'View your profile, attendance records, examination results, test records, and reports.',
+    defaultEnabled: true,
+    category: 'student'
+  }
+];
+
 // Student profile tabs configuration (StudentProfile.tsx)
 export const STUDENT_PROFILE_TABS: MenuItemConfig[] = [
   {
@@ -460,6 +471,10 @@ export const getDefaultSettings = () => {
 
   TEACHER_PROFILE_SUMMARY_CARDS.forEach(card => {
     teacherSettings[card.key] = card.defaultEnabled !== false;
+  });
+
+  STUDENT_MENU_CARDS.forEach(card => {
+    studentSettings[card.key] = card.defaultEnabled !== false;
   });
 
   STUDENT_PROFILE_TABS.forEach(tab => {

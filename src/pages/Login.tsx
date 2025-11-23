@@ -380,6 +380,22 @@ const Login: React.FC = () => {
         if (staffUser?.staff_id && staffUser?.school_id) {
           await pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff');
         }
+        
+        // Redirect based on role
+        if (staffUser?.role === 'Teacher') {
+          // Teachers go to landing page
+          navigate('/landing-page', { replace: true });
+          return;
+        } else if (staffUser?.role && ['Principal', 'Admin', 'Super Admin'].includes(staffUser.role)) {
+          // Admin roles go to dashboard (InitialRouteHandler will handle this, but we can navigate here too)
+          if (staffUser.role === 'Super Admin') {
+            navigate('/welcome', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+          return;
+        }
+        // For other roles, let InitialRouteHandler handle the redirect
       } else {
         // Student authentication: lookup by student id and password
         // Try by id first, then by student_number if id fails
@@ -441,8 +457,8 @@ const Login: React.FC = () => {
           })
           .eq('id', student.id);
 
-        // Redirect to student profile. Assume route: /student/:id
-        navigate(`/student/${student.id}`, { replace: true });
+        // Redirect to landing page
+        navigate('/landing-page', { replace: true });
         return;
       }
       toast.showToast('Login successful', 'success');

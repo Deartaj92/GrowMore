@@ -72,7 +72,25 @@ export default function ProtectedRoute({
     );
   }
 
+  // Check for student session if no user is logged in
+  let isStudent = false;
   if (!user) {
+    const studentSession = localStorage.getItem('studentSession');
+    if (studentSession) {
+      try {
+        const parsed = JSON.parse(studentSession);
+        if (parsed?.id) {
+          // Student is logged in, allow access if Student role is in allowedRoles
+          if (allowedRoles.includes('Student')) {
+            isStudent = true;
+            return <>{children}</>;
+          }
+        }
+      } catch (e) {
+        // If parsing fails, fall through to login redirect
+      }
+    }
+    // No user or valid student session, redirect to login
     return <Navigate to="/login" replace />;
   }
 

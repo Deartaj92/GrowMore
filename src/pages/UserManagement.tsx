@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
-import { AccountCircle, Add, Edit, Delete, Search, FilterList, Visibility, VisibilityOff, Lock } from '@mui/icons-material';
+import { AccountCircle, Add, Edit, Delete, Search, FilterList, Visibility, VisibilityOff, Lock, People, School, FamilyRestroom, Refresh } from '@mui/icons-material';
+import { Tabs, Tab, Box } from '@mui/material';
 import UserForm from '../components/UserForm';
 import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from '../components/NoSessionsFound';
@@ -28,6 +30,34 @@ interface Staff {
   role: string;
   mobile: string;
   picture_url?: string | null;
+}
+
+interface Parent {
+  id: number;
+  name: string;
+  contact_person: string;
+  contact_number: string;
+  address: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
+interface Student {
+  id: number;
+  student_number?: string;
+  name: string;
+  father_name?: string;
+  class_id?: number;
+  section_id?: number;
+  phone?: string;
+  picture_url: string | null;
+  status: string;
+  created_at: string;
+  last_online?: string;
+  is_online?: boolean;
+  app_version?: string;
+  classes?: { name: string } | null;
+  sections?: { name: string } | null;
 }
 
 // Styled Components
@@ -305,64 +335,167 @@ const PasswordModal = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(0, 0, 0, 0.5)'
+    : 'rgba(255, 255, 255, 0.5)'};
+  backdrop-filter: blur(8px);
+  WebkitBackdropFilter: blur(8px);
+  z-index: 4000;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  animation: fade-in 0.2s ease-out;
+  @keyframes fade-in {
+    from { opacity: 0; backdrop-filter: blur(0); }
+    to { opacity: 1; backdrop-filter: blur(8px); }
+  }
 `;
 const PasswordFormContainer = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#fff'};
-  border-radius: 12px;
+  background: ${({ theme }) => theme.CARD || (theme.BG === '#252525' ? '#2a2a2a' : '#fff')};
+  width: 90vw;
+  max-width: 500px;
+  max-height: 90vh;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
+    ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
+    : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  margin: 32px 16px;
+  position: relative;
+  z-index: 1301;
   padding: 24px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+  @keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @media (max-width: 768px) {
+    width: calc(100% - 32px);
+    max-height: auto;
+    height: auto;
+    margin: 16px;
+    padding: 16px 12px;
+  }
+  @media (max-width: 480px) {
+    width: calc(100% - 24px);
+    margin: 12px;
+    padding: 14px 10px;
+    max-height: 85vh;
+  }
 `;
 const PasswordTitle = styled.h2`
   margin: 0 0 20px 0;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 20px;
+  @media (max-width: 768px) {
+    font-size: 16px;
+    margin: 0 0 12px 0;
+    font-weight: 700;
+  }
+  @media (max-width: 480px) {
+    font-size: 14px;
+    margin: 0 0 10px 0;
+  }
 `;
 const PasswordFormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 20px;
+  @media (max-width: 768px) {
+    margin-bottom: 14px;
+  }
+  @media (max-width: 480px) {
+    margin-bottom: 12px;
+  }
 `;
 const PasswordLabel = styled.label`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 14px;
+  display: block;
+  margin-bottom: 8px;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-weight: 500;
+  font-size: 14px;
+  @media (max-width: 768px) {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  @media (max-width: 480px) {
+    font-size: 11px;
+    margin-bottom: 5px;
+  }
 `;
 const PasswordInput = styled.input`
-  padding: 8px 12px;
+  width: 100%;
+  padding: 10px 12px;
   border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 6px;
-  font-size: 14px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#fff'};
+  border-radius: 8px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#fff'};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 14px;
   &:focus {
     outline: none;
-    border-color: #6366f1;
+    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+  }
+  @media (max-width: 768px) {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  @media (max-width: 480px) {
+    padding: 7px 9px;
+    font-size: 12px;
   }
 `;
 const PasswordButtonGroup = styled.div`
   display: flex;
   gap: 12px;
-  margin-top: 8px;
-`;
-const PasswordButton = styled.button<{ variant?: 'secondary' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  background: ${({ variant }) => variant === 'secondary' ? '#6b7280' : '#6366f1'};
-  color: white;
-  &:hover {
-    background: ${({ variant }) => variant === 'secondary' ? '#4b5563' : '#4f46e5'};
+  margin-top: 24px;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
   }
+  @media (max-width: 480px) {
+    gap: 6px;
+    margin-top: 14px;
+  }
+`;
+const PasswordButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${({ variant, theme }) =>
+    variant === 'secondary'
+      ? (theme.BG === '#252525' ? '#2a2a2a' : '#f3f4f6')
+      : (theme.ACCENT || '#6366f1')};
+  color: ${({ variant }) => variant === 'secondary' ? 'inherit' : 'white'};
+  &:hover {
+    opacity: 0.9;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  @media (max-width: 768px) {
+    padding: 10px;
+    font-size: 13px;
+    width: 100%;
+  }
+  @media (max-width: 480px) {
+    padding: 8px;
+    font-size: 12px;
+  }
+`;
+const PasswordDisplayWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const AvatarImagePreview = styled.div`
@@ -407,9 +540,158 @@ const AddUserCard = styled(UserCard)`
   }
 `;
 
+const TabsContainer = styled.div`
+  margin-bottom: 24px;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const TabPanel = styled.div`
+  margin-top: 24px;
+`;
+
+// Skeleton Loading Components
+const SkeletonCard = styled.div`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : theme.CARD};
+  border-radius: 14px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
+  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+  position: relative;
+  border: 2.5px solid ${({ theme }) => theme.BORDER};
+  min-width: 270px;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+`;
+
+const SkeletonAvatar = styled.div`
+  width: 68px;
+  height: 88px;
+  border-radius: 16px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
+  margin-right: 1.2rem;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+`;
+
+const SkeletonLine = styled.div<{ $width?: string; $height?: string; $margin?: string }>`
+  width: ${({ $width }) => $width || '100%'};
+  height: ${({ $height }) => $height || '16px'};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
+  border-radius: 4px;
+  margin-bottom: ${({ $margin }) => $margin || '8px'};
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+`;
+
+const SkeletonBadge = styled.div`
+  position: absolute;
+  top: -12px;
+  right: 8px;
+  width: 80px;
+  height: 24px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+`;
+
+const SkeletonButton = styled.div`
+  width: 40px;
+  height: 32px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+`;
+
+const SkeletonCardContent = styled.div`
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+`;
+
+const SkeletonCardActions = styled.div`
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  justify-content: flex-end;
+`;
+
+const SkeletonUserCard = () => (
+  <SkeletonCard>
+    <SkeletonBadge />
+    <SkeletonCardContent>
+      <SkeletonAvatar />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <SkeletonLine $width="70%" $height="20px" $margin="0.5rem" />
+        <SkeletonLine $width="50%" $height="14px" $margin="0.25rem" />
+        <SkeletonLine $width="60%" $height="14px" $margin="0.25rem" />
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          <SkeletonLine $width="60px" $height="12px" $margin="0" />
+          <SkeletonLine $width="50px" $height="12px" $margin="0" />
+        </div>
+      </div>
+    </SkeletonCardContent>
+    <SkeletonCardActions>
+      <SkeletonButton />
+      <SkeletonButton />
+      <SkeletonButton />
+    </SkeletonCardActions>
+  </SkeletonCard>
+);
+
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -423,6 +705,12 @@ const UserManagement: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [hoveredAvatar, setHoveredAvatar] = useState<{ url: string; x: number; y: number } | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showStudentPasswordModal, setShowStudentPasswordModal] = useState(false);
+  const [studentNewPassword, setStudentNewPassword] = useState('');
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
+  const [studentPassword, setStudentPassword] = useState<string>('');
 
   useEffect(() => {
     const checkActiveSession = async () => {
@@ -449,10 +737,17 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     if (hasActiveSession) {
-    fetchUsers();
-    fetchStaff();
+      setLoading(true);
+      if (activeTab === 0) {
+        fetchUsers();
+        fetchStaff();
+      } else if (activeTab === 1) {
+        fetchParents();
+      } else if (activeTab === 2) {
+        fetchStudents();
+      }
     }
-  }, [user?.school_id, hasActiveSession]);
+  }, [user?.school_id, hasActiveSession, activeTab]);
 
   const fetchStaff = async () => {
     if (!user?.school_id) {
@@ -471,6 +766,110 @@ const UserManagement: React.FC = () => {
       setStaff(data || []);
     } catch (error) {
       toast.showToast('Failed to fetch staff', 'error');
+    }
+  };
+
+  const fetchParents = async () => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('families')
+        .select('*')
+        .eq('school_id', user.school_id)
+        .order('name');
+
+      if (error) throw error;
+      setParents(data || []);
+    } catch (error) {
+      toast.showToast('Failed to fetch parents', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStudents = async () => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Fetch students with their current class/section info from student_class_history
+      const { data: activeSessionData } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .maybeSingle();
+
+      if (activeSessionData) {
+        // Fetch from student_class_history for active session
+        const { data: historyData, error: historyError } = await supabase
+          .from('student_class_history')
+          .select(`
+            student_id,
+            new_class_id,
+            new_section_id,
+            adm_class_id,
+            adm_section_id,
+            new_classes:new_class_id(id, name),
+            new_sections:new_section_id(id, name),
+            adm_classes:adm_class_id(id, name),
+            adm_sections:adm_section_id(id, name)
+          `)
+          .eq('session_id', activeSessionData.id)
+          .eq('school_id', user.school_id);
+
+        if (!historyError && historyData && historyData.length > 0) {
+          const studentIds = Array.from(new Set(historyData.map((sch: any) => sch.student_id)));
+          const { data: studentsData, error: studentsError } = await supabase
+            .from('students')
+            .select('id, student_number, name, father_name, phone, picture_url, status, last_online, is_online, app_version, created_at')
+            .eq('school_id', user.school_id)
+            .in('id', studentIds);
+
+          if (!studentsError && studentsData) {
+            const studentsMap = new Map(studentsData.map((student: any) => [student.id, student]));
+            const mapped = historyData.map((sch: any) => {
+              const student = studentsMap.get(sch.student_id);
+              if (!student) return null;
+              return {
+                ...student,
+                class_id: sch.new_class_id || sch.adm_class_id,
+                section_id: sch.new_section_id !== null ? sch.new_section_id : (sch.adm_section_id !== null ? sch.adm_section_id : null),
+                classes: sch.new_classes || sch.adm_classes,
+                sections: sch.new_sections || sch.adm_sections,
+              };
+            }).filter(Boolean);
+            // Sort by ID descending (higher IDs first)
+            const sorted = mapped.sort((a: Student, b: Student) => b.id - a.id);
+            setStudents(sorted as Student[]);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback: fetch all students directly
+      const { data, error } = await supabase
+        .from('students')
+        .select(`*, classes(name), sections(name)`)
+        .eq('school_id', user.school_id)
+        .order('id', { ascending: false });
+
+      if (error) throw error;
+      const sorted = (data || []).sort((a: Student, b: Student) => b.id - a.id);
+      setStudents(sorted);
+    } catch (error) {
+      toast.showToast('Failed to fetch students', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -578,38 +977,150 @@ const UserManagement: React.FC = () => {
   };
 
   const filteredUsers = users.filter(user => {
+    if (!searchTerm) return true;
     const staffInfo = getStaffInfo(user.staff_id);
     const searchLower = searchTerm.toLowerCase();
-    return (
-      staffInfo.name.toLowerCase().includes(searchLower) ||
-      user.username.toLowerCase().includes(searchLower) ||
-      user.name.toLowerCase().includes(searchLower) ||
-      user.role.toLowerCase().includes(searchLower)
-    );
+    // For Guest users, use the user's name directly; otherwise use staff name
+    const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
+    return displayName.toLowerCase().includes(searchLower);
   });
+
+  const filteredParents = parents.filter(parent => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return parent.name.toLowerCase().includes(searchLower);
+  });
+
+  const filteredStudents = students.filter(student => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return student.name.toLowerCase().includes(searchLower);
+  });
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+    setSearchTerm('');
+  };
+
+  const handleViewStudentPassword = async (student: Student) => {
+    // Fetch current password
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('password')
+        .eq('id', student.id)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (error) throw error;
+      setStudentPassword(data?.password || 'aa');
+      setSelectedStudent(student);
+      setShowStudentPasswordModal(true);
+      setShowStudentPassword(false);
+      setStudentNewPassword('');
+    } catch (error) {
+      toast.showToast('Failed to fetch student password', 'error');
+    }
+  };
+
+  const handleChangeStudentPassword = async () => {
+    if (!selectedStudent || !user?.school_id) {
+      toast.showToast('Student information not found', 'error');
+      return;
+    }
+    if (!studentNewPassword.trim()) {
+      toast.showToast('Password cannot be empty', 'error');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ password: studentNewPassword.trim() })
+        .eq('id', selectedStudent.id)
+        .eq('school_id', user.school_id);
+      if (error) throw error;
+      toast.showToast('Password updated successfully', 'success');
+      setShowStudentPasswordModal(false);
+      setSelectedStudent(null);
+      setStudentNewPassword('');
+      fetchStudents();
+    } catch (error) {
+      toast.showToast('Failed to update password', 'error');
+    }
+  };
+
+  const handleResetStudentPassword = async () => {
+    if (!selectedStudent || !user?.school_id) {
+      toast.showToast('Student information not found', 'error');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ password: 'aa' })
+        .eq('id', selectedStudent.id)
+        .eq('school_id', user.school_id);
+      if (error) throw error;
+      toast.showToast('Password reset to default (aa)', 'success');
+      setShowStudentPasswordModal(false);
+      setSelectedStudent(null);
+      setStudentNewPassword('');
+      fetchStudents();
+    } catch (error) {
+      toast.showToast('Failed to reset password', 'error');
+    }
+  };
+
+  // Prevent body scroll when student password modal is open
+  useEffect(() => {
+    if (showStudentPasswordModal) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.setAttribute('data-scroll-position', scrollY.toString());
+    } else {
+      const scrollY = document.body.getAttribute('data-scroll-position');
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.removeAttribute('data-scroll-position');
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY, 10));
+      }
+    }
+    return () => {
+      const scrollY = document.body.getAttribute('data-scroll-position');
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      if (scrollY) {
+        document.body.removeAttribute('data-scroll-position');
+        window.scrollTo(0, parseInt(scrollY, 10));
+      }
+    };
+  }, [showStudentPasswordModal]);
 
   if (loading) return <Loader />;
   if (!hasActiveSession) return <NoSessionsFound />;
 
-  return (
-    <Container>
-      <Header>
-        <Title>User Management</Title>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <SearchBar>
-            <Search style={{ color: '#6b7280' }} />
-            <SearchInput
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </SearchBar>
-        </div>
-      </Header>
-
+  const renderStaffTab = () => (
+    <>
       <UserGrid>
         {loading ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>Loading...</div>
+          <>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonUserCard key={i} />
+            ))}
+          </>
         ) : filteredUsers.length === 0 ? (
           <>
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No users found</div>
@@ -663,6 +1174,184 @@ const UserManagement: React.FC = () => {
           </>
         )}
       </UserGrid>
+    </>
+  );
+
+  const renderParentsTab = () => (
+    <>
+      <UserGrid>
+        {loading ? (
+          <>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonUserCard key={i} />
+            ))}
+          </>
+        ) : filteredParents.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No parents found</div>
+        ) : (
+          filteredParents.map(parent => (
+            <UserCard key={parent.id} status="active">
+              <CardTop>
+                <Avatar src={parent.avatar_url}>
+                  {!parent.avatar_url && parent.name.charAt(0).toUpperCase()}
+                </Avatar>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <UserName>
+                    {parent.name}
+                    <StatusBadge status="active">Active</StatusBadge>
+                  </UserName>
+                  <UsernameText>Contact: {parent.contact_person}</UsernameText>
+                  <InfoRow>Phone: {parent.contact_number}</InfoRow>
+                  {parent.address && <InfoRow>Address: {parent.address}</InfoRow>}
+                </div>
+              </CardTop>
+              <ActionButtons>
+                <CardActionButton onClick={() => {/* TODO: Edit parent */}} title="Edit Parent">
+                  <Edit />
+                </CardActionButton>
+                <CardActionButton $variant="danger" onClick={() => {/* TODO: Delete parent */}} title="Delete Parent">
+                  <Delete />
+                </CardActionButton>
+              </ActionButtons>
+            </UserCard>
+          ))
+        )}
+      </UserGrid>
+    </>
+  );
+
+  const renderStudentsTab = () => {
+    const now = new Date();
+    
+    return (
+      <>
+        <UserGrid>
+          {loading ? (
+            <>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <SkeletonUserCard key={i} />
+              ))}
+            </>
+          ) : filteredStudents.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No students found</div>
+          ) : (
+            filteredStudents.map(student => {
+              const isOnline = student.is_online && student.last_online && 
+                (now.getTime() - new Date(student.last_online).getTime() < 5 * 60 * 1000);
+              
+              return (
+                <UserCard key={student.id} status={student.status}>
+                  <RoleBadge role="Student">ID: {student.id}</RoleBadge>
+                  <CardTop>
+                    <Avatar src={student.picture_url}>
+                      {!student.picture_url && student.name.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <UserName>
+                        {student.name}
+                        <StatusBadge status={student.status}>
+                          {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                        </StatusBadge>
+                      </UserName>
+                      {student.father_name && (
+                        <UsernameText>Father: {student.father_name}</UsernameText>
+                      )}
+                      <InfoRow>
+                        {student.classes?.name
+                          ? `${student.classes.name}${student.sections?.name ? ` (${student.sections.name})` : ''}`
+                          : '-'}
+                      </InfoRow>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
+                            boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
+                          }} />
+                          <span style={{ fontSize: '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
+                            {isOnline ? 'Online' : 'Offline'}
+                          </span>
+                        </div>
+                        {student.app_version && (
+                          <span style={{
+                            fontSize: '11px',
+                            fontFamily: 'monospace',
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            color: '#6366f1'
+                          }}>
+                            v{student.app_version}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CardTop>
+                  <ActionButtons>
+                    <CardActionButton onClick={() => window.location.href = `/student/${student.id}`} title="View Profile">
+                      <AccountCircle />
+                    </CardActionButton>
+                    <CardActionButton onClick={() => handleViewStudentPassword(student)} title="Manage Password">
+                      <Lock />
+                    </CardActionButton>
+                  </ActionButtons>
+                </UserCard>
+              );
+            })
+          )}
+        </UserGrid>
+      </>
+    );
+  };
+
+  return (
+    <Container>
+      <Header>
+        <Title>User Management</Title>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <SearchBar>
+            <Search style={{ color: '#6b7280' }} />
+            <SearchInput
+              placeholder={
+                activeTab === 0 ? "Search by name..." :
+                activeTab === 1 ? "Search by name..." :
+                "Search by name..."
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </SearchBar>
+        </div>
+      </Header>
+
+      <TabsContainer>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              minHeight: 48,
+            },
+          }}
+        >
+          <Tab icon={<People />} iconPosition="start" label="Staff" />
+          <Tab icon={<FamilyRestroom />} iconPosition="start" label="Parents" />
+          <Tab icon={<School />} iconPosition="start" label="Students" />
+        </Tabs>
+      </TabsContainer>
+
+      <TabPanel>
+        {activeTab === 0 && renderStaffTab()}
+        {activeTab === 1 && renderParentsTab()}
+        {activeTab === 2 && renderStudentsTab()}
+      </TabPanel>
 
       {/* Password Modal */}
       {showPasswordModal && passwordUser && (
@@ -717,6 +1406,90 @@ const UserManagement: React.FC = () => {
           }}
           onSuccess={handleFormSuccess}
         />
+      )}
+
+      {/* Student Password Modal */}
+      {showStudentPasswordModal && selectedStudent && ReactDOM.createPortal(
+        <PasswordModal onClick={() => setShowStudentPasswordModal(false)}>
+          <PasswordFormContainer onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
+            <PasswordTitle>Manage Student Password</PasswordTitle>
+            <div style={{
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <AccountCircle style={{ fontSize: 40, color: '#6366f1' }} />
+              <div>
+                <div style={{
+                  fontWeight: 600,
+                  color: 'inherit',
+                  fontSize: '16px'
+                }}>
+                  {selectedStudent.name}
+                </div>
+                <div style={{
+                  fontSize: 14,
+                  color: '#6b7280',
+                  marginTop: 2
+                }}>
+                  ID: {selectedStudent.id} {selectedStudent.father_name && `| Father: ${selectedStudent.father_name}`}
+                </div>
+              </div>
+            </div>
+            <PasswordFormGroup>
+              <PasswordLabel>Current Password</PasswordLabel>
+              <PasswordDisplayWrapper>
+                <PasswordInput
+                  type={showStudentPassword ? 'text' : 'password'}
+                  value={studentPassword || 'aa'}
+                  readOnly
+                  style={{ flex: 1 }}
+                />
+                <CardActionButton type="button" onClick={() => setShowStudentPassword(v => !v)} style={{ padding: '8px 12px' }}>
+                  {showStudentPassword ? <VisibilityOff style={{ fontSize: 18 }} /> : <Visibility style={{ fontSize: 18 }} />}
+                </CardActionButton>
+              </PasswordDisplayWrapper>
+            </PasswordFormGroup>
+            <PasswordFormGroup>
+              <PasswordLabel>New Password <span style={{ color: '#ef4444' }}>*</span></PasswordLabel>
+              <PasswordInput
+                type="password"
+                value={studentNewPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStudentNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                required
+              />
+            </PasswordFormGroup>
+            <PasswordButtonGroup>
+              <PasswordButton variant="secondary" onClick={() => {
+                setStudentNewPassword('aa');
+                handleResetStudentPassword();
+              }}>
+                <Refresh style={{ fontSize: 16, marginRight: 4 }} />
+                Reset to Default
+              </PasswordButton>
+              <PasswordButton
+                onClick={handleChangeStudentPassword}
+                disabled={!studentNewPassword || !studentNewPassword.trim()}
+              >
+                Change Password
+              </PasswordButton>
+            </PasswordButtonGroup>
+            <PasswordButton
+              variant="secondary"
+              onClick={() => {
+                setShowStudentPasswordModal(false);
+                setSelectedStudent(null);
+                setStudentNewPassword('');
+              }}
+              style={{ marginTop: 12, width: '100%' }}
+            >
+              Cancel
+            </PasswordButton>
+          </PasswordFormContainer>
+        </PasswordModal>,
+        document.body
       )}
 
       {hoveredAvatar && (

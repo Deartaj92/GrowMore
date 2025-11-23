@@ -17,6 +17,7 @@ import {
   Book as BookIcon,
   Group as GroupIcon,
   Assessment as AssessmentIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Notification } from '../services/activityTrackingService';
@@ -24,6 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ReportDetailsModal } from './reports/ReportDetailsModal';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './useToast';
 
 const NotificationBellContainer = styled.div`
   position: relative;
@@ -370,15 +372,38 @@ const NotificationIcon = styled.div<{ $type: string; $isImportant: boolean }>`
   flex-shrink: 0;
   background: ${props => {
     if (props.$isImportant) return '#ef4444';
+    
+    // Category-specific colors for letter indicators
     switch (props.$type) {
+      case 'attendance': return '#3b82f6'; // Blue for Attendance (A)
+      case 'test_marks': return '#10b981'; // Green for Test (T)
+      case 'homework_diary': return '#f59e0b'; // Orange/Amber for Diary (D)
+      
+      // Other activity types
+      case 'examination_marks': return '#8b5cf6'; // Purple
+      case 'subject_assignment': return '#06b6d4'; // Cyan
+      case 'class_management': return '#ec4899'; // Pink
+      case 'student_management': return '#14b8a6'; // Teal
+      
+      // System types
       case 'activity': return props.theme.ACCENT;
       case 'system': return '#10b981';
       case 'alert': return '#f59e0b';
+      case 'report': return '#ef4444'; // Red for reports
+      case 'announcement': return '#6366f1'; // Indigo
+      
       default: return props.theme.ACCENT;
     }
   }};
   color: white;
   font-size: 0.9rem;
+`;
+
+const CategoryLetter = styled.span`
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  line-height: 1;
 `;
 
 const NotificationContent = styled.div`
@@ -472,6 +497,7 @@ const NotificationBell: React.FC = () => {
   } = useNotifications();
 
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const [activeTab, setActiveTab] = useState<'activity' | 'reports'>('activity');
@@ -512,9 +538,11 @@ const NotificationBell: React.FC = () => {
 
   // Filter notifications based on active tab (moved up for use in useEffect)
   // Activity: All notifications except reports (includes activities and announcements)
-  const activityNotifications = notifications.filter((n: Notification) => 
-    n.notification_type !== 'report'
-  );
+  // All report notifications (including deletes) go to Reports tab
+  const activityNotifications = notifications.filter((n: Notification) => {
+    // Exclude all report notifications - they go to Reports tab
+    return n.notification_type !== 'report';
+  });
   
   // Calculate hasMore for the active tab
   // Activity tab: use the context's hasMore (tracks activity notifications pagination)
@@ -627,123 +655,352 @@ const NotificationBell: React.FC = () => {
         setIsOpen(false);
       }
       
-      // If it's a report notification, fetch the report ID and show modal
+      // If it's a report notification, try to open it first
       if (notification.notification_type === 'report') {
         try {
-          let reportId: string | null = null;
+          if (!user?.school_id) {
+            showToast('Unable to access reports', 'error');
+            return;
+          }
           
-          // Try to get report ID from activity_log_id first
-          if (notification.activity_log_id) {
-            const { data: activityLog, error } = await supabase
-              .from('activity_logs')
-              .select('entity_id')
-              .eq('id', notification.activity_log_id)
-              .single();
+          // Early return for delete actions - show who deleted it
+          if (notification.activity_action === 'delete') {
+            let deletedBy = notification.title || 'Unknown';
             
-            if (!error && activityLog?.entity_id) {
-              reportId = activityLog.entity_id.toString();
+            if (notification.activity_log_id) {
+              const { data: activityLog } = await supabase
+                .from('activity_logs')
+                .select('teacher_id')
+                .eq('id', notification.activity_log_id)
+                .maybeSingle();
+              
+              if (activityLog?.teacher_id) {
+                const { data: staffData } = await supabase
+                  .from('staff')
+                  .select('name')
+                  .eq('id', activityLog.teacher_id)
+                  .maybeSingle();
+                deletedBy = staffData?.name || deletedBy;
+              }
+            }
+            
+            showToast(`Report is deleted by ${deletedBy}`, 'error');
+            setIsOpen(false);
+            return;
+          }
+          
+          // STEP 1: Get activity log data (contains entity_id and activity_action)
+          let reportId: string | null = null;
+          let activityLogData: any = null;
+          
+          if (notification.activity_log_id) {
+            const { data: activityLog, error: activityLogError } = await supabase
+              .from('activity_logs')
+              .select('entity_id, activity_action, teacher_id')
+              .eq('id', notification.activity_log_id)
+              .maybeSingle();
+            
+            if (!activityLogError && activityLog) {
+              activityLogData = activityLog;
+              
+              // Get report ID from entity_id (if it's not a delete action)
+              if (activityLog.entity_id && activityLog.activity_action !== 'delete') {
+                reportId = activityLog.entity_id.toString();
+              }
             }
           }
           
-          // If we couldn't get it from activity_log, try to find report by matching notification details
-          if (!reportId && user?.school_id) {
-            try {
-              // Parse the message to extract category and subject name
-              // Message format: "New Student Report - [CATEGORY] [SEVERITY] - [SUBJECT]"
-              // or "New Staff Report - [CATEGORY] [SEVERITY] - [SUBJECT]"
-              const message = notification.message || '';
-              const parts = message.split(' - ');
-              
-              if (parts.length >= 3) {
-                const reportTypePart = parts[0]; // "New Student Report" or "New Staff Report"
-                const categoryPart = parts[1]; // "Other [LOW]"
-                const subjectName = parts[2]; // "Mehran"
-                
-                const isStudentReport = reportTypePart.toLowerCase().includes('student');
-                const categoryName = categoryPart.replace(/\s*\[.*?\]\s*/g, '').trim(); // Remove severity like "[LOW]"
-                
-                // Get teacher ID from title (teacher name)
-                const { data: teacherData } = await supabase
+          // STEP 2: If we have a report ID, try to fetch and open the report
+          if (reportId) {
+            const { data: reportCheck, error: reportCheckError } = await supabase
+              .from('reports')
+              .select('id')
+              .eq('id', reportId)
+              .eq('school_id', user.school_id)
+              .maybeSingle();
+            
+            if (!reportCheckError && reportCheck) {
+              // Report exists - open it
+              setSelectedReportId(reportId);
+              setReportModalOpen(true);
+              setIsOpen(false);
+              return;
+            }
+            
+            // Report doesn't exist - check if it was deleted
+            if (activityLogData?.activity_action === 'delete') {
+              let deletedBy = notification.title || 'Unknown';
+              if (activityLogData.teacher_id) {
+                const { data: staffData } = await supabase
                   .from('staff')
-                  .select('id')
-                  .eq('name', notification.title)
+                  .select('name')
+                  .eq('id', activityLogData.teacher_id)
+                  .maybeSingle();
+                deletedBy = staffData?.name || deletedBy;
+              }
+              showToast(`Report is deleted by ${deletedBy}`, 'error');
+              setIsOpen(false);
+              return;
+            }
+            
+            // Report doesn't exist but no delete action found
+            showToast('Report not found', 'error');
+            setIsOpen(false);
+            return;
+          }
+          
+          // STEP 3: If we don't have report ID yet, check if it's a delete action
+          if (activityLogData?.activity_action === 'delete') {
+            // This is a deleted report - show who deleted it
+            let deletedBy = notification.title || 'Unknown';
+            if (activityLogData.teacher_id) {
+              const { data: staffData } = await supabase
+                .from('staff')
+                .select('name')
+                .eq('id', activityLogData.teacher_id)
+                .maybeSingle();
+              deletedBy = staffData?.name || deletedBy;
+            }
+            showToast(`Report is deleted by ${deletedBy}`, 'error');
+            setIsOpen(false);
+            return;
+          }
+          
+          // STEP 4: If we still don't have report ID, try to get it from entity_id (even if it was null before)
+          if (activityLogData?.entity_id) {
+            reportId = activityLogData.entity_id.toString();
+            
+            // Try to fetch the report
+            const { data: reportCheck, error: reportCheckError } = await supabase
+              .from('reports')
+              .select('id')
+              .eq('id', reportId)
+              .eq('school_id', user.school_id)
+              .maybeSingle();
+            
+            if (!reportCheckError && reportCheck) {
+              // Report exists - open it
+              setSelectedReportId(reportId);
+              setReportModalOpen(true);
+              setIsOpen(false);
+              return;
+            }
+            
+            // Report doesn't exist - it was deleted
+            let deletedBy = notification.title || 'Unknown';
+            if (activityLogData.teacher_id) {
+              const { data: staffData } = await supabase
+                .from('staff')
+                .select('name')
+                .eq('id', activityLogData.teacher_id)
+                .maybeSingle();
+              deletedBy = staffData?.name || deletedBy;
+            }
+            showToast(`Report is deleted by ${deletedBy}`, 'error');
+            setIsOpen(false);
+            return;
+          }
+          
+          // STEP 5: If we still don't have report ID, check if it's a delete action
+          // Use activity_action to accurately identify delete actions
+          const isDeletedReport = notification.activity_action === 'delete';
+          
+          if (isDeletedReport) {
+            // This looks like a deleted report - try to get who deleted it
+            let deletedBy = notification.title || 'Unknown';
+            
+            if (notification.activity_log_id) {
+              const { data: activityLog } = await supabase
+                .from('activity_logs')
+                .select('activity_action, teacher_id')
+                .eq('id', notification.activity_log_id)
+                .maybeSingle();
+              
+              if (activityLog?.teacher_id) {
+                const { data: staffData } = await supabase
+                  .from('staff')
+                  .select('name')
+                  .eq('id', activityLog.teacher_id)
+                  .maybeSingle();
+                deletedBy = staffData?.name || deletedBy;
+              }
+            }
+            
+            showToast(`Report is deleted by ${deletedBy}`, 'error');
+            setIsOpen(false);
+            return;
+          }
+          
+          // STEP 6: Try to find report by parsing notification message
+          // Message format: "New Student Report - [CATEGORY] [SEVERITY] - [SUBJECT]"
+          // or "New Staff Report - [CATEGORY] [SEVERITY] - [SUBJECT]"
+          try {
+            const message = notification.message || '';
+            const parts = message.split(' - ');
+            
+            if (parts.length >= 3) {
+              const reportTypePart = parts[0]; // "New Student Report", etc.
+              const categoryPart = parts[1]; // "Homework Incomplete [LOW]"
+              const subjectName = parts[2]; // "Zohaib" or "Mehran"
+              
+              const isStudentReport = reportTypePart.toLowerCase().includes('student');
+              // Remove severity like "[LOW]", "[HIGH]", etc. from category name
+              const categoryName = categoryPart.replace(/\s*\[.*?\]\s*/g, '').trim();
+              
+              // Get teacher ID from title (teacher name)
+              const { data: teacherData, error: teacherError } = await supabase
+                .from('staff')
+                .select('id')
+                .eq('name', notification.title)
+                .eq('school_id', user.school_id)
+                .maybeSingle();
+              
+              if (teacherData?.id) {
+                // Query reports to find matching one
+                // First try with reported_by filter
+                let query = supabase
+                  .from('reports')
+                  .select(`
+                    id,
+                    student_id,
+                    staff_id,
+                    subject_type,
+                    category_id,
+                    category:report_categories(name),
+                    student:students(name)
+                  `)
                   .eq('school_id', user.school_id)
-                  .single();
+                  .eq('reported_by', teacherData.id)
+                  .order('created_at', { ascending: false })
+                  .limit(50);
                 
-                if (teacherData?.id) {
-                  // Query reports to find matching one
-                  // Use the same select pattern as reportService.getReports
-                  let reportQuery = supabase
+                let { data: reports, error: reportsError } = await query;
+                
+                // If error or no results, try simpler query
+                if (reportsError || !reports || reports.length === 0) {
+                  const simpleQuery = supabase
                     .from('reports')
-                    .select(`
-                      id,
-                      student_id,
-                      staff_id,
-                      subject_type,
-                      category:report_categories(name),
-                      student:students(name),
-                      staff:staff!reports_staff_id_fkey(name)
-                    `)
+                    .select('id, student_id, staff_id, subject_type, category_id')
                     .eq('school_id', user.school_id)
                     .eq('reported_by', teacherData.id)
                     .order('created_at', { ascending: false })
-                    .limit(20); // Get recent reports (in case there are multiple)
+                    .limit(50);
                   
-                  const { data: reports, error: reportsError } = await reportQuery;
+                  const simpleResult = await simpleQuery;
                   
-                  if (!reportsError && reports && reports.length > 0) {
-                    // Find the report that matches category and subject name
-                    const matchingReport = reports.find((r: any) => {
-                      const matchesCategory = r.category?.name === categoryName;
-                      if (isStudentReport) {
-                        const matchesStudent = r.student?.name === subjectName;
-                        const hasStudentId = r.student_id && r.subject_type === 'student';
-                        return matchesCategory && matchesStudent && hasStudentId;
-                      } else {
-                        const matchesStaff = r.staff?.name === subjectName;
-                        const hasStaffId = r.staff_id && r.subject_type === 'staff';
-                        return matchesCategory && matchesStaff && hasStaffId;
-                      }
-                    });
+                  if (!simpleResult.error && simpleResult.data) {
+                    // Fetch related data separately
+                    reports = await Promise.all(simpleResult.data.map(async (r: any) => {
+                      const [categoryResult, studentResult, staffResult] = await Promise.all([
+                        r.category_id ? supabase.from('report_categories').select('name').eq('id', r.category_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+                        r.student_id ? supabase.from('students').select('name').eq('id', r.student_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+                        r.staff_id ? supabase.from('staff').select('name').eq('id', r.staff_id).maybeSingle() : Promise.resolve({ data: null, error: null })
+                      ]);
+                      return {
+                        ...r,
+                        category: categoryResult.data ? { name: categoryResult.data.name } : null,
+                        student: studentResult.data ? { name: studentResult.data.name } : null,
+                        staff: staffResult.data ? { name: staffResult.data.name } : null
+                      };
+                    }));
+                    reportsError = null;
+                  }
+                }
+                
+                // If still no results, try broader search (all reports in school, not just by reported_by)
+                if ((reportsError || !reports || reports.length === 0) && isStudentReport) {
+                  // First, find the student ID
+                  const { data: studentData } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('name', subjectName)
+                    .eq('school_id', user.school_id)
+                    .maybeSingle();
+                  
+                  if (studentData?.id) {
+                    // Query reports for this student
+                    const broaderQuery = supabase
+                      .from('reports')
+                      .select('id, student_id, staff_id, subject_type, category_id')
+                      .eq('school_id', user.school_id)
+                      .eq('student_id', studentData.id)
+                      .eq('subject_type', 'student')
+                      .order('created_at', { ascending: false })
+                      .limit(50);
                     
-                    if (matchingReport) {
-                      reportId = matchingReport.id.toString();
+                    const broaderResult = await broaderQuery;
+                    
+                    if (!broaderResult.error && broaderResult.data) {
+                      // Fetch related data separately
+                      reports = await Promise.all(broaderResult.data.map(async (r: any) => {
+                        const [categoryResult, studentResult] = await Promise.all([
+                          r.category_id ? supabase.from('report_categories').select('name').eq('id', r.category_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+                          r.student_id ? supabase.from('students').select('name').eq('id', r.student_id).maybeSingle() : Promise.resolve({ data: null, error: null })
+                        ]);
+                        return {
+                          ...r,
+                          category: categoryResult.data ? { name: categoryResult.data.name } : null,
+                          student: studentResult.data ? { name: studentResult.data.name } : null
+                        };
+                      }));
+                      reportsError = null;
+                    }
+                  }
+                }
+                
+                if (!reportsError && reports && reports.length > 0) {
+                  // Find matching report (case-insensitive)
+                  const normalizedCategoryName = categoryName.trim().toLowerCase();
+                  const normalizedSubjectName = subjectName.trim().toLowerCase();
+                  
+                  const matchingReport = reports.find((r: any) => {
+                    const reportCategory = r.category?.name?.trim().toLowerCase() || '';
+                    const matchesCategory = reportCategory === normalizedCategoryName;
+                    
+                    if (isStudentReport) {
+                      const reportStudent = r.student?.name?.trim().toLowerCase() || '';
+                      const matchesStudent = reportStudent === normalizedSubjectName;
+                      return matchesCategory && matchesStudent && r.subject_type === 'student';
                     } else {
-                      // If no exact match, try to find by category and subject name only (more lenient)
-                      const lenientMatch = reports.find((r: any) => {
-                        if (isStudentReport) {
-                          return r.student?.name === subjectName && r.subject_type === 'student';
-                        } else {
-                          return r.staff?.name === subjectName && r.subject_type === 'staff';
-                        }
-                      });
-                      if (lenientMatch) {
-                        reportId = lenientMatch.id.toString();
-                      }
+                      const reportStaff = r.staff?.name?.trim().toLowerCase() || '';
+                      const matchesStaff = reportStaff === normalizedSubjectName;
+                      return matchesCategory && matchesStaff && r.subject_type === 'staff';
+                    }
+                  });
+                  
+                  if (matchingReport) {
+                    reportId = matchingReport.id.toString();
+                    
+                    // Verify the report exists
+                    const { data: reportCheck } = await supabase
+                      .from('reports')
+                      .select('id')
+                      .eq('id', reportId)
+                      .eq('school_id', user.school_id)
+                      .maybeSingle();
+                    
+                    if (reportCheck) {
+                      // Report exists - open it
+                      setSelectedReportId(reportId);
+                      setReportModalOpen(true);
+                      setIsOpen(false);
+                      return;
                     }
                   }
                 }
               }
-            } catch (searchError) {
-              console.warn('[NotificationBell] Failed to search for report:', searchError);
             }
+          } catch (parseError) {
+            // Error parsing message
           }
           
-          if (reportId) {
-            setSelectedReportId(reportId);
-            setReportModalOpen(true);
-            setIsOpen(false);
-          } else {
-            // Log for debugging
-            console.warn('[NotificationBell] Could not extract report ID from notification:', {
-              notificationId: notification.id,
-              activity_log_id: notification.activity_log_id,
-              message: notification.message,
-              title: notification.title
-            });
-          }
+          // If we can't find the report at all
+          showToast('Report not found', 'error');
+          setIsOpen(false);
+          return;
         } catch (error) {
-          console.error('[NotificationBell] Failed to fetch report ID:', error);
+          showToast('Failed to load report', 'error');
+          setIsOpen(false);
         }
       }
     }
@@ -758,13 +1015,23 @@ const NotificationBell: React.FC = () => {
     }
   };
 
-  const getNotificationIcon = (type: string, isImportant: boolean) => {
+  const getNotificationIcon = (type: string, isImportant: boolean, message?: string, activityAction?: string) => {
+    // Check if this is a deleted report using activity_action
+    const isDeleted = activityAction === 'delete' && type === 'report';
+    
+    if (isDeleted) {
+      return <DeleteIcon />;
+    }
+    
     if (isImportant) return <ErrorIcon />;
 
     switch (type) {
-      // Activity types
-      case 'attendance': return <PersonIcon />;
-      case 'test_marks': return <AssessmentIcon />;
+      // Activity types with letter indicators
+      case 'attendance': return <CategoryLetter>A</CategoryLetter>;
+      case 'test_marks': return <CategoryLetter>T</CategoryLetter>;
+      case 'homework_diary': return <CategoryLetter>D</CategoryLetter>;
+      
+      // Other activity types
       case 'examination_marks': return <GradeIcon />;
       case 'subject_assignment': return <AssignmentIcon />;
       case 'class_management': return <SchoolIcon />;
@@ -775,6 +1042,7 @@ const NotificationBell: React.FC = () => {
       case 'activity': return <BellIcon />;
       case 'system': return <InfoIcon />;
       case 'alert': return <WarningIcon />;
+      case 'announcement': return <BellIcon />;
 
       // Default fallback
       default: return <BellIcon />;
@@ -796,10 +1064,10 @@ const NotificationBell: React.FC = () => {
     return `${day}-${month}-${year}`;
   };
 
-  // Reports: Only report type notifications (exclude announcements)
-  const reportNotifications = notifications.filter((n: Notification) => 
-    n.notification_type === 'report'
-  );
+  // Reports: All report type notifications (including delete reports)
+  const reportNotifications = notifications.filter((n: Notification) => {
+    return n.notification_type === 'report';
+  });
   
   // Remove duplicates by creating a unique key (id + notification_type)
   const getUniqueKey = (n: Notification) => `${n.id}_${n.notification_type}`;
@@ -963,7 +1231,7 @@ const NotificationBell: React.FC = () => {
                           $type={notification.notification_type}
                           $isImportant={notification.is_important}
                         >
-                          {getNotificationIcon(notification.notification_type, notification.is_important)}
+                          {getNotificationIcon(notification.notification_type, notification.is_important, notification.message, notification.activity_action)}
                         </NotificationIcon>
 
                         <div style={{ flex: 1, minWidth: 0 }}>

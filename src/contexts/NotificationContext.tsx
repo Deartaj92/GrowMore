@@ -150,6 +150,121 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
   }, [cleanText]);
 
+  // Helper to enrich notification with activity_action from activity_logs
+  // This is needed for real-time notifications which don't include the JOINed activity_action
+  const enrichNotificationWithActivityAction = useCallback(async (
+    notification: Notification,
+    schoolId: number
+  ): Promise<Notification> => {
+    // If already has activity_action, return as is
+    if (notification.activity_action) {
+      return notification;
+    }
+
+    // If has activity_log_id, query activity_logs directly
+    if (notification.activity_log_id) {
+      const { data: activityLog } = await supabase
+        .from('activity_logs')
+        .select('activity_action')
+        .eq('id', notification.activity_log_id)
+        .maybeSingle();
+
+      if (activityLog?.activity_action) {
+        return { ...notification, activity_action: activityLog.activity_action };
+      }
+    }
+
+    // If no activity_log_id, try to find matching activity log
+    // This handles old notifications that weren't properly linked and real-time notifications
+    if (notification.notification_type === 'report' || notification.notification_type !== 'announcement') {
+      // Get teacher ID from notification title (teacher name)
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('name', notification.title)
+        .eq('school_id', schoolId)
+        .maybeSingle();
+
+      if (staffData?.id) {
+        // For reports, check if message indicates delete (starts with "Report #")
+        const isDeleteMessage = notification.notification_type === 'report' && 
+                                notification.message.includes('Report #') &&
+                                !notification.message.toLowerCase().includes('new') &&
+                                !notification.message.toLowerCase().includes('updated');
+        
+        // Query activity_logs to find a match, prioritize delete actions for reports
+        const { data: activityLogs } = await supabase
+          .from('activity_logs')
+          .select('id, activity_action, entity_id, entity_name, created_at')
+          .eq('teacher_id', staffData.id)
+          .eq('school_id', schoolId)
+          .eq('activity_type', notification.notification_type)
+          .gte('created_at', new Date(new Date(notification.created_at).getTime() - 5 * 60 * 1000).toISOString())
+          .lte('created_at', new Date(new Date(notification.created_at).getTime() + 5 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (activityLogs && activityLogs.length > 0) {
+          // For reports, try to match by report ID in message
+          if (notification.notification_type === 'report') {
+            const reportIdMatch = notification.message.match(/Report #(\d+)/);
+            if (reportIdMatch) {
+              const reportId = parseInt(reportIdMatch[1]);
+              // First try to find exact match by entity_id
+              let matchingLog = activityLogs.find(
+                log => log.entity_id === reportId
+              );
+              
+              // If delete message, prioritize delete actions
+              if (isDeleteMessage && !matchingLog) {
+                matchingLog = activityLogs.find(
+                  log => log.activity_action === 'delete' && 
+                         (log.entity_id === reportId || log.entity_name?.includes(`Report #${reportId}`))
+                );
+              }
+              
+              // Fallback to entity_name match
+              if (!matchingLog) {
+                matchingLog = activityLogs.find(
+                  log => log.entity_name?.includes(`Report #${reportId}`)
+                );
+              }
+              
+              if (matchingLog) {
+                return { 
+                  ...notification, 
+                  activity_action: matchingLog.activity_action, 
+                  activity_log_id: matchingLog.id 
+                };
+              }
+              
+              // If delete message but no exact match, use most recent delete action
+              if (isDeleteMessage) {
+                const deleteLog = activityLogs.find(log => log.activity_action === 'delete');
+                if (deleteLog) {
+                  return { 
+                    ...notification, 
+                    activity_action: deleteLog.activity_action, 
+                    activity_log_id: deleteLog.id 
+                  };
+                }
+              }
+            }
+          }
+
+          // For other types or if no exact match, use the most recent activity log
+          return { 
+            ...notification, 
+            activity_action: activityLogs[0].activity_action, 
+            activity_log_id: activityLogs[0].id 
+          };
+        }
+      }
+    }
+
+    return notification;
+  }, []);
+
   // Update student info when it changes
   useEffect(() => {
     const info = getStudentInfo();
@@ -183,6 +298,80 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
     return null;
   }, [studentInfo?.id, user?.staff_id]);
+
+  // Helper to check if a report notification should be shown to the current user
+  // Teachers: Show reports they filed OR reports filed on them
+  // Students: Show reports filed on them
+  // Principal/Admin: Show all reports
+  const shouldShowReportNotification = useCallback(async (
+    notification: Notification,
+    userRole?: string,
+    staffId?: number,
+    studentId?: number,
+    schoolId?: number
+  ): Promise<boolean> => {
+    // Principal and Admin see all reports
+    if (userRole === 'Principal' || userRole === 'Admin') {
+      return true;
+    }
+
+    // If no staff_id or student_id, can't determine ownership
+    if (!staffId && !studentId) {
+      return false;
+    }
+
+    // Get report ID from activity_log_id
+    let reportId: number | null = null;
+    
+    if (notification.activity_log_id) {
+      const { data: activityLog } = await supabase
+        .from('activity_logs')
+        .select('entity_id')
+        .eq('id', notification.activity_log_id)
+        .maybeSingle();
+      
+      if (activityLog?.entity_id) {
+        reportId = activityLog.entity_id;
+      }
+    }
+
+    // If no report ID from activity log, try to extract from message
+    if (!reportId && notification.message) {
+      const reportIdMatch = notification.message.match(/Report #(\d+)/);
+      if (reportIdMatch) {
+        reportId = parseInt(reportIdMatch[1]);
+      }
+    }
+
+    // If still no report ID, can't determine ownership - don't show
+    if (!reportId || !schoolId) {
+      return false;
+    }
+
+    // Query the report to check ownership
+    const { data: report } = await supabase
+      .from('reports')
+      .select('reported_by, student_id, staff_id, subject_type')
+      .eq('id', reportId)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+
+    if (!report) {
+      return false; // Report doesn't exist or was deleted
+    }
+
+    // For teachers: show if they filed it OR if it's filed on them
+    if (staffId) {
+      return report.reported_by === staffId || report.staff_id === staffId;
+    }
+
+    // For students: show if it's filed on them
+    if (studentId) {
+      return report.student_id === studentId && report.subject_type === 'student';
+    }
+
+    return false;
+  }, []);
 
   // Helper to check if notification should be shown based on category preferences
   // Note: Announcements are handled separately - students/teachers always get them, 
@@ -497,15 +686,33 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         }
 
         // Fetch notifications with pagination
-        // Load all reports separately (not paginated) - reports should always be visible
+        // Load all reports separately (fetched in batches to handle Supabase 1000 row limit)
         const [notificationsData, allReportsData, announcementNotifications] = await Promise.all([
           activityTrackingService.getUserNotifications(user.staff_id, user.school_id, PAGE_SIZE, 0),
-          activityTrackingService.getUserNotifications(user.staff_id, user.school_id, 10000, 0), // Load all reports
+          activityTrackingService.getAllUserNotifications(user.staff_id, user.school_id, 'report'), // Load all reports in batches
           fetchAnnouncementsAsNotifications(preferencesData)
         ]);
 
         // Separate reports from other notifications
-        const allReports = allReportsData.filter(n => n.notification_type === 'report');
+        const allReportsRaw = allReportsData.filter(n => n.notification_type === 'report');
+        
+        // Filter reports based on user role and ownership
+        // Teachers: reports they filed OR reports filed on them
+        // Students: reports filed on them
+        // Principal/Admin: all reports
+        const allReports = await Promise.all(
+          allReportsRaw.map(async (reportNotification) => {
+            const shouldShow = await shouldShowReportNotification(
+              reportNotification,
+              user.role,
+              user.staff_id,
+              studentInfo?.id,
+              user.school_id
+            );
+            return shouldShow ? reportNotification : null;
+          })
+        );
+        const filteredReports = allReports.filter((n): n is Notification => n !== null);
         
         // Merge teacher activity notifications and announcements
         // Filter out any "announcement" type and "report" type notifications from the DB notifications to avoid duplicates/stale data
@@ -519,8 +726,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           shouldShowNotificationByCategory(n, preferencesData, user.role)
         );
         
-        // Combine: activity notifications + all reports + announcements
-        allNotifications = [...filteredActivityNotifications, ...allReports, ...announcementNotifications];
+        // Combine: activity notifications + filtered reports + announcements
+        allNotifications = [...filteredActivityNotifications, ...filteredReports, ...announcementNotifications];
         setPreferences(preferencesData);
 
         // Check if there are more notifications to load
@@ -528,11 +735,119 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         // We check the raw notificationsData length because the database query returns all types mixed
         hasMoreNotifications = notificationsData.length >= PAGE_SIZE;
       } else {
-        // For Teachers, Students, and other users: Show announcements as notifications only
-        // They ALWAYS receive announcements when they match (no preference filtering)
+        // For Teachers, Students, and other users: Show reports AND announcements
+        // Determine user ID for fetching notifications (staff_id for staff, student_id for students)
+        const userId = user?.staff_id || studentInfo?.id;
+        
+        // Fetch report notifications if available
+        let allReportsData: Notification[] = [];
+        if (userId && schoolId) {
+          try {
+            // For staff: try to fetch report notifications from notifications table
+            if (user?.staff_id) {
+              allReportsData = await activityTrackingService.getAllUserNotifications(userId, schoolId, 'report');
+            }
+            // For students: query reports table directly since they don't have notifications
+            else if (studentInfo?.id) {
+              // Query reports table directly for student reports
+              const { data: reports, error: reportsError } = await supabase
+                .from('reports')
+                .select(`
+                  id,
+                  reported_by,
+                  student_id,
+                  staff_id,
+                  subject_type,
+                  severity,
+                  category:report_categories(name),
+                  reporter:staff!reports_reported_by_fkey(name),
+                  created_at
+                `)
+                .eq('school_id', schoolId)
+                .eq('student_id', studentInfo.id)
+                .eq('subject_type', 'student')
+                .order('created_at', { ascending: false });
+
+              if (!reportsError && reports) {
+                // Get activity_log_id for each report
+                const reportIds = reports.map(r => r.id);
+                const { data: activityLogs } = await supabase
+                  .from('activity_logs')
+                  .select('id, entity_id')
+                  .eq('school_id', schoolId)
+                  .eq('activity_type', 'report')
+                  .eq('activity_action', 'create')
+                  .in('entity_id', reportIds);
+
+                const activityLogMap = new Map<number, number>();
+                if (activityLogs) {
+                  activityLogs.forEach(log => {
+                    if (log.entity_id) {
+                      activityLogMap.set(log.entity_id, log.id);
+                    }
+                  });
+                }
+
+                // Convert reports to notification format
+                allReportsData = reports.map(report => {
+                  const categoryName = (report.category as any)?.name || 'Report';
+                  const reporterName = (report.reporter as any)?.name || 'Unknown';
+                  const severity = report.severity || 'low';
+                  const activityLogId = activityLogMap.get(report.id) || null;
+                  
+                  return {
+                    id: report.id + 1000000, // Offset to avoid conflicts with real notification IDs
+                    recipient_id: studentInfo.id,
+                    school_id: schoolId,
+                    notification_type: 'report',
+                    title: reporterName,
+                    message: `New Student Report - ${categoryName} [${severity.toUpperCase()}] - ${studentInfo.name || 'Student'}`,
+                    activity_log_id: activityLogId,
+                    activity_action: 'create',
+                    is_read: false,
+                    is_important: true,
+                    created_at: report.created_at,
+                    read_at: undefined
+                  } as Notification;
+                });
+              }
+            }
+          } catch (error) {
+            // If fetching fails (e.g., user doesn't have notifications), continue with empty array
+          }
+        }
+
+        // Separate reports from other notifications
+        const allReportsRaw = allReportsData.filter(n => n.notification_type === 'report');
+        
+        // Filter reports based on user role and ownership
+        // Teachers: reports they filed OR reports filed on them
+        // Students: reports filed on them (already filtered by query above)
+        const filteredReports = await Promise.all(
+          allReportsRaw.map(async (reportNotification) => {
+            // For students, we already filtered by student_id in the query, so show all
+            if (studentInfo?.id) {
+              return reportNotification;
+            }
+            // For teachers, check ownership
+            const shouldShow = await shouldShowReportNotification(
+              reportNotification,
+              user?.role,
+              user?.staff_id,
+              studentInfo?.id,
+              schoolId
+            );
+            return shouldShow ? reportNotification : null;
+          })
+        );
+        const validReports = filteredReports.filter((n): n is Notification => n !== null);
+        
+        // Fetch announcements
         const announcementNotifications = await fetchAnnouncementsAsNotifications();
-        allNotifications = announcementNotifications;
-        hasMoreNotifications = false; // Announcements are all loaded at once
+        
+        // Combine: filtered reports + announcements
+        allNotifications = [...validReports, ...announcementNotifications];
+        hasMoreNotifications = false; // Reports and announcements are all loaded at once
       }
 
       setHasMore(hasMoreNotifications);
@@ -796,8 +1111,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     const schoolId = user?.school_id || studentInfo?.school_id;
     const staffId = user?.staff_id;
 
-    if (!schoolId || subscription) {
+    if (!schoolId) {
       return;
+    }
+
+    // Unsubscribe from existing subscription if it exists
+    if (subscription) {
+      supabase.removeChannel(subscription);
+      setSubscription(null);
     }
 
     try {
@@ -821,22 +1142,40 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               table: 'notifications',
               filter: `recipient_id=eq.${staffId}`
             },
-            (payload) => {
-              const newNotification = cleanNotification(payload.new as Notification);
+            async (payload) => {
+              const rawNotification = cleanNotification(payload.new as Notification);
+              
+              // Enrich notification with activity_action (real-time payloads don't include JOINed data)
+              const newNotification = await enrichNotificationWithActivityAction(
+                rawNotification,
+                schoolId
+              );
               
               // Use ref to get latest preferences
               const currentPreferences = preferencesRef.current;
               
-              // Reports should always be shown, regardless of preferences
+              // For reports, check ownership (teachers/students only see their reports)
               // For other notifications, check category preferences
-              const shouldShow = newNotification.notification_type === 'report' || 
-                shouldShowNotificationByCategory(newNotification, currentPreferences, user?.role);
+              let shouldShow = false;
+              if (newNotification.notification_type === 'report') {
+                shouldShow = await shouldShowReportNotification(
+                  newNotification,
+                  user?.role,
+                  user?.staff_id,
+                  studentInfo?.id,
+                  schoolId
+                );
+              } else {
+                shouldShow = shouldShowNotificationByCategory(newNotification, currentPreferences, user?.role);
+              }
               
               if (shouldShow) {
                 setNotifications(prev => {
                   // Check if notification already exists (avoid duplicates)
                   const exists = prev.some(n => n.id === newNotification.id);
-                  if (exists) return prev;
+                  if (exists) {
+                    return prev;
+                  }
                   
                   // Add new notification and sort
                   const updated = [newNotification, ...prev];
@@ -998,7 +1337,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     } catch (error) {
       // Failed to subscribe to notifications
     }
-  }, [user?.staff_id, user?.school_id, studentInfo, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification]);
+  }, [user?.staff_id, user?.school_id, studentInfo, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification, enrichNotificationWithActivityAction]);
 
   // Unsubscribe from notifications
   const unsubscribeFromNotifications = useCallback(() => {

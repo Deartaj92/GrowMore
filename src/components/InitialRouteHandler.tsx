@@ -9,14 +9,16 @@ const InitialRouteHandler: React.FC = () => {
   useEffect(() => {
     if (!loading && user) {
       // Redirect based on user role
-      if (user.role === 'Teacher') {
-        navigate('/teacher', { replace: true });
-      } else if (user.role === 'Super Admin') {
-        navigate('/welcome', { replace: true });
-      } else if (user.role === 'Guest') {
-        navigate('/guest', { replace: true });
+      // Admin roles (Principal, Admin, Super Admin) go to dashboard
+      if (user.role && ['Principal', 'Admin', 'Super Admin'].includes(user.role)) {
+        if (user.role === 'Super Admin') {
+          navigate('/welcome', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       } else {
-        navigate('/dashboard', { replace: true });
+        // All other roles (Teacher, Student, Parent, Accountant, Guest) go to landing page
+        navigate('/landing-page', { replace: true });
       }
     } else if (!loading && !user) {
       // Check for student session before redirecting to login
@@ -25,8 +27,8 @@ const InitialRouteHandler: React.FC = () => {
         try {
           const parsed = JSON.parse(studentSession);
           if (parsed?.id) {
-            // Student is logged in, redirect to their profile page
-            navigate(`/student/${parsed.id}`, { replace: true });
+            // Student is logged in, redirect to landing page (which acts as their dashboard/menu)
+            navigate('/landing-page', { replace: true });
             return;
           }
         } catch (e) {
