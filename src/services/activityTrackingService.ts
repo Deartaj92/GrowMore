@@ -41,6 +41,15 @@ export interface NotificationPreferences {
   push_notifications: boolean;
   quiet_hours_start?: string;
   quiet_hours_end?: string;
+  // Category-specific preferences
+  notify_attendance?: boolean;
+  notify_test_marks?: boolean;
+  notify_examination_marks?: boolean;
+  notify_homework_diary?: boolean;
+  notify_subject_assignment?: boolean;
+  notify_reports?: boolean;
+  notify_announcements?: boolean;
+  notify_system?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -104,7 +113,8 @@ class ActivityTrackingService {
             activityType,
             activityAction,
             options.entityName || 'Activity',
-            options.details
+            options.details,
+            data // Pass the activity_log_id (returned from log_teacher_activity)
           );
         } catch (notificationError) {
           // Don't fail the activity logging if notification fails
@@ -126,7 +136,8 @@ class ActivityTrackingService {
     activityType: string,
     activityAction: string,
     entityName: string,
-    details?: ActivityDetails
+    details?: ActivityDetails,
+    activityLogId?: number
   ): Promise<void> {
     try {
       // Get teacher name
@@ -161,6 +172,7 @@ class ActivityTrackingService {
         notification_type: activityType, // Use the actual activity type for specific icons
         title: teacher.name,
         message: this.getNotificationMessage(activityType, activityAction, entityName, details),
+        activity_log_id: activityLogId || null, // Include activity_log_id to link back to the activity
         is_important: isImportant,
         expires_at: null
       }));

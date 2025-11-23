@@ -907,6 +907,31 @@ export const Reports = (): JSX.Element => {
             };
             
             await reportService.updateReport(reportId, updateData, user?.school_id);
+            
+            // Log activity for report status modification
+            if (user?.staff_id) {
+                // Find the report to get its details
+                const report = reports.find(r => r.id === reportId);
+                if (report && report.category?.name) {
+                    const subjectName = report.subject_type === 'student' 
+                        ? report.student?.name || 'Unknown Student'
+                        : report.staff?.name || 'Unknown Staff';
+                    
+                    await logReportActivity(
+                        'update',
+                        report.category.name,
+                        subjectName,
+                        report.subject_type,
+                        report.severity,
+                        {
+                            entityId: parseInt(reportId),
+                            entityName: `Report #${reportId}`,
+                            createNotification: false // Don't notify on status update
+                        }
+                    );
+                }
+            }
+            
             await loadReports();
             setModifyingReport(undefined);
         } catch (error) {

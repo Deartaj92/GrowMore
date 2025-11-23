@@ -333,40 +333,94 @@ export const reportService = {
     },
 
     async getReportById(id: string, schoolId?: number): Promise<Report> {
+        // First, fetch the basic report data
         let query = supabase
             .from('reports')
-            .select(`
-                *,
-                category:report_categories(*),
-                reporter:reported_by(id, username, name, role),
-                student:student_id(
-                    id, 
-                    name,
-                    father_name
-                ),
-                staff:staff_id(
-                    id,
-                    name,
-                    role
-                ),
-                actions:report_actions(*)
-            `)
+            .select('*')
             .eq('id', id);
             
         if (schoolId) {
             query = query.eq('school_id', schoolId);
         }
         
-        const { data, error } = await query.single();
-
-        if (error) throw error;
+        const { data: reportData, error: reportError } = await query.single();
         
-        // Transform the data to match the expected format
-        return {
-            ...data,
-            subject_id: data.subject_type === 'student' ? data.student_id : data.staff_id,
-            subject: data.subject_type === 'student' ? data.student : data.staff
+        if (reportError) throw reportError;
+        if (!reportData) throw new Error('Report not found');
+        
+        // Fetch related data separately to avoid foreign key constraint issues
+        const [categoryResult, reporterResult, studentResult, staffResult, updatesResult] = await Promise.all([
+            // Category
+            supabase
+                .from('report_categories')
+                .select('*')
+                .eq('id', reportData.category_id)
+                .single(),
+            // Reporter
+            reportData.reported_by ? supabase
+                .from('staff')
+                .select('id, name, role')
+                .eq('id', reportData.reported_by)
+                .single() : Promise.resolve({ data: null, error: null }),
+            // Student (if student report)
+            reportData.student_id ? supabase
+                .from('students')
+                .select(`
+                    id,
+                    name,
+                    father_name,
+                    picture_url,
+                    class:classes(id, name),
+                    section:sections(id, name)
+                `)
+                .eq('id', reportData.student_id)
+                .single() : Promise.resolve({ data: null, error: null }),
+            // Staff (if staff report)
+            reportData.staff_id ? supabase
+                .from('staff')
+                .select('id, name, role, picture_url')
+                .eq('id', reportData.staff_id)
+                .single() : Promise.resolve({ data: null, error: null }),
+            // Updates
+            supabase
+                .from('reports_updates')
+                .select('*')
+                .eq('report_id', reportData.id)
+                .order('created_at', { ascending: false })
+        ]);
+        
+        // Fetch staff details for each update
+        let updates = updatesResult.data || [];
+        if (updates.length > 0) {
+            const updatesWithStaff = await Promise.all(
+                updates.map(async (update: any) => {
+                    if (update.updated_by) {
+                        const { data: staffData } = await supabase
+                            .from('staff')
+                            .select('id, name, role')
+                            .eq('id', update.updated_by)
+                            .single();
+                        update.staff = staffData;
+                    }
+                    return update;
+                })
+            );
+            updates = updatesWithStaff;
+        }
+        
+        // Combine all data
+        const report = {
+            ...reportData,
+            category: categoryResult.data,
+            reporter: reporterResult.data,
+            student: studentResult.data,
+            staff: staffResult.data,
+            updates: updates,
+            subject_id: reportData.subject_type === 'student' ? reportData.student_id : reportData.staff_id,
+            subject: reportData.subject_type === 'student' ? studentResult.data : staffResult.data
         };
+        
+        return report as Report;
     },
 
     async createReport(reportData: CreateReportDTO, schoolId?: number): Promise<Report> {

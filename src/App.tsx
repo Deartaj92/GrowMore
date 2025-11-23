@@ -37,6 +37,7 @@ import StudentPasswordManagement from './pages/StudentPasswordManagement';
 import RenderSettings from './pages/RenderSettings';
 import GeneralSettings from './pages/GeneralSettings';
 import UserAnnouncements from './pages/UserAnnouncements';
+import NotificationSettings from './pages/NotificationSettings';
 import StaffAddForm from './pages/StaffAddForm';
 import { useAuth } from './contexts/AuthContext';
 import HolidayManager from './components/HolidayManager';
@@ -516,6 +517,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
                                 <UserAnnouncements />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/notifications"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                                <NotificationSettings />
                               </ProtectedRoute>
                             }
                           />

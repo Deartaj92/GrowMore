@@ -108,6 +108,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
+  const preferencesRef = useRef<NotificationPreferences | null>(null); // Ref for real-time callbacks
   const [subscription, setSubscription] = useState<any>(null);
   const panelOpenRef = useRef(false);
   const [studentInfo, setStudentInfo] = useState<any>(null);
@@ -115,7 +116,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const lastNotificationTimeRef = useRef<number>(0);
+  const isRefreshingRef = useRef(false); // Prevent concurrent refresh calls
+  const isLoadingMoreRef = useRef(false); // Prevent concurrent loadMore calls
   const PAGE_SIZE = 20;
+  
+  // Keep preferences ref in sync
+  useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
 
   // Helper to clean notification content (strip HTML and entities)
   const cleanText = useCallback((html: string | undefined | null) => {
@@ -176,10 +184,55 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     return null;
   }, [studentInfo?.id, user?.staff_id]);
 
+  // Helper to check if notification should be shown based on category preferences
+  // Note: Announcements are handled separately - students/teachers always get them, 
+  // Principal/Admin get all when notify_announcements is enabled
+  const shouldShowNotificationByCategory = useCallback((notification: Notification, prefs: NotificationPreferences | null, userRole?: string): boolean => {
+    // Announcements are handled separately in fetchAnnouncementsAsNotifications
+    // Don't filter announcements here - they're already filtered appropriately
+    if (notification.notification_type === 'announcement') {
+      return true;
+    }
+
+    // For non-Principal/Admin users (students, teachers), show all notifications
+    // Preferences only apply to Principal/Admin
+    if (userRole !== 'Principal' && userRole !== 'Admin') {
+      return true;
+    }
+
+    if (!prefs) return true; // If no preferences, show all (default behavior)
+    
+    // Map notification types to preference keys (only boolean properties)
+    const categoryMap: { [key: string]: 'notify_attendance' | 'notify_test_marks' | 'notify_examination_marks' | 'notify_homework_diary' | 'notify_subject_assignment' | 'notify_reports' | 'notify_system' } = {
+      'attendance': 'notify_attendance',
+      'test_marks': 'notify_test_marks',
+      'examination_marks': 'notify_examination_marks',
+      'homework_diary': 'notify_homework_diary',
+      'subject_assignment': 'notify_subject_assignment',
+      'report': 'notify_reports',
+      'system': 'notify_system',
+    };
+
+    const preferenceKey = categoryMap[notification.notification_type];
+    
+    // If notification type doesn't have a specific preference, check general activity_notifications
+    if (!preferenceKey) {
+      return prefs.activity_notifications ?? true;
+    }
+
+    // Check the specific category preference (default to true if not set)
+    const preferenceValue = prefs[preferenceKey];
+    return typeof preferenceValue === 'boolean' ? preferenceValue : true;
+  }, []);
+
   // Helper to check if announcement matches user's audience
   const matchesAnnouncementAudience = useCallback((announcement: any) => {
+    // Ensure announcement has required fields
+    if (!announcement || !announcement.audience_group) return false;
+
     if (studentInfo) {
-      // Student user
+      // Student user - ONLY show announcements for students
+      // Explicitly reject any staff announcements
       if (announcement.audience_group !== 'students') return false;
 
       switch (announcement.target_scope) {
@@ -202,7 +255,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           return false;
       }
     } else if (user) {
-      // Staff user
+      // Staff user - ONLY show announcements for staff
+      // Explicitly reject any student announcements
       if (announcement.audience_group !== 'staff') return false;
 
       switch (announcement.target_scope) {
@@ -223,11 +277,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           return false;
       }
     }
+    // If neither studentInfo nor user exists, don't show any announcements
     return false;
   }, [studentInfo, user]);
 
   // Fetch announcements and convert them to notifications
-  const fetchAnnouncementsAsNotifications = useCallback(async (): Promise<Notification[]> => {
+  const fetchAnnouncementsAsNotifications = useCallback(async (preferences?: NotificationPreferences | null): Promise<Notification[]> => {
     const schoolId = user?.school_id || studentInfo?.school_id;
 
     if (!schoolId) {
@@ -250,8 +305,39 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         return [];
       }
 
-      // Filter announcements that match the user's audience
-      const filteredAnnouncements = announcements.filter(matchesAnnouncementAudience);
+      // For students and teachers: Always show announcements when they match (no preference filtering)
+      // For Principal/Admin: Show ALL announcements (both student and staff targeted) when notify_announcements is enabled
+      let filteredAnnouncements: any[] = [];
+
+      if (studentInfo) {
+        // Students: Only show student-targeted announcements that match them
+        filteredAnnouncements = announcements.filter(announcement => {
+          if (announcement.audience_group !== 'students') return false;
+          return matchesAnnouncementAudience(announcement);
+        });
+      } else if (user) {
+        // Check if user is Principal/Admin with notification settings access
+        const hasNotificationSettingsAccess = user.role === 'Principal' || user.role === 'Admin';
+        
+        if (hasNotificationSettingsAccess && preferences) {
+          // Principal/Admin: Show ALL announcements (both student and staff) when notify_announcements is enabled
+          const notifyAnnouncements = preferences.notify_announcements ?? true;
+          
+          if (notifyAnnouncements) {
+            // Show all announcements regardless of audience_group
+            filteredAnnouncements = announcements;
+          } else {
+            // If disabled, show none
+            filteredAnnouncements = [];
+          }
+        } else {
+          // Teachers or other staff: Only show staff-targeted announcements that match them
+          filteredAnnouncements = announcements.filter(announcement => {
+            if (announcement.audience_group !== 'staff') return false;
+            return matchesAnnouncementAudience(announcement);
+          });
+        }
+      }
 
       // Get viewer identifier for checking read status
       const viewerIdentifier = getViewerIdentifier();
@@ -335,7 +421,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
   }, [preferences]);
 
-  // Helper to sort notifications
+  // Helper to sort notifications - chronological order (newest first)
   const sortNotifications = useCallback((notificationsList: Notification[]) => {
     const now = new Date().getTime();
     const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -354,22 +440,24 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       if (aPinned && !bPinned) return -1;
       if (!aPinned && bPinned) return 1;
 
-      // Unread notifications before read ones
-      if (!a.is_read && b.is_read) return -1;
-      if (a.is_read && !b.is_read) return 1;
-
-      // Then by date (newest first)
+      // Then by date (newest first) - regardless of read status
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, []);
 
   // Load notifications
   const refreshNotifications = useCallback(async () => {
+    // Prevent concurrent calls
+    if (isRefreshingRef.current) {
+      return;
+    }
+    
     const schoolId = user?.school_id || studentInfo?.school_id;
     if (!schoolId) {
       return;
     }
 
+    isRefreshingRef.current = true;
     setIsLoading(true);
     setPage(0); // Reset page
 
@@ -377,8 +465,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       let allNotifications: Notification[] = [];
       let hasMoreNotifications = false;
 
-      // For Principal: Show BOTH teacher activity notifications AND announcements
-      if (user?.role === 'Principal' && user?.staff_id && user?.school_id) {
+      // For Principal/Admin: Show BOTH teacher activity notifications AND announcements
+      const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
+      
+      if (hasNotificationSettingsAccess && user?.staff_id && user?.school_id) {
         // Fetch preferences with error handling
         let preferencesData: NotificationPreferences | null = null;
         try {
@@ -393,26 +483,53 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             push_notifications: true,
             activity_notifications: true,
             system_notifications: true,
+            notify_attendance: true,
+            notify_test_marks: true,
+            notify_examination_marks: true,
+            notify_homework_diary: true,
+            notify_subject_assignment: true,
+            notify_reports: true,
+            notify_announcements: true,
+            notify_system: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
         }
 
-        const [notificationsData, announcementNotifications] = await Promise.all([
+        // Fetch notifications with pagination
+        // Load all reports separately (not paginated) - reports should always be visible
+        const [notificationsData, allReportsData, announcementNotifications] = await Promise.all([
           activityTrackingService.getUserNotifications(user.staff_id, user.school_id, PAGE_SIZE, 0),
-          fetchAnnouncementsAsNotifications()
+          activityTrackingService.getUserNotifications(user.staff_id, user.school_id, 10000, 0), // Load all reports
+          fetchAnnouncementsAsNotifications(preferencesData)
         ]);
 
+        // Separate reports from other notifications
+        const allReports = allReportsData.filter(n => n.notification_type === 'report');
+        
         // Merge teacher activity notifications and announcements
-        // Filter out any "announcement" type notifications from the DB notifications to avoid duplicates/stale data
-        const cleanNotificationsData = notificationsData.filter(n => n.notification_type !== 'announcement');
-        allNotifications = [...cleanNotificationsData, ...announcementNotifications];
+        // Filter out any "announcement" type and "report" type notifications from the DB notifications to avoid duplicates/stale data
+        const cleanNotificationsData = notificationsData.filter(n => 
+          n.notification_type !== 'announcement' && n.notification_type !== 'report'
+        );
+        
+        // Filter activity notifications based on category preferences (announcements already filtered in fetchAnnouncementsAsNotifications)
+        // Reports are always shown regardless of preferences
+        const filteredActivityNotifications = cleanNotificationsData.filter(n => 
+          shouldShowNotificationByCategory(n, preferencesData, user.role)
+        );
+        
+        // Combine: activity notifications + all reports + announcements
+        allNotifications = [...filteredActivityNotifications, ...allReports, ...announcementNotifications];
         setPreferences(preferencesData);
 
         // Check if there are more notifications to load
+        // If we got a full page of raw data, there might be more in the database
+        // We check the raw notificationsData length because the database query returns all types mixed
         hasMoreNotifications = notificationsData.length >= PAGE_SIZE;
       } else {
-        // For all other users (Teachers, Students, etc.): Show announcements as notifications only
+        // For Teachers, Students, and other users: Show announcements as notifications only
+        // They ALWAYS receive announcements when they match (no preference filtering)
         const announcementNotifications = await fetchAnnouncementsAsNotifications();
         allNotifications = announcementNotifications;
         hasMoreNotifications = false; // Announcements are all loaded at once
@@ -454,16 +571,47 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // Failed to refresh notifications
     } finally {
       setIsLoading(false);
+      isRefreshingRef.current = false;
     }
-  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, studentInfo?.id, fetchAnnouncementsAsNotifications]);
+  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, studentInfo?.id, fetchAnnouncementsAsNotifications, shouldShowNotificationByCategory, matchesAnnouncementAudience]);
 
   // Load more notifications (pagination)
-  const loadMore = useCallback(async () => {
-    if (!hasMore || isLoading || user?.role !== 'Principal' || !user?.staff_id || !user?.school_id) return;
+  // Use refs to avoid circular dependency with hasMore and isLoading
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingRef = useRef(isLoading);
+  const pageRef = useRef(page);
+  
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+  
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+  
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
 
+  const loadMore = useCallback(async () => {
+    // Prevent concurrent calls
+    if (isLoadingMoreRef.current) {
+      return;
+    }
+    
+    const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
+    
+    // Early return checks - use refs to get current values
+    if (!hasMoreRef.current || isLoadingRef.current || !hasNotificationSettingsAccess || !user?.staff_id || !user?.school_id) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    // Set loading state - don't change hasMore yet, let it stay true so UI shows loading indicator
     setIsLoading(true);
+    
     try {
-      const nextPage = page + 1;
+      const nextPage = pageRef.current + 1;
       const offset = nextPage * PAGE_SIZE;
 
       const newNotifications = await activityTrackingService.getUserNotifications(
@@ -473,68 +621,140 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         offset
       );
 
-      // Filter out announcement type notifications from DB
-      const cleanNewNotifications = newNotifications.filter(n => n.notification_type !== 'announcement');
+      // Filter out announcement and report type notifications from DB
+      // (announcements are loaded separately, reports are loaded separately on initial load)
+      const cleanNewNotifications = newNotifications.filter(n => 
+        n.notification_type !== 'announcement' && n.notification_type !== 'report'
+      );
 
-      if (newNotifications.length < PAGE_SIZE) {
-        setHasMore(false);
+      // Filter by category preferences (reports are always shown, so they're not in this list)
+      const filteredNewNotifications = cleanNewNotifications.filter(n => 
+        shouldShowNotificationByCategory(n, preferences, user.role)
+      );
+
+      // Check if there are more notifications to load
+      // If we got a full page of raw data, there might be more in the database
+      // We check the raw newNotifications length because the database query returns all types mixed
+      const hasMoreResults = newNotifications.length >= PAGE_SIZE;
+      setHasMore(hasMoreResults);
+
+      if (filteredNewNotifications.length > 0) {
+        setNotifications(prev => {
+          // Filter out duplicates just in case
+          const existingIds = new Set(prev.map(n => n.id));
+          const uniqueNew = filteredNewNotifications.filter(n => !existingIds.has(n.id));
+
+          const combined = [...prev, ...uniqueNew];
+
+          // Re-sort
+          const sorted = sortNotifications(combined);
+          return sorted;
+        });
       }
-
-      setNotifications(prev => {
-        // Filter out duplicates just in case
-        const existingIds = new Set(prev.map(n => n.id));
-        const uniqueNew = cleanNewNotifications.filter(n => !existingIds.has(n.id));
-
-        const combined = [...prev, ...uniqueNew];
-
-        // Re-sort
-        return sortNotifications(combined);
-      });
 
       setPage(nextPage);
     } catch (error) {
-      // Failed to load more notifications
+      // Failed to load more notifications - set hasMore to false to prevent infinite loading
+      setHasMore(false);
     } finally {
       setIsLoading(false);
+      isLoadingMoreRef.current = false;
     }
-  }, [hasMore, isLoading, page, user?.role, user?.staff_id, user?.school_id]);
+  }, [user?.role, user?.staff_id, user?.school_id, preferences, shouldShowNotificationByCategory, sortNotifications]);
 
   // Mark notifications as read
   const markAsRead = useCallback(async (notificationIds: number[]) => {
     try {
-      // Separate teacher activity notifications from announcements
-      const teacherActivityNotifications = notifications.filter(n =>
+      // Separate notifications by type: activity/report notifications vs announcements
+      // Reports are stored in the notifications table like other activity notifications
+      const activityAndReportNotifications = notifications.filter(n =>
         notificationIds.includes(n.id) && n.notification_type !== 'announcement'
       );
       const announcementNotifications = notifications.filter(n =>
         notificationIds.includes(n.id) && n.notification_type === 'announcement'
       );
 
-      // For Principal: Mark teacher activity notifications as read
-      if (teacherActivityNotifications.length > 0 && user?.role === 'Principal' && user?.staff_id && user?.school_id) {
+      // For Principal/Admin: Mark activity and report notifications as read
+      // This includes: attendance, test_marks, examination_marks, homework_diary, 
+      // subject_assignment, report, system, and other activity types
+      const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
+      if (activityAndReportNotifications.length > 0 && hasNotificationSettingsAccess && user?.staff_id && user?.school_id) {
         await activityTrackingService.markNotificationsRead(
           user.staff_id,
           user.school_id,
-          teacherActivityNotifications.map(n => n.id)
+          activityAndReportNotifications.map(n => n.id)
         );
       }
 
-      // For all users: Mark announcements as viewed
-      // Update local state
-      setNotifications(prev =>
-        prev.map(notification =>
-          notificationIds.includes(notification.id)
-            ? { ...notification, is_read: true, read_at: new Date().toISOString() }
-            : notification
-        )
-      );
+      // For all users: Mark announcements as viewed in database
+      if (announcementNotifications.length > 0) {
+        const viewerIdentifier = getViewerIdentifier();
+        if (viewerIdentifier) {
+          const announcementIds = announcementNotifications.map(n => n.id);
+          const schoolId = user?.school_id || studentInfo?.school_id;
+          
+          if (schoolId) {
+            // Build viewer payload
+            const viewerType = studentInfo ? 'student' : 'staff';
+            const viewerRole = studentInfo ? 'Student' : (user?.role || 'Staff');
+            const viewerName = studentInfo?.name || user?.name || 'User';
+            
+            const basePayload: any = {
+              school_id: schoolId,
+              viewer_type: viewerType,
+              viewer_role: viewerRole,
+              viewer_name: viewerName,
+              viewer_identifier: viewerIdentifier,
+            };
+            
+            if (studentInfo?.id) {
+              basePayload.student_id = studentInfo.id;
+            } else if (user?.staff_id) {
+              basePayload.staff_id = user.staff_id;
+            }
+            
+            // Mark each announcement as viewed
+            for (const announcementId of announcementIds) {
+              try {
+                await supabase
+                  .from('announcement_views')
+                  .upsert({
+                    announcement_id: announcementId,
+                    ...basePayload,
+                    seen_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'announcement_id,viewer_identifier'
+                  });
+              } catch (error) {
+                // Failed to mark announcement as viewed, continue with others
+              }
+            }
+          }
+        }
+      }
 
-      // Update unread count
-      setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
+      // Update local state and re-sort (for all notification types including reports)
+      setNotifications(prev => {
+        const updated = prev.map(notification => {
+          if (notificationIds.includes(notification.id)) {
+            // Mark as read for all types: activities, reports, and announcements
+            return { ...notification, is_read: true, read_at: new Date().toISOString() };
+          }
+          return notification;
+        });
+        // Re-sort to maintain chronological order
+        return sortNotifications(updated);
+      });
+
+      // Update unread count - count only notifications that were actually unread before marking
+      const actuallyUnread = notifications.filter(n => 
+        notificationIds.includes(n.id) && !n.is_read
+      ).length;
+      setUnreadCount(prev => Math.max(0, prev - actuallyUnread));
     } catch (error) {
       // Failed to mark notifications as read
     }
-  }, [user?.staff_id, user?.school_id, user?.role, user?.name, studentInfo, notifications, getViewerIdentifier]);
+  }, [user?.staff_id, user?.school_id, user?.role, user?.name, studentInfo, notifications, getViewerIdentifier, preferences, shouldShowNotificationByCategory]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
@@ -603,11 +823,30 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             },
             (payload) => {
               const newNotification = cleanNotification(payload.new as Notification);
-              setNotifications(prev => [newNotification, ...prev]);
+              
+              // Use ref to get latest preferences
+              const currentPreferences = preferencesRef.current;
+              
+              // Reports should always be shown, regardless of preferences
+              // For other notifications, check category preferences
+              const shouldShow = newNotification.notification_type === 'report' || 
+                shouldShowNotificationByCategory(newNotification, currentPreferences, user?.role);
+              
+              if (shouldShow) {
+                setNotifications(prev => {
+                  // Check if notification already exists (avoid duplicates)
+                  const exists = prev.some(n => n.id === newNotification.id);
+                  if (exists) return prev;
+                  
+                  // Add new notification and sort
+                  const updated = [newNotification, ...prev];
+                  return sortNotifications(updated);
+                });
 
-              if (!newNotification.is_read) {
-                setUnreadCount(prev => prev + 1);
-                showNotification(newNotification.title, newNotification.message);
+                if (!newNotification.is_read) {
+                  setUnreadCount(prev => prev + 1);
+                  showNotification(newNotification.title, newNotification.message);
+                }
               }
             }
           )
@@ -621,13 +860,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             },
             (payload) => {
               const updatedNotification = cleanNotification(payload.new as Notification);
-              setNotifications(prev =>
-                prev.map(notification =>
+              setNotifications(prev => {
+                const updated = prev.map(notification =>
                   notification.id === updatedNotification.id
                     ? updatedNotification
                     : notification
-                )
-              );
+                );
+                // Re-sort after update
+                return sortNotifications(updated);
+              });
 
               if (payload.old.is_read !== updatedNotification.is_read) {
                 setUnreadCount(prev =>
@@ -650,8 +891,30 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           },
           (payload) => {
             const newAnnouncement = payload.new;
-            // Check if this announcement targets the current user
-            if (matchesAnnouncementAudience(newAnnouncement)) {
+            // Use ref to get latest preferences
+            const currentPreferences = preferencesRef.current;
+            
+            // Determine if announcement should be shown
+            const shouldShow = (() => {
+              const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
+              
+              if (studentInfo) {
+                // Students: Only show student-targeted announcements that match them
+                return newAnnouncement.audience_group === 'students' && matchesAnnouncementAudience(newAnnouncement);
+              } else if (user) {
+                if (hasNotificationSettingsAccess && currentPreferences) {
+                  // Principal/Admin: Show ALL announcements when notify_announcements is enabled
+                  const notifyAnnouncements = currentPreferences.notify_announcements ?? true;
+                  return notifyAnnouncements; // Show all if enabled
+                } else {
+                  // Teachers or other staff: Only show staff-targeted announcements that match them
+                  return newAnnouncement.audience_group === 'staff' && matchesAnnouncementAudience(newAnnouncement);
+                }
+              }
+              return false;
+            })();
+
+            if (shouldShow) {
               const notification: Notification = {
                 id: newAnnouncement.id,
                 school_id: newAnnouncement.school_id,
@@ -665,7 +928,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                 read_at: undefined
               };
 
-              setNotifications(prev => [notification, ...prev]);
+              // No need to check preferences again - already handled in shouldShow logic above
+              setNotifications(prev => {
+                // Check if notification already exists (avoid duplicates)
+                const exists = prev.some(n => n.id === notification.id && n.notification_type === 'announcement');
+                if (exists) return prev;
+                
+                // Add new notification and sort
+                const updated = [notification, ...prev];
+                return sortNotifications(updated);
+              });
               setUnreadCount(prev => prev + 1);
               showNotification(notification.title, notification.message);
             }
@@ -686,7 +958,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               const exists = prev.some(n => n.id === updatedAnnouncement.id && n.notification_type === 'announcement');
               if (!exists) return prev;
 
-              return prev.map(n => {
+              const updated = prev.map(n => {
                 if (n.id === updatedAnnouncement.id && n.notification_type === 'announcement') {
                   return {
                     ...n,
@@ -696,6 +968,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                 }
                 return n;
               });
+              // Re-sort after update
+              return sortNotifications(updated);
             });
           }
         )
@@ -734,18 +1008,39 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
   }, [subscription]);
 
+  // Store functions in refs to avoid dependency issues
+  const refreshNotificationsRef = useRef(refreshNotifications);
+  const subscribeToNotificationsRef = useRef(subscribeToNotifications);
+  const unsubscribeFromNotificationsRef = useRef(unsubscribeFromNotifications);
+  
+  useEffect(() => {
+    refreshNotificationsRef.current = refreshNotifications;
+  }, [refreshNotifications]);
+  
+  useEffect(() => {
+    subscribeToNotificationsRef.current = subscribeToNotifications;
+  }, [subscribeToNotifications]);
+  
+  useEffect(() => {
+    unsubscribeFromNotificationsRef.current = unsubscribeFromNotifications;
+  }, [unsubscribeFromNotifications]);
+
   // Load notifications on mount and when user changes
+  // Only depend on actual user data, not functions
   useEffect(() => {
     const schoolId = user?.school_id || studentInfo?.school_id;
-    if (schoolId) {
-      refreshNotifications();
-      subscribeToNotifications();
+    if (!schoolId) return;
+    
+    // Prevent concurrent calls
+    if (isRefreshingRef.current) return;
+    
+    refreshNotificationsRef.current();
+    subscribeToNotificationsRef.current();
 
-      return () => {
-        unsubscribeFromNotifications();
-      };
-    }
-  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, refreshNotifications, subscribeToNotifications, unsubscribeFromNotifications]);
+    return () => {
+      unsubscribeFromNotificationsRef.current();
+    };
+  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id]);
 
   // Robust Push Initialization for push notifications
   useEffect(() => {

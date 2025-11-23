@@ -13,6 +13,7 @@ import {
   Visibility as VisibilityIcon,
   Settings as SettingsIcon,
   Campaign as CampaignIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 
 // Styled Components
@@ -388,6 +389,13 @@ const settingsItems = [
     icon: <CampaignIcon />,
     path: '/settings/user-announcements',
     color: '#f97316' // Amber / announcement
+  },
+  {
+    title: 'Notification Settings',
+    description: 'Manage your notification preferences and control which categories of notifications you receive',
+    icon: <NotificationsIcon />,
+    path: '/settings/notifications',
+    color: '#ec4899' // Pink
   }
 ];
 
