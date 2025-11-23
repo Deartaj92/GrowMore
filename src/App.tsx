@@ -302,7 +302,7 @@ const App: React.FC = () => {
                             path="students/profile/:id"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
+                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest', 'Parent']}
                                 guestPageKey="student_profile"
                               >
                                 <StudentProfile />

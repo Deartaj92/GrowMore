@@ -11,7 +11,7 @@ export interface MenuItemConfig {
   label: string;
   description: string;
   defaultEnabled?: boolean;
-  category?: 'teacher' | 'student' | 'guest';
+  category?: 'teacher' | 'student' | 'guest' | 'parent';
 }
 
 // Teacher menu cards configuration (WelcomePage.tsx)
@@ -152,6 +152,17 @@ export const STUDENT_MENU_CARDS: MenuItemConfig[] = [
     description: 'View your profile, attendance records, examination results, test records, and reports.',
     defaultEnabled: true,
     category: 'student'
+  }
+];
+
+// Parent menu cards configuration (CustomLandingPage.tsx)
+export const PARENT_MENU_CARDS: MenuItemConfig[] = [
+  {
+    key: 'linked_students',
+    label: 'Linked Students',
+    description: 'View and manage students linked to your family account.',
+    defaultEnabled: true,
+    category: 'parent'
   }
 ];
 
@@ -448,8 +459,10 @@ export const getAllMenuItems = (): MenuItemConfig[] => {
     ...TEACHER_MENU_CARDS, 
     ...TEACHER_PROFILE_TABS,
     ...TEACHER_PROFILE_SUMMARY_CARDS,
+    ...STUDENT_MENU_CARDS,
     ...STUDENT_PROFILE_TABS, 
-    ...STUDENT_PROFILE_SUMMARY_CARDS, 
+    ...STUDENT_PROFILE_SUMMARY_CARDS,
+    ...PARENT_MENU_CARDS,
     ...GUEST_ACCESSIBLE_PAGES, 
     ...DASHBOARD_CARDS
   ];
@@ -459,6 +472,7 @@ export const getAllMenuItems = (): MenuItemConfig[] => {
 export const getDefaultSettings = () => {
   const teacherSettings: Record<string, boolean> = {};
   const studentSettings: Record<string, boolean> = {};
+  const parentSettings: Record<string, boolean> = {};
   const guestSettings: Record<string, boolean> = {};
 
   TEACHER_MENU_CARDS.forEach(card => {
@@ -483,6 +497,10 @@ export const getDefaultSettings = () => {
 
   STUDENT_PROFILE_SUMMARY_CARDS.forEach(card => {
     studentSettings[card.key] = card.defaultEnabled !== false;
+  });
+
+  PARENT_MENU_CARDS.forEach(card => {
+    parentSettings[card.key] = card.defaultEnabled !== false;
   });
 
   GUEST_ACCESSIBLE_PAGES.forEach(page => {
@@ -528,6 +546,7 @@ export const getDefaultSettings = () => {
   return {
     teacher: teacherSettings,
     student: studentSettings,
+    parent: parentSettings,
     guest: guestSettings
   };
 };
@@ -544,6 +563,10 @@ export const mergeWithDefaults = (settings: any) => {
     student: {
       ...defaults.student,
       ...(settings?.student || {})
+    },
+    parent: {
+      ...defaults.parent,
+      ...(settings?.parent || {})
     },
     guest: {
       ...defaults.guest,

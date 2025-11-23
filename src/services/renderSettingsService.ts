@@ -4,6 +4,7 @@ import { getDefaultSettings, mergeWithDefaults } from '../config/renderSettingsC
 export interface RenderSettings {
   teacher: Record<string, boolean>;
   student: Record<string, boolean>;
+  parent: Record<string, boolean>;
   guest: Record<string, boolean>;
 }
 
@@ -55,6 +56,17 @@ export const isStudentCardVisible = (
 ): boolean => {
   if (!settings) return true; // Default to visible if settings not loaded
   return settings.student[cardKey] !== false;
+};
+
+/**
+ * Check if a parent menu card should be visible
+ */
+export const isParentCardVisible = (
+  settings: RenderSettings | null,
+  cardKey: string
+): boolean => {
+  if (!settings) return true; // Default to visible if settings not loaded
+  return settings.parent[cardKey] !== false;
 };
 
 /**

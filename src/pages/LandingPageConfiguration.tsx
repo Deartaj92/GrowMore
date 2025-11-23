@@ -56,6 +56,7 @@ import {
   STUDENT_MENU_CARDS,
   STUDENT_PROFILE_TABS,
   STUDENT_PROFILE_SUMMARY_CARDS,
+  PARENT_MENU_CARDS,
   DASHBOARD_CARDS,
   GUEST_SIDEBAR_MENUS,
   STUDENT_DASHBOARD_CARDS_GUEST,
@@ -213,6 +214,7 @@ const EVENT_ROLES = ['Teacher', 'Student', 'Parent', 'Accountant', 'Guest'];
 interface RenderSettingsData {
   teacher: Record<string, boolean>;
   student: Record<string, boolean>;
+  parent: Record<string, boolean>;
   guest: Record<string, boolean>;
 }
 
@@ -251,7 +253,7 @@ const LandingPageConfiguration: React.FC = () => {
   const [renderSettingsSaving, setRenderSettingsSaving] = useState(false);
   const [hasRenderSettingsChanges, setHasRenderSettingsChanges] = useState(false);
   const [mainTab, setMainTab] = useState(0); // 0 = Events, 1 = Render Settings
-  const [renderSettingsTab, setRenderSettingsTab] = useState(0); // 0 = Teacher, 1 = Student, 2 = Guest
+  const [renderSettingsTab, setRenderSettingsTab] = useState(0); // 0 = Teacher, 1 = Student, 2 = Parent, 3 = Guest
   
   // Convert theme mode string to theme object
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
@@ -325,7 +327,7 @@ const LandingPageConfiguration: React.FC = () => {
     }
   };
 
-  const handleRenderSettingChange = (category: 'teacher' | 'student' | 'guest', key: string) => {
+  const handleRenderSettingChange = (category: 'teacher' | 'student' | 'parent' | 'guest', key: string) => {
     setRenderSettings((prev) => ({
       ...prev,
       [category]: {
@@ -673,6 +675,11 @@ const LandingPageConfiguration: React.FC = () => {
                 <Tab 
                   icon={<PersonAddIcon />} 
                   iconPosition="start"
+                  label="Parent" 
+                />
+                <Tab 
+                  icon={<PersonAddIcon />} 
+                  iconPosition="start"
                   label="Guest" 
                 />
               </Tabs>
@@ -918,8 +925,50 @@ const LandingPageConfiguration: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Guest Tab Content */}
+                {/* Parent Tab Content */}
                 {renderSettingsTab === 2 && (
+                  <Box>
+                    <SettingsCard $theme={theme}>
+                      <SectionTitleContainer $theme={theme}>
+                        <PersonIcon />
+                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
+                          Parent Menu Cards (Landing Page)
+                        </Typography>
+                      </SectionTitleContainer>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Control which menu cards are visible to parents on the Landing Page
+                      </Typography>
+                      <SettingsGrid>
+                        {PARENT_MENU_CARDS.map((card) => (
+                          <SettingItem key={card.key} $theme={theme}>
+                            <SettingHeader>
+                              <Box sx={{ flex: 1 }}>
+                                <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
+                                <SettingDescriptionText $theme={theme}>
+                                  {card.description}
+                                </SettingDescriptionText>
+                              </Box>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={renderSettings.parent[card.key] !== false}
+                                    onChange={() => handleRenderSettingChange('parent', card.key)}
+                                    color="primary"
+                                  />
+                                }
+                                label=""
+                                sx={{ ml: 1 }}
+                              />
+                            </SettingHeader>
+                          </SettingItem>
+                        ))}
+                      </SettingsGrid>
+                    </SettingsCard>
+                  </Box>
+                )}
+
+                {/* Guest Tab Content */}
+                {renderSettingsTab === 3 && (
                   <Box>
                     <SettingsCard $theme={theme}>
                       <SectionTitleContainer $theme={theme}>

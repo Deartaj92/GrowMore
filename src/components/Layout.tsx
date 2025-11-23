@@ -1949,6 +1949,15 @@ const Layout: React.FC = () => {
     class_id?: number | null;
     section_id?: number | null;
   } | null>(null);
+  const [parentInfo, setParentInfo] = useState<{
+    id: number;
+    name: string;
+    school_id: number;
+    contact_person?: string | null;
+    contact_number?: string | null;
+    address?: string | null;
+    avatar_url?: string | null;
+  } | null>(null);
   const [lastChecked, setLastChecked] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageHeader, setPageHeader] = useState('');
@@ -2244,43 +2253,79 @@ const Layout: React.FC = () => {
     }
   }, []);
 
-  // Detect student session and load minimal student info
-  // Also clear studentInfo if staff user is detected
+  // Detect student or parent session and load minimal info
+  // Also clear student/parent info if staff user is detected
   useEffect(() => {
     const load = async () => {
       try {
-        // If staff user is logged in (user from getUser exists), clear student session
+        // If staff user is logged in (user from getUser exists), clear student/parent sessions
         const currentUser = getUser();
         if (currentUser) {
-          // Staff is logged in, ensure student session is cleared
+          // Staff is logged in, ensure student/parent sessions are cleared
           localStorage.removeItem('studentSession');
+          localStorage.removeItem('parentSession');
           setStudentInfo(null);
+          setParentInfo(null);
           return;
         }
 
-        // Only check for student session if no staff user is logged in
-        const raw = localStorage.getItem('studentSession');
-        const parsed = raw ? JSON.parse(raw) : null;
-        if (parsed?.id) {
-          const { data } = await supabase
-            .from('students')
-            .select('id, name, school_id, class_id, section_id')
-            .eq('id', parsed.id)
-            .single();
-          if (data) {
-            setStudentInfo({
-              id: data.id,
-              name: data.name,
-              school_id: data.school_id,
-              class_id: data.class_id,
-              section_id: data.section_id,
-            });
+        // Only check for student/parent session if no staff user is logged in
+        // Check for student session first
+        const studentRaw = localStorage.getItem('studentSession');
+        if (studentRaw) {
+          const studentParsed = JSON.parse(studentRaw);
+          if (studentParsed?.id) {
+            const { data } = await supabase
+              .from('students')
+              .select('id, name, school_id, class_id, section_id')
+              .eq('id', studentParsed.id)
+              .single();
+            if (data) {
+              setStudentInfo({
+                id: data.id,
+                name: data.name,
+                school_id: data.school_id,
+                class_id: data.class_id,
+                section_id: data.section_id,
+              });
+              setParentInfo(null);
+              return;
+            }
           }
-        } else {
-          setStudentInfo(null);
         }
+
+        // Check for parent session
+        const parentRaw = localStorage.getItem('parentSession');
+        if (parentRaw) {
+          const parentParsed = JSON.parse(parentRaw);
+          if (parentParsed?.id) {
+            const { data } = await supabase
+              .from('families')
+              .select('id, name, school_id, contact_person, contact_number, address, avatar_url')
+              .eq('id', parentParsed.id)
+              .single();
+            if (data) {
+              setParentInfo({
+                id: data.id,
+                name: data.name,
+                school_id: data.school_id,
+                contact_person: data.contact_person,
+                contact_number: data.contact_number,
+                address: data.address,
+                avatar_url: data.avatar_url,
+              });
+              setStudentInfo(null);
+              return;
+            }
+          }
+        }
+
+        // No valid session found
+        setStudentInfo(null);
+        setParentInfo(null);
       } catch {
         setStudentInfo(null);
+        setParentInfo(null);
       }
     };
     load();
@@ -2289,7 +2334,7 @@ const Layout: React.FC = () => {
   // Fetch institute profile
   useEffect(() => {
     const fetchInstituteProfile = async () => {
-      const schoolId = authUser?.school_id || studentInfo?.school_id;
+      const schoolId = authUser?.school_id || studentInfo?.school_id || parentInfo?.school_id;
       if (!schoolId) {
         return;
       }
@@ -2354,7 +2399,7 @@ const Layout: React.FC = () => {
       viewer_role: identity.type === 'student' ? 'Student' : identity.role || 'Staff',
       viewer_name: identity.type === 'student'
         ? studentInfo?.name || 'Student'
-        : staffName || authUser?.name || 'Staff Member',
+        : parentInfo?.name || staffName || authUser?.name || 'Staff Member',
       viewer_identifier: viewerIdentifier,
       viewer_device_id: ensureViewerDeviceId(),
     };
@@ -2387,7 +2432,7 @@ const Layout: React.FC = () => {
       seenAnnouncementsRef.current.add(announcement.id);
     } catch (error) {
     }
-  }, [authUser?.name, authUser?.role, studentInfo?.name, staffName, staffId]);
+  }, [authUser?.name, authUser?.role, studentInfo?.name, parentInfo?.name, staffName, staffId]);
 
   const loadSeenByEntries = useCallback(async (announcementId: number) => {
     setSeenByLoading(true);
@@ -2740,6 +2785,55 @@ const Layout: React.FC = () => {
           .update({ password: newPassword })
           .eq('id', studentInfo.id)
           .eq('school_id', studentInfo.school_id);
+
+        if (updateError) {
+          toast.showToast('Failed to update password.', 'error');
+          completeProgress();
+          return;
+        }
+
+        toast.showToast('Password updated successfully!', 'success');
+        completeProgress();
+        setTimeout(() => {
+          closeChangePasswordModal();
+        }, 600);
+        return;
+      }
+
+      // Check if parent is logged in
+      if (parentInfo) {
+        // Parent password change flow
+        const { data, error } = await supabase
+          .from('families')
+          .select('password')
+          .eq('id', parentInfo.id)
+          .single();
+
+        if (error) {
+          toast.showToast('Failed to verify current password.', 'error');
+          completeProgress();
+          setModalLoading(false);
+          return;
+        }
+
+        // Check current password (accept both the stored password and default 'aa')
+        const isValidPassword = data.password === currentPassword ||
+          (data.password === 'aa' && currentPassword === 'aa') ||
+          (!data.password && currentPassword === 'aa');
+
+        if (!isValidPassword) {
+          toast.showToast('Current password is incorrect.', 'error');
+          completeProgress();
+          setModalLoading(false);
+          return;
+        }
+
+        // Update family password
+        const { error: updateError } = await supabase
+          .from('families')
+          .update({ password: newPassword })
+          .eq('id', parentInfo.id)
+          .eq('school_id', parentInfo.school_id);
 
         if (updateError) {
           toast.showToast('Failed to update password.', 'error');
@@ -3714,7 +3808,7 @@ const Layout: React.FC = () => {
                               >
                                 <MenuIcon />
                               </MenuButton>
-                            ) : (user || studentInfo) ? (
+                            ) : (user || studentInfo || parentInfo) ? (
                               <MenuButton
                                 onClick={() => navigate('/landing-page')}
                                 aria-label="Go to Dashboard"
@@ -3890,7 +3984,7 @@ const Layout: React.FC = () => {
                               </WeakConnectionIndicator>
                             )}
                             {/* Show notification bell for all authenticated users (staff and students) */}
-                            {(user || studentInfo) && <NotificationBell />}
+                            {(user || studentInfo || parentInfo) && <NotificationBell />}
                             <HeaderIconCircle
                               as="button"
                               onClick={handleRefresh}
@@ -3912,9 +4006,9 @@ const Layout: React.FC = () => {
                                 onClick={() => setProfileMenuOpen(v => !v)}
                                 aria-label="Profile"
                               >
-                                {avatarUrl ? (
+                                {(avatarUrl || parentInfo?.avatar_url) ? (
                                   <img
-                                    src={avatarUrl}
+                                    src={avatarUrl || parentInfo?.avatar_url || ''}
                                     alt="avatar"
                                     style={{
                                       width: '100%',
@@ -3931,9 +4025,15 @@ const Layout: React.FC = () => {
                               {profileMenuOpen && (
                                 <ProfileDropdown ref={profileDropdownRef}>
                                   <ProfileDropdownHeader>
-                                    {studentInfo?.name || staffName || user?.name}
-                                    {!studentInfo && user?.role && (
+                                    {studentInfo?.name || parentInfo?.name || staffName || user?.name}
+                                    {!studentInfo && !parentInfo && user?.role && (
                                       <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>{user?.role}</span>
+                                    )}
+                                    {parentInfo && (
+                                      <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>Parent</span>
+                                    )}
+                                    {studentInfo && (
+                                      <span style={{ color: '#6366f1', fontWeight: 600, marginLeft: 4 }}>Student</span>
                                     )}
                                   </ProfileDropdownHeader>
                                   <ProfileDropdownItem onClick={toggleTheme}>
@@ -3970,7 +4070,7 @@ const Layout: React.FC = () => {
                                   <ProfileDropdownItem disabled style={{ opacity: 0.8, cursor: 'default' }}>
                                     Version: v{appVersion}
                                   </ProfileDropdownItem>
-                                  {(user?.role === 'Teacher' || studentInfo) && (
+                                  {(user?.role === 'Teacher' || studentInfo || parentInfo) && (
                                     <ProfileDropdownItem onClick={(e) => { e.stopPropagation(); setAboutUsModalOpen(true); setProfileMenuOpen(false); }}>
                                       About Us
                                     </ProfileDropdownItem>

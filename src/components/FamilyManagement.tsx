@@ -1305,7 +1305,7 @@ const FamilyManagement: React.FC = () => {
       setProgress(70);
       const { error } = await supabase
         .from('families')
-        .insert([{ ...form, avatar_url, school_id: user?.school_id }]);
+        .insert([{ ...form, avatar_url, password: 'aa', school_id: user?.school_id }]);
       if (error) throw error;
       setShowAddModal(false);
       setForm({ name: '', address: '', contact_number: '', avatar_url: '' });

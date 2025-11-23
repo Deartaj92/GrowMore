@@ -72,8 +72,7 @@ export default function ProtectedRoute({
     );
   }
 
-  // Check for student session if no user is logged in
-  let isStudent = false;
+  // Check for student or parent session if no user is logged in
   if (!user) {
     const studentSession = localStorage.getItem('studentSession');
     if (studentSession) {
@@ -82,7 +81,21 @@ export default function ProtectedRoute({
         if (parsed?.id) {
           // Student is logged in, allow access if Student role is in allowedRoles
           if (allowedRoles.includes('Student')) {
-            isStudent = true;
+            return <>{children}</>;
+          }
+        }
+      } catch (e) {
+        // If parsing fails, fall through to check parent session
+      }
+    }
+    
+    const parentSession = localStorage.getItem('parentSession');
+    if (parentSession) {
+      try {
+        const parsed = JSON.parse(parentSession);
+        if (parsed?.id) {
+          // Parent is logged in, allow access if Parent role is in allowedRoles
+          if (allowedRoles.includes('Parent')) {
             return <>{children}</>;
           }
         }
@@ -90,7 +103,8 @@ export default function ProtectedRoute({
         // If parsing fails, fall through to login redirect
       }
     }
-    // No user or valid student session, redirect to login
+    
+    // No user, student, or parent session, redirect to login
     return <Navigate to="/login" replace />;
   }
 

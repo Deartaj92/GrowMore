@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
 import { pushNotificationService } from '../services/pushNotificationService';
-import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon } from '@mui/icons-material';
+import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person } from '@mui/icons-material';
 
 // Mac-style window controls (copied from Layout.tsx)
 const MacWindowControls = styled.div`
@@ -287,9 +287,10 @@ const SwitchLabel = styled.span`
 `;
 
 const Login: React.FC = () => {
-  const [loginMode, setLoginMode] = useState<'staff' | 'student'>('staff');
+  const [loginMode, setLoginMode] = useState<'staff' | 'parent' | 'student' | null>(null);
   const [username, setUsername] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [familyId, setFamilyId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -307,7 +308,7 @@ const Login: React.FC = () => {
   const themeObj = themeMode === 'dark' ? darkTheme : lightTheme;
 
   // Lock mode during submission to prevent switching
-  const loginModeRef = useRef<'staff' | 'student'>('staff');
+  const loginModeRef = useRef<'staff' | 'parent' | 'student' | null>(null);
   loginModeRef.current = loginMode;
 
   // Mobile detection
@@ -332,13 +333,14 @@ const Login: React.FC = () => {
   };
 
   // Handle mode switching with field clearing
-  const handleModeSwitch = (mode: 'staff' | 'student') => {
+  const handleModeSwitch = (mode: 'staff' | 'parent' | 'student') => {
     if (loading) return; // Prevent switching during submission
     setLoginMode(mode);
     setError('');
     // Clear form fields when switching modes
     setUsername('');
     setStudentId('');
+    setFamilyId('');
     setPassword('');
     setShowPassword(false);
   };
@@ -350,10 +352,25 @@ const Login: React.FC = () => {
     // Use ref to get the current mode (locked during submission)
     const currentMode = loginModeRef.current;
 
+    // Validate that a mode is selected
+    if (!currentMode) {
+      setError('Please select a login type (Staff, Parent, or Student).');
+      return;
+    }
+
     // Validate fields based on mode
     if (currentMode === 'staff') {
       if (!username.trim()) {
         setError('Please enter your username.');
+        return;
+      }
+      if (!password.trim()) {
+        setError('Please enter your password.');
+        return;
+      }
+    } else if (currentMode === 'parent') {
+      if (!familyId.trim()) {
+        setError('Please enter your Family ID.');
         return;
       }
       if (!password.trim()) {
@@ -374,8 +391,9 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       if (currentMode === 'staff') {
-        // Clear any existing student session when staff logs in
+        // Clear any existing student/parent session when staff logs in
         localStorage.removeItem('studentSession');
+        localStorage.removeItem('parentSession');
         const staffUser = await signIn(username, password);
         if (staffUser?.staff_id && staffUser?.school_id) {
           await pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff');
@@ -396,6 +414,48 @@ const Login: React.FC = () => {
           return;
         }
         // For other roles, let InitialRouteHandler handle the redirect
+      } else if (currentMode === 'parent') {
+        // Parent authentication: lookup by family id and password
+        let familyLookup = null;
+        if (!isNaN(Number(familyId))) {
+          const { data: family, error: familyError } = await supabase
+            .from('families')
+            .select('*')
+            .eq('id', familyId)
+            .single();
+
+          familyLookup = { data: family, error: familyError };
+        }
+        
+        if (!familyLookup || familyLookup.error || !familyLookup.data) {
+          setError('Family not found. Please check your Family ID.');
+          setLoading(false);
+          return;
+        }
+        
+        const family = familyLookup.data;
+        // Check password logic, fallback to 'aa' if empty/null
+        const passToCheck = family.password || 'aa';
+        if (password !== passToCheck) {
+          setError('Incorrect password.');
+          setLoading(false);
+          return;
+        }
+        
+        // Clear any existing student/staff session when parent logs in
+        localStorage.removeItem('studentSession');
+        
+        // Store parent session info
+        localStorage.setItem('parentSession', JSON.stringify({
+          id: family.id,
+          name: family.name,
+          school_id: family.school_id,
+          isParent: true
+        }));
+
+        // Redirect to landing page
+        navigate('/landing-page', { replace: true });
+        return;
       } else {
         // Student authentication: lookup by student id and password
         // Try by id first, then by student_number if id fails
@@ -490,7 +550,15 @@ const Login: React.FC = () => {
               disabled={loading}
               type="button"
             >
-              <SwitchLabel>Teacher/Staff</SwitchLabel>
+              <SwitchLabel>Staff</SwitchLabel>
+            </SwitchOption>
+            <SwitchOption
+              $active={loginMode === 'parent'}
+              onClick={() => handleModeSwitch('parent')}
+              disabled={loading}
+              type="button"
+            >
+              <SwitchLabel>Parent</SwitchLabel>
             </SwitchOption>
             <SwitchOption
               $active={loginMode === 'student'}
@@ -498,10 +566,22 @@ const Login: React.FC = () => {
               disabled={loading}
               type="button"
             >
-              <SwitchLabel>Student/Parent</SwitchLabel>
+              <SwitchLabel>Student</SwitchLabel>
             </SwitchOption>
           </LoginModeSwitch>
-          {loginMode === 'staff' ? (
+          {!loginMode ? (
+            <>
+              <Title>Select Login Type</Title>
+              <div style={{ 
+                textAlign: 'center', 
+                color: 'var(--text-secondary, #666)', 
+                fontSize: '0.95rem',
+                padding: '20px 0'
+              }}>
+                Please select Staff, Parent, or Student to continue
+              </div>
+            </>
+          ) : loginMode === 'staff' ? (
             <>
               <Title>Sign In</Title>
               <Label htmlFor="username">Username</Label>
@@ -525,6 +605,44 @@ const Login: React.FC = () => {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   autoComplete="current-password"
+                  required
+                  placeholder="Enter your password"
+                />
+                <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </ToggleButton>
+              </InputGroup>
+            </>
+          ) : loginMode === 'parent' ? (
+            <>
+              <Title>Parent Login</Title>
+              <Label htmlFor="familyId">Family ID</Label>
+              <InputGroup>
+                <Input
+                  id="familyId"
+                  type="text"
+                  inputMode="numeric"
+                  value={familyId}
+                  onChange={e => {
+                    const value = e.target.value;
+                    // Only allow numeric characters
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setFamilyId(value);
+                    }
+                  }}
+                  autoFocus={!isMobile}
+                  autoComplete="off"
+                  required
+                  placeholder="Enter your Family ID"
+                />
+              </InputGroup>
+              <Label htmlFor="parentPassword">Password</Label>
+              <InputGroup>
+                <Input
+                  id="parentPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                   required
                   placeholder="Enter your password"
                 />
@@ -573,7 +691,7 @@ const Login: React.FC = () => {
             </>
           )}
           {error && <ErrorMsg>{error}</ErrorMsg>}
-          <Button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</Button>
+          <Button type="submit" disabled={loading || !loginMode}>{loading ? 'Signing in...' : 'Sign In'}</Button>
         </LoginCard>
       </Container>
     </ThemeProvider>

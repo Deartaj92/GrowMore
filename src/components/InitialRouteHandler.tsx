@@ -35,7 +35,21 @@ const InitialRouteHandler: React.FC = () => {
           // If parsing fails, fall through to login redirect
         }
       }
-      // No user or student session, redirect to login
+      // Check for parent session before redirecting to login
+      const parentSession = localStorage.getItem('parentSession');
+      if (parentSession) {
+        try {
+          const parsed = JSON.parse(parentSession);
+          if (parsed?.id) {
+            // Parent is logged in, redirect to landing page
+            navigate('/landing-page', { replace: true });
+            return;
+          }
+        } catch (e) {
+          // If parsing fails, fall through to login redirect
+        }
+      }
+      // No user, student, or parent session, redirect to login
       navigate('/login', { replace: true });
     }
   }, [user, loading, navigate]);
