@@ -11,6 +11,7 @@ import {
   ErrorOutline as ErrorOutlineIcon,
   History as HistoryIcon,
   Assessment as AssessmentIcon,
+  Loyalty as LoyaltyIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -367,6 +368,13 @@ const feeManagementItems = [
     icon: <AssessmentIcon />,
     path: '/fee-analytics',
     color: '#059669' // Emerald
+  },
+  {
+    title: 'Fee Concessions',
+    description: 'Manage student fee concessions, apply bulk discounts, track active and expired concessions, and monitor concession amounts',
+    icon: <LoyaltyIcon />,
+    path: '/concessions',
+    color: '#ec4899' // Pink
   }
 ];
 
@@ -394,6 +402,7 @@ const FeeManagementDashboard: React.FC = () => {
       case 'Fee Defaulters': return 'fee_dash_defaulters';
       case 'Fee Audit Logs': return 'fee_dash_audit_logs';
       case 'Fee Analytics': return 'fee_dash_analytics';
+      case 'Fee Concessions': return 'fee_dash_concessions';
       default: return null;
     }
   };

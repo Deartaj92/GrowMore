@@ -41,6 +41,7 @@ import {
   Person as PersonIcon,
   Snooze as SnoozeIcon,
   RemoveRedEye as EyeIcon,
+  Loyalty as LoyaltyIcon,
 } from '@mui/icons-material';
 import ReactDOM from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -193,6 +194,12 @@ const menuItems = [
     text: 'Fee Management',
     icon: <AttachMoneyIcon />,
     path: '/fee-management',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+  },
+  {
+    text: 'Fee Concessions',
+    icon: <LoyaltyIcon />,
+    path: '/concessions',
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
   },
   {

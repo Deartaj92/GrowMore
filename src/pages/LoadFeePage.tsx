@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
-  Box, Typography, Tabs, Tab, FormControl, InputLabel, Select, MenuItem, TextField, Button, useTheme, useMediaQuery, styled, CircularProgress, Divider, Checkbox,
-  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Card, InputAdornment, LinearProgress
+  Box, Typography, Tabs, Tab, FormControl, InputLabel, Select, MenuItem, TextField, Button, useMediaQuery, CircularProgress, Divider, Checkbox,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Card, InputAdornment, LinearProgress, useTheme as useMuiTheme
 } from '@mui/material';
+import { styled as muiStyled } from '@mui/material/styles';
+import styled from 'styled-components';
+import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
 import { matchesStudentSearch, getStudentDisplayId } from '../utils/studentUtils';
-import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth, AttachMoney, School, Commute, FamilyRestroom, Loyalty, Delete, Edit, Close as CloseIcon, CheckCircleOutline } from '@mui/icons-material';
+import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth, AttachMoney, School, Commute, FamilyRestroom, Loyalty, Delete, Edit, Close as CloseIcon, CheckCircleOutline, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { feeService } from '../services/feeService';
@@ -13,13 +16,14 @@ import { alpha } from '@mui/material/styles';
 import Autocomplete from '@mui/material/Autocomplete';
 import Avatar from '@mui/material/Avatar';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import Paper from '@mui/material/Paper';
 import { useToast } from '../components/useToast';
-import { Theme } from '@mui/material/styles';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { keyframes } from '@emotion/react';
 import NoStudentsFound from '../components/NoStudentsFound';
 import Loader from '../components/Loader';
+
+// Helper function to check if theme is dark
+const isDark = (themeObj: any) => themeObj.BG === '#252525';
 
 const pulseKeyframes = keyframes({
   '0%': { opacity: 0.4 },
@@ -27,94 +31,114 @@ const pulseKeyframes = keyframes({
   '100%': { opacity: 0.4 }
 });
 
-// --- Styled Components (reuse FeeStructureManager style) ---
-const PageContainer = styled(Box)(({ theme }) => ({
-  width: '100%',
-  margin: 0,
-  padding: '0 12px 6px 12px',
-  boxSizing: 'border-box',
-  background: theme.palette.mode === 'dark'
-    ? '#1a1a1a'
-    : '#f8fafc',
-  maxWidth: '100vw',
-  overflowX: 'hidden',
-  minHeight: '92vh',
-  display: 'flex',
-  flexDirection: 'column',
-  [theme.breakpoints.down('sm')]: {
-    padding: '0 8px 4px 8px'
-  }
-}));
-const Header = styled(Box)(({ theme }) => ({
-  flex: '0 0 auto',
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '8px',
-  margin: '6px 0 4px 0',
-  position: 'sticky',
-  top: 0,
-  zIndex: 10,
-  background: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8fafc',
-  boxShadow: '0 1px 6px #0001',
-  borderRadius: '10px',
-  padding: '4px 8px 2px 8px',
-  minHeight: '36px',
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: '8px'
-  }
-}));
+// ===== STYLED COMPONENTS (Matching ConcessionsPage Style) =====
 
-const PageTitle = styled(Typography)(({ theme }) => ({
-  fontSize: '1.05rem',
-  fontWeight: 800,
-  letterSpacing: '1px',
-  color: theme.palette.mode === 'dark' ? '#4a6cf7' : '#2563eb',
-  margin: 0,
-  [theme.breakpoints.down('sm')]: {
-    fontSize: '1rem',
-    textAlign: 'center'
+const PageContainer = styled.div`
+  width: 100%;
+  height: calc(100vh - 44px);
+  background: ${({ theme }) => theme.BG};
+  padding: 0.5rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 0.375rem;
+    gap: 0.2rem;
+    height: calc(100vh - 44px);
   }
-}));
-const MainContent = styled(Box)(({ theme }) => ({
-  flex: '1 1 auto',
-  minHeight: 0,
-  maxHeight: 'none',
-  overflowY: 'auto',
-  padding: '0 0 32px 0',
-  scrollBehavior: 'smooth',
-  WebkitOverflowScrolling: 'touch',
-  scrollSnapType: 'y proximity',
-  willChange: 'scroll-position',
-  transform: 'translateZ(0)',
-  backfaceVisibility: 'hidden',
-  perspective: '1000px',
-  [theme.breakpoints.down('sm')]: {
-    scrollBehavior: 'auto',
-    WebkitOverflowScrolling: 'touch'
-  }
-}));
+`;
 
-const GlassCard = styled(Paper)(({ theme }) => ({
-  background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.85)
-    : alpha(theme.palette.background.paper, 0.75),
-  backdropFilter: 'blur(8px)',
-  borderRadius: 12,
-  border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-  boxShadow: theme.palette.mode === 'dark'
-    ? `0 2px 12px ${alpha(theme.palette.common.black, 0.2)}`
-    : `0 2px 12px ${alpha(theme.palette.common.black, 0.08)}`,
-  overflow: 'hidden',
-  transition: 'all 0.2s ease',
-  padding: '12px 8px 8px 8px',
-  marginTop: '8px',
-}));
-const PillButton = styled(Button)(({ theme }) => ({
-  background: theme.palette.mode === 'dark'
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.2rem;
+  }
+`;
+
+const HeaderTitle = styled.h1`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+  }
+`;
+
+const GlassCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+    margin-bottom: 0.2rem;
+  }
+`;
+const PillButton = muiStyled(Button)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    background: isDarkMode
     ? 'linear-gradient(45deg, #4a6cf7, #7c3aed)'
     : 'linear-gradient(45deg, #4a6cf7, #3b82f6)',
   color: 'white',
@@ -124,74 +148,84 @@ const PillButton = styled(Button)(({ theme }) => ({
   textTransform: 'none',
   fontWeight: 600,
   fontSize: '0.97rem',
-  boxShadow: theme.palette.mode === 'dark'
+    boxShadow: isDarkMode
     ? '0 4px 16px rgba(74, 108, 247, 0.18)'
     : '0 4px 16px rgba(74, 108, 247, 0.12)',
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'translateY(-2px)',
-    boxShadow: theme.palette.mode === 'dark'
+      boxShadow: isDarkMode
       ? '0 8px 24px rgba(74, 108, 247, 0.22)'
       : '0 8px 24px rgba(74, 108, 247, 0.18)'
   }
-}));
+  };
+});
 
 // Fee Head Pill/Button
 interface FeeHeadPillProps {
-  selected?: boolean;
+  $selected?: boolean;
 }
-const GlassSelectorContainer = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark'
+const GlassSelectorContainer = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    background: isDarkMode
     ? 'rgba(40,48,80,0.13)'
     : 'rgba(255,255,255,0.68)',
   borderRadius: 10,
   boxShadow: 'none',
-  border: theme.palette.mode === 'dark'
+    border: isDarkMode
     ? '1px solid rgba(74,108,247,0.10)'
     : '1px solid rgba(74,108,247,0.07)',
-  padding: theme.spacing(1.2, 1.5),
-  margin: `${theme.spacing(1.2)} 0`,
+    padding: theme.spacing(1.2, 1.5),
+    margin: `${theme.spacing(1.2)} 0`,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-}));
-const FeeHeadPill = styled(Box, { shouldForwardProp: (prop) => prop !== 'selected' })<FeeHeadPillProps>(({ theme, selected }) => ({
+  };
+});
+const FeeHeadPill = muiStyled(Box)<FeeHeadPillProps>(({ theme, $selected }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  const primaryColor = theme.palette.primary.main;
+  const textColor = theme.palette.text.primary;
+  
+  return {
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(0.75),
+    gap: theme.spacing(0.75),
   padding: '5px 10px',
   borderRadius: 8,
-  background: selected
-    ? (theme.palette.mode === 'dark'
+    background: $selected
+      ? (isDarkMode
         ? 'rgba(74,108,247,0.18)'
         : 'rgba(74,108,247,0.10)')
-    : (theme.palette.mode === 'dark'
+      : (isDarkMode
         ? 'rgba(255,255,255,0.04)'
         : 'rgba(0,0,0,0.02)'),
-  color: selected ? theme.palette.primary.main : theme.palette.text.primary,
+    color: $selected ? primaryColor : textColor,
   fontWeight: 500,
   fontSize: '0.9rem',
   cursor: 'pointer',
   boxShadow: 'none',
-  border: selected
-    ? `1.5px solid ${theme.palette.primary.main}`
+    border: $selected
+      ? `1.5px solid ${primaryColor}`
     : '1px solid rgba(74,108,247,0.08)',
   transition: 'all 0.15s',
   userSelect: 'none',
   position: 'relative',
   minWidth: 0,
   '&:hover, &:focus': {
-    background: selected
-      ? (theme.palette.mode === 'dark'
+      background: $selected
+        ? (isDarkMode
           ? 'rgba(74,108,247,0.24)'
           : 'rgba(74,108,247,0.14)')
-      : (theme.palette.mode === 'dark'
+        : (isDarkMode
           ? 'rgba(74,108,247,0.10)'
           : 'rgba(74,108,247,0.06)'),
-    borderColor: theme.palette.primary.main,
+      borderColor: primaryColor,
   },
-}));
-const FeeHeadIcon = styled(Box)(({ theme }) => ({
+  };
+});
+const FeeHeadIcon = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -203,13 +237,13 @@ const FeeHeadIcon = styled(Box)(({ theme }) => ({
   fontSize: 16,
   flexShrink: 0,
 }));
-const FeeHeadName = styled(Typography)(({ theme }) => ({
+const FeeHeadName = muiStyled(Typography)(({ theme }) => ({
   fontWeight: 600,
   fontSize: '0.9rem',
   color: 'inherit',
   lineHeight: 1.1,
 }));
-const FeeHeadDesc = styled(Typography)(({ theme }) => ({
+const FeeHeadDesc = muiStyled(Typography)(({ theme }) => ({
   fontSize: '0.85rem',
   color: theme.palette.text.secondary,
   fontWeight: 400,
@@ -220,70 +254,75 @@ const FeeHeadDesc = styled(Typography)(({ theme }) => ({
   maxWidth: 120,
   marginLeft: theme.spacing(0.5),
 }));
-const FeeHeadSelectorBar = styled(Box)(({ theme }) => ({
+const FeeHeadSelectorBar = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   flexWrap: 'wrap',
   gap: theme.spacing(1),
   alignItems: 'center',
   minHeight: 0,
 }));
-const FeeHeadSelectorActions = styled(Box)(({ theme }) => ({
+const FeeHeadSelectorActions = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   gap: theme.spacing(0.5),
   alignItems: 'center',
   marginLeft: 'auto',
 }));
 
-// Glassy sidebar container with blue accent border
-const GlassSidebar = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark'
-    ? 'rgba(40,48,80,0.15)'
-    : 'rgba(255,255,255,0.85)',
-  borderRadius: 12,
-  boxShadow: theme.palette.mode === 'dark'
-    ? '0 2px 12px 0 #0003'
-    : '0 2px 12px 0 #4a6cf70a',
-  borderLeft: `3px solid ${theme.palette.primary.main}`,
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-  padding: theme.spacing(2, 1.5, 1.5, 1.5),
-  minWidth: 0,
-  position: 'sticky',
-  top: theme.spacing(2),
-  alignSelf: 'flex-start',
-  [theme.breakpoints.down('md')]: {
-    position: 'static',
-    borderLeft: 'none',
-    borderRadius: 10,
-    padding: theme.spacing(1.5, 1, 1, 1),
-  },
-}));
-const SectionHeader = styled(Typography)(({ theme }) => ({
-  fontWeight: 700,
-  fontSize: '0.95rem',
-  color: theme.palette.mode === 'dark' ? '#4a6cf7' : '#2563eb',
-  marginBottom: theme.spacing(1),
-  marginTop: theme.spacing(0.5),
-  letterSpacing: 0.2,
-}));
-const GlassMainCard = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark'
-    ? 'rgba(40,48,80,0.15)'
-    : 'rgba(255,255,255,0.92)',
-  borderRadius: 12,
-  boxShadow: theme.palette.mode === 'dark'
-    ? '0 2px 12px 0 #0003'
-    : '0 2px 12px 0 #4a6cf70a',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
-  padding: theme.spacing(2, 2, 1.5, 2),
-  minHeight: 260,
-  width: '100%',
-  [theme.breakpoints.down('md')]: {
-    borderRadius: 10,
-    padding: theme.spacing(1.5, 1, 1, 1),
-  },
-}));
+const GlassSidebar = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  padding: 0.75rem 1rem;
+  min-width: 0;
+  position: sticky;
+  top: 0.5rem;
+  align-self: flex-start;
+  
+  @media (max-width: 768px) {
+    position: static;
+    padding: 0.5rem;
+  }
+`;
 
-const PaginationContainer = styled(Box)(({ theme }) => ({
+const SectionHeader = styled.div`
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.ACCENT};
+  margin-bottom: 0.5rem;
+  margin-top: 0.25rem;
+  letter-spacing: 0.2px;
+`;
+
+const GlassMainCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  padding: 0.75rem 1rem;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+  }
+`;
+
+const PaginationContainer = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
   flex: '0 0 auto',
   display: 'flex',
   alignItems: 'center',
@@ -291,7 +330,7 @@ const PaginationContainer = styled(Box)(({ theme }) => ({
   gap: '8px',
   margin: '8px 0 0 0',
   padding: '6px 8px',
-  background: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8fafc',
+    background: isDarkMode ? '#1a1a1a' : '#f8fafc',
   borderRadius: '8px',
   boxShadow: '0 1px 4px #0001',
   minHeight: '32px',
@@ -300,19 +339,23 @@ const PaginationContainer = styled(Box)(({ theme }) => ({
     alignItems: 'stretch',
     gap: '6px'
   }
-}));
+  };
+});
 
-const PaginationInfo = styled(Typography)(({ theme }) => ({
+const PaginationInfo = muiStyled(Typography)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
   fontSize: '0.8rem',
   fontWeight: 600,
-  color: theme.palette.mode === 'dark' ? '#4a6cf7' : '#2563eb',
+    color: isDarkMode ? '#4a6cf7' : '#2563eb',
   margin: 0,
   [theme.breakpoints.down('sm')]: {
     textAlign: 'center'
   }
-}));
+  };
+});
 
-const PaginationControls = styled(Box)(({ theme }) => ({
+const PaginationControls = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: '6px',
@@ -321,238 +364,294 @@ const PaginationControls = styled(Box)(({ theme }) => ({
   }
 }));
 
-// Enhanced Tab Components
-const StyledTabs = styled(Tabs)(({ theme }) => ({
+// Enhanced Tab Components - Keep MUI styled for MUI components
+const StyledTabs = muiStyled(Tabs)(({ theme }) => ({
   '& .MuiTabs-indicator': {
-    height: '3px',
-    borderRadius: '2px',
+    height: 3,
+    borderRadius: 2,
     background: 'linear-gradient(90deg, #4a6cf7 0%, #3b82f6 100%)',
   },
   '& .MuiTabs-flexContainer': {
-    gap: '2px',
+    gap: 2,
     padding: '0 4px',
-  },
-  '@media (min-width: 900px)': {
-    '& .MuiTabs-flexContainer': {
-      gap: '4px',
+    [theme.breakpoints.up('md')]: {
+      gap: 4,
       padding: '0 8px',
-    }
-  }
+    },
+  },
 }));
 
-const StyledTab = styled(Tab)(({ theme }) => ({
-  minHeight: '36px',
+const StyledTab = muiStyled(Tab)(({ theme }) => ({
+  minHeight: 36,
   padding: '4px 8px',
   fontSize: '0.75rem',
   fontWeight: 600,
   textTransform: 'none',
-  color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
-  borderRadius: '6px',
+  borderRadius: 6,
   margin: '0 1px',
   transition: 'all 0.2s ease',
-  '&.Mui-selected': {
-    color: theme.palette.mode === 'dark' ? '#4a6cf7' : '#2563eb',
-    background: theme.palette.mode === 'dark' ? 'rgba(74, 108, 247, 0.1)' : 'rgba(37, 99, 235, 0.08)',
-    fontWeight: 700,
-  },
-  '&:hover': {
-    background: theme.palette.mode === 'dark' ? 'rgba(74, 108, 247, 0.05)' : 'rgba(37, 99, 235, 0.04)',
-    color: theme.palette.mode === 'dark' ? '#4a6cf7' : '#2563eb',
-  },
   '& .MuiTab-iconWrapper': {
-    marginBottom: '1px',
+    marginBottom: 1,
     fontSize: '0.9rem',
   },
-  '@media (min-width: 900px)': {
-    minHeight: '44px',
+  [theme.breakpoints.up('md')]: {
+    minHeight: 44,
     padding: '8px 16px',
     fontSize: '0.9rem',
-    borderRadius: '8px',
+    borderRadius: 8,
     margin: '0 2px',
     '& .MuiTab-iconWrapper': {
-      marginBottom: '2px',
+      marginBottom: 2,
       fontSize: '1.1rem',
-    }
-  }
+    },
+  },
 }));
 
 // Scrollable Student List Container
-const ScrollableStudentList = styled(Box)(({ theme }) => ({
-  maxHeight: '320px',
-  overflowY: 'scroll', // force scrollbar visibility
+const ScrollableStudentList = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto', // force scrollbar visibility
   overflowX: 'hidden',
   paddingRight: '14px', // make room so cards don't sit under the scrollbar
   marginRight: 0,
   scrollbarGutter: 'stable both-edges', // reserve space for scrollbar (FF/modern)
   scrollbarWidth: 'thin', // Firefox
-  scrollbarColor: `${theme.palette.mode === 'dark' ? '#4a6cf7 #1f2937' : '#3b82f6 #e5e7eb'}`, // Firefox thumb track
+    scrollbarColor: `${isDarkMode ? '#4a6cf7 #1f2937' : '#3b82f6 #e5e7eb'}`, // Firefox thumb track
   msOverflowStyle: 'auto', // legacy Edge/IE
   '&::-webkit-scrollbar': {
     width: '10px',
   },
   '&::-webkit-scrollbar-track': {
-    background: theme.palette.mode === 'dark' ? 'rgba(31, 41, 55, 0.9)' : '#eef2f7',
+      background: isDarkMode ? 'rgba(31, 41, 55, 0.9)' : '#eef2f7',
     borderRadius: '6px',
     margin: '2px 0',
   },
   '&::-webkit-scrollbar-thumb': {
-    background: theme.palette.mode === 'dark'
+      background: isDarkMode
       ? 'linear-gradient(180deg, #5a7cf8 0%, #4a6cf7 100%)'
       : 'linear-gradient(180deg, #4a6cf7 0%, #3b82f6 100%)',
     borderRadius: '6px',
-    border: theme.palette.mode === 'dark'
+      border: isDarkMode
       ? '1px solid rgba(255, 255, 255, 0.08)'
       : '1px solid rgba(255, 255, 255, 0.6)',
-    boxShadow: theme.palette.mode === 'dark'
+      boxShadow: isDarkMode
       ? 'inset 0 0 0 1px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.25)'
       : 'inset 0 0 0 1px rgba(255,255,255,0.6), 0 2px 6px rgba(0,0,0,0.12)',
     transition: 'all 0.2s ease',
   },
   '&::-webkit-scrollbar-thumb:hover': {
-    background: theme.palette.mode === 'dark'
+      background: isDarkMode
       ? 'linear-gradient(180deg, #6b8cff 0%, #5a7cf8 100%)'
       : 'linear-gradient(180deg, #5a7cf8 0%, #4b92f7 100%)',
-    boxShadow: theme.palette.mode === 'dark'
+      boxShadow: isDarkMode
       ? 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.35)'
       : 'inset 0 0 0 1px rgba(255,255,255,0.7), 0 4px 10px rgba(0,0,0,0.18)',
   },
   '&::-webkit-scrollbar-thumb:active': {
-    background: theme.palette.mode === 'dark'
+      background: isDarkMode
       ? 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)'
       : 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)',
   },
   '&::-webkit-scrollbar-corner': {
     background: 'transparent',
   }
-}));
+  };
+});
 
 // Footer with Generate Button
-const StudentListFooter = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '12px 16px',
-  background: theme.palette.mode === 'dark' ? 'rgba(40, 48, 80, 0.1)' : 'rgba(255, 255, 255, 0.8)',
-  borderTop: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-  borderRadius: '0 0 12px 12px',
-  marginTop: '8px',
-  gap: '12px',
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-    gap: '6px',
-    padding: '8px 10px',
+const StudentListFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: ${({ theme }) => isDark(theme)
+    ? 'rgba(40, 48, 80, 0.1)'
+    : 'rgba(255, 255, 255, 0.8)'};
+  border-top: 1px solid ${({ theme }) => isDark(theme)
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(0, 0, 0, 0.1)'};
+  border-radius: 0 0 12px 12px;
+  margin-top: 8px;
+  gap: 12px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
   }
-}));
+`;
 
-const GenerateButton = styled(Button)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #4a6cf7, #3b82f6)',
-  color: 'white',
-  borderRadius: '8px',
-  padding: '8px 24px',
-  minWidth: '120px',
-  fontWeight: 600,
-  fontSize: '0.9rem',
-  textTransform: 'none',
-  boxShadow: theme.palette.mode === 'dark'
-    ? '0 4px 16px rgba(74, 108, 247, 0.2)'
-    : '0 4px 16px rgba(74, 108, 247, 0.15)',
-  transition: 'all 0.2s ease',
-  '&:hover': {
-    transform: 'translateY(-1px)',
-    boxShadow: theme.palette.mode === 'dark'
-      ? '0 6px 20px rgba(74, 108, 247, 0.25)'
-      : '0 6px 20px rgba(74, 108, 247, 0.2)',
-  },
-  '&:disabled': {
-    background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-    color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
-    transform: 'none',
-    boxShadow: 'none',
-  },
-  [theme.breakpoints.down('sm')]: {
-    width: '100%',
-    minWidth: 0,
-    padding: '10px 12px',
-    fontSize: '0.88rem',
-    borderRadius: '10px'
+const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $disabled }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    background: 'linear-gradient(45deg, #4a6cf7, #3b82f6)',
+    color: '#ffffff',
+    borderRadius: 8,
+    padding: '8px 24px',
+    minWidth: 120,
+    fontWeight: 600,
+    fontSize: '0.9rem',
+    textTransform: 'none',
+    boxShadow: isDarkMode
+      ? '0 4px 16px rgba(74, 108, 247, 0.2)'
+      : '0 4px 16px rgba(74, 108, 247, 0.15)',
+    transition: 'all 0.2s ease',
+    '&, & *': {
+      color: '#ffffff',
+    },
+    '& .MuiButton-startIcon': {
+      color: '#ffffff',
+    },
+    '&:hover': {
+      transform: 'translateY(-1px)',
+      boxShadow: isDarkMode
+        ? '0 6px 20px rgba(74, 108, 247, 0.25)'
+        : '0 6px 20px rgba(74, 108, 247, 0.2)',
+      background: 'linear-gradient(45deg, #5a7cf8, #4b92f7)',
+      color: '#ffffff',
+      '&, & *': {
+        color: '#ffffff',
+      },
+      '& .MuiButton-startIcon': {
+        color: '#ffffff',
+      },
+    },
+    '&:disabled': {
+      background: isDarkMode
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'rgba(0, 0, 0, 0.1)',
+      color: isDarkMode
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)',
+      transform: 'none',
+      boxShadow: 'none',
+      '&, & *': {
+        color: isDarkMode
+          ? 'rgba(255, 255, 255, 0.3)'
+          : 'rgba(0, 0, 0, 0.3)',
+      },
+      '& .MuiButton-startIcon': {
+        color: isDarkMode
+          ? 'rgba(255, 255, 255, 0.3)'
+          : 'rgba(0, 0, 0, 0.3)',
+      },
+    },
+    [theme.breakpoints.down('md')]: {
+      width: '100%',
+      minWidth: 0,
+      padding: '10px 12px',
+      fontSize: '0.88rem',
+      borderRadius: 10,
+    },
+  };
+});
+
+const ProgressDialogStyled = styled(Dialog)`
+  & .MuiDialog-paper {
+    border-radius: 12px;
+    padding: 24px;
+    min-width: 400px;
+    background: ${({ theme }) => theme.CARD};
+    border: 1px solid ${({ theme }) => isDark(theme)
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(0, 0, 0, 0.05)'};
+    box-shadow: ${({ theme }) => isDark(theme)
+      ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+      : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   }
-}));
+`;
 
-const ProgressDialog = styled(Dialog)(({ theme }) => ({
-  '& .MuiDialog-paper': {
-    borderRadius: '12px',
-    padding: '24px',
-    minWidth: '400px',
-    background: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-    border: `1px solid ${theme.palette.mode === 'dark' ? '#333' : '#e0e0e0'}`,
-  },
-}));
+const ProgressContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+`;
 
-const ProgressContent = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '16px',
-  padding: '8px 0',
-}));
-
-const ProgressText = styled(Typography)(({ theme }) => ({
+const ProgressText = muiStyled(Typography)<{ $customTheme?: any }>(({ theme, $customTheme }) => ({
   fontSize: '0.9rem',
-  color: theme.palette.mode === 'dark' ? '#e0e0e0' : '#666',
+  color: $customTheme?.TEXT_PRIMARY || theme.palette.text.primary,
   textAlign: 'center',
   minHeight: '20px',
 }));
 
-const ProgressBar = styled(LinearProgress)(({ theme }) => ({
-  width: '100%',
-  height: '8px',
-  borderRadius: '4px',
-  backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#f0f0f0',
-  '& .MuiLinearProgress-bar': {
+const ProgressBar = muiStyled(LinearProgress)<{ $customTheme?: any }>(({ theme, $customTheme }) => {
+  const isDarkMode = $customTheme ? isDark($customTheme) : theme.palette.mode === 'dark';
+  return {
+    width: '100%',
+    height: '8px',
     borderRadius: '4px',
-    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-  },
-}));
+    backgroundColor: isDarkMode
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.1)',
+    '& .MuiLinearProgress-bar': {
+      borderRadius: '4px',
+      background: 'linear-gradient(90deg, #4a6cf7 0%, #3b82f6 100%)',
+    },
+  };
+});
 
 // Editable grid cell
-const EditableCell = styled('input')(({ theme }) => ({
-  width: 80,
-  border: 'none',
-  outline: 'none',
-  borderRadius: 8,
-  background: theme.palette.mode === 'dark' ? 'rgba(74,108,247,0.10)' : 'rgba(74,108,247,0.07)',
-  color: theme.palette.text.primary,
-  fontWeight: 500,
-  fontSize: '1rem',
-  padding: '6px 10px',
-  textAlign: 'center',
-  boxShadow: '0 1px 4px 0 rgba(74,108,247,0.07)',
-  transition: 'box-shadow 0.18s',
-  '&:focus': {
-    boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-    background: theme.palette.mode === 'dark' ? 'rgba(74,108,247,0.18)' : 'rgba(74,108,247,0.13)',
-  },
-  MozAppearance: 'textfield',
-  '&::-webkit-inner-spin-button, &::-webkit-outer-spin-button': {
-    WebkitAppearance: 'none',
-    margin: 0
+const EditableCell = styled.input<{ $muiTheme?: any }>`
+  width: 80px;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  background: ${({ $muiTheme }) => {
+    const isDarkMode = $muiTheme?.palette?.mode === 'dark';
+    return isDarkMode ? 'rgba(74,108,247,0.10)' : 'rgba(74,108,247,0.07)';
+  }};
+  color: ${({ $muiTheme }) => {
+    const isDarkMode = $muiTheme?.palette?.mode === 'dark';
+    return $muiTheme?.palette?.text?.primary || (isDarkMode ? '#ffffff' : '#000000');
+  }};
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 6px 10px;
+  text-align: center;
+  box-shadow: 0 1px 4px 0 rgba(74,108,247,0.07);
+  transition: box-shadow 0.18s;
+  
+  &:focus {
+    box-shadow: ${({ $muiTheme }) => {
+      const primaryColor = $muiTheme?.palette?.primary?.main || '#4a6cf7';
+      return `0 0 0 2px ${primaryColor}33`;
+    }};
+    background: ${({ $muiTheme }) => {
+      const isDarkMode = $muiTheme?.palette?.mode === 'dark';
+      return isDarkMode ? 'rgba(74,108,247,0.18)' : 'rgba(74,108,247,0.13)';
+    }};
   }
-}));
+  
+  -moz-appearance: textfield;
+  &::-webkit-inner-spin-button, &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+`;
 
-const ProfileAvatar = styled(Avatar)(({ theme }) => ({
+const ProfileAvatar = muiStyled(Avatar)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  const primaryColor = theme.palette.primary.main;
+  const paperBg = theme.palette.background.paper;
+  return {
   width: 90,
   height: 90,
   fontSize: '2.25rem',
   fontWeight: 600,
   position: 'relative',
-  border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-  background: theme.palette.background.paper,
+    border: `2px solid ${alpha(primaryColor, 0.3)}`,
+    background: paperBg,
   boxShadow: `
-    0 0 0 2px ${alpha(theme.palette.background.paper, 0.8)},
-    0 0 0 4px ${alpha(theme.palette.primary.main, 0.1)},
-    0 0 10px ${alpha(theme.palette.primary.main, 0.1)},
-    0 0 20px ${alpha(theme.palette.primary.main, 0.08)},
-    0 0 30px ${alpha(theme.palette.primary.main, 0.05)}
+      0 0 0 2px ${alpha(paperBg, 0.8)},
+      0 0 0 4px ${alpha(primaryColor, 0.1)},
+      0 0 10px ${alpha(primaryColor, 0.1)},
+      0 0 20px ${alpha(primaryColor, 0.08)},
+      0 0 30px ${alpha(primaryColor, 0.05)}
   `,
   '&[type=number]': {
     MozAppearance: 'textfield',
@@ -562,26 +661,31 @@ const ProfileAvatar = styled(Avatar)(({ theme }) => ({
     margin: 0,
   },
   '&:focus': {
-    boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-    background: theme.palette.mode === 'dark' ? 'rgba(74,108,247,0.18)' : 'rgba(74,108,247,0.13)',
+      boxShadow: `0 0 0 2px ${primaryColor}33`,
+      background: isDarkMode ? 'rgba(74,108,247,0.18)' : 'rgba(74,108,247,0.13)',
   },
-}));
+  };
+});
 
 // Helper function to sort class names using the universal sorting function
 const sortClassesLocal = (classes: any[]) => {
   return sortClasses(classes);
 };
 
-const NumericInput = styled('input')(({ theme }) => ({
+const NumericInput = styled('input')(({ theme }) => {
+  const isDarkMode = theme?.palette?.mode === 'dark';
+  const primaryColor = theme?.palette?.primary?.main || '#4a6cf7';
+  const textColor = theme?.palette?.text?.primary || (isDarkMode ? '#ffffff' : '#000000');
+  return {
   width: 80,
   height: 32,
   fontSize: '1rem',
   padding: '6px 8px',
   borderRadius: 8,
   textAlign: 'center',
-  background: theme.palette.mode === 'dark' ? 'rgba(74,108,247,0.10)' : 'rgba(74,108,247,0.07)',
-  border: `1.5px solid ${theme.palette.mode === 'dark' ? 'rgba(74,108,247,0.2)' : 'rgba(74,108,247,0.15)'}`,
-  color: theme.palette.text.primary,
+    background: isDarkMode ? 'rgba(74,108,247,0.10)' : 'rgba(74,108,247,0.07)',
+    border: `1.5px solid ${isDarkMode ? 'rgba(74,108,247,0.2)' : 'rgba(74,108,247,0.15)'}`,
+    color: textColor,
   outline: 'none',
   transition: 'border 0.18s, box-shadow 0.18s',
   fontWeight: 600,
@@ -594,80 +698,90 @@ const NumericInput = styled('input')(({ theme }) => ({
     margin: 0,
   },
   '&:focus': {
-    borderColor: theme.palette.primary.main,
-    boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+      borderColor: primaryColor,
+      boxShadow: `0 0 0 2px ${alpha(primaryColor, 0.2)}`,
   },
-}));
+  };
+});
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
+const StyledDialog = muiStyled(Dialog)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  const paperBg = theme.palette.background.paper;
+  return {
   zIndex: 1300,
   '& .MuiDialog-paper': {
       borderRadius: '16px',
-      background: theme.palette.mode === 'dark' 
-          ? theme.palette.background.paper 
-          : theme.palette.background.paper,
+        background: paperBg,
       maxWidth: '500px',
       width: '95%',
       overflow: 'hidden',
-      boxShadow: theme.palette.mode === 'dark'
+        boxShadow: isDarkMode
           ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
           : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)',
-      border: theme.palette.mode === 'dark'
+        border: isDarkMode
           ? '1px solid rgba(255, 255, 255, 0.05)'
           : '1px solid rgba(0, 0, 0, 0.05)',
   },
   '& .MuiBackdrop-root': {
-      backgroundColor: theme.palette.mode === 'dark'
+        backgroundColor: isDarkMode
           ? 'rgba(0, 0, 0, 0.5)'
           : 'rgba(255, 255, 255, 0.5)',
       backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
   }
-}));
+  };
+});
 
-const DialogHeader = styled(Box)(({ theme }) => ({
+const DialogHeader = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: '20px 24px',
-  borderBottom: `1px solid ${theme.palette.divider}`,
+  borderBottom: `1px solid ${theme?.palette?.divider || (theme?.palette?.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)')}`,
 }));
 
-const EditDialogTitle = styled(Typography)(({ theme }) => ({
+const EditDialogTitle = muiStyled(Typography)(({ theme }) => ({
   fontSize: '1.5rem',
   fontWeight: 600,
   color: theme.palette.primary.main,
 }));
 
-const StyledDialogContent = styled(Box)(({ theme }) => ({
-  padding: '24px',
-  '& .MuiTextField-root': {
-      '& .MuiInputBase-root': {
-          background: theme.palette.mode === 'dark'
-              ? 'rgba(255, 255, 255, 0.03)'
-              : 'rgba(0, 0, 0, 0.03)',
-          borderRadius: '8px',
-          border: `1px solid ${theme.palette.divider}`,
-          transition: 'background-color 0.2s ease',
-          '&:hover, &.Mui-focused': {
-              background: theme.palette.mode === 'dark'
-                  ? 'rgba(255, 255, 255, 0.05)'
-                  : 'rgba(0, 0, 0, 0.05)',
-          },
-          '& .MuiOutlinedInput-notchedOutline': {
-              border: 'none'
-          }
-      }
-  }
-}));
+const StyledDialogContent = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  const dividerColor = theme.palette.divider;
+  return {
+    padding: '24px',
+    '& .MuiTextField-root': {
+        '& .MuiInputBase-root': {
+            background: isDarkMode
+                ? 'rgba(255, 255, 255, 0.03)'
+                : 'rgba(0, 0, 0, 0.03)',
+            borderRadius: '8px',
+            border: `1px solid ${dividerColor}`,
+            transition: 'background-color 0.2s ease',
+            '&:hover, &.Mui-focused': {
+                background: isDarkMode
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(0, 0, 0, 0.05)',
+            },
+            '& .MuiOutlinedInput-notchedOutline': {
+                border: 'none'
+            }
+        }
+    }
+  };
+});
 
-const FormActions = styled(DialogActions)(({ theme }) => ({
-  padding: '16px 24px',
-  borderTop: `1px solid ${theme.palette.divider}`,
-}));
+const FormActions = styled(DialogActions)(({ theme }) => {
+  const dividerColor = theme?.palette?.divider || (theme?.palette?.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
+  return {
+    padding: '16px 24px',
+    borderTop: `1px solid ${dividerColor}`,
+  };
+});
 
 // Add styled component for concession indicator
-const ConcessionIndicator = styled(Box)(({ theme }) => ({
+const ConcessionIndicator = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(0.5),
@@ -693,7 +807,7 @@ const months = [
 ];
 
 // Skeleton Loading Components - Dashboard Style
-const SkeletonContainer = styled(Box)(({ theme }) => ({
+const SkeletonContainer = muiStyled(Box)(({ theme }) => ({
   width: '100%',
   height: '100%',
   padding: 'clamp(8px, 2vw, 24px)',
@@ -707,14 +821,16 @@ const SkeletonContainer = styled(Box)(({ theme }) => ({
   }
 }));
 
-const SkeletonCard = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' ? '#2a2a2a' : '#ffffff',
-  borderRadius: '16px',
-  boxShadow: '0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10)',
-  padding: '1.5rem 1.5rem 1.2rem 1.5rem',
-  marginBottom: '1rem',
-  width: '100%',
-  border: `1.5px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+const SkeletonCard = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    background: isDarkMode ? '#2a2a2a' : '#ffffff',
+    borderRadius: '16px',
+    boxShadow: '0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10)',
+    padding: '1.5rem 1.5rem 1.2rem 1.5rem',
+    marginBottom: '1rem',
+    width: '100%',
+    border: `1.5px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
@@ -733,17 +849,20 @@ const SkeletonCard = styled(Box)(({ theme }) => ({
     '0%': { left: '-100%' },
     '100%': { left: '100%' }
   }
-}));
+  };
+});
 
-const SkeletonTabs = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  gap: '8px',
-  marginBottom: '1.5rem',
-  '& > *': {
-    flex: 1,
-    height: '44px',
-    borderRadius: '8px',
-    background: theme.palette.mode === 'dark' ? '#353b4a' : '#e5e7eb',
+const SkeletonTabs = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '1.5rem',
+    '& > *': {
+      flex: 1,
+      height: '44px',
+      borderRadius: '8px',
+      background: isDarkMode ? '#353b4a' : '#e5e7eb',
     position: 'relative',
     overflow: 'hidden',
     '&::after': {
@@ -754,11 +873,14 @@ const SkeletonTabs = styled(Box)(({ theme }) => ({
       animation: 'shimmer 1.5s infinite',
     }
   }
-}));
+  };
+});
 
-const SkeletonLine = styled(Box)(({ theme }) => ({
-  height: '16px',
-  background: theme.palette.mode === 'dark' ? '#353b4a' : '#e5e7eb',
+const SkeletonLine = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    height: '16px',
+    background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '8px',
   marginBottom: '8px',
   position: 'relative',
@@ -770,11 +892,14 @@ const SkeletonLine = styled(Box)(({ theme }) => ({
     background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
     animation: 'shimmer 1.5s infinite',
   }
-}));
+  };
+});
 
-const SkeletonFormField = styled(Box)(({ theme }) => ({
-  height: '56px',
-  background: theme.palette.mode === 'dark' ? '#353b4a' : '#e5e7eb',
+const SkeletonFormField = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    height: '56px',
+    background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '8px',
   marginBottom: '12px',
   position: 'relative',
@@ -786,12 +911,15 @@ const SkeletonFormField = styled(Box)(({ theme }) => ({
     background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
     animation: 'shimmer 1.5s infinite',
   }
-}));
+  };
+});
 
-const SkeletonPill = styled(Box)(({ theme }) => ({
-  height: '32px',
-  width: '100px',
-  background: theme.palette.mode === 'dark' ? '#353b4a' : '#e5e7eb',
+const SkeletonPill = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    height: '32px',
+    width: '100px',
+    background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '16px',
   margin: '4px',
   position: 'relative',
@@ -803,17 +931,20 @@ const SkeletonPill = styled(Box)(({ theme }) => ({
     background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
     animation: 'shimmer 1.5s infinite',
   }
-}));
+  };
+});
 
-const SkeletonStudentCard = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' ? '#2a2a2a' : '#ffffff',
-  borderRadius: '8px',
-  padding: '12px',
-  marginBottom: '8px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+const SkeletonStudentCard = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    background: isDarkMode ? '#2a2a2a' : '#ffffff',
+    borderRadius: '8px',
+    padding: '12px',
+    marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
   position: 'relative',
   overflow: 'hidden',
   '&::after': {
@@ -824,28 +955,34 @@ const SkeletonStudentCard = styled(Box)(({ theme }) => ({
     animation: 'shimmer 1.5s infinite',
     zIndex: 2,
   }
-}));
+  };
+});
 
-const SkeletonAvatar = styled(Box)(({ theme }) => ({
-  width: '40px',
-  height: '40px',
-  borderRadius: '50%',
-  background: theme.palette.mode === 'dark' ? '#353b4a' : '#e5e7eb',
-  position: 'relative',
-  overflow: 'hidden',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
-    animation: 'shimmer 1.5s infinite',
-  }
-}));
+const SkeletonAvatar = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    background: isDarkMode ? '#353b4a' : '#e5e7eb',
+    position: 'relative',
+    overflow: 'hidden',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
+      animation: 'shimmer 1.5s infinite',
+    }
+  };
+});
 
-const SkeletonButton = styled(Box)(({ theme }) => ({
-  height: '40px',
-  width: '120px',
-  background: theme.palette.mode === 'dark' ? '#353b4a' : '#e5e7eb',
+const SkeletonButton = muiStyled(Box)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    height: '40px',
+    width: '120px',
+    background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '8px',
   position: 'relative',
   overflow: 'hidden',
@@ -856,7 +993,8 @@ const SkeletonButton = styled(Box)(({ theme }) => ({
     background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
     animation: 'shimmer 1.5s infinite',
   }
-}));
+  };
+});
 
 const SkeletonLoader = () => (
   <SkeletonContainer>
@@ -908,14 +1046,16 @@ const SkeletonLoader = () => (
 );
 
 export default function LoadFeePage() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { theme: themeMode } = useContext(ThemeContext);
+  const theme = themeMode === 'dark' ? darkTheme : lightTheme;
+  const muiTheme = useMuiTheme(); // MUI theme for components that need palette
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const { user } = useAuth();
   const schoolId = user?.school_id;
   const { showToast } = useToast();
 
   // State
-  const [tab, setTab] = useState(0); // 0: Bulk, 1: Single, 2: Family, 3: Concessions
+  const [tab, setTab] = useState(0); // 0: Bulk, 1: Single, 2: Family
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -969,6 +1109,16 @@ export default function LoadFeePage() {
   const [existingConcessionFilter, setExistingConcessionFilter] = useState<number | null>(null);
   const [concessionExpiresOn, setConcessionExpiresOn] = useState<{ [feeHeadId: number]: string }>({});
 
+  // State for Bulk Concessions Tab
+  const [bulkConcessionClass, setBulkConcessionClass] = useState('');
+  const [bulkConcessionSection, setBulkConcessionSection] = useState('');
+  const [bulkConcessionStudents, setBulkConcessionStudents] = useState<any[]>([]);
+  const [bulkConcessionSelectedStudents, setBulkConcessionSelectedStudents] = useState<number[]>([]);
+  const [bulkConcessionSelectedFeeHeads, setBulkConcessionSelectedFeeHeads] = useState<number[]>([]);
+  const [bulkConcessionAmounts, setBulkConcessionAmounts] = useState<{ [studentId: number]: { [feeHeadId: number]: string } }>({});
+  const [bulkConcessionExpiresOn, setBulkConcessionExpiresOn] = useState<{ [feeHeadId: number]: string }>({});
+  const [bulkConcessionLoading, setBulkConcessionLoading] = useState(false);
+
   // State for Edit Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingConcession, setEditingConcession] = useState<any>(null);
@@ -987,6 +1137,9 @@ export default function LoadFeePage() {
 
   // Add new state for tracking concession info
   const [concessionInfo, setConcessionInfo] = useState<{ [key: string]: { applied: boolean, amount: number } }>({});
+  
+  // State for expanded student rows to show concessions
+  const [expandedStudents, setExpandedStudents] = useState<Set<number>>(new Set());
 
   // Helper function to check if a class has sections
   const getClassHasSections = (classId: any) => {
@@ -1527,19 +1680,12 @@ export default function LoadFeePage() {
 
   // Get available fee heads based on current selection
   const getAvailableFeeHeads = (classId?: number, sectionId?: number) => {
-    if (tab === 3) {
-      // In concessions tab, only require classId
-      if (!classId) return [];
-      // Show all fee heads for concessions, regardless of amount
-      return feeHeads;
-    } else {
-      // In other tabs, show fee heads as soon as class is selected
+    // Show fee heads as soon as class is selected
       // Don't require section to be selected for fee heads to appear
       if (!classId) return [];
       // Show all fee heads when class is selected, even if they don't have fee structures yet
       // This allows users to see and select fee heads before setting up fee structures
       return feeHeads;
-    }
   };
 
   // Reset amounts to default values (with concessions applied)
@@ -1784,6 +1930,7 @@ export default function LoadFeePage() {
 
     fetchStudentsForSession();
   }, [selectedClass, selectedSection, selectedSession, selectedFeeHeads, schoolId]);
+
 
   // --- Bulk Generate / Update ---
   const handleBulkUpsert = async () => {
@@ -2115,7 +2262,7 @@ export default function LoadFeePage() {
         setSelectedSection('');
       }
     }
-  }, [selectedClass, tab, classes]);
+  }, [selectedClass, bulkConcessionClass, tab, classes]);
 
   // Add this effect after singleStudent is set from Autocomplete
   useEffect(() => {
@@ -2671,43 +2818,46 @@ export default function LoadFeePage() {
 
   return (
     <>
-      <ProgressDialog open={loading} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
-          <Typography variant="h6" component="div">
+      <ProgressDialogStyled open={loading} maxWidth="sm" fullWidth theme={theme}>
+        <DialogTitle sx={{ textAlign: 'center', pb: 1, color: theme.TEXT_PRIMARY }}>
+          <Typography variant="h6" component="div" sx={{ color: theme.TEXT_PRIMARY }}>
             Generating Fees
           </Typography>
         </DialogTitle>
         <DialogContent>
           <ProgressContent>
-            <ProgressBar variant="determinate" value={loadingProgress} />
-            <ProgressText>
+            <ProgressBar variant="determinate" value={loadingProgress} $customTheme={theme} />
+            <ProgressText $customTheme={theme}>
               {loadingStatus || 'Processing...'}
             </ProgressText>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ mt: 1, color: theme.TEXT_SECONDARY }}>
               {Math.round(loadingProgress)}% Complete
             </Typography>
           </ProgressContent>
         </DialogContent>
-      </ProgressDialog>
+      </ProgressDialogStyled>
 
-    <PageContainer>
-        <Header>
-      <PageTitle>Load Fee to Students</PageTitle>
+    <PageContainer theme={theme}>
+        <Header theme={theme}>
+          <HeaderTitle theme={theme}>
+            <AttachMoney style={{ fontSize: 28, color: theme.ACCENT }} />
+            Load Fee to Students
+          </HeaderTitle>
         </Header>
-      <MainContent>
-      <GlassCard>
+      <MainContent theme={theme}>
+      <GlassCard theme={theme}>
         <StyledTabs value={tab} onChange={(_, v) => setTab(v)} variant={isMobile ? 'fullWidth' : 'standard'}>
           <StyledTab icon={<Group />} label={isMobile ? "Bulk" : "Bulk"} />
           <StyledTab icon={<Person />} label={isMobile ? "Single" : "Single Student"} />
           <StyledTab icon={<FamilyRestroom />} label="Family" />
-          <StyledTab icon={<Loyalty />} label={isMobile ? "Concessions" : "Concessions"} />
         </StyledTabs>
         {tab === 0 && (
-          <Box mt={2}>
-            <Box display={{ xs: 'block', md: 'flex' }} gap={2}>
+          <Box mt={2} sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+            <Box display={{ xs: 'block', md: 'flex' }} gap={2} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Left: Sticky Glassy Sidebar */}
-              <GlassSidebar flex={{ xs: 'unset', md: '1 1 30%' }} minWidth={{ md: 240 }} maxWidth={{ md: 320 }} mb={{ xs: 1.5, md: 0 }}>
-                <SectionHeader>Filters</SectionHeader>
+              <Box sx={{ flex: { xs: 'unset', md: '1 1 30%' }, minWidth: { md: 240 }, maxWidth: { md: 320 }, mb: { xs: 1.5, md: 0 } }}>
+                <GlassSidebar theme={theme}>
+                  <SectionHeader theme={theme}>Filters</SectionHeader>
                 <Box display="flex" flexDirection="column" gap={1.5} mb={2}>
                   <Box display="flex" gap={1.5}>
                     <FormControl size="small" sx={{ flex: 1 }}>
@@ -2767,13 +2917,13 @@ export default function LoadFeePage() {
                     </FormControl>
                   </Box>
                 </Box>
-                <SectionHeader>Fee Heads</SectionHeader>
+                <SectionHeader theme={theme}>Fee Heads</SectionHeader>
                 <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%' }}>
                   <FeeHeadSelectorBar sx={{ width: '100%', flexDirection: 'column', gap: 1 }}>
                     {getAvailableFeeHeads(Number(selectedClass), Number(selectedSection)).map((fh: any) => (
                       <FeeHeadPill
                         key={fh.id}
-                        selected={selectedFeeHeads.includes(fh.id)}
+                        $selected={selectedFeeHeads.includes(fh.id)}
                         onClick={() => {
                           const newSelection = selectedFeeHeads.includes(fh.id)
                             ? selectedFeeHeads.filter(id => id !== fh.id)
@@ -2814,10 +2964,12 @@ export default function LoadFeePage() {
                   </FeeHeadSelectorActions>
                 </GlassSelectorContainer>
               </GlassSidebar>
+              </Box>
               {/* Right: Main Glassy Card for Students/Results */}
-              <GlassMainCard flex={{ xs: 'unset', md: '2 1 70%' }} minWidth={0}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                <SectionHeader>Students</SectionHeader>
+              <Box sx={{ flex: { xs: 'unset', md: '2 1 70%' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <GlassMainCard theme={theme}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ flexShrink: 0 }}>
+                    <SectionHeader theme={theme}>Students</SectionHeader>
                   {preview.length > 0 && selectedFeeHeads.length > 0 && (
                     <Box display="flex" alignItems="center" gap={1}>
                         <Box display="flex" gap={1}>
@@ -2841,51 +2993,84 @@ export default function LoadFeePage() {
                       </Box>
                   )}
                 </Box>
-                <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
-                {loading ? <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box> : (
+                <Box mt={1} mb={1.5} sx={{ flexShrink: 0 }}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
+                {loading ? <Box display="flex" justifyContent="center" py={4} sx={{ flexShrink: 0 }}><CircularProgress /></Box> : (
                   preview.length > 0 && selectedFeeHeads.length > 0 ? (
-                    <Box mt={2}>
+                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', mt: 2 }}>
                       {/* Scrollable Student List */}
-                      <ScrollableStudentList>
+                      <ScrollableStudentList sx={{ flex: 1, minHeight: 0 }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%', boxSizing: 'border-box' }}>
                         {preview.map((stu, idx) => {
                           const isSelected = selectedStudents.includes(stu.id);
+                          const isExpanded = expandedStudents.has(stu.id);
+                          const studentConcessions = concessions.get(stu.id) || [];
                           return (
                             <Box
                               key={stu.id}
-                              onClick={() => handleStudentSelection(stu.id, !isSelected)}
                               sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                flexDirection: { xs: 'column', sm: 'row' },
-                                background: theme.palette.mode === 'dark' ? 'rgba(40,48,80,0.08)' : 'rgba(255,255,255,0.95)',
+                                background: muiTheme.palette.mode === 'dark' ? 'rgba(40,48,80,0.08)' : 'rgba(255,255,255,0.95)',
                                 borderRadius: 6,
-                                boxShadow: theme.palette.mode === 'dark' 
+                                boxShadow: muiTheme.palette.mode === 'dark' 
                                   ? '0 2px 8px 0 #0003' 
                                   : '0 2px 8px 0 #4a6cf70a',
-                                border: `1.5px solid ${isSelected ? theme.palette.primary.main : (theme.palette.mode === 'dark' ? '#2a2a2a' : '#e5e7eb')}`,
+                                border: `1.5px solid ${isSelected ? muiTheme.palette.primary.main : (muiTheme.palette.mode === 'dark' ? '#2a2a2a' : '#e5e7eb')}`,
                                 padding: { xs: '8px 10px', sm: '0.4rem 0.6rem' },
                                 gap: { xs: '8px', sm: '0.6rem' },
                                 fontSize: '0.9rem',
                                 width: '100%',
                                 minWidth: 300,
                                 transition: 'all 0.15s ease',
-                                cursor: 'pointer',
+                                overflow: 'hidden',
                                 '&:hover': {
-                                  transform: 'translateY(-0.5px)',
-                                  boxShadow: theme.palette.mode === 'dark' 
+                                  boxShadow: muiTheme.palette.mode === 'dark'
                                     ? '0 4px 16px 0 #0005' 
                                     : '0 4px 16px 0 #4a6cf70c',
                                 }
                               }}
                             >
-                              {/* S.No, Avatar, and Student Info grouped together */}
-                              <Box sx={{
+                              {/* Main Row */}
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  flexDirection: { xs: 'column', sm: 'row' },
+                                  gap: { xs: '8px', sm: '0.6rem' },
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {/* Student Column - Id - Name - Father in one line */}
+                                <Box 
+                                  sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.6rem',
+                                    flex: 1,
+                                    minWidth: 0,
                                 width: '100%',
-                              }}>
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newExpanded = new Set(expandedStudents);
+                                    if (isExpanded) {
+                                      newExpanded.delete(stu.id);
+                                    } else {
+                                      newExpanded.add(stu.id);
+                                    }
+                                    setExpandedStudents(newExpanded);
+                                  }}
+                                >
+                                  {/* Expand/Collapse Icon */}
+                                  <IconButton
+                                    size="small"
+                                    sx={{ 
+                                      padding: '4px',
+                                      color: 'text.secondary',
+                                      '&:hover': { backgroundColor: alpha(muiTheme.palette.primary.main, 0.1) }
+                                    }}
+                                  >
+                                    {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                                  </IconButton>
+                                  
                               {/* S.No */}
                               <Box sx={{ 
                                 width: '1.8em', 
@@ -2897,6 +3082,7 @@ export default function LoadFeePage() {
                               }}>
                                 {idx + 1}
                               </Box>
+                                  
                               {/* Avatar */}
                               <Avatar
                                 sx={{
@@ -2904,14 +3090,15 @@ export default function LoadFeePage() {
                                   height: 24,
                                   fontSize: '0.85rem',
                                   fontWeight: 600,
-                                  background: theme.palette.primary.main,
+                                      background: muiTheme.palette.primary.main,
                                   color: '#fff',
                                   flexShrink: 0,
                                 }}
                               >
                                 {stu.name.charAt(0)}
                               </Avatar>
-                              {/* Student Info */}
+                                  
+                                  {/* Student Info - Id - Name - Father in one line */}
                               <Box sx={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -2929,8 +3116,8 @@ export default function LoadFeePage() {
                                   width: '100%',
                                   lineHeight: 1.2,
                                 }}>
-                                  <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{getStudentDisplayId(stu)}</Box> . {stu.name}{stu.father_name ? (
-                                    <> . <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.father_name}</Box></>
+                                      <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{getStudentDisplayId(stu)}</Box> - {stu.name}{stu.father_name ? (
+                                        <> - <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.father_name}</Box></>
                                   ) : ''}
                                 </Typography>
                                 <Typography sx={{
@@ -2947,13 +3134,29 @@ export default function LoadFeePage() {
                                   {formatClassSectionDisplay(stu.class_id, stu.section_id)}
                                 </Typography>
                               </Box>
+                                  
+                                  {/* Selection Checkbox */}
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      handleStudentSelection(stu.id, !isSelected);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    size="small"
+                                    sx={{ 
+                                      padding: '4px',
+                                      '&:hover': { backgroundColor: alpha(muiTheme.palette.primary.main, 0.1) }
+                                    }}
+                                  />
                               </Box>
                               
                               {/* Divider for mobile view */}
                               <Divider sx={{ width: '100%', display: { xs: 'block', sm: 'none' }, my: 1 }} />
 
                               {/* Fee Amounts */}
-                              <Box sx={{
+                                <Box 
+                                  sx={{
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '1rem',
@@ -2963,7 +3166,9 @@ export default function LoadFeePage() {
                                 maxWidth: { sm: '400px' },
                                 flex: { sm: 1 },
                                 width: '100%',
-                              }}>
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                 {selectedFeeHeads.map(fhId => {
                                   const feeHead = feeHeads.find(fh => fh.id === fhId);
                                   return (
@@ -2993,12 +3198,92 @@ export default function LoadFeePage() {
                                   );
                                 })}
                               </Box>
+                              </Box>
+                              
+                              {/* Collapsible Concessions Section */}
+                              {isExpanded && (
+                                <Box
+                                  sx={{
+                                    mt: 1.5,
+                                    pt: 1.5,
+                                    borderTop: `1px solid ${alpha(muiTheme.palette.divider, 0.1)}`,
+                                    animation: 'slideDown 0.3s ease-out',
+                                    '@keyframes slideDown': {
+                                      '0%': {
+                                        opacity: 0,
+                                        maxHeight: 0,
+                                        transform: 'translateY(-10px)'
+                                      },
+                                      '100%': {
+                                        opacity: 1,
+                                        maxHeight: '500px',
+                                        transform: 'translateY(0)'
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>
+                                    Concessions Granted
+                                  </Typography>
+                                  {studentConcessions.length > 0 ? (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                      {studentConcessions.map((concession: any, cIdx: number) => {
+                                        const feeHead = feeHeads.find(fh => fh.id === concession.feeHeadId);
+                                        const isExpired = concession.expires_on ? new Date(concession.expires_on) < new Date() : false;
+                                        return (
+                                          <Box
+                                            key={cIdx}
+                                            sx={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'space-between',
+                                              p: 1.5,
+                                              borderRadius: 2,
+                                              background: muiTheme.palette.mode === 'dark'
+                                                ? 'rgba(74,108,247,0.1)'
+                                                : 'rgba(74,108,247,0.05)',
+                                              border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.2)}`,
+                                            }}
+                                          >
+                                            <Box sx={{ flex: 1 }}>
+                                              <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>
+                                                {feeHead?.name || `Fee Head ${concession.feeHeadId}`}
+                                              </Typography>
+                                              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                  Amount: <strong style={{ color: muiTheme.palette.primary.main }}>Rs. {concession.concessionAmount}</strong>
+                                                </Typography>
+                                                {concession.effectiveFrom && (
+                                                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                    Effective From: {new Date(concession.effectiveFrom).toLocaleDateString()}
+                                                  </Typography>
+                                                )}
+                                                {concession.expires_on && (
+                                                  <Typography variant="caption" sx={{ color: isExpired ? 'error.main' : 'text.secondary' }}>
+                                                    Expires: {new Date(concession.expires_on).toLocaleDateString()}
+                                                    {isExpired && ' (Expired)'}
+                                                  </Typography>
+                                                )}
+                                              </Box>
+                                            </Box>
+                                            <Loyalty sx={{ color: isExpired ? 'text.disabled' : 'success.main', fontSize: '1.5rem' }} />
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+                                  ) : (
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', py: 2 }}>
+                                      No concessions granted to this student.
+                                    </Typography>
+                                  )}
+                                </Box>
+                              )}
                             </Box>
                           );
                         })}
                       </Box>
                       {existingFeeInvoiceItemsMap.size > 0 && (
-                        <Box sx={{ mt: 2, p: 1.5, backgroundColor: alpha(theme.palette.info.main, 0.1), borderRadius: 2 }}>
+                        <Box sx={{ mt: 2, p: 1.5, backgroundColor: alpha(muiTheme.palette.info.main, 0.1), borderRadius: 2 }}>
                           <Typography variant="caption" sx={{ color: 'info.dark', fontWeight: 'bold' }}>
                             Note: Some fee heads already have existing records and will be updated. Others will be created. Use "Delete Selected Fee Heads" to remove specific fee heads.
                           </Typography>
@@ -3007,9 +3292,9 @@ export default function LoadFeePage() {
                       </ScrollableStudentList>
                       
                       {/* Footer with Generate Button */}
-                      <StudentListFooter>
+                      <StudentListFooter theme={theme}>
                         <Box display="flex" alignItems="center" gap={2}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
                             {selectedStudents.length} of {preview.length} students selected
                           </Typography>
                         </Box>
@@ -3060,6 +3345,7 @@ export default function LoadFeePage() {
                   )
                 )}
               </GlassMainCard>
+              </Box>
             </Box>
           </Box>
         )}
@@ -3138,21 +3424,19 @@ export default function LoadFeePage() {
           <Box mt={2}>
               <Box mt={2} display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={{ xs: 2, md: 3 }}>
                 {/* Column 1: Filters */}
-                <GlassCard
-                  sx={{
+                <Box sx={{
                     flex: { xs: 'unset', md: '1 1 30%' },
                     minWidth: { xs: '100%', md: 280 },
                     maxWidth: { xs: '100%', md: 350 },
-                    mb: { xs: 2, md: 0 },
-                    p: { xs: 2, md: 2.5 },
+                  mb: { xs: 2, md: 0 }
+                }}>
+                  <GlassCard theme={theme} style={{
+                    padding: '0.75rem 1rem',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: { xs: 1.5, md: 2 },
-                    alignItems: 'stretch',
-                    boxShadow: '0 4px 24px 0 #4a6cf71a',
-                    backdropFilter: 'blur(10px)',
-                  }}
-                >
+                    gap: '1rem',
+                    alignItems: 'stretch'
+                  }}>
                   <Autocomplete
                     options={students}
                     loading={studentsLoading}
@@ -3254,7 +3538,7 @@ export default function LoadFeePage() {
                       {getAvailableFeeHeads(singleStudent ? Number(singleStudent.class_id) : undefined, singleStudent ? Number(singleStudent.section_id) : undefined).map((fh: any) => (
                         <FeeHeadPill
                           key={fh.id}
-                          selected={singleStudentSelectedFeeHeads.includes(fh.id)}
+                          $selected={singleStudentSelectedFeeHeads.includes(fh.id)}
                           onClick={() => {
                             const newSelection = singleStudentSelectedFeeHeads.includes(fh.id)
                               ? singleStudentSelectedFeeHeads.filter(id => id !== fh.id)
@@ -3309,23 +3593,12 @@ export default function LoadFeePage() {
                     </FeeHeadSelectorActions>
                   </GlassSelectorContainer>
                 </GlassCard>
+                </Box>
                 
                 {/* Column 2: Student List with Footer */}
-                <GlassMainCard
-                  flex={{ xs: 'unset', md: '1 1 70%' }}
-                  minWidth={0}
-                  sx={{
-                    position: 'relative', 
-                    overflow: 'visible', 
-                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.12)', 
-                    backdropFilter: 'blur(10px)', 
-                    border: '1.5px solid rgba(74,108,247,0.10)',
-                    width: { xs: '100%', md: 'auto' },
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <SectionHeader>Selected Fee Heads</SectionHeader>
+                <Box sx={{ flex: { xs: 'unset', md: '1 1 70%' }, minWidth: 0 }}>
+                  <GlassMainCard theme={theme}>
+                  <SectionHeader theme={theme}>Selected Fee Heads</SectionHeader>
                   <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
                   
                   {/* Scrollable Fee Heads List */}
@@ -3341,12 +3614,12 @@ export default function LoadFeePage() {
                           sx={{
                             display: 'flex',
                             alignItems: 'center',
-                            background: theme.palette.mode === 'dark' ? 'rgba(40,48,80,0.13)' : 'rgba(255,255,255,0.97)',
+                            background: muiTheme.palette.mode === 'dark' ? 'rgba(40,48,80,0.13)' : 'rgba(255,255,255,0.97)',
                             borderRadius: 2,
-                            boxShadow: theme.palette.mode === 'dark' 
+                            boxShadow: muiTheme.palette.mode === 'dark'
                               ? '0 4px 24px 0 #0005' 
                               : '0 4px 24px 0 #4a6cf71a',
-                            border: `1px solid ${theme.palette.mode === 'dark' ? '#333' : '#e0e7ef'}`,
+                            border: `1px solid ${muiTheme.palette.mode === 'dark' ? '#333' : '#e0e7ef'}`,
                             padding: '0.8rem 1rem',
                             gap: '1rem',
                             fontSize: '0.93rem',
@@ -3354,7 +3627,7 @@ export default function LoadFeePage() {
                             transition: 'all 0.2s ease',
                             '&:hover': {
                               transform: 'translateY(-1px)',
-                              boxShadow: theme.palette.mode === 'dark' 
+                                boxShadow: muiTheme.palette.mode === 'dark'
                                 ? '0 6px 32px 0 #0007' 
                                 : '0 6px 32px 0 #4a6cf71a',
                             }
@@ -3444,7 +3717,7 @@ export default function LoadFeePage() {
                               borderRadius: '50%',
                               transition: 'all 0.2s ease',
                               '&:hover': {
-                                background: theme.palette.mode === 'dark' ? 'rgba(74,108,247,0.1)' : 'rgba(74,108,247,0.05)',
+                                background: muiTheme.palette.mode === 'dark' ? 'rgba(74,108,247,0.1)' : 'rgba(74,108,247,0.05)',
                                 transform: 'scale(1.1)',
                               }
                             }}
@@ -3457,7 +3730,7 @@ export default function LoadFeePage() {
                   
                   {/* Footer with Buttons */}
                   {singleStudent && singleStudentSelectedFeeHeads.length > 0 && (
-                    <StudentListFooter>
+                    <StudentListFooter theme={theme}>
                       <GenerateButton 
                         onClick={handleSingleUpsert} 
                         disabled={loading || !singleSession || !singleMonth || !singleYear}
@@ -3479,6 +3752,7 @@ export default function LoadFeePage() {
                     </StudentListFooter>
                   )}
                 </GlassMainCard>
+                </Box>
               </Box>
             </Box>
           )
@@ -3487,14 +3761,16 @@ export default function LoadFeePage() {
           <Box mt={2}>
             <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={{ xs: 2, md: 3 }}>
               {/* --- Column 1: Filters --- */}
-              <GlassCard sx={{ 
-                p: { xs: 2, md: 3 }, 
+              <Box sx={{ 
                 flex: { xs: 'unset', md: '1 1 28%' }, 
                 minWidth: { xs: '100%', md: 220 }, 
-                maxWidth: { xs: '100%', md: 320 }, 
+                maxWidth: { xs: '100%', md: 320 }
+              }}>
+                <GlassCard theme={theme} style={{ 
+                  padding: '0.75rem 1rem',
                 display: 'flex', 
                 flexDirection: 'column', 
-                gap: { xs: 1.5, md: 2 } 
+                  gap: '1rem'
               }}>
                 <Autocomplete
                   options={families}
@@ -3556,7 +3832,7 @@ export default function LoadFeePage() {
                     {getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => (
                       <FeeHeadPill
                         key={fh.id}
-                        selected={familyTabSelectedFeeHeads.includes(fh.id)}
+                        $selected={familyTabSelectedFeeHeads.includes(fh.id)}
                         onClick={() => {
                           const newSelection = familyTabSelectedFeeHeads.includes(fh.id)
                             ? familyTabSelectedFeeHeads.filter(id => id !== fh.id)
@@ -3588,18 +3864,19 @@ export default function LoadFeePage() {
                    </FeeHeadSelectorActions>
                 </GlassSelectorContainer>
               </GlassCard>
+              </Box>
 
               {/* --- Column 2 & 3 --- */}
               {selectedFamily && (
                 <>
                   {/* --- Column 2: Linked Students --- */}
-                  <GlassCard sx={{ 
-                    p: { xs: 2, md: 3 }, 
+                  <Box sx={{ 
                     flex: { xs: 'unset', md: '1 1 22%' }, 
                     minWidth: { xs: '100%', md: 220 }, 
                     maxWidth: { xs: '100%', md: 320 } 
                   }}>
-                    <SectionHeader sx={{ textAlign: 'center' }}>Linked Students</SectionHeader>
+                    <GlassCard theme={theme} style={{ padding: '0.75rem 1rem' }}>
+                    <SectionHeader theme={theme} style={{ textAlign: 'center' }}>Linked Students</SectionHeader>
                     {/* Student Selection Controls */}
                     <Box display="flex" flexDirection={{ xs: 'row', md: 'column' }} gap={1} mb={2} alignItems={{ xs: 'center', md: 'stretch' }}>
                       <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'center' }} sx={{ 
@@ -3652,17 +3929,17 @@ export default function LoadFeePage() {
                             borderRadius={2} 
                             sx={{ 
                               background: selectedFamilyStudents.includes(student.id) 
-                                ? alpha(theme.palette.primary.main, 0.1) 
-                                : alpha(theme.palette.primary.main, 0.05),
+                                ? alpha(muiTheme.palette.primary.main, 0.1)
+                                : alpha(muiTheme.palette.primary.main, 0.05),
                               border: selectedFamilyStudents.includes(student.id) 
-                                ? `1px solid ${theme.palette.primary.main}` 
+                                ? `1px solid ${muiTheme.palette.primary.main}`
                                 : '1px solid transparent',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
                               '&:hover': {
                                 background: selectedFamilyStudents.includes(student.id)
-                                  ? alpha(theme.palette.primary.main, 0.15)
-                                  : alpha(theme.palette.primary.main, 0.08),
+                                  ? alpha(muiTheme.palette.primary.main, 0.15)
+                                  : alpha(muiTheme.palette.primary.main, 0.08),
                                 transform: 'translateY(-1px)',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                               }
@@ -3699,14 +3976,12 @@ export default function LoadFeePage() {
                       })}
                     </Box>
                   </GlassCard>
+                  </Box>
                   
                   {/* --- Column 3: Fee Table --- */}
-                  <GlassMainCard 
-                    flex={{ xs: 'unset', md: '1 1 50%' }} 
-                    minWidth={0}
-                    sx={{ width: { xs: '100%', md: 'auto' } }}
-                  >
-                     <SectionHeader>Fee Details</SectionHeader>
+                  <Box sx={{ flex: { xs: 'unset', md: '1 1 50%' }, minWidth: 0 }}>
+                    <GlassMainCard theme={theme}>
+                     <SectionHeader theme={theme}>Fee Details</SectionHeader>
                      {familyTabSelectedFeeHeads.length > 0 && selectedFamilyStudents.length > 0 ? (
                        <Box sx={{ overflowX: 'auto', mt: 2 }}>
                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -3737,9 +4012,9 @@ export default function LoadFeePage() {
                                 return applicableHeads.map((fh, index) => {
                                    if (!fh) return null;
                                    return (
-                                    <tr key={`${stu.id}-${fh.id}`} style={{ borderBottom: '1px solid ' + alpha(theme.palette.divider, 0.1) }}>
+                                     <tr key={`${stu.id}-${fh.id}`} style={{ borderBottom: '1px solid ' + alpha(muiTheme.palette.divider, 0.1) }}>
                                       {index === 0 && (
-                                        <td rowSpan={applicableHeads.length} style={{ padding: '8px 12px', fontWeight: 600, verticalAlign: 'top', borderRight: '1px solid ' + alpha(theme.palette.divider, 0.1) }}>
+                                         <td rowSpan={applicableHeads.length} style={{ padding: '8px 12px', fontWeight: 600, verticalAlign: 'top', borderRight: '1px solid ' + alpha(muiTheme.palette.divider, 0.1) }}>
                                           {stu.name}
                                         </td>
                                       )}
@@ -3854,6 +4129,7 @@ export default function LoadFeePage() {
                        )}
                      </Box>
                   </GlassMainCard>
+              </Box>
                 </>
               )}
             </Box>
@@ -3864,690 +4140,9 @@ export default function LoadFeePage() {
             )}
           </Box>
         )}
-        {tab === 3 && (
-          <Box mt={2} p={3}>
-            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
-              {/* Left Section: Add New Concessions Form */}
-              <GlassCard sx={{ flex: { xs: 'unset', md: '1 1 40%' }, p: 3 }}>
-                <SectionHeader>Add New Concessions</SectionHeader>
-                
-                {/* Student Selection */}
-                <Autocomplete
-                  options={students}
-                  loading={studentsLoading}
-                  getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
-                  filterOptions={(options, { inputValue }) => {
-                    const searchLower = inputValue.toLowerCase();
-                    return options.filter((s: any) => {
-                      const nameMatch = s.name.toLowerCase().includes(searchLower);
-                      const idMatch = matchesStudentSearch(s, inputValue);
-                      return nameMatch || idMatch.matches;
-                    });
-                  }}
-                  value={concessionStudent}
-                  onChange={(_, value) => setConcessionStudent(value)}
-                  onOpen={() => {
-                    if (students.length === 0 && !studentsLoading) {
-                      loadStudentsData();
-                    }
-                  }}
-                  renderOption={(props, option) => (
-                    <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <ProfileAvatar 
-                        src={option.picture_url || undefined}
-                        sx={{ width: 32, height: 32, fontSize: '0.875rem' }}
-                      >
-                        {!option.picture_url && (option.name ? option.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?')}
-                      </ProfileAvatar>
-                      <Box>
-                        <Typography variant="body1">
-                          {option.name} <Typography component="span" variant="body2" color="text.secondary">({getStudentDisplayId(option)})</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          {option.father_name && `Father: ${option.father_name} • `}
-                          Class: {formatClassSectionDisplay(option.class_id, option.section_id)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  )}
-                  renderInput={(params) => (
-                    <TextField 
-                      {...params} 
-                      label="Search Student by Name or ID" 
-                      size="small"
-                      InputProps={{
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {studentsLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      }}
-                    />
-                  )}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  sx={{ mt: 2, mb: 3 }}
-                />
-
-                {/* Student Profile Details */}
-                {concessionStudent && (
-                  <Box 
-                    sx={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      mb: 3,
-                      p: 2,
-                      borderRadius: 1,
-                      background: theme => alpha(theme.palette.background.paper, 0.4),
-                      backdropFilter: 'blur(12px)',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <ProfileAvatar 
-                      src={concessionStudent?.picture_url || undefined}
-                      sx={{ width: 48, height: 48 }}
-                    >
-                      {!concessionStudent?.picture_url && (concessionStudent?.name ? concessionStudent.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?')}
-                    </ProfileAvatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                        <Typography variant="subtitle1" fontWeight={600} sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                          {concessionStudent?.name || 'Student Name'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
-                          #{concessionStudent ? getStudentDisplayId(concessionStudent) : '--'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                          {concessionStudent?.father_name || '--'}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
-                          • {formatClassSectionDisplay(concessionStudent?.class_id, concessionStudent?.section_id)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Box 
-                      sx={{ 
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-end',
-                        gap: 1,
-                        pl: 2,
-                        borderLeft: '1px solid',
-                        borderColor: 'divider'
-                      }}
-                    >
-                      <Box 
-                        sx={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.5,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: '12px',
-                          backgroundColor: theme => {
-                            const hasActiveConcessions = existingConcessions.some(c => {
-                              const expiryDate = c.expires_on ? new Date(c.expires_on) : null;
-                              return !expiryDate || expiryDate > new Date();
-                            });
-                            const hasExpiredConcessions = existingConcessions.some(c => {
-                              const expiryDate = c.expires_on ? new Date(c.expires_on) : null;
-                              return expiryDate && expiryDate <= new Date();
-                            });
-                            
-                            if (hasActiveConcessions) return theme.palette.success.main;
-                            if (hasExpiredConcessions) return theme.palette.error.main;
-                            return theme.palette.warning.main;
-                          },
-                          color: '#fff',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          letterSpacing: '0.5px',
-                          textTransform: 'uppercase'
-                        }}
-                      >
-                        {(() => {
-                          const hasActiveConcessions = existingConcessions.some(c => {
-                            const expiryDate = c.expires_on ? new Date(c.expires_on) : null;
-                            return !expiryDate || expiryDate > new Date();
-                          });
-                          const hasExpiredConcessions = existingConcessions.some(c => {
-                            const expiryDate = c.expires_on ? new Date(c.expires_on) : null;
-                            return expiryDate && expiryDate <= new Date();
-                          });
-
-                          if (hasActiveConcessions) {
-                            return (
-                              <>
-                                <Box
-                                  sx={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    backgroundColor: '#fff',
-                                    animation: `${String(pulseKeyframes)} 2s ease-in-out infinite`
-                                  }}
-                                />
-                                Active
-                              </>
-                            );
-                          }
-                          if (hasExpiredConcessions) return 'Expired';
-                          return 'No Concessions';
-                        })()}
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          Concessions:
-                        </Typography>
-                        <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'primary.main' }}>
-                          {existingConcessions.length}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                )}
-
-                {/* Fee Heads Form */}
-                {concessionStudent && (
-                  <>
-                    <SectionHeader>Fee Heads & Concessions</SectionHeader>
-                    <Box sx={{ mt: 1, mb: 2, display: 'flex', gap: 2 }}>
-                      <Button size="small" onClick={() => handleSelectAllConcessionFeeHeads(true)}>Select All</Button>
-                      <Button size="small" onClick={() => handleSelectAllConcessionFeeHeads(false)}>Clear All</Button>
-                    </Box>
-
-                    <Box sx={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
-                      gap: 1.5,
-                      maxHeight: 400,
-                      overflowY: 'auto',
-                      pr: 1
-                    }}>
-                          {getAvailableFeeHeads(concessionStudent.class_id, concessionStudent.section_id).map(fh => (
-                        <Card 
-                              key={fh.id} 
-                          sx={{ 
-                            p: 1.5,
-                            cursor: 'pointer',
-                            border: '1px solid',
-                            borderColor: concessionSelectedFeeHeads.includes(fh.id) ? 'primary.main' : 'divider',
-                            bgcolor: concessionSelectedFeeHeads.includes(fh.id) ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              bgcolor: alpha(theme.palette.primary.main, 0.05)
-                            },
-                            position: 'relative'
-                              }}
-                              onClick={() => handleConcessionFeeHeadSelection(fh.id, !concessionSelectedFeeHeads.includes(fh.id))}
-                            >
-                          {concessionSelectedFeeHeads.includes(fh.id) && (
-                            <CheckCircleOutline 
-                              sx={{ 
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                color: 'primary.main',
-                                fontSize: '1.1rem'
-                              }} 
-                            />
-                          )}
-                          <Box sx={{ mb: 1, pr: 3 }}>
-                            <Typography variant="body1" fontWeight={500} sx={{ mb: 0.25, fontSize: '0.9rem' }}>
-                                {fh.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                              Default: Rs. {getDefaultAmount(fh.id, concessionStudent.class_id)}
-                            </Typography>
-                          </Box>
-
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <TextField
-                                  size="small"
-                              placeholder="Concession"
-                                  value={concessionAmounts[fh.id] || ''}
-                                  onChange={e => {
-                                const val = e.target.value.replace(/[^\d.]/g, '');
-                                setConcessionAmounts(prev => ({ ...prev, [fh.id]: val }));
-                                // Select the fee head if amount is entered
-                                if (val && !concessionSelectedFeeHeads.includes(fh.id)) {
-                                  setConcessionSelectedFeeHeads(prev => [...prev, fh.id]);
-                                }
-                                  }}
-                                  InputProps={{
-                                startAdornment: <InputAdornment position="start">Rs.</InputAdornment>,
-                                sx: { 
-                                  fontSize: '0.8rem',
-                                  '& .MuiInputBase-input': { py: 0.75 },
-                                  '& .MuiInputAdornment-root': { 
-                                    '& .MuiTypography-root': { fontSize: '0.8rem' }
-                                  }
-                                }
-                                  }}
-                                  onClick={e => e.stopPropagation()}
-                                />
-                            
-                                <TextField
-                                  size="small"
-                              type="date"
-                              value={concessionExpiresOn[fh.id] || ''}
-                                  onChange={e => {
-                                    const val = e.target.value;
-                                setConcessionExpiresOn(prev => ({ ...prev, [fh.id]: val }));
-                                  }}
-                                  InputLabelProps={{ shrink: true }}
-                              label="Expires On"
-                              sx={{ 
-                                '& .MuiInputLabel-root': { fontSize: '0.8rem' },
-                                '& .MuiInputBase-input': { py: 0.75, fontSize: '0.8rem' }
-                                  }}
-                                  onClick={e => e.stopPropagation()}
-                                />
-                          </Box>
-                        </Card>
-                          ))}
-                    </Box>
-
-                    {/* Action Buttons */}
-                    <Box display="flex" gap={2} mt={3}>
-                      <Button 
-                        onClick={handleResetConcessions} 
-                        disabled={loading}
-                        variant="outlined" 
-                        color="secondary"
-                        fullWidth
-                      >
-                        Reset
-                      </Button>
-                      <PillButton onClick={handleSaveConcessions} disabled={loading} fullWidth>
-                        Save Concessions
-                      </PillButton>
-                    </Box>
-                  </>
-        )}
       </GlassCard>
-
-              {/* Right Section: Existing Concessions */}
-              <GlassMainCard flex={{ xs: 'unset', md: '1 1 60%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <SectionHeader>Existing Concessions</SectionHeader>
-                  {existingConcessions.length > 0 && (
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                      <InputLabel>Filter by Fee Head</InputLabel>
-                      <Select
-                        value={existingConcessionFilter ? String(existingConcessionFilter) : ''}
-                        label="Filter by Fee Head"
-                        onChange={(e) => setExistingConcessionFilter(e.target.value ? Number(e.target.value) : null)}
-                      >
-                        <MenuItem value="">
-                          <em>Show All</em>
-                        </MenuItem>
-                        {feeHeads
-                          .filter(fh => existingConcessions.some(c => c.feeHeadId === fh.id))
-                          .map((fh: any) => (
-                            <MenuItem key={fh.id} value={fh.id}>{fh.name}</MenuItem>
-                          ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                </Box>
-                
-                {loadingConcessions ? (
-                  <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
-                ) : concessionStudent ? (
-                  existingConcessions.length > 0 ? (
-                    <Box sx={{ 
-                      display: 'grid', 
-                      gap: 2, 
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                      perspective: '1000px' // Add perspective for 3D effect
-                    }}>
-                      {existingConcessions
-                        .filter(concession => !existingConcessionFilter || concession.feeHeadId === existingConcessionFilter)
-                        .map((concession, index) => {
-                          const feeHead = feeHeads.find(fh => fh.id === concession.feeHeadId);
-                          return (
-                            <Box key={index} sx={{ 
-                              p: 1.5,
-                              backgroundColor: 'background.paper',
-                              borderRadius: 1,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              position: 'relative',
-                              transition: 'all 0.3s ease',
-                              transform: 'translateZ(0)',
-                              transformStyle: 'preserve-3d',
-                              backfaceVisibility: 'hidden',
-                              boxShadow: theme => `
-                                0 1px 2px ${alpha(theme.palette.common.black, 0.05)},
-                                0 2px 4px ${alpha(theme.palette.common.black, 0.05)},
-                                0 4px 8px ${alpha(theme.palette.common.black, 0.05)}
-                              `,
-                              '&:hover': {
-                                transform: 'translateY(-4px) rotateX(2deg) rotateY(-2deg)',
-                                borderColor: 'primary.main',
-                                boxShadow: theme => `
-                                  0 4px 8px ${alpha(theme.palette.common.black, 0.07)},
-                                  0 8px 16px ${alpha(theme.palette.common.black, 0.07)},
-                                  0 16px 32px ${alpha(theme.palette.common.black, 0.07)}
-                                `,
-                                '& .action-buttons': {
-                                  opacity: 1,
-                                  transform: 'translateY(0)'
-                                },
-                                '&::before': {
-                                  opacity: 1
-                                }
-                              },
-                              '&::before': {
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                borderRadius: 1,
-                                background: theme => `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, transparent 50%)`,
-                                opacity: 0,
-                                transition: 'opacity 0.3s ease',
-                                pointerEvents: 'none'
-                              }
-                            }}>
-                              {/* Fee Head Name with subtle depth */}
-                              <Typography 
-                                variant="subtitle1" 
-                                fontWeight={500} 
-                                sx={{ 
-                                  mb: 0.5,
-                                  color: 'text.primary',
-                                  fontSize: '0.9rem',
-                                  position: 'relative',
-                                  textShadow: theme => `1px 1px 0 ${alpha(theme.palette.background.paper, 0.8)}`
-                                }}
-                              >
-                                {feeHead?.name || `Fee Head ${concession.feeHeadId}`}
-                              </Typography>
-                              
-                              {/* Amounts and Dates with depth effect */}
-                              <Box sx={{ 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                gap: 0.5,
-                                mb: 1.5,
-                                position: 'relative',
-                                zIndex: 1
-                              }}>
-                                {/* Default Amount */}
-                                <Box sx={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center',
-                                  position: 'relative'
-                                }}>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Default Amount:
-                                </Typography>
-                                  <Typography variant="body2">
-                                    Rs. {getDefaultAmount(concession.feeHeadId, concessionStudent.class_id)}
-                                </Typography>
-                                </Box>
-
-                                {/* Concession Amount with enhanced visibility */}
-                                <Box sx={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center',
-                                  position: 'relative'
-                                }}>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Concession:
-                                  </Typography>
-                                  <Typography 
-                                    variant="body1" 
-                                    color="primary.main" 
-                                    fontWeight={500}
-                                    sx={{ 
-                                      textShadow: theme => `1px 1px 0 ${alpha(theme.palette.background.paper, 0.8)}`
-                                    }}
-                                  >
-                                    Rs. {concession.concessionAmount}
-                                  </Typography>
-                                </Box>
-
-                                {/* Expiry Date */}
-                                {concession.expires_on && (
-                                  <Box sx={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    alignItems: 'center',
-                                    position: 'relative'
-                                  }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                      Expires on:
-                                    </Typography>
-                                    <Typography variant="body2">
-                                      {new Date(concession.expires_on).toLocaleDateString('en-GB', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric'
-                                      }).replace(/ /g, '-')}
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </Box>
-
-                              {/* Action Buttons with 3D lift effect */}
-                              <Box 
-                                className="action-buttons"
-                                sx={{ 
-                                  display: 'flex', 
-                                  gap: 1,
-                                  opacity: 0.7,
-                                  transition: 'all 0.3s ease',
-                                  transform: 'translateY(2px)',
-                                  position: 'relative',
-                                  zIndex: 1
-                                }}
-                              >
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => handleOpenEditModal(concession)}
-                                  disabled={loading}
-                                  startIcon={<Edit sx={{ fontSize: '1rem' }} />}
-                                  sx={{ 
-                                    flex: 1,
-                                    py: 0.5,
-                                    fontSize: '0.75rem',
-                                    '& .MuiButton-startIcon': {
-                                      mr: 0.5
-                                    },
-                                    transition: 'all 0.2s ease',
-                                    '&:hover': {
-                                      transform: 'translateY(-1px)',
-                                      boxShadow: theme => `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`
-                                    }
-                                  }}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  onClick={() => handleDeleteConcession(concession)}
-                                  disabled={loading}
-                                  startIcon={<Delete sx={{ fontSize: '1rem' }} />}
-                                  sx={{ 
-                                    flex: 1,
-                                    py: 0.5,
-                                    fontSize: '0.75rem',
-                                    '& .MuiButton-startIcon': {
-                                      mr: 0.5
-                                    },
-                                    transition: 'all 0.2s ease',
-                                    '&:hover': {
-                                      transform: 'translateY(-1px)',
-                                      boxShadow: theme => `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </Box>
-                            </Box>
-                          );
-                        })}
-                    </Box>
-                  ) : (
-                    <Box display="flex" alignItems="center" justifyContent="center" height="100%" minHeight={200}>
-                      <Typography color="text.secondary">No concessions found for this student.</Typography>
-                    </Box>
-                  )
-                ) : (
-                  <Box display="flex" alignItems="center" justifyContent="center" height="100%" minHeight={200}>
-                    <Typography color="text.secondary">Select a student to view their concessions.</Typography>
-                  </Box>
-                )}
-              </GlassMainCard>
-            </Box>
-          </Box>
-        )}
-      </GlassCard>
-
-      <StyledDialog open={isEditModalOpen} onClose={handleCloseEditModal}>
-        <DialogHeader>
-          <EditDialogTitle>Edit Concession</EditDialogTitle>
-          <IconButton onClick={handleCloseEditModal} size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogHeader>
-        <StyledDialogContent>
-          {editingConcession && (
-            <Box>
-              <Typography variant="h6" sx={{ mb: 2, color: 'text.secondary', fontWeight: 500 }}>
-                {feeHeads.find(fh => fh.id === editingConcession.feeHeadId)?.name}
-              </Typography>
-              <TextField
-                autoFocus
-                margin="dense"
-                label="Concession Amount"
-                type="number"
-                fullWidth
-                variant="outlined"
-                value={editedAmount}
-                onChange={(e) => setEditedAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                margin="dense"
-                label="Expires On"
-                type="date"
-                fullWidth
-                variant="outlined"
-                value={editedExpiresOn}
-                onChange={(e) => setEditedExpiresOn(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Box>
-          )}
-        </StyledDialogContent>
-        <FormActions>
-          <Button onClick={handleCloseEditModal} variant="outlined">Cancel</Button>
-          <PillButton onClick={handleUpdateSingleConcession} disabled={loading}>
-            Save Changes
-          </PillButton>
-        </FormActions>
-      </StyledDialog>
-
-      {/* Delete All Concessions Confirmation Modal */}
-      <StyledDialog open={isDeleteAllConcessionsModalOpen} onClose={() => setIsDeleteAllConcessionsModalOpen(false)}>
-        <DialogHeader>
-          <EditDialogTitle>Delete All Concessions</EditDialogTitle>
-          <IconButton onClick={() => setIsDeleteAllConcessionsModalOpen(false)} size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogHeader>
-        <StyledDialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Are you sure you want to delete <strong>all concessions</strong> for{' '}
-            <strong>{concessionStudent?.name}</strong>?
-          </Typography>
-          <Typography variant="body2" color="error.main" sx={{ fontWeight: 500 }}>
-            This action cannot be undone. All concession records for this student will be permanently removed.
-          </Typography>
-        </StyledDialogContent>
-        <FormActions>
-          <Button onClick={() => setIsDeleteAllConcessionsModalOpen(false)} variant="outlined">
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConfirmDeleteAllConcessions} 
-            disabled={loading}
-            variant="contained" 
-            color="error"
-          >
-            {loading ? <CircularProgress size={20} /> : 'Delete All Concessions'}
-          </Button>
-        </FormActions>
-      </StyledDialog>
-
-      {/* Delete Single Concession Confirmation Modal */}
-      <StyledDialog open={isDeleteSingleConcessionModalOpen} onClose={() => setIsDeleteSingleConcessionModalOpen(false)}>
-        <DialogHeader>
-          <EditDialogTitle>Delete Concession</EditDialogTitle>
-          <IconButton onClick={() => setIsDeleteSingleConcessionModalOpen(false)} size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogHeader>
-        <StyledDialogContent>
-          {concessionToDelete && (
-            <Box>
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                Are you sure you want to delete the concession for{' '}
-                <strong>{feeHeads.find(fh => fh.id === concessionToDelete.feeHeadId)?.name}</strong>?
-              </Typography>
-              <Box sx={{ 
-                p: 2, 
-                backgroundColor: alpha(theme.palette.warning.main, 0.1),
-                borderRadius: 1,
-                border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
-                mb: 2
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Concession Amount: <strong>Rs. {concessionToDelete.concessionAmount}</strong>
-                </Typography>
-                {concessionToDelete.expires_on && (
-                  <Typography variant="body2" color="text.secondary">
-                    Expires on: <strong>{new Date(concessionToDelete.expires_on).toLocaleDateString()}</strong>
-                  </Typography>
-                )}
-              </Box>
-              <Typography variant="body2" color="error.main" sx={{ fontWeight: 500 }}>
-                This action cannot be undone.
-              </Typography>
-            </Box>
-          )}
-        </StyledDialogContent>
-        <FormActions>
-          <Button onClick={() => setIsDeleteSingleConcessionModalOpen(false)} variant="outlined">
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConfirmDeleteSingleConcession} 
-            disabled={loading}
-            variant="contained" 
-            color="error"
-          >
-            {loading ? <CircularProgress size={20} /> : 'Delete Concession'}
-          </Button>
-        </FormActions>
-      </StyledDialog>
+      </MainContent>
+    </PageContainer>
 
       {/* Delete Family Fees Confirmation Modal */}
       <StyledDialog open={isDeleteFamilyFeesModalOpen} onClose={() => setIsDeleteFamilyFeesModalOpen(false)}>
@@ -4596,9 +4191,9 @@ export default function LoadFeePage() {
           </Typography>
           <Box sx={{ 
             p: 2, 
-            backgroundColor: alpha(theme.palette.warning.main, 0.1),
+            backgroundColor: alpha(muiTheme.palette.warning.main, 0.1),
             borderRadius: 1,
-            border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+            border: `1px solid ${alpha(muiTheme.palette.warning.main, 0.2)}`,
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -4648,9 +4243,9 @@ export default function LoadFeePage() {
           </Typography>
           <Box sx={{ 
             p: 2, 
-            backgroundColor: alpha(theme.palette.warning.main, 0.1),
+            backgroundColor: alpha(muiTheme.palette.warning.main, 0.1),
             borderRadius: 1,
-            border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+            border: `1px solid ${alpha(muiTheme.palette.warning.main, 0.2)}`,
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -4696,9 +4291,9 @@ export default function LoadFeePage() {
           </Typography>
           <Box sx={{ 
             p: 2, 
-            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            backgroundColor: alpha(muiTheme.palette.primary.main, 0.1),
             borderRadius: 1,
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.2)}`,
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -4750,9 +4345,9 @@ export default function LoadFeePage() {
           </Typography>
           <Box sx={{ 
             p: 2, 
-            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            backgroundColor: alpha(muiTheme.palette.primary.main, 0.1),
             borderRadius: 1,
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.2)}`,
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -4804,9 +4399,9 @@ export default function LoadFeePage() {
           </Typography>
           <Box sx={{ 
             p: 2, 
-            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            backgroundColor: alpha(muiTheme.palette.primary.main, 0.1),
             borderRadius: 1,
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.2)}`,
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -4843,8 +4438,6 @@ export default function LoadFeePage() {
           </Button>
         </FormActions>
       </StyledDialog>
-      </MainContent>
-    </PageContainer>
     </>
   );
 } 

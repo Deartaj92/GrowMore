@@ -29,6 +29,7 @@ import {
   Quiz as QuizIcon,
   Info as InfoIcon,
   Assignment,
+  Loyalty as LoyaltyIcon,
 } from '@mui/icons-material';
 import type { NavigateFunction } from 'react-router-dom';
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import styled from 'styled-components';
-import { ThemeContext, darkTheme, lightTheme } from '../contexts/ThemeContext';
+import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { WhatsApp as WhatsAppIcon, Send as SendIcon, Search as SearchIcon, Refresh as RefreshIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
@@ -347,10 +347,16 @@ const HistoryHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   background: ${({ theme }) => isDark(theme)
         ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
   backdrop-filter: blur(8px);
+  
+  @media (max-width: 700px) {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+  }
 `;
 
 const HistoryTitle = styled.h3`
@@ -455,20 +461,60 @@ const Label = styled.label`
 const StyledSelect = styled.select`
   width: 100%;
   padding: 12px 14px;
+  padding-right: 40px;
   border-radius: 8px;
-  border: none;
+  border: ${({ theme }) => isDark(theme)
+        ? '1px solid rgba(255, 255, 255, 0.05)'
+        : '1px solid rgba(0, 0, 0, 0.05)'};
   background: ${({ theme }) => isDark(theme)
         ? 'rgba(255, 255, 255, 0.03)'
         : 'rgba(255, 255, 255, 0.8)'};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 0.95rem;
   outline: none;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  backdrop-filter: blur(8px);
+
+  /* Custom dropdown arrow */
+  background-image: ${({ theme }) => isDark(theme)
+        ? `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`
+        : `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1a1a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`};
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
 
   &:hover, &:focus {
     background: ${({ theme }) => isDark(theme)
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(255, 255, 255, 0.9)'};
+        ? `rgba(255, 255, 255, 0.05) url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 12px center / 16px`
+        : `rgba(255, 255, 255, 0.9) url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1a1a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 12px center / 16px`};
+    border-color: ${({ theme }) => isDark(theme)
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'rgba(0, 0, 0, 0.1)'};
+  }
+
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}26;
+  }
+
+  /* Style the dropdown options */
+  option {
+    background: ${({ theme }) => isDark(theme)
+        ? theme.CARD || 'rgba(255, 255, 255, 0.05)'
+        : theme.CARD || '#ffffff'};
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+    padding: 8px 12px;
+    border: none;
+  }
+
+  /* Style selected option */
+  option:checked {
+    background: ${({ theme }) => theme.ACCENT};
+    color: ${({ theme }) => theme.BG};
   }
 `;
 
@@ -566,6 +612,39 @@ const IconButton = styled.button`
   }
 `;
 
+const ActionButton = styled.button`
+  background: transparent;
+  border: ${({ theme }) => isDark(theme)
+        ? '1px solid rgba(255, 255, 255, 0.1)'
+        : '1px solid rgba(0, 0, 0, 0.1)'};
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => isDark(theme)
+        ? 'rgba(255, 255, 255, 0.08)'
+        : 'rgba(0, 0, 0, 0.05)'};
+    border-color: ${({ theme }) => theme.ACCENT};
+    color: ${({ theme }) => theme.ACCENT};
+  }
+`;
+
+const LoadingText = styled.div`
+  padding: 1rem;
+  text-align: center;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const VariablesLabel = styled.span`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-right: auto;
+`;
+
 const GeneralMessagePage: React.FC = () => {
     const { theme: themeMode } = useContext(ThemeContext);
     const theme = themeMode === 'dark' ? darkTheme : lightTheme;
@@ -588,6 +667,7 @@ const GeneralMessagePage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<number>>(new Set());
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
     // Filter students when search term changes
     useEffect(() => {
@@ -605,15 +685,6 @@ const GeneralMessagePage: React.FC = () => {
             setFilteredStudents(filtered);
         }
     }, [searchTerm, students]);
-
-    // Initial fetch
-    useEffect(() => {
-        if (user?.school_id) {
-            fetchClasses();
-            fetchSchoolProfile();
-            fetchHistory();
-        }
-    }, [user?.school_id, refreshHistory, fetchHistory]);
 
     // Fetch students based on selection
     useEffect(() => {
@@ -844,24 +915,47 @@ const GeneralMessagePage: React.FC = () => {
     const fetchHistory = useCallback(async () => {
         if (!user?.school_id) return;
         try {
-            const { data, error } = await supabase
-                .from('notification_logs')
-                .select('*')
-                .eq('school_id', user.school_id)
-                .eq('msg_type', 'General')
-                .order('created_at', { ascending: false })
-                .limit(50); // Increased limit to get more messages
+            const BATCH_SIZE = 1000; // Supabase limit per query
+            const allResults: any[] = [];
+            let from = 0;
+            let hasMore = true;
 
-            if (error) {
-                console.error('Error fetching history:', error);
-                return;
+            // Fetch all rows in batches to handle Supabase's 1000 row limit
+            while (hasMore) {
+                let query = supabase
+                    .from('notification_logs')
+                    .select('*')
+                    .eq('school_id', user.school_id);
+                
+                // Filter by category if not "All"
+                if (selectedCategory !== 'All') {
+                    query = query.eq('msg_type', selectedCategory);
+                }
+                
+                const { data, error } = await query
+                    .order('created_at', { ascending: false })
+                    .range(from, from + BATCH_SIZE - 1);
+
+                if (error) {
+                    console.error('Error fetching history:', error);
+                    break;
+                }
+
+                if (data && data.length > 0) {
+                    allResults.push(...data);
+                    from += BATCH_SIZE;
+                    // If we got less than BATCH_SIZE, we've reached the end
+                    hasMore = data.length === BATCH_SIZE;
+                } else {
+                    hasMore = false;
+                }
             }
 
-            if (data && data.length > 0) {
+            if (allResults.length > 0) {
                 // Group by message content and date, keeping the most recent one for each unique message
                 const messageMap = new Map<string, any>();
                 
-                data.forEach((item) => {
+                allResults.forEach((item) => {
                     const key = `${item.message}_${item.notification_date}`;
                     const existing = messageMap.get(key);
                     
@@ -874,7 +968,7 @@ const GeneralMessagePage: React.FC = () => {
                 // Convert map to array and sort by created_at descending
                 const uniqueHistory = Array.from(messageMap.values())
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                    .slice(0, 20); // Limit to 20 most recent unique messages
+                    .slice(0, 20); // Limit to 20 most recent unique messages for display
                 
                 setHistory(uniqueHistory);
             } else {
@@ -884,7 +978,22 @@ const GeneralMessagePage: React.FC = () => {
             console.error('Error fetching message history:', error);
             setHistory([]);
         }
+    }, [user?.school_id, selectedCategory]);
+
+    // Initial fetch
+    useEffect(() => {
+        if (user?.school_id) {
+            fetchClasses();
+            fetchSchoolProfile();
+        }
     }, [user?.school_id]);
+
+    // Fetch history when category changes or refresh is triggered
+    useEffect(() => {
+        if (user?.school_id) {
+            fetchHistory();
+        }
+    }, [user?.school_id, refreshHistory, selectedCategory, fetchHistory]);
 
     const handleSend = async () => {
         if (!message.trim()) {
@@ -984,7 +1093,7 @@ const GeneralMessagePage: React.FC = () => {
                         {targetType === 'class' && (
                             <>
                                 <FormGroup>
-                                    <Label theme={theme}>Select Class</Label>
+                                    <Label>Select Class</Label>
                                     <StyledSelect
                                         theme={theme}
                                         value={selectedClass}
@@ -998,7 +1107,7 @@ const GeneralMessagePage: React.FC = () => {
                                 </FormGroup>
                                 {selectedClass && (
                                     <FormGroup>
-                                        <Label theme={theme}>Select Section</Label>
+                                        <Label>Select Section</Label>
                                         <StyledSelect
                                             theme={theme}
                                             value={selectedSection}
@@ -1017,7 +1126,7 @@ const GeneralMessagePage: React.FC = () => {
 
                     <SearchCard theme={theme}>
                         <SearchContainer theme={theme}>
-                            <SearchIcon style={{ fontSize: 20, color: '#666' }} />
+                            <SearchIcon style={{ fontSize: 20, color: theme.TEXT_SECONDARY }} />
                             <SearchInput
                                 theme={theme}
                                 placeholder="Search students..."
@@ -1031,39 +1140,17 @@ const GeneralMessagePage: React.FC = () => {
                         <StudentListHeader theme={theme}>
                             <span>Students ({selectedStudentIds.size}/{filteredStudents.length})</span>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button
-                                    onClick={handleSelectAll}
-                                    style={{
-                                        background: 'transparent',
-                                        border: `1px solid ${themeMode === 'dark' ? '#555' : '#ddd'}`,
-                                        color: themeMode === 'dark' ? '#aaa' : '#666',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '0.75rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
+                                <ActionButton theme={theme} onClick={handleSelectAll}>
                                     All
-                                </button>
-                                <button
-                                    onClick={handleDeselectAll}
-                                    style={{
-                                        background: 'transparent',
-                                        border: `1px solid ${themeMode === 'dark' ? '#555' : '#ddd'}`,
-                                        color: themeMode === 'dark' ? '#aaa' : '#666',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '0.75rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
+                                </ActionButton>
+                                <ActionButton theme={theme} onClick={handleDeselectAll}>
                                     None
-                                </button>
+                                </ActionButton>
                             </div>
                         </StudentListHeader>
                         <StudentListContent theme={theme}>
                             {loading ? (
-                                <div style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>Loading...</div>
+                                <LoadingText theme={theme}>Loading...</LoadingText>
                             ) : filteredStudents.length > 0 ? (
                                 filteredStudents.map(student => (
                                     <StudentItem
@@ -1081,9 +1168,9 @@ const GeneralMessagePage: React.FC = () => {
                                     </StudentItem>
                                 ))
                             ) : (
-                                <div style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
+                                <LoadingText theme={theme}>
                                     No students found
-                                </div>
+                                </LoadingText>
                             )}
                         </StudentListContent>
                     </StudentListCard>
@@ -1099,7 +1186,7 @@ const GeneralMessagePage: React.FC = () => {
                                 onChange={(e) => setMessage(e.target.value)}
                             />
                             <VariablesBar theme={theme}>
-                                <span style={{ fontSize: '0.8rem', color: '#888', marginRight: 'auto' }}>Variables:</span>
+                                <VariablesLabel theme={theme}>Variables:</VariablesLabel>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
@@ -1116,8 +1203,27 @@ const GeneralMessagePage: React.FC = () => {
 
                     <HistorySection theme={theme}>
                         <HistoryHeader theme={theme}>
-                            <HistoryTitle theme={theme}>Message History</HistoryTitle>
-                            <IconButton onClick={() => setRefreshHistory(prev => prev + 1)}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                <HistoryTitle theme={theme}>Message History</HistoryTitle>
+                                <StyledSelect
+                                    theme={theme}
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    style={{ 
+                                        width: 'auto', 
+                                        minWidth: '120px',
+                                        padding: '6px 10px',
+                                        fontSize: '0.85rem'
+                                    }}
+                                >
+                                    <option value="All">All Categories</option>
+                                    <option value="General">General</option>
+                                    <option value="Attendance">Attendance</option>
+                                    <option value="Fee">Fee</option>
+                                    <option value="Report">Report</option>
+                                </StyledSelect>
+                            </div>
+                            <IconButton theme={theme} onClick={() => setRefreshHistory(prev => prev + 1)}>
                                 <RefreshIcon />
                             </IconButton>
                         </HistoryHeader>
@@ -1126,8 +1232,8 @@ const GeneralMessagePage: React.FC = () => {
                                 <HistoryItem key={index} theme={theme} onClick={() => handleRepeatMessage(item.message)}>
                                     <HistoryMeta theme={theme}>
                                         <span>{format(new Date(item.notification_date), 'dd MMM yyyy')}</span>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <CopyIcon style={{ fontSize: 14 }} /> Reuse
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: theme.TEXT_SECONDARY }}>
+                                            <CopyIcon style={{ fontSize: 14, color: theme.TEXT_SECONDARY }} /> Reuse
                                         </span>
                                     </HistoryMeta>
                                     <HistoryMessage theme={theme}>

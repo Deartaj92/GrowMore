@@ -59,6 +59,7 @@ import FeeCollection from './pages/FeeCollectionNew';
 import FeeDefaultersList from './pages/FeeDefaultersList';
 import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
 import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
+import ConcessionsPage from './pages/ConcessionsPage';
 // Enquiry Management Components
 import EnquiryManagementDashboardPage from './pages/EnquiryManagementDashboardPage';
 import EnquiryDashboardPage from './pages/EnquiryDashboardPage';
@@ -645,6 +646,15 @@ const App: React.FC = () => {
                                 guestPageKey="fee_analytics"
                               >
                                 <FeeAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="concessions"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <ConcessionsPage />
                               </ProtectedRoute>
                             }
                           />
