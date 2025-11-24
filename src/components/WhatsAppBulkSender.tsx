@@ -223,7 +223,10 @@ ${data.school_short_name || schoolName}`;
 
     if (user?.school_id) {
       try {
-        await supabase
+        const messageText = customMessages.get(student.student_id) || formatMessage(student);
+        const msgType = mode === 'general' ? 'General' : 'Attendance';
+        
+        const { error } = await supabase
           .from('notification_logs')
           .upsert({
             school_id: user.school_id,
@@ -232,12 +235,17 @@ ${data.school_short_name || schoolName}`;
             channel,
             status: 'sent',
             sent_by: user.staff_id || null,
-            msg_type: mode === 'general' ? 'General' : 'Attendance',
-            message: customMessages.get(student.student_id) || formatMessage(student)
+            msg_type: msgType,
+            message: messageText
           }, {
             onConflict: 'school_id,student_id,notification_date,channel'
           });
+        
+        if (error) {
+          console.error('Error recording notification log:', error);
+        }
       } catch (error) {
+        console.error('Exception recording notification log:', error);
       }
     }
   }, [customMessages, formatMessage, persistSentIds, selectedDate, user?.school_id, user?.staff_id]);

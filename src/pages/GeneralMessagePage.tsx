@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -613,7 +613,7 @@ const GeneralMessagePage: React.FC = () => {
             fetchSchoolProfile();
             fetchHistory();
         }
-    }, [user?.school_id, refreshHistory]);
+    }, [user?.school_id, refreshHistory, fetchHistory]);
 
     // Fetch students based on selection
     useEffect(() => {
@@ -841,30 +841,50 @@ const GeneralMessagePage: React.FC = () => {
         }
     };
 
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         if (!user?.school_id) return;
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('notification_logs')
                 .select('*')
                 .eq('school_id', user.school_id)
                 .eq('msg_type', 'General')
                 .order('created_at', { ascending: false })
-                .limit(20);
+                .limit(50); // Increased limit to get more messages
 
-            if (data) {
-                const uniqueHistory = data.reduce((acc: any[], curr) => {
-                    const exists = acc.find(item => item.message === curr.message && item.notification_date === curr.notification_date);
-                    if (!exists) {
-                        acc.push(curr);
+            if (error) {
+                console.error('Error fetching history:', error);
+                return;
+            }
+
+            if (data && data.length > 0) {
+                // Group by message content and date, keeping the most recent one for each unique message
+                const messageMap = new Map<string, any>();
+                
+                data.forEach((item) => {
+                    const key = `${item.message}_${item.notification_date}`;
+                    const existing = messageMap.get(key);
+                    
+                    // Keep the most recent entry for each unique message+date combination
+                    if (!existing || new Date(item.created_at) > new Date(existing.created_at)) {
+                        messageMap.set(key, item);
                     }
-                    return acc;
-                }, []);
+                });
+                
+                // Convert map to array and sort by created_at descending
+                const uniqueHistory = Array.from(messageMap.values())
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, 20); // Limit to 20 most recent unique messages
+                
                 setHistory(uniqueHistory);
+            } else {
+                setHistory([]);
             }
         } catch (error) {
+            console.error('Error fetching message history:', error);
+            setHistory([]);
         }
-    };
+    }, [user?.school_id]);
 
     const handleSend = async () => {
         if (!message.trim()) {
