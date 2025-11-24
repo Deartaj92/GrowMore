@@ -15,6 +15,13 @@ html, body, #root {
   min-width: 100vw;
 }
 
+body {
+  font-size: 16px; /* Ensure consistent base font-size */
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body, html {
   overflow-x: hidden;
 }
@@ -69,7 +76,11 @@ input, textarea {
 
 /* 1. Font rendering and swap */
 html {
+  font-size: 16px; /* Base font-size for consistent rem calculations */
   text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%; /* Prevent iOS font size adjustment */
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* 2. Image smoothing and lazy loading */

@@ -50,9 +50,9 @@ const SidebarContainer = styled.nav<{ expanded: boolean; isMobile: boolean }>`
       : expanded ? 'max-content' : SIDEBAR_COLLAPSED + 'px'
   };
   min-width: ${({ expanded, isMobile }) =>
-    isMobile ? '0' : expanded ? '220px' : SIDEBAR_COLLAPSED + 'px'};
+    isMobile ? '0' : expanded ? '180px' : SIDEBAR_COLLAPSED + 'px'};
   max-width: ${({ expanded, isMobile }) =>
-    isMobile ? '85vw' : expanded ? '350px' : SIDEBAR_COLLAPSED + 'px'};
+    isMobile ? '85vw' : expanded ? '280px' : SIDEBAR_COLLAPSED + 'px'};
   background: ${({ theme }) => theme.SIDEBAR_BG || '#23242a'};
   color: ${({ theme }) => theme.TEXT_PRIMARY || '#e0e0e0'};
   box-shadow: ${({ isMobile }) => isMobile ? 'none' : '2px 0 16px #0005'};
@@ -84,15 +84,15 @@ const SidebarHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 54px;
-  min-height: 54px;
-  max-height: 54px;
-  padding: 0 12px;
-  font-size: 1.2rem;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0 10px;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 1px;
   border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#33384a' : '#e0e0e0'};
-  gap: 10px;
+  gap: 8px;
   box-sizing: border-box;
   background: inherit;
 `;
@@ -101,9 +101,9 @@ const MenuButton = styled.button`
   background: none;
   border: none;
   color: inherit;
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   cursor: pointer;
-  margin-right: 8px;
+  margin-right: 6px;
   display: flex;
   align-items: center;
   transition: transform 0.15s ease;
@@ -143,10 +143,10 @@ const SidebarMenu = styled.ul`
 // Simple About Us button
 const AboutUsButton = styled.button<{ expanded: boolean }>`
   position: absolute;
-  bottom: 16px;
-  right: 16px;
-  width: 40px;
-  height: 40px;
+  bottom: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
   background: ${({ theme }) => theme.ACCENT};
   border: none;
   border-radius: 50%;
@@ -169,7 +169,7 @@ const AboutUsButton = styled.button<{ expanded: boolean }>`
   }
 
   svg {
-    font-size: 18px;
+    font-size: 14px;
   }
 `;
 
@@ -202,9 +202,9 @@ const MenuItemButton = styled.button<{ expanded: boolean; dashboard?: boolean }>
   align-items: center;
   justify-content: ${({ expanded }) =>
     expanded ? 'flex-start' : 'center'};
-  gap: ${({ expanded }) => (expanded ? '14px' : '0')};
-  padding: ${({ expanded }) => (expanded ? '10px 16px' : '10px 0')};
-  font-size: 1rem;
+  gap: ${({ expanded }) => (expanded ? '10px' : '0')};
+  padding: ${({ expanded }) => (expanded ? '8px 12px' : '8px 0')};
+  font-size: 0.85rem;
   font-weight: ${({ dashboard }) => (dashboard ? 700 : 500)};
   cursor: pointer;
   border-radius: ${({ dashboard }) => (dashboard ? '0' : '8px')};
@@ -235,7 +235,7 @@ const ArrowContainer = styled.span`
 const IconWrapper = styled.span<{ expanded: boolean }>`
   display: flex;
   align-items: center;
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   transition: transform 0.15s ease;
   will-change: transform;
   ${({ expanded }) =>
@@ -273,9 +273,9 @@ const DrawerItem = styled.button`
   color: inherit;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 32px;
-  font-size: 0.98rem;
+  gap: 10px;
+  padding: 8px 24px;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   border-radius: 6px;
@@ -295,17 +295,17 @@ const DrawerItem = styled.button`
 `;
 
 const SidebarLogo = styled.img`
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  margin-right: 10px;
+  margin-right: 8px;
   border: 1.5px solid #33384a;
   background: #fff;
 `;
 
 const SidebarShortName = styled.span`
-  font-size: 1.13rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   white-space: nowrap;
@@ -329,7 +329,7 @@ const SearchIconWrapper = styled.span`
   display: flex;
   align-items: center;
   pointer-events: none;
-  font-size: 1.2rem;
+  font-size: 1rem;
 `;
 
 const SidebarSearchInput = styled.input<{ expanded: boolean }>`
@@ -340,8 +340,8 @@ const SidebarSearchInput = styled.input<{ expanded: boolean }>`
   color: ${({ theme }) => theme.BG === '#252525' ? '#e0e0e0' : '#333333'};
   border: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#33384a' : '#e0e0e0'};
   border-radius: 6px;
-  padding: 8px 36px 8px 36px;
-  font-size: 1rem;
+  padding: 6px 30px 6px 30px;
+  font-size: 0.85rem;
   outline: none;
   margin-left: ${({ expanded }) => (expanded ? '0' : '-9999px')};
   will-change: transform, width;

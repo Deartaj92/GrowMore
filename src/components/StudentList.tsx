@@ -1936,7 +1936,9 @@ const StudentList: React.FC = () => {
   }, []);
 
   const handleProfileMemo = useCallback((student: any) => {
-    navigate(`/students/profile/${student.id}`);
+    // Use roll_number sequence if available, otherwise fall back to id
+    const displayId = getStudentDisplayId(student);
+    navigate(`/students/profile/${String(displayId)}`);
   }, [navigate]);
 
   // Optimized scroll handler with RAF and mobile-specific optimizations
@@ -2857,7 +2859,9 @@ const StudentList: React.FC = () => {
     if ((e.target as HTMLElement).closest('.card-actions')) {
       return;
     }
-    navigate(`/students/profile/${student.id}`);
+    // Use roll_number sequence if available, otherwise fall back to id
+    const displayId = getStudentDisplayId(student);
+    navigate(`/students/profile/${String(displayId)}`);
   };
 
   // Show real content only when not loading and students are loaded

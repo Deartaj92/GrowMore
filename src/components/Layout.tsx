@@ -52,7 +52,7 @@ import useGlobalClickSound from '../hooks/useGlobalClickSound';
 import { getUser, removeUser } from '../utils/auth';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { getStudentDisplayId, matchesStudentSearch, getSequenceNumber } from '../utils/studentUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import CollapsibleSidebar from './CollapsibleSidebar';
 import { useBackNavigation } from '../hooks/useBackNavigation';
@@ -267,20 +267,20 @@ const LayoutWrapper = styled.div`
 const MainArea = styled.div<{ $isTeacher?: boolean }>`
   position: relative;
   margin-left: ${props => props.$isTeacher ? '0' : '54px'};
-  margin-top: 54px;
-  height: calc(100vh - 32px);
+  margin-top: 44px;
+  height: calc(100vh - 44px);
   overflow-y: auto;
   background: ${props => props.theme.BG};
   flex: 1;
   @media (max-width: 700px) {
     margin-left: 0;
-    margin-top: 54px;
-    height: calc(100vh - 54px);
+    margin-top: 44px;
+    height: calc(100vh - 44px);
   }
 `;
 
 // Add/update these styled components at the top with other styled components
-const Header = styled.header`
+const Header = styled.header<{ $hasSidebar?: boolean }>`
   position: fixed;
   top: 0;
   left: 0;
@@ -293,27 +293,29 @@ const Header = styled.header`
   box-shadow: 0 1.8px 7.2px 0 #0003;
   border-radius: 0;
   margin: 0;
-  padding: 0 20px;
-  height: 54px;
+  margin-left: ${props => props.$hasSidebar ? '56px' : '0'};
+  padding: 0 16px;
+  height: 44px;
   border-bottom: 1px solid ${props => props.theme.BORDER};
   -webkit-app-region: drag;
   
   @media (max-width: 700px) {
     padding: 0 8px;
+    margin-left: 0;
   }
 `;
 
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  margin-right: 24px;
+  margin-right: 16px;
   
   @media (max-width: 700px) {
-    gap: 8px;
+    gap: 6px;
     max-width: calc(100% - 100px);
     flex: 0 1 auto;
     margin-right: 0;
@@ -324,18 +326,18 @@ const MenuButton = styled.button`
   background: none;
   border: none;
   color: ${props => props.theme.TEXT_PRIMARY};
-  font-size: 1.7rem;
+  font-size: 1.4rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  padding: 4px;
+  padding: 2px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 `;
 
 const PageTitle = styled.h1<{ isMobile: boolean; $isOverflowing?: boolean }>`
   font-weight: 700;
-  font-size: ${({ isMobile }) => isMobile ? 'clamp(0.8rem, 3.5vw, 1.05rem)' : '1.12rem'};
+  font-size: ${({ isMobile }) => isMobile ? 'clamp(0.75rem, 3vw, 0.95rem)' : '0.95rem'};
   color: ${props => props.theme.TEXT_PRIMARY};
   margin: 0;
   padding: 0;
@@ -348,18 +350,18 @@ const PageTitle = styled.h1<{ isMobile: boolean; $isOverflowing?: boolean }>`
   text-overflow: ellipsis;
   
   @media (min-width: 701px) {
-    padding-left: 16px;
+    padding-left: 12px;
   }
 `;
 
 const Logo = styled.div`
   display: flex;
   align-items: center;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: ${props => props.theme.TEXT_PRIMARY};
   letter-spacing: 1px;
-  gap: 10px;
+  gap: 8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
@@ -370,7 +372,7 @@ const LogoContent = styled.div`
 `;
 
 const LogoName = styled.div`
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: ${props => props.theme.TEXT_PRIMARY};
   letter-spacing: 1px;
@@ -378,7 +380,7 @@ const LogoName = styled.div`
 `;
 
 const LogoTagline = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 400;
   color: ${props => props.theme.TEXT_SECONDARY};
   letter-spacing: 0.5px;
@@ -386,9 +388,9 @@ const LogoTagline = styled.div`
 `;
 
 const InstituteLogo = styled.img`
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   object-fit: cover;
   border: 1px solid ${props => props.theme.BORDER};
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -397,13 +399,13 @@ const InstituteLogo = styled.img`
 const HeaderActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   -webkit-app-region: no-drag;
   flex-shrink: 0;
   margin-left: auto;
   
   @media (max-width: 700px) {
-    gap: 6px;
+    gap: 4px;
     min-width: auto;
     justify-content: flex-end;
   }
@@ -421,29 +423,29 @@ const NavigationButtonsContainer = styled.div`
 
 const StudentSearchWrapper = styled.div<{ $expanded: boolean }>`
   position: relative;
-  width: ${props => props.$expanded ? '280px' : '36px'};
-  height: 36px;
+  width: ${props => props.$expanded ? '240px' : '30px'};
+  height: 30px;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
   @media (max-width: 700px) {
-    width: ${props => props.$expanded ? '200px' : '36px'};
+    width: ${props => props.$expanded ? '180px' : '30px'};
   }
 `;
 
 const StudentSearchInput = styled.div<{ $expanded: boolean }>`
   position: absolute;
   width: 100%;
-  height: 36px;
+  height: 30px;
   display: flex;
   align-items: center;
-  border-radius: ${props => props.$expanded ? '10px' : '50%'};
+  border-radius: ${props => props.$expanded ? '8px' : '50%'};
   background: ${props => props.theme.FIELD_BG || props.theme.CARD};
   border: 1.2px solid ${props => props.$expanded ? props.theme.FIELD_BORDER : props.theme.BORDER};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: visible;
   cursor: ${props => props.$expanded ? 'text' : 'pointer'};
   -webkit-app-region: no-drag;
-  padding: ${props => props.$expanded ? '0 14px' : '0'};
+  padding: ${props => props.$expanded ? '0 12px' : '0'};
   
   &:hover {
     border-color: ${props => props.theme.ACCENT};
@@ -455,8 +457,8 @@ const StudentSearchInput = styled.div<{ $expanded: boolean }>`
   }
   
   .search-icon {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -467,11 +469,11 @@ const StudentSearchInput = styled.div<{ $expanded: boolean }>`
     transform: ${props => props.$expanded ? 'scale(0)' : 'scale(1)'};
     pointer-events: ${props => props.$expanded ? 'none' : 'auto'};
     position: ${props => props.$expanded ? 'absolute' : 'relative'};
-    left: ${props => props.$expanded ? '14px' : '0'};
+    left: ${props => props.$expanded ? '12px' : '0'};
     
     svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       color: #7c8597;
     }
   }
@@ -488,11 +490,11 @@ const StudentSearchInput = styled.div<{ $expanded: boolean }>`
       border: none;
       background: transparent;
       color: ${props => props.theme.TEXT_PRIMARY};
-      font-size: 1rem;
+      font-size: 0.85rem;
       outline: none;
       width: 100%;
       padding: 0;
-      margin-left: ${props => props.$expanded ? '10px' : '0'};
+      margin-left: ${props => props.$expanded ? '8px' : '0'};
       
       &::placeholder {
         color: #7c8597;
@@ -544,14 +546,14 @@ const StudentSuggestionList = styled.ul<{ $visible: boolean }>`
 `;
 
 const StudentSuggestionItem = styled.li<{ $active: boolean }>`
-  padding: 0.45rem 1.1rem 0.45rem 0.9rem;
+  padding: 0.4rem 0.9rem 0.4rem 0.75rem;
   color: ${props => props.theme.TEXT_PRIMARY};
   background: ${props => props.$active ? props.theme.HOVER_BG : 'transparent'};
   cursor: pointer;
-  font-size: 0.98rem;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
-  border-left: 3.5px solid ${props => props.$active ? props.theme.ACCENT : 'transparent'};
+  border-left: 3px solid ${props => props.$active ? props.theme.ACCENT : 'transparent'};
   transition: background 0.16s, border-color 0.16s;
   
   &:hover {
@@ -559,8 +561,8 @@ const StudentSuggestionItem = styled.li<{ $active: boolean }>`
   }
   
   @media (max-width: 700px) {
-    padding: 0.35rem 0.9rem 0.35rem 0.7rem;
-    font-size: 0.85rem;
+    padding: 0.3rem 0.75rem 0.3rem 0.6rem;
+    font-size: 0.8rem;
   }
 `;
 
@@ -590,14 +592,14 @@ const StudentSuggestionTextCol = styled.div`
 `;
 
 const StudentSuggestionAvatar = styled.div`
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: #232a3b;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.85rem;
   color: #b0b8d1;
   overflow: hidden;
   border: 1.5px solid #353b4a;
@@ -617,23 +619,7 @@ const StudentSuggestionAvatar = styled.div`
 const StudentSuggestionName = styled.span`
   font-weight: 700;
   color: ${props => props.theme.TEXT_PRIMARY};
-  font-size: 0.99rem;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 170px;
-  
-  @media (max-width: 700px) {
-    max-width: 220px;
-    font-size: 0.85rem;
-  }
-`;
-
-const StudentSuggestionFather = styled.span`
-  color: #7c8597;
-  font-size: 0.97rem;
-  font-weight: 500;
+  font-size: 0.85rem;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -643,6 +629,22 @@ const StudentSuggestionFather = styled.span`
   @media (max-width: 700px) {
     max-width: 220px;
     font-size: 0.8rem;
+  }
+`;
+
+const StudentSuggestionFather = styled.span`
+  color: #7c8597;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+  
+  @media (max-width: 700px) {
+    max-width: 220px;
+    font-size: 0.75rem;
   }
 `;
 
@@ -656,7 +658,7 @@ const StudentSuggestionMetaCol = styled.div`
 
 const StudentSuggestionClass = styled.span`
   color: ${props => props.theme.ACCENT};
-  font-size: 0.91rem;
+  font-size: 0.8rem;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -665,24 +667,24 @@ const StudentSuggestionClass = styled.span`
   
   @media (max-width: 700px) {
     max-width: 120px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
   }
 `;
 
 const StudentSuggestionId = styled.span`
   color: #a0a7b8;
-  font-size: 0.91rem;
+  font-size: 0.8rem;
   line-height: 1.1;
   white-space: nowrap;
   
   @media (max-width: 700px) {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
   }
 `;
 
 const HeaderIconCircle = styled.div`
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -690,7 +692,7 @@ const HeaderIconCircle = styled.div`
   background: ${props => props.theme.CARD};
   box-shadow: ${props => props.theme.SHADOW};
   color: ${props => props.theme.TEXT_SECONDARY};
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   transition: all 0.2s ease;
   cursor: pointer;
   position: relative;
@@ -705,17 +707,17 @@ const HeaderIconCircle = styled.div`
   }
 
   @media (max-width: 700px) {
-    width: 36px; // Slightly larger touch target on mobile
-    height: 36px;
-    font-size: 1.1rem;
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
   }
 
   svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     @media (max-width: 700px) {
-      width: 22px;
-      height: 22px;
+      width: 18px;
+      height: 18px;
     }
   }
 `;
@@ -831,6 +833,13 @@ const GlobalStyle = createGlobalStyle`
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
   }
+  html {
+    font-size: 16px; /* Base font-size for consistent rem calculations */
+    -webkit-text-size-adjust: 100%; /* Prevent iOS font size adjustment */
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
   html, body {
     overflow-x: hidden;
     max-width: 100vw;
@@ -1194,12 +1203,12 @@ const ModalSuccess = styled.div`
 
 const NetworkAlert = styled.div`
   position: fixed;
-  top: 54px;
+  top: 44px;
   left: 0;
   right: 0;
   background: #ef4444;
   color: white;
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2025,6 +2034,7 @@ const Layout: React.FC = () => {
     class_id: number;
     section_id: number;
     picture_url?: string;
+    roll_number?: string | null;
     class_name?: string;
     section_name?: string;
   }>>([]);
@@ -2040,6 +2050,7 @@ const Layout: React.FC = () => {
     class_id: number;
     section_id: number;
     picture_url?: string;
+    roll_number?: string | null;
   }>>([]);
   const [classesList, setClassesList] = useState<Array<{ id: number; name: string; has_sections?: boolean }>>([]);
   const [sectionsList, setSectionsList] = useState<Array<{ id: number; name: string }>>([]);
@@ -2057,7 +2068,7 @@ const Layout: React.FC = () => {
         const [studentsResult, classesResult, sectionsResult] = await Promise.all([
           supabase
             .from('students')
-            .select('id, name, father_name, class_id, section_id, picture_url')
+            .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
             .eq('school_id', user.school_id),
           supabase
             .from('classes')
@@ -2132,6 +2143,7 @@ const Layout: React.FC = () => {
       const sectionObj = sectionsList.find(s => s.id === student.section_id);
       return {
         ...student,
+        roll_number: student.roll_number,
         class_name: classObj?.name || '',
         section_name: sectionObj?.name || ''
       };
@@ -2209,8 +2221,22 @@ const Layout: React.FC = () => {
     name: string;
     class_id: number;
     section_id: number;
+    roll_number?: string | null;
   }) => {
-    navigate(`/students/profile/${student.id}`);
+    // Use roll_number sequence if available, otherwise fall back to id
+    // getStudentDisplayId returns the sequence number (e.g., "20" from "S1-20") or the id
+    // fetchStudentByIdentifier can handle both numeric IDs and roll_number sequences
+    // Explicitly pass roll_number to ensure it's used
+    let displayId: string | number;
+    if (student.roll_number) {
+      // Extract sequence number from roll_number (e.g., "S1-20" -> "20")
+      const sequenceNumber = getSequenceNumber(student.roll_number);
+      displayId = sequenceNumber || student.id;
+    } else {
+      // Fall back to id if no roll_number
+      displayId = student.id;
+    }
+    navigate(`/students/profile/${String(displayId)}`);
     setStudentSearchInput('');
     setStudentSearchSuggestions([]);
     setStudentSearchShowSuggestions(false);
@@ -3790,15 +3816,17 @@ const Layout: React.FC = () => {
                         />
                       )}
                       <MainArea $isTeacher={!user || !['Principal', 'Admin', 'Super Admin'].includes(user.role)}>
-                        <Header>
+                        <Header $hasSidebar={user && ['Principal', 'Admin', 'Super Admin'].includes(user.role)}>
                           <HeaderLeft>
                             {user && ['Principal', 'Admin', 'Super Admin'].includes(user.role) ? (
-                              <MenuButton
-                                onClick={() => setSidebarOpen((v) => !v)}
-                                aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-                              >
-                                <MenuIcon />
-                              </MenuButton>
+                              isMobile && (
+                                <MenuButton
+                                  onClick={() => setSidebarOpen((v) => !v)}
+                                  aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+                                >
+                                  <MenuIcon />
+                                </MenuButton>
+                              )
                             ) : (user || studentInfo || parentInfo) ? (
                               <MenuButton
                                 onClick={() => navigate('/landing-page')}

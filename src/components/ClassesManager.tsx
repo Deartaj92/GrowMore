@@ -237,7 +237,7 @@ const ClassHeader = styled.div`
 `;
 
 const ClassTitle = styled.h3`
-  font-size: 2.1rem;
+  font-size: 1.4rem;
   font-weight: 900;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;

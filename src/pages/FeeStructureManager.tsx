@@ -269,7 +269,7 @@ const ClassHeader = styled.div`
 `;
 
 const ClassTitle = styled.h3`
-  font-size: 2.1rem;
+  font-size: 1.4rem;
   font-weight: 900;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;
@@ -554,8 +554,8 @@ const GlassPillInput = styled(PillInput)`
 const FeeBlock = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   background: ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'rgba(255, 255, 255, 0.04)'
     : 'rgba(0, 0, 0, 0.03)'};
@@ -585,8 +585,8 @@ const FeeIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   background: ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'rgba(74, 108, 247, 0.15)'
@@ -595,8 +595,8 @@ const FeeIcon = styled.div`
   flex-shrink: 0;
   
   svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
 `;
 
@@ -607,7 +607,7 @@ const FeeDetails = styled.div`
 `;
 
 const FeeLabel = styled.div`
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   line-height: 1.2;
@@ -615,7 +615,7 @@ const FeeLabel = styled.div`
 `;
 
 const FeeDesc = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   line-height: 1.2;
   opacity: 0.8;
