@@ -35,6 +35,8 @@ import {
 import Loader from '../components/Loader';
 import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -1063,6 +1065,13 @@ const ConcessionsPage: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [studentFeeAmounts, setStudentFeeAmounts] = useState<Record<string, number>>({}); // studentId -> max fee amount
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportStatusFilters, setExportStatusFilters] = useState({
+    active: true,
+    expired: true,
+    upcoming: true
+  });
 
   // Helper function to format amount as Rs. 5,000.00
   const formatAmount = useCallback((amount: number | string): string => {
@@ -1798,6 +1807,355 @@ const ConcessionsPage: React.FC = () => {
     });
   };
 
+  // Open Export Modal
+  const handleOpenExportModal = useCallback(() => {
+    setIsExportModalOpen(true);
+  }, []);
+
+  // Close Export Modal
+  const handleCloseExportModal = useCallback(() => {
+    setIsExportModalOpen(false);
+  }, []);
+
+  // PDF Export Handler
+  const handleExportPDF = useCallback(async () => {
+    // Filter concessions based on selected status filters
+    const filteredByStatus = filteredConcessions.filter(concession => {
+      const status = getConcessionStatus(concession);
+      return exportStatusFilters[status];
+    });
+
+    if (filteredByStatus.length === 0) {
+      showToast('No concessions to export with selected filters', 'error');
+      return;
+    }
+
+    // Group filtered concessions by student
+    const filteredGroupedConcessions = new Map<string, Concession[]>();
+    filteredByStatus.forEach(concession => {
+      const studentId = concession.student_id;
+      if (!filteredGroupedConcessions.has(studentId)) {
+        filteredGroupedConcessions.set(studentId, []);
+      }
+      filteredGroupedConcessions.get(studentId)!.push(concession);
+    });
+
+    // Get unique students from filtered concessions
+    const filteredUniqueStudents = Array.from(new Set(filteredByStatus.map(c => c.student_id)))
+      .map(id => {
+        const concession = filteredByStatus.find(c => c.student_id === id);
+        return concession?.student;
+      })
+      .filter((s): s is NonNullable<typeof s> => s != null);
+
+    if (filteredUniqueStudents.length === 0) {
+      showToast('No students to export', 'error');
+      return;
+    }
+
+    setIsExportModalOpen(false);
+    setExportLoading(true);
+    try {
+      // Fetch school information
+      let schoolName = 'School';
+      if (user?.school_id) {
+        try {
+          const { data: schoolData } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', user.school_id)
+            .single();
+          if (schoolData?.name) {
+            schoolName = schoolData.name;
+          }
+        } catch (err) {
+          console.error('Error fetching school name:', err);
+        }
+      }
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let currentY = 22;
+
+      // Simple header
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
+      doc.text(schoolName, pageWidth / 2, currentY, { align: 'center' });
+      
+      currentY += 6;
+      doc.setFontSize(13);
+      doc.text('Fee Concessions', pageWidth / 2, currentY, { align: 'center' });
+      
+      currentY = 35;
+
+      // Sort students by class, then by ID
+      const sortedStudents = [...filteredUniqueStudents].filter((s): s is NonNullable<typeof s> => s != null).sort((a, b) => {
+        // First sort by class name
+        const classA = a.current_class?.name || '';
+        const classB = b.current_class?.name || '';
+        if (classA !== classB) {
+          return classA.localeCompare(classB);
+        }
+        // Then by section
+        const sectionA = a.current_class?.section?.name || '';
+        const sectionB = b.current_class?.section?.name || '';
+        if (sectionA !== sectionB) {
+          return sectionA.localeCompare(sectionB);
+        }
+        // Finally by student ID
+        const idA = parseInt(a.id) || 0;
+        const idB = parseInt(b.id) || 0;
+        return idA - idB;
+      });
+
+      // Build single table with all concessions
+      const tableData: any[][] = [];
+      const classTotals = new Map<string, number>(); // class name -> total concession amount
+      let currentClass = '';
+      
+      sortedStudents.forEach((student, studentIndex) => {
+        if (!student) return;
+        
+        const studentConcessions = filteredGroupedConcessions.get(student.id) || [];
+        if (studentConcessions.length === 0) return;
+        
+        const studentId = getStudentDisplayId(student);
+        const studentDetails = `${student.name}\n${student.father_name || 'N/A'} - ${student.current_class?.name || 'N/A'}${student.current_class?.section?.name ? ` (${student.current_class.section.name})` : ''}`;
+        const className = student.current_class?.name || 'N/A';
+        const sectionName = student.current_class?.section?.name || '';
+        const classWithSection = sectionName ? `${className} - ${sectionName}` : className;
+        
+        // Add class header row when class changes
+        if (classWithSection !== currentClass) {
+          currentClass = classWithSection;
+          tableData.push([
+            { 
+              content: `Class: ${classWithSection}`, 
+              colSpan: 8, 
+              styles: { 
+                fontStyle: 'bold', 
+                fillColor: [240, 240, 240], 
+                textColor: 60,
+                halign: 'center',
+                fontSize: 10
+              } 
+            }
+          ]);
+        }
+        
+        // Add a row for each concession
+        studentConcessions.forEach((concession, concessionIndex) => {
+          const status = getConcessionStatus(concession);
+          const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+          const effectiveFrom = concession.effective_from
+            ? format(new Date(concession.effective_from), 'dd.MM-yy')
+            : 'Immediate';
+          const expiresOn = concession.expires_on
+            ? format(new Date(concession.expires_on), 'dd.MM-yy')
+            : 'No expiry';
+          
+          // Accumulate class-wise totals
+          const currentTotal = classTotals.get(className) || 0;
+          classTotals.set(className, currentTotal + (concession.amount || 0));
+          
+          // Add concession data with proper rowSpan
+          if (concessionIndex === 0) {
+            // First row: include ID and Student with rowSpan
+            tableData.push([
+              { content: studentId, rowSpan: studentConcessions.length, styles: { fontStyle: 'bold', valign: 'top' } },
+              { content: studentDetails, rowSpan: studentConcessions.length, styles: { fontStyle: 'bold', valign: 'top' } },
+              concession.fee_head?.name || 'N/A',
+              concession.fee_amount !== undefined ? formatAmount(concession.fee_amount) : 'N/A',
+              formatAmount(concession.amount),
+              effectiveFrom,
+              expiresOn,
+              statusText
+            ]);
+          } else {
+            // Subsequent rows: exclude ID and Student columns (they are merged)
+            tableData.push([
+              concession.fee_head?.name || 'N/A',
+              concession.fee_amount !== undefined ? formatAmount(concession.fee_amount) : 'N/A',
+              formatAmount(concession.amount),
+              effectiveFrom,
+              expiresOn,
+              statusText
+            ]);
+          }
+        });
+      });
+
+      // Simple table
+      autoTable(doc, {
+        head: [['ID', 'Student', 'Fee Head', 'Fee Amount', 'Concession', 'Effective From', 'Expires On', 'Status']],
+        body: tableData,
+        startY: currentY,
+        margin: { left: 6, right: 6 },
+        tableWidth: 'auto',
+        styles: { 
+          fontSize: 9, 
+          cellPadding: 1.5, 
+          halign: 'center', 
+          valign: 'middle' 
+        },
+        headStyles: { 
+          fillColor: [240, 240, 240], 
+          textColor: 60, 
+          fontStyle: 'bold', 
+          halign: 'center', 
+          fontSize: 8 
+        },
+        bodyStyles: { textColor: 60 },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 12 },
+          1: { halign: 'left', cellWidth: 46 },
+          2: { halign: 'left', cellWidth: 30 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { halign: 'center', cellWidth: 20 },
+          6: { halign: 'center', cellWidth: 20 },
+          7: { cellWidth: 20 }
+        },
+        theme: 'grid',
+        didParseCell: (data: any) => {
+          // Styling is already handled by rowSpan styles
+        },
+        didDrawPage: () => {
+          // Footer will be added after table is drawn
+        }
+      });
+      
+      // Get final Y position after main table
+      const finalY = (doc as any).lastAutoTable?.finalY || currentY;
+      let summaryY = finalY + 10;
+      
+      // Check if we need a new page for summary
+      const pageHeight = doc.internal.pageSize.getHeight();
+      if (summaryY > pageHeight - 40) {
+        doc.addPage();
+        summaryY = 22;
+      }
+      
+      // Build class-wise summary table with counts
+      const summaryData: any[][] = [];
+      const classCounts = new Map<string, number>(); // class name -> count of concessions
+      let grandTotal = 0;
+      let grandCount = 0;
+      
+      // Calculate counts per class from filtered concessions
+      filteredByStatus.forEach(concession => {
+        const className = concession.student?.current_class?.name || 'N/A';
+        const currentCount = classCounts.get(className) || 0;
+        classCounts.set(className, currentCount + 1);
+      });
+      
+      // Sort classes for summary
+      const sortedClassNames = Array.from(classTotals.keys()).sort((a, b) => {
+        // Use the same class sorting logic
+        return a.localeCompare(b);
+      });
+      
+      sortedClassNames.forEach(className => {
+        const total = classTotals.get(className) || 0;
+        const count = classCounts.get(className) || 0;
+        grandTotal += total;
+        grandCount += count;
+        summaryData.push([
+          className,
+          count,
+          formatAmount(total)
+        ]);
+      });
+      
+      // Add grand total row
+      summaryData.push([
+        { content: 'Grand Total', styles: { fontStyle: 'bold' } },
+        { content: grandCount, styles: { fontStyle: 'bold' } },
+        { content: formatAmount(grandTotal), styles: { fontStyle: 'bold' } }
+      ]);
+      
+      // Add class-wise summary table
+      autoTable(doc, {
+        startY: summaryY,
+        head: [['Class', 'Count', 'Total Concession']],
+        body: summaryData,
+        margin: { left: 6, right: 6 },
+        tableWidth: 'auto',
+        styles: { 
+          fontSize: 9, 
+          cellPadding: 1.5, 
+          halign: 'center', 
+          valign: 'middle' 
+        },
+        headStyles: { 
+          fillColor: [240, 240, 240], 
+          textColor: 60, 
+          fontStyle: 'bold', 
+          halign: 'center', 
+          fontSize: 8 
+        },
+        bodyStyles: { textColor: 60 },
+        columnStyles: {
+          0: { halign: 'left', cellWidth: 80 },
+          1: { halign: 'center', cellWidth: 30 },
+          2: { halign: 'right', cellWidth: 70 }
+        },
+        theme: 'grid'
+      });
+      
+      // Add footer to all pages after all tables are drawn
+      const totalPages = (doc as any).internal.pages.length - 1;
+      const today = new Date();
+      const printDate = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth()+1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+      
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        
+        // Left: Printed date
+        doc.text(`Printed: ${printDate}`, 6, doc.internal.pageSize.getHeight() - 10);
+        
+        // Right: Page number
+        doc.text(`Page ${i} of ${totalPages}`, doc.internal.pageSize.getWidth() - 6, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+      }
+
+      // Save the PDF
+      const fileName = `Concessions_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      doc.save(fileName);
+      showToast('PDF exported successfully', 'success');
+    } catch (error: any) {
+      console.error('Error exporting PDF:', error);
+      showToast('Failed to export PDF', 'error');
+    } finally {
+      setExportLoading(false);
+    }
+  }, [
+    uniqueStudents,
+    groupedConcessions,
+    filteredConcessions,
+    stats,
+    activeTab,
+    selectedClass,
+    selectedSection,
+    selectedFeeHead,
+    searchQuery,
+    classes,
+    sections,
+    feeHeads,
+    getConcessionStatus,
+    formatAmount,
+    getStudentDisplayId,
+    user?.school_id,
+    showToast
+  ]);
+
   if (isLoadingData) {
     return (
       <PageContainer theme={theme}>
@@ -1814,6 +2172,10 @@ const ConcessionsPage: React.FC = () => {
           Fee Concessions Management
         </HeaderTitle>
         <HeaderActions>
+          <ActionButton theme={theme} onClick={handleOpenExportModal} disabled={exportLoading || uniqueStudents.length === 0}>
+            <DownloadIcon style={{ fontSize: 18 }} />
+            {exportLoading ? 'Exporting...' : 'Export PDF'}
+          </ActionButton>
           <ActionButton theme={theme} onClick={handleOpenBulkModal}>
             <Group style={{ fontSize: 18 }} />
             Bulk Add
@@ -2210,6 +2572,67 @@ const ConcessionsPage: React.FC = () => {
             </Table>
         </TableWrapper>
       </TableContainer>
+
+      {/* Export Modal */}
+      {isExportModalOpen && (
+        <ModalOverlay theme={theme} onClick={handleCloseExportModal}>
+          <ModalContent theme={theme} onClick={(e) => e.stopPropagation()}>
+            <ModalHeader theme={theme}>
+              <ModalTitle theme={theme}>
+                <DownloadIcon style={{ fontSize: 24 }} />
+                Export Concessions Report
+              </ModalTitle>
+              <IconButton theme={theme} onClick={handleCloseExportModal}>
+                <CloseIcon style={{ fontSize: 20 }} />
+              </IconButton>
+            </ModalHeader>
+            <ModalBody theme={theme}>
+              <FormGroup>
+                <FormLabel theme={theme}>Select Status Categories to Export</FormLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: theme.TEXT_PRIMARY }}>
+                    <input
+                      type="checkbox"
+                      checked={exportStatusFilters.active}
+                      onChange={(e) => setExportStatusFilters(prev => ({ ...prev, active: e.target.checked }))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>Active Concessions</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: theme.TEXT_PRIMARY }}>
+                    <input
+                      type="checkbox"
+                      checked={exportStatusFilters.expired}
+                      onChange={(e) => setExportStatusFilters(prev => ({ ...prev, expired: e.target.checked }))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>Expired Concessions</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: theme.TEXT_PRIMARY }}>
+                    <input
+                      type="checkbox"
+                      checked={exportStatusFilters.upcoming}
+                      onChange={(e) => setExportStatusFilters(prev => ({ ...prev, upcoming: e.target.checked }))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>Upcoming Concessions</span>
+                  </label>
+                </div>
+              </FormGroup>
+            </ModalBody>
+            <ModalFooter>
+              <SecondaryButton onClick={handleCloseExportModal}>
+                <CancelIcon style={{ fontSize: 18 }} />
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton onClick={handleExportPDF} disabled={!exportStatusFilters.active && !exportStatusFilters.expired && !exportStatusFilters.upcoming}>
+                <DownloadIcon style={{ fontSize: 18 }} />
+                Export PDF
+              </PrimaryButton>
+            </ModalFooter>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {/* Add/Edit Modal */}
       {(isAddModalOpen || isEditModalOpen) && (

@@ -3827,12 +3827,12 @@ const Layout: React.FC = () => {
                           <HeaderLeft>
                             {user && ['Principal', 'Admin', 'Super Admin'].includes(user.role) ? (
                               isMobile && (
-                                <MenuButton
-                                  onClick={() => setSidebarOpen((v) => !v)}
-                                  aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-                                >
-                                  <MenuIcon />
-                                </MenuButton>
+                              <MenuButton
+                                onClick={() => setSidebarOpen((v) => !v)}
+                                aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+                              >
+                                <MenuIcon />
+                              </MenuButton>
                               )
                             ) : (user || studentInfo || parentInfo) ? (
                               <MenuButton

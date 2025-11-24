@@ -176,8 +176,8 @@ const GlassSelectorContainer = muiStyled(Box)(({ theme }) => {
     border: isDarkMode
     ? '1px solid rgba(74,108,247,0.10)'
     : '1px solid rgba(74,108,247,0.07)',
-    padding: theme.spacing(1.2, 1.5),
-    margin: `${theme.spacing(1.2)} 0`,
+  padding: theme.spacing(1.2, 1.5),
+  margin: `${theme.spacing(1.2)} 0`,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
@@ -191,7 +191,7 @@ const FeeHeadPill = muiStyled(Box)<FeeHeadPillProps>(({ theme, $selected }) => {
   return {
   display: 'flex',
   alignItems: 'center',
-    gap: theme.spacing(0.75),
+  gap: theme.spacing(0.75),
   padding: '5px 10px',
   borderRadius: 8,
     background: $selected
@@ -487,29 +487,29 @@ const StudentListFooter = styled.div`
 const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $disabled }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    background: 'linear-gradient(45deg, #4a6cf7, #3b82f6)',
+  background: 'linear-gradient(45deg, #4a6cf7, #3b82f6)',
     color: '#ffffff',
     borderRadius: 8,
-    padding: '8px 24px',
+  padding: '8px 24px',
     minWidth: 120,
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    textTransform: 'none',
+  fontWeight: 600,
+  fontSize: '0.9rem',
+  textTransform: 'none',
     boxShadow: isDarkMode
-      ? '0 4px 16px rgba(74, 108, 247, 0.2)'
-      : '0 4px 16px rgba(74, 108, 247, 0.15)',
-    transition: 'all 0.2s ease',
+    ? '0 4px 16px rgba(74, 108, 247, 0.2)'
+    : '0 4px 16px rgba(74, 108, 247, 0.15)',
+  transition: 'all 0.2s ease',
     '&, & *': {
       color: '#ffffff',
     },
     '& .MuiButton-startIcon': {
       color: '#ffffff',
     },
-    '&:hover': {
-      transform: 'translateY(-1px)',
+  '&:hover': {
+    transform: 'translateY(-1px)',
       boxShadow: isDarkMode
-        ? '0 6px 20px rgba(74, 108, 247, 0.25)'
-        : '0 6px 20px rgba(74, 108, 247, 0.2)',
+      ? '0 6px 20px rgba(74, 108, 247, 0.25)'
+      : '0 6px 20px rgba(74, 108, 247, 0.2)',
       background: 'linear-gradient(45deg, #5a7cf8, #4b92f7)',
       color: '#ffffff',
       '&, & *': {
@@ -518,16 +518,16 @@ const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $dis
       '& .MuiButton-startIcon': {
         color: '#ffffff',
       },
-    },
-    '&:disabled': {
+  },
+  '&:disabled': {
       background: isDarkMode
         ? 'rgba(255, 255, 255, 0.1)'
         : 'rgba(0, 0, 0, 0.1)',
       color: isDarkMode
         ? 'rgba(255, 255, 255, 0.3)'
         : 'rgba(0, 0, 0, 0.3)',
-      transform: 'none',
-      boxShadow: 'none',
+    transform: 'none',
+    boxShadow: 'none',
       '&, & *': {
         color: isDarkMode
           ? 'rgba(255, 255, 255, 0.3)'
@@ -538,12 +538,12 @@ const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $dis
           ? 'rgba(255, 255, 255, 0.3)'
           : 'rgba(0, 0, 0, 0.3)',
       },
-    },
+  },
     [theme.breakpoints.down('md')]: {
-      width: '100%',
-      minWidth: 0,
-      padding: '10px 12px',
-      fontSize: '0.88rem',
+    width: '100%',
+    minWidth: 0,
+    padding: '10px 12px',
+    fontSize: '0.88rem',
       borderRadius: 10,
     },
   };
@@ -582,16 +582,16 @@ const ProgressText = muiStyled(Typography)<{ $customTheme?: any }>(({ theme, $cu
 const ProgressBar = muiStyled(LinearProgress)<{ $customTheme?: any }>(({ theme, $customTheme }) => {
   const isDarkMode = $customTheme ? isDark($customTheme) : theme.palette.mode === 'dark';
   return {
-    width: '100%',
-    height: '8px',
-    borderRadius: '4px',
+  width: '100%',
+  height: '8px',
+  borderRadius: '4px',
     backgroundColor: isDarkMode
       ? 'rgba(255, 255, 255, 0.1)'
       : 'rgba(0, 0, 0, 0.1)',
-    '& .MuiLinearProgress-bar': {
-      borderRadius: '4px',
+  '& .MuiLinearProgress-bar': {
+    borderRadius: '4px',
       background: 'linear-gradient(90deg, #4a6cf7 0%, #3b82f6 100%)',
-    },
+  },
   };
 });
 
@@ -750,32 +750,32 @@ const StyledDialogContent = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   const dividerColor = theme.palette.divider;
   return {
-    padding: '24px',
-    '& .MuiTextField-root': {
-        '& .MuiInputBase-root': {
+  padding: '24px',
+  '& .MuiTextField-root': {
+      '& .MuiInputBase-root': {
             background: isDarkMode
-                ? 'rgba(255, 255, 255, 0.03)'
-                : 'rgba(0, 0, 0, 0.03)',
-            borderRadius: '8px',
+              ? 'rgba(255, 255, 255, 0.03)'
+              : 'rgba(0, 0, 0, 0.03)',
+          borderRadius: '8px',
             border: `1px solid ${dividerColor}`,
-            transition: 'background-color 0.2s ease',
-            '&:hover, &.Mui-focused': {
+          transition: 'background-color 0.2s ease',
+          '&:hover, &.Mui-focused': {
                 background: isDarkMode
-                    ? 'rgba(255, 255, 255, 0.05)'
-                    : 'rgba(0, 0, 0, 0.05)',
-            },
-            '& .MuiOutlinedInput-notchedOutline': {
-                border: 'none'
-            }
-        }
-    }
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'rgba(0, 0, 0, 0.05)',
+          },
+          '& .MuiOutlinedInput-notchedOutline': {
+              border: 'none'
+          }
+      }
+  }
   };
 });
 
 const FormActions = styled(DialogActions)(({ theme }) => {
   const dividerColor = theme?.palette?.divider || (theme?.palette?.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
   return {
-    padding: '16px 24px',
+  padding: '16px 24px',
     borderTop: `1px solid ${dividerColor}`,
   };
 });
@@ -825,11 +825,11 @@ const SkeletonCard = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
     background: isDarkMode ? '#2a2a2a' : '#ffffff',
-    borderRadius: '16px',
-    boxShadow: '0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10)',
-    padding: '1.5rem 1.5rem 1.2rem 1.5rem',
-    marginBottom: '1rem',
-    width: '100%',
+  borderRadius: '16px',
+  boxShadow: '0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10)',
+  padding: '1.5rem 1.5rem 1.2rem 1.5rem',
+  marginBottom: '1rem',
+  width: '100%',
     border: `1.5px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
   display: 'flex',
   flexDirection: 'column',
@@ -855,13 +855,13 @@ const SkeletonCard = muiStyled(Box)(({ theme }) => {
 const SkeletonTabs = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '1.5rem',
-    '& > *': {
-      flex: 1,
-      height: '44px',
-      borderRadius: '8px',
+  display: 'flex',
+  gap: '8px',
+  marginBottom: '1.5rem',
+  '& > *': {
+    flex: 1,
+    height: '44px',
+    borderRadius: '8px',
       background: isDarkMode ? '#353b4a' : '#e5e7eb',
     position: 'relative',
     overflow: 'hidden',
@@ -879,7 +879,7 @@ const SkeletonTabs = muiStyled(Box)(({ theme }) => {
 const SkeletonLine = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    height: '16px',
+  height: '16px',
     background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '8px',
   marginBottom: '8px',
@@ -898,7 +898,7 @@ const SkeletonLine = muiStyled(Box)(({ theme }) => {
 const SkeletonFormField = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    height: '56px',
+  height: '56px',
     background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '8px',
   marginBottom: '12px',
@@ -917,8 +917,8 @@ const SkeletonFormField = muiStyled(Box)(({ theme }) => {
 const SkeletonPill = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    height: '32px',
-    width: '100px',
+  height: '32px',
+  width: '100px',
     background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '16px',
   margin: '4px',
@@ -938,12 +938,12 @@ const SkeletonStudentCard = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
     background: isDarkMode ? '#2a2a2a' : '#ffffff',
-    borderRadius: '8px',
-    padding: '12px',
-    marginBottom: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
+  borderRadius: '8px',
+  padding: '12px',
+  marginBottom: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
     border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
   position: 'relative',
   overflow: 'hidden',
@@ -961,27 +961,27 @@ const SkeletonStudentCard = muiStyled(Box)(({ theme }) => {
 const SkeletonAvatar = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
+  width: '40px',
+  height: '40px',
+  borderRadius: '50%',
     background: isDarkMode ? '#353b4a' : '#e5e7eb',
-    position: 'relative',
-    overflow: 'hidden',
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      inset: 0,
-      background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
-      animation: 'shimmer 1.5s infinite',
-    }
+  position: 'relative',
+  overflow: 'hidden',
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
+    animation: 'shimmer 1.5s infinite',
+  }
   };
 });
 
 const SkeletonButton = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
-    height: '40px',
-    width: '120px',
+  height: '40px',
+  width: '120px',
     background: isDarkMode ? '#353b4a' : '#e5e7eb',
   borderRadius: '8px',
   position: 'relative',
