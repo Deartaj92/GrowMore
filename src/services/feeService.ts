@@ -418,11 +418,17 @@ export const feeService = {
 
     onProgress?.(10, 'Checking existing invoices...');
 
-    // 1. Fetch existing invoices for the given period
+    // 1. Fetch existing invoices for the given period (only needed fields for performance)
+    // Split into chunks if we have many students to avoid query limits
+    const QUERY_CHUNK_SIZE = 500;
+    const existingInvoicesMap = new Map<number, number>();
+    
+    for (let i = 0; i < studentIds.length; i += QUERY_CHUNK_SIZE) {
+      const chunk = studentIds.slice(i, i + QUERY_CHUNK_SIZE);
     const { data: existingInvoices, error: fetchError } = await supabase
       .from('fee_invoices')
       .select('id, student_id')
-      .in('student_id', studentIds)
+        .in('student_id', chunk)
       .eq('school_id', schoolId)
       .eq('session_id', sessionId)
       .eq('month', month)
@@ -432,7 +438,8 @@ export const feeService = {
       throw fetchError;
     }
 
-    const existingInvoicesMap = new Map(existingInvoices.map(inv => [inv.student_id, inv.id]));
+      existingInvoices?.forEach(inv => existingInvoicesMap.set(inv.student_id, inv.id));
+    }
     let createdCount = 0;
     let updatedCount = 0;
 
@@ -442,6 +449,10 @@ export const feeService = {
     const updateOperations: { invoiceId: number; feeData: { [feeHeadId: number]: number } }[] = [];
 
     onProgress?.(20, 'Preparing invoice data...');
+
+    // Pre-calculate invoice date and base due date for efficiency
+    const invoiceDate = new Date().toISOString().split('T')[0];
+    const dueDate = new Date(year, this.getMonthNumber(month) + 1, 0).toISOString().split('T')[0];
 
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
@@ -458,14 +469,13 @@ export const feeService = {
       } else {
         // Prepare for batch insert
         const totalAmount = Object.values(studentFeeData).reduce((sum, amount) => sum + amount, 0);
-        const dueDate = new Date(year, this.getMonthNumber(month) + 1, 0);
         
         newInvoices.push({
           school_id: schoolId,
           student_id: student.id,
           session_id: sessionId,
-          invoice_date: new Date().toISOString().split('T')[0],
-          due_date: dueDate.toISOString().split('T')[0],
+          invoice_date: invoiceDate,
+          due_date: dueDate,
           month,
           year,
           total_amount: totalAmount,
@@ -473,30 +483,38 @@ export const feeService = {
         });
       }
 
+      // Report progress less frequently (every 10% or 50 students)
+      if (i % Math.max(1, Math.floor(students.length / 10)) === 0 || i === students.length - 1) {
       onProgress?.(20 + (i / students.length) * 30, `Processing student ${i + 1}/${students.length}...`);
+      }
     }
 
     onProgress?.(50, 'Creating new invoices...');
 
-    // Batch create new invoices
+    // Batch create new invoices in chunks
     if (newInvoices.length > 0) {
+      const CHUNK_SIZE = 100;
+      const allInvoiceItems: any[] = [];
+      
+      for (let i = 0; i < newInvoices.length; i += CHUNK_SIZE) {
+        const chunk = newInvoices.slice(i, i + CHUNK_SIZE);
+        
       const { data: createdInvoices, error: invoiceError } = await supabase
         .from('fee_invoices')
-        .insert(newInvoices)
-        .select('*');
+          .insert(chunk)
+          .select('id, student_id');
 
       if (invoiceError) throw invoiceError;
 
-      // Prepare invoice items for batch insert
-      for (let i = 0; i < createdInvoices.length; i++) {
-        const invoice = createdInvoices[i];
+        // Prepare invoice items for this chunk
+        for (const invoice of createdInvoices) {
         const student = students.find(s => s.id === invoice.student_id);
         if (!student) continue;
 
         const studentFeeData = feeData[student.id];
         for (const [feeHeadId, amount] of Object.entries(studentFeeData)) {
           if (amount > 0) {
-            invoiceItems.push({
+              allInvoiceItems.push({
               school_id: schoolId,
               invoice_id: invoice.id,
               fee_head_id: parseInt(feeHeadId),
@@ -506,27 +524,50 @@ export const feeService = {
             });
           }
         }
-        createdCount++;
+        }
+        
+        createdCount += createdInvoices.length;
+        
+        // Update progress
+        if (i + CHUNK_SIZE < newInvoices.length) {
+          const chunkProgress = 50 + ((i + CHUNK_SIZE) / newInvoices.length) * 15;
+          onProgress?.(chunkProgress, `Creating invoices ${i + CHUNK_SIZE}/${newInvoices.length}...`);
       }
     }
 
     onProgress?.(70, 'Creating invoice items...');
 
-    // Batch create invoice items
-    if (invoiceItems.length > 0) {
+      // Batch create all invoice items in chunks
+      if (allInvoiceItems.length > 0) {
+        for (let i = 0; i < allInvoiceItems.length; i += CHUNK_SIZE * 10) {
+          const chunk = allInvoiceItems.slice(i, i + CHUNK_SIZE * 10);
       const { error: itemsError } = await supabase
         .from('fee_invoice_items')
-        .insert(invoiceItems);
+            .insert(chunk);
 
       if (itemsError) throw itemsError;
+          
+          // Update progress for large item batches
+          if (i + CHUNK_SIZE * 10 < allInvoiceItems.length) {
+            const itemProgress = 70 + ((i + CHUNK_SIZE * 10) / allInvoiceItems.length) * 10;
+            onProgress?.(itemProgress, `Creating items ${i + CHUNK_SIZE * 10}/${allInvoiceItems.length}...`);
+          }
+        }
+      }
     }
 
     onProgress?.(80, 'Updating existing invoices...');
 
     // Batch update existing invoices
     if (updateOperations.length > 0) {
-      // Delete existing items for all invoices to be updated
-      const invoiceIdsToUpdate = updateOperations.map(op => op.invoiceId);
+      // Process updates in chunks to avoid database limits
+      const CHUNK_SIZE = 100;
+      
+      for (let i = 0; i < updateOperations.length; i += CHUNK_SIZE) {
+        const chunk = updateOperations.slice(i, i + CHUNK_SIZE);
+        const invoiceIdsToUpdate = chunk.map(op => op.invoiceId);
+        
+        // Delete existing items for this chunk
       const { error: deleteError } = await supabase
         .from('fee_invoice_items')
         .delete()
@@ -534,9 +575,14 @@ export const feeService = {
 
       if (deleteError) throw deleteError;
 
-      // Prepare all new items for batch insert
+        // Prepare all new items for this chunk
       const updateItems: any[] = [];
-      for (const { invoiceId, feeData } of updateOperations) {
+        const invoiceUpdatesForDB: any[] = [];
+        
+        for (const { invoiceId, feeData } of chunk) {
+          const totalAmount = Object.values(feeData).reduce((sum, amount) => sum + amount, 0);
+          
+          // Prepare items
         for (const [feeHeadId, amount] of Object.entries(feeData)) {
           if (amount > 0) {
             updateItems.push({
@@ -548,42 +594,37 @@ export const feeService = {
               fine: 0
             });
           }
+      }
+
+          // Prepare invoice update
+          invoiceUpdatesForDB.push({
+          id: invoiceId,
+            total_amount: totalAmount,
+            updated_at: new Date().toISOString()
+      });
+        }
+
+        // Batch insert items and update invoices in parallel
+        const [itemsResult, invoiceUpdateResult] = await Promise.all([
+          updateItems.length > 0 
+            ? supabase.from('fee_invoice_items').insert(updateItems)
+            : Promise.resolve({ error: null }),
+          invoiceUpdatesForDB.length > 0
+            ? supabase.from('fee_invoices').upsert(invoiceUpdatesForDB)
+            : Promise.resolve({ error: null })
+        ]);
+
+        if (itemsResult.error) throw itemsResult.error;
+        if (invoiceUpdateResult.error) throw invoiceUpdateResult.error;
+        
+        updatedCount += chunk.length;
+        
+        // Update progress for chunks
+        if (i + CHUNK_SIZE < updateOperations.length) {
+          const chunkProgress = 80 + ((i + CHUNK_SIZE) / updateOperations.length) * 15;
+          onProgress?.(chunkProgress, `Updating invoices ${i + CHUNK_SIZE}/${updateOperations.length}...`);
         }
       }
-
-      // Batch insert all updated items
-      if (updateItems.length > 0) {
-        const { error: updateItemsError } = await supabase
-          .from('fee_invoice_items')
-          .insert(updateItems);
-
-        if (updateItemsError) throw updateItemsError;
-      }
-
-      // Update invoice totals in parallel
-      const invoiceUpdates = updateOperations.map(({ invoiceId, feeData }) => {
-        const totalAmount = Object.values(feeData).reduce((sum, amount) => sum + amount, 0);
-        return {
-          id: invoiceId,
-          total_amount: totalAmount
-        };
-      });
-
-      // Batch update invoice totals in parallel
-      const updatePromises = invoiceUpdates.map(update => 
-        supabase
-          .from('fee_invoices')
-          .update({ total_amount: update.total_amount })
-          .eq('id', update.id)
-      );
-
-      const updateResults = await Promise.all(updatePromises);
-      const updateErrors = updateResults.filter(result => result.error);
-      if (updateErrors.length > 0) {
-        throw updateErrors[0].error;
-      }
-
-      updatedCount = updateOperations.length;
     }
 
     onProgress?.(100, 'Bulk fee generation completed!');

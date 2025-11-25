@@ -13,6 +13,9 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoSessionsFound from '../components/NoSessionsFound';
 import NoClassesFound from '../components/NoClassesFound';
 import { sortClasses } from '../utils/classUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
 
 import Loader from '../components/Loader';
 // Styled Components (matching ExaminationManager design language)
@@ -248,6 +251,9 @@ const ClassCard = styled.div`
   min-width: 220px;
   width: 100%;
   transition: border 0.4s cubic-bezier(0.4,0,0.2,1);
+  display: flex;
+  flex-direction: column;
+  max-height: 600px;
 
   &:hover {
     border-color: #4a6cf7;
@@ -266,6 +272,40 @@ const ClassHeader = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1rem;
+  flex-shrink: 0;
+`;
+
+const FeeHeadsContainer = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: 0 0.2rem;
+  margin: 0 -0.2rem;
+  
+  /* Scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'} transparent;
 `;
 
 const ClassTitle = styled.h3`
@@ -1393,6 +1433,7 @@ const FeeStructureManager: React.FC = () => {
   const [editFeeHead, setEditFeeHead] = useState<FeeHead | null>(null);
   const [deleteFeeHead, setDeleteFeeHead] = useState<FeeHead | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   // Fetch all data
   useEffect(() => {
@@ -1582,6 +1623,201 @@ const FeeStructureManager: React.FC = () => {
     setDeleteFeeHead(fh);
   };
 
+  const handleExportPDF = async () => {
+    if (!schoolId || !sessionId || classes.length === 0 || feeHeads.length === 0) {
+      showToast('No data available to export', 'error');
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      const doc = new jsPDF('portrait', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Get school name and session name
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('name')
+        .eq('id', schoolId)
+        .single();
+      
+      const schoolName = schoolData?.name || 'School Name';
+      const sessionName = sessions.find(s => s.id === sessionId)?.name || 'Session';
+
+      // Header
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
+      doc.text(schoolName, pageWidth / 2, 15, { align: 'center' });
+      
+      doc.setFontSize(13);
+      doc.text('Fee Structure Report', pageWidth / 2, 22, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Session: ${sessionName}`, pageWidth / 2, 28, { align: 'center' });
+
+      let currentY = 38;
+      const sortedClasses = sortClasses(classes);
+      let grandTotal = 0;
+
+      // Create a table for each class
+      sortedClasses.forEach((cls: any, classIndex: number) => {
+        // Check if we need a new page
+        const estimatedHeight = (feeHeads.length + 3) * 10; // Rough estimate
+        if (currentY + estimatedHeight > pageHeight - 20) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        // Class header
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setFillColor(74, 108, 247);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(10, currentY, pageWidth - 20, 8, 'F');
+        doc.text(`Class: ${cls.name}`, pageWidth / 2, currentY + 5.5, { align: 'center' });
+        
+        currentY += 10;
+
+        // Prepare table data for this class
+        const tableData: any[] = [];
+        let classTotal = 0;
+
+        feeHeads.forEach((fh) => {
+          const key = `${cls.id}_${fh.id}`;
+          const amount = amounts[key] ? Number(amounts[key]) : 0;
+          
+          tableData.push([
+            fh.name,
+            fh.description || '-',
+            fh.frequency ? (fh.frequency.charAt(0).toUpperCase() + fh.frequency.slice(1)) : 'Monthly',
+            amount > 0 ? `Rs. ${amount.toFixed(0)}` : '-'
+          ]);
+          
+          classTotal += amount;
+        });
+
+        // Add class total row
+        tableData.push([
+          { content: 'Total', colSpan: 3, styles: { fontStyle: 'bold', halign: 'right' } },
+          { content: `Rs. ${classTotal.toFixed(0)}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }
+        ]);
+
+        grandTotal += classTotal;
+
+        // Generate table for this class
+        autoTable(doc, {
+          head: [['Fee Head', 'Description', 'Frequency', 'Amount']],
+          body: tableData,
+          startY: currentY,
+          theme: 'grid',
+          styles: {
+            fontSize: 9,
+            cellPadding: 3,
+            valign: 'middle',
+          },
+          headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold',
+            halign: 'center',
+          },
+          columnStyles: {
+            0: { halign: 'left', cellWidth: 50 },
+            1: { halign: 'left', cellWidth: 70 },
+            2: { halign: 'center', cellWidth: 30 },
+            3: { halign: 'right', cellWidth: 35, fontStyle: 'bold' },
+          },
+          margin: { left: 10, right: 10 },
+          didDrawPage: (data) => {
+            currentY = data.cursor?.y || currentY;
+          }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 8;
+      });
+
+      // Add grand total summary
+      if (currentY + 30 > pageHeight - 20) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setFillColor(74, 108, 247);
+      doc.setTextColor(255, 255, 255);
+      doc.rect(10, currentY, pageWidth - 20, 10, 'F');
+      doc.text('Grand Total Summary', pageWidth / 2, currentY + 6.5, { align: 'center' });
+      
+      currentY += 12;
+
+      // Summary table
+      const summaryData: any[] = [];
+      sortedClasses.forEach((cls: any) => {
+        let classTotal = 0;
+        feeHeads.forEach((fh) => {
+          const key = `${cls.id}_${fh.id}`;
+          const amount = amounts[key] ? Number(amounts[key]) : 0;
+          classTotal += amount;
+        });
+        summaryData.push([cls.name, `Rs. ${classTotal.toFixed(0)}`]);
+      });
+
+      // Add grand total row
+      summaryData.push([
+        { content: 'Grand Total', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+        { content: `Rs. ${grandTotal.toFixed(0)}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }
+      ]);
+
+      autoTable(doc, {
+        head: [['Class', 'Total Amount']],
+        body: summaryData,
+        startY: currentY,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        columnStyles: {
+          0: { halign: 'left', fontStyle: 'bold' },
+          1: { halign: 'right', fontStyle: 'bold' },
+        },
+        margin: { left: 10, right: 10 },
+      });
+
+      // Add footer to all pages
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        
+        // Footer
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Printed: ${format(new Date(), 'dd-MM-yyyy')}`, 10, pageHeight - 10);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 10, pageHeight - 10, { align: 'right' });
+      }
+
+      // Save PDF
+      doc.save(`Fee_Structure_${sessionName.replace(/\s+/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+      showToast('PDF exported successfully!', 'success');
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      showToast(error.message || 'Failed to export PDF', 'error');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleCreateFeeHead = async () => {
     if (!schoolId || !newFeeHeadName.trim()) return;
     setFeeHeadLoading(true);
@@ -1651,17 +1887,43 @@ const FeeStructureManager: React.FC = () => {
               <Title>
                 Fee Structure Manager <span style={{fontWeight:400, fontSize:'1rem', color: theme.palette.mode === 'dark' ? '#b0b8d1' : '#4a4a4a'}}>({classes.length} classes)</span>
               </Title>
-              {/* Mobile Add Button - Icon Only */}
+              {/* Mobile Buttons - Icon Only */}
+              <div style={{ display: window.innerWidth <= 700 ? 'flex' : 'none', gap: '6px' }}>
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportLoading || classes.length === 0 || feeHeads.length === 0}
+                  style={{
+                    background: theme.palette.mode === 'dark' ? '#23242a' : '#f3f4f6',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px',
+                    cursor: exportLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 1px 4px #0002',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    width: '36px',
+                    height: '36px',
+                    flexShrink: 0,
+                    opacity: exportLoading || classes.length === 0 || feeHeads.length === 0 ? 0.5 : 1
+                  }}
+                  title="Export PDF"
+                >
+                  {exportLoading ? '...' : '📄'}
+                </button>
               <button
                 onClick={() => handleOpenFeeHeadModal()}
                 style={{
-                  display: window.innerWidth <= 700 ? 'flex' : 'none',
                   background: theme.palette.mode === 'dark' ? '#23242a' : '#f3f4f6',
                   border: 'none',
                   borderRadius: '8px',
                   padding: '8px',
                   cursor: 'pointer',
                   boxShadow: '0 1px 4px #0002',
+                    display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
@@ -1675,6 +1937,7 @@ const FeeStructureManager: React.FC = () => {
               >
                 <AddIcon style={{ fontSize: 18 }} />
               </button>
+              </div>
             </div>
             <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
               <SegmentedGroup>
@@ -1688,6 +1951,32 @@ const FeeStructureManager: React.FC = () => {
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </SegmentedSelect>
+                <SegmentedButton
+                  onClick={handleExportPDF}
+                  disabled={exportLoading || classes.length === 0 || feeHeads.length === 0}
+                  title="Export PDF"
+                  style={{
+                    minWidth: 100,
+                    maxWidth: 120,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: theme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
+                    border: `1.5px solid ${theme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                    color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    padding: '6px 8px',
+                    cursor: exportLoading || classes.length === 0 || feeHeads.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: exportLoading || classes.length === 0 || feeHeads.length === 0 ? 0.5 : 1
+                  }}
+                >
+                  <span style={{ fontWeight: 700, display: 'inline-block', whiteSpace: 'nowrap' }}>
+                    {exportLoading ? 'Exporting...' : '📄 Export PDF'}
+                  </span>
+                </SegmentedButton>
                 <SegmentedButton
                   onClick={() => handleOpenFeeHeadModal()}
                   title="Add Fee Head"
@@ -1724,6 +2013,7 @@ const FeeStructureManager: React.FC = () => {
                 <ClassHeader>
                   <ClassTitle>{c.name}</ClassTitle>
                 </ClassHeader>
+                <FeeHeadsContainer>
                 {feeHeads.length === 0 ? (
                   <div
                     style={{
@@ -1783,6 +2073,7 @@ const FeeStructureManager: React.FC = () => {
                     </FeeBlock>
                   ))
                 )}
+                </FeeHeadsContainer>
               </ClassCard>
             ))}
           </ClassesGrid>

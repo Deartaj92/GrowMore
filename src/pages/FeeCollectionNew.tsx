@@ -1800,11 +1800,6 @@ const FeeCollectionNew: React.FC = () => {
                           <div style={{ fontSize: 12, opacity: 0.9 }}>Paid</div>
                           <div style={{ fontWeight: 700, color: (theme as any).TEXT_PRIMARY }}>
                             Rs. {formatCurrency(totalPaidAmount)}
-                            {totalDiscountAmount > 0 && (
-                              <span style={{ color: '#f59e0b', fontWeight: 600, marginLeft: 8 }}>
-                                + Rs. {formatCurrency(totalDiscountAmount)}
-                              </span>
-                            )}
                           </div>
                         </div>
 
@@ -1813,11 +1808,11 @@ const FeeCollectionNew: React.FC = () => {
                           border: `1px solid ${(theme as any).BORDER}`,
                           borderRadius: 8,
                           background: (theme as any).FIELD_BG,
-                          color: '#10b981',
+                          color: '#f59e0b',
                           minWidth: 0
                         }}>
-                          <div style={{ fontSize: 12, color: (theme as any).TEXT_SECONDARY }}>Net Amount</div>
-                          <div style={{ fontWeight: 800 }}>Rs. {formatCurrency(totalNetPaidAmount)}</div>
+                          <div style={{ fontSize: 12, color: (theme as any).TEXT_SECONDARY }}>Discount</div>
+                          <div style={{ fontWeight: 800 }}>Rs. {formatCurrency(totalDiscountAmount)}</div>
                         </div>
 
                         <div style={{
@@ -2074,7 +2069,7 @@ const FeeCollectionNew: React.FC = () => {
                           </TableCell>
                           <TableCell>{payment.payment_mode}</TableCell>
                           <TableCell>
-                            {payment.received_by ? getUserName(payment.received_by) : '-'}
+                            {payment.received_by ? `${getUserName(payment.received_by)} (ID: ${payment.received_by})` : '-'}
                           </TableCell>
                           <TableCell>{payment.remarks || '-'}</TableCell>
                           <TableCell>

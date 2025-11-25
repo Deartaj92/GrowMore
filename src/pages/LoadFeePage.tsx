@@ -181,6 +181,8 @@ const GlassSelectorContainer = muiStyled(Box)(({ theme }) => {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
+  minHeight: 0,
+  overflow: 'hidden',
   };
 });
 const FeeHeadPill = muiStyled(Box)<FeeHeadPillProps>(({ theme, $selected }) => {
@@ -256,10 +258,36 @@ const FeeHeadDesc = muiStyled(Typography)(({ theme }) => ({
 }));
 const FeeHeadSelectorBar = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
-  flexWrap: 'wrap',
+  flexDirection: 'column',
   gap: theme.spacing(1),
-  alignItems: 'center',
+  alignItems: 'stretch',
   minHeight: 0,
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  paddingRight: theme.spacing(0.5),
+  
+  /* Scrollbar styling */
+  '&::-webkit-scrollbar': {
+    width: '6px',
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'transparent',
+    borderRadius: '3px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+    borderRadius: '3px',
+    transition: 'background 0.2s',
+  },
+  '&::-webkit-scrollbar-thumb:hover': {
+    background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+  },
+  
+  /* Firefox scrollbar */
+  scrollbarWidth: 'thin',
+  scrollbarColor: theme.palette.mode === 'dark' 
+    ? 'rgba(255, 255, 255, 0.2) transparent' 
+    : 'rgba(0, 0, 0, 0.2) transparent',
 }));
 const FeeHeadSelectorActions = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
@@ -282,10 +310,41 @@ const GlassSidebar = styled.div`
   position: sticky;
   top: 0.5rem;
   align-self: flex-start;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  
+  /* Scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'} transparent;
   
   @media (max-width: 768px) {
     position: static;
     padding: 0.5rem;
+    max-height: none;
+    overflow-y: visible;
   }
 `;
 
@@ -415,19 +474,20 @@ const ScrollableStudentList = muiStyled(Box)(({ theme }) => {
   minHeight: 0,
   overflowY: 'auto', // force scrollbar visibility
   overflowX: 'hidden',
-  paddingRight: '14px', // make room so cards don't sit under the scrollbar
+  paddingRight: '8px', // make room so cards don't sit under the scrollbar
   marginRight: 0,
-  scrollbarGutter: 'stable both-edges', // reserve space for scrollbar (FF/modern)
-  scrollbarWidth: 'thin', // Firefox
-    scrollbarColor: `${isDarkMode ? '#4a6cf7 #1f2937' : '#3b82f6 #e5e7eb'}`, // Firefox thumb track
-  msOverflowStyle: 'auto', // legacy Edge/IE
+  scrollbarGutter: 'stable', // reserve space for scrollbar (FF/modern)
+  scrollbarWidth: 'auto', // Firefox - make it more visible
+    scrollbarColor: `${isDarkMode ? '#4a6cf7 #2a2a2a' : '#3b82f6 #e5e7eb'}`, // Firefox thumb track - more visible
+  msOverflowStyle: 'scrollbar', // legacy Edge/IE - always show
   '&::-webkit-scrollbar': {
-    width: '10px',
+    width: '12px', // Increased width for better visibility
   },
   '&::-webkit-scrollbar-track': {
-      background: isDarkMode ? 'rgba(31, 41, 55, 0.9)' : '#eef2f7',
+      background: isDarkMode ? 'rgba(42, 42, 42, 0.95)' : '#e5e7eb',
     borderRadius: '6px',
     margin: '2px 0',
+    border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
   },
   '&::-webkit-scrollbar-thumb': {
       background: isDarkMode
@@ -435,20 +495,21 @@ const ScrollableStudentList = muiStyled(Box)(({ theme }) => {
       : 'linear-gradient(180deg, #4a6cf7 0%, #3b82f6 100%)',
     borderRadius: '6px',
       border: isDarkMode
-      ? '1px solid rgba(255, 255, 255, 0.08)'
-      : '1px solid rgba(255, 255, 255, 0.6)',
+      ? '2px solid rgba(255, 255, 255, 0.15)'
+      : '2px solid rgba(255, 255, 255, 0.8)',
       boxShadow: isDarkMode
-      ? 'inset 0 0 0 1px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.25)'
-      : 'inset 0 0 0 1px rgba(255,255,255,0.6), 0 2px 6px rgba(0,0,0,0.12)',
+      ? 'inset 0 0 0 1px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.3)'
+      : 'inset 0 0 0 1px rgba(255,255,255,0.8), 0 2px 6px rgba(0,0,0,0.15)',
     transition: 'all 0.2s ease',
+    minHeight: '40px', // Ensure minimum thumb size
   },
   '&::-webkit-scrollbar-thumb:hover': {
       background: isDarkMode
       ? 'linear-gradient(180deg, #6b8cff 0%, #5a7cf8 100%)'
       : 'linear-gradient(180deg, #5a7cf8 0%, #4b92f7 100%)',
       boxShadow: isDarkMode
-      ? 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.35)'
-      : 'inset 0 0 0 1px rgba(255,255,255,0.7), 0 4px 10px rgba(0,0,0,0.18)',
+      ? 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.4)'
+      : 'inset 0 0 0 1px rgba(255,255,255,0.9), 0 4px 10px rgba(0,0,0,0.2)',
   },
   '&::-webkit-scrollbar-thumb:active': {
       background: isDarkMode
@@ -456,7 +517,7 @@ const ScrollableStudentList = muiStyled(Box)(({ theme }) => {
       : 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)',
   },
   '&::-webkit-scrollbar-corner': {
-    background: 'transparent',
+    background: isDarkMode ? 'rgba(42, 42, 42, 0.95)' : '#e5e7eb',
   }
   };
 });
@@ -1158,6 +1219,7 @@ export default function LoadFeePage() {
     return className;
   };
 
+
   // Get current month
   const getCurrentMonth = () => {
     const now = new Date();
@@ -1265,7 +1327,7 @@ export default function LoadFeePage() {
         supabase.from('classes').select('id, name, has_sections').eq('school_id', schoolId),
         supabase.from('sections').select('id, name, class_id').eq('school_id', schoolId),
         supabase.from('sessions').select('id, name, is_active').eq('school_id', schoolId),
-        supabase.from('students').select('id, name, class_id, section_id, father_name, picture_url').eq('school_id', schoolId).order('name', { ascending: true }),
+        supabase.from('students').select('id, name, class_id, section_id, father_name, picture_url, roll_number').eq('school_id', schoolId).order('name', { ascending: true }),
         feeService.getFeeHeads(schoolId),
       ]);
       setClasses(sortClassesLocal(cls.data || []));
@@ -2857,8 +2919,8 @@ export default function LoadFeePage() {
               {/* Left: Sticky Glassy Sidebar */}
               <Box sx={{ flex: { xs: 'unset', md: '1 1 30%' }, minWidth: { md: 240 }, maxWidth: { md: 320 }, mb: { xs: 1.5, md: 0 } }}>
                 <GlassSidebar theme={theme}>
-                  <SectionHeader theme={theme}>Filters</SectionHeader>
-                <Box display="flex" flexDirection="column" gap={1.5} mb={2}>
+                  <SectionHeader theme={theme} style={{ flexShrink: 0 }}>Filters</SectionHeader>
+                <Box display="flex" flexDirection="column" gap={1.5} mb={2} sx={{ flexShrink: 0 }}>
                   <Box display="flex" gap={1.5}>
                     <FormControl size="small" sx={{ flex: 1 }}>
                       <InputLabel>Class</InputLabel>
@@ -2917,9 +2979,10 @@ export default function LoadFeePage() {
                     </FormControl>
                   </Box>
                 </Box>
-                <SectionHeader theme={theme}>Fee Heads</SectionHeader>
-                <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%' }}>
-                  <FeeHeadSelectorBar sx={{ width: '100%', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <SectionHeader theme={theme} style={{ flexShrink: 0 }}>Fee Heads</SectionHeader>
+                  <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%', flex: 1, minHeight: 0 }}>
+                    <FeeHeadSelectorBar sx={{ width: '100%', flex: 1 }}>
                     {getAvailableFeeHeads(Number(selectedClass), Number(selectedSection)).map((fh: any) => (
                       <FeeHeadPill
                         key={fh.id}
@@ -2962,7 +3025,8 @@ export default function LoadFeePage() {
                       Clear All
                     </Button>
                   </FeeHeadSelectorActions>
-                </GlassSelectorContainer>
+                  </GlassSelectorContainer>
+                </Box>
               </GlassSidebar>
               </Box>
               {/* Right: Main Glassy Card for Students/Results */}
@@ -3360,18 +3424,27 @@ export default function LoadFeePage() {
                 loading={studentsLoading}
                 getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
                 filterOptions={(options, { inputValue }) => {
+                  if (!inputValue) {
+                    // Limit initial results to first 100 for performance
+                    return options.slice(0, 100);
+                  }
                   const searchLower = inputValue.toLowerCase();
-                  return options.filter((s: any) => {
+                  const filtered = options.filter((s: any) => {
                     const nameMatch = s.name.toLowerCase().includes(searchLower);
                     const idMatch = matchesStudentSearch(s, inputValue);
                     return nameMatch || idMatch.matches;
                   });
+                  // Limit filtered results to 200 for performance
+                  return filtered.slice(0, 200);
                 }}
-                onChange={(_, value) => setSingleStudent(value ? { id: value.id } : null)}
+                onChange={(_, value) => setSingleStudent(value || null)}
                 onOpen={() => {
                   if (students.length === 0 && !studentsLoading) {
                     loadStudentsData();
                   }
+                }}
+                ListboxProps={{
+                  style: { maxHeight: '400px' }
                 }}
                 renderInput={(params) => (
                   <TextField 
@@ -3435,26 +3508,37 @@ export default function LoadFeePage() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '1rem',
-                    alignItems: 'stretch'
+                    alignItems: 'stretch',
+                    maxHeight: 'calc(100vh - 220px)',
+                    overflow: 'auto'
                   }}>
                   <Autocomplete
                     options={students}
                     loading={studentsLoading}
                     getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
                     filterOptions={(options, { inputValue }) => {
+                      if (!inputValue) {
+                        // Limit initial results to first 100 for performance
+                        return options.slice(0, 100);
+                      }
                       const searchLower = inputValue.toLowerCase();
-                      return options.filter((s: any) => {
+                      const filtered = options.filter((s: any) => {
                         const nameMatch = s.name.toLowerCase().includes(searchLower);
                         const idMatch = matchesStudentSearch(s, inputValue);
                         return nameMatch || idMatch.matches;
                       });
+                      // Limit filtered results to 200 for performance
+                      return filtered.slice(0, 200);
                     }}
                     value={singleStudent ? students.find(s => s.id === singleStudent.id) : null}
-                    onChange={(_, value) => setSingleStudent(value ? { id: value.id } : null)}
+                    onChange={(_, value) => setSingleStudent(value || null)}
                     onOpen={() => {
                       if (students.length === 0 && !studentsLoading) {
                         loadStudentsData();
                       }
+                    }}
+                    ListboxProps={{
+                      style: { maxHeight: '400px' }
                     }}
                     renderInput={(params) => (
                       <TextField 
@@ -3532,9 +3616,10 @@ export default function LoadFeePage() {
                       </Select>
                     </FormControl>
                   </Box>
-                  <SectionHeader>Fee Heads</SectionHeader>
-                  <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%' }}>
-                    <FeeHeadSelectorBar sx={{ width: '100%', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <SectionHeader style={{ flexShrink: 0 }}>Fee Heads</SectionHeader>
+                    <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%', flex: 1, minHeight: 0 }}>
+                      <FeeHeadSelectorBar sx={{ width: '100%', flex: 1 }}>
                       {getAvailableFeeHeads(singleStudent ? Number(singleStudent.class_id) : undefined, singleStudent ? Number(singleStudent.section_id) : undefined).map((fh: any) => (
                         <FeeHeadPill
                           key={fh.id}
@@ -3560,17 +3645,24 @@ export default function LoadFeePage() {
                                 <AttachMoney fontSize="small" />}
                             </FeeHeadIcon>
                             <FeeHeadName>{fh.name}</FeeHeadName>
+                          </Box>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'flex-end',
+                            gap: '2px'
+                          }}>
+                            <Box sx={{ fontSize: '0.95rem', fontWeight: 600, color: 'primary.main' }}>
+                              Rs. {calculateFinalAmount(singleStudent.id, fh.id, Number(singleStudent.class_id), singleSession, singleMonth, singleYear)}
+                            </Box>
                             {getConcessionStatus(singleStudent.id, fh.id, singleSession, singleMonth, singleYear).hasConcession && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
-                                <Loyalty sx={{ color: 'success.main', fontSize: '1rem' }} />
-                                <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Loyalty sx={{ color: 'success.main', fontSize: '0.75rem' }} />
+                                <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600, fontSize: '0.7rem' }}>
                                   Rs. {getConcessionStatus(singleStudent.id, fh.id, singleSession, singleMonth, singleYear).amount} off
                                 </Typography>
                               </Box>
                             )}
-                          </Box>
-                          <Box sx={{ fontSize: '0.95rem', fontWeight: 600, color: 'primary.main' }}>
-                            Rs. {calculateFinalAmount(singleStudent.id, fh.id, Number(singleStudent.class_id), singleSession, singleMonth, singleYear)}
                           </Box>
                         </FeeHeadPill>
                       ))}
@@ -3591,18 +3683,21 @@ export default function LoadFeePage() {
                         Clear All
                       </Button>
                     </FeeHeadSelectorActions>
-                  </GlassSelectorContainer>
+                    </GlassSelectorContainer>
+                  </Box>
                 </GlassCard>
                 </Box>
                 
                 {/* Column 2: Student List with Footer */}
-                <Box sx={{ flex: { xs: 'unset', md: '1 1 70%' }, minWidth: 0 }}>
-                  <GlassMainCard theme={theme}>
-                  <SectionHeader theme={theme}>Selected Fee Heads</SectionHeader>
-                  <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
+                <Box sx={{ flex: { xs: 'unset', md: '1 1 70%' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <GlassMainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <Box sx={{ flexShrink: 0 }}>
+                    <SectionHeader theme={theme}>Selected Fee Heads</SectionHeader>
+                    <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
+                  </Box>
                   
                   {/* Scrollable Fee Heads List */}
-                  <ScrollableStudentList sx={{ flex: 1, maxHeight: { xs: '400px', md: '500px' } }}>
+                  <ScrollableStudentList sx={{ flex: '0 1 auto', minHeight: 0, maxHeight: '320px', overflowY: 'auto', overflowX: 'hidden' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%', boxSizing: 'border-box' }}>
                         {singleStudentSelectedFeeHeads.map(fhId => {
                           const fh = feeHeads.find(h => h.id === fhId);
@@ -3730,26 +3825,28 @@ export default function LoadFeePage() {
                   
                   {/* Footer with Buttons */}
                   {singleStudent && singleStudentSelectedFeeHeads.length > 0 && (
-                    <StudentListFooter theme={theme}>
-                      <GenerateButton 
-                        onClick={handleSingleUpsert} 
-                        disabled={loading || !singleSession || !singleMonth || !singleYear}
-                        startIcon={<AddIcon />}
-                      >
-                        {existingFeeInvoiceItemsMap.size > 0 ? 'Generate & Update Fee' : 'Generate Fee'}
-                      </GenerateButton>
-                      {existingFeeInvoiceItemsMap.size > 0 && (
-                        <Button 
-                          onClick={handleSingleDelete} 
-                          disabled={loading || !singleSession || !singleMonth || !singleYear} 
-                          variant="outlined" 
-                          color="error"
-                          startIcon={<Delete />}
+                    <Box sx={{ flexShrink: 0, mt: 'auto' }}>
+                      <StudentListFooter theme={theme}>
+                        <GenerateButton 
+                          onClick={handleSingleUpsert} 
+                          disabled={loading || !singleSession || !singleMonth || !singleYear}
+                          startIcon={<AddIcon />}
                         >
-                          Delete Selected Fee Heads
-                        </Button>
-                      )}
-                    </StudentListFooter>
+                          {existingFeeInvoiceItemsMap.size > 0 ? 'Generate & Update Fee' : 'Generate Fee'}
+                        </GenerateButton>
+                        {existingFeeInvoiceItemsMap.size > 0 && (
+                          <Button 
+                            onClick={handleSingleDelete} 
+                            disabled={loading || !singleSession || !singleMonth || !singleYear} 
+                            variant="outlined" 
+                            color="error"
+                            startIcon={<Delete />}
+                          >
+                            Delete Selected Fee Heads
+                          </Button>
+                        )}
+                      </StudentListFooter>
+                    </Box>
                   )}
                 </GlassMainCard>
                 </Box>
@@ -3770,7 +3867,9 @@ export default function LoadFeePage() {
                   padding: '0.75rem 1rem',
                 display: 'flex', 
                 flexDirection: 'column', 
-                  gap: '1rem'
+                  gap: '1rem',
+                  maxHeight: 'calc(100vh - 220px)',
+                  overflow: 'auto'
               }}>
                 <Autocomplete
                   options={families}
@@ -3826,9 +3925,10 @@ export default function LoadFeePage() {
                   </FormControl>
                 </Box>
                 <Divider sx={{ my: 1 }} />
-                <SectionHeader>Fee Heads</SectionHeader>
-                <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%' }}>
-                   <FeeHeadSelectorBar sx={{ width: '100%', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <SectionHeader style={{ flexShrink: 0 }}>Fee Heads</SectionHeader>
+                  <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%', flex: 1, minHeight: 0 }}>
+                     <FeeHeadSelectorBar sx={{ width: '100%', flex: 1 }}>
                     {getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => (
                       <FeeHeadPill
                         key={fh.id}
@@ -3862,7 +3962,8 @@ export default function LoadFeePage() {
                      <Button size="small" variant="text" onClick={() => setFamilyTabSelectedFeeHeads(getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => fh.id))}>Select All</Button>
                      <Button size="small" variant="text" onClick={() => setFamilyTabSelectedFeeHeads([])}>Clear All</Button>
                    </FeeHeadSelectorActions>
-                </GlassSelectorContainer>
+                  </GlassSelectorContainer>
+                </Box>
               </GlassCard>
               </Box>
 
@@ -3873,119 +3974,195 @@ export default function LoadFeePage() {
                   <Box sx={{ 
                     flex: { xs: 'unset', md: '1 1 22%' }, 
                     minWidth: { xs: '100%', md: 220 }, 
-                    maxWidth: { xs: '100%', md: 320 } 
+                    maxWidth: { xs: '100%', md: 320 },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minHeight: 0
                   }}>
-                    <GlassCard theme={theme} style={{ padding: '0.75rem 1rem' }}>
-                    <SectionHeader theme={theme} style={{ textAlign: 'center' }}>Linked Students</SectionHeader>
-                    {/* Student Selection Controls */}
-                    <Box display="flex" flexDirection={{ xs: 'row', md: 'column' }} gap={1} mb={2} alignItems={{ xs: 'center', md: 'stretch' }}>
-                      <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'center' }} sx={{ 
-                        fontSize: { xs: '0.8rem', md: '0.875rem' },
-                        flex: { xs: 1, md: 'none' }
-                      }}>
-                        {selectedFamilyStudents.length} of {selectedFamily.family_members?.filter((member: any) => member.student).length || 0} selected
-                      </Typography>
-                      <Box display="flex" gap={1} justifyContent={{ xs: 'flex-end', md: 'center' }}>
-                        <Button 
-                          size="small" 
-                          variant="text" 
-                          onClick={selectAllFamilyStudents}
-                          disabled={selectedFamilyStudents.length === (selectedFamily.family_members?.filter((member: any) => member.student).length || 0)}
-                          sx={{ 
-                            fontSize: { xs: '0.75rem', md: '0.875rem' },
-                            minWidth: { xs: 'auto', md: 'auto' },
-                            px: { xs: 1, md: 2 }
-                          }}
-                        >
-                          Select All
-                        </Button>
-                        <Button 
-                          size="small" 
-                          variant="text" 
-                          onClick={deselectAllFamilyStudents}
-                          disabled={selectedFamilyStudents.length === 0}
-                          sx={{ 
-                            fontSize: { xs: '0.75rem', md: '0.875rem' },
-                            minWidth: { xs: 'auto', md: 'auto' },
-                            px: { xs: 1, md: 2 }
-                          }}
-                        >
-                          Deselect All
-                        </Button>
+                    <GlassCard theme={theme} style={{ 
+                      padding: '0.75rem 1rem',
+                      flex: 1,
+                      minHeight: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden'
+                    }}>
+                    <Box sx={{ flexShrink: 0 }}>
+                      <SectionHeader theme={theme} style={{ textAlign: 'center' }}>Linked Students</SectionHeader>
+                      {/* Student Selection Controls */}
+                      <Box display="flex" flexDirection={{ xs: 'row', md: 'column' }} gap={1} mb={2} mt={1} alignItems={{ xs: 'center', md: 'stretch' }}>
+                        <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'center' }} sx={{ 
+                          fontSize: { xs: '0.8rem', md: '0.875rem' },
+                          flex: { xs: 1, md: 'none' }
+                        }}>
+                          {selectedFamilyStudents.length} of {selectedFamily.family_members?.filter((member: any) => member.student).length || 0} selected
+                        </Typography>
+                        <Box display="flex" gap={1} justifyContent={{ xs: 'flex-end', md: 'center' }}>
+                          <Button 
+                            size="small" 
+                            variant="text" 
+                            onClick={selectAllFamilyStudents}
+                            disabled={selectedFamilyStudents.length === (selectedFamily.family_members?.filter((member: any) => member.student).length || 0)}
+                            sx={{ 
+                              fontSize: { xs: '0.75rem', md: '0.875rem' },
+                              minWidth: { xs: 'auto', md: 'auto' },
+                              px: { xs: 1, md: 2 }
+                            }}
+                          >
+                            Select All
+                          </Button>
+                          <Button 
+                            size="small" 
+                            variant="text" 
+                            onClick={deselectAllFamilyStudents}
+                            disabled={selectedFamilyStudents.length === 0}
+                            sx={{ 
+                              fontSize: { xs: '0.75rem', md: '0.875rem' },
+                              minWidth: { xs: 'auto', md: 'auto' },
+                              px: { xs: 1, md: 2 }
+                            }}
+                          >
+                            Deselect All
+                          </Button>
+                        </Box>
                       </Box>
                     </Box>
-                     <Box display="flex" flexDirection="column" gap={2} mt={2}>
-                      {selectedFamily.family_members?.map((member: any) => {
-                        const student = member.student;
-                        if (!student) return null;
-                        
-                        return (
-                          <Box 
-                            key={member.id} 
-                            display="flex" 
-                            alignItems="center" 
-                            gap={{ xs: 1.5, md: 2 }} 
-                            p={{ xs: 1, md: 1.5 }} 
-                            borderRadius={2} 
-                            sx={{ 
-                              background: selectedFamilyStudents.includes(student.id) 
-                                ? alpha(muiTheme.palette.primary.main, 0.1)
-                                : alpha(muiTheme.palette.primary.main, 0.05),
-                              border: selectedFamilyStudents.includes(student.id) 
-                                ? `1px solid ${muiTheme.palette.primary.main}`
-                                : '1px solid transparent',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              '&:hover': {
-                                background: selectedFamilyStudents.includes(student.id)
-                                  ? alpha(muiTheme.palette.primary.main, 0.15)
-                                  : alpha(muiTheme.palette.primary.main, 0.08),
-                                transform: 'translateY(-1px)',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                              }
-                            }}
-                            onClick={() => handleFamilyStudentSelection(student.id, !selectedFamilyStudents.includes(student.id))}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedFamilyStudents.includes(student.id)}
-                              onChange={(e) => {
-                                e.stopPropagation(); // Prevent double triggering
-                                handleFamilyStudentSelection(student.id, e.target.checked);
+                     <ScrollableStudentList sx={{ 
+                       flex: '0 1 auto', 
+                       minHeight: 0, 
+                       maxHeight: '320px', 
+                       overflowY: 'auto', 
+                       overflowX: 'hidden',
+                       mt: 1
+                     }}>
+                      <Box display="flex" flexDirection="column" gap={2}>
+                        {selectedFamily.family_members?.map((member: any) => {
+                          const student = member.student;
+                          if (!student) return null;
+                          
+                          return (
+                            <Box 
+                              key={member.id} 
+                              display="flex" 
+                              alignItems="center" 
+                              gap={{ xs: 1.5, md: 2 }} 
+                              p={{ xs: 1, md: 1.5 }} 
+                              borderRadius={2} 
+                              sx={{ 
+                                background: selectedFamilyStudents.includes(student.id) 
+                                  ? alpha(muiTheme.palette.primary.main, 0.1)
+                                  : alpha(muiTheme.palette.primary.main, 0.05),
+                                border: selectedFamilyStudents.includes(student.id) 
+                                  ? `1px solid ${muiTheme.palette.primary.main}`
+                                  : '1px solid transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  background: selectedFamilyStudents.includes(student.id)
+                                    ? alpha(muiTheme.palette.primary.main, 0.15)
+                                    : alpha(muiTheme.palette.primary.main, 0.08),
+                                  transform: 'translateY(-1px)',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                }
                               }}
-                              style={{ transform: 'scale(1.2)', display: 'none' }}
-                            />
-                            <Avatar sx={{ 
-                              bgcolor: 'primary.main', 
-                              width: { xs: 36, md: 40 }, 
-                              height: { xs: 36, md: 40 },
-                              fontSize: { xs: '0.8rem', md: '1rem' }
-                            }}>
-                              {student.name ? student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?'}
-                            </Avatar>
-                            <Box>
-                              <Typography fontWeight={600} sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                                {student.name || 'Student'}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-                                {formatClassSectionDisplay(student.class_id, student.section_id)}
-                              </Typography>
+                              onClick={() => handleFamilyStudentSelection(student.id, !selectedFamilyStudents.includes(student.id))}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedFamilyStudents.includes(student.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation(); // Prevent double triggering
+                                  handleFamilyStudentSelection(student.id, e.target.checked);
+                                }}
+                                style={{ transform: 'scale(1.2)', display: 'none' }}
+                              />
+                              <Avatar sx={{ 
+                                bgcolor: 'primary.main', 
+                                width: { xs: 36, md: 40 }, 
+                                height: { xs: 36, md: 40 },
+                                fontSize: { xs: '0.8rem', md: '1rem' }
+                              }}>
+                                {student.name ? student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?'}
+                              </Avatar>
+                              <Box>
+                                <Typography fontWeight={600} sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                  {student.name || 'Student'}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                                  {formatClassSectionDisplay(student.class_id, student.section_id)}
+                                </Typography>
+                              </Box>
                             </Box>
-                          </Box>
-                        );
-                      })}
-                    </Box>
+                          );
+                        })}
+                      </Box>
+                    </ScrollableStudentList>
                   </GlassCard>
                   </Box>
                   
                   {/* --- Column 3: Fee Table --- */}
-                  <Box sx={{ flex: { xs: 'unset', md: '1 1 50%' }, minWidth: 0 }}>
-                    <GlassMainCard theme={theme}>
-                     <SectionHeader theme={theme}>Fee Details</SectionHeader>
+                  <Box sx={{ flex: { xs: 'unset', md: '1 1 50%' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <GlassMainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                     <Box sx={{ flexShrink: 0 }}>
+                       <SectionHeader theme={theme}>Fee Details</SectionHeader>
+                     </Box>
                      {familyTabSelectedFeeHeads.length > 0 && selectedFamilyStudents.length > 0 ? (
-                       <Box sx={{ overflowX: 'auto', mt: 2 }}>
+                       <Box sx={{ 
+                         flex: '0 1 auto', 
+                         minHeight: 0, 
+                         maxHeight: '320px', 
+                         overflowY: 'auto', 
+                         overflowX: 'auto',
+                         mt: 2,
+                         paddingRight: '8px',
+                         scrollbarGutter: 'stable',
+                         scrollbarWidth: 'auto',
+                         scrollbarColor: `${muiTheme.palette.mode === 'dark' ? '#4a6cf7 #2a2a2a' : '#3b82f6 #e5e7eb'}`,
+                         msOverflowStyle: 'scrollbar',
+                         '&::-webkit-scrollbar': {
+                           width: '12px',
+                           height: '12px',
+                         },
+                         '&::-webkit-scrollbar-track': {
+                           background: muiTheme.palette.mode === 'dark' ? 'rgba(42, 42, 42, 0.95)' : '#e5e7eb',
+                           borderRadius: '6px',
+                           margin: '2px 0',
+                           border: muiTheme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                         },
+                         '&::-webkit-scrollbar-thumb': {
+                           background: muiTheme.palette.mode === 'dark'
+                             ? 'linear-gradient(180deg, #5a7cf8 0%, #4a6cf7 100%)'
+                             : 'linear-gradient(180deg, #4a6cf7 0%, #3b82f6 100%)',
+                           borderRadius: '6px',
+                           border: muiTheme.palette.mode === 'dark'
+                             ? '2px solid rgba(255, 255, 255, 0.15)'
+                             : '2px solid rgba(255, 255, 255, 0.8)',
+                           boxShadow: muiTheme.palette.mode === 'dark'
+                             ? 'inset 0 0 0 1px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.3)'
+                             : 'inset 0 0 0 1px rgba(255,255,255,0.8), 0 2px 6px rgba(0,0,0,0.15)',
+                           transition: 'all 0.2s ease',
+                           minHeight: '40px',
+                           minWidth: '40px',
+                         },
+                         '&::-webkit-scrollbar-thumb:hover': {
+                           background: muiTheme.palette.mode === 'dark'
+                             ? 'linear-gradient(180deg, #6b8cff 0%, #5a7cf8 100%)'
+                             : 'linear-gradient(180deg, #5a7cf8 0%, #4b92f7 100%)',
+                           boxShadow: muiTheme.palette.mode === 'dark'
+                             ? 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.4)'
+                             : 'inset 0 0 0 1px rgba(255,255,255,0.9), 0 4px 10px rgba(0,0,0,0.2)',
+                         },
+                         '&::-webkit-scrollbar-thumb:active': {
+                           background: muiTheme.palette.mode === 'dark'
+                             ? 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)'
+                             : 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)',
+                         },
+                         '&::-webkit-scrollbar-corner': {
+                           background: muiTheme.palette.mode === 'dark' ? 'rgba(42, 42, 42, 0.95)' : '#e5e7eb',
+                         },
+                       }}>
                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                           <thead>
+                           <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                               <tr style={{ background: 'linear-gradient(90deg, #4a6cf7 0%, #3b82f6 100%)', color: '#fff' }}>
                                 <th style={{ padding: '10px 12px', textAlign: 'left' }}>Student</th>
                                 <th style={{ padding: '10px 12px', textAlign: 'left' }}>Fee Head</th>
@@ -4084,7 +4261,7 @@ export default function LoadFeePage() {
                          </table>
                        </Box>
                      ) : (
-                        <Box display="flex" alignItems="center" justifyContent="center" height="100%" minHeight={200}>
+                        <Box display="flex" alignItems="center" justifyContent="center" height="100%" minHeight={200} sx={{ flex: 1 }}>
                           <Typography color="text.secondary">
                             {selectedFamilyStudents.length === 0 ? 'Select students to see fee details.' : 'Select fee heads to see details.'}
                           </Typography>
@@ -4097,6 +4274,7 @@ export default function LoadFeePage() {
                        gap={{ xs: 2, sm: 2 }}
                        mt={4}
                        width="100%"
+                       sx={{ flexShrink: 0 }}
                      >
                        <PillButton 
                          disabled={!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0} 
@@ -4405,7 +4583,7 @@ export default function LoadFeePage() {
             mb: 2
           }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              <strong>Student:</strong> {singleStudent?.name || 'N/A'} (ID: {singleStudent ? getStudentDisplayId(singleStudent) : 'N/A'})
+              <strong>Student:</strong> {singleStudent?.name || 'N/A'} (ID: {singleStudent ? getStudentDisplayId(students.find(s => s.id === singleStudent.id) || singleStudent) : 'N/A'})
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               <strong>Session:</strong> {sessions.find(s => s.id === parseInt(singleSession))?.name || 'N/A'}

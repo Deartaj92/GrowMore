@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { useTheme } from 'styled-components';
 import { 
   AccountCircle, 
@@ -975,6 +976,146 @@ const PanelStudentDetails = styled.div`
   line-height: 1.4;
 `;
 
+const ProgressModalOverlay = styled.div<{ $isOpen: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 100001; /* Higher than the top progress bar (100000) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: ${({ $isOpen }) => $isOpen ? '1' : '0'};
+  visibility: ${({ $isOpen }) => $isOpen ? 'visible' : 'hidden'};
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+`;
+
+const ProgressModalContainer = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ProgressModalTitle = styled.h3`
+  margin: 0 0 20px 0;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+`;
+
+const ProgressBarContainer = styled.div`
+  width: 100%;
+  height: 24px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#e5e7eb'};
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 16px 0;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const ProgressBarFill = styled.div<{ $progress: number }>`
+  height: 100%;
+  background: linear-gradient(90deg, #4a6cf7 0%, #6b8cff 100%);
+  border-radius: 12px;
+  transition: width 0.3s ease-out;
+  width: ${({ $progress }) => $progress}%;
+  box-shadow: 0 2px 8px rgba(74, 108, 247, 0.4);
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+`;
+
+const ProgressText = styled.div`
+  text-align: center;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+`;
+
+const ProgressMessage = styled.div`
+  text-align: center;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.95rem;
+  margin-top: 8px;
+  min-height: 24px;
+`;
+
+const SpinnerContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+`;
+
+const Spinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border: 4px solid ${({ theme }) => theme.BG === '#252525' ? '#3a3a3a' : '#e5e7eb'};
+  border-top: 4px solid #4a6cf7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const CancelButton = styled.button`
+  margin-top: 24px;
+  padding: 12px 32px;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#3a3a3a' : '#f3f4f6'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#e5e7eb'};
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 
 
 const FeeDefaultersList: React.FC = () => {
@@ -998,6 +1139,9 @@ const FeeDefaultersList: React.FC = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [slipsLoading, setSlipsLoading] = useState(false);
   const [messageLanguage, setMessageLanguage] = useState<'english' | 'urdu'>('english');
+  const [slipProgress, setSlipProgress] = useState({ current: 0, total: 0, message: '' });
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Panel state
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -1585,6 +1729,9 @@ const FeeDefaultersList: React.FC = () => {
     }
   };
 
+  // Helper function to allow React to update UI
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   // Helper function to load Urdu font
   // Helper function to render Urdu text to canvas and return as image data
   const renderUrduTextToImage = async (text: string, width: number, fontSize: number): Promise<string> => {
@@ -1638,8 +1785,8 @@ const FeeDefaultersList: React.FC = () => {
             lines.push(currentLine);
           }
           
-          // Adjust canvas height based on number of lines
-          const lineHeight = fontSize * scale * 1.5;
+          // Adjust canvas height based on number of lines (minimal line height for compact text)
+          const lineHeight = fontSize * scale * 1.15;
           canvas.height = (lines.length * lineHeight) + 20 * scale;
           
           // Clear and redraw with proper height
@@ -1687,7 +1834,7 @@ const FeeDefaultersList: React.FC = () => {
             lines.push(currentLine);
           }
           
-          const lineHeight = fontSize * scale * 1.5;
+          const lineHeight = fontSize * scale * 1.15;
           canvas.height = (lines.length * lineHeight) + 20 * scale;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.font = `${fontSize * scale}px Arial`;
@@ -1779,9 +1926,24 @@ const FeeDefaultersList: React.FC = () => {
     }
   };
 
+  // Handle Cancel Slip Generation
+  const handleCancelGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setShowProgressModal(false);
+      setSlipsLoading(false);
+      showToast('Fee slip generation cancelled', 'success');
+    }
+  };
+
   // Handle Generate Slips - Generate single PDF with all fee slips
   const handleGenerateSlips = async () => {
     setSlipsLoading(true);
+    setShowProgressModal(true);
+    setSlipProgress({ current: 0, total: 0, message: 'Initializing...' });
+    
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
     
     try {
       // Check if it's a mobile device
@@ -1794,8 +1956,11 @@ const FeeDefaultersList: React.FC = () => {
       if (defaultersForSlips.length === 0) {
         showToast('No fee defaulters found to generate slips', 'success');
         setSlipsLoading(false);
+        setShowProgressModal(false);
         return;
       }
+      
+      setSlipProgress({ current: 0, total: defaultersForSlips.length, message: 'Fetching school information...' });
 
       // Fetch school information
       const [{ data: profileData }, { data: schoolData }] = await Promise.all([
@@ -1824,6 +1989,7 @@ const FeeDefaultersList: React.FC = () => {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
       // Load Urdu font if needed
+      setSlipProgress({ current: 0, total: defaultersForSlips.length, message: 'Loading fonts...' });
       let urduFontLoaded = false;
       if (messageLanguage === 'urdu') {
         urduFontLoaded = await loadUrduFont(doc);
@@ -1835,17 +2001,13 @@ const FeeDefaultersList: React.FC = () => {
         }
       }
 
-      // Process each defaulter and add slip to PDF
-      for (let i = 0; i < defaultersForSlips.length; i++) {
-        const defaulter = defaultersForSlips[i];
+      // OPTIMIZATION: Fetch all invoice and payment data in bulk upfront
+      setSlipProgress({ current: 0, total: defaultersForSlips.length, message: 'Fetching fee data in bulk...' });
         
-        // Add new page for each slip (except the first one)
-        if (i > 0) {
-          doc.addPage();
-        }
+      const studentIds = defaultersForSlips.map(d => d.id);
 
-        // Fetch fee invoices for this student
-        const { data: feeInvoices, error: invoicesError } = await supabase
+      // Fetch all invoices for all students at once
+      const { data: allInvoices, error: invoicesError } = await supabase
           .from('fee_invoices')
           .select(`
             id,
@@ -1867,21 +2029,37 @@ const FeeDefaultersList: React.FC = () => {
               )
             )
           `)
-          .eq('student_id', defaulter.id)
           .eq('school_id', user.school_id)
+        .in('student_id', studentIds)
           .order('year', { ascending: false })
           .order('month', { ascending: false });
 
         if (invoicesError) {
-          continue;
+        throw invoicesError;
+      }
+
+      // Group invoices by student_id
+      const invoicesByStudent: { [key: number]: any[] } = {};
+      if (allInvoices) {
+        for (const invoice of allInvoices) {
+          if (!invoicesByStudent[invoice.student_id]) {
+            invoicesByStudent[invoice.student_id] = [];
+          }
+          invoicesByStudent[invoice.student_id].push(invoice);
+        }
         }
 
-        // Fetch payment history for this student
-        const { data: paymentHistory, error: paymentError } = await supabase
+      // Fetch all payments for all students at once
+      const invoiceIds = allInvoices?.map(inv => inv.id) || [];
+      let paymentsByStudent: { [key: number]: any[] } = {};
+      
+      if (invoiceIds.length > 0) {
+        const { data: allPayments, error: paymentsError } = await supabase
           .from('fee_payments')
           .select(`
             id,
             amount,
+            invoice_id,
             fee_invoices!inner (
               student_id
             ),
@@ -1891,12 +2069,57 @@ const FeeDefaultersList: React.FC = () => {
               amount
             )
           `)
-          .eq('fee_invoices.student_id', defaulter.id)
-          .eq('school_id', user.school_id);
+          .eq('school_id', user.school_id)
+          .in('invoice_id', invoiceIds);
 
-        if (paymentError) {
-          continue;
+        if (!paymentsError && allPayments) {
+          for (const payment of allPayments) {
+            // Handle both array and object types from Supabase
+            const studentId = Array.isArray(payment.fee_invoices) 
+              ? payment.fee_invoices[0]?.student_id 
+              : (payment.fee_invoices as any)?.student_id;
+            
+            if (studentId) {
+              if (!paymentsByStudent[studentId]) {
+                paymentsByStudent[studentId] = [];
+              }
+              paymentsByStudent[studentId].push(payment);
+            }
+          }
         }
+      }
+
+      setSlipProgress({ current: 0, total: defaultersForSlips.length, message: 'Generating PDF slips...' });
+
+      // Process each defaulter and add slip to PDF
+      for (let i = 0; i < defaultersForSlips.length; i++) {
+        const defaulter = defaultersForSlips[i];
+        
+        // Check if operation was cancelled
+        if (abortControllerRef.current?.signal.aborted) {
+          throw new Error('Operation cancelled by user');
+        }
+        
+        // Update progress
+        setSlipProgress({ 
+          current: i + 1, 
+          total: defaultersForSlips.length, 
+          message: `Generating slip for ${defaulter.name}...` 
+        });
+        
+        // Allow React to update UI (small delay every 10 slips to improve responsiveness)
+        if (i % 10 === 0) {
+          await sleep(1);
+        }
+        
+        // Add new page for each slip (except the first one)
+        if (i > 0) {
+          doc.addPage();
+        }
+
+        // Get pre-fetched data for this student
+        const feeInvoices = invoicesByStudent[defaulter.id] || [];
+        const paymentHistory = paymentsByStudent[defaulter.id] || [];
 
         // Calculate remaining items only - ensure only items with remaining > 0
         const remainingFeeItems: any[] = [];
@@ -1946,13 +2169,13 @@ const FeeDefaultersList: React.FC = () => {
         const headerY = 10;
         
         // School name - bold and centered (increased size)
-        doc.setFontSize(18);
+        doc.setFontSize(20);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
         doc.text(schoolInfo.name, 105, headerY, { align: 'center' });
 
         // Contact info - centered (increased size)
-        doc.setFontSize(12);
+        doc.setFontSize(13);
         doc.setFont('helvetica', 'normal');
         const contactText = schoolInfo.phone ? `${schoolInfo.address || ''} - ${schoolInfo.phone}` : schoolInfo.address || '';
         doc.text(contactText, 105, headerY + 8, { align: 'center' });
@@ -1965,7 +2188,7 @@ const FeeDefaultersList: React.FC = () => {
 
         // Main title - "Remaining Fee Slip"
         const titleY = separatorY + 10;
-        doc.setFontSize(14);
+        doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
         doc.text('Remaining Fee Slip', 105, titleY, { align: 'center' });
@@ -1975,7 +2198,7 @@ const FeeDefaultersList: React.FC = () => {
         
         // Student details table - Name, Father, Class
         const studentDetailsData = [
-          [defaulter.name, defaulter.father_name || '-', `${getClassName(defaulter.class_id)}${getSectionName(defaulter.section_id) ? ` (${getSectionName(defaulter.section_id)})` : ''}`]
+          [`${getStudentDisplayId(defaulter)} - ${defaulter.name}`, defaulter.father_name || '-', `${getClassName(defaulter.class_id)}${getSectionName(defaulter.section_id) ? ` (${getSectionName(defaulter.section_id)})` : ''}`]
         ];
 
         autoTable(doc, {
@@ -1985,7 +2208,7 @@ const FeeDefaultersList: React.FC = () => {
           margin: { left: 20, right: 20 },
           tableWidth: 170,
           styles: { 
-            fontSize: 10, 
+            fontSize: 12, 
             cellPadding: 4,
             lineColor: [0, 0, 0],
             lineWidth: 0.5,
@@ -1995,16 +2218,16 @@ const FeeDefaultersList: React.FC = () => {
             fillColor: [240, 240, 240], 
             textColor: [0, 0, 0], 
             fontStyle: 'bold',
-            fontSize: 10,
+            fontSize: 12,
             lineWidth: 0.5,
             cellPadding: 2,
             minCellHeight: 5,
             halign: 'center'
           },
           columnStyles: {
-            0: { cellWidth: 60, halign: 'center' },
-            1: { cellWidth: 60, halign: 'center' },
-            2: { cellWidth: 50, halign: 'center' }
+            0: { cellWidth: 70, halign: 'center' },
+            1: { cellWidth: 55, halign: 'center' },
+            2: { cellWidth: 45, halign: 'center' }
           },
           theme: 'grid',
         });
@@ -2018,7 +2241,7 @@ const FeeDefaultersList: React.FC = () => {
         doc.setLineWidth(0.5);
         doc.rect(20, feeTitleY - 6, 170, 8, 'FD');
         
-        doc.setFontSize(11);
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
         doc.text('Fee Details', 105, feeTitleY, { align: 'center' });
@@ -2054,7 +2277,7 @@ const FeeDefaultersList: React.FC = () => {
             margin: { left: 20, right: 20 },
             tableWidth: 170,
             styles: { 
-              fontSize: 10, 
+              fontSize: 12, 
               cellPadding: 2,
               lineColor: [0, 0, 0],
               lineWidth: 0.3,
@@ -2065,7 +2288,7 @@ const FeeDefaultersList: React.FC = () => {
               fillColor: [240, 240, 240], 
               textColor: [0, 0, 0], 
               fontStyle: 'bold',
-              fontSize: 10,
+              fontSize: 12,
               lineWidth: 0.3,
               cellPadding: 2,
               minCellHeight: 5
@@ -2133,36 +2356,54 @@ const FeeDefaultersList: React.FC = () => {
           messageText = ` محترم والدین، آپ کی ہر کاوش آپ کے بچے کی تعلیم میں سرمایہ کاری ہے اور یہ ان کا مستقبل بناتی ہے۔  فیس کی بروقت ادائیگی آپ کے بچے کی صلاحیتوں کو کھولنے اور ان کے مستقبل کو روشن  بنانے کی طرف ایک قدم ہے۔ بروقت ادائیگی آپ کے بچے کے لیے معیاری تعلیم کو برقرار رکھنے میں مدد کرتی ہے۔ براہ کرم جلد از جلد بقایا جات ادا کریں تاکہ غیر منقطع تعلیم اور مسلسل عمدگی کو یقینی بنایا جا سکے۔ ہم اور آپ مل کر کل کے رہنما بنا رہے ہیں۔ اس سفر میں آپ کی شراکت انمول ہے۔ آپ کی مسلسل حمایت اور اپنے بچے کی کامیابی کے لیے عزم کا شکریہ!`;
           
           try {
-            // Render Urdu text to canvas and get image data
-            // Using larger font size (20) for better readability - almost double the English size (11)
-            const imageData = await renderUrduTextToImage(messageText, 170, 20);
+            // Same page constraints as English: max Y position is 279mm (leaving space for date)
+            const maxMessageY = 279; // Same as English version
+            const availableHeight = maxMessageY - messageY;
             
-            // Calculate image dimensions (maintain aspect ratio)
+            // Try with initial font size first (similar to English's initialFontSize)
+            let fontSize = 20;
+            let imageData = await renderUrduTextToImage(messageText, 190, fontSize);
+            
+            // Calculate image dimensions
             const img = new Image();
             img.src = imageData;
             
             await new Promise((resolve) => {
               img.onload = () => {
                 // Calculate dimensions in mm (canvas is 2x scale, so divide by 2 and convert px to mm)
-                const imgWidthMm = 170; // Use full width
                 const imgHeightMm = (img.height / 2) / 3.779527559; // Convert from pixels to mm
                 
-                // Ensure it fits on page (leave space for date at bottom - about 6mm)
-                const availableHeight = 279 - messageY; // Reduced from 285 to 279 to leave space for date
-                let finalWidth = imgWidthMm;
-                let finalHeight = imgHeightMm;
-                
-                if (finalHeight > availableHeight) {
-                  finalHeight = availableHeight;
-                  finalWidth = (imgWidthMm * availableHeight) / imgHeightMm;
-                }
-                
-                // Center the image
-                const xPos = (210 - finalWidth) / 2; // A4 width is 210mm
+                // If it doesn't fit, reduce font size (similar to English's reducedFontSize logic)
+                if (imgHeightMm > availableHeight) {
+                  // Reduce font size proportionally to fit
+                  fontSize = Math.max(14, Math.floor(fontSize * (availableHeight / imgHeightMm)));
+                  // Re-render with smaller font
+                  renderUrduTextToImage(messageText, 190, fontSize).then((newImageData) => {
+                    const newImg = new Image();
+                    newImg.src = newImageData;
+                    newImg.onload = () => {
+                      const finalHeightMm = (newImg.height / 2) / 3.779527559;
+                      const finalWidthMm = 190;
+                      const xPos = (210 - finalWidthMm) / 2; // A4 width is 210mm
+                      
+                      // Ensure final height doesn't exceed available space (same constraint as English)
+                      const finalHeight = Math.min(finalHeightMm, availableHeight);
+                      
+                      // Add image to PDF
+                      doc.addImage(newImageData, 'PNG', xPos, messageY, finalWidthMm, finalHeight);
+                      resolve(null);
+                    };
+                    newImg.onerror = () => resolve(null);
+                  }).catch(() => resolve(null));
+                } else {
+                  // Fits with initial size - use it directly
+                  const finalWidthMm = 190;
+                  const xPos = (210 - finalWidthMm) / 2; // A4 width is 210mm
                 
                 // Add image to PDF
-                doc.addImage(imageData, 'PNG', xPos, messageY, finalWidth, finalHeight);
+                  doc.addImage(imageData, 'PNG', xPos, messageY, finalWidthMm, imgHeightMm);
                 resolve(null);
+                }
               };
               img.onerror = () => {
                 resolve(null);
@@ -2171,22 +2412,25 @@ const FeeDefaultersList: React.FC = () => {
           } catch (error) {
             // Fallback to English if Urdu rendering fails
             messageText = `Dear Parents, your investment in your child's education today shapes their tomorrow. Every fee payment is a step towards unlocking your child's potential and building a brighter future. We understand the importance of timely payments in maintaining the quality education your child deserves. Please clear the outstanding dues as soon as possible to ensure uninterrupted learning and continued excellence. Together, we are building the leaders of tomorrow. Your partnership in this journey is invaluable. Thank you for your continued support and commitment to your child's success!`;
-            doc.setFontSize(11);
+            doc.setFontSize(12);
             doc.setFont('helvetica', 'normal');
-            const splitText = doc.splitTextToSize(messageText, 170);
-            const lineHeight = 4.5;
+            const splitText = doc.splitTextToSize(messageText, 190);
+            const lineHeight = 5;
             splitText.forEach((line: string, index: number) => {
-              doc.text(line, 105, messageY + (index * lineHeight), { align: 'center' });
+              const lineY = messageY + (index * lineHeight);
+              if (lineY < 279) { // Same constraint as English
+                doc.text(line, 105, lineY, { align: 'center' });
+              }
             });
           }
         } else {
           // English message - render directly with jsPDF
           let messageText = `Dear Parents, your investment in your child's education today shapes their tomorrow. Every fee payment is a step towards unlocking your child's potential and building a brighter future. We understand the importance of timely payments in maintaining the quality education your child deserves. Please clear the outstanding dues as soon as possible to ensure uninterrupted learning and continued excellence. Together, we are building the leaders of tomorrow. Your partnership in this journey is invaluable. Thank you for your continued support and commitment to your child's success!`;
           
-          const initialFontSize = 13;
-          const initialLineHeight = 5; // Slightly increased to match larger font
-          const reducedFontSize = 11;
-          const reducedLineHeight = 4.5;
+          const initialFontSize = 14;
+          const initialLineHeight = 5.5; // Slightly increased to match larger font
+          const reducedFontSize = 12;
+          const reducedLineHeight = 5;
 
           doc.setTextColor(0, 0, 0);
           
@@ -2207,7 +2451,7 @@ const FeeDefaultersList: React.FC = () => {
 
           doc.setFont('helvetica', 'normal'); // Reset to normal font for the rest
           
-          const splitText = doc.splitTextToSize(remainingMessage, 170);
+          const splitText = doc.splitTextToSize(remainingMessage, 190);
           const remainingMessageHeight = splitText.length * initialLineHeight;
           
           // Check if remaining message fits on page, if not, reduce font size
@@ -2218,7 +2462,7 @@ const FeeDefaultersList: React.FC = () => {
               if (lineY < 279) { // Leave space for date at bottom
                 doc.text(line, 105, lineY, { 
                   align: 'center', 
-                  maxWidth: 170 
+                maxWidth: 190 
                 });
               }
             });
@@ -2227,7 +2471,7 @@ const FeeDefaultersList: React.FC = () => {
             splitText.forEach((line: string, index: number) => {
               doc.text(line, 105, currentY + (index * initialLineHeight), { 
                 align: 'center', 
-                maxWidth: 170 
+                maxWidth: 190 
               });
             });
           }
@@ -2241,13 +2485,20 @@ const FeeDefaultersList: React.FC = () => {
         const year = currentDate.getFullYear();
         const dateString = `${day} ${month}, ${year}`;
         
-        doc.setFontSize(8); // Small font size
+        doc.setFontSize(11); // Date font size
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
         doc.text(dateString, 190, 285, { align: 'right' }); // Right-aligned, near right margin
       }
 
       // Save single PDF file
+      setSlipProgress({ 
+        current: defaultersForSlips.length, 
+        total: defaultersForSlips.length, 
+        message: 'Finalizing PDF document...' 
+      });
+      await sleep(100);
+      
       const formatDateForFileName = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -2257,6 +2508,13 @@ const FeeDefaultersList: React.FC = () => {
       };
 
       const fileName = `Fee_Slips_${formatDateForFileName(new Date())}.pdf`;
+      
+      setSlipProgress({ 
+        current: defaultersForSlips.length, 
+        total: defaultersForSlips.length, 
+        message: 'Saving PDF file...' 
+      });
+      await sleep(100);
       
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach
@@ -2305,9 +2563,18 @@ const FeeDefaultersList: React.FC = () => {
         showToast(`Generated ${defaultersForSlips.length} fee slip(s) in single PDF successfully!`, 'success');
       }
     } catch (error) {
+      // Don't show error toast if user cancelled the operation
+      if (error instanceof Error && error.message === 'Operation cancelled by user') {
+        // Already handled in handleCancelGeneration
+      } else {
       showToast('Failed to generate slips: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      }
     } finally {
       setSlipsLoading(false);
+      setShowProgressModal(false);
+      setSlipProgress({ current: 0, total: 0, message: '' });
+      // Clear abort controller
+      abortControllerRef.current = null;
     }
   };
 
@@ -2852,7 +3119,7 @@ const FeeDefaultersList: React.FC = () => {
                     }}
                   >
                     <CenterTd>{idx + 1}</CenterTd>
-                    <CenterTd>{defaulter.id}</CenterTd>
+                    <CenterTd>{getStudentDisplayId(defaulter)}</CenterTd>
                     <LeftTd
                       style={{
                         display: 'flex',
@@ -3104,6 +3371,58 @@ const FeeDefaultersList: React.FC = () => {
         </PanelContent>
       </PanelContainer>
     </PanelOverlay>
+
+      {/* Progress Modal for Slip Generation - Rendered using Portal */}
+      {showProgressModal && ReactDOM.createPortal(
+        <ProgressModalOverlay $isOpen={showProgressModal}>
+          <ProgressModalContainer>
+            <ProgressModalTitle>
+              <ReceiptIcon style={{ fontSize: '2rem', color: '#4a6cf7' }} />
+              Generating Fee Slips
+            </ProgressModalTitle>
+            
+            <SpinnerContainer>
+              <Spinner />
+            </SpinnerContainer>
+            
+            <ProgressText>
+              {slipProgress.current} of {slipProgress.total} slips generated
+            </ProgressText>
+            
+            <ProgressBarContainer>
+              <ProgressBarFill 
+                $progress={slipProgress.total > 0 ? (slipProgress.current / slipProgress.total) * 100 : 0} 
+              />
+            </ProgressBarContainer>
+            
+            <ProgressMessage>
+              {slipProgress.message}
+            </ProgressMessage>
+            
+            <div style={{ 
+              marginTop: '24px', 
+              padding: '16px', 
+              background: (theme as any).BG === '#252525' ? '#2a2a2a' : '#f0f9ff',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: (theme as any).TEXT_SECONDARY,
+              fontSize: '0.9rem'
+            }}>
+              <strong style={{ color: (theme as any).TEXT_PRIMARY }}>Please wait...</strong>
+              <br />
+              Do not close this window or navigate away.
+              <br />
+              This process may take a few minutes for large batches.
+            </div>
+
+            <CancelButton onClick={handleCancelGeneration}>
+              <CloseIcon style={{ fontSize: '1.2rem' }} />
+              Cancel Generation
+            </CancelButton>
+          </ProgressModalContainer>
+        </ProgressModalOverlay>,
+        document.body
+      )}
     </PageContainer>
   );
 };
