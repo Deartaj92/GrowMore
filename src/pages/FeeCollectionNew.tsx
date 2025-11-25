@@ -962,6 +962,7 @@ const FeeCollectionNew: React.FC = () => {
   const getClassName = (classId: number) => classes.find((c: any) => String(c.id) === String(classId))?.name || '-';
   const getSectionName = (sectionId: number) => sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
   const getUserName = (userId: number) => users.find((u: any) => u.id === userId)?.name || 'Unknown User';
+  const getPaymentDisplayId = (paymentId: number) => `S${user.school_id}-${paymentId}`;
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1045,6 +1046,480 @@ const FeeCollectionNew: React.FC = () => {
     return `${day}-${month}-${year}`;
   };
 
+  // Generate fee invoice print preview
+  const generateInvoicePDF = async (paymentData: {
+    paymentId?: number; // Payment ID to fetch items from fee_payment_items
+    paymentItems?: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }>; // Legacy: for backward compatibility
+    amount: number;
+    discount: number;
+    netAmount: number;
+    paymentMethod: string;
+    paymentDate: string;
+    paymentRemarks: string;
+    receivedBy: number;
+    feeInvoicesOverride?: any[]; // Optional override for fee invoices (for past payments)
+  }) => {
+    try {
+      // Fetch school information
+      const [{ data: profileData }, { data: schoolData }] = await Promise.all([
+        supabase.from('institute_profile').select('*').eq('school_id', user.school_id).single(),
+        supabase.from('schools').select('*').eq('id', user.school_id).single(),
+      ]);
+
+      const schoolInfo = {
+        name: profileData?.name || schoolData?.name || 'AL-HARAM PUBLIC SCHOOL & IQRA ACADEMY',
+        address: profileData?.address || schoolData?.address || 'BALU SHARIF DISTT. NOWSHERA',
+        phone: profileData?.phone || schoolData?.contact || '0315 949830',
+        logo_url: profileData?.logo_url || schoolData?.logo_url || null,
+      };
+
+      // Fetch payment items from fee_payment_items using payment_id
+      let allFeeItems: any[] = [];
+      
+      if (paymentData.paymentId) {
+        // Fetch ALL items from fee_payment_items table using payment_id
+        // This includes items with paid_amount = 0 to show what items were available at payment time
+        const { data: paymentItemsData, error: paymentItemsError } = await supabase
+          .from('fee_payment_items')
+          .select(`
+            id,
+            fee_item_id,
+            amount,
+            paid_amount,
+            fee_invoice_items!inner(
+              id,
+              fee_head_id,
+              invoice_id,
+              fee_heads(id, name),
+              fee_invoices(id, month, year)
+            )
+          `)
+          .eq('payment_id', paymentData.paymentId)
+          .eq('school_id', user.school_id)
+          .order('id', { ascending: true }); // Order by id to maintain consistent order
+
+        if (paymentItemsError) throw paymentItemsError;
+
+        if (paymentItemsData) {
+          allFeeItems = paymentItemsData.map((item: any) => {
+            const feeInvoiceItem = item.fee_invoice_items;
+            return {
+              id: item.fee_item_id,
+              amount: Number(item.amount || 0), // Full amount from page/UI (stored in DB)
+              paid_amount: Number(item.paid_amount || 0), // Paid amount
+              fee_head_id: feeInvoiceItem?.fee_head_id,
+              fee_head_name: feeInvoiceItem?.fee_heads?.name || 'Unknown Fee Head',
+              invoice_id: feeInvoiceItem?.invoice_id,
+              month: feeInvoiceItem?.fee_invoices?.month,
+              year: feeInvoiceItem?.fee_invoices?.year
+            };
+          });
+        }
+      } else if (paymentData.paymentItems && paymentData.paymentItems.length > 0) {
+        // Legacy: Fallback to using paymentItems (for backward compatibility)
+        const feeItemIds = paymentData.paymentItems.map(item => item.fee_item_id).filter(Boolean);
+        
+        const fetchPromises = feeItemIds.map(id => 
+          supabase
+            .from('fee_invoice_items')
+            .select('id, amount, fee_head_id, invoice_id, fee_heads(id, name)')
+            .eq('id', id)
+            .eq('school_id', user.school_id)
+            .maybeSingle()
+        );
+        
+        const results = await Promise.all(fetchPromises);
+        const feeInvoiceItems = results
+          .map(r => r.data)
+          .filter(Boolean) as any[];
+        
+        const feeItemsError = results.find(r => r.error)?.error;
+        if (feeItemsError) throw feeItemsError;
+
+        // Fetch invoices separately to get month and year
+        const invoiceIds = Array.from(new Set(feeInvoiceItems.map((item: any) => item.invoice_id).filter(Boolean)));
+        const { data: invoices } = invoiceIds.length > 0 ? await supabase
+          .from('fee_invoices')
+          .select('id, month, year')
+          .in('id', invoiceIds)
+          .eq('school_id', user.school_id) : { data: [] };
+
+        const invoicesMap = new Map();
+        if (invoices) {
+          invoices.forEach((inv: any) => {
+            invoicesMap.set(inv.id, inv);
+          });
+        }
+
+        // Build fee items list from payment items
+        feeInvoiceItems.forEach((item: any) => {
+          const invoice = invoicesMap.get(item.invoice_id);
+          const paymentItem = paymentData.paymentItems?.find(pi => pi.fee_item_id === item.id.toString());
+          allFeeItems.push({
+            id: item.id,
+            amount: Number(paymentItem?.amount || item.amount || 0),
+            fee_head_id: item.fee_head_id,
+            fee_head_name: item.fee_heads?.name || 'Unknown Fee Head',
+            invoice_id: item.invoice_id,
+            month: invoice?.month,
+            year: invoice?.year
+          });
+        });
+      }
+
+      // Calculate total from payment items' full amounts (this is what's shown in the table)
+      const totalRemaining = allFeeItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      // For remaining amount calculation, we still need all fee items to get the overall remaining
+      // Use provided fee invoices or fall back to state
+      const invoicesToUse = paymentData.feeInvoicesOverride || feeInvoices;
+      const allStudentFeeItems: any[] = [];
+      invoicesToUse.forEach((invoice: any) => {
+        invoice.fee_invoice_items?.forEach((item: any) => {
+          allStudentFeeItems.push({
+            amount: Number(item.amount || 0)
+          });
+        });
+      });
+      const totalAllFeeItems = allStudentFeeItems.reduce((sum, item) => sum + item.amount, 0);
+      
+      // Calculate total paid across ALL payments (including previous ones)
+      // Get all payment items for this student to calculate total paid
+      let totalPaidAllPayments = 0;
+      if (selectedStudent && currentSession) {
+        try {
+          const { data: allPaymentsData } = await supabase
+            .from('fee_payments')
+            .select(`
+              id,
+              amount,
+              discount_amount,
+              fee_invoices!inner (
+                student_id,
+                session_id
+              ),
+              fee_payment_items (
+                amount
+              )
+            `)
+            .eq('fee_invoices.student_id', selectedStudent.id)
+            .eq('fee_invoices.session_id', currentSession.id)
+            .eq('school_id', user.school_id);
+          
+          if (allPaymentsData) {
+            // Sum all payment amounts (including discounts)
+            totalPaidAllPayments = allPaymentsData.reduce((sum, payment) => {
+              const paymentAmount = Number(payment.amount || 0);
+              const discountAmount = Number(payment.discount_amount || 0);
+              return sum + paymentAmount + discountAmount; // net amount
+            }, 0);
+          }
+        } catch (err) {
+          // If error, just use current payment amount
+          totalPaidAllPayments = paymentData.netAmount;
+        }
+      } else {
+        // Fallback to just this payment if student/session not available
+        totalPaidAllPayments = paymentData.netAmount;
+      }
+      
+      // Remaining amount = Total All Fee Items - All payments (including this one)
+      const remainingAmount = totalAllFeeItems - totalPaidAllPayments;
+
+      // Format payment date
+      const paymentDateObj = new Date(paymentData.paymentDate);
+      const day = paymentDateObj.getDate().toString().padStart(2, '0');
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const month = months[paymentDateObj.getMonth()];
+      const year = paymentDateObj.getFullYear();
+      const dateString = `${day} ${month}, ${year}`;
+
+      // Build items table rows - show ALL fee items with their full amounts only
+      // Ensure at least 11 rows, add empty rows if needed
+      const minRows = 11;
+      const itemsRows = allFeeItems.map((feeItem, index) => {
+        const monthYear = feeItem.month && feeItem.year
+          ? new Date(feeItem.month + '/01/' + feeItem.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          : '';
+        return `
+          <tr>
+            <td style="text-align: center; padding: 8px; border: 1px solid #000;">${index + 1}</td>
+            <td style="text-align: left; padding: 8px; border: 1px solid #000;">${monthYear ? `${feeItem.fee_head_name} (${monthYear})` : feeItem.fee_head_name}</td>
+            <td style="text-align: center; padding: 8px; border: 1px solid #000;">${formatCurrency(feeItem.amount)}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      // Add empty rows if needed to reach minimum of 11 rows (without numbers)
+      const emptyRows = Math.max(0, minRows - allFeeItems.length);
+      const emptyRowsHtml = Array(emptyRows).fill(0).map(() => {
+        return `
+          <tr>
+            <td style="text-align: center; padding: 8px; border: 1px solid #000;">&nbsp;</td>
+            <td style="text-align: left; padding: 8px; border: 1px solid #000;">&nbsp;</td>
+            <td style="text-align: center; padding: 8px; border: 1px solid #000;">&nbsp;</td>
+          </tr>
+        `;
+      }).join('');
+      
+      const allItemsRows = itemsRows + emptyRowsHtml;
+
+      // Create HTML content
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Fee Invoice</title>
+          <style>
+            @media print {
+              @page {
+                size: A4;
+                margin: 0;
+                /* Remove all margins to minimize header/footer space */
+              }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 210mm;
+                height: 297mm;
+              }
+              body::before,
+              body::after {
+                display: none !important;
+                content: none !important;
+              }
+              /* Hide any potential header/footer elements */
+              @page :first {
+                margin: 0;
+              }
+              @page :left {
+                margin: 0;
+              }
+              @page :right {
+                margin: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #000;
+            }
+            @media print {
+              body {
+                padding: 15mm !important;
+              }
+            }
+            .invoice-container {
+              max-width: 210mm;
+              margin: 0 auto;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 20px;
+            }
+            .school-name {
+              font-size: 26px;
+              font-weight: bold;
+              margin-bottom: 8px;
+            }
+            .contact-info {
+              font-size: 16px;
+              margin-bottom: 8px;
+            }
+            .invoice-title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 16px;
+            }
+            .separator {
+              border-top: 1px solid #000;
+              margin: 16px 0;
+            }
+            .summary-section {
+              width: 300px;
+              margin-left: auto;
+              margin-top: 15px;
+            }
+            table {
+              border-collapse: collapse;
+              margin-bottom: 15px;
+            }
+            table th {
+              font-weight: bold;
+              text-align: center;
+              padding: 8px;
+              border: 1px solid #000;
+            }
+            table td {
+              padding: 8px;
+              border: 1px solid #000;
+            }
+            .student-table {
+              width: 100%;
+            }
+            .student-table th:nth-child(1),
+            .student-table td:nth-child(1),
+            .student-table th:nth-child(2),
+            .student-table td:nth-child(2) {
+              width: 40%;
+            }
+            .student-table th:nth-child(3),
+            .student-table td:nth-child(3) {
+              width: 20%;
+            }
+            .fee-items-table {
+              width: 100%;
+              table-layout: fixed;
+            }
+            .fee-items-table th:nth-child(1),
+            .fee-items-table td:nth-child(1) {
+              width: 10%;
+            }
+            .fee-items-table th:nth-child(2),
+            .fee-items-table td:nth-child(2) {
+              width: auto;
+            }
+            .fee-items-table th:nth-child(3),
+            .fee-items-table td:nth-child(3) {
+              width: 120px;
+              min-width: 120px;
+              max-width: 120px;
+            }
+            .summary-table {
+              width: 300px;
+              table-layout: fixed;
+            }
+            .summary-table td:first-child {
+              font-weight: bold;
+              text-align: left;
+            }
+            .summary-table td:last-child {
+              text-align: right;
+              width: 120px;
+              min-width: 120px;
+              max-width: 120px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-container">
+            <div class="header">
+              <div class="school-name">${schoolInfo.name}</div>
+              <div class="contact-info">${schoolInfo.address || ''}</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-top: 8px; margin-bottom: 8px;">
+                <div>Invoice# ${paymentData.paymentId ? getPaymentDisplayId(paymentData.paymentId) : 'N/A'}</div>
+                <div>Date: ${dateString}</div>
+              </div>
+            </div>
+            
+            <div class="separator"></div>
+            
+            <div style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 16px;">Fee Invoice</div>
+            
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Father</th>
+                  <th>Class</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="text-align: center;">${getStudentDisplayId(selectedStudent)} - ${selectedStudent.name}</td>
+                  <td style="text-align: center;">${selectedStudent.father_name || '-'}</td>
+                  <td style="text-align: center;">${getClassName(selectedStudent.class_id)}${getSectionName(selectedStudent.section_id) ? ` (${getSectionName(selectedStudent.section_id)})` : ''}</td>
+                </tr>
+              </tbody>
+            </table>
+            
+            <table class="fee-items-table">
+              <thead>
+                <tr>
+                  <th>Sno</th>
+                  <th>Particulars</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${allItemsRows}
+              </tbody>
+            </table>
+            
+            <div class="summary-section">
+              <table class="summary-table">
+                <tbody>
+                  <tr>
+                    <td>Total</td>
+                    <td>${formatCurrency(totalRemaining)}</td>
+                  </tr>
+                  <tr>
+                    <td>Paid</td>
+                    <td>${formatCurrency(paymentData.amount)}</td>
+                  </tr>
+                  <tr>
+                    <td>Discount</td>
+                    <td>${formatCurrency(paymentData.discount)}</td>
+                  </tr>
+                  <tr>
+                    <td>Remain</td>
+                    <td>${formatCurrency(remainingAmount)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Open print preview
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Wait for content to load, then trigger print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        };
+        
+        showToast('Print preview opened!', 'success');
+      } else {
+        showToast('Failed to open print preview. Please allow popups.', 'error');
+      }
+    } catch (error: any) {
+      showToast('Failed to generate invoice: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
+  // Generate invoice for a payment from history
+  const generateInvoiceForPayment = async (payment: any) => {
+    try {
+      // Generate invoice using payment_id - it will fetch from fee_payment_items
+      await generateInvoicePDF({
+        paymentId: payment.id, // Use payment_id to fetch from fee_payment_items
+        amount: Number(payment.amount || 0),
+        discount: Number(payment.discount_amount || 0),
+        netAmount: Number(payment.net_amount || payment.amount || 0),
+        paymentMethod: payment.payment_mode || 'Cash',
+        paymentDate: payment.payment_date || payment.created_at,
+        paymentRemarks: payment.remarks || '',
+        receivedBy: payment.received_by || user.id
+      });
+    } catch (error: any) {
+      showToast('Failed to generate invoice: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
   // Fetch fee invoices when student is selected
   useEffect(() => {
     if (!selectedStudent || !currentSession) {
@@ -1121,7 +1596,8 @@ const FeeCollectionNew: React.FC = () => {
             fee_payment_items (
               id,
               fee_item_id,
-              amount
+              amount,
+              paid_amount
             )
           `)
           .eq('fee_invoices.student_id', selectedStudent.id)
@@ -1162,7 +1638,12 @@ const FeeCollectionNew: React.FC = () => {
             const itemPayment = payment.fee_payment_items.find(
               (paymentItem: any) => paymentItem.fee_item_id === item.id
             );
-            return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
+            // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
+            if (itemPayment) {
+              const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+              return sum + Number(paidAmt);
+            }
+            return sum;
           }
           return sum;
         }, 0);
@@ -1269,25 +1750,60 @@ const FeeCollectionNew: React.FC = () => {
 
     setIsCollecting(true);
     try {
-      // Get all fee items with their distributed amounts
+      // Get ONLY the items that are shown in the fee summary section (unpaid items)
+      // Store: amount (remaining amount from fee summary table), paid_amount (distributed amount)
       const paymentItems: any[] = [];
+      const invoicePaymentItems: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }> = [];
       
       feeInvoices.forEach((invoice: any, invoiceIndex: number) => {
         invoice.fee_invoice_items?.forEach((item: any, itemIndex: number) => {
-          const key = `${invoice.id}-${item.id}`;
-          const distributedAmount = distributedAmounts[key] || 0;
+          const itemAmount = Number(item.amount || 0);
           
-          if (distributedAmount > 0) {
+          // Calculate already paid amount for this specific fee item (same logic as fee summary)
+          const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
+            if (payment.fee_payment_items) {
+              const itemPayment = payment.fee_payment_items.find(
+                (paymentItem: any) => paymentItem.fee_item_id === item.id
+              );
+              // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
+              if (itemPayment) {
+                const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                return sum + Number(paidAmt);
+              }
+              return sum;
+            }
+            return sum;
+          }, 0);
+          
+          const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+          
+          // Only record items that are shown in fee summary (items with remaining amount > 0)
+          if (remainingItemAmount > 0) {
+            const key = `${invoice.id}-${item.id}`;
+            const distributedAmount = distributedAmounts[key] || 0;
+            
+            // Store the remaining amount (what's shown in fee summary) and paid amount
             paymentItems.push({
               fee_item_id: item.id,
-              amount: distributedAmount
+              amount: remainingItemAmount, // Remaining amount from fee summary table (not full amount)
+              paid_amount: distributedAmount // Paid amount for this payment
+            });
+            
+            // Build invoice items with fee head info
+            const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
+            const monthYear = new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            invoicePaymentItems.push({
+              fee_item_id: item.id,
+              amount: remainingItemAmount, // Remaining amount for invoice display
+              fee_head_name: feeHeadName,
+              monthYear: monthYear
             });
           }
         });
       });
 
       if (paymentItems.length === 0) {
-        showToast("No valid payment distribution found.", 'error');
+        showToast("No fee items found.", 'error');
         return;
       }
 
@@ -1319,11 +1835,12 @@ const FeeCollectionNew: React.FC = () => {
       if (newPayment && newPayment.length > 0) {
         const paymentId = newPayment[0].id;
 
-        // Create payment items for each distributed amount
+        // Create payment items for ALL items (including those with paid_amount = 0)
         const paymentItemsWithPaymentId = paymentItems.map(item => ({
           payment_id: paymentId,
           fee_item_id: item.fee_item_id,
-          amount: item.amount,
+          amount: item.amount, // Full amount from page/UI
+          paid_amount: item.paid_amount, // Paid amount (0 if not paid)
           school_id: user.school_id
         }));
 
@@ -1379,7 +1896,8 @@ const FeeCollectionNew: React.FC = () => {
                 fee_payment_items (
                   id,
                   fee_item_id,
-                  amount
+                  amount,
+                  paid_amount
                 )
               `)
               .eq('fee_invoices.student_id', selectedStudent.id)
@@ -1391,14 +1909,31 @@ const FeeCollectionNew: React.FC = () => {
             // Update both states
             if (invoicesData) setFeeInvoices(invoicesData);
             if (paymentData) setPaymentHistory(paymentData);
+            
+            return invoicesData; // Return fresh invoices data
           } catch (err) {
             showToast("Payment collected but failed to refresh data. Please refresh the page.", 'error');
+            return null;
           }
         };
         
-        await refreshAllData();
+        const freshInvoicesData = await refreshAllData();
         
         showToast("Payment collected successfully!", 'success');
+        
+        // Generate invoice PDF using payment_id
+        await generateInvoicePDF({
+          paymentId: paymentId, // Use payment_id to fetch from fee_payment_items
+          amount: amount,
+          discount: discount,
+          netAmount: netAmount,
+          paymentMethod: paymentMethod,
+          paymentDate: paymentDate,
+          paymentRemarks: paymentRemarks,
+          receivedBy: user.id,
+          feeInvoicesOverride: freshInvoicesData || undefined // Pass fresh data
+        });
+        
         setPaymentAmount('');
         setPaymentRemarks('');
         setDiscountAmount('');
@@ -1463,7 +1998,8 @@ const FeeCollectionNew: React.FC = () => {
               fee_payment_items (
                 id,
                 fee_item_id,
-                amount
+                amount,
+                paid_amount
               )
             `)
             .eq('fee_invoices.student_id', selectedStudent.id)
@@ -1722,7 +2258,12 @@ const FeeCollectionNew: React.FC = () => {
                                     const itemPayment = payment.fee_payment_items.find(
                                       (paymentItem: any) => paymentItem.fee_item_id === item.id
                                     );
-                                    return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
+                                    // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
+                                    if (itemPayment) {
+                                      const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                                      return sum + Number(paidAmt);
+                                    }
+                                    return sum;
                                   }
                                   return sum;
                                 }, 0);
@@ -2034,6 +2575,7 @@ const FeeCollectionNew: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHeaderCell>Payment ID</TableHeaderCell>
                         <TableHeaderCell>Date</TableHeaderCell>
                         <TableHeaderCell>Amount</TableHeaderCell>
                         <TableHeaderCell>Discount</TableHeaderCell>
@@ -2053,6 +2595,7 @@ const FeeCollectionNew: React.FC = () => {
                         })
                         .map((payment: any, idx: number) => (
                         <TableRow key={payment.id || idx}>
+                          <TableCell style={{ fontWeight: '600' }}>{getPaymentDisplayId(payment.id)}</TableCell>
                           <TableCell>{formatDate(payment.payment_date)}</TableCell>
                           <TableCell>Rs. {formatCurrency(Number(payment.amount || 0))}</TableCell>
                           <TableCell>
@@ -2073,20 +2616,33 @@ const FeeCollectionNew: React.FC = () => {
                           </TableCell>
                           <TableCell>{payment.remarks || '-'}</TableCell>
                           <TableCell>
-                            <Button
-                              onClick={() => showDeleteConfirmation(payment.id)}
-                              disabled={deletingPayment === payment.id}
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              sx={{ minWidth: 'auto', padding: '4px 8px' }}
-                            >
-                              {deletingPayment === payment.id ? (
-                                <CircularProgress size={16} />
-                              ) : (
-                                <DeleteIconMUI fontSize="small" />
-                              )}
-                            </Button>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              <Button
+                                onClick={() => generateInvoiceForPayment(payment)}
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                                title="Generate Invoice"
+                              >
+                                <Receipt fontSize="small" />
+                              </Button>
+                              <Button
+                                onClick={() => showDeleteConfirmation(payment.id)}
+                                disabled={deletingPayment === payment.id}
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                                title="Delete Payment"
+                              >
+                                {deletingPayment === payment.id ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <DeleteIconMUI fontSize="small" />
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
