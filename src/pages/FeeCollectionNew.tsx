@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
-import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Info, School, Class, Receipt, Add as AddIcon, Edit as EditIcon, Delete as DeleteIconMUI, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, School as SchoolIcon, Close as CloseIcon, MoreVert as MoreIcon, Check as CheckIcon, Warning as WarningIcon, Info as InfoIcon, RemoveCircleOutline as UnlinkIcon, Assessment as AssessmentIcon, CalendarToday as CalendarIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
+import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Info, School, Class, Receipt, Add as AddIcon, Edit as EditIcon, Delete as DeleteIconMUI, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, School as SchoolIcon, Close as CloseIcon, MoreVert as MoreIcon, Check as CheckIcon, Warning as WarningIcon, Info as InfoIcon, RemoveCircleOutline as UnlinkIcon, Assessment as AssessmentIcon, CalendarToday as CalendarIcon, KeyboardArrowUp as KeyboardArrowUpIcon, Print as PrintIcon } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useLocation } from 'react-router-dom';
@@ -1520,6 +1520,338 @@ const FeeCollectionNew: React.FC = () => {
     }
   };
 
+  // Generate thermal printer receipt
+  const generateThermalReceipt = async (paymentData: {
+    paymentId?: number;
+    paymentItems?: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }>;
+    amount: number;
+    discount: number;
+    netAmount: number;
+    paymentMethod: string;
+    paymentDate: string;
+    paymentRemarks: string;
+    receivedBy: number;
+    feeInvoicesOverride?: any[];
+  }) => {
+    try {
+      if (!selectedStudent) {
+        showToast('No student selected', 'error');
+        return;
+      }
+
+      // Fetch school info
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('schools')
+        .select('name, address, phone, email')
+        .eq('id', user.school_id)
+        .single();
+
+      if (schoolError || !schoolData) {
+        showToast('Failed to fetch school information', 'error');
+        return;
+      }
+
+      const schoolInfo = schoolData;
+
+      // Fetch payment items if paymentId is provided
+      let paymentItems: any[] = [];
+      if (paymentData.paymentId) {
+        const { data: paymentItemsData, error: paymentItemsError } = await supabase
+          .from('fee_payment_items')
+          .select(`
+            id,
+            fee_item_id,
+            amount,
+            paid_amount,
+            fee_invoice_items (
+              id,
+              fee_head_id,
+              fee_heads (name),
+              month_year
+            )
+          `)
+          .eq('payment_id', paymentData.paymentId)
+          .eq('school_id', user.school_id)
+          .order('id', { ascending: true });
+
+        if (paymentItemsError) {
+          console.error('Error fetching payment items:', paymentItemsError);
+        } else if (paymentItemsData) {
+          paymentItems = paymentItemsData.map((item: any) => ({
+            fee_item_id: item.fee_item_id,
+            amount: Number(item.amount || 0),
+            paid_amount: Number(item.paid_amount || 0),
+            fee_head_name: item.fee_invoice_items?.fee_heads?.name || 'Unknown',
+            monthYear: item.fee_invoice_items?.month_year || ''
+          }));
+        }
+      } else if (paymentData.paymentItems) {
+        paymentItems = paymentData.paymentItems;
+      }
+
+      // Format payment date
+      const paymentDateObj = new Date(paymentData.paymentDate);
+      const day = paymentDateObj.getDate().toString().padStart(2, '0');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[paymentDateObj.getMonth()];
+      const year = paymentDateObj.getFullYear();
+      const time = paymentDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const dateString = `${day} ${month} ${year} ${time}`;
+
+      // Build receipt content
+      const receiptContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Fee Receipt</title>
+          <style>
+            @media print {
+              @page {
+                size: 80mm auto;
+                margin: 0;
+              }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 80mm;
+              }
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              margin: 0;
+              padding: 10px 5px;
+              width: 80mm;
+              color: #000;
+            }
+            .receipt-container {
+              width: 100%;
+              max-width: 80mm;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 8px;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 8px;
+            }
+            .school-name {
+              font-size: 14px;
+              font-weight: bold;
+              margin-bottom: 4px;
+              text-transform: uppercase;
+            }
+            .address {
+              font-size: 10px;
+              margin-bottom: 4px;
+            }
+            .receipt-title {
+              font-size: 13px;
+              font-weight: bold;
+              margin-top: 8px;
+              text-align: center;
+              text-transform: uppercase;
+            }
+            .info-line {
+              display: flex;
+              justify-content: space-between;
+              margin: 4px 0;
+              font-size: 11px;
+            }
+            .info-label {
+              font-weight: bold;
+            }
+            .separator {
+              border-top: 1px dashed #000;
+              margin: 8px 0;
+            }
+            .items-section {
+              margin: 8px 0;
+            }
+            .item-row {
+              display: flex;
+              justify-content: space-between;
+              margin: 3px 0;
+              font-size: 11px;
+            }
+            .item-name {
+              flex: 1;
+              margin-right: 5px;
+            }
+            .item-amount {
+              text-align: right;
+              min-width: 60px;
+            }
+            .summary-section {
+              margin-top: 8px;
+              border-top: 1px dashed #000;
+              padding-top: 8px;
+            }
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              margin: 4px 0;
+              font-size: 11px;
+            }
+            .summary-label {
+              font-weight: bold;
+            }
+            .summary-total {
+              font-weight: bold;
+              font-size: 12px;
+              border-top: 1px solid #000;
+              padding-top: 4px;
+              margin-top: 4px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 12px;
+              padding-top: 8px;
+              border-top: 1px dashed #000;
+              font-size: 10px;
+            }
+            .thank-you {
+              text-align: center;
+              margin-top: 8px;
+              font-weight: bold;
+              font-size: 11px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-container">
+            <div class="header">
+              <div class="school-name">${schoolInfo.name}</div>
+              <div class="address">${schoolInfo.address || ''}</div>
+            </div>
+            
+            <div class="receipt-title">Fee Payment Receipt</div>
+            
+            <div class="separator"></div>
+            
+            <div class="info-line">
+              <span class="info-label">Receipt#:</span>
+              <span>${paymentData.paymentId ? getPaymentDisplayId(paymentData.paymentId) : 'N/A'}</span>
+            </div>
+            <div class="info-line">
+              <span class="info-label">Date:</span>
+              <span>${dateString}</span>
+            </div>
+            <div class="info-line">
+              <span class="info-label">Student:</span>
+              <span>${getStudentDisplayId(selectedStudent)} - ${selectedStudent.name}</span>
+            </div>
+            <div class="info-line">
+              <span class="info-label">Class:</span>
+              <span>${getClassName(selectedStudent.class_id)}${getSectionName(selectedStudent.section_id) ? ` (${getSectionName(selectedStudent.section_id)})` : ''}</span>
+            </div>
+            
+            <div class="separator"></div>
+            
+            <div class="items-section">
+              ${paymentItems.length > 0 ? paymentItems.map((item: any) => {
+                const itemName = item.monthYear ? `${item.fee_head_name} (${item.monthYear})` : item.fee_head_name;
+                const displayAmount = item.paid_amount > 0 ? item.paid_amount : item.amount;
+                return `
+                  <div class="item-row">
+                    <span class="item-name">${itemName}</span>
+                    <span class="item-amount">${formatCurrency(displayAmount)}</span>
+                  </div>
+                `;
+              }).join('') : '<div class="item-row"><span>No items</span></div>'}
+            </div>
+            
+            <div class="summary-section">
+              <div class="summary-row">
+                <span class="summary-label">Total:</span>
+                <span>${formatCurrency(paymentItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0))}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Paid:</span>
+                <span>${formatCurrency(paymentData.amount)}</span>
+              </div>
+              ${Number(paymentData.discount) > 0 ? `
+                <div class="summary-row">
+                  <span class="summary-label">Discount:</span>
+                  <span>${formatCurrency(paymentData.discount)}</span>
+                </div>
+              ` : ''}
+              <div class="summary-row summary-total">
+                <span>Remaining:</span>
+                <span>${formatCurrency(paymentItems.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0) - paymentData.amount - paymentData.discount)}</span>
+              </div>
+            </div>
+            
+            <div class="separator"></div>
+            
+            <div class="info-line">
+              <span class="info-label">Payment Mode:</span>
+              <span>${paymentData.paymentMethod}</span>
+            </div>
+            <div class="info-line">
+              <span class="info-label">Received By:</span>
+              <span>${getUserName(paymentData.receivedBy)}</span>
+            </div>
+            ${paymentData.paymentRemarks ? `
+              <div class="info-line">
+                <span class="info-label">Remarks:</span>
+                <span>${paymentData.paymentRemarks}</span>
+              </div>
+            ` : ''}
+            
+            <div class="footer">
+              <div class="thank-you">Thank You!</div>
+              <div style="margin-top: 4px;">This is a computer generated receipt</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Open print preview for thermal receipt
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(receiptContent);
+        printWindow.document.close();
+        
+        // Wait for content to load, then trigger print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        };
+        
+        showToast('Thermal receipt opened!', 'success');
+      } else {
+        showToast('Failed to open print preview. Please allow popups.', 'error');
+      }
+    } catch (error: any) {
+      showToast('Failed to generate thermal receipt: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
+  // Generate thermal receipt for a payment from history
+  const generateThermalReceiptForPayment = async (payment: any) => {
+    try {
+      await generateThermalReceipt({
+        paymentId: payment.id,
+        amount: Number(payment.amount || 0),
+        discount: Number(payment.discount_amount || 0),
+        netAmount: Number(payment.net_amount || payment.amount || 0),
+        paymentMethod: payment.payment_mode || 'Cash',
+        paymentDate: payment.payment_date || payment.created_at,
+        paymentRemarks: payment.remarks || '',
+        receivedBy: payment.received_by || user.id
+      });
+    } catch (error: any) {
+      showToast('Failed to generate thermal receipt: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
   // Fetch fee invoices when student is selected
   useEffect(() => {
     if (!selectedStudent || !currentSession) {
@@ -1933,6 +2265,24 @@ const FeeCollectionNew: React.FC = () => {
           receivedBy: user.id,
           feeInvoicesOverride: freshInvoicesData || undefined // Pass fresh data
         });
+        
+        // Also generate thermal receipt (optional - user can also generate from history)
+        try {
+          await generateThermalReceipt({
+            paymentId: paymentId,
+            amount: amount,
+            discount: discount,
+            netAmount: netAmount,
+            paymentMethod: paymentMethod,
+            paymentDate: paymentDate,
+            paymentRemarks: paymentRemarks,
+            receivedBy: user.id,
+            feeInvoicesOverride: freshInvoicesData || undefined
+          });
+        } catch (thermalError) {
+          // Silently fail - thermal receipt can be generated from history if needed
+          console.log('Thermal receipt generation skipped:', thermalError);
+        }
         
         setPaymentAmount('');
         setPaymentRemarks('');
@@ -2626,6 +2976,16 @@ const FeeCollectionNew: React.FC = () => {
                                 title="Generate Invoice"
                               >
                                 <Receipt fontSize="small" />
+                              </Button>
+                              <Button
+                                onClick={() => generateThermalReceiptForPayment(payment)}
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                                title="Generate Thermal Receipt"
+                              >
+                                <PrintIcon fontSize="small" />
                               </Button>
                               <Button
                                 onClick={() => showDeleteConfirmation(payment.id)}
