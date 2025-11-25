@@ -963,6 +963,13 @@ const FeeCollectionNew: React.FC = () => {
   const getSectionName = (sectionId: number) => sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
   const getUserName = (userId: number) => users.find((u: any) => u.id === userId)?.name || 'Unknown User';
   const getPaymentDisplayId = (paymentId: number) => `S${user.school_id}-${paymentId}`;
+  
+  // Get default print type from settings
+  const getDefaultPrintType = (): 'invoice' | 'thermal' => {
+    if (!user?.school_id) return 'invoice';
+    const savedSetting = localStorage.getItem(`fee_print_default_${user.school_id}`);
+    return (savedSetting === 'invoice' || savedSetting === 'thermal') ? savedSetting : 'invoice';
+  };
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1341,10 +1348,17 @@ const FeeCollectionNew: React.FC = () => {
               border-top: 1px solid #000;
               margin: 16px 0;
             }
+            .payment-details-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-top: 15px;
+            }
+            .received-by-section {
+              font-size: 12px;
+            }
             .summary-section {
               width: 300px;
-              margin-left: auto;
-              margin-top: 15px;
             }
             table {
               border-collapse: collapse;
@@ -1452,27 +1466,37 @@ const FeeCollectionNew: React.FC = () => {
               </tbody>
             </table>
             
-            <div class="summary-section">
-              <table class="summary-table">
-                <tbody>
-                  <tr>
-                    <td>Total</td>
-                    <td>${formatCurrency(totalRemaining)}</td>
-                  </tr>
-                  <tr>
-                    <td>Paid</td>
-                    <td>${formatCurrency(paymentData.amount)}</td>
-                  </tr>
-                  <tr>
-                    <td>Discount</td>
-                    <td>${formatCurrency(paymentData.discount)}</td>
-                  </tr>
-                  <tr>
-                    <td>Remain</td>
-                    <td>${formatCurrency(remainingAmount)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="payment-details-container">
+              <div class="received-by-section">
+                <div style="margin-bottom: 4px;">
+                  <strong>Payment Mode:</strong> ${paymentData.paymentMethod}
+                </div>
+                <div>
+                  <strong>Received By:</strong> ${paymentData.receivedBy} - ${getUserName(paymentData.receivedBy)}
+                </div>
+              </div>
+              <div class="summary-section">
+                <table class="summary-table">
+                  <tbody>
+                    <tr>
+                      <td>Total</td>
+                      <td>${formatCurrency(totalRemaining)}</td>
+                    </tr>
+                    <tr>
+                      <td>Paid</td>
+                      <td>${formatCurrency(paymentData.amount)}</td>
+                    </tr>
+                    <tr>
+                      <td>Discount</td>
+                      <td>${formatCurrency(paymentData.discount)}</td>
+                    </tr>
+                    <tr>
+                      <td>Remain</td>
+                      <td>${formatCurrency(remainingAmount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </body>
@@ -1539,21 +1563,19 @@ const FeeCollectionNew: React.FC = () => {
         return;
       }
 
-      // Fetch school info
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('schools')
-        .select('name, address, phone, email')
-        .eq('id', user.school_id)
-        .single();
+      // Fetch school info (same approach as invoice)
+      const [{ data: profileData }, { data: schoolData }] = await Promise.all([
+        supabase.from('institute_profile').select('*').eq('school_id', user.school_id).single(),
+        supabase.from('schools').select('*').eq('id', user.school_id).single(),
+      ]);
 
-      if (schoolError || !schoolData) {
-        showToast('Failed to fetch school information', 'error');
-        return;
-      }
+      const schoolInfo = {
+        name: profileData?.name || schoolData?.name || 'School Name',
+        address: profileData?.address || schoolData?.address || '',
+        phone: profileData?.phone || schoolData?.contact || '',
+      };
 
-      const schoolInfo = schoolData;
-
-      // Fetch payment items if paymentId is provided
+      // Fetch payment items if paymentId is provided (same approach as invoice)
       let paymentItems: any[] = [];
       if (paymentData.paymentId) {
         const { data: paymentItemsData, error: paymentItemsError } = await supabase
@@ -1563,11 +1585,12 @@ const FeeCollectionNew: React.FC = () => {
             fee_item_id,
             amount,
             paid_amount,
-            fee_invoice_items (
+            fee_invoice_items!inner(
               id,
               fee_head_id,
-              fee_heads (name),
-              month_year
+              invoice_id,
+              fee_heads(id, name),
+              fee_invoices(id, month, year)
             )
           `)
           .eq('payment_id', paymentData.paymentId)
@@ -1576,14 +1599,21 @@ const FeeCollectionNew: React.FC = () => {
 
         if (paymentItemsError) {
           console.error('Error fetching payment items:', paymentItemsError);
+          throw paymentItemsError;
         } else if (paymentItemsData) {
-          paymentItems = paymentItemsData.map((item: any) => ({
-            fee_item_id: item.fee_item_id,
-            amount: Number(item.amount || 0),
-            paid_amount: Number(item.paid_amount || 0),
-            fee_head_name: item.fee_invoice_items?.fee_heads?.name || 'Unknown',
-            monthYear: item.fee_invoice_items?.month_year || ''
-          }));
+          paymentItems = paymentItemsData.map((item: any) => {
+            const feeInvoiceItem = item.fee_invoice_items;
+            const monthYear = feeInvoiceItem?.fee_invoices?.month && feeInvoiceItem?.fee_invoices?.year
+              ? new Date(feeInvoiceItem.fee_invoices.month + '/01/' + feeInvoiceItem.fee_invoices.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+              : '';
+            return {
+              fee_item_id: item.fee_item_id,
+              amount: Number(item.amount || 0),
+              paid_amount: Number(item.paid_amount || 0),
+              fee_head_name: feeInvoiceItem?.fee_heads?.name || 'Unknown',
+              monthYear: monthYear
+            };
+          });
         }
       } else if (paymentData.paymentItems) {
         paymentItems = paymentData.paymentItems;
@@ -1755,11 +1785,11 @@ const FeeCollectionNew: React.FC = () => {
             <div class="items-section">
               ${paymentItems.length > 0 ? paymentItems.map((item: any) => {
                 const itemName = item.monthYear ? `${item.fee_head_name} (${item.monthYear})` : item.fee_head_name;
-                const displayAmount = item.paid_amount > 0 ? item.paid_amount : item.amount;
+                // Show full amount like invoice (not paid_amount)
                 return `
                   <div class="item-row">
                     <span class="item-name">${itemName}</span>
-                    <span class="item-amount">${formatCurrency(displayAmount)}</span>
+                    <span class="item-amount">${formatCurrency(item.amount)}</span>
                   </div>
                 `;
               }).join('') : '<div class="item-row"><span>No items</span></div>'}
@@ -1794,7 +1824,7 @@ const FeeCollectionNew: React.FC = () => {
             </div>
             <div class="info-line">
               <span class="info-label">Received By:</span>
-              <span>${getUserName(paymentData.receivedBy)}</span>
+              <span>${paymentData.receivedBy} - ${getUserName(paymentData.receivedBy)}</span>
             </div>
             ${paymentData.paymentRemarks ? `
               <div class="info-line">
@@ -2253,9 +2283,10 @@ const FeeCollectionNew: React.FC = () => {
         
         showToast("Payment collected successfully!", 'success');
         
-        // Generate invoice PDF using payment_id
-        await generateInvoicePDF({
-          paymentId: paymentId, // Use payment_id to fetch from fee_payment_items
+        // Generate default print type based on settings
+        const defaultPrintType = getDefaultPrintType();
+        const paymentData = {
+          paymentId: paymentId,
           amount: amount,
           discount: discount,
           netAmount: netAmount,
@@ -2263,25 +2294,21 @@ const FeeCollectionNew: React.FC = () => {
           paymentDate: paymentDate,
           paymentRemarks: paymentRemarks,
           receivedBy: user.id,
-          feeInvoicesOverride: freshInvoicesData || undefined // Pass fresh data
-        });
+          feeInvoicesOverride: freshInvoicesData || undefined
+        };
         
-        // Also generate thermal receipt (optional - user can also generate from history)
-        try {
-          await generateThermalReceipt({
-            paymentId: paymentId,
-            amount: amount,
-            discount: discount,
-            netAmount: netAmount,
-            paymentMethod: paymentMethod,
-            paymentDate: paymentDate,
-            paymentRemarks: paymentRemarks,
-            receivedBy: user.id,
-            feeInvoicesOverride: freshInvoicesData || undefined
-          });
-        } catch (thermalError) {
-          // Silently fail - thermal receipt can be generated from history if needed
-          console.log('Thermal receipt generation skipped:', thermalError);
+        if (defaultPrintType === 'invoice') {
+          // Generate invoice as default
+          await generateInvoicePDF(paymentData);
+        } else {
+          // Generate thermal receipt as default
+          try {
+            await generateThermalReceipt(paymentData);
+          } catch (thermalError) {
+            // Fallback to invoice if thermal receipt fails
+            console.log('Thermal receipt generation failed, falling back to invoice:', thermalError);
+            await generateInvoicePDF(paymentData);
+          }
         }
         
         setPaymentAmount('');
@@ -2939,9 +2966,12 @@ const FeeCollectionNew: React.FC = () => {
                     <tbody>
                       {[...paymentHistory]
                         .sort((a: any, b: any) => {
-                          const aTime = new Date(a.payment_date || a.created_at || 0).getTime();
-                          const bTime = new Date(b.payment_date || b.created_at || 0).getTime();
-                          return bTime - aTime; // most recent first (safeguard)
+                          // Use payment_date first, then created_at as fallback
+                          const aDate = a.payment_date || a.created_at;
+                          const bDate = b.payment_date || b.created_at;
+                          const aTime = aDate ? new Date(aDate).getTime() : 0;
+                          const bTime = bDate ? new Date(bDate).getTime() : 0;
+                          return bTime - aTime; // most recent first (descending order)
                         })
                         .map((payment: any, idx: number) => (
                         <TableRow key={payment.id || idx}>
@@ -2962,7 +2992,7 @@ const FeeCollectionNew: React.FC = () => {
                           </TableCell>
                           <TableCell>{payment.payment_mode}</TableCell>
                           <TableCell>
-                            {payment.received_by ? `${getUserName(payment.received_by)} (ID: ${payment.received_by})` : '-'}
+                            {payment.received_by ? `${payment.received_by} - ${getUserName(payment.received_by)}` : '-'}
                           </TableCell>
                           <TableCell>{payment.remarks || '-'}</TableCell>
                           <TableCell>
@@ -2981,7 +3011,7 @@ const FeeCollectionNew: React.FC = () => {
                                 onClick={() => generateThermalReceiptForPayment(payment)}
                                 size="small"
                                 variant="outlined"
-                                color="secondary"
+                                color="info"
                                 sx={{ minWidth: 'auto', padding: '4px 8px' }}
                                 title="Generate Thermal Receipt"
                               >

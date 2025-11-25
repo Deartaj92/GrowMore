@@ -756,6 +756,14 @@ const allPages = [
     category: 'Fees',
     keywords: ['fee analytics', 'fee reports', 'fee statistics', 'fee insights']
   },
+  {
+    text: 'Fee Settings',
+    icon: <AttachMoneyIcon />,
+    path: '/fee-settings',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+    category: 'Fees',
+    keywords: ['fee settings', 'fee configuration', 'print settings', 'fee preferences']
+  },
 
   // Examination Pages
   {

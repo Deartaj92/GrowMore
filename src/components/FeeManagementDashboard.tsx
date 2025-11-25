@@ -12,6 +12,7 @@ import {
   History as HistoryIcon,
   Assessment as AssessmentIcon,
   Loyalty as LoyaltyIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -375,6 +376,13 @@ const feeManagementItems = [
     icon: <LoyaltyIcon />,
     path: '/concessions',
     color: '#ec4899' // Pink
+  },
+  {
+    title: 'Settings',
+    description: 'Configure fee collection settings, set default print preferences, and customize fee management options',
+    icon: <SettingsIcon />,
+    path: '/fee-settings',
+    color: '#6366f1' // Indigo
   }
 ];
 
@@ -403,6 +411,7 @@ const FeeManagementDashboard: React.FC = () => {
       case 'Fee Audit Logs': return 'fee_dash_audit_logs';
       case 'Fee Analytics': return 'fee_dash_analytics';
       case 'Fee Concessions': return 'fee_dash_concessions';
+      case 'Settings': return 'fee_dash_settings';
       default: return null;
     }
   };

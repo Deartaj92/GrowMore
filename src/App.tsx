@@ -60,6 +60,7 @@ import FeeDefaultersList from './pages/FeeDefaultersList';
 import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
 import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
 import ConcessionsPage from './pages/ConcessionsPage';
+import FeeSettings from './pages/FeeSettings';
 // Enquiry Management Components
 import EnquiryManagementDashboardPage from './pages/EnquiryManagementDashboardPage';
 import EnquiryDashboardPage from './pages/EnquiryDashboardPage';
@@ -655,6 +656,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
                                 <ConcessionsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-settings"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FeeSettings />
                               </ProtectedRoute>
                             }
                           />
