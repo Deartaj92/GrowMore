@@ -1304,7 +1304,12 @@ const QuickActionsCard = styled.div`
   }
 
   @media (max-width: 768px) {
-    padding: 1.25rem;
+    padding: 1rem;
+    border-radius: 10px;
+    
+    &::before {
+      height: 2px;
+    }
   }
 `;
 
@@ -1314,8 +1319,8 @@ const QuickActionsGrid = styled.div`
   gap: 1rem;
   
   @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 0.5rem;
   }
 `;
 
@@ -1342,8 +1347,9 @@ const QuickActionItem = styled.div<{ $color?: string }>`
   }
   
   @media (max-width: 768px) {
-    padding: 0.875rem;
-    gap: 0.5rem;
+    padding: 0.6rem 0.5rem;
+    gap: 0.4rem;
+    border-radius: 8px;
   }
 `;
 
@@ -1371,12 +1377,13 @@ const QuickActionIcon = styled.div<{ $color?: string }>`
   }
   
   @media (max-width: 768px) {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     
     svg {
-      width: 18px !important;
-      height: 18px !important;
+      width: 16px !important;
+      height: 16px !important;
     }
   }
 `;
@@ -1416,6 +1423,10 @@ const LeaveHistoryHeader = styled.div`
   &:hover {
     background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.35)' : 'rgba(99,102,241, 0.12)'};
   }
+  
+  @media (max-width: 768px) {
+    padding: 0.6rem 0.5rem;
+  }
 `;
 
 const LeaveHistoryTitle = styled.div`
@@ -1425,6 +1436,12 @@ const LeaveHistoryTitle = styled.div`
   font-size: 1.1rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  @media (max-width: 768px) {
+    font-size: 0.85rem;
+    font-weight: 500;
+    gap: 0.4rem;
+  }
 `;
 
 const LeaveHistoryIcon = styled.div`
@@ -1441,6 +1458,17 @@ const LeaveHistoryIcon = styled.div`
     width: 18px !important;
     height: 18px !important;
   }
+  
+  @media (max-width: 768px) {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    
+    svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+  }
 `;
 
 const LeaveHistoryExpandIcon = styled(ExpandMore)<{ $expanded: boolean }>`
@@ -1454,12 +1482,21 @@ const LeaveHistoryContent = styled.div<{ $expanded: boolean }>`
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: ${props => props.$expanded ? '1rem 1.25rem' : '0 1.25rem'};
+  
+  @media (max-width: 768px) {
+    max-height: ${props => props.$expanded ? '500px' : '0'};
+    padding: ${props => props.$expanded ? '0.75rem 0.5rem' : '0 0.5rem'};
+  }
 `;
 
 const LeaveRequestList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+  }
 `;
 
 const LeaveRequestItem = styled.div`
@@ -1472,6 +1509,11 @@ const LeaveRequestItem = styled.div`
   &:hover {
     border-color: ${({ theme }) => theme.ACCENT};
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    border-radius: 8px;
   }
 `;
 
@@ -1490,6 +1532,48 @@ const LeaveRequestInfo = styled.div`
   gap: 0.25rem;
   flex: 1;
   min-width: 0;
+`;
+
+const LeaveRequestStudentInfo = styled.div`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  flex-wrap: wrap;
+  
+  strong {
+    font-weight: 600;
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+  }
+  
+  span {
+    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    font-size: 0.85rem;
+  }
+  
+  svg {
+    color: ${({ theme }) => theme.ACCENT};
+    opacity: 0.8;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+    padding-bottom: 0.4rem;
+    
+    strong {
+      font-size: 0.85rem;
+    }
+    
+    span {
+      font-size: 0.75rem;
+    }
+  }
 `;
 
 const LeaveRequestType = styled.div`
@@ -2609,7 +2693,12 @@ const CustomLandingPage: React.FC = () => {
         .from('leave_requests')
         .select(`
           *,
-          students:student_id (name)
+          students:student_id (
+            name,
+            roll_number,
+            classes:class_id (name, has_sections),
+            sections:section_id (name)
+          )
         `)
         .eq('school_id', schoolId)
         .eq('session_id', activeSessionId)
@@ -3134,8 +3223,60 @@ const CustomLandingPage: React.FC = () => {
                     <EmptyState>No leave requests found</EmptyState>
                   ) : (
                     <LeaveRequestList>
-                      {leaveRequests.map((request) => (
+                      {leaveRequests.map((request: any) => {
+                        const student = request.students;
+                        const studentName = student?.name || 'Unknown Student';
+                        const className = student?.classes?.name || '';
+                        const sectionName = student?.sections?.name || '';
+                        const hasSections = student?.classes?.has_sections;
+                        const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
+                        // Extract school ID with proper type handling - using any to bypass TypeScript narrowing issue
+                        // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
+                        const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
+                        // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
+                        const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
+                        // Use getStudentDisplayId utility function to get proper display ID
+                        let studentDisplayId = '';
+                        if (student && currentSchoolId) {
+                          try {
+                            const displayId = getStudentDisplayId({ 
+                              id: student.id || request.student_id, 
+                              roll_number: student.roll_number 
+                            });
+                            studentDisplayId = `S${currentSchoolId}-${displayId}`;
+                          } catch (e) {
+                            // Fallback if utility function fails
+                            if (student.roll_number) {
+                              const rollNumberStr = String(student.roll_number);
+                              if (rollNumberStr.includes('-')) {
+                                const parts = rollNumberStr.split('-');
+                                studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
+                              } else {
+                                studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
+                              }
+                            }
+                          }
+                        }
+                        
+                        return (
                         <LeaveRequestItem key={request.id}>
+                          {student && (
+                            <LeaveRequestStudentInfo>
+                              <div className="student-name">
+                                <PersonIcon />
+                                {studentName}
+                              </div>
+                              {studentDisplayId && (
+                                <span className="student-id">{studentDisplayId}</span>
+                              )}
+                              {classSection && (
+                                <div className="student-class">
+                                  <SchoolIcon />
+                                  {classSection}
+                                </div>
+                              )}
+                            </LeaveRequestStudentInfo>
+                          )}
                           <LeaveRequestHeader>
                             <LeaveRequestInfo>
                               <LeaveRequestType>
@@ -3182,7 +3323,8 @@ const CustomLandingPage: React.FC = () => {
                             </LeaveRequestReason>
                           )}
                         </LeaveRequestItem>
-                      ))}
+                        );
+                      })}
                     </LeaveRequestList>
                   )}
                 </LeaveHistoryContent>
@@ -3367,8 +3509,60 @@ const CustomLandingPage: React.FC = () => {
                     <EmptyState>No leave requests found</EmptyState>
                   ) : (
                     <LeaveRequestList>
-                      {leaveRequests.map((request) => (
+                      {leaveRequests.map((request: any) => {
+                        const student = request.students;
+                        const studentName = student?.name || 'Unknown Student';
+                        const className = student?.classes?.name || '';
+                        const sectionName = student?.sections?.name || '';
+                        const hasSections = student?.classes?.has_sections;
+                        const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
+                        // Extract school ID with proper type handling - using any to bypass TypeScript narrowing issue
+                        // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
+                        const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
+                        // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
+                        const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
+                        // Use getStudentDisplayId utility function to get proper display ID
+                        let studentDisplayId = '';
+                        if (student && currentSchoolId) {
+                          try {
+                            const displayId = getStudentDisplayId({ 
+                              id: student.id || request.student_id, 
+                              roll_number: student.roll_number 
+                            });
+                            studentDisplayId = `S${currentSchoolId}-${displayId}`;
+                          } catch (e) {
+                            // Fallback if utility function fails
+                            if (student.roll_number) {
+                              const rollNumberStr = String(student.roll_number);
+                              if (rollNumberStr.includes('-')) {
+                                const parts = rollNumberStr.split('-');
+                                studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
+                              } else {
+                                studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
+                              }
+                            }
+                          }
+                        }
+                        
+                        return (
                         <LeaveRequestItem key={request.id}>
+                          {student && (
+                            <LeaveRequestStudentInfo>
+                              <div className="student-name">
+                                <PersonIcon />
+                                {studentName}
+                              </div>
+                              {studentDisplayId && (
+                                <span className="student-id">{studentDisplayId}</span>
+                              )}
+                              {classSection && (
+                                <div className="student-class">
+                                  <SchoolIcon />
+                                  {classSection}
+                                </div>
+                              )}
+                            </LeaveRequestStudentInfo>
+                          )}
                           <LeaveRequestHeader>
                             <LeaveRequestInfo>
                               <LeaveRequestType>
@@ -3415,7 +3609,8 @@ const CustomLandingPage: React.FC = () => {
                             </LeaveRequestReason>
                           )}
                         </LeaveRequestItem>
-                      ))}
+                        );
+                      })}
                     </LeaveRequestList>
                   )}
                 </LeaveHistoryContent>
