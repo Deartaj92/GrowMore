@@ -3025,7 +3025,7 @@ export default function LoadFeePage() {
                       Clear All
                     </Button>
                   </FeeHeadSelectorActions>
-                  </GlassSelectorContainer>
+                </GlassSelectorContainer>
                 </Box>
               </GlassSidebar>
               </Box>
@@ -3683,7 +3683,7 @@ export default function LoadFeePage() {
                         Clear All
                       </Button>
                     </FeeHeadSelectorActions>
-                    </GlassSelectorContainer>
+                  </GlassSelectorContainer>
                   </Box>
                 </GlassCard>
                 </Box>
@@ -3693,7 +3693,7 @@ export default function LoadFeePage() {
                   <GlassMainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <Box sx={{ flexShrink: 0 }}>
                     <SectionHeader theme={theme}>Selected Fee Heads</SectionHeader>
-                    <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
+                  <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
                   </Box>
                   
                   {/* Scrollable Fee Heads List */}
@@ -3827,25 +3827,25 @@ export default function LoadFeePage() {
                   {singleStudent && singleStudentSelectedFeeHeads.length > 0 && (
                     <Box sx={{ flexShrink: 0, mt: 'auto' }}>
                       <StudentListFooter theme={theme}>
-                        <GenerateButton 
-                          onClick={handleSingleUpsert} 
-                          disabled={loading || !singleSession || !singleMonth || !singleYear}
-                          startIcon={<AddIcon />}
+                      <GenerateButton 
+                        onClick={handleSingleUpsert} 
+                        disabled={loading || !singleSession || !singleMonth || !singleYear}
+                        startIcon={<AddIcon />}
+                      >
+                        {existingFeeInvoiceItemsMap.size > 0 ? 'Generate & Update Fee' : 'Generate Fee'}
+                      </GenerateButton>
+                      {existingFeeInvoiceItemsMap.size > 0 && (
+                        <Button 
+                          onClick={handleSingleDelete} 
+                          disabled={loading || !singleSession || !singleMonth || !singleYear} 
+                          variant="outlined" 
+                          color="error"
+                          startIcon={<Delete />}
                         >
-                          {existingFeeInvoiceItemsMap.size > 0 ? 'Generate & Update Fee' : 'Generate Fee'}
-                        </GenerateButton>
-                        {existingFeeInvoiceItemsMap.size > 0 && (
-                          <Button 
-                            onClick={handleSingleDelete} 
-                            disabled={loading || !singleSession || !singleMonth || !singleYear} 
-                            variant="outlined" 
-                            color="error"
-                            startIcon={<Delete />}
-                          >
-                            Delete Selected Fee Heads
-                          </Button>
-                        )}
-                      </StudentListFooter>
+                          Delete Selected Fee Heads
+                        </Button>
+                      )}
+                    </StudentListFooter>
                     </Box>
                   )}
                 </GlassMainCard>
@@ -3962,7 +3962,7 @@ export default function LoadFeePage() {
                      <Button size="small" variant="text" onClick={() => setFamilyTabSelectedFeeHeads(getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => fh.id))}>Select All</Button>
                      <Button size="small" variant="text" onClick={() => setFamilyTabSelectedFeeHeads([])}>Clear All</Button>
                    </FeeHeadSelectorActions>
-                  </GlassSelectorContainer>
+                </GlassSelectorContainer>
                 </Box>
               </GlassCard>
               </Box>
@@ -3986,46 +3986,46 @@ export default function LoadFeePage() {
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden'
-                    }}>
+                  }}>
                     <Box sx={{ flexShrink: 0 }}>
                       <SectionHeader theme={theme} style={{ textAlign: 'center' }}>Linked Students</SectionHeader>
-                      {/* Student Selection Controls */}
+                    {/* Student Selection Controls */}
                       <Box display="flex" flexDirection={{ xs: 'row', md: 'column' }} gap={1} mb={2} mt={1} alignItems={{ xs: 'center', md: 'stretch' }}>
-                        <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'center' }} sx={{ 
-                          fontSize: { xs: '0.8rem', md: '0.875rem' },
-                          flex: { xs: 1, md: 'none' }
-                        }}>
-                          {selectedFamilyStudents.length} of {selectedFamily.family_members?.filter((member: any) => member.student).length || 0} selected
-                        </Typography>
-                        <Box display="flex" gap={1} justifyContent={{ xs: 'flex-end', md: 'center' }}>
-                          <Button 
-                            size="small" 
-                            variant="text" 
-                            onClick={selectAllFamilyStudents}
-                            disabled={selectedFamilyStudents.length === (selectedFamily.family_members?.filter((member: any) => member.student).length || 0)}
-                            sx={{ 
-                              fontSize: { xs: '0.75rem', md: '0.875rem' },
-                              minWidth: { xs: 'auto', md: 'auto' },
-                              px: { xs: 1, md: 2 }
-                            }}
-                          >
-                            Select All
-                          </Button>
-                          <Button 
-                            size="small" 
-                            variant="text" 
-                            onClick={deselectAllFamilyStudents}
-                            disabled={selectedFamilyStudents.length === 0}
-                            sx={{ 
-                              fontSize: { xs: '0.75rem', md: '0.875rem' },
-                              minWidth: { xs: 'auto', md: 'auto' },
-                              px: { xs: 1, md: 2 }
-                            }}
-                          >
-                            Deselect All
-                          </Button>
-                        </Box>
+                      <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'center' }} sx={{ 
+                        fontSize: { xs: '0.8rem', md: '0.875rem' },
+                        flex: { xs: 1, md: 'none' }
+                      }}>
+                        {selectedFamilyStudents.length} of {selectedFamily.family_members?.filter((member: any) => member.student).length || 0} selected
+                      </Typography>
+                      <Box display="flex" gap={1} justifyContent={{ xs: 'flex-end', md: 'center' }}>
+                        <Button 
+                          size="small" 
+                          variant="text" 
+                          onClick={selectAllFamilyStudents}
+                          disabled={selectedFamilyStudents.length === (selectedFamily.family_members?.filter((member: any) => member.student).length || 0)}
+                          sx={{ 
+                            fontSize: { xs: '0.75rem', md: '0.875rem' },
+                            minWidth: { xs: 'auto', md: 'auto' },
+                            px: { xs: 1, md: 2 }
+                          }}
+                        >
+                          Select All
+                        </Button>
+                        <Button 
+                          size="small" 
+                          variant="text" 
+                          onClick={deselectAllFamilyStudents}
+                          disabled={selectedFamilyStudents.length === 0}
+                          sx={{ 
+                            fontSize: { xs: '0.75rem', md: '0.875rem' },
+                            minWidth: { xs: 'auto', md: 'auto' },
+                            px: { xs: 1, md: 2 }
+                          }}
+                        >
+                          Deselect All
+                        </Button>
                       </Box>
+                    </Box>
                     </Box>
                      <ScrollableStudentList sx={{ 
                        flex: '0 1 auto', 
@@ -4036,66 +4036,66 @@ export default function LoadFeePage() {
                        mt: 1
                      }}>
                       <Box display="flex" flexDirection="column" gap={2}>
-                        {selectedFamily.family_members?.map((member: any) => {
-                          const student = member.student;
-                          if (!student) return null;
-                          
-                          return (
-                            <Box 
-                              key={member.id} 
-                              display="flex" 
-                              alignItems="center" 
-                              gap={{ xs: 1.5, md: 2 }} 
-                              p={{ xs: 1, md: 1.5 }} 
-                              borderRadius={2} 
-                              sx={{ 
-                                background: selectedFamilyStudents.includes(student.id) 
+                      {selectedFamily.family_members?.map((member: any) => {
+                        const student = member.student;
+                        if (!student) return null;
+                        
+                        return (
+                          <Box 
+                            key={member.id} 
+                            display="flex" 
+                            alignItems="center" 
+                            gap={{ xs: 1.5, md: 2 }} 
+                            p={{ xs: 1, md: 1.5 }} 
+                            borderRadius={2} 
+                            sx={{ 
+                              background: selectedFamilyStudents.includes(student.id) 
                                   ? alpha(muiTheme.palette.primary.main, 0.1)
                                   : alpha(muiTheme.palette.primary.main, 0.05),
-                                border: selectedFamilyStudents.includes(student.id) 
+                              border: selectedFamilyStudents.includes(student.id) 
                                   ? `1px solid ${muiTheme.palette.primary.main}`
-                                  : '1px solid transparent',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                  background: selectedFamilyStudents.includes(student.id)
+                                : '1px solid transparent',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                background: selectedFamilyStudents.includes(student.id)
                                     ? alpha(muiTheme.palette.primary.main, 0.15)
                                     : alpha(muiTheme.palette.primary.main, 0.08),
-                                  transform: 'translateY(-1px)',
-                                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                                }
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                              }
+                            }}
+                            onClick={() => handleFamilyStudentSelection(student.id, !selectedFamilyStudents.includes(student.id))}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFamilyStudents.includes(student.id)}
+                              onChange={(e) => {
+                                e.stopPropagation(); // Prevent double triggering
+                                handleFamilyStudentSelection(student.id, e.target.checked);
                               }}
-                              onClick={() => handleFamilyStudentSelection(student.id, !selectedFamilyStudents.includes(student.id))}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedFamilyStudents.includes(student.id)}
-                                onChange={(e) => {
-                                  e.stopPropagation(); // Prevent double triggering
-                                  handleFamilyStudentSelection(student.id, e.target.checked);
-                                }}
-                                style={{ transform: 'scale(1.2)', display: 'none' }}
-                              />
-                              <Avatar sx={{ 
-                                bgcolor: 'primary.main', 
-                                width: { xs: 36, md: 40 }, 
-                                height: { xs: 36, md: 40 },
-                                fontSize: { xs: '0.8rem', md: '1rem' }
-                              }}>
-                                {student.name ? student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?'}
-                              </Avatar>
-                              <Box>
-                                <Typography fontWeight={600} sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                                  {student.name || 'Student'}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-                                  {formatClassSectionDisplay(student.class_id, student.section_id)}
-                                </Typography>
-                              </Box>
+                              style={{ transform: 'scale(1.2)', display: 'none' }}
+                            />
+                            <Avatar sx={{ 
+                              bgcolor: 'primary.main', 
+                              width: { xs: 36, md: 40 }, 
+                              height: { xs: 36, md: 40 },
+                              fontSize: { xs: '0.8rem', md: '1rem' }
+                            }}>
+                              {student.name ? student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?'}
+                            </Avatar>
+                            <Box>
+                              <Typography fontWeight={600} sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                {student.name || 'Student'}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                                {formatClassSectionDisplay(student.class_id, student.section_id)}
+                              </Typography>
                             </Box>
-                          );
-                        })}
-                      </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
                     </ScrollableStudentList>
                   </GlassCard>
                   </Box>

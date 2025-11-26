@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { styled, useTheme, Theme, PaletteColor, PaletteColorOptions, keyframes } from '@mui/material/styles';
 import {
   Box,
@@ -95,7 +95,7 @@ import { useProgress } from '../components/Layout';
 import { PageHeaderContext } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, isStudentTabVisible, isStudentSummaryCardVisible, RenderSettings } from '../services/renderSettingsService';
-import { getStudentDisplayId, fetchStudentByIdentifier } from '../utils/studentUtils';
+import { getStudentDisplayId, fetchStudentByIdentifier, fetchStudentBySlug, createStudentSlug } from '../utils/studentUtils';
 import { STUDENT_PROFILE_TABS } from '../config/renderSettingsConfig';
 import { examinationService } from '../services/examinationService';
 import { testRecordService } from '../services/testRecordService';
@@ -206,6 +206,7 @@ interface Student {
   mother_income?: number;
   session_id: number;
   status?: string;
+  roll_number?: string | null;
   class?: { name: string };
   section?: { name: string };
 }
@@ -3140,12 +3141,17 @@ const AttendanceContentSkeleton: React.FC = () => {
   );
 };
 
-export const StudentProfile: React.FC = () => {
+export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfile = false }) => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showToast } = useToast();
   const { setPageHeader } = React.useContext(PageHeaderContext);
+  const showToastRef = useRef(showToast);
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<Student | null>(null);
   const [attendanceStats, setAttendanceStats] = useState<AttendanceStats | null>(null);
@@ -3203,6 +3209,10 @@ export const StudentProfile: React.FC = () => {
   const [attendanceSessionLoading, setAttendanceSessionLoading] = useState(false);
   const { startProgress, setProgress, completeProgress } = useProgress();
   const { user } = useAuth();
+  const progressRef = useRef({ startProgress, setProgress, completeProgress });
+  useEffect(() => {
+    progressRef.current = { startProgress, setProgress, completeProgress };
+  }, [startProgress, setProgress, completeProgress]);
 
   // Check if user is logged in as student
   const isStudent = useMemo(() => {
@@ -3213,6 +3223,31 @@ export const StudentProfile: React.FC = () => {
       return false;
     }
   }, []);
+
+  // Get student ID from session if this is "my-profile" route
+  const studentIdFromSession = useMemo(() => {
+    if (isMyProfile) {
+      try {
+        const studentSession = localStorage.getItem('studentSession');
+        if (studentSession) {
+          const parsed = JSON.parse(studentSession);
+          return parsed?.id;
+        }
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [isMyProfile]);
+
+  // If student tries to access /student/:id, redirect to /my-profile
+  useEffect(() => {
+    if (isStudent && !isMyProfile && id) {
+      // Student is trying to access /student/:id - redirect to /my-profile
+      navigate('/my-profile', { replace: true });
+      showToastRef.current('Please use "My Profile" to view your profile', 'success');
+    }
+  }, [isStudent, isMyProfile, id, navigate]);
 
   const toggleUpdates = (reportId: string) => {
     setExpandedUpdates(prev => ({
@@ -3641,24 +3676,134 @@ export const StudentProfile: React.FC = () => {
     const fetchStudentData = async () => {
       const minDuration = 800; // Reduced from 1.5s to 0.8s
       const start = Date.now();
-      startProgress(false);
-      setProgress(10);
+      progressRef.current.startProgress(false);
+      progressRef.current.setProgress(10);
       try {
         // Fetch student details only (attendance will be loaded per session)
         // Support both ID and roll_number sequence in URL
-        setProgress(20);
-        if (!user?.school_id) {
+        progressRef.current.setProgress(20);
+        
+        // Get school_id from user, student session, or parent session
+        let schoolId = user?.school_id;
+        if (!schoolId) {
+          // Try to get school_id from student session
+          try {
+            const studentSession = localStorage.getItem('studentSession');
+            if (studentSession) {
+              const parsed = JSON.parse(studentSession);
+              if (parsed?.school_id) {
+                schoolId = parsed.school_id;
+              }
+            }
+          } catch (e) {
+            // Error parsing session
+          }
+        }
+        if (!schoolId) {
+          // Try to get school_id from parent session
+          try {
+            const parentSession = localStorage.getItem('parentSession');
+            if (parentSession) {
+              const parsed = JSON.parse(parentSession);
+              if (parsed?.school_id) {
+                schoolId = parsed.school_id;
+              }
+            }
+          } catch (e) {
+            // Error parsing session
+          }
+        }
+        
+        if (!schoolId) {
           throw new Error('School ID not found');
         }
         
-        if (!id) {
+        // For my-profile route, fetch directly by database ID to avoid ambiguity
+        // For parent navigation, also fetch directly by database ID if ID is numeric
+        // For regular route, use fetchStudentByIdentifier to handle both ID and roll_number sequence
+        let studentData;
+        if (isMyProfile && studentIdFromSession) {
+          // Fetch directly by database ID for my-profile (no ambiguity)
+          const { data: studentById, error: errorById } = await supabase
+            .from('students')
+            .select('*')
+            .eq('id', studentIdFromSession)
+            .eq('school_id', schoolId)
+            .single();
+          
+          if (errorById || !studentById) {
+            throw new Error('Student not found');
+          }
+          studentData = studentById;
+        } else if (id) {
+          // Check if we have a parent session
+          const hasParentSession = (() => {
+            try {
+              const parentSession = localStorage.getItem('parentSession');
+              return !!parentSession;
+            } catch {
+              return false;
+            }
+          })();
+          
+          // Check if ID is a slug (non-numeric, lowercase letters/hyphens, not roll_number format)
+          // A slug is typically lowercase letters and hyphens (e.g., "john-doe" or "john")
+          const idStr = String(id);
+          const isSlug = !isNaN(Number(idStr)) === false && 
+                        !/^[Ss]\d+-\d+$/.test(idStr) && 
+                        /^[a-z0-9-]+$/.test(idStr.toLowerCase());
+          const isNumericId = !isNaN(Number(idStr)) && !/^[Ss]\d+-\d+$/.test(idStr);
+          
+          // If it's a slug (from parent navigation), fetch by slug
+          if (isSlug && hasParentSession) {
+            // Get linked student IDs from parent session for disambiguation
+            let linkedStudentIds: number[] | undefined;
+            try {
+              const parentSession = localStorage.getItem('parentSession');
+              if (parentSession) {
+                const parsed = JSON.parse(parentSession);
+                if (parsed?.id) {
+                  // Fetch linked student IDs from family_members
+                  const { data: familyMembers } = await supabase
+                    .from('family_members')
+                    .select('student_id')
+                    .eq('family_id', parsed.id);
+                  
+                  if (familyMembers) {
+                    linkedStudentIds = familyMembers.map((m: any) => m.student_id).filter(Boolean);
+                  }
+                }
+              }
+            } catch (e) {
+              // Error getting linked students, continue without them
+            }
+            
+            studentData = await fetchStudentBySlug(supabase, String(id), schoolId, linkedStudentIds);
+          } else if (hasParentSession && isNumericId) {
+            // If parent session and numeric ID, fetch directly by database ID to avoid roll_number ambiguity
+            const { data: studentById, error: errorById } = await supabase
+              .from('students')
+              .select('*')
+              .eq('id', parseInt(String(id)))
+              .eq('school_id', schoolId)
+              .single();
+            
+            if (!errorById && studentById) {
+              studentData = studentById;
+            } else {
+              // Fallback to fetchStudentByIdentifier if direct lookup fails
+              studentData = await fetchStudentByIdentifier(supabase, id, schoolId);
+            }
+          } else {
+            // Use fetchStudentByIdentifier for regular route (handles both ID and roll_number sequence)
+            studentData = await fetchStudentByIdentifier(supabase, id, schoolId);
+          }
+          
+          if (!studentData) {
+            throw new Error('Student not found');
+          }
+        } else {
           throw new Error('Student ID not found');
-        }
-        
-        let studentData = await fetchStudentByIdentifier(supabase, id, user.school_id);
-        
-        if (!studentData) {
-          throw new Error('Student not found');
         }
 
         // Fetch sessions for attendance tab
@@ -3677,7 +3822,7 @@ export const StudentProfile: React.FC = () => {
         }
 
         // Get current class from student_class_history
-        setProgress(25);
+        progressRef.current.setProgress(25);
         const { data: historyData } = await supabase
           .from('student_class_history')
           .select(`
@@ -3737,20 +3882,26 @@ export const StudentProfile: React.FC = () => {
         }
 
         // Merge current class information into student data
+        // Preserve all fields including roll_number
         studentData = {
           ...studentData,
           class_id: currentClass,
           section_id: currentSection,
           class: currentClassObj && currentClassObj.name ? { name: currentClassObj.name } : null,
-          section: currentSectionObj && currentSectionObj.name ? { name: currentSectionObj.name } : null
+          section: currentSectionObj && currentSectionObj.name ? { name: currentSectionObj.name } : null,
+          // Ensure roll_number is preserved
+          roll_number: studentData.roll_number || null
         } as typeof studentData;
 
         setStudent(studentData);
 
         // Load minimal data for summary cards (counts only)
-        setProgress(50);
+        progressRef.current.setProgress(50);
         const studentId = studentData.id;
-        const schoolId = studentData.school_id;
+        // Use studentData.school_id if available, otherwise use the schoolId we already have
+        if (studentData.school_id) {
+          schoolId = studentData.school_id;
+        }
 
         // Load reports count for summary cards
         try {
@@ -4050,27 +4201,41 @@ export const StudentProfile: React.FC = () => {
           });
         }
 
-        setProgress(100);
+        progressRef.current.setProgress(100);
       } catch (error: any) {
-        showToast('Failed to load student data', 'error');
+        showToastRef.current('Failed to load student data', 'error');
       } finally {
         const elapsed = Date.now() - start;
         if (elapsed < minDuration) {
           setTimeout(() => {
             setLoading(false);
-            completeProgress();
+            progressRef.current.completeProgress();
           }, minDuration - elapsed);
         } else {
           setLoading(false);
-          completeProgress();
+          progressRef.current.completeProgress();
         }
       }
     };
 
-    if (id) {
+    // For my-profile route, we need studentIdFromSession; for regular route, we need id
+    if (isMyProfile) {
+      if (studentIdFromSession) {
+        fetchStudentData();
+      } else {
+        // If studentIdFromSession is not available yet, set loading to false and show error
+        setLoading(false);
+        showToastRef.current('Student session not found. Please log in again.', 'error');
+        progressRef.current.completeProgress();
+      }
+    } else if (id) {
       fetchStudentData();
+    } else {
+      // No id and not my-profile route
+      setLoading(false);
+      progressRef.current.completeProgress();
     }
-  }, [id, showToast, startProgress, setProgress, completeProgress]);
+  }, [id, isMyProfile, studentIdFromSession]);
 
   // Fetch homework diary entries when date changes (for students only)
   useEffect(() => {
@@ -4743,7 +4908,7 @@ export const StudentProfile: React.FC = () => {
                 color: theme => alpha(theme.palette.text.primary, 0.6),
               }}
             >
-              ID: {getStudentDisplayId(student)}
+              ID: {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
             </Typography>
           </Box>
         </Stack>

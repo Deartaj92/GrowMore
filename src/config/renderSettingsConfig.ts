@@ -155,12 +155,73 @@ export const STUDENT_MENU_CARDS: MenuItemConfig[] = [
   }
 ];
 
+// Student quick action cards configuration (CustomLandingPage.tsx)
+export const STUDENT_QUICK_ACTIONS: MenuItemConfig[] = [
+  {
+    key: 'request_leave',
+    label: 'Request for Leave',
+    description: 'Submit leave requests for approval.',
+    defaultEnabled: true,
+    category: 'student'
+  },
+  {
+    key: 'register_complaint',
+    label: 'Register Complaint',
+    description: 'Submit complaints or concerns to the administration.',
+    defaultEnabled: true,
+    category: 'student'
+  },
+  {
+    key: 'suggestions',
+    label: 'Suggestions',
+    description: 'Share your suggestions and feedback.',
+    defaultEnabled: true,
+    category: 'student'
+  }
+];
+
 // Parent menu cards configuration (CustomLandingPage.tsx)
 export const PARENT_MENU_CARDS: MenuItemConfig[] = [
   {
     key: 'linked_students',
     label: 'Linked Students',
     description: 'View and manage students linked to your family account.',
+    defaultEnabled: true,
+    category: 'parent'
+  }
+];
+
+// Parent fee sections configuration (CustomLandingPage.tsx)
+export const PARENT_FEE_SECTIONS: MenuItemConfig[] = [
+  {
+    key: 'fee_ledger',
+    label: 'Fee Ledger',
+    description: 'Display fee ledger with invoices, payments, and outstanding balances for linked students.',
+    defaultEnabled: true,
+    category: 'parent'
+  }
+];
+
+// Parent quick action cards configuration (CustomLandingPage.tsx)
+export const PARENT_QUICK_ACTIONS: MenuItemConfig[] = [
+  {
+    key: 'request_leave',
+    label: 'Request for Leave',
+    description: 'Submit leave requests for your children.',
+    defaultEnabled: true,
+    category: 'parent'
+  },
+  {
+    key: 'register_complaint',
+    label: 'Register Complaint',
+    description: 'Submit complaints or concerns to the administration.',
+    defaultEnabled: true,
+    category: 'parent'
+  },
+  {
+    key: 'suggestions',
+    label: 'Suggestions',
+    description: 'Share your suggestions and feedback.',
     defaultEnabled: true,
     category: 'parent'
   }
@@ -491,6 +552,10 @@ export const getDefaultSettings = () => {
     studentSettings[card.key] = card.defaultEnabled !== false;
   });
 
+  STUDENT_QUICK_ACTIONS.forEach(action => {
+    studentSettings[action.key] = action.defaultEnabled !== false;
+  });
+
   STUDENT_PROFILE_TABS.forEach(tab => {
     studentSettings[tab.key] = tab.defaultEnabled !== false;
   });
@@ -501,6 +566,14 @@ export const getDefaultSettings = () => {
 
   PARENT_MENU_CARDS.forEach(card => {
     parentSettings[card.key] = card.defaultEnabled !== false;
+  });
+
+  PARENT_FEE_SECTIONS.forEach(section => {
+    parentSettings[section.key] = section.defaultEnabled !== false;
+  });
+
+  PARENT_QUICK_ACTIONS.forEach(action => {
+    parentSettings[action.key] = action.defaultEnabled !== false;
   });
 
   GUEST_ACCESSIBLE_PAGES.forEach(page => {

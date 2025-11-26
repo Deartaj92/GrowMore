@@ -25,7 +25,8 @@ import {
   Delete,
   Assignment,
   Book,
-  WhatsApp
+  WhatsApp,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
@@ -58,16 +59,173 @@ declare module 'jspdf' {
 
 const DashboardContainer = styled.div`
   width: 100%;
-  height: 100%;
-  padding: clamp(8px, 2vw, 24px);
+  min-height: 100vh;
+  background: ${({ theme }) => theme.BG};
+  padding: 1rem;
   box-sizing: border-box;
-  @media (max-width: 900px) {
-    padding: clamp(6px, 2vw, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  
+  @media (max-width: 1024px) {
+    padding: 0.75rem;
+    gap: 0.75rem;
   }
-  @media (max-width: 600px) {
-    padding: 8px 10px;
-    padding-bottom: 2.5rem;
+  
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+    gap: 0.5rem;
   }
+  
+  @media (max-width: 480px) {
+    padding: 0.375rem;
+    gap: 0.5rem;
+  }
+`;
+
+const PageHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem 0.75rem;
+  }
+`;
+
+const HeaderTitle = styled.h1`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  @media (max-width: 768px) {
+    flex-shrink: 0;
+  }
+`;
+
+const RefreshButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(0, 0, 0, 0.1)'};
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.05)'};
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const FeeStatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+`;
+
+const FeeStatCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? '0 6px 24px rgba(0, 0, 0, 0.4)'
+      : '0 6px 24px rgba(0, 0, 0, 0.15)'};
+  }
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.875rem;
+  }
+`;
+
+const FeeStatLabel = styled.div`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+`;
+
+const FeeStatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT || '#6366f1'};
 `;
 
 const DashboardGrid = styled.div`
@@ -383,15 +541,19 @@ const ClassStrengthTableCard = styled.div`
   color: #fff;
   position: relative;
   border: 1px solid ${({ theme }) => theme.BORDER};
-  margin-bottom: 0;
   min-width: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  margin-top: 0.2rem;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+  }
 `;
 
 const SectionHeader = styled.div`
@@ -590,23 +752,58 @@ const ProgressBarRow = styled.div`
 const TwoColumnGrid = styled.div<{ $columns: number }>`
   display: grid;
   grid-template-columns: ${({ $columns }) => ($columns === 2 ? '1fr 1fr' : '1fr')};
-  gap: 1.1rem;
+  gap: 1rem;
   align-items: flex-start;
   width: 100%;
-  @media (max-width: 1100px) {
+  
+  @media (max-width: 1200px) {
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-    gap: 0.7rem;
+    gap: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 480px) {
+    gap: 0.5rem;
   }
 `;
 
 const LeftColumn = styled.div`
-    min-width: 0;
-    width: 100%;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  
+  @media (max-width: 1024px) {
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+  }
 `;
 
 const RightColumn = styled.div`
-    min-width: 0;
-    width: 100%;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  
+  @media (max-width: 1024px) {
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+  }
 `;
 
 const AbsentsTableWrapper = styled.div`
@@ -615,10 +812,15 @@ const AbsentsTableWrapper = styled.div`
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   border: 1px solid ${({ theme }) => theme.BORDER};
   padding: 0;
-  margin-bottom: clamp(1rem, 2vw, 2rem);
   position: relative;
   width: 100%;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+  }
 `;
 
 const AbsentsTableHeader = styled.div`
@@ -1687,11 +1889,15 @@ const FineTableWrapper = styled.div`
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   border: 1px solid ${({ theme }) => theme.BORDER};
   padding: 0;
-  margin-top: 1.5rem;
-  margin-bottom: clamp(1rem, 2vw, 2rem);
   position: relative;
   width: 100%;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+  }
 `;
 
 const FineTableHeader = styled.div`
@@ -2045,16 +2251,18 @@ const HomeworkTableWrapper = styled.div`
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   border: 1px solid ${({ theme }) => theme.BORDER};
   padding: 0;
-  margin-top: 1.5rem;
-  margin-bottom: clamp(1rem, 2vw, 2rem);
   position: relative;
   width: 100%;
   overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   
-  @media (max-width: 700px) {
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+  }
+  
+  @media (max-width: 768px) {
     border-radius: 12px;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
   }
 `;
 
@@ -2578,10 +2786,85 @@ const Dashboard: React.FC = () => {
   // Render settings for guest users
   const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  
+  // Fee summary state
+  const [feeSummary, setFeeSummary] = useState({
+    totalInvoiced: 0,
+    totalCollected: 0,
+    totalOutstanding: 0,
+    collectionRate: 0
+  });
+  const [feeSummaryLoading, setFeeSummaryLoading] = useState(false);
 
   // Helper functions for class and section names
   const getClassName = (classId: any) => classes.find((c: any) => String(c.id) === String(classId))?.name || '-';
   const getSectionName = (sectionId: any) => sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
+  
+  // Format currency helper
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+  
+  // Fetch fee summary data
+  const fetchFeeSummary = useCallback(async () => {
+    if (!user?.school_id) return;
+    
+    setFeeSummaryLoading(true);
+    try {
+      // Get active session
+      const { data: sessionData } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .maybeSingle();
+      
+      // Fetch all invoices (for current session if available)
+      let invoicesQuery = supabase
+        .from('fee_invoices')
+        .select('id, total_amount')
+        .eq('school_id', user.school_id);
+      
+      if (sessionData?.id) {
+        invoicesQuery = invoicesQuery.eq('session_id', sessionData.id);
+      }
+      
+      const { data: invoicesData } = await invoicesQuery;
+      
+      // Fetch all payments
+      const { data: paymentsData } = await supabase
+        .from('fee_payments')
+        .select('id, amount, discount_amount')
+        .eq('school_id', user.school_id);
+      
+      // Calculate totals
+      const totalInvoiced = (invoicesData || []).reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
+      const totalCollected = (paymentsData || []).reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+      const totalOutstanding = totalInvoiced - totalCollected;
+      const collectionRate = totalInvoiced > 0 ? (totalCollected / totalInvoiced) * 100 : 0;
+      
+      setFeeSummary({
+        totalInvoiced,
+        totalCollected,
+        totalOutstanding,
+        collectionRate
+      });
+    } catch (error) {
+      console.error('Error fetching fee summary:', error);
+    } finally {
+      setFeeSummaryLoading(false);
+    }
+  }, [user?.school_id]);
+  
+  // Fetch fee summary on mount and when session changes
+  useEffect(() => {
+    fetchFeeSummary();
+  }, [fetchFeeSummary]);
 
   // Show delete confirmation modal
   const showDeleteConfirmation = (fine: any) => {
@@ -4967,6 +5250,49 @@ const Dashboard: React.FC = () => {
 
   return (
     <DashboardContainer>
+      {/* Header */}
+      <PageHeader>
+        <HeaderTitle>
+          <School />
+          Dashboard
+        </HeaderTitle>
+        <HeaderActions>
+          <RefreshButton onClick={fetchAll} disabled={loading}>
+            <RefreshIcon style={{ fontSize: '1rem' }} />
+            Refresh
+          </RefreshButton>
+        </HeaderActions>
+      </PageHeader>
+      
+      {/* Fee Summary Section */}
+      <FeeStatsGrid>
+        <FeeStatCard>
+          <FeeStatLabel>Total Invoiced</FeeStatLabel>
+          <FeeStatValue>
+            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalInvoiced)}
+          </FeeStatValue>
+        </FeeStatCard>
+        <FeeStatCard>
+          <FeeStatLabel>Total Collected</FeeStatLabel>
+          <FeeStatValue style={{ color: '#22c55e' }}>
+            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalCollected)}
+          </FeeStatValue>
+        </FeeStatCard>
+        <FeeStatCard>
+          <FeeStatLabel>Outstanding</FeeStatLabel>
+          <FeeStatValue style={{ color: '#ef4444' }}>
+            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalOutstanding)}
+          </FeeStatValue>
+        </FeeStatCard>
+        <FeeStatCard>
+          <FeeStatLabel>Collection Rate</FeeStatLabel>
+          <FeeStatValue style={{ color: '#6366f1' }}>
+            {feeSummaryLoading ? '...' : `${feeSummary.collectionRate.toFixed(1)}%`}
+          </FeeStatValue>
+        </FeeStatCard>
+      </FeeStatsGrid>
+      
+      {/* Main Content */}
       <TwoColumnGrid $columns={(hasLeftCards && hasRightCards) ? 2 : 1}>
         {hasLeftCards && (
         <LeftColumn>

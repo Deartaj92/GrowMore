@@ -413,7 +413,7 @@ const Login: React.FC = () => {
         // Redirect based on role
         if (staffUser?.role === 'Teacher') {
           // Teachers go to landing page
-          navigate('/landing-page', { replace: true });
+          navigate('/home', { replace: true });
           return;
         } else if (staffUser?.role && ['Principal', 'Admin', 'Super Admin'].includes(staffUser.role)) {
           // Admin roles go to dashboard (InitialRouteHandler will handle this, but we can navigate here too)
@@ -465,7 +465,7 @@ const Login: React.FC = () => {
         }));
 
         // Redirect to landing page
-        navigate('/landing-page', { replace: true });
+        navigate('/home', { replace: true });
         return;
       } else {
         // Student authentication: lookup by roll_number (e.g., "S1-1") or id
@@ -591,7 +591,7 @@ const Login: React.FC = () => {
           .eq('id', student.id);
 
         // Redirect to landing page
-        navigate('/landing-page', { replace: true });
+        navigate('/home', { replace: true });
         return;
       }
       toast.showToast('Login successful', 'success');

@@ -772,6 +772,14 @@ const allPages = [
     category: 'Fees',
     keywords: ['fee settings', 'fee configuration', 'print settings', 'fee preferences']
   },
+  {
+    text: 'Fee Ledger',
+    icon: <AttachMoneyIcon />,
+    path: '/ledger',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+    category: 'Fees',
+    keywords: ['fee ledger', 'student ledger', 'fee accounts', 'invoice ledger', 'payment ledger']
+  },
 
   // Examination Pages
   {

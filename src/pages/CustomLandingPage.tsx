@@ -1,17 +1,21 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import styled, { css } from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { landingPageService, WidgetWithPreference } from '../services/landingPageService';
-import { ThemeContext } from '../components/Layout';
+import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import * as Icons from '@mui/icons-material';
-import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, AccessTime as AccessTimeIcon, Person as PersonIcon, Event as EventIcon, CalendarToday as CalendarIcon, LocationOn as LocationIcon, Phone as PhoneIcon, Sms as SmsIcon, WhatsApp as WhatsAppIcon, AccountCircle, AttachMoney as AttachMoneyIcon } from '@mui/icons-material';
+import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, AccessTime as AccessTimeIcon, Person as PersonIcon, Event as EventIcon, CalendarToday as CalendarIcon, LocationOn as LocationIcon, Phone as PhoneIcon, Sms as SmsIcon, WhatsApp as WhatsAppIcon, AccountCircle, AttachMoney as AttachMoneyIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Typography, IconButton } from '@mui/material';
+import { useToast } from '../components/useToast';
 import Loader from '../components/Loader';
 import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
 import { fetchRenderSettings, isTeacherCardVisible, isStudentCardVisible, isParentCardVisible, RenderSettings } from '../services/renderSettingsService';
-import { getStudentDisplayId } from '../utils/studentUtils';
+import { getStudentDisplayId, createStudentSlug } from '../utils/studentUtils';
+import { format } from 'date-fns';
+import { ExpandMore, ExpandLess, Receipt, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined } from '@mui/icons-material';
 
 const Container = styled.div`
   padding: 2rem;
@@ -921,97 +925,6 @@ const TotalFeeBadge = styled.div`
   }
 `;
 
-const FeeTable = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const FeeTableHeader = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1.5fr 1fr 1fr;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const FeeTableRow = styled.div<{ $isStudentHeader?: boolean }>`
-  display: grid;
-  grid-template-columns: 2fr 1.5fr 1fr 1fr;
-  gap: 0.75rem;
-  padding: ${({ $isStudentHeader }) => $isStudentHeader ? '0.75rem' : '0.5rem'} 0.75rem;
-  align-items: center;
-  background: ${({ $isStudentHeader, theme }) => 
-    $isStudentHeader 
-      ? (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)')
-      : 'transparent'};
-  border-radius: ${({ $isStudentHeader }) => $isStudentHeader ? '6px' : '0'};
-  border-left: ${({ $isStudentHeader, theme }) => 
-    $isStudentHeader ? `3px solid ${theme.BG === '#252525' ? '#ef4444' : '#dc2626'}` : 'none'};
-  margin-top: ${({ $isStudentHeader }) => $isStudentHeader ? '0.5rem' : '0'};
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 0.25rem;
-    padding: 0.5rem;
-    border-left: none;
-    border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-    background: ${({ theme }) => theme.BG === '#252525' 
-      ? 'rgba(255, 255, 255, 0.02)' 
-      : 'rgba(0, 0, 0, 0.01)'};
-    border-radius: 6px;
-    margin-top: 0.5rem;
-  }
-`;
-
-const FeeCell = styled.div<{ $align?: 'left' | 'right' | 'center'; $bold?: boolean; $color?: string }>`
-  font-size: 0.875rem;
-  color: ${({ $color, theme }) => $color || theme.TEXT_PRIMARY};
-  font-weight: ${({ $bold }) => $bold ? '700' : '500'};
-  text-align: ${({ $align }) => $align || 'left'};
-  
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-    
-    &::before {
-      content: attr(data-label);
-      font-weight: 600;
-      color: ${({ theme }) => theme.TEXT_SECONDARY};
-      margin-right: 0.5rem;
-    }
-  }
-`;
-
-const StudentHeaderRow = styled.div`
-  display: contents;
-  
-  @media (max-width: 768px) {
-    display: block;
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: ${({ theme }) => theme.TEXT_PRIMARY};
-    padding: 0.5rem;
-    margin-top: 0.75rem;
-    background: ${({ theme }) => theme.BG === '#252525' 
-      ? 'rgba(255, 255, 255, 0.05)' 
-      : 'rgba(0, 0, 0, 0.03)'};
-    border-radius: 6px;
-    border-left: 3px solid ${({ theme }) => theme.BG === '#252525' ? '#ef4444' : '#dc2626'};
-  }
-`;
-
 const StudentFeeCardsContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -1074,6 +987,194 @@ const StudentFeeCardTotal = styled.div`
   @media (max-width: 768px) {
     font-size: 0.9rem;
   }
+`;
+
+// Helper functions for fee display
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-PK', {
+    style: 'currency',
+    currency: 'PKR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatDate = (date: string): string => {
+  try {
+    return format(new Date(date), 'dd MMM yyyy');
+  } catch {
+    return date;
+  }
+};
+
+// Styled components for ledger-style display
+const FeeTableContainer = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  overflow: hidden;
+  margin-top: 1rem;
+`;
+
+const FeeTableWrapper = styled.div`
+  overflow-x: auto;
+`;
+
+const FeeTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+`;
+
+const FeeTableHeader = styled.thead`
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.03)'
+    : 'rgba(0, 0, 0, 0.02)'};
+`;
+
+const FeeTableHeaderCell = styled.th`
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  white-space: nowrap;
+`;
+
+const FeeTableBody = styled.tbody``;
+
+const FeeTableRow = styled.tr<{ $isExpanded?: boolean }>`
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525'
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  }
+`;
+
+const FeeTableCell = styled.td`
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  vertical-align: middle;
+  white-space: nowrap;
+`;
+
+const ExpandButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.03)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525'
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.05)'};
+    transform: translateY(-1px);
+  }
+`;
+
+const ExpandedRow = styled.tr`
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.02)'
+    : 'rgba(0, 0, 0, 0.01)'};
+`;
+
+const ExpandedCell = styled.td`
+  padding: 0;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ExpandedContent = styled.div`
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+  margin: 0 0 0.75rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const InvoiceTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+`;
+
+const InvoiceTableHeader = styled.thead`
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.03)'
+    : 'rgba(0, 0, 0, 0.02)'};
+`;
+
+const InvoiceTableHeaderCell = styled.th`
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const InvoiceTableRow = styled.tr`
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525'
+      ? 'rgba(255, 255, 255, 0.02)'
+      : 'rgba(0, 0, 0, 0.01)'};
+  }
+`;
+
+const InvoiceTableCell = styled.td`
+  padding: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const InvoiceStatusBadge = styled.span<{ $status: string }>`
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  
+  ${({ $status }) => {
+    if ($status === 'paid') {
+      return `
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+      `;
+    } else if ($status === 'partial') {
+      return `
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+      `;
+    } else {
+      return `
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+      `;
+    }
+  }}
 `;
 
 const FeeItemsList = styled.div`
@@ -1164,6 +1265,330 @@ const EventsGrid = styled.div`
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+`;
+
+// Quick Actions section styled components
+const QuickActionsSection = styled.div`
+  margin-bottom: 2rem;
+  width: 100%;
+`;
+
+const QuickActionsTitle = styled.h2`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const QuickActionsCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ef4444, #f59e0b);
+    border-radius: 12px 12px 0 0;
+  }
+
+  @media (max-width: 768px) {
+    padding: 1.25rem;
+  }
+`;
+
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+`;
+
+const QuickActionItem = styled.div<{ $color?: string }>`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 10px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: ${({ $color }) => $color || '#3b82f6'};
+    background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#ffffff'};
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.875rem;
+    gap: 0.5rem;
+  }
+`;
+
+const QuickActionIcon = styled.div<{ $color?: string }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, ${({ $color }) => $color || '#3b82f6'}, ${({ $color }) => $color ? `${$color}80` : '#3b82f680'});
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px ${({ $color }) => $color ? `${$color}25` : '#3b82f625'};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  ${QuickActionItem}:hover & {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px ${({ $color }) => $color ? `${$color}40` : '#3b82f640'};
+  }
+  
+  @media (max-width: 768px) {
+    width: 36px;
+    height: 36px;
+    
+    svg {
+      width: 18px !important;
+      height: 18px !important;
+    }
+  }
+`;
+
+const QuickActionTitle = styled.h3`
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0;
+  
+  @media (max-width: 768px) {
+    font-size: 0.875rem;
+  }
+`;
+
+const LeaveHistorySection = styled.div`
+  margin-top: 1.5rem;
+  width: 100%;
+  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+`;
+
+const LeaveHistoryHeader = styled.div`
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.20)' : 'rgba(99,102,241, 0.08)'};
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.35)' : 'rgba(99,102,241, 0.12)'};
+  }
+`;
+
+const LeaveHistoryTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const LeaveHistoryIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  
+  svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+`;
+
+const LeaveHistoryExpandIcon = styled(ExpandMore)<{ $expanded: boolean }>`
+  transition: transform 0.3s ease;
+  transform: ${props => props.$expanded ? 'rotate(180deg)' : 'rotate(0deg)'};
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const LeaveHistoryContent = styled.div<{ $expanded: boolean }>`
+  max-height: ${props => props.$expanded ? '600px' : '0'};
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: ${props => props.$expanded ? '1rem 1.25rem' : '0 1.25rem'};
+`;
+
+const LeaveRequestList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const LeaveRequestItem = styled.div`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+`;
+
+const LeaveRequestHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const LeaveRequestInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+`;
+
+const LeaveRequestType = styled.div`
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  text-transform: capitalize;
+`;
+
+const LeaveRequestDates = styled.div`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const LeaveStatusBadge = styled.div<{ $status: string }>`
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  
+  ${({ $status, theme }) => {
+    if ($status === 'approved') {
+      return `
+        background: ${theme.BG === '#252525' ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.1)'};
+        color: #22c55e;
+        border: 1px solid ${theme.BG === '#252525' ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.3)'};
+      `;
+    } else if ($status === 'rejected') {
+      return `
+        background: ${theme.BG === '#252525' ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)'};
+        color: #ef4444;
+        border: 1px solid ${theme.BG === '#252525' ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.3)'};
+      `;
+    } else {
+      return `
+        background: ${theme.BG === '#252525' ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.1)'};
+        color: #fbbf24;
+        border: 1px solid ${theme.BG === '#252525' ? 'rgba(251,191,36,0.4)' : 'rgba(251,191,36,0.3)'};
+      `;
+    }
+  }}
+`;
+
+const LeaveRequestReason = styled.div`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.5rem;
+  line-height: 1.5;
+`;
+
+const LeaveRequestMeta = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const CancelButton = styled.button`
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.3)'};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)'};
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)'};
+    border-color: ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.5)' : 'rgba(239,68,68,0.4)'};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 2rem 1rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
 `;
 
 const EventCard = styled.div<{ $eventType?: string }>`
@@ -1285,7 +1710,8 @@ const EventDetailRow = styled.div`
 
 const CustomLandingPage: React.FC = () => {
   const { user } = useAuth();
-  const { theme } = useContext(ThemeContext);
+  const { theme: themeMode } = useContext(ThemeContext);
+  const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const navigate = useNavigate();
   const [widgets, setWidgets] = useState<WidgetWithPreference[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1312,13 +1738,29 @@ const CustomLandingPage: React.FC = () => {
   const [feeDetails, setFeeDetails] = useState<Array<{
     studentId: number;
     studentName: string;
-    remainingFeeItems: Array<{
-      name: string;
-      amount: number;
-      dueDate: string;
+    invoices: Array<{
+      id: number;
+      month: string | null;
+      year: number | null;
+      invoice_date: string;
+      due_date: string;
+      total_amount: number;
+      status: string;
     }>;
-    totalRemaining: number;
+    payments: Array<{
+      id: number;
+      invoice_id: number;
+      payment_date: string;
+      amount: number;
+      discount_amount: number;
+      net_amount: number;
+      payment_mode: string;
+    }>;
+    totalInvoiced: number;
+    totalPaid: number;
+    totalOutstanding: number;
   }>>([]);
+  const [expandedFeeRows, setExpandedFeeRows] = useState<Set<number>>(new Set());
   const [activeCardId, setActiveCardId] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [gridColumns, setGridColumns] = useState(3);
@@ -1345,6 +1787,36 @@ const CustomLandingPage: React.FC = () => {
     is_all_day: boolean;
     visible_to: string[];
   }>>([]);
+
+  // Leave Request Modal state
+  const [leaveRequestModalOpen, setLeaveRequestModalOpen] = useState(false);
+  const [leaveRequestForm, setLeaveRequestForm] = useState({
+    studentId: '',
+    leaveType: 'sick',
+    startDate: '',
+    endDate: '',
+    reason: '',
+  });
+  const [submittingLeaveRequest, setSubmittingLeaveRequest] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [leaveRequests, setLeaveRequests] = useState<Array<{
+    id: number;
+    student_id: number;
+    leave_type: string;
+    start_date: string;
+    end_date: string;
+    reason: string;
+    status: string;
+    requested_by: string;
+    requested_by_name: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    review_notes?: string | null;
+    students?: { name: string } | null;
+  }>>([]);
+  const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false);
+  const [leaveHistoryExpanded, setLeaveHistoryExpanded] = useState(false);
+  const { showToast } = useToast();
 
   // Check for student or parent session if no staff user
   useEffect(() => {
@@ -1523,6 +1995,10 @@ const CustomLandingPage: React.FC = () => {
         .eq('is_active', true)
         .eq('school_id', schoolId)
         .maybeSingle();
+      
+      if (activeSessionData) {
+        setActiveSessionId(activeSessionData.id);
+      }
 
       let studentsWithClass: any[] = [];
 
@@ -1547,7 +2023,7 @@ const CustomLandingPage: React.FC = () => {
           // Fetch students and merge with class history
           const { data: studentsData } = await supabase
             .from('students')
-            .select('id, name, picture_url, father_name, phone, father_mobile, address, status, notification_channel')
+            .select('id, name, picture_url, father_name, phone, father_mobile, address, status, notification_channel, roll_number')
             .eq('school_id', schoolId)
             .in('id', studentIds);
 
@@ -1568,7 +2044,7 @@ const CustomLandingPage: React.FC = () => {
       if (studentsWithClass.length === 0) {
         const { data: studentsData } = await supabase
           .from('students')
-          .select('id, name, picture_url, father_name, phone, father_mobile, address, status, notification_channel, class_id, section_id')
+          .select('id, name, picture_url, father_name, phone, father_mobile, address, status, notification_channel, class_id, section_id, roll_number')
           .eq('school_id', schoolId)
           .in('id', studentIds);
 
@@ -1616,7 +2092,7 @@ const CustomLandingPage: React.FC = () => {
     }
   };
 
-  // Calculate remaining fee for a list of students
+  // Calculate remaining fee for a list of students (using LedgerPage approach)
   const calculateRemainingFeesForStudents = async (
     students: Array<{
       id: number;
@@ -1642,127 +2118,152 @@ const CustomLandingPage: React.FC = () => {
     }
 
     try {
-      let totalRemaining = 0;
-      const feeDetailsList: Array<{
-        studentId: number;
-        studentName: string;
-        remainingFeeItems: Array<{
-          name: string;
-          amount: number;
-          dueDate: string;
-        }>;
-        totalRemaining: number;
-      }> = [];
-
-      const studentsWithFees = await Promise.all(
-        students.map(async (student) => {
-          // Fetch fee invoices for the student with fee heads
-          const { data: feeInvoices, error: invoicesError } = await supabase
+      const studentIds = students.map(s => s.id);
+      
+      // Fetch all invoices for linked students (same approach as LedgerPage)
+      const { data: invoicesData, error: invoicesError } = await supabase
             .from('fee_invoices')
+        .select('*')
+        .eq('school_id', schoolId)
+        .in('student_id', studentIds)
+        .order('invoice_date', { ascending: false });
+
+      if (invoicesError) {
+        console.error('[CustomLandingPage] Error fetching invoices:', invoicesError);
+        setTotalRemainingFee(0);
+        setFeeDetails([]);
+        return;
+      }
+
+      // Fetch all payments for invoices of linked students
+      const invoiceIds = (invoicesData || []).map(inv => inv.id);
+      let paymentsData: any[] = [];
+      
+      if (invoiceIds.length > 0) {
+        const { data: payments, error: paymentsError } = await supabase
+          .from('fee_payments')
+          .select('*')
+          .eq('school_id', schoolId)
+          .in('invoice_id', invoiceIds)
+          .order('payment_date', { ascending: false });
+
+        if (paymentsError) {
+          console.error('[CustomLandingPage] Error fetching payments:', paymentsError);
+        } else {
+          paymentsData = payments || [];
+        }
+      }
+
+      // Fetch all fee_invoice_items for the invoices
+      let invoiceItemsData: any[] = [];
+      if (invoiceIds.length > 0) {
+        const { data: items, error: itemsError } = await supabase
+          .from('fee_invoice_items')
             .select(`
               id,
-              student_id,
-              month,
-              year,
-              due_date,
-              fee_invoice_items (
-                id,
+            invoice_id,
+            fee_head_id,
                 amount,
                 fee_heads (
                   id,
                   name,
                   description
-                )
-              )
-            `)
-            .eq('student_id', student.id)
-            .eq('school_id', schoolId)
-            .order('year', { ascending: false })
-            .order('month', { ascending: false });
+            )
+          `)
+          .in('invoice_id', invoiceIds);
 
-          if (invoicesError) {
-            console.error(`Error fetching invoices for student ${student.id}:`, invoicesError);
-            return { ...student, remainingFee: 0 };
-          }
+        if (!itemsError && items) {
+          invoiceItemsData = items;
+        }
+      }
 
-          // Fetch payment history for the student
-          const { data: paymentHistory, error: paymentError } = await supabase
-            .from('fee_payments')
-            .select(`
-              id,
-              fee_invoices!inner (
-                student_id
-              ),
-              fee_payment_items (
-                id,
-                fee_item_id,
-                amount
-              )
-            `)
-            .eq('fee_invoices.student_id', student.id)
-            .eq('school_id', schoolId);
+      // Fetch all fee_payment_items for the payments
+      const paymentIds = paymentsData.map(p => p.id);
+      let paymentItemsData: any[] = [];
+      
+      if (paymentIds.length > 0) {
+        const { data: paymentItems, error: paymentItemsError } = await supabase
+          .from('fee_payment_items')
+          .select('id, payment_id, fee_item_id, amount, paid_amount')
+          .in('payment_id', paymentIds);
 
-          if (paymentError) {
-            console.error(`Error fetching payments for student ${student.id}:`, paymentError);
-            return { ...student, remainingFee: 0 };
-          }
+        if (!paymentItemsError && paymentItems) {
+          paymentItemsData = paymentItems;
+        }
+      }
 
-          // Calculate remaining fee for this student
-          let studentRemaining = 0;
-          const remainingFeeItems: Array<{
-            name: string;
+      // Build fee details for each student (same approach as LedgerPage)
+      let totalRemaining = 0;
+      const feeDetailsList: Array<{
+        studentId: number;
+        studentName: string;
+        invoices: Array<{
+          id: number;
+          month: string | null;
+          year: number | null;
+          invoice_date: string;
+          due_date: string;
+          total_amount: number;
+          status: string;
+        }>;
+        payments: Array<{
+          id: number;
+          invoice_id: number;
+          payment_date: string;
             amount: number;
-            dueDate: string;
+          discount_amount: number;
+          net_amount: number;
+          payment_mode: string;
+        }>;
+        totalInvoiced: number;
+        totalPaid: number;
+        totalOutstanding: number;
           }> = [];
 
-          if (feeInvoices && feeInvoices.length > 0) {
-            feeInvoices.forEach((invoice) => {
-              invoice.fee_invoice_items?.forEach((item: any) => {
-                const itemAmount = Number(item.amount || 0);
-                
-                // Calculate already paid amount for this specific fee item
-                const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
-                  if (payment.fee_payment_items) {
-                    const itemPayment = payment.fee_payment_items.find(
-                      (paymentItem: any) => paymentItem.fee_item_id === item.id
-                    );
-                    return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
-                  }
-                  return sum;
-                }, 0) || 0;
-                
-                const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
-                
-                // Only include items that still need payment
-                if (remainingItemAmount > 0) {
-                  const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
-                  const monthYear = new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-                  
-                  remainingFeeItems.push({
-                    name: `${feeHeadName} (${monthYear})`,
-                    amount: remainingItemAmount,
-                    dueDate: invoice.due_date
-                  });
-                  studentRemaining += remainingItemAmount;
-                }
-              });
-            });
-          }
+      const studentsWithFees = students.map(student => {
+        // Get invoices for this student
+        const studentInvoices = (invoicesData || []).filter(inv => inv.student_id === student.id);
+        
+        // Get payments for this student's invoices
+        const studentPayments = (paymentsData || []).filter(pay => 
+          studentInvoices.some(inv => inv.id === pay.invoice_id)
+        );
 
-          // Store detailed fee information
-          if (remainingFeeItems.length > 0) {
+        // Calculate totals (same as LedgerPage)
+        const totalInvoiced = studentInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
+        const totalPaid = studentPayments.reduce((sum, pay) => sum + Number(pay.net_amount || pay.amount || 0), 0);
+        const totalOutstanding = totalInvoiced - totalPaid;
+
+        // Store fee information with invoices and payments (include all students, even with zero outstanding)
             feeDetailsList.push({
               studentId: student.id,
               studentName: student.name,
-              remainingFeeItems,
-              totalRemaining: studentRemaining
-            });
-          }
+          invoices: studentInvoices.map(inv => ({
+            id: inv.id,
+            month: inv.month,
+            year: inv.year,
+            invoice_date: inv.invoice_date,
+            due_date: inv.due_date,
+            total_amount: Number(inv.total_amount || 0),
+            status: inv.status
+          })),
+          payments: studentPayments.map(pay => ({
+            id: pay.id,
+            invoice_id: pay.invoice_id,
+            payment_date: pay.payment_date,
+            amount: Number(pay.amount || 0),
+            discount_amount: Number(pay.discount_amount || 0),
+            net_amount: Number(pay.net_amount || pay.amount || 0),
+            payment_mode: pay.payment_mode
+          })),
+          totalInvoiced,
+          totalPaid,
+          totalOutstanding
+        });
 
-          totalRemaining += studentRemaining;
-          return { ...student, remainingFee: studentRemaining };
-        })
-      );
+        totalRemaining += totalOutstanding;
+        return { ...student, remainingFee: totalOutstanding };
+      });
 
       setLinkedStudents(studentsWithFees);
       setTotalRemainingFee(totalRemaining);
@@ -2080,10 +2581,6 @@ const CustomLandingPage: React.FC = () => {
     return ` (${sectionsInfo})`;
   };
 
-  if (loading) {
-    return <Loader />;
-  }
-
   // Helper function to format event date
   const formatEventDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -2099,6 +2596,372 @@ const CustomLandingPage: React.FC = () => {
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
   };
+
+  // Fetch leave requests history
+  const fetchLeaveRequests = async () => {
+    const schoolId = user?.school_id || studentInfo?.school_id || (parentInfo ? parentInfo.school_id : null);
+    if (!schoolId || !activeSessionId) return;
+
+    setLoadingLeaveRequests(true);
+    try {
+      const isParent = user?.role === 'Parent' || !!parentInfo;
+      let query = supabase
+        .from('leave_requests')
+        .select(`
+          *,
+          students:student_id (name)
+        `)
+        .eq('school_id', schoolId)
+        .eq('session_id', activeSessionId)
+        .order('created_at', { ascending: false });
+
+      if (isParent && parentInfo) {
+        // For parents, get requests for their linked students
+        const studentIds = linkedStudents.map((s) => s.id);
+        if (studentIds.length > 0) {
+          query = query.in('student_id', studentIds);
+        } else {
+          setLeaveRequests([]);
+          setLoadingLeaveRequests(false);
+          return;
+        }
+      } else if (studentInfo && studentInfo.id) {
+        // For students, get their own requests
+        query = query.eq('student_id', studentInfo.id);
+      } else {
+        setLeaveRequests([]);
+        setLoadingLeaveRequests(false);
+        return;
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setLeaveRequests(data || []);
+    } catch (error: any) {
+      console.error('Error fetching leave requests:', error);
+    } finally {
+      setLoadingLeaveRequests(false);
+    }
+  };
+
+  // Fetch leave requests when modal closes or component mounts
+  useEffect(() => {
+    if (activeSessionId && (user || studentInfo || parentInfo)) {
+      fetchLeaveRequests();
+    }
+  }, [activeSessionId, user, studentInfo, parentInfo, linkedStudents.length]);
+
+  // Refetch when a new request is submitted
+  useEffect(() => {
+    if (!leaveRequestModalOpen && !submittingLeaveRequest) {
+      fetchLeaveRequests();
+    }
+  }, [leaveRequestModalOpen, submittingLeaveRequest]);
+
+  // Handle cancel leave request
+  const handleCancelLeaveRequest = async (requestId: number) => {
+    if (!window.confirm('Are you sure you want to cancel this leave request?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leave_requests')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      showToast('Leave request cancelled successfully!', 'success');
+      fetchLeaveRequests(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error cancelling leave request:', error);
+      showToast('Failed to cancel leave request: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
+  // Leave Request Modal JSX (memoized to prevent re-renders on input)
+  // MUST be defined before any conditional returns (including loading check) to follow Rules of Hooks
+  const leaveRequestModalJSX = useMemo(() => {
+    const schoolId = user?.school_id || studentInfo?.school_id || (parentInfo ? parentInfo.school_id : null);
+    const isParent = user?.role === 'Parent' || !!parentInfo;
+    
+    return (
+      <Dialog 
+        open={leaveRequestModalOpen} 
+        onClose={() => !submittingLeaveRequest && setLeaveRequestModalOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: theme.CARD,
+            border: `1px solid ${theme.BORDER}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          color: theme.TEXT_PRIMARY,
+          borderBottom: `1px solid ${theme.BORDER}`,
+          pb: 2,
+          fontWeight: 600
+        }}>
+          Request for Leave
+          <IconButton
+            onClick={() => setLeaveRequestModalOpen(false)}
+            disabled={submittingLeaveRequest}
+            size="small"
+            sx={{ color: theme.TEXT_SECONDARY }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Box display="flex" flexDirection="column" gap={2}>
+            {isParent && linkedStudents.length > 1 && (
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: theme.TEXT_SECONDARY }}>Select Student</InputLabel>
+                <Select
+                  value={leaveRequestForm.studentId}
+                  onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, studentId: e.target.value })}
+                  label="Select Student"
+                  sx={{
+                    color: theme.TEXT_PRIMARY,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.BORDER,
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.ACCENT,
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.ACCENT,
+                    },
+                  }}
+                >
+                  {linkedStudents.map((student) => (
+                    <MenuItem key={student.id} value={student.id.toString()}>
+                      {student.name} {student.classes?.name && `(${student.classes.name}${student.sections?.name ? ` - ${student.sections.name}` : ''})`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: theme.TEXT_SECONDARY }}>Leave Type</InputLabel>
+              <Select
+                value={leaveRequestForm.leaveType}
+                onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, leaveType: e.target.value })}
+                label="Leave Type"
+                sx={{
+                  color: theme.TEXT_PRIMARY,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: theme.BORDER,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: theme.ACCENT,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: theme.ACCENT,
+                  },
+                }}
+              >
+                <MenuItem value="sick">Sick Leave</MenuItem>
+                <MenuItem value="personal">Personal Leave</MenuItem>
+                <MenuItem value="emergency">Emergency</MenuItem>
+                <MenuItem value="family_event">Family Event</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Start Date"
+                type="date"
+                value={leaveRequestForm.startDate}
+                onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, startDate: e.target.value })}
+                fullWidth
+                required
+                InputLabelProps={{ shrink: true }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: theme.TEXT_PRIMARY,
+                    '& fieldset': {
+                      borderColor: theme.BORDER,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.ACCENT,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.ACCENT,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: theme.TEXT_SECONDARY,
+                  },
+                }}
+              />
+              <TextField
+                label="End Date"
+                type="date"
+                value={leaveRequestForm.endDate}
+                onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, endDate: e.target.value })}
+                fullWidth
+                required
+                InputLabelProps={{ shrink: true }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: theme.TEXT_PRIMARY,
+                    '& fieldset': {
+                      borderColor: theme.BORDER,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.ACCENT,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.ACCENT,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: theme.TEXT_SECONDARY,
+                  },
+                }}
+              />
+            </Box>
+
+            <TextField
+              label="Reason"
+              value={leaveRequestForm.reason}
+              onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, reason: e.target.value })}
+              fullWidth
+              required
+              multiline
+              rows={4}
+              placeholder="Please provide a detailed reason for the leave request..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  color: theme.TEXT_PRIMARY,
+                  '& fieldset': {
+                    borderColor: theme.BORDER,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.TEXT_SECONDARY,
+                },
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          borderTop: `1px solid ${theme.BORDER}`,
+          pt: 2
+        }}>
+          <Button
+            onClick={() => setLeaveRequestModalOpen(false)}
+            disabled={submittingLeaveRequest}
+            sx={{ color: theme.TEXT_SECONDARY }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+              
+              if (!schoolId || !activeSessionId) {
+                showToast('Active session not found. Please contact administration.', 'error');
+                return;
+              }
+
+              if (!leaveRequestForm.studentId || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()) {
+                showToast('Please fill in all required fields.', 'error');
+                return;
+              }
+
+              if (new Date(leaveRequestForm.startDate) > new Date(leaveRequestForm.endDate)) {
+                showToast('End date must be after start date.', 'error');
+                return;
+              }
+
+              setSubmittingLeaveRequest(true);
+              try {
+                const isParent = user?.role === 'Parent' || !!parentInfo;
+                const requestedBy = isParent ? 'parent' : 'student';
+                const requestedById = isParent 
+                  ? (parentInfo?.id || null)
+                  : (studentInfo?.id || parseInt(leaveRequestForm.studentId));
+                const requestedByName = isParent
+                  ? (parentInfo?.name || user?.name || 'Parent')
+                  : (studentInfo?.name || user?.name || 'Student');
+                
+                const { error } = await supabase
+                  .from('leave_requests')
+                  .insert({
+                    school_id: schoolId,
+                    student_id: parseInt(leaveRequestForm.studentId),
+                    session_id: activeSessionId,
+                    leave_type: leaveRequestForm.leaveType,
+                    start_date: leaveRequestForm.startDate,
+                    end_date: leaveRequestForm.endDate,
+                    reason: leaveRequestForm.reason.trim(),
+                    requested_by: requestedBy,
+                    requested_by_id: requestedById,
+                    requested_by_name: requestedByName,
+                    status: 'pending',
+                  });
+
+                if (error) throw error;
+
+                showToast('Leave request submitted successfully!', 'success');
+                setLeaveRequestModalOpen(false);
+                setLeaveRequestForm({
+                  studentId: '',
+                  leaveType: 'sick',
+                  startDate: '',
+                  endDate: '',
+                  reason: '',
+                });
+              } catch (error: any) {
+                console.error('Error submitting leave request:', error);
+                showToast('Failed to submit leave request: ' + (error.message || 'Unknown error'), 'error');
+              } finally {
+                setSubmittingLeaveRequest(false);
+              }
+            }}
+            variant="contained"
+            disabled={submittingLeaveRequest || !leaveRequestForm.studentId || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()}
+            sx={{
+              background: theme.ACCENT,
+              '&:hover': {
+                background: theme.ACCENT,
+                opacity: 0.9,
+              },
+            }}
+          >
+            {submittingLeaveRequest ? 'Submitting...' : 'Submit Request'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }, [leaveRequestModalOpen, submittingLeaveRequest, linkedStudents, theme, user, studentInfo, parentInfo, activeSessionId, leaveRequestForm]);
+
+  // Early return for loading state - must be AFTER all hooks
+  if (loading) {
+    return <Loader />;
+  }
 
   // If user is a Student, show student-specific menu cards
   if (user?.role === 'Student' || studentInfo) {
@@ -2183,10 +3046,158 @@ const CustomLandingPage: React.FC = () => {
           </EventsSection>
         )}
 
+        {/* Quick Actions Section */}
+        {(isStudentCardVisible(renderSettings, 'request_leave') || 
+          isStudentCardVisible(renderSettings, 'register_complaint') || 
+          isStudentCardVisible(renderSettings, 'suggestions')) && (
+          <QuickActionsSection>
+            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
+            <QuickActionsCard>
+              <QuickActionsGrid>
+                {isStudentCardVisible(renderSettings, 'request_leave') && (
+                  <QuickActionItem 
+                    $color="#3b82f6"
+                    onClick={() => {
+                      if (studentId) {
+                        setLeaveRequestForm({
+                          studentId: studentId.toString(),
+                          leaveType: 'sick',
+                          startDate: '',
+                          endDate: '',
+                          reason: '',
+                        });
+                        setLeaveRequestModalOpen(true);
+                      }
+                    }}
+                  >
+                    <QuickActionIcon $color="#3b82f6">
+                      <EventBusyIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Request for Leave</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isStudentCardVisible(renderSettings, 'register_complaint') && (
+                  <QuickActionItem 
+                    $color="#ef4444"
+                    onClick={() => {
+                      // TODO: Navigate to complaint page
+                      console.log('Register Complaint clicked');
+                    }}
+                  >
+                    <QuickActionIcon $color="#ef4444">
+                      <FeedbackIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Register Complaint</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isStudentCardVisible(renderSettings, 'suggestions') && (
+                  <QuickActionItem 
+                    $color="#f59e0b"
+                    onClick={() => {
+                      // TODO: Navigate to suggestions page
+                      console.log('Suggestions clicked');
+                    }}
+                  >
+                    <QuickActionIcon $color="#f59e0b">
+                      <LightbulbIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Suggestions</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+              </QuickActionsGrid>
+
+              {/* Leave Request History Section */}
+              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
+                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
+                  <LeaveHistoryTitle>
+                    <LeaveHistoryIcon>
+                      <HistoryIcon />
+                    </LeaveHistoryIcon>
+                    Leave Request History
+                    {leaveRequests.length > 0 && (
+                      <span style={{ 
+                        marginLeft: '0.5rem', 
+                        fontSize: '0.85rem', 
+                        color: 'inherit',
+                        opacity: 0.7 
+                      }}>
+                        ({leaveRequests.length})
+                      </span>
+                    )}
+                  </LeaveHistoryTitle>
+                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
+                </LeaveHistoryHeader>
+                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
+                  {loadingLeaveRequests ? (
+                    <EmptyState>Loading...</EmptyState>
+                  ) : leaveRequests.length === 0 ? (
+                    <EmptyState>No leave requests found</EmptyState>
+                  ) : (
+                    <LeaveRequestList>
+                      {leaveRequests.map((request) => (
+                        <LeaveRequestItem key={request.id}>
+                          <LeaveRequestHeader>
+                            <LeaveRequestInfo>
+                              <LeaveRequestType>
+                                {request.leave_type.replace('_', ' ')}
+                              </LeaveRequestType>
+                              <LeaveRequestDates>
+                                <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                              </LeaveRequestDates>
+                            </LeaveRequestInfo>
+                            <LeaveStatusBadge $status={request.status}>
+                              {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                              {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
+                              {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
+                              {request.status}
+                            </LeaveStatusBadge>
+                          </LeaveRequestHeader>
+                          <LeaveRequestReason>
+                            <strong>Reason:</strong> {request.reason}
+                          </LeaveRequestReason>
+                          <LeaveRequestMeta>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                              <span>
+                                <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
+                              </span>
+                              {request.reviewed_at && (
+                                <span>
+                                  <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                  Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                </span>
+                              )}
+                            </div>
+                            {request.status === 'pending' && (
+                              <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
+                                <CancelOutlined style={{ fontSize: '0.9rem' }} />
+                                Cancel
+                              </CancelButton>
+                            )}
+                          </LeaveRequestMeta>
+                          {request.review_notes && (
+                            <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                              <strong>Review Notes:</strong> {request.review_notes}
+                            </LeaveRequestReason>
+                          )}
+                        </LeaveRequestItem>
+                      ))}
+                    </LeaveRequestList>
+                  )}
+                </LeaveHistoryContent>
+              </div>
+            </QuickActionsCard>
+          </QuickActionsSection>
+        )}
+
         <QuickLinksGrid>
           {/* My Profile Card */}
           {studentId && isStudentCardVisible(renderSettings, 'my_profile') && (
-            <QuickLinkCard onClick={() => navigate(`/student/${studentId}`)} $color="#6366f1">
+            <QuickLinkCard onClick={() => {
+              // Navigate to my-profile route (no ID in URL for security)
+              navigate('/my-profile');
+            }} $color="#6366f1">
               <CardHeader $color="#6366f1">
                 <CardIcon $color="#6366f1">
                   <PersonIcon />
@@ -2204,6 +3215,7 @@ const CustomLandingPage: React.FC = () => {
             </QuickLinkCard>
           )}
         </QuickLinksGrid>
+        {leaveRequestModalJSX}
       </Container>
     );
   }
@@ -2267,6 +3279,149 @@ const CustomLandingPage: React.FC = () => {
               ))}
             </EventsGrid>
           </EventsSection>
+        )}
+
+        {/* Quick Actions Section */}
+        {(isParentCardVisible(renderSettings, 'request_leave') || 
+          isParentCardVisible(renderSettings, 'register_complaint') || 
+          isParentCardVisible(renderSettings, 'suggestions')) && (
+          <QuickActionsSection>
+            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
+            <QuickActionsCard>
+              <QuickActionsGrid>
+                {isParentCardVisible(renderSettings, 'request_leave') && (
+                  <QuickActionItem 
+                    $color="#3b82f6"
+                    onClick={() => {
+                      setLeaveRequestForm({
+                        studentId: linkedStudents.length > 0 ? linkedStudents[0].id.toString() : '',
+                        leaveType: 'sick',
+                        startDate: '',
+                        endDate: '',
+                        reason: '',
+                      });
+                      setLeaveRequestModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#3b82f6">
+                      <EventBusyIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Request for Leave</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isParentCardVisible(renderSettings, 'register_complaint') && (
+                  <QuickActionItem 
+                    $color="#ef4444"
+                    onClick={() => {
+                      // TODO: Navigate to complaint page
+                      console.log('Register Complaint clicked');
+                    }}
+                  >
+                    <QuickActionIcon $color="#ef4444">
+                      <FeedbackIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Register Complaint</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isParentCardVisible(renderSettings, 'suggestions') && (
+                  <QuickActionItem 
+                    $color="#f59e0b"
+                    onClick={() => {
+                      // TODO: Navigate to suggestions page
+                      console.log('Suggestions clicked');
+                    }}
+                  >
+                    <QuickActionIcon $color="#f59e0b">
+                      <LightbulbIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Suggestions</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+              </QuickActionsGrid>
+
+              {/* Leave Request History Section */}
+              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
+                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
+                  <LeaveHistoryTitle>
+                    <LeaveHistoryIcon>
+                      <HistoryIcon />
+                    </LeaveHistoryIcon>
+                    Leave Request History
+                    {leaveRequests.length > 0 && (
+                      <span style={{ 
+                        marginLeft: '0.5rem', 
+                        fontSize: '0.85rem', 
+                        color: 'inherit',
+                        opacity: 0.7 
+                      }}>
+                        ({leaveRequests.length})
+                      </span>
+                    )}
+                  </LeaveHistoryTitle>
+                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
+                </LeaveHistoryHeader>
+                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
+                  {loadingLeaveRequests ? (
+                    <EmptyState>Loading...</EmptyState>
+                  ) : leaveRequests.length === 0 ? (
+                    <EmptyState>No leave requests found</EmptyState>
+                  ) : (
+                    <LeaveRequestList>
+                      {leaveRequests.map((request) => (
+                        <LeaveRequestItem key={request.id}>
+                          <LeaveRequestHeader>
+                            <LeaveRequestInfo>
+                              <LeaveRequestType>
+                                {request.leave_type.replace('_', ' ')}
+                              </LeaveRequestType>
+                              <LeaveRequestDates>
+                                <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                              </LeaveRequestDates>
+                            </LeaveRequestInfo>
+                            <LeaveStatusBadge $status={request.status}>
+                              {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                              {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
+                              {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
+                              {request.status}
+                            </LeaveStatusBadge>
+                          </LeaveRequestHeader>
+                          <LeaveRequestReason>
+                            <strong>Reason:</strong> {request.reason}
+                          </LeaveRequestReason>
+                          <LeaveRequestMeta>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                              <span>
+                                <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
+                              </span>
+                              {request.reviewed_at && (
+                                <span>
+                                  <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                  Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                </span>
+                              )}
+                            </div>
+                            {request.status === 'pending' && (
+                              <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
+                                <CancelOutlined style={{ fontSize: '0.9rem' }} />
+                                Cancel
+                              </CancelButton>
+                            )}
+                          </LeaveRequestMeta>
+                          {request.review_notes && (
+                            <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                              <strong>Review Notes:</strong> {request.review_notes}
+                            </LeaveRequestReason>
+                          )}
+                        </LeaveRequestItem>
+                      ))}
+                    </LeaveRequestList>
+                  )}
+                </LeaveHistoryContent>
+              </div>
+            </QuickActionsCard>
+          </QuickActionsSection>
         )}
 
         {/* Linked Students Section */}
@@ -2385,7 +3540,9 @@ const CustomLandingPage: React.FC = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveCardId(null); // Close actions after navigation
-                      navigate(`/students/profile/${student.id}`);
+                      // Use student name slug for URL (more readable)
+                      const slug = createStudentSlug(student.name);
+                      navigate(`/students/profile/${slug}`);
                     }}
                   >
                     <AccountCircle fontSize="inherit" />
@@ -2398,46 +3555,178 @@ const CustomLandingPage: React.FC = () => {
           </LinkedStudentsCard>
         )}
 
-        {/* Fee Information Card */}
-        {isParentCardVisible(renderSettings, 'linked_students') && feeDetails.length > 0 && (
+        {/* Fee Information Card - Ledger Style */}
+        {isParentCardVisible(renderSettings, 'fee_ledger') && linkedStudents.length > 0 && (
           <FeeInfoCard>
             <FeeInfoCardHeader>
               <FeeInfoCardTitle>
                 <AttachMoneyIcon style={{ fontSize: '1.1rem' }} />
-                Fee Information
+                Fee Ledger
               </FeeInfoCardTitle>
               {totalRemainingFee > 0 && (
                 <TotalFeeBadge>
-                  <span>Total Remaining:</span>
-                  <span>Rs. {Math.floor(totalRemainingFee)}</span>
+                  <span>Total Outstanding:</span>
+                  <span>{formatCurrency(totalRemainingFee)}</span>
                 </TotalFeeBadge>
               )}
             </FeeInfoCardHeader>
 
-            <StudentFeeCardsContainer>
-              {feeDetails.map((studentFee) => (
-                <StudentFeeCard key={studentFee.studentId}>
-                  <StudentFeeCardHeader>
-                    <StudentFeeCardName>{studentFee.studentName}</StudentFeeCardName>
-                    <StudentFeeCardTotal>Rs. {Math.floor(studentFee.totalRemaining)}</StudentFeeCardTotal>
-                  </StudentFeeCardHeader>
-                  
-                  <FeeItemsList>
-                    {studentFee.remainingFeeItems.map((item, itemIndex) => (
-                      <FeeItemRow key={itemIndex}>
-                        <FeeItemName>{item.name}</FeeItemName>
-                        <FeeItemDueDate>
-                          {new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </FeeItemDueDate>
-                        <FeeItemAmount>Rs. {Math.floor(item.amount)}</FeeItemAmount>
-                      </FeeItemRow>
-                    ))}
-                  </FeeItemsList>
-                </StudentFeeCard>
-              ))}
-            </StudentFeeCardsContainer>
+            <FeeTableContainer theme={theme}>
+              <FeeTableWrapper theme={theme}>
+                <FeeTable theme={theme}>
+                  <FeeTableHeader theme={theme}>
+                    <tr>
+                      <FeeTableHeaderCell theme={theme} style={{ width: '40px' }}></FeeTableHeaderCell>
+                      <FeeTableHeaderCell theme={theme}>Student Name</FeeTableHeaderCell>
+                      <FeeTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Total Invoiced</FeeTableHeaderCell>
+                      <FeeTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Total Paid</FeeTableHeaderCell>
+                      <FeeTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Outstanding</FeeTableHeaderCell>
+                    </tr>
+                  </FeeTableHeader>
+                  <FeeTableBody theme={theme}>
+                    {feeDetails.map((studentFee) => {
+                      const isExpanded = expandedFeeRows.has(studentFee.studentId);
+                      return (
+                        <React.Fragment key={studentFee.studentId}>
+                          <FeeTableRow theme={theme} $isExpanded={isExpanded}>
+                            <FeeTableCell theme={theme}>
+                              <ExpandButton
+                                theme={theme}
+                                onClick={() => {
+                                  setExpandedFeeRows(prev => {
+                                    const newSet = new Set(prev);
+                                    if (newSet.has(studentFee.studentId)) {
+                                      newSet.delete(studentFee.studentId);
+                                    } else {
+                                      newSet.add(studentFee.studentId);
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                              >
+                                {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                              </ExpandButton>
+                            </FeeTableCell>
+                            <FeeTableCell theme={theme} style={{ fontWeight: '600' }}>
+                              {studentFee.studentName}
+                            </FeeTableCell>
+                            <FeeTableCell theme={theme} style={{ textAlign: 'right' }}>
+                              {formatCurrency(studentFee.totalInvoiced)}
+                            </FeeTableCell>
+                            <FeeTableCell theme={theme} style={{ textAlign: 'right' }}>
+                              {formatCurrency(studentFee.totalPaid)}
+                            </FeeTableCell>
+                            <FeeTableCell theme={theme} style={{ textAlign: 'right', fontWeight: '600' }}>
+                              {formatCurrency(studentFee.totalOutstanding)}
+                            </FeeTableCell>
+                          </FeeTableRow>
+                          {isExpanded && (
+                            <ExpandedRow theme={theme}>
+                              <ExpandedCell theme={theme} colSpan={5}>
+                                <ExpandedContent theme={theme}>
+                                  <div>
+                                    <SectionTitle theme={theme}>
+                                      <Receipt style={{ fontSize: '1rem' }} />
+                                      Invoices
+                                    </SectionTitle>
+                                    {studentFee.invoices.length === 0 ? (
+                                      <div style={{ padding: '1rem', color: theme.TEXT_SECONDARY }}>
+                                        No invoices found
+                                      </div>
+                                    ) : (
+                                      <InvoiceTable theme={theme}>
+                                        <InvoiceTableHeader theme={theme}>
+                                          <tr>
+                                            <InvoiceTableHeaderCell theme={theme}>Invoice #</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme}>Month/Year</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme}>Invoice Date</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme}>Due Date</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Amount</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme}>Status</InvoiceTableHeaderCell>
+                                          </tr>
+                                        </InvoiceTableHeader>
+                                        <tbody>
+                                          {studentFee.invoices.map(invoice => (
+                                            <InvoiceTableRow key={invoice.id} theme={theme}>
+                                              <InvoiceTableCell theme={theme}>{invoice.id}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>
+                                                {invoice.month && invoice.year
+                                                  ? `${invoice.month} ${invoice.year}`
+                                                  : 'N/A'}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatDate(invoice.invoice_date)}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatDate(invoice.due_date)}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
+                                                {formatCurrency(invoice.total_amount)}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>
+                                                <InvoiceStatusBadge $status={invoice.status}>
+                                                  {invoice.status}
+                                                </InvoiceStatusBadge>
+                                              </InvoiceTableCell>
+                                            </InvoiceTableRow>
+                                          ))}
+                                        </tbody>
+                                      </InvoiceTable>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <SectionTitle theme={theme}>
+                                      <AttachMoneyIcon style={{ fontSize: '1rem' }} />
+                                      Payments
+                                    </SectionTitle>
+                                    {studentFee.payments.length === 0 ? (
+                                      <div style={{ padding: '1rem', color: theme.TEXT_SECONDARY }}>
+                                        No payments found
+                                      </div>
+                                    ) : (
+                                      <InvoiceTable theme={theme}>
+                                        <InvoiceTableHeader theme={theme}>
+                                          <tr>
+                                            <InvoiceTableHeaderCell theme={theme}>Payment #</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme}>Payment Date</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Amount</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Discount</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Net Amount</InvoiceTableHeaderCell>
+                                            <InvoiceTableHeaderCell theme={theme}>Payment Mode</InvoiceTableHeaderCell>
+                                          </tr>
+                                        </InvoiceTableHeader>
+                                        <tbody>
+                                          {studentFee.payments.map(payment => (
+                                            <InvoiceTableRow key={payment.id} theme={theme}>
+                                              <InvoiceTableCell theme={theme}>{payment.id}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatDate(payment.payment_date)}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
+                                                {formatCurrency(payment.amount)}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
+                                                {formatCurrency(payment.discount_amount)}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
+                                                {formatCurrency(payment.net_amount)}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{payment.payment_mode}</InvoiceTableCell>
+                                            </InvoiceTableRow>
+                                          ))}
+                                        </tbody>
+                                      </InvoiceTable>
+                                    )}
+                                  </div>
+                                </ExpandedContent>
+                              </ExpandedCell>
+                            </ExpandedRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </FeeTableBody>
+                </FeeTable>
+              </FeeTableWrapper>
+            </FeeTableContainer>
           </FeeInfoCard>
         )}
+        {leaveRequestModalJSX}
       </Container>
     );
   }

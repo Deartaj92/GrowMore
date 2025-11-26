@@ -2141,9 +2141,9 @@ const FeeCollectionNew: React.FC = () => {
           
           // Only record items that are shown in fee summary (items with remaining amount > 0)
           if (remainingItemAmount > 0) {
-            const key = `${invoice.id}-${item.id}`;
-            const distributedAmount = distributedAmounts[key] || 0;
-            
+          const key = `${invoice.id}-${item.id}`;
+          const distributedAmount = distributedAmounts[key] || 0;
+          
             // Store the remaining amount (what's shown in fee summary) and paid amount
             paymentItems.push({
               fee_item_id: item.id,
@@ -3017,21 +3017,21 @@ const FeeCollectionNew: React.FC = () => {
                               >
                                 <PrintIcon fontSize="small" />
                               </Button>
-                              <Button
-                                onClick={() => showDeleteConfirmation(payment.id)}
-                                disabled={deletingPayment === payment.id}
-                                size="small"
-                                variant="outlined"
-                                color="error"
-                                sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                            <Button
+                              onClick={() => showDeleteConfirmation(payment.id)}
+                              disabled={deletingPayment === payment.id}
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              sx={{ minWidth: 'auto', padding: '4px 8px' }}
                                 title="Delete Payment"
-                              >
-                                {deletingPayment === payment.id ? (
-                                  <CircularProgress size={16} />
-                                ) : (
-                                  <DeleteIconMUI fontSize="small" />
-                                )}
-                              </Button>
+                            >
+                              {deletingPayment === payment.id ? (
+                                <CircularProgress size={16} />
+                              ) : (
+                                <DeleteIconMUI fontSize="small" />
+                              )}
+                            </Button>
                             </div>
                           </TableCell>
                         </TableRow>

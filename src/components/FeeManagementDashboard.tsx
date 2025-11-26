@@ -385,6 +385,13 @@ const feeManagementItems = [
     color: '#3b82f6' // Blue
   },
   {
+    title: 'Fee Ledger',
+    description: 'View comprehensive fee ledger for all students, including invoices, payments, and outstanding balances',
+    icon: <AccountBalanceIcon />,
+    path: '/ledger',
+    color: '#14b8a6' // Teal
+  },
+  {
     title: 'Settings',
     description: 'Configure fee collection settings, set default print preferences, and customize fee management options',
     icon: <SettingsIcon />,
@@ -420,6 +427,7 @@ const FeeManagementDashboard: React.FC = () => {
       case 'Fee Concessions': return 'fee_dash_concessions';
       case 'Payment History': return 'fee_dash_payment_history';
       case 'Settings': return 'fee_dash_settings';
+      case 'Fee Ledger': return 'fee_dash_ledger';
       default: return null;
     }
   };

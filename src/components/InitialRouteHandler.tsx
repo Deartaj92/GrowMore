@@ -18,7 +18,7 @@ const InitialRouteHandler: React.FC = () => {
         }
       } else {
         // All other roles (Teacher, Student, Parent, Accountant, Guest) go to landing page
-        navigate('/landing-page', { replace: true });
+        navigate('/home', { replace: true });
       }
     } else if (!loading && !user) {
       // Check for student session before redirecting to login
@@ -28,7 +28,7 @@ const InitialRouteHandler: React.FC = () => {
           const parsed = JSON.parse(studentSession);
           if (parsed?.id) {
             // Student is logged in, redirect to landing page (which acts as their dashboard/menu)
-            navigate('/landing-page', { replace: true });
+            navigate('/home', { replace: true });
             return;
           }
         } catch (e) {
@@ -42,7 +42,7 @@ const InitialRouteHandler: React.FC = () => {
           const parsed = JSON.parse(parentSession);
           if (parsed?.id) {
             // Parent is logged in, redirect to landing page
-            navigate('/landing-page', { replace: true });
+            navigate('/home', { replace: true });
             return;
           }
         } catch (e) {

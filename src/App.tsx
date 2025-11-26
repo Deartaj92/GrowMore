@@ -62,6 +62,7 @@ import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
 import ConcessionsPage from './pages/ConcessionsPage';
 import FeeSettings from './pages/FeeSettings';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
+import LedgerPage from './pages/LedgerPage';
 // Enquiry Management Components
 import EnquiryManagementDashboardPage from './pages/EnquiryManagementDashboardPage';
 import EnquiryDashboardPage from './pages/EnquiryDashboardPage';
@@ -239,10 +240,28 @@ const App: React.FC = () => {
                           />
 
                           {/* Teacher Welcome Page */}
-                          {/* Public Student Self Profile (uses Layout providers for styles/contexts) */}
+                          {/* Student My Profile - Only accessible to students, no ID in URL */}
+                          <Route
+                            path="my-profile"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Student']}
+                              >
+                                <StudentProfile isMyProfile={true} />
+                              </ProtectedRoute>
+                            }
+                          />
+                          {/* Public Student Profile (uses Layout providers for styles/contexts) - Students cannot access this directly */}
                           <Route
                             path="student/:id"
-                            element={<StudentProfile />}
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest', 'Parent']}
+                                guestPageKey="student_profile"
+                              >
+                                <StudentProfile />
+                              </ProtectedRoute>
+                            }
                           />
                           <Route
                             path="teacher"
@@ -526,7 +545,7 @@ const App: React.FC = () => {
                           />
 
                           <Route
-                            path="landing-page"
+                            path="home"
                             element={
                               <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Student', 'Parent', 'Accountant', 'Guest']}>
                                 <CustomLandingPage />
@@ -675,6 +694,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
                                 <PaymentHistoryPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="ledger"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <LedgerPage />
                               </ProtectedRoute>
                             }
                           />

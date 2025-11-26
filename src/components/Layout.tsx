@@ -3836,7 +3836,7 @@ const Layout: React.FC = () => {
                               )
                             ) : (user || studentInfo || parentInfo) ? (
                               <MenuButton
-                                onClick={() => navigate('/landing-page')}
+                                onClick={() => navigate('/home')}
                                 aria-label="Go to Dashboard"
                                 title="Dashboard"
                               >

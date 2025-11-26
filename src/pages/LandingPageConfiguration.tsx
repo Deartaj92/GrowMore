@@ -20,6 +20,7 @@ import {
   RestartAlt as ResetIcon,
   Event as EventIcon,
   CalendarToday as CalendarIcon,
+  AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -54,9 +55,12 @@ import {
   TEACHER_PROFILE_TABS,
   TEACHER_PROFILE_SUMMARY_CARDS,
   STUDENT_MENU_CARDS,
+  STUDENT_QUICK_ACTIONS,
   STUDENT_PROFILE_TABS,
   STUDENT_PROFILE_SUMMARY_CARDS,
   PARENT_MENU_CARDS,
+  PARENT_FEE_SECTIONS,
+  PARENT_QUICK_ACTIONS,
   DASHBOARD_CARDS,
   GUEST_SIDEBAR_MENUS,
   STUDENT_DASHBOARD_CARDS_GUEST,
@@ -851,6 +855,43 @@ const LandingPageConfiguration: React.FC = () => {
 
                     <SettingsCard $theme={theme}>
                       <SectionTitleContainer $theme={theme}>
+                        <EventIcon />
+                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
+                          Student Quick Actions (Landing Page)
+                        </Typography>
+                      </SectionTitleContainer>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Control which quick action cards are visible to students on the Landing Page
+                      </Typography>
+                      <SettingsGrid>
+                        {STUDENT_QUICK_ACTIONS.map((action) => (
+                          <SettingItem key={action.key} $theme={theme}>
+                            <SettingHeader>
+                              <Box sx={{ flex: 1 }}>
+                                <SettingLabelText $theme={theme}>{action.label}</SettingLabelText>
+                                <SettingDescriptionText $theme={theme}>
+                                  {action.description}
+                                </SettingDescriptionText>
+                              </Box>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={renderSettings.student[action.key] !== false}
+                                    onChange={() => handleRenderSettingChange('student', action.key)}
+                                    color="primary"
+                                  />
+                                }
+                                label=""
+                                sx={{ ml: 1 }}
+                              />
+                            </SettingHeader>
+                          </SettingItem>
+                        ))}
+                      </SettingsGrid>
+                    </SettingsCard>
+
+                    <SettingsCard $theme={theme}>
+                      <SectionTitleContainer $theme={theme}>
                         <PersonIcon />
                         <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
                           Student Profile Tabs
@@ -953,6 +994,80 @@ const LandingPageConfiguration: React.FC = () => {
                                   <Switch
                                     checked={renderSettings.parent[card.key] !== false}
                                     onChange={() => handleRenderSettingChange('parent', card.key)}
+                                    color="primary"
+                                  />
+                                }
+                                label=""
+                                sx={{ ml: 1 }}
+                              />
+                            </SettingHeader>
+                          </SettingItem>
+                        ))}
+                      </SettingsGrid>
+                    </SettingsCard>
+
+                    <SettingsCard $theme={theme}>
+                      <SectionTitleContainer $theme={theme}>
+                        <EventIcon />
+                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
+                          Parent Quick Actions (Landing Page)
+                        </Typography>
+                      </SectionTitleContainer>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Control which quick action cards are visible to parents on the Landing Page
+                      </Typography>
+                      <SettingsGrid>
+                        {PARENT_QUICK_ACTIONS.map((action) => (
+                          <SettingItem key={action.key} $theme={theme}>
+                            <SettingHeader>
+                              <Box sx={{ flex: 1 }}>
+                                <SettingLabelText $theme={theme}>{action.label}</SettingLabelText>
+                                <SettingDescriptionText $theme={theme}>
+                                  {action.description}
+                                </SettingDescriptionText>
+                              </Box>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={renderSettings.parent[action.key] !== false}
+                                    onChange={() => handleRenderSettingChange('parent', action.key)}
+                                    color="primary"
+                                  />
+                                }
+                                label=""
+                                sx={{ ml: 1 }}
+                              />
+                            </SettingHeader>
+                          </SettingItem>
+                        ))}
+                      </SettingsGrid>
+                    </SettingsCard>
+
+                    <SettingsCard $theme={theme}>
+                      <SectionTitleContainer $theme={theme}>
+                        <AttachMoneyIcon />
+                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
+                          Fee Sections (Landing Page)
+                        </Typography>
+                      </SectionTitleContainer>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Control which fee-related sections are visible to parents on the Landing Page
+                      </Typography>
+                      <SettingsGrid>
+                        {PARENT_FEE_SECTIONS.map((section) => (
+                          <SettingItem key={section.key} $theme={theme}>
+                            <SettingHeader>
+                              <Box sx={{ flex: 1 }}>
+                                <SettingLabelText $theme={theme}>{section.label}</SettingLabelText>
+                                <SettingDescriptionText $theme={theme}>
+                                  {section.description}
+                                </SettingDescriptionText>
+                              </Box>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={renderSettings.parent[section.key] !== false}
+                                    onChange={() => handleRenderSettingChange('parent', section.key)}
                                     color="primary"
                                   />
                                 }
