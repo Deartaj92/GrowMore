@@ -378,6 +378,13 @@ const feeManagementItems = [
     color: '#ec4899' // Pink
   },
   {
+    title: 'Payment History',
+    description: 'View complete payment history across all students, filter by class, date range, and payment method, generate invoices and receipts',
+    icon: <HistoryIcon />,
+    path: '/payment-history',
+    color: '#3b82f6' // Blue
+  },
+  {
     title: 'Settings',
     description: 'Configure fee collection settings, set default print preferences, and customize fee management options',
     icon: <SettingsIcon />,
@@ -411,6 +418,7 @@ const FeeManagementDashboard: React.FC = () => {
       case 'Fee Audit Logs': return 'fee_dash_audit_logs';
       case 'Fee Analytics': return 'fee_dash_analytics';
       case 'Fee Concessions': return 'fee_dash_concessions';
+      case 'Payment History': return 'fee_dash_payment_history';
       case 'Settings': return 'fee_dash_settings';
       default: return null;
     }

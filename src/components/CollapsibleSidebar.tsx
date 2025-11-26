@@ -757,6 +757,14 @@ const allPages = [
     keywords: ['fee analytics', 'fee reports', 'fee statistics', 'fee insights']
   },
   {
+    text: 'Payment History',
+    icon: <AttachMoneyIcon />,
+    path: '/payment-history',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+    category: 'Fees',
+    keywords: ['payment history', 'payment records', 'fee payments', 'payment tracking']
+  },
+  {
     text: 'Fee Settings',
     icon: <AttachMoneyIcon />,
     path: '/fee-settings',

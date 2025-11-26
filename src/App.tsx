@@ -61,6 +61,7 @@ import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
 import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
 import ConcessionsPage from './pages/ConcessionsPage';
 import FeeSettings from './pages/FeeSettings';
+import PaymentHistoryPage from './pages/PaymentHistoryPage';
 // Enquiry Management Components
 import EnquiryManagementDashboardPage from './pages/EnquiryManagementDashboardPage';
 import EnquiryDashboardPage from './pages/EnquiryDashboardPage';
@@ -665,6 +666,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
                                 <FeeSettings />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="payment-history"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <PaymentHistoryPage />
                               </ProtectedRoute>
                             }
                           />
