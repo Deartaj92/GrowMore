@@ -61,6 +61,7 @@ import {
   PARENT_MENU_CARDS,
   PARENT_FEE_SECTIONS,
   PARENT_QUICK_ACTIONS,
+  TEACHER_QUICK_ACTIONS,
   DASHBOARD_CARDS,
   GUEST_SIDEBAR_MENUS,
   STUDENT_DASHBOARD_CARDS_GUEST,
@@ -799,6 +800,43 @@ const LandingPageConfiguration: React.FC = () => {
                                   <Switch
                                     checked={renderSettings.teacher[card.key] !== false}
                                     onChange={() => handleRenderSettingChange('teacher', card.key)}
+                                    color="primary"
+                                  />
+                                }
+                                label=""
+                                sx={{ ml: 1 }}
+                              />
+                            </SettingHeader>
+                          </SettingItem>
+                        ))}
+                      </SettingsGrid>
+                    </SettingsCard>
+
+                    <SettingsCard $theme={theme}>
+                      <SectionTitleContainer $theme={theme}>
+                        <EventIcon />
+                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
+                          Teacher Quick Actions (Landing Page)
+                        </Typography>
+                      </SectionTitleContainer>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Control which quick action cards are visible to teachers on the Landing Page
+                      </Typography>
+                      <SettingsGrid>
+                        {TEACHER_QUICK_ACTIONS.map((action) => (
+                          <SettingItem key={action.key} $theme={theme}>
+                            <SettingHeader>
+                              <Box sx={{ flex: 1 }}>
+                                <SettingLabelText $theme={theme}>{action.label}</SettingLabelText>
+                                <SettingDescriptionText $theme={theme}>
+                                  {action.description}
+                                </SettingDescriptionText>
+                              </Box>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={renderSettings.teacher[action.key] !== false}
+                                    onChange={() => handleRenderSettingChange('teacher', action.key)}
                                     color="primary"
                                   />
                                 }

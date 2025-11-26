@@ -635,7 +635,8 @@ const ReviewInfo = styled.div`
 
 interface LeaveRequest {
   id: number;
-  student_id: number;
+  student_id: number | null;
+  staff_id: number | null;
   school_id: number;
   session_id: number;
   leave_type: string;
@@ -664,6 +665,11 @@ interface LeaveRequest {
       id: number;
       name: string;
     };
+  };
+  staff?: {
+    id: number;
+    name: string;
+    role: string;
   };
   reviewer?: {
     id: number;
@@ -800,6 +806,31 @@ const LeaveRequestsPage: React.FC = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
+      
+      // Enrich with staff data if staff_id is present
+      if (data && data.length > 0) {
+        const staffIds = data
+          .filter((req: any) => req.staff_id)
+          .map((req: any) => req.staff_id)
+          .filter((id: number, index: number, self: number[]) => self.indexOf(id) === index); // Unique IDs
+        
+        if (staffIds.length > 0) {
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('id, name, role')
+            .in('id', staffIds);
+          
+          if (staffData) {
+            const staffMap = new Map(staffData.map((s: any) => [s.id, s]));
+            data.forEach((req: any) => {
+              if (req.staff_id && staffMap.has(req.staff_id)) {
+                req.staff = staffMap.get(req.staff_id);
+              }
+            });
+          }
+        }
+      }
+      
       setLeaveRequests(data || []);
     } catch (error: any) {
       console.error('Error fetching leave requests:', error);
@@ -825,27 +856,33 @@ const LeaveRequestsPage: React.FC = () => {
       filtered = filtered.filter(request => {
         const studentName = request.students?.name?.toLowerCase() || '';
         const studentId = request.students?.roll_number?.toLowerCase() || '';
+        const staffName = request.staff?.name?.toLowerCase() || '';
+        const staffRole = request.staff?.role?.toLowerCase() || '';
         const reason = request.reason?.toLowerCase() || '';
         const requestedBy = request.requested_by_name?.toLowerCase() || '';
         return studentName.includes(query) || 
                studentId.includes(query) || 
+               staffName.includes(query) ||
+               staffRole.includes(query) ||
                reason.includes(query) ||
                requestedBy.includes(query);
       });
     }
     
-    // Class filter
+    // Class filter (only applies to student requests)
     if (selectedClass) {
-      filtered = filtered.filter(request => 
-        request.students?.classes?.id === parseInt(selectedClass)
-      );
+      filtered = filtered.filter(request => {
+        if (request.staff_id) return false; // Staff requests don't have classes
+        return request.students?.classes?.id === parseInt(selectedClass);
+      });
     }
     
-    // Section filter
+    // Section filter (only applies to student requests)
     if (selectedSection) {
-      filtered = filtered.filter(request => 
-        request.students?.sections?.id === parseInt(selectedSection)
-      );
+      filtered = filtered.filter(request => {
+        if (request.staff_id) return false; // Staff requests don't have sections
+        return request.students?.sections?.id === parseInt(selectedSection);
+      });
     }
     
     // Status filter
@@ -1014,53 +1051,75 @@ const LeaveRequestsPage: React.FC = () => {
     reviewNotes?: string
   ) => {
     try {
+      const isStaffRequest = !!request.staff_id || request.requested_by === 'staff';
       const student = request.students;
-      const studentName = student?.name || 'Student';
-      const studentDisplayId = student ? getStudentDisplayId({ id: student.id, roll_number: student.roll_number }) : '';
+      const staff = request.staff;
+      
+      let subjectName = '';
+      let subjectIdentifier = '';
+      let recipientId: number | null = null;
+      let familyRecipientId: number | null = null;
+      
+      if (isStaffRequest && staff) {
+        subjectName = staff.name || 'Staff';
+        subjectIdentifier = staff.role || '';
+      } else if (student) {
+        subjectName = student.name || 'Student';
+        subjectIdentifier = student ? String(getStudentDisplayId({ id: student.id, roll_number: student.roll_number })) : '';
+      }
+      
       const leaveType = getLeaveTypeLabel(request.leave_type);
       const dateRange = `${formatDate(request.start_date)} - ${formatDate(request.end_date)}`;
       
       const title = `Leave Request ${status === 'approved' ? 'Approved' : 'Rejected'}`;
-      const message = `Your leave request for ${studentName} (${studentDisplayId}) - ${leaveType} from ${dateRange} has been ${status}.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`;
+      const message = isStaffRequest
+        ? `Your leave request - ${leaveType} from ${dateRange} has been ${status}.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`
+        : `Your leave request for ${subjectName} (${subjectIdentifier}) - ${leaveType} from ${dateRange} has been ${status}.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`;
       
       if (request.requested_by === 'student') {
         // For students: Insert notification with student_id as recipient_id
-        // This matches how announcements fanout to students (see 20251121000002_fanout_announcements.sql)
-        // Students can receive notifications - NotificationContext will fetch them on refresh
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .insert({
-            recipient_id: request.student_id, // Use student_id directly (matches announcement fanout pattern)
-            school_id: schoolId,
-            notification_type: 'leave_request',
-            title: title,
-            message: message,
-            is_read: false,
-            is_important: false,
-            created_at: new Date().toISOString(),
-          });
-        
-        if (notifError) {
-          console.error('Error creating student notification:', notifError);
-        }
+        recipientId = request.student_id;
       } else if (request.requested_by === 'parent') {
         // For parents: Send notification directly to family using family_recipient_id
-        // Parents log in using family_id, so we use that directly
+        familyRecipientId = request.requested_by_id;
+      } else if (request.requested_by === 'staff' && request.staff_id) {
+        // For staff: Find the user account linked to this staff_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('staff_id', request.staff_id)
+          .eq('school_id', schoolId)
+          .maybeSingle();
+        
+        if (userData) {
+          recipientId = userData.id;
+        }
+      }
+      
+      if (recipientId || familyRecipientId) {
+        const notificationData: any = {
+          school_id: schoolId,
+          notification_type: 'leave_request',
+          title: title,
+          message: message,
+          is_read: false,
+          is_important: false,
+          created_at: new Date().toISOString(),
+        };
+        
+        if (recipientId) {
+          notificationData.recipient_id = recipientId;
+        }
+        if (familyRecipientId) {
+          notificationData.family_recipient_id = familyRecipientId;
+        }
+        
         const { error: notifError } = await supabase
           .from('notifications')
-          .insert({
-            family_recipient_id: request.requested_by_id, // Use family_id directly
-            school_id: schoolId,
-            notification_type: 'leave_request',
-            title: title,
-            message: message,
-            is_read: false,
-            is_important: false,
-            created_at: new Date().toISOString(),
-          });
+          .insert(notificationData);
         
         if (notifError) {
-          console.error('Error creating parent notification:', notifError);
+          console.error('Error creating notification:', notifError);
         }
       }
     } catch (error: any) {
@@ -1127,7 +1186,7 @@ const LeaveRequestsPage: React.FC = () => {
             <SearchIcon style={{ color: theme.TEXT_SECONDARY, fontSize: '1.2rem' }} />
             <SearchInput
               type="text"
-              placeholder="Search by student name, ID, reason..."
+              placeholder="Search by name, ID, reason..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               theme={theme}
@@ -1214,8 +1273,8 @@ const LeaveRequestsPage: React.FC = () => {
             <TableHeader>
               <tr>
                 <TableHeaderCell theme={theme}>Request ID</TableHeaderCell>
-                <TableHeaderCell theme={theme}>Student</TableHeaderCell>
-                <TableHeaderCell theme={theme}>Class/Section</TableHeaderCell>
+                <TableHeaderCell theme={theme}>Name</TableHeaderCell>
+                <TableHeaderCell theme={theme}>Class/Section/Role</TableHeaderCell>
                 <TableHeaderCell theme={theme}>Leave Type</TableHeaderCell>
                 <TableHeaderCell theme={theme}>Dates</TableHeaderCell>
                 <TableHeaderCell theme={theme}>Reason</TableHeaderCell>
@@ -1240,17 +1299,32 @@ const LeaveRequestsPage: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <PersonIcon style={{ fontSize: '1rem', color: theme.TEXT_SECONDARY }} />
                         <div>
-                          <div style={{ fontWeight: 500 }}>{request.students?.name || 'Unknown'}</div>
-                          <div style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>
-                            {request.students?.roll_number ? `S${user?.school_id}-${getStudentDisplayId({ id: request.students.id, roll_number: request.students.roll_number })}` : '-'}
-                          </div>
+                          {request.staff_id && request.staff ? (
+                            <>
+                              <div style={{ fontWeight: 500 }}>{request.staff.name || 'Unknown Staff'}</div>
+                              <div style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>
+                                {request.staff.role || 'Staff'}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontWeight: 500 }}>{request.students?.name || 'Unknown'}</div>
+                              <div style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>
+                                {request.students?.roll_number ? `S${user?.school_id}-${getStudentDisplayId({ id: request.students.id, roll_number: request.students.roll_number })}` : '-'}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell theme={theme}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <SchoolIcon style={{ fontSize: '1rem', color: theme.TEXT_SECONDARY }} />
-                        {getStudentClass(request)}
+                        {request.staff_id && request.staff ? (
+                          <span>{request.staff.role || 'Staff'}</span>
+                        ) : (
+                          getStudentClass(request)
+                        )}
                       </div>
                     </TableCell>
                     <TableCell theme={theme}>

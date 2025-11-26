@@ -229,6 +229,31 @@ export const PARENT_QUICK_ACTIONS: MenuItemConfig[] = [
   }
 ];
 
+// Teacher quick action cards configuration (CustomLandingPage.tsx)
+export const TEACHER_QUICK_ACTIONS: MenuItemConfig[] = [
+  {
+    key: 'request_leave',
+    label: 'Request for Leave',
+    description: 'Submit leave requests for approval.',
+    defaultEnabled: true,
+    category: 'teacher'
+  },
+  {
+    key: 'register_complaint',
+    label: 'Register Complaint',
+    description: 'Submit complaints or concerns to the administration.',
+    defaultEnabled: true,
+    category: 'teacher'
+  },
+  {
+    key: 'suggestions',
+    label: 'Suggestions',
+    description: 'Share your suggestions and feedback.',
+    defaultEnabled: true,
+    category: 'teacher'
+  }
+];
+
 // Student profile tabs configuration (StudentProfile.tsx)
 export const STUDENT_PROFILE_TABS: MenuItemConfig[] = [
   {
@@ -576,6 +601,11 @@ export const getDefaultSettings = () => {
 
   PARENT_QUICK_ACTIONS.forEach(action => {
     parentSettings[action.key] = action.defaultEnabled !== false;
+  });
+
+  // Initialize teacher quick actions
+  TEACHER_QUICK_ACTIONS.forEach(action => {
+    teacherSettings[action.key] = action.defaultEnabled !== false;
   });
 
   GUEST_ACCESSIBLE_PAGES.forEach(page => {

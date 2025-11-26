@@ -3798,9 +3798,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             // Use fetchStudentByIdentifier for regular route (handles both ID and roll_number sequence)
             studentData = await fetchStudentByIdentifier(supabase, id, schoolId);
           }
-          
-          if (!studentData) {
-            throw new Error('Student not found');
+        
+        if (!studentData) {
+          throw new Error('Student not found');
           }
         } else {
           throw new Error('Student ID not found');
@@ -4221,7 +4221,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     // For my-profile route, we need studentIdFromSession; for regular route, we need id
     if (isMyProfile) {
       if (studentIdFromSession) {
-        fetchStudentData();
+      fetchStudentData();
       } else {
         // If studentIdFromSession is not available yet, set loading to false and show error
         setLoading(false);

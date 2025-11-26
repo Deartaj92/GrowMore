@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import * as Icons from '@mui/icons-material';
 import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, AccessTime as AccessTimeIcon, Person as PersonIcon, Event as EventIcon, CalendarToday as CalendarIcon, LocationOn as LocationIcon, Phone as PhoneIcon, Sms as SmsIcon, WhatsApp as WhatsAppIcon, AccountCircle, AttachMoney as AttachMoneyIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon } from '@mui/icons-material';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Typography, IconButton } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Typography, IconButton, Tabs, Tab, Chip } from '@mui/material';
 import { useToast } from '../components/useToast';
 import Loader from '../components/Loader';
 import { examinationService } from '../services/examinationService';
@@ -991,12 +991,10 @@ const StudentFeeCardTotal = styled.div`
 
 // Helper functions for fee display
 const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-PK', {
-    style: 'currency',
-    currency: 'PKR',
+  return `Rs. ${new Intl.NumberFormat('en-IN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount)}`;
 };
 
 const formatDate = (date: string): string => {
@@ -1024,12 +1022,30 @@ const FeeTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   min-width: 800px;
+  table-layout: fixed;
+  
+  thead tr {
+    display: table-row;
+  }
+  
+  thead th {
+    display: table-cell;
+  }
+  
+  tbody tr {
+    display: table-row;
+  }
+  
+  tbody td {
+    display: table-cell;
+  }
 `;
 
 const FeeTableHeader = styled.thead`
   background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.03)'
     : 'rgba(0, 0, 0, 0.02)'};
+  display: table-header-group;
 `;
 
 const FeeTableHeaderCell = styled.th`
@@ -1040,6 +1056,8 @@ const FeeTableHeaderCell = styled.th`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
   white-space: nowrap;
+  vertical-align: middle;
+  width: auto;
 `;
 
 const FeeTableBody = styled.tbody``;
@@ -1047,6 +1065,7 @@ const FeeTableBody = styled.tbody``;
 const FeeTableRow = styled.tr<{ $isExpanded?: boolean }>`
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
   transition: background 0.2s ease;
+  display: table-row;
   
   &:hover {
     background: ${({ theme }) => theme.BG === '#252525'
@@ -1482,6 +1501,8 @@ const LeaveHistoryContent = styled.div<{ $expanded: boolean }>`
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: ${props => props.$expanded ? '1rem 1.25rem' : '0 1.25rem'};
+  display: flex;
+  flex-direction: column;
   
   @media (max-width: 768px) {
     max-height: ${props => props.$expanded ? '500px' : '0'};
@@ -1493,9 +1514,43 @@ const LeaveRequestList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.ACCENT};
+    border-radius: 4px;
+    
+    &:hover {
+      background: ${({ theme }) => theme.ACCENT};
+      opacity: 0.8;
+    }
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.ACCENT} ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
   
   @media (max-width: 768px) {
     gap: 0.5rem;
+    max-height: 350px;
+    padding-right: 0.25rem;
+    
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
   }
 `;
 
@@ -1539,11 +1594,43 @@ const LeaveRequestStudentInfo = styled.div`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.5rem;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
   flex-wrap: wrap;
+  
+  .student-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+    font-weight: 500;
+    
+    svg {
+      color: ${({ theme }) => theme.ACCENT};
+      font-size: 1rem;
+    }
+  }
+  
+  .student-id {
+    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    font-size: 0.9rem;
+    font-weight: 400;
+  }
+  
+  .student-class {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    font-size: 0.9rem;
+    
+    svg {
+      color: ${({ theme }) => theme.ACCENT};
+      font-size: 1rem;
+    }
+  }
   
   strong {
     font-weight: 600;
@@ -1562,9 +1649,31 @@ const LeaveRequestStudentInfo = styled.div`
   
   @media (max-width: 768px) {
     font-size: 0.8rem;
-    gap: 0.4rem;
-    margin-bottom: 0.4rem;
-    padding-bottom: 0.4rem;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    
+    .student-name {
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      
+      svg {
+        font-size: 0.9rem;
+      }
+    }
+    
+    .student-id {
+      font-size: 0.8rem;
+    }
+    
+    .student-class {
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      
+      svg {
+        font-size: 0.9rem;
+      }
+    }
     
     strong {
       font-size: 0.85rem;
@@ -1603,7 +1712,7 @@ const LeaveStatusBadge = styled.div<{ $status: string }>`
   white-space: nowrap;
   
   ${({ $status, theme }) => {
-    if ($status === 'approved') {
+    if ($status === 'approved' || $status === 'reviewed') {
       return `
         background: ${theme.BG === '#252525' ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.1)'};
         color: #22c55e;
@@ -1875,7 +1984,8 @@ const CustomLandingPage: React.FC = () => {
   // Leave Request Modal state
   const [leaveRequestModalOpen, setLeaveRequestModalOpen] = useState(false);
   const [leaveRequestForm, setLeaveRequestForm] = useState({
-    studentId: '',
+    studentId: '', // For students/parents
+    staffId: '', // For teachers/staff
     leaveType: 'sick',
     startDate: '',
     endDate: '',
@@ -1885,7 +1995,8 @@ const CustomLandingPage: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [leaveRequests, setLeaveRequests] = useState<Array<{
     id: number;
-    student_id: number;
+    student_id?: number | null;
+    staff_id?: number | null;
     leave_type: string;
     start_date: string;
     end_date: string;
@@ -1897,10 +2008,267 @@ const CustomLandingPage: React.FC = () => {
     reviewed_at?: string | null;
     review_notes?: string | null;
     students?: { name: string } | null;
+    staff?: { name: string, role?: string } | null;
   }>>([]);
   const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false);
   const [leaveHistoryExpanded, setLeaveHistoryExpanded] = useState(false);
+  const [historyActiveTab, setHistoryActiveTab] = useState(0); // 0 = Leave Requests, 1 = Complaints, 2 = Suggestions
+  
+  // Complaints and suggestions history state
+  const [complaintsHistory, setComplaintsHistory] = useState<Array<{
+    id: number;
+    subject: string;
+    complaint_text: string;
+    status: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    review_notes?: string | null;
+  }>>([]);
+  const [suggestionsHistory, setSuggestionsHistory] = useState<Array<{
+    id: number;
+    subject: string;
+    suggestion_text: string;
+    status: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    review_notes?: string | null;
+  }>>([]);
+  const [loadingComplaintsHistory, setLoadingComplaintsHistory] = useState(false);
+  const [loadingSuggestionsHistory, setLoadingSuggestionsHistory] = useState(false);
+  
+  // Complaint modal state
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [complaintForm, setComplaintForm] = useState({
+    subject: '',
+    complaintText: '',
+  });
+  const [submittingComplaint, setSubmittingComplaint] = useState(false);
+  
+  // Suggestion modal state
+  const [suggestionModalOpen, setSuggestionModalOpen] = useState(false);
+  const [suggestionForm, setSuggestionForm] = useState({
+    subject: '',
+    suggestionText: '',
+  });
+  const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
+  
   const { showToast } = useToast();
+
+  // Helper function to notify admins/staff when a suggestion is submitted
+  const createSuggestionNotificationForAdmins = async (
+    suggestionId: number,
+    schoolId: number,
+    submittedByName: string,
+    subject: string
+  ) => {
+    try {
+      // Find all admins/staff who should be notified (Principal, Admin roles)
+      const { data: adminUsers, error: adminError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('school_id', schoolId)
+        .in('role', ['Principal', 'Admin']);
+
+      if (adminError) throw adminError;
+
+      if (!adminUsers || adminUsers.length === 0) {
+        return; // No admins to notify
+      }
+
+      const notifications = adminUsers.map((admin) => ({
+        recipient_id: admin.id,
+        school_id: schoolId,
+        notification_type: 'suggestion',
+        title: 'New Suggestion Submitted',
+        message: `${submittedByName} submitted a new suggestion: "${subject}"`,
+        is_read: false,
+        is_important: false,
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) throw notifError;
+    } catch (error: any) {
+      console.error('Error creating suggestion notifications for admins:', error);
+      throw error;
+    }
+  };
+
+  // Helper function to notify admins/staff when a complaint is submitted
+  const createComplaintNotificationForAdmins = async (
+    complaintId: number,
+    schoolId: number,
+    submittedByName: string,
+    subject: string
+  ) => {
+    try {
+      // Find all admins/staff who should be notified (Principal, Admin roles)
+      const { data: adminUsers, error: adminError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('school_id', schoolId)
+        .in('role', ['Principal', 'Admin']);
+
+      if (adminError) throw adminError;
+
+      if (!adminUsers || adminUsers.length === 0) {
+        return; // No admins to notify
+      }
+
+      const notifications = adminUsers.map((admin) => ({
+        recipient_id: admin.id,
+        school_id: schoolId,
+        notification_type: 'complaint',
+        title: 'New Complaint Submitted',
+        message: `${submittedByName} submitted a new complaint: "${subject}"`,
+        is_read: false,
+        is_important: true, // Complaints are marked as important
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) throw notifError;
+    } catch (error: any) {
+      console.error('Error creating complaint notifications for admins:', error);
+      throw error;
+    }
+  };
+
+  // Helper function to notify submitter when a suggestion is reviewed
+  // This function can be called from a review page when a suggestion is reviewed
+  const createSuggestionReviewNotification = async (
+    suggestionId: number,
+    schoolId: number,
+    submittedBy: string,
+    submittedById: number | null,
+    submittedByName: string,
+    subject: string,
+    status: 'reviewed',
+    reviewNotes?: string
+  ) => {
+    try {
+      let recipientId: number | null = null;
+      let familyRecipientId: number | null = null;
+
+      if (submittedBy === 'student') {
+        recipientId = submittedById;
+      } else if (submittedBy === 'parent') {
+        familyRecipientId = submittedById;
+      } else if (submittedBy === 'staff' && submittedById) {
+        // Find the user account linked to this staff_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('staff_id', submittedById)
+          .eq('school_id', schoolId)
+          .maybeSingle();
+        
+        if (userData) {
+          recipientId = userData.id;
+        }
+      }
+
+      if (recipientId || familyRecipientId) {
+        const notificationData: any = {
+          school_id: schoolId,
+          notification_type: 'suggestion',
+          title: 'Suggestion Reviewed',
+          message: `Your suggestion "${subject}" has been reviewed.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`,
+          is_read: false,
+          is_important: false,
+          created_at: new Date().toISOString(),
+        };
+
+        if (recipientId) {
+          notificationData.recipient_id = recipientId;
+        }
+        if (familyRecipientId) {
+          notificationData.family_recipient_id = familyRecipientId;
+        }
+
+        const { error: notifError } = await supabase
+          .from('notifications')
+          .insert(notificationData);
+
+        if (notifError) {
+          console.error('Error creating suggestion review notification:', notifError);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error in createSuggestionReviewNotification:', error);
+    }
+  };
+
+  // Helper function to notify submitter when a complaint is reviewed
+  // This function can be called from a review page when a complaint is reviewed
+  const createComplaintReviewNotification = async (
+    complaintId: number,
+    schoolId: number,
+    submittedBy: string,
+    submittedById: number | null,
+    submittedByName: string,
+    subject: string,
+    status: 'reviewed',
+    reviewNotes?: string
+  ) => {
+    try {
+      let recipientId: number | null = null;
+      let familyRecipientId: number | null = null;
+
+      if (submittedBy === 'student') {
+        recipientId = submittedById;
+      } else if (submittedBy === 'parent') {
+        familyRecipientId = submittedById;
+      } else if (submittedBy === 'staff' && submittedById) {
+        // Find the user account linked to this staff_id
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('staff_id', submittedById)
+          .eq('school_id', schoolId)
+          .maybeSingle();
+        
+        if (userData) {
+          recipientId = userData.id;
+        }
+      }
+
+      if (recipientId || familyRecipientId) {
+        const notificationData: any = {
+          school_id: schoolId,
+          notification_type: 'complaint',
+          title: 'Complaint Reviewed',
+          message: `Your complaint "${subject}" has been reviewed.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`,
+          is_read: false,
+          is_important: false,
+          created_at: new Date().toISOString(),
+        };
+
+        if (recipientId) {
+          notificationData.recipient_id = recipientId;
+        }
+        if (familyRecipientId) {
+          notificationData.family_recipient_id = familyRecipientId;
+        }
+
+        const { error: notifError } = await supabase
+          .from('notifications')
+          .insert(notificationData);
+
+        if (notifError) {
+          console.error('Error creating complaint review notification:', notifError);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error in createComplaintReviewNotification:', error);
+    }
+  };
 
   // Check for student or parent session if no staff user
   useEffect(() => {
@@ -2383,6 +2751,18 @@ const CustomLandingPage: React.FC = () => {
         fetchTeacherSections(),
         fetchRenderSettingsData()
       ]);
+      
+      // Fetch active session for teachers (needed for leave requests)
+      const { data: activeSessionData } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .maybeSingle();
+      
+      if (activeSessionData) {
+        setActiveSessionId(activeSessionData.id);
+      }
     } catch (error) {
       // Handle error silently
     } finally {
@@ -2701,6 +3081,8 @@ const CustomLandingPage: React.FC = () => {
     setLoadingLeaveRequests(true);
     try {
       const isParent = user?.role === 'Parent' || !!parentInfo;
+      const isTeacher = user?.role === 'Teacher';
+      
       let query = supabase
         .from('leave_requests')
         .select(`
@@ -2726,6 +3108,9 @@ const CustomLandingPage: React.FC = () => {
           setLoadingLeaveRequests(false);
           return;
         }
+      } else if (isTeacher && user?.staff_id) {
+        // For teachers, get their own staff leave requests
+        query = query.eq('staff_id', user.staff_id);
       } else if (studentInfo && studentInfo.id) {
         // For students, get their own requests
         query = query.eq('student_id', studentInfo.id);
@@ -2738,6 +3123,31 @@ const CustomLandingPage: React.FC = () => {
       const { data, error } = await query;
 
       if (error) throw error;
+      
+      // Enrich with staff data if staff_id is present
+      if (data && data.length > 0) {
+        const staffIds = data
+          .filter((req: any) => req.staff_id)
+          .map((req: any) => req.staff_id)
+          .filter((id: number, index: number, self: number[]) => self.indexOf(id) === index); // Unique IDs
+        
+        if (staffIds.length > 0) {
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('id, name, role')
+            .in('id', staffIds);
+          
+          if (staffData) {
+            const staffMap = new Map(staffData.map((s: any) => [s.id, s]));
+            data.forEach((req: any) => {
+              if (req.staff_id && staffMap.has(req.staff_id)) {
+                req.staff = staffMap.get(req.staff_id);
+              }
+            });
+          }
+        }
+      }
+      
       setLeaveRequests(data || []);
     } catch (error: any) {
       console.error('Error fetching leave requests:', error);
@@ -2751,7 +3161,7 @@ const CustomLandingPage: React.FC = () => {
     if (activeSessionId && (user || studentInfo || parentInfo)) {
       fetchLeaveRequests();
     }
-  }, [activeSessionId, user, studentInfo, parentInfo, linkedStudents.length]);
+  }, [activeSessionId, user, studentInfo, parentInfo, linkedStudents.length, user?.staff_id]);
 
   // Refetch when a new request is submitted
   useEffect(() => {
@@ -2759,6 +3169,106 @@ const CustomLandingPage: React.FC = () => {
       fetchLeaveRequests();
     }
   }, [leaveRequestModalOpen, submittingLeaveRequest]);
+
+  // Fetch complaints history
+  const fetchComplaintsHistory = async () => {
+    const schoolId = user?.school_id || studentInfo?.school_id || (parentInfo ? parentInfo.school_id : null);
+    if (!schoolId) return;
+
+    setLoadingComplaintsHistory(true);
+    try {
+      const isStudent = user?.role === 'Student' || !!studentInfo;
+      const isParent = user?.role === 'Parent' || !!parentInfo;
+      const isTeacher = user?.role === 'Teacher';
+
+      let query = supabase
+        .from('complaints')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+
+      if (isStudent && studentInfo?.id) {
+        query = query.eq('submitted_by', 'student').eq('submitted_by_id', studentInfo.id);
+      } else if (isParent && parentInfo?.id) {
+        query = query.eq('submitted_by', 'parent').eq('submitted_by_id', parentInfo.id);
+      } else if (isTeacher && user?.staff_id) {
+        query = query.eq('submitted_by', 'staff').eq('submitted_by_id', user.staff_id);
+      } else {
+        setComplaintsHistory([]);
+        return;
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setComplaintsHistory(data || []);
+    } catch (error: any) {
+      console.error('Error fetching complaints history:', error);
+    } finally {
+      setLoadingComplaintsHistory(false);
+    }
+  };
+
+  // Fetch suggestions history
+  const fetchSuggestionsHistory = async () => {
+    const schoolId = user?.school_id || studentInfo?.school_id || (parentInfo ? parentInfo.school_id : null);
+    if (!schoolId) return;
+
+    setLoadingSuggestionsHistory(true);
+    try {
+      const isStudent = user?.role === 'Student' || !!studentInfo;
+      const isParent = user?.role === 'Parent' || !!parentInfo;
+      const isTeacher = user?.role === 'Teacher';
+
+      let query = supabase
+        .from('suggestions')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+
+      if (isStudent && studentInfo?.id) {
+        query = query.eq('submitted_by', 'student').eq('submitted_by_id', studentInfo.id);
+      } else if (isParent && parentInfo?.id) {
+        query = query.eq('submitted_by', 'parent').eq('submitted_by_id', parentInfo.id);
+      } else if (isTeacher && user?.staff_id) {
+        query = query.eq('submitted_by', 'staff').eq('submitted_by_id', user.staff_id);
+      } else {
+        setSuggestionsHistory([]);
+        return;
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setSuggestionsHistory(data || []);
+    } catch (error: any) {
+      console.error('Error fetching suggestions history:', error);
+    } finally {
+      setLoadingSuggestionsHistory(false);
+    }
+  };
+
+  // Fetch complaints and suggestions history when history section is expanded
+  useEffect(() => {
+    if (leaveHistoryExpanded) {
+      if (historyActiveTab === 1) {
+        fetchComplaintsHistory();
+      } else if (historyActiveTab === 2) {
+        fetchSuggestionsHistory();
+      }
+    }
+  }, [leaveHistoryExpanded, historyActiveTab]);
+
+  // Refetch when modals close
+  useEffect(() => {
+    if (!complaintModalOpen && !submittingComplaint) {
+      fetchComplaintsHistory();
+    }
+  }, [complaintModalOpen, submittingComplaint]);
+
+  useEffect(() => {
+    if (!suggestionModalOpen && !submittingSuggestion) {
+      fetchSuggestionsHistory();
+    }
+  }, [suggestionModalOpen, submittingSuggestion]);
 
   // Handle cancel leave request
   const handleCancelLeaveRequest = async (requestId: number) => {
@@ -2784,6 +3294,401 @@ const CustomLandingPage: React.FC = () => {
       showToast('Failed to cancel leave request: ' + (error.message || 'Unknown error'), 'error');
     }
   };
+
+  // Suggestion Modal JSX (memoized to prevent re-renders on input)
+  // MUST be defined before any conditional returns (including loading check) to follow Rules of Hooks
+  const suggestionModalJSX = useMemo(() => {
+    const schoolId = user?.school_id || studentInfo?.school_id || (parentInfo ? parentInfo.school_id : null);
+    const isParent = user?.role === 'Parent' || !!parentInfo;
+    const isTeacher = user?.role === 'Teacher';
+    
+    return (
+      <Dialog 
+        open={suggestionModalOpen} 
+        onClose={() => !submittingSuggestion && setSuggestionModalOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: theme.CARD,
+            border: `1px solid ${theme.BORDER}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          color: theme.TEXT_PRIMARY,
+          borderBottom: `1px solid ${theme.BORDER}`,
+          pb: 2,
+          fontWeight: 600
+        }}>
+          Submit Suggestion
+          <IconButton
+            onClick={() => setSuggestionModalOpen(false)}
+            disabled={submittingSuggestion}
+            size="small"
+            sx={{ color: theme.TEXT_SECONDARY }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <TextField
+              label="Subject"
+              value={suggestionForm.subject}
+              onChange={(e) => setSuggestionForm({ ...suggestionForm, subject: e.target.value })}
+              fullWidth
+              required
+              placeholder="Brief description of your suggestion"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  color: theme.TEXT_PRIMARY,
+                  '& fieldset': {
+                    borderColor: theme.BORDER,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.TEXT_SECONDARY,
+                },
+              }}
+            />
+
+            <TextField
+              label="Suggestion Details"
+              value={suggestionForm.suggestionText}
+              onChange={(e) => setSuggestionForm({ ...suggestionForm, suggestionText: e.target.value })}
+              fullWidth
+              required
+              multiline
+              rows={6}
+              placeholder="Please provide detailed information about your suggestion..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  color: theme.TEXT_PRIMARY,
+                  '& fieldset': {
+                    borderColor: theme.BORDER,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.TEXT_SECONDARY,
+                },
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          borderTop: `1px solid ${theme.BORDER}`,
+          pt: 2
+        }}>
+          <Button
+            onClick={() => setSuggestionModalOpen(false)}
+            disabled={submittingSuggestion}
+            sx={{ color: theme.TEXT_SECONDARY }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+              
+              if (!schoolId) {
+                showToast('School ID not found. Please contact administration.', 'error');
+                return;
+              }
+
+              if (!suggestionForm.subject.trim() || !suggestionForm.suggestionText.trim()) {
+                showToast('Please fill in all required fields.', 'error');
+                return;
+              }
+
+              setSubmittingSuggestion(true);
+              try {
+                const isParent = user?.role === 'Parent' || !!parentInfo;
+                const isTeacher = user?.role === 'Teacher';
+                const submittedBy = isTeacher ? 'staff' : (isParent ? 'parent' : 'student');
+                const submittedById = isTeacher
+                  ? (user?.staff_id || null)
+                  : (isParent 
+                    ? (parentInfo?.id || null)
+                    : (studentInfo?.id || null));
+                const submittedByName = isTeacher
+                  ? (user?.name || 'Staff')
+                  : (isParent
+                    ? (parentInfo?.name || user?.name || 'Parent')
+                    : (studentInfo?.name || user?.name || 'Student'));
+                
+                const { data: suggestionData, error } = await supabase
+                  .from('suggestions')
+                  .insert({
+                    school_id: schoolId,
+                    submitted_by: submittedBy,
+                    submitted_by_id: submittedById,
+                    submitted_by_name: submittedByName,
+                    subject: suggestionForm.subject.trim(),
+                    suggestion_text: suggestionForm.suggestionText.trim(),
+                    status: 'in_review',
+                  })
+                  .select()
+                  .single();
+
+                if (error) throw error;
+
+                // Notify admins/staff about the new suggestion
+                try {
+                  await createSuggestionNotificationForAdmins(
+                    suggestionData.id,
+                    schoolId,
+                    submittedByName,
+                    suggestionForm.subject.trim()
+                  );
+                } catch (notificationError) {
+                  // Don't fail submission if notification fails
+                  console.error('Error creating notification for suggestion:', notificationError);
+                }
+
+                showToast('Suggestion submitted successfully!', 'success');
+                setSuggestionModalOpen(false);
+                setSuggestionForm({
+                  subject: '',
+                  suggestionText: '',
+                });
+              } catch (error: any) {
+                console.error('Error submitting suggestion:', error);
+                showToast('Failed to submit suggestion: ' + (error.message || 'Unknown error'), 'error');
+              } finally {
+                setSubmittingSuggestion(false);
+              }
+            }}
+            variant="contained"
+            disabled={submittingSuggestion || !suggestionForm.subject.trim() || !suggestionForm.suggestionText.trim()}
+            sx={{
+              background: theme.ACCENT,
+              '&:hover': {
+                background: theme.ACCENT,
+                opacity: 0.9,
+              },
+            }}
+          >
+            {submittingSuggestion ? 'Submitting...' : 'Submit Suggestion'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }, [suggestionModalOpen, submittingSuggestion, suggestionForm, theme, user, studentInfo, parentInfo, showToast, setSuggestionModalOpen, setSubmittingSuggestion, setSuggestionForm]);
+
+  // Complaint Modal JSX (memoized to prevent re-renders on input)
+  // MUST be defined before any conditional returns (including loading check) to follow Rules of Hooks
+  const complaintModalJSX = useMemo(() => {
+    const schoolId = user?.school_id || studentInfo?.school_id || (parentInfo ? parentInfo.school_id : null);
+    const isParent = user?.role === 'Parent' || !!parentInfo;
+    const isTeacher = user?.role === 'Teacher';
+    
+    return (
+      <Dialog 
+        open={complaintModalOpen} 
+        onClose={() => !submittingComplaint && setComplaintModalOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: theme.CARD,
+            border: `1px solid ${theme.BORDER}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          color: theme.TEXT_PRIMARY,
+          borderBottom: `1px solid ${theme.BORDER}`,
+          pb: 2,
+          fontWeight: 600
+        }}>
+          Register Complaint
+          <IconButton
+            onClick={() => setComplaintModalOpen(false)}
+            disabled={submittingComplaint}
+            size="small"
+            sx={{ color: theme.TEXT_SECONDARY }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <TextField
+              label="Subject"
+              value={complaintForm.subject}
+              onChange={(e) => setComplaintForm({ ...complaintForm, subject: e.target.value })}
+              fullWidth
+              required
+              placeholder="Brief description of your complaint"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  color: theme.TEXT_PRIMARY,
+                  '& fieldset': {
+                    borderColor: theme.BORDER,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.TEXT_SECONDARY,
+                },
+              }}
+            />
+
+            <TextField
+              label="Complaint Details"
+              value={complaintForm.complaintText}
+              onChange={(e) => setComplaintForm({ ...complaintForm, complaintText: e.target.value })}
+              fullWidth
+              required
+              multiline
+              rows={6}
+              placeholder="Please provide detailed information about your complaint..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  color: theme.TEXT_PRIMARY,
+                  '& fieldset': {
+                    borderColor: theme.BORDER,
+                  },
+                  '&:hover fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: theme.ACCENT,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: theme.TEXT_SECONDARY,
+                },
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          borderTop: `1px solid ${theme.BORDER}`,
+          pt: 2
+        }}>
+          <Button
+            onClick={() => setComplaintModalOpen(false)}
+            disabled={submittingComplaint}
+            sx={{ color: theme.TEXT_SECONDARY }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+              
+              if (!schoolId) {
+                showToast('School ID not found. Please contact administration.', 'error');
+                return;
+              }
+
+              if (!complaintForm.subject.trim() || !complaintForm.complaintText.trim()) {
+                showToast('Please fill in all required fields.', 'error');
+                return;
+              }
+
+              setSubmittingComplaint(true);
+              try {
+                const isParent = user?.role === 'Parent' || !!parentInfo;
+                const submittedBy = isTeacher ? 'staff' : (isParent ? 'parent' : 'student');
+                const submittedById = isTeacher
+                  ? (user?.staff_id || null)
+                  : (isParent 
+                    ? (parentInfo?.id || null)
+                    : (studentInfo?.id || null));
+                const submittedByName = isTeacher
+                  ? (user?.name || 'Staff')
+                  : (isParent
+                    ? (parentInfo?.name || user?.name || 'Parent')
+                    : (studentInfo?.name || user?.name || 'Student'));
+                
+                const { data: complaintData, error } = await supabase
+                  .from('complaints')
+                  .insert({
+                    school_id: schoolId,
+                    submitted_by: submittedBy,
+                    submitted_by_id: submittedById,
+                    submitted_by_name: submittedByName,
+                    subject: complaintForm.subject.trim(),
+                    complaint_text: complaintForm.complaintText.trim(),
+                    status: 'in_review',
+                  })
+                  .select()
+                  .single();
+
+                if (error) throw error;
+
+                // Notify admins/staff about the new complaint
+                try {
+                  await createComplaintNotificationForAdmins(
+                    complaintData.id,
+                    schoolId,
+                    submittedByName,
+                    complaintForm.subject.trim()
+                  );
+                } catch (notificationError) {
+                  // Don't fail submission if notification fails
+                  console.error('Error creating notification for complaint:', notificationError);
+                }
+
+                showToast('Complaint submitted successfully!', 'success');
+                setComplaintModalOpen(false);
+                setComplaintForm({
+                  subject: '',
+                  complaintText: '',
+                });
+              } catch (error: any) {
+                console.error('Error submitting complaint:', error);
+                showToast('Failed to submit complaint: ' + (error.message || 'Unknown error'), 'error');
+              } finally {
+                setSubmittingComplaint(false);
+              }
+            }}
+            variant="contained"
+            disabled={submittingComplaint || !complaintForm.subject.trim() || !complaintForm.complaintText.trim()}
+            sx={{
+              background: theme.ACCENT,
+              '&:hover': {
+                background: theme.ACCENT,
+                opacity: 0.9,
+              },
+            }}
+          >
+            {submittingComplaint ? 'Submitting...' : 'Submit Complaint'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }, [complaintModalOpen, submittingComplaint, complaintForm, theme, user, studentInfo, parentInfo, showToast, setComplaintModalOpen, setSubmittingComplaint, setComplaintForm]);
 
   // Leave Request Modal JSX (memoized to prevent re-renders on input)
   // MUST be defined before any conditional returns (including loading check) to follow Rules of Hooks
@@ -2852,6 +3757,19 @@ const CustomLandingPage: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
+            )}
+            
+            {(user?.role === 'Teacher') && user?.staff_id && (
+              <Box sx={{ 
+                p: 1.5, 
+                borderRadius: 1, 
+                bgcolor: theme.BG === '#252525' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                border: `1px solid ${theme.BORDER}`
+              }}>
+                <Typography variant="body2" sx={{ color: theme.TEXT_PRIMARY, fontWeight: 500 }}>
+                  Requesting leave for: <strong>{user.name || 'You'}</strong>
+                </Typography>
+              </Box>
             )}
 
             <FormControl fullWidth>
@@ -2987,7 +3905,11 @@ const CustomLandingPage: React.FC = () => {
                 return;
               }
 
-              if (!leaveRequestForm.studentId || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()) {
+              const isTeacher = user?.role === 'Teacher';
+              const hasStudentId = leaveRequestForm.studentId && !isTeacher;
+              const hasStaffId = isTeacher && user?.staff_id;
+
+              if ((!hasStudentId && !hasStaffId) || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()) {
                 showToast('Please fill in all required fields.', 'error');
                 return;
               }
@@ -3000,41 +3922,57 @@ const CustomLandingPage: React.FC = () => {
               setSubmittingLeaveRequest(true);
               try {
                 const isParent = user?.role === 'Parent' || !!parentInfo;
-                const requestedBy = isParent ? 'parent' : 'student';
-                const requestedById = isParent 
-                  ? (parentInfo?.id || null)
-                  : (studentInfo?.id || parseInt(leaveRequestForm.studentId));
-                const requestedByName = isParent
-                  ? (parentInfo?.name || user?.name || 'Parent')
-                  : (studentInfo?.name || user?.name || 'Student');
+                const requestedBy = isTeacher ? 'staff' : (isParent ? 'parent' : 'student');
+                const requestedById = isTeacher
+                  ? (user?.staff_id || null)
+                  : (isParent 
+                    ? (parentInfo?.id || null)
+                    : (studentInfo?.id || parseInt(leaveRequestForm.studentId)));
+                const requestedByName = isTeacher
+                  ? (user?.name || 'Staff')
+                  : (isParent
+                    ? (parentInfo?.name || user?.name || 'Parent')
+                    : (studentInfo?.name || user?.name || 'Student'));
+                
+                const insertData: any = {
+                  school_id: schoolId,
+                  session_id: activeSessionId,
+                  leave_type: leaveRequestForm.leaveType,
+                  start_date: leaveRequestForm.startDate,
+                  end_date: leaveRequestForm.endDate,
+                  reason: leaveRequestForm.reason.trim(),
+                  requested_by: requestedBy,
+                  requested_by_id: requestedById,
+                  requested_by_name: requestedByName,
+                  status: 'pending',
+                };
+
+                if (isTeacher && user?.staff_id) {
+                  insertData.staff_id = user.staff_id;
+                } else {
+                  insertData.student_id = parseInt(leaveRequestForm.studentId);
+                }
                 
                 const { error } = await supabase
                   .from('leave_requests')
-                  .insert({
-                    school_id: schoolId,
-                    student_id: parseInt(leaveRequestForm.studentId),
-                    session_id: activeSessionId,
-                    leave_type: leaveRequestForm.leaveType,
-                    start_date: leaveRequestForm.startDate,
-                    end_date: leaveRequestForm.endDate,
-                    reason: leaveRequestForm.reason.trim(),
-                    requested_by: requestedBy,
-                    requested_by_id: requestedById,
-                    requested_by_name: requestedByName,
-                    status: 'pending',
-                  });
+                  .insert(insertData);
 
                 if (error) throw error;
 
                 showToast('Leave request submitted successfully!', 'success');
                 setLeaveRequestModalOpen(false);
-                setLeaveRequestForm({
+                const resetForm = {
                   studentId: '',
-                  leaveType: 'sick',
+                  staffId: '',
+                  leaveType: 'sick' as const,
                   startDate: '',
                   endDate: '',
                   reason: '',
-                });
+                };
+                if (isTeacher && user?.staff_id) {
+                  resetForm.staffId = user.staff_id.toString();
+                }
+                setLeaveRequestForm(resetForm);
               } catch (error: any) {
                 console.error('Error submitting leave request:', error);
                 showToast('Failed to submit leave request: ' + (error.message || 'Unknown error'), 'error');
@@ -3043,7 +3981,7 @@ const CustomLandingPage: React.FC = () => {
               }
             }}
             variant="contained"
-            disabled={submittingLeaveRequest || !leaveRequestForm.studentId || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()}
+            disabled={submittingLeaveRequest || (!leaveRequestForm.studentId && !(user?.role === 'Teacher' && user?.staff_id)) || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()}
             sx={{
               background: theme.ACCENT,
               '&:hover': {
@@ -3147,204 +4085,6 @@ const CustomLandingPage: React.FC = () => {
           </EventsSection>
         )}
 
-        {/* Quick Actions Section */}
-        {(isStudentCardVisible(renderSettings, 'request_leave') || 
-          isStudentCardVisible(renderSettings, 'register_complaint') || 
-          isStudentCardVisible(renderSettings, 'suggestions')) && (
-          <QuickActionsSection>
-            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
-            <QuickActionsCard>
-              <QuickActionsGrid>
-                {isStudentCardVisible(renderSettings, 'request_leave') && (
-                  <QuickActionItem 
-                    $color="#3b82f6"
-                    onClick={() => {
-                      if (studentId) {
-                        setLeaveRequestForm({
-                          studentId: studentId.toString(),
-                          leaveType: 'sick',
-                          startDate: '',
-                          endDate: '',
-                          reason: '',
-                        });
-                        setLeaveRequestModalOpen(true);
-                      }
-                    }}
-                  >
-                    <QuickActionIcon $color="#3b82f6">
-                      <EventBusyIcon />
-                    </QuickActionIcon>
-                    <QuickActionTitle>Request for Leave</QuickActionTitle>
-                  </QuickActionItem>
-                )}
-                {isStudentCardVisible(renderSettings, 'register_complaint') && (
-                  <QuickActionItem 
-                    $color="#ef4444"
-                    onClick={() => {
-                      // TODO: Navigate to complaint page
-                      console.log('Register Complaint clicked');
-                    }}
-                  >
-                    <QuickActionIcon $color="#ef4444">
-                      <FeedbackIcon />
-                    </QuickActionIcon>
-                    <QuickActionTitle>Register Complaint</QuickActionTitle>
-                  </QuickActionItem>
-                )}
-                {isStudentCardVisible(renderSettings, 'suggestions') && (
-                  <QuickActionItem 
-                    $color="#f59e0b"
-                    onClick={() => {
-                      // TODO: Navigate to suggestions page
-                      console.log('Suggestions clicked');
-                    }}
-                  >
-                    <QuickActionIcon $color="#f59e0b">
-                      <LightbulbIcon />
-                    </QuickActionIcon>
-                    <QuickActionTitle>Suggestions</QuickActionTitle>
-                  </QuickActionItem>
-                )}
-              </QuickActionsGrid>
-
-              {/* Leave Request History Section */}
-              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
-                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
-                  <LeaveHistoryTitle>
-                    <LeaveHistoryIcon>
-                      <HistoryIcon />
-                    </LeaveHistoryIcon>
-                    Leave Request History
-                    {leaveRequests.length > 0 && (
-                      <span style={{ 
-                        marginLeft: '0.5rem', 
-                        fontSize: '0.85rem', 
-                        color: 'inherit',
-                        opacity: 0.7 
-                      }}>
-                        ({leaveRequests.length})
-                      </span>
-                    )}
-                  </LeaveHistoryTitle>
-                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
-                </LeaveHistoryHeader>
-                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
-                  {loadingLeaveRequests ? (
-                    <EmptyState>Loading...</EmptyState>
-                  ) : leaveRequests.length === 0 ? (
-                    <EmptyState>No leave requests found</EmptyState>
-                  ) : (
-                    <LeaveRequestList>
-                      {leaveRequests.map((request: any) => {
-                        const student = request.students;
-                        const studentName = student?.name || 'Unknown Student';
-                        const className = student?.classes?.name || '';
-                        const sectionName = student?.sections?.name || '';
-                        const hasSections = student?.classes?.has_sections;
-                        const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
-                        // Extract school ID with proper type handling - using any to bypass TypeScript narrowing issue
-                        // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
-                        const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
-                        // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
-                        const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
-                        // Use getStudentDisplayId utility function to get proper display ID
-                        let studentDisplayId = '';
-                        if (student && currentSchoolId) {
-                          try {
-                            const displayId = getStudentDisplayId({ 
-                              id: student.id || request.student_id, 
-                              roll_number: student.roll_number 
-                            });
-                            studentDisplayId = `S${currentSchoolId}-${displayId}`;
-                          } catch (e) {
-                            // Fallback if utility function fails
-                            if (student.roll_number) {
-                              const rollNumberStr = String(student.roll_number);
-                              if (rollNumberStr.includes('-')) {
-                                const parts = rollNumberStr.split('-');
-                                studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
-                              } else {
-                                studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
-                              }
-                            }
-                          }
-                        }
-                        
-                        return (
-                        <LeaveRequestItem key={request.id}>
-                          {student && (
-                            <LeaveRequestStudentInfo>
-                              <div className="student-name">
-                                <PersonIcon />
-                                {studentName}
-                              </div>
-                              {studentDisplayId && (
-                                <span className="student-id">{studentDisplayId}</span>
-                              )}
-                              {classSection && (
-                                <div className="student-class">
-                                  <SchoolIcon />
-                                  {classSection}
-                                </div>
-                              )}
-                            </LeaveRequestStudentInfo>
-                          )}
-                          <LeaveRequestHeader>
-                            <LeaveRequestInfo>
-                              <LeaveRequestType>
-                                {request.leave_type.replace('_', ' ')}
-                              </LeaveRequestType>
-                              <LeaveRequestDates>
-                                <CalendarIcon style={{ fontSize: '0.9rem' }} />
-                                {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
-                              </LeaveRequestDates>
-                            </LeaveRequestInfo>
-                            <LeaveStatusBadge $status={request.status}>
-                              {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
-                              {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
-                              {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
-                              {request.status}
-                            </LeaveStatusBadge>
-                          </LeaveRequestHeader>
-                          <LeaveRequestReason>
-                            <strong>Reason:</strong> {request.reason}
-                          </LeaveRequestReason>
-                          <LeaveRequestMeta>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                              <span>
-                                <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
-                                Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
-                              </span>
-                              {request.reviewed_at && (
-                                <span>
-                                  <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
-                                  Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
-                                </span>
-                              )}
-                            </div>
-                            {request.status === 'pending' && (
-                              <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
-                                <CancelOutlined style={{ fontSize: '0.9rem' }} />
-                                Cancel
-                              </CancelButton>
-                            )}
-                          </LeaveRequestMeta>
-                          {request.review_notes && (
-                            <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
-                              <strong>Review Notes:</strong> {request.review_notes}
-                            </LeaveRequestReason>
-                          )}
-                        </LeaveRequestItem>
-                        );
-                      })}
-                    </LeaveRequestList>
-                  )}
-                </LeaveHistoryContent>
-              </div>
-            </QuickActionsCard>
-          </QuickActionsSection>
-        )}
-
         <QuickLinksGrid>
           {/* My Profile Card */}
           {studentId && isStudentCardVisible(renderSettings, 'my_profile') && (
@@ -3369,7 +4109,403 @@ const CustomLandingPage: React.FC = () => {
             </QuickLinkCard>
           )}
         </QuickLinksGrid>
+
+        {/* Quick Actions Section */}
+        {(isStudentCardVisible(renderSettings, 'request_leave') || 
+          isStudentCardVisible(renderSettings, 'register_complaint') || 
+          isStudentCardVisible(renderSettings, 'suggestions')) && (
+          <QuickActionsSection>
+            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
+            <QuickActionsCard>
+              <QuickActionsGrid>
+                {isStudentCardVisible(renderSettings, 'request_leave') && (
+                  <QuickActionItem 
+                    $color="#3b82f6"
+                    onClick={() => {
+                      if (studentId) {
+                        setLeaveRequestForm({
+                          studentId: studentId.toString(),
+                          staffId: '',
+                          leaveType: 'sick',
+                          startDate: '',
+                          endDate: '',
+                          reason: '',
+                        });
+                        setLeaveRequestModalOpen(true);
+                      }
+                    }}
+                  >
+                    <QuickActionIcon $color="#3b82f6">
+                      <EventBusyIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Request for Leave</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isStudentCardVisible(renderSettings, 'register_complaint') && (
+                  <QuickActionItem 
+                    $color="#ef4444"
+                    onClick={() => {
+                      setComplaintForm({
+                        subject: '',
+                        complaintText: '',
+                      });
+                      setComplaintModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#ef4444">
+                      <FeedbackIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Register Complaint</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isStudentCardVisible(renderSettings, 'suggestions') && (
+                  <QuickActionItem 
+                    $color="#f59e0b"
+                    onClick={() => {
+                      setSuggestionForm({
+                        subject: '',
+                        suggestionText: '',
+                      });
+                      setSuggestionModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#f59e0b">
+                      <LightbulbIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Suggestions</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+              </QuickActionsGrid>
+
+              {/* Request History Section with Tabs */}
+              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
+                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
+                  <LeaveHistoryTitle>
+                    <LeaveHistoryIcon>
+                      <HistoryIcon />
+                    </LeaveHistoryIcon>
+                    Request History
+                  </LeaveHistoryTitle>
+                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
+                </LeaveHistoryHeader>
+                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
+                  {leaveHistoryExpanded && (
+                    <>
+                      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+                        <Tabs
+                          value={historyActiveTab}
+                          onChange={(e, newValue) => setHistoryActiveTab(newValue)}
+                          sx={{
+                            '& .MuiTab-root': {
+                              color: theme.TEXT_SECONDARY,
+                              textTransform: 'none',
+                              fontSize: '0.9rem',
+                              fontWeight: 500,
+                              '&.Mui-selected': {
+                                color: theme.ACCENT,
+                              },
+                            },
+                            '& .MuiTabs-indicator': {
+                              backgroundColor: theme.ACCENT,
+                            },
+                          }}
+                        >
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Leave Requests
+                                {leaveRequests.length > 0 && (
+                                  <Chip
+                                    label={leaveRequests.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#3b82f6',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Complaints
+                                {complaintsHistory.length > 0 && (
+                                  <Chip
+                                    label={complaintsHistory.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#ef4444',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Suggestions
+                                {suggestionsHistory.length > 0 && (
+                                  <Chip
+                                    label={suggestionsHistory.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#f59e0b',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                        </Tabs>
+                      </Box>
+                      
+                      {historyActiveTab === 0 && (
+                        <>
+                          {loadingLeaveRequests ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : leaveRequests.length === 0 ? (
+                            <EmptyState>No leave requests found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {leaveRequests.map((request: any) => {
+                                const student = request.students;
+                                const studentName = student?.name || 'Unknown Student';
+                                const className = student?.classes?.name || '';
+                                const sectionName = student?.sections?.name || '';
+                                const hasSections = student?.classes?.has_sections;
+                                const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
+                                // Extract school ID with proper type handling - using any to bypass TypeScript narrowing issue
+                                // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
+                                const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
+                                // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
+                                const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
+                                // Use getStudentDisplayId utility function to get proper display ID
+                                let studentDisplayId = '';
+                                if (student && currentSchoolId) {
+                                  try {
+                                    const displayId = getStudentDisplayId({ 
+                                      id: student.id || request.student_id, 
+                                      roll_number: student.roll_number 
+                                    });
+                                    studentDisplayId = `S${currentSchoolId}-${displayId}`;
+                                  } catch (e) {
+                                    // Fallback if utility function fails
+                                    if (student.roll_number) {
+                                      const rollNumberStr = String(student.roll_number);
+                                      if (rollNumberStr.includes('-')) {
+                                        const parts = rollNumberStr.split('-');
+                                        studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
+                                      } else {
+                                        studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
+                                      }
+                                    }
+                                  }
+                                }
+                                
+                                return (
+                                <LeaveRequestItem key={request.id}>
+                                  {student && (
+                                    <LeaveRequestStudentInfo>
+                                      <div className="student-name">
+                                        <PersonIcon />
+                                        {studentName}
+                                      </div>
+                                      {studentDisplayId && (
+                                        <span className="student-id">{studentDisplayId}</span>
+                                      )}
+                                      {classSection && (
+                                        <div className="student-class">
+                                          <SchoolIcon />
+                                          {classSection}
+                                        </div>
+                                      )}
+                                    </LeaveRequestStudentInfo>
+                                  )}
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {request.leave_type.replace('_', ' ')}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={request.status}>
+                                      {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
+                                      {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {request.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Reason:</strong> {request.reason}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                      {request.reviewed_at && (
+                                        <span>
+                                          <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                          Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {request.status === 'pending' && (
+                                      <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
+                                        <CancelOutlined style={{ fontSize: '0.9rem' }} />
+                                        Cancel
+                                      </CancelButton>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {request.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {request.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                                );
+                              })}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+
+                      {historyActiveTab === 1 && (
+                        <>
+                          {loadingComplaintsHistory ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : complaintsHistory.length === 0 ? (
+                            <EmptyState>No complaints found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {complaintsHistory.map((complaint: any) => (
+                                <LeaveRequestItem key={complaint.id}>
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {complaint.subject}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(complaint.created_at), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={complaint.status}>
+                                      {complaint.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {complaint.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {complaint.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Details:</strong> {complaint.complaint_text}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Submitted: {format(new Date(complaint.created_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                    {complaint.reviewed_at && (
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Reviewed: {format(new Date(complaint.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {complaint.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {complaint.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                              ))}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+
+                      {historyActiveTab === 2 && (
+                        <>
+                          {loadingSuggestionsHistory ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : suggestionsHistory.length === 0 ? (
+                            <EmptyState>No suggestions found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {suggestionsHistory.map((suggestion: any) => (
+                                <LeaveRequestItem key={suggestion.id}>
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {suggestion.subject}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(suggestion.created_at), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={suggestion.status}>
+                                      {suggestion.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {suggestion.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {suggestion.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Details:</strong> {suggestion.suggestion_text}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Submitted: {format(new Date(suggestion.created_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                    {suggestion.reviewed_at && (
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Reviewed: {format(new Date(suggestion.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {suggestion.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {suggestion.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                              ))}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </LeaveHistoryContent>
+              </div>
+            </QuickActionsCard>
+          </QuickActionsSection>
+        )}
         {leaveRequestModalJSX}
+        {complaintModalJSX}
+        {suggestionModalJSX}
       </Container>
     );
   }
@@ -3435,203 +4571,7 @@ const CustomLandingPage: React.FC = () => {
           </EventsSection>
         )}
 
-        {/* Quick Actions Section */}
-        {(isParentCardVisible(renderSettings, 'request_leave') || 
-          isParentCardVisible(renderSettings, 'register_complaint') || 
-          isParentCardVisible(renderSettings, 'suggestions')) && (
-          <QuickActionsSection>
-            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
-            <QuickActionsCard>
-              <QuickActionsGrid>
-                {isParentCardVisible(renderSettings, 'request_leave') && (
-                  <QuickActionItem 
-                    $color="#3b82f6"
-                    onClick={() => {
-                      setLeaveRequestForm({
-                        studentId: linkedStudents.length > 0 ? linkedStudents[0].id.toString() : '',
-                        leaveType: 'sick',
-                        startDate: '',
-                        endDate: '',
-                        reason: '',
-                      });
-                      setLeaveRequestModalOpen(true);
-                    }}
-                  >
-                    <QuickActionIcon $color="#3b82f6">
-                      <EventBusyIcon />
-                    </QuickActionIcon>
-                    <QuickActionTitle>Request for Leave</QuickActionTitle>
-                  </QuickActionItem>
-                )}
-                {isParentCardVisible(renderSettings, 'register_complaint') && (
-                  <QuickActionItem 
-                    $color="#ef4444"
-                    onClick={() => {
-                      // TODO: Navigate to complaint page
-                      console.log('Register Complaint clicked');
-                    }}
-                  >
-                    <QuickActionIcon $color="#ef4444">
-                      <FeedbackIcon />
-                    </QuickActionIcon>
-                    <QuickActionTitle>Register Complaint</QuickActionTitle>
-                  </QuickActionItem>
-                )}
-                {isParentCardVisible(renderSettings, 'suggestions') && (
-                  <QuickActionItem 
-                    $color="#f59e0b"
-                    onClick={() => {
-                      // TODO: Navigate to suggestions page
-                      console.log('Suggestions clicked');
-                    }}
-                  >
-                    <QuickActionIcon $color="#f59e0b">
-                      <LightbulbIcon />
-                    </QuickActionIcon>
-                    <QuickActionTitle>Suggestions</QuickActionTitle>
-                  </QuickActionItem>
-                )}
-              </QuickActionsGrid>
-
-              {/* Leave Request History Section */}
-              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
-                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
-                  <LeaveHistoryTitle>
-                    <LeaveHistoryIcon>
-                      <HistoryIcon />
-                    </LeaveHistoryIcon>
-                    Leave Request History
-                    {leaveRequests.length > 0 && (
-                      <span style={{ 
-                        marginLeft: '0.5rem', 
-                        fontSize: '0.85rem', 
-                        color: 'inherit',
-                        opacity: 0.7 
-                      }}>
-                        ({leaveRequests.length})
-                      </span>
-                    )}
-                  </LeaveHistoryTitle>
-                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
-                </LeaveHistoryHeader>
-                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
-                  {loadingLeaveRequests ? (
-                    <EmptyState>Loading...</EmptyState>
-                  ) : leaveRequests.length === 0 ? (
-                    <EmptyState>No leave requests found</EmptyState>
-                  ) : (
-                    <LeaveRequestList>
-                      {leaveRequests.map((request: any) => {
-                        const student = request.students;
-                        const studentName = student?.name || 'Unknown Student';
-                        const className = student?.classes?.name || '';
-                        const sectionName = student?.sections?.name || '';
-                        const hasSections = student?.classes?.has_sections;
-                        const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
-                        // Extract school ID with proper type handling - using any to bypass TypeScript narrowing issue
-                        // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
-                        const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
-                        // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
-                        const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
-                        // Use getStudentDisplayId utility function to get proper display ID
-                        let studentDisplayId = '';
-                        if (student && currentSchoolId) {
-                          try {
-                            const displayId = getStudentDisplayId({ 
-                              id: student.id || request.student_id, 
-                              roll_number: student.roll_number 
-                            });
-                            studentDisplayId = `S${currentSchoolId}-${displayId}`;
-                          } catch (e) {
-                            // Fallback if utility function fails
-                            if (student.roll_number) {
-                              const rollNumberStr = String(student.roll_number);
-                              if (rollNumberStr.includes('-')) {
-                                const parts = rollNumberStr.split('-');
-                                studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
-                              } else {
-                                studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
-                              }
-                            }
-                          }
-                        }
-                        
-                        return (
-                        <LeaveRequestItem key={request.id}>
-                          {student && (
-                            <LeaveRequestStudentInfo>
-                              <div className="student-name">
-                                <PersonIcon />
-                                {studentName}
-                              </div>
-                              {studentDisplayId && (
-                                <span className="student-id">{studentDisplayId}</span>
-                              )}
-                              {classSection && (
-                                <div className="student-class">
-                                  <SchoolIcon />
-                                  {classSection}
-                                </div>
-                              )}
-                            </LeaveRequestStudentInfo>
-                          )}
-                          <LeaveRequestHeader>
-                            <LeaveRequestInfo>
-                              <LeaveRequestType>
-                                {request.leave_type.replace('_', ' ')}
-                              </LeaveRequestType>
-                              <LeaveRequestDates>
-                                <CalendarIcon style={{ fontSize: '0.9rem' }} />
-                                {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
-                              </LeaveRequestDates>
-                            </LeaveRequestInfo>
-                            <LeaveStatusBadge $status={request.status}>
-                              {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
-                              {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
-                              {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
-                              {request.status}
-                            </LeaveStatusBadge>
-                          </LeaveRequestHeader>
-                          <LeaveRequestReason>
-                            <strong>Reason:</strong> {request.reason}
-                          </LeaveRequestReason>
-                          <LeaveRequestMeta>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                              <span>
-                                <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
-                                Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
-                              </span>
-                              {request.reviewed_at && (
-                                <span>
-                                  <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
-                                  Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
-                                </span>
-                              )}
-                            </div>
-                            {request.status === 'pending' && (
-                              <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
-                                <CancelOutlined style={{ fontSize: '0.9rem' }} />
-                                Cancel
-                              </CancelButton>
-                            )}
-                          </LeaveRequestMeta>
-                          {request.review_notes && (
-                            <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
-                              <strong>Review Notes:</strong> {request.review_notes}
-                            </LeaveRequestReason>
-                          )}
-                        </LeaveRequestItem>
-                        );
-                      })}
-                    </LeaveRequestList>
-                  )}
-                </LeaveHistoryContent>
-              </div>
-            </QuickActionsCard>
-          </QuickActionsSection>
-        )}
-
-        {/* Linked Students Section */}
+        {/* Linked Students Section - moved above Quick Actions */}
         {isParentCardVisible(renderSettings, 'linked_students') && (
           <LinkedStudentsCard>
             <LinkedStudentsCardHeader>
@@ -3666,21 +4606,6 @@ const CustomLandingPage: React.FC = () => {
                   }
                 }}
               >
-                <div style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  fontSize: '0.85rem',
-                  opacity: 0.6,
-                  fontWeight: 600,
-                  color: 'inherit',
-                  background: 'rgba(0, 0, 0, 0.05)',
-                  padding: '4px 8px',
-                  borderRadius: '8px',
-                  zIndex: 1
-                }}>
-                  #{getStudentDisplayId(student)}
-                </div>
                 <StudentCardTop>
                   <StudentCardAvatar
                     title="Student Avatar"
@@ -3716,13 +4641,7 @@ const CustomLandingPage: React.FC = () => {
                       <span>{student.father_name || 'N/A'}</span>
                       {(student.phone || student.father_mobile) && (
                         <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {student.notification_channel === 'whatsapp' ? (
-                            <WhatsAppIcon style={{ fontSize: '0.9rem', color: '#25D366' }} />
-                          ) : student.notification_channel === 'sms' ? (
-                            <SmsIcon style={{ fontSize: '0.9rem', color: '#4CAF50' }} />
-                          ) : (
-                            <PhoneIcon style={{ fontSize: '0.9rem' }} />
-                          )}
+                          <PhoneIcon style={{ fontSize: '0.9rem' }} />
                           {student.phone || student.father_mobile}
                         </span>
                       )}
@@ -3744,10 +4663,9 @@ const CustomLandingPage: React.FC = () => {
                 <CardActions className="card-actions" $active={activeCardId === student.id}>
                   <CardActionBtn
                     title="View Profile"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
-                      setActiveCardId(null); // Close actions after navigation
-                      // Use student name slug for URL (more readable)
+                      setActiveCardId(null);
                       const slug = createStudentSlug(student.name);
                       navigate(`/students/profile/${slug}`);
                     }}
@@ -3756,14 +4674,14 @@ const CustomLandingPage: React.FC = () => {
                   </CardActionBtn>
                 </CardActions>
               </StudentCard>
-                ))}
+            ))}
               </StudentCardGrid>
             )}
           </LinkedStudentsCard>
         )}
 
-        {/* Fee Information Card - Ledger Style */}
-        {isParentCardVisible(renderSettings, 'fee_ledger') && linkedStudents.length > 0 && (
+        {/* Fee Info Section */}
+        {isParentCardVisible(renderSettings, 'fee_info') && feeDetails.length > 0 && (
           <FeeInfoCard>
             <FeeInfoCardHeader>
               <FeeInfoCardTitle>
@@ -3780,144 +4698,148 @@ const CustomLandingPage: React.FC = () => {
 
             <FeeTableContainer theme={theme}>
               <FeeTableWrapper theme={theme}>
-                <FeeTable theme={theme}>
-                  <FeeTableHeader theme={theme}>
-                    <tr>
-                      <FeeTableHeaderCell theme={theme} style={{ width: '40px' }}></FeeTableHeaderCell>
-                      <FeeTableHeaderCell theme={theme}>Student Name</FeeTableHeaderCell>
-                      <FeeTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Total Invoiced</FeeTableHeaderCell>
-                      <FeeTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Total Paid</FeeTableHeaderCell>
-                      <FeeTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Outstanding</FeeTableHeaderCell>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', display: 'table', tableLayout: 'auto' }}>
+                  <thead style={{ display: 'table-header-group', background: theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)' }}>
+                    <tr style={{ display: 'table-row' }}>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}`, whiteSpace: 'nowrap' }}>Student</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}`, whiteSpace: 'nowrap' }}>Total amount</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}`, whiteSpace: 'nowrap' }}>Amount paid</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}`, whiteSpace: 'nowrap' }}>Remaining amount</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}`, whiteSpace: 'nowrap' }}>Actions</th>
                     </tr>
-                  </FeeTableHeader>
-                  <FeeTableBody theme={theme}>
-                    {feeDetails.map((studentFee) => {
-                      const isExpanded = expandedFeeRows.has(studentFee.studentId);
+                  </thead>
+                  <tbody style={{ display: 'table-row-group' }}>
+                    {feeDetails.map((feeDetail) => {
+                      const student = linkedStudents.find(s => s.id === feeDetail.studentId);
+                      if (!student) return null;
+
+                      const isExpanded = expandedFeeRows.has(feeDetail.studentId);
+
                       return (
-                        <React.Fragment key={studentFee.studentId}>
-                          <FeeTableRow theme={theme} $isExpanded={isExpanded}>
+                        <React.Fragment key={feeDetail.studentId}>
+                          <tr 
+                            onClick={() => {
+                              setExpandedFeeRows(prev => {
+                                const newSet = new Set(prev);
+                                if (newSet.has(feeDetail.studentId)) {
+                                  newSet.delete(feeDetail.studentId);
+                                } else {
+                                  newSet.add(feeDetail.studentId);
+                                }
+                                return newSet;
+                              });
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
                             <FeeTableCell theme={theme}>
-                              <ExpandButton
-                                theme={theme}
-                                onClick={() => {
-                                  setExpandedFeeRows(prev => {
-                                    const newSet = new Set(prev);
-                                    if (newSet.has(studentFee.studentId)) {
-                                      newSet.delete(studentFee.studentId);
-                                    } else {
-                                      newSet.add(studentFee.studentId);
-                                    }
-                                    return newSet;
-                                  });
-                                }}
-                              >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                              </ExpandButton>
+                                <strong>{student.name}</strong>
+                              </div>
                             </FeeTableCell>
-                            <FeeTableCell theme={theme} style={{ fontWeight: '600' }}>
-                              {studentFee.studentName}
+                            <FeeTableCell theme={theme}>{formatCurrency(feeDetail.totalInvoiced)}</FeeTableCell>
+                            <FeeTableCell theme={theme}>{formatCurrency(feeDetail.totalPaid)}</FeeTableCell>
+                            <FeeTableCell theme={theme}>
+                              <span style={{ 
+                                color: feeDetail.totalOutstanding > 0 ? '#ef4444' : '#10b981',
+                                fontWeight: 600 
+                              }}>
+                                {formatCurrency(feeDetail.totalOutstanding)}
+                              </span>
                             </FeeTableCell>
-                            <FeeTableCell theme={theme} style={{ textAlign: 'right' }}>
-                              {formatCurrency(studentFee.totalInvoiced)}
+                            <FeeTableCell theme={theme}>      
+                              <CardActionBtn
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();        
+                                  const slug = createStudentSlug(student.name);
+                                  navigate(`/students/profile/${slug}`);
+                                }}
+                                title="View Profile"
+                              >
+                                <AccountCircle fontSize="inherit" />
+                              </CardActionBtn>
                             </FeeTableCell>
-                            <FeeTableCell theme={theme} style={{ textAlign: 'right' }}>
-                              {formatCurrency(studentFee.totalPaid)}
-                            </FeeTableCell>
-                            <FeeTableCell theme={theme} style={{ textAlign: 'right', fontWeight: '600' }}>
-                              {formatCurrency(studentFee.totalOutstanding)}
-                            </FeeTableCell>
-                          </FeeTableRow>
+                          </tr>
                           {isExpanded && (
                             <ExpandedRow theme={theme}>
-                              <ExpandedCell theme={theme} colSpan={5}>
+                              <ExpandedCell colSpan={5} theme={theme}>
                                 <ExpandedContent theme={theme}>
-                                  <div>
-                                    <SectionTitle theme={theme}>
-                                      <Receipt style={{ fontSize: '1rem' }} />
-                                      Invoices
-                                    </SectionTitle>
-                                    {studentFee.invoices.length === 0 ? (
-                                      <div style={{ padding: '1rem', color: theme.TEXT_SECONDARY }}>
-                                        No invoices found
-                                      </div>
-                                    ) : (
+                                  <div style={{ marginBottom: '1.5rem' }}>
+                                    <h4 style={{ marginBottom: '0.75rem', color: theme.TEXT_PRIMARY }}>Invoices</h4>
+                                    {feeDetail.invoices.length > 0 ? (
                                       <InvoiceTable theme={theme}>
-                                        <InvoiceTableHeader theme={theme}>
+                                        <thead>
                                           <tr>
-                                            <InvoiceTableHeaderCell theme={theme}>Invoice #</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme}>Month/Year</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme}>Invoice Date</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme}>Due Date</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Amount</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme}>Status</InvoiceTableHeaderCell>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Month/Year</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Invoice Date</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Due Date</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Amount</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Status</th>
                                           </tr>
-                                        </InvoiceTableHeader>
+                                        </thead>
                                         <tbody>
-                                          {studentFee.invoices.map(invoice => (
+                                          {feeDetail.invoices.map((invoice) => (
                                             <InvoiceTableRow key={invoice.id} theme={theme}>
-                                              <InvoiceTableCell theme={theme}>{invoice.id}</InvoiceTableCell>
                                               <InvoiceTableCell theme={theme}>
-                                                {invoice.month && invoice.year
-                                                  ? `${invoice.month} ${invoice.year}`
-                                                  : 'N/A'}
-                                              </InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme}>{formatDate(invoice.invoice_date)}</InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme}>{formatDate(invoice.due_date)}</InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
-                                                {formatCurrency(invoice.total_amount)}
+                                                {invoice.month ? `${invoice.month} ${invoice.year}` : `Year ${invoice.year}`}
                                               </InvoiceTableCell>
                                               <InvoiceTableCell theme={theme}>
-                                                <InvoiceStatusBadge $status={invoice.status}>
+                                                {format(new Date(invoice.invoice_date), 'MMM dd, yyyy')}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>
+                                                {format(new Date(invoice.due_date), 'MMM dd, yyyy')}
+                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatCurrency(invoice.total_amount)}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>
+                                                <span style={{ 
+                                                  color: invoice.status === 'paid' ? '#10b981' : '#ef4444',
+                                                  fontWeight: 500 
+                                                }}>
                                                   {invoice.status}
-                                                </InvoiceStatusBadge>
+                                                </span>
                                               </InvoiceTableCell>
                                             </InvoiceTableRow>
                                           ))}
                                         </tbody>
                                       </InvoiceTable>
+                                    ) : (
+                                      <div style={{ padding: '1rem', textAlign: 'center', color: theme.TEXT_SECONDARY }}>
+                                        No invoices found
+                                      </div>
                                     )}
                                   </div>
 
                                   <div>
-                                    <SectionTitle theme={theme}>
-                                      <AttachMoneyIcon style={{ fontSize: '1rem' }} />
-                                      Payments
-                                    </SectionTitle>
-                                    {studentFee.payments.length === 0 ? (
-                                      <div style={{ padding: '1rem', color: theme.TEXT_SECONDARY }}>
-                                        No payments found
-                                      </div>
-                                    ) : (
+                                    <h4 style={{ marginBottom: '0.75rem', color: theme.TEXT_PRIMARY }}>Payments</h4>
+                                    {feeDetail.payments.length > 0 ? (
                                       <InvoiceTable theme={theme}>
-                                        <InvoiceTableHeader theme={theme}>
+                                        <thead>
                                           <tr>
-                                            <InvoiceTableHeaderCell theme={theme}>Payment #</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme}>Payment Date</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Amount</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Discount</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme} style={{ textAlign: 'right' }}>Net Amount</InvoiceTableHeaderCell>
-                                            <InvoiceTableHeaderCell theme={theme}>Payment Mode</InvoiceTableHeaderCell>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Payment Date</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Amount</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Discount</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Net Amount</th>
+                                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY, borderBottom: `1px solid ${theme.BORDER}` }}>Payment Mode</th>
                                           </tr>
-                                        </InvoiceTableHeader>
+                                        </thead>
                                         <tbody>
-                                          {studentFee.payments.map(payment => (
+                                          {feeDetail.payments.map((payment) => (
                                             <InvoiceTableRow key={payment.id} theme={theme}>
-                                              <InvoiceTableCell theme={theme}>{payment.id}</InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme}>{formatDate(payment.payment_date)}</InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
-                                                {formatCurrency(payment.amount)}
+                                              <InvoiceTableCell theme={theme}>
+                                                {format(new Date(payment.payment_date), 'MMM dd, yyyy')}
                                               </InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
-                                                {formatCurrency(payment.discount_amount)}
-                                              </InvoiceTableCell>
-                                              <InvoiceTableCell theme={theme} style={{ textAlign: 'right' }}>
-                                                {formatCurrency(payment.net_amount)}
-                                              </InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatCurrency(payment.amount)}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatCurrency(payment.discount_amount)}</InvoiceTableCell>
+                                              <InvoiceTableCell theme={theme}>{formatCurrency(payment.net_amount)}</InvoiceTableCell>
                                               <InvoiceTableCell theme={theme}>{payment.payment_mode}</InvoiceTableCell>
                                             </InvoiceTableRow>
                                           ))}
                                         </tbody>
                                       </InvoiceTable>
+                                    ) : (
+                                      <div style={{ padding: '1rem', textAlign: 'center', color: theme.TEXT_SECONDARY }}>
+                                        No payments found
+                                      </div>
                                     )}
                                   </div>
                                 </ExpandedContent>
@@ -3927,13 +4849,407 @@ const CustomLandingPage: React.FC = () => {
                         </React.Fragment>
                       );
                     })}
-                  </FeeTableBody>
-                </FeeTable>
+                  </tbody>
+                </table>
               </FeeTableWrapper>
             </FeeTableContainer>
           </FeeInfoCard>
         )}
+
+        {/* Quick Actions Section */}
+        {(isParentCardVisible(renderSettings, 'request_leave') || 
+          isParentCardVisible(renderSettings, 'register_complaint') || 
+          isParentCardVisible(renderSettings, 'suggestions')) && (
+          <QuickActionsSection>
+            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
+            <QuickActionsCard>
+              <QuickActionsGrid>
+                {isParentCardVisible(renderSettings, 'request_leave') && (
+                  <QuickActionItem 
+                    $color="#3b82f6"
+                    onClick={() => {
+                      setLeaveRequestForm({
+                        studentId: linkedStudents.length > 0 ? linkedStudents[0].id.toString() : '',
+                        staffId: '',
+                        leaveType: 'sick',
+                        startDate: '',
+                        endDate: '',
+                        reason: '',
+                      });
+                      setLeaveRequestModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#3b82f6">
+                      <EventBusyIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Request for Leave</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isParentCardVisible(renderSettings, 'register_complaint') && (
+                  <QuickActionItem 
+                    $color="#ef4444"
+                    onClick={() => {
+                      setComplaintForm({
+                        subject: '',
+                        complaintText: '',
+                      });
+                      setComplaintModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#ef4444">
+                      <FeedbackIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Register Complaint</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isParentCardVisible(renderSettings, 'suggestions') && (
+                  <QuickActionItem 
+                    $color="#f59e0b"
+                    onClick={() => {
+                      setSuggestionForm({
+                        subject: '',
+                        suggestionText: '',
+                      });
+                      setSuggestionModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#f59e0b">
+                      <LightbulbIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Suggestions</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+              </QuickActionsGrid>
+
+              {/* Request History Section with Tabs */}
+              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
+                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
+                  <LeaveHistoryTitle>
+                    <LeaveHistoryIcon>
+                      <HistoryIcon />
+                    </LeaveHistoryIcon>
+                    Request History
+                  </LeaveHistoryTitle>
+                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
+                </LeaveHistoryHeader>
+                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
+                  {leaveHistoryExpanded && (
+                    <>
+                      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+                        <Tabs
+                          value={historyActiveTab}
+                          onChange={(e, newValue) => setHistoryActiveTab(newValue)}
+                          sx={{
+                            '& .MuiTab-root': {
+                              color: theme.TEXT_SECONDARY,
+                              textTransform: 'none',
+                              fontSize: '0.9rem',
+                              fontWeight: 500,
+                              '&.Mui-selected': {
+                                color: theme.ACCENT,
+                              },
+                            },
+                            '& .MuiTabs-indicator': {
+                              backgroundColor: theme.ACCENT,
+                            },
+                          }}
+                        >
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Leave Requests
+                                {leaveRequests.length > 0 && (
+                                  <Chip
+                                    label={leaveRequests.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#3b82f6',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Complaints
+                                {complaintsHistory.length > 0 && (
+                                  <Chip
+                                    label={complaintsHistory.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#ef4444',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Suggestions
+                                {suggestionsHistory.length > 0 && (
+                                  <Chip
+                                    label={suggestionsHistory.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#f59e0b',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                        </Tabs>
+                      </Box>
+                      
+                      {historyActiveTab === 0 && (
+                        <>
+                          {loadingLeaveRequests ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : leaveRequests.length === 0 ? (
+                            <EmptyState>No leave requests found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {leaveRequests.map((request: any) => {
+                                const student = request.students;
+                                const studentName = student?.name || 'Unknown Student';
+                                const className = student?.classes?.name || '';
+                                const sectionName = student?.sections?.name || '';
+                                const hasSections = student?.classes?.has_sections;
+                                const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
+                                // Extract school ID with proper type handling - using any to bypass TypeScript narrowing issue
+                                // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
+                                const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
+                                // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
+                                const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
+                                // Use getStudentDisplayId utility function to get proper display ID
+                                let studentDisplayId = '';
+                                if (student && currentSchoolId) {
+                                  try {
+                                    const displayId = getStudentDisplayId({ 
+                                      id: student.id || request.student_id, 
+                                      roll_number: student.roll_number 
+                                    });
+                                    studentDisplayId = `S${currentSchoolId}-${displayId}`;
+                                  } catch (e) {
+                                    // Fallback if utility function fails
+                                    if (student.roll_number) {
+                                      const rollNumberStr = String(student.roll_number);
+                                      if (rollNumberStr.includes('-')) {
+                                        const parts = rollNumberStr.split('-');
+                                        studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
+                                      } else {
+                                        studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
+                                      }
+                                    }
+                                  }
+                                }
+                                
+                                return (
+                                <LeaveRequestItem key={request.id}>
+                                  {student && (
+                                    <LeaveRequestStudentInfo>
+                                      <div className="student-name">
+                                        <PersonIcon />
+                                        {studentName}
+                                      </div>
+                                      {studentDisplayId && (
+                                        <span className="student-id">{studentDisplayId}</span>
+                                      )}
+                                      {classSection && (
+                                        <div className="student-class">
+                                          <SchoolIcon />
+                                          {classSection}
+                                        </div>
+                                      )}
+                                    </LeaveRequestStudentInfo>
+                                  )}
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {request.leave_type.replace('_', ' ')}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={request.status}>
+                                      {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
+                                      {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {request.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Reason:</strong> {request.reason}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                      {request.reviewed_at && (
+                                        <span>
+                                          <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                          Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {request.status === 'pending' && (
+                                      <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
+                                        <CancelOutlined style={{ fontSize: '0.9rem' }} />
+                                        Cancel
+                                      </CancelButton>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {request.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {request.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                                );
+                              })}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+
+                      {historyActiveTab === 1 && (
+                        <>
+                          {loadingComplaintsHistory ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : complaintsHistory.length === 0 ? (
+                            <EmptyState>No complaints found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {complaintsHistory.map((complaint: any) => (
+                                <LeaveRequestItem key={complaint.id}>
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {complaint.subject}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(complaint.created_at), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={complaint.status}>
+                                      {complaint.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {complaint.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {complaint.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Details:</strong> {complaint.complaint_text}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Submitted: {format(new Date(complaint.created_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                    {complaint.reviewed_at && (
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Reviewed: {format(new Date(complaint.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {complaint.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {complaint.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                              ))}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+
+                      {historyActiveTab === 2 && (
+                        <>
+                          {loadingSuggestionsHistory ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : suggestionsHistory.length === 0 ? (
+                            <EmptyState>No suggestions found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {suggestionsHistory.map((suggestion: any) => (
+                                <LeaveRequestItem key={suggestion.id}>
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {suggestion.subject}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(suggestion.created_at), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={suggestion.status}>
+                                      {suggestion.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {suggestion.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {suggestion.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Details:</strong> {suggestion.suggestion_text}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Submitted: {format(new Date(suggestion.created_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                    {suggestion.reviewed_at && (
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Reviewed: {format(new Date(suggestion.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {suggestion.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {suggestion.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                              ))}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </LeaveHistoryContent>
+              </div>
+            </QuickActionsCard>
+          </QuickActionsSection>
+        )}
         {leaveRequestModalJSX}
+        {complaintModalJSX}
+        {suggestionModalJSX}
       </Container>
     );
   }
@@ -4209,6 +5525,429 @@ const CustomLandingPage: React.FC = () => {
             </QuickLinkCard>
           ))}
         </QuickLinksGrid>
+
+        {/* Quick Actions Section */}
+        {(isTeacherCardVisible(renderSettings, 'request_leave') || 
+          isTeacherCardVisible(renderSettings, 'register_complaint') || 
+          isTeacherCardVisible(renderSettings, 'suggestions')) && (
+          <QuickActionsSection>
+            <QuickActionsTitle>Quick Actions</QuickActionsTitle>
+            <QuickActionsCard>
+              <QuickActionsGrid>
+                {isTeacherCardVisible(renderSettings, 'request_leave') && (
+                  <QuickActionItem 
+                    $color="#3b82f6"
+                    onClick={() => {
+                      if (user?.staff_id) {
+                        setLeaveRequestForm({
+                          studentId: '',
+                          staffId: user.staff_id.toString(),
+                          leaveType: 'sick',
+                          startDate: '',
+                          endDate: '',
+                          reason: '',
+                        });
+                        setLeaveRequestModalOpen(true);
+                      } else {
+                        showToast('Unable to identify staff member. Please contact administration.', 'error');
+                      }
+                    }}
+                  >
+                    <QuickActionIcon $color="#3b82f6">
+                      <EventBusyIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Request for Leave</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isTeacherCardVisible(renderSettings, 'register_complaint') && (
+                  <QuickActionItem 
+                    $color="#ef4444"
+                    onClick={() => {
+                      setComplaintForm({
+                        subject: '',
+                        complaintText: '',
+                      });
+                      setComplaintModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#ef4444">
+                      <FeedbackIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Register Complaint</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+                {isTeacherCardVisible(renderSettings, 'suggestions') && (
+                  <QuickActionItem 
+                    $color="#f59e0b"
+                    onClick={() => {
+                      setSuggestionForm({
+                        subject: '',
+                        suggestionText: '',
+                      });
+                      setSuggestionModalOpen(true);
+                    }}
+                  >
+                    <QuickActionIcon $color="#f59e0b">
+                      <LightbulbIcon />
+                    </QuickActionIcon>
+                    <QuickActionTitle>Suggestions</QuickActionTitle>
+                  </QuickActionItem>
+                )}
+              </QuickActionsGrid>
+
+              {/* Request History Section with Tabs */}
+              <div style={{ marginTop: '1.5rem', borderTop: `1px solid ${theme.BORDER}`, paddingTop: '1rem' }}>
+                <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
+                  <LeaveHistoryTitle>
+                    <LeaveHistoryIcon>
+                      <HistoryIcon />
+                    </LeaveHistoryIcon>
+                    Request History
+                  </LeaveHistoryTitle>
+                  <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
+                </LeaveHistoryHeader>
+                <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
+                  {leaveHistoryExpanded && (
+                    <>
+                      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+                        <Tabs
+                          value={historyActiveTab}
+                          onChange={(e, newValue) => setHistoryActiveTab(newValue)}
+                          sx={{
+                            '& .MuiTab-root': {
+                              color: theme.TEXT_SECONDARY,
+                              textTransform: 'none',
+                              fontSize: '0.9rem',
+                              fontWeight: 500,
+                              '&.Mui-selected': {
+                                color: theme.ACCENT,
+                              },
+                            },
+                            '& .MuiTabs-indicator': {
+                              backgroundColor: theme.ACCENT,
+                            },
+                          }}
+                        >
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Leave Requests
+                                {leaveRequests.length > 0 && (
+                                  <Chip
+                                    label={leaveRequests.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#3b82f6',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Complaints
+                                {complaintsHistory.length > 0 && (
+                                  <Chip
+                                    label={complaintsHistory.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#ef4444',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                          <Tab
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                Suggestions
+                                {suggestionsHistory.length > 0 && (
+                                  <Chip
+                                    label={suggestionsHistory.length}
+                                    size="small"
+                                    sx={{
+                                      height: '18px',
+                                      minWidth: '18px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      background: '#f59e0b',
+                                      color: 'white',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                        </Tabs>
+                      </Box>
+                      
+                      {historyActiveTab === 0 && (
+                        <>
+                          {loadingLeaveRequests ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : leaveRequests.length === 0 ? (
+                            <EmptyState>No leave requests found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {leaveRequests.map((request: any) => {
+                                const student = request.students;
+                                const staff = request.staff;
+                                const isStaffRequest = !!staff || !!request.staff_id;
+                                
+                                // Student info
+                                const studentName = student?.name || 'Unknown Student';
+                                const className = student?.classes?.name || '';
+                                const sectionName = student?.sections?.name || '';
+                                const hasSections = student?.classes?.has_sections;
+                                const classSection = className + (hasSections && sectionName ? ` - ${sectionName}` : '');
+                                
+                                // Staff info
+                                const staffName = staff?.name || 'Unknown Staff';
+                                const staffRole = staff?.role || '';
+                                
+                                // Extract school ID with proper type handling
+                                // @ts-ignore - TypeScript incorrectly narrows parentInfo to 'never' in this context
+                                const parentSchoolId: number | null = parentInfo ? (parentInfo as any).school_id : null;
+                                // @ts-ignore - TypeScript incorrectly infers parentSchoolId as 'never' due to control flow analysis
+                                const currentSchoolId = user?.school_id || studentInfo?.school_id || parentSchoolId;
+                                
+                                // Use getStudentDisplayId utility function to get proper display ID
+                                let studentDisplayId = '';
+                                if (student && currentSchoolId) {
+                                  try {
+                                    const displayId = getStudentDisplayId({ 
+                                      id: student.id || request.student_id, 
+                                      roll_number: student.roll_number 
+                                    });
+                                    studentDisplayId = `S${currentSchoolId}-${displayId}`;
+                                  } catch (e) {
+                                    // Fallback if utility function fails
+                                    if (student.roll_number) {
+                                      const rollNumberStr = String(student.roll_number);
+                                      if (rollNumberStr.includes('-')) {
+                                        const parts = rollNumberStr.split('-');
+                                        studentDisplayId = `S${currentSchoolId}-${parts[parts.length - 1]}`;
+                                      } else {
+                                        studentDisplayId = `S${currentSchoolId}-${rollNumberStr}`;
+                                      }
+                                    }
+                                  }
+                                }
+                                
+                                return (
+                                <LeaveRequestItem key={request.id}>
+                                  {student && (
+                                    <LeaveRequestStudentInfo>
+                                      <div className="student-name">
+                                        <PersonIcon />
+                                        {studentName}
+                                      </div>
+                                      {studentDisplayId && (
+                                        <span className="student-id">{studentDisplayId}</span>
+                                      )}
+                                      {classSection && (
+                                        <div className="student-class">
+                                          <SchoolIcon />
+                                          {classSection}
+                                        </div>
+                                      )}
+                                    </LeaveRequestStudentInfo>
+                                  )}
+                                  {isStaffRequest && staff && (
+                                    <LeaveRequestStudentInfo>
+                                      <div className="student-name">
+                                        <PersonIcon />
+                                        {staffName}
+                                      </div>
+                                      {staffRole && (
+                                        <div className="student-class">
+                                          <SchoolIcon />
+                                          {staffRole}
+                                        </div>
+                                      )}
+                                    </LeaveRequestStudentInfo>
+                                  )}
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {request.leave_type.replace('_', ' ')}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={request.status}>
+                                      {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
+                                      {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {request.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Reason:</strong> {request.reason}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                      {request.reviewed_at && (
+                                        <span>
+                                          <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                          Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {request.status === 'pending' && (
+                                      <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
+                                        <CancelOutlined style={{ fontSize: '0.9rem' }} />
+                                        Cancel
+                                      </CancelButton>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {request.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {request.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                                );
+                              })}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+
+                      {historyActiveTab === 1 && (
+                        <>
+                          {loadingComplaintsHistory ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : complaintsHistory.length === 0 ? (
+                            <EmptyState>No complaints found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {complaintsHistory.map((complaint: any) => (
+                                <LeaveRequestItem key={complaint.id}>
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {complaint.subject}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(complaint.created_at), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={complaint.status}>
+                                      {complaint.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {complaint.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {complaint.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Details:</strong> {complaint.complaint_text}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Submitted: {format(new Date(complaint.created_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                    {complaint.reviewed_at && (
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Reviewed: {format(new Date(complaint.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {complaint.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {complaint.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                              ))}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+
+                      {historyActiveTab === 2 && (
+                        <>
+                          {loadingSuggestionsHistory ? (
+                            <EmptyState>Loading...</EmptyState>
+                          ) : suggestionsHistory.length === 0 ? (
+                            <EmptyState>No suggestions found</EmptyState>
+                          ) : (
+                            <LeaveRequestList>
+                              {suggestionsHistory.map((suggestion: any) => (
+                                <LeaveRequestItem key={suggestion.id}>
+                                  <LeaveRequestHeader>
+                                    <LeaveRequestInfo>
+                                      <LeaveRequestType>
+                                        {suggestion.subject}
+                                      </LeaveRequestType>
+                                      <LeaveRequestDates>
+                                        <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                        {format(new Date(suggestion.created_at), 'MMM dd, yyyy')}
+                                      </LeaveRequestDates>
+                                    </LeaveRequestInfo>
+                                    <LeaveStatusBadge $status={suggestion.status}>
+                                      {suggestion.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                      {suggestion.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                      {suggestion.status}
+                                    </LeaveStatusBadge>
+                                  </LeaveRequestHeader>
+                                  <LeaveRequestReason>
+                                    <strong>Details:</strong> {suggestion.suggestion_text}
+                                  </LeaveRequestReason>
+                                  <LeaveRequestMeta>
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Submitted: {format(new Date(suggestion.created_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                    {suggestion.reviewed_at && (
+                                      <span>
+                                        <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                        Reviewed: {format(new Date(suggestion.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                      </span>
+                                    )}
+                                  </LeaveRequestMeta>
+                                  {suggestion.review_notes && (
+                                    <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                      <strong>Review Notes:</strong> {suggestion.review_notes}
+                                    </LeaveRequestReason>
+                                  )}
+                                </LeaveRequestItem>
+                              ))}
+                            </LeaveRequestList>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </LeaveHistoryContent>
+              </div>
+            </QuickActionsCard>
+          </QuickActionsSection>
+        )}
+        {leaveRequestModalJSX}
+        {complaintModalJSX}
+        {suggestionModalJSX}
       </Container>
     );
   }

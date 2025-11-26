@@ -6,12 +6,12 @@ import { useToast } from './useToast';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
-import {
+import { 
   Assessment,
-  TrendingUp,
-  TrendingDown,
-  AccountBalance,
-  People,
+  TrendingUp, 
+  TrendingDown, 
+  AccountBalance, 
+  People, 
   MonetizationOn,
   Payment,
   Warning,
@@ -357,7 +357,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
   // Fetch data similar to ledger
   const fetchAnalyticsData = useCallback(async () => {
     if (!user?.school_id) return;
-
+    
     setLoading(true);
     setIsLoadingData(true);
     try {
@@ -373,15 +373,15 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
 
       // Fetch classes and sections
       const { data: classesData } = await supabase
-        .from('classes')
-        .select('id, name')
+          .from('classes')
+          .select('id, name')
         .eq('school_id', user.school_id)
         .order('name', { ascending: true });
 
       const { data: sectionsData } = await supabase
-        .from('sections')
+          .from('sections')
         .select('id, name, class_id')
-        .eq('school_id', user.school_id)
+          .eq('school_id', user.school_id)
         .order('name', { ascending: true });
 
       // Fetch sessions
@@ -649,7 +649,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
             theme={theme}
             value={selectedSession}
             onChange={(e) => setSelectedSession(e.target.value)}
-          >
+            >
             <option value="">All Sessions</option>
             {sessions.map(session => (
               <option key={session.id} value={session.id}>
@@ -670,7 +670,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
           <StatValue theme={theme}>{formatCurrency(analyticsData.totalPaidAmount)}</StatValue>
           <StatChange $positive={true} theme={theme}>
             <TrendingUp style={{ fontSize: '0.75rem' }} />
-            {analyticsData.collectionRate.toFixed(1)}% of total fees
+              {analyticsData.collectionRate.toFixed(1)}% of total fees
           </StatChange>
         </StatCard>
 
@@ -679,7 +679,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
           <StatValue theme={theme}>{formatCurrency(analyticsData.totalRemaining)}</StatValue>
           <StatChange $positive={false} theme={theme}>
             <TrendingDown style={{ fontSize: '0.75rem' }} />
-            {(100 - analyticsData.collectionRate).toFixed(1)}% pending
+              {(100 - analyticsData.collectionRate).toFixed(1)}% pending
           </StatChange>
         </StatCard>
 
@@ -688,7 +688,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
           <StatValue theme={theme}>{analyticsData.totalStudents}</StatValue>
           <StatChange $positive={true} theme={theme}>
             <CheckCircle style={{ fontSize: '0.75rem' }} />
-            {analyticsData.totalInvoices} invoices
+              {analyticsData.totalInvoices} invoices
           </StatChange>
         </StatCard>
 
@@ -707,7 +707,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         <ContentCard theme={theme}>
           <CardTitle theme={theme}>
             <TrendingUp />
-            Monthly Collection Trends
+              Monthly Collection Trends
           </CardTitle>
           <div style={{ height: '200px', position: 'relative', padding: '1rem 0.5rem 2rem 0.5rem' }}>
             {analyticsData.monthlyTrends.length === 0 ? (
@@ -783,11 +783,11 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', padding: '0 0.5rem' }}>
                       {analyticsData.monthlyTrends.map((trend, index) => (
                         <div key={index} style={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, textAlign: 'center', flex: 1 }}>
-                          {trend.month}
-                        </div>
+                  {trend.month}
+                </div>
                       ))}
-                    </div>
-                  </div>
+                </div>
+              </div>
                 );
               })()
             )}
@@ -798,7 +798,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         <ContentCard theme={theme}>
           <CardTitle theme={theme}>
             <PieChart />
-            Collection Rate by Class
+              Collection Rate by Class
           </CardTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {analyticsData.classWiseData.slice(0, 5).map((classData, index) => (
@@ -831,7 +831,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         <ContentCard theme={theme}>
           <CardTitle theme={theme}>
             <Warning />
-            Top Fee Defaulters
+              Top Fee Defaulters
           </CardTitle>
           {analyticsData.topDefaulters.length > 0 ? (
             <Table>
@@ -873,7 +873,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         <ContentCard theme={theme}>
           <CardTitle theme={theme}>
             <Receipt />
-            Recent Payments
+              Recent Payments
           </CardTitle>
           {analyticsData.recentPayments.length > 0 ? (
             <Table>
@@ -920,7 +920,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         </CardTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           {analyticsData.paymentMethodStats.length === 0 ? (
-            <div style={{ 
+      <div style={{ 
               gridColumn: '1 / -1',
               display: 'flex', 
               alignItems: 'center', 
@@ -934,7 +934,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
           ) : (
             analyticsData.paymentMethodStats.map((method, index) => (
               <div key={index} style={{ 
-                padding: '1rem', 
+        padding: '1rem', 
                 border: `1px solid ${isDark(theme) ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`, 
                 borderRadius: '8px',
                 background: isDark(theme) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'
@@ -946,7 +946,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
                   <span style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>
                     {method.percentage.toFixed(1)}%
                   </span>
-                </div>
+      </div>
                 <ProgressBar theme={theme}>
                   <ProgressFill 
                     $percentage={method.percentage} 

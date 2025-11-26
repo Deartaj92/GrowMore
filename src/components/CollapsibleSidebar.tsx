@@ -30,6 +30,9 @@ import {
   Info as InfoIcon,
   Assignment,
   Loyalty as LoyaltyIcon,
+  Feedback as FeedbackIcon,
+  Lightbulb as LightbulbIcon,
+  EventBusy as EventBusyIcon,
 } from '@mui/icons-material';
 import type { NavigateFunction } from 'react-router-dom';
 
@@ -939,6 +942,22 @@ const allPages = [
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
     category: 'Attendance',
     keywords: ['attendance history', 'past attendance', 'attendance records']
+  },
+  {
+    text: 'Leave Requests',
+    icon: <EventBusyIcon />,
+    path: '/attendance/leave-requests',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Attendance',
+    keywords: ['leave requests', 'leave management', 'student leave', 'staff leave']
+  },
+  {
+    text: 'Complaints & Suggestions',
+    icon: <FeedbackIcon />,
+    path: '/attendance/complaints-suggestions',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin'],
+    category: 'Main',
+    keywords: ['complaints', 'suggestions', 'feedback', 'review complaints', 'review suggestions']
   },
 
   // Enquiry Pages

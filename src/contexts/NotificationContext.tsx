@@ -709,9 +709,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
         // Fetch notifications with pagination
         // Load all reports separately (fetched in batches to handle Supabase 1000 row limit)
+        // Use user.id (users table ID) for staff, not staff_id, since notifications use recipient_id = user.id
         const [notificationsData, allReportsData, announcementNotifications] = await Promise.all([
-          activityTrackingService.getUserNotifications(user.staff_id, user.school_id, PAGE_SIZE, 0),
-          activityTrackingService.getAllUserNotifications(user.staff_id, user.school_id, 'report'), // Load all reports in batches
+          activityTrackingService.getUserNotifications(user.id, user.school_id, PAGE_SIZE, 0),
+          activityTrackingService.getAllUserNotifications(user.id, user.school_id, 'report'), // Load all reports in batches
           fetchAnnouncementsAsNotifications(preferencesData)
         ]);
 
@@ -1103,7 +1104,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   read_at: new Date().toISOString()
                 })
                 .in('id', notificationIds)
-                .eq('recipient_id', user.staff_id)
+                .eq('recipient_id', user.id)
                 .eq('school_id', schoolId);
             } catch (error) {
               console.error('Error marking staff notifications as read:', error);
@@ -1223,8 +1224,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Subscribe to real-time notifications
   const subscribeToNotifications = useCallback(async () => {
     const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
-    let staffId = user?.staff_id;
-    let recipientId: number | undefined = staffId || studentInfo?.id;
+    // For staff users, use user.id (users table ID) not staff_id, since notifications use recipient_id = user.id
+    let recipientId: number | undefined = user?.id || studentInfo?.id;
 
     // For parents: Subscribe to notifications by family_recipient_id
     // Parents log in using family_id, so we subscribe to notifications for that family
@@ -1288,8 +1289,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   studentInfo?.id,
                   schoolId
                 );
-              } else if (newNotification.notification_type === 'leave_request') {
-                // Always show leave_request notifications to the recipient
+              } else if (newNotification.notification_type === 'leave_request' || 
+                         newNotification.notification_type === 'suggestion' ||
+                         newNotification.notification_type === 'complaint') {
+                // Always show leave_request, suggestion, and complaint notifications to the recipient
                 shouldShow = true;
               } else {
                 shouldShow = shouldShowNotificationByCategory(newNotification, currentPreferences, user?.role);
@@ -1458,10 +1461,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             })();
 
             if (shouldShow) {
+              // Use user.id for staff (users table ID) or studentInfo.id for students
+              const recipientId = user?.id || studentInfo?.id || 0;
               const notification: Notification = {
                 id: newAnnouncement.id,
                 school_id: newAnnouncement.school_id,
-                recipient_id: staffId || 0,
+                recipient_id: recipientId,
                 notification_type: 'announcement',
                 title: cleanText(newAnnouncement.title).substring(0, 100) || 'Announcement',
                 message: cleanText(newAnnouncement.message).substring(0, 200) || '',
@@ -1540,23 +1545,27 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         if (status === 'SUBSCRIBED') {
           // Successfully subscribed
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('[NotificationContext] Error subscribing to notifications channel:', {
+          // Log error but don't break the app - notifications will still work via polling/refresh
+          console.warn('[NotificationContext] Real-time subscription error (notifications will still work on refresh):', {
             channel: channelName,
             recipientId,
             familyRecipientId,
-            schoolId
+            schoolId,
+            status
           });
         } else if (status === 'TIMED_OUT') {
           console.warn('[NotificationContext] Notification subscription timed out:', {
             channel: channelName
           });
+        } else if (status === 'CLOSED') {
+          // Channel closed - this is normal when unsubscribing
         }
       });
       setSubscription(newSubscription);
     } catch (error) {
       console.error('[NotificationContext] Failed to subscribe to notifications:', error);
     }
-  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.id, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification, enrichNotificationWithActivityAction, shouldShowNotificationByCategory, shouldShowReportNotification]);
+  }, [user?.id, user?.school_id, user?.role, studentInfo?.id, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification, enrichNotificationWithActivityAction, shouldShowNotificationByCategory, shouldShowReportNotification]);
 
   // Unsubscribe from notifications
   const unsubscribeFromNotifications = useCallback(() => {

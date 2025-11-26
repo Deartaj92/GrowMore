@@ -775,8 +775,8 @@ const TwoColumnGrid = styled.div<{ $columns: number }>`
 `;
 
 const LeftColumn = styled.div`
-  min-width: 0;
-  width: 100%;
+    min-width: 0;
+    width: 100%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -791,8 +791,8 @@ const LeftColumn = styled.div`
 `;
 
 const RightColumn = styled.div`
-  min-width: 0;
-  width: 100%;
+    min-width: 0;
+    width: 100%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
