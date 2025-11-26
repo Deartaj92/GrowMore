@@ -8,6 +8,7 @@ import {
   BarChart as BarChartIcon,
   Work as WorkIcon,
   AccessTime as AccessTimeIcon,
+  EventBusy as EventBusyIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -357,6 +358,13 @@ const attendanceItems = [
     icon: <AccessTimeIcon />,
     path: '/attendance/half-leaves',
     color: '#ec4899' // Pink
+  },
+  {
+    title: 'Leave Requests',
+    description: 'Review and manage student leave requests, approve or reject leave applications with review notes',
+    icon: <EventBusyIcon />,
+    path: '/attendance/leave-requests',
+    color: '#ef4444' // Red
   }
 ];
 
@@ -383,6 +391,7 @@ const AttendanceDashboard: React.FC = () => {
       case 'Mark Staff Attendance': return 'attendance_dash_mark_staff';
       case 'Staff Attendance Report': return 'attendance_dash_staff_report';
       case 'Half Leaves': return 'attendance_dash_half_leaves';
+      case 'Leave Requests': return 'attendance_dash_leave_requests';
       default: return null;
     }
   };

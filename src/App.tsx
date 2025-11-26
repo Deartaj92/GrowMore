@@ -23,6 +23,7 @@ import MarkStaffAttendance from './components/MarkStaffAttendance';
 import StaffAttendanceReport from './components/StaffAttendanceReport';
 import AttendanceReport from './components/AttendanceReport';
 import HalfLeaves from './components/HalfLeaves';
+import LeaveRequestsPage from './pages/LeaveRequestsPage';
 import FineManager from './components/FineManager';
 import FineCollection from './pages/FineCollection';
 import RemainingFine from './pages/RemainingFine';
@@ -825,6 +826,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
                                 <HalfLeaves />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/leave-requests"
+                            element={
+                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                                <LeaveRequestsPage />
                               </ProtectedRoute>
                             }
                           />

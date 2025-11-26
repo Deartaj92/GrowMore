@@ -79,6 +79,19 @@ const getStudentInfo = () => {
   return null;
 };
 
+// Helper to get parent info from localStorage
+const getParentInfo = () => {
+  try {
+    const parentSession = localStorage.getItem('parentSession');
+    if (parentSession) {
+      return JSON.parse(parentSession);
+    }
+  } catch (e) {
+    // Error parsing parent session
+  }
+  return null;
+};
+
 // Helper to normalize ID lists from Supabase
 const normalizeIdList = (raw: any): number[] => {
   if (raw === null || raw === undefined) return [];
@@ -112,6 +125,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [subscription, setSubscription] = useState<any>(null);
   const panelOpenRef = useRef(false);
   const [studentInfo, setStudentInfo] = useState<any>(null);
+  const [parentInfo, setParentInfo] = useState<any>(null);
   const [activeAnnouncementId, setActiveAnnouncementId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -265,23 +279,29 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     return notification;
   }, []);
 
-  // Update student info when it changes
+  // Update student and parent info when it changes
   useEffect(() => {
-    const info = getStudentInfo();
-    setStudentInfo(info);
+    const studentInfoData = getStudentInfo();
+    const parentInfoData = getParentInfo();
+    setStudentInfo(studentInfoData);
+    setParentInfo(parentInfoData);
 
-    // Listen for storage changes (when student logs in/out)
+    // Listen for storage changes (when student/parent logs in/out)
     const handleStorageChange = () => {
-      const updatedInfo = getStudentInfo();
-      setStudentInfo(updatedInfo);
+      const updatedStudentInfo = getStudentInfo();
+      const updatedParentInfo = getParentInfo();
+      setStudentInfo(updatedStudentInfo);
+      setParentInfo(updatedParentInfo);
     };
 
     window.addEventListener('storage', handleStorageChange);
     const customListener = handleStorageChange as EventListener;
     window.addEventListener('student-session-changed', customListener);
+    window.addEventListener('parent-session-changed', customListener);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('student-session-changed', customListener);
+      window.removeEventListener('parent-session-changed', customListener);
     };
   }, []);
 
@@ -293,11 +313,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const getViewerIdentifier = useCallback(() => {
     if (studentInfo?.id) {
       return `student_${studentInfo.id}`;
+    } else if (parentInfo?.id) {
+      return `parent_${parentInfo.id}`;
     } else if (user?.staff_id) {
       return `staff_${user.staff_id}`;
     }
     return null;
-  }, [studentInfo?.id, user?.staff_id]);
+  }, [studentInfo?.id, parentInfo?.id, user?.staff_id]);
 
   // Helper to check if a report notification should be shown to the current user
   // Teachers: Show reports they filed OR reports filed on them
@@ -641,7 +663,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       return;
     }
     
-    const schoolId = user?.school_id || studentInfo?.school_id;
+    const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
     if (!schoolId) {
       return;
     }
@@ -735,20 +757,40 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         // We check the raw notificationsData length because the database query returns all types mixed
         hasMoreNotifications = notificationsData.length >= PAGE_SIZE;
       } else {
-        // For Teachers, Students, and other users: Show reports AND announcements
-        // Determine user ID for fetching notifications (staff_id for staff, student_id for students)
-        const userId = user?.staff_id || studentInfo?.id;
+        // For Teachers, Students, Parents, and other users: Show reports AND announcements AND other notifications
+        // Determine user ID for fetching notifications (staff_id for staff, student_id for students, staff_id for parents via user account)
+        let userId: number | undefined = user?.staff_id || studentInfo?.id;
         
-        // Fetch report notifications if available
+        // For parents: Query notifications using getAllFamilyNotifications (similar to students)
+        // Parents log in using family_id, so we query notifications for that family
+        let parentNotificationsData: Notification[] = [];
+        let allNotificationsData: Notification[] = [];
         let allReportsData: Notification[] = [];
-        if (userId && schoolId) {
+        
+        if (parentInfo?.id && !userId && schoolId) {
           try {
-            // For staff: try to fetch report notifications from notifications table
-            if (user?.staff_id) {
-              allReportsData = await activityTrackingService.getAllUserNotifications(userId, schoolId, 'report');
-            }
-            // For students: query reports table directly since they don't have notifications
-            else if (studentInfo?.id) {
+            // Fetch all notifications for parents using the family service function
+            allNotificationsData = await activityTrackingService.getAllFamilyNotifications(
+              parentInfo.id,
+              schoolId
+            );
+            
+            // Separate reports from other notifications
+            allReportsData = allNotificationsData.filter(n => n.notification_type === 'report');
+            parentNotificationsData = allNotificationsData.filter(n => n.notification_type !== 'report');
+          } catch (error) {
+            console.error('Error fetching parent notifications:', error);
+          }
+        } else if (userId && schoolId) {
+          try {
+            // Fetch all notifications from notifications table (works for both staff and students)
+            allNotificationsData = await activityTrackingService.getAllUserNotifications(userId, schoolId);
+            
+            // Separate reports from other notifications
+            allReportsData = allNotificationsData.filter(n => n.notification_type === 'report');
+            
+            // For students: Also query reports table directly as fallback (if no notifications found)
+            if (studentInfo?.id && allReportsData.length === 0) {
               // Query reports table directly for student reports
               const { data: reports, error: reportsError } = await supabase
                 .from('reports')
@@ -814,6 +856,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             }
           } catch (error) {
             // If fetching fails (e.g., user doesn't have notifications), continue with empty array
+            console.error('Error fetching notifications:', error);
           }
         }
 
@@ -842,11 +885,22 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         );
         const validReports = filteredReports.filter((n): n is Notification => n !== null);
         
+        // Filter out announcements and reports from allNotificationsData to avoid duplicates
+        const otherNotifications = allNotificationsData.filter(n => 
+          n.notification_type !== 'announcement' && n.notification_type !== 'report'
+        );
+        
         // Fetch announcements
         const announcementNotifications = await fetchAnnouncementsAsNotifications();
         
-        // Combine: filtered reports + announcements
-        allNotifications = [...validReports, ...announcementNotifications];
+        // For parents: Combine all notifications (already fetched via getAllFamilyNotifications)
+        if (parentInfo?.id && !userId) {
+          // Combine: all parent notifications (already includes everything) + announcements
+          allNotifications = [...allNotificationsData, ...announcementNotifications];
+        } else {
+          // Combine: other notifications (like leave_request) + filtered reports + announcements
+          allNotifications = [...otherNotifications, ...validReports, ...announcementNotifications];
+        }
         hasMoreNotifications = false; // Reports and announcements are all loaded at once
       }
 
@@ -999,6 +1053,63 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           user.school_id,
           activityAndReportNotifications.map(n => n.id)
         );
+      } else if (activityAndReportNotifications.length > 0) {
+        // For students and parents: Directly update notifications table
+        const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+        if (schoolId) {
+          const notificationIds = activityAndReportNotifications.map(n => n.id);
+          
+          // For students: Update by recipient_id
+          if (studentInfo?.id) {
+            try {
+              await supabase
+                .from('notifications')
+                .update({
+                  is_read: true,
+                  read_at: new Date().toISOString()
+                })
+                .in('id', notificationIds)
+                .eq('recipient_id', studentInfo.id)
+                .eq('school_id', schoolId);
+            } catch (error) {
+              console.error('Error marking student notifications as read:', error);
+            }
+          }
+          
+          // For parents: Update by family_recipient_id
+          if (parentInfo?.id) {
+            try {
+              await supabase
+                .from('notifications')
+                .update({
+                  is_read: true,
+                  read_at: new Date().toISOString()
+                })
+                .in('id', notificationIds)
+                .eq('family_recipient_id', parentInfo.id)
+                .eq('school_id', schoolId);
+            } catch (error) {
+              console.error('Error marking parent notifications as read:', error);
+            }
+          }
+          
+          // For other staff users (Teachers, etc.): Update by recipient_id
+          if (user?.staff_id && !hasNotificationSettingsAccess) {
+            try {
+              await supabase
+                .from('notifications')
+                .update({
+                  is_read: true,
+                  read_at: new Date().toISOString()
+                })
+                .in('id', notificationIds)
+                .eq('recipient_id', user.staff_id)
+                .eq('school_id', schoolId);
+            } catch (error) {
+              console.error('Error marking staff notifications as read:', error);
+            }
+          }
+        }
       }
 
       // For all users: Mark announcements as viewed in database
@@ -1006,13 +1117,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         const viewerIdentifier = getViewerIdentifier();
         if (viewerIdentifier) {
           const announcementIds = announcementNotifications.map(n => n.id);
-          const schoolId = user?.school_id || studentInfo?.school_id;
+          const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
           
           if (schoolId) {
             // Build viewer payload
-            const viewerType = studentInfo ? 'student' : 'staff';
-            const viewerRole = studentInfo ? 'Student' : (user?.role || 'Staff');
-            const viewerName = studentInfo?.name || user?.name || 'User';
+            const viewerType = studentInfo ? 'student' : (parentInfo ? 'parent' : 'staff');
+            const viewerRole = studentInfo ? 'Student' : (parentInfo ? 'Parent' : (user?.role || 'Staff'));
+            const viewerName = studentInfo?.name || parentInfo?.name || user?.name || 'User';
             
             const basePayload: any = {
               school_id: schoolId,
@@ -1024,6 +1135,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             
             if (studentInfo?.id) {
               basePayload.student_id = studentInfo.id;
+            } else if (parentInfo?.id) {
+              // For parents, we might not have a direct field, but we can use family_id if the table supports it
+              // For now, just use the viewer_identifier
             } else if (user?.staff_id) {
               basePayload.staff_id = user.staff_id;
             }
@@ -1069,7 +1183,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     } catch (error) {
       // Failed to mark notifications as read
     }
-  }, [user?.staff_id, user?.school_id, user?.role, user?.name, studentInfo, notifications, getViewerIdentifier, preferences, shouldShowNotificationByCategory]);
+  }, [user?.staff_id, user?.school_id, user?.role, user?.name, studentInfo, parentInfo, notifications, getViewerIdentifier, preferences, shouldShowNotificationByCategory]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
@@ -1107,11 +1221,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   }, []);
 
   // Subscribe to real-time notifications
-  const subscribeToNotifications = useCallback(() => {
-    const schoolId = user?.school_id || studentInfo?.school_id;
-    const staffId = user?.staff_id;
+  const subscribeToNotifications = useCallback(async () => {
+    const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+    let staffId = user?.staff_id;
+    let recipientId: number | undefined = staffId || studentInfo?.id;
 
-    if (!schoolId) {
+    // For parents: Subscribe to notifications by family_recipient_id
+    // Parents log in using family_id, so we subscribe to notifications for that family
+    const familyRecipientId = parentInfo?.id;
+
+    // For parents, we need familyRecipientId; for others, we need recipientId
+    if (!schoolId || (!recipientId && !familyRecipientId)) {
       return;
     }
 
@@ -1122,17 +1242,20 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
 
     try {
-
+      const channelName = recipientId 
+        ? `notifications-${schoolId}-${recipientId}`
+        : `notifications-family-${schoolId}-${familyRecipientId}`;
+      
       const channel = supabase
-        .channel(`notifications-${schoolId}-${staffId || studentInfo?.id}`, {
+        .channel(channelName, {
           config: {
             broadcast: { self: false },
-            presence: { key: (staffId || studentInfo?.id || 'unknown').toString() }
+            presence: { key: (recipientId || familyRecipientId || 'unknown').toString() }
           }
         });
 
-      // 1. Subscribe to direct notifications (only for staff with ID)
-      if (staffId) {
+      // 1. Subscribe to direct notifications (for staff with ID, students with ID)
+      if (recipientId) {
         channel
           .on(
             'postgres_changes',
@@ -1140,7 +1263,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               event: 'INSERT',
               schema: 'public',
               table: 'notifications',
-              filter: `recipient_id=eq.${staffId}`
+              filter: `recipient_id=eq.${recipientId}`
             },
             async (payload) => {
               const rawNotification = cleanNotification(payload.new as Notification);
@@ -1165,6 +1288,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   studentInfo?.id,
                   schoolId
                 );
+              } else if (newNotification.notification_type === 'leave_request') {
+                // Always show leave_request notifications to the recipient
+                shouldShow = true;
               } else {
                 shouldShow = shouldShowNotificationByCategory(newNotification, currentPreferences, user?.role);
               }
@@ -1195,7 +1321,85 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               event: 'UPDATE',
               schema: 'public',
               table: 'notifications',
-              filter: `recipient_id=eq.${staffId}`
+              filter: `recipient_id=eq.${recipientId}`
+            },
+            (payload) => {
+              const updatedNotification = cleanNotification(payload.new as Notification);
+              setNotifications(prev => {
+                const updated = prev.map(notification =>
+                  notification.id === updatedNotification.id
+                    ? updatedNotification
+                    : notification
+                );
+                // Re-sort after update
+                return sortNotifications(updated);
+              });
+
+              if (payload.old.is_read !== updatedNotification.is_read) {
+                setUnreadCount(prev =>
+                  updatedNotification.is_read ? prev - 1 : prev + 1
+                );
+              }
+            }
+          );
+      }
+
+      // 1b. Subscribe to family notifications (for parents)
+      if (familyRecipientId) {
+        channel
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notifications',
+              filter: `family_recipient_id=eq.${familyRecipientId}`
+            },
+            async (payload) => {
+              // Verify this notification is for this family
+              if (payload.new?.family_recipient_id !== familyRecipientId) {
+                return;
+              }
+              
+              const rawNotification = cleanNotification(payload.new as Notification);
+              
+              // Enrich notification with activity_action (real-time payloads don't include JOINed data)
+              const newNotification = await enrichNotificationWithActivityAction(
+                rawNotification,
+                schoolId
+              );
+              
+              // For family notifications, show all types (leave_request, announcements, reports, etc.)
+              // Always show to the recipient since they're specifically targeted
+              const shouldShow = true;
+              
+              if (shouldShow) {
+                setNotifications(prev => {
+                  // Check if notification already exists (avoid duplicates)
+                  const exists = prev.some(n => n.id === newNotification.id);
+                  if (exists) {
+                    return prev;
+                  }
+                  
+                  // Add new notification and sort
+                  const updated = [newNotification, ...prev];
+                  return sortNotifications(updated);
+                });
+
+                if (!newNotification.is_read) {
+                  setUnreadCount(prev => prev + 1);
+                  showNotification(newNotification.title, newNotification.message);
+                }
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'notifications',
+              filter: `family_recipient_id=eq.${familyRecipientId}`
             },
             (payload) => {
               const updatedNotification = cleanNotification(payload.new as Notification);
@@ -1332,12 +1536,27 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           }
         );
 
-      const newSubscription = channel.subscribe();
+      const newSubscription = channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Successfully subscribed
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[NotificationContext] Error subscribing to notifications channel:', {
+            channel: channelName,
+            recipientId,
+            familyRecipientId,
+            schoolId
+          });
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[NotificationContext] Notification subscription timed out:', {
+            channel: channelName
+          });
+        }
+      });
       setSubscription(newSubscription);
     } catch (error) {
-      // Failed to subscribe to notifications
+      console.error('[NotificationContext] Failed to subscribe to notifications:', error);
     }
-  }, [user?.staff_id, user?.school_id, studentInfo, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification, enrichNotificationWithActivityAction]);
+  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.id, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id, subscription, matchesAnnouncementAudience, cleanText, cleanNotification, showNotification, enrichNotificationWithActivityAction, shouldShowNotificationByCategory, shouldShowReportNotification]);
 
   // Unsubscribe from notifications
   const unsubscribeFromNotifications = useCallback(() => {
@@ -1367,7 +1586,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Load notifications on mount and when user changes
   // Only depend on actual user data, not functions
   useEffect(() => {
-    const schoolId = user?.school_id || studentInfo?.school_id;
+    const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
     if (!schoolId) return;
     
     // Prevent concurrent calls
@@ -1379,7 +1598,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     return () => {
       unsubscribeFromNotificationsRef.current();
     };
-  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id]);
+  }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id]);
 
   // Robust Push Initialization for push notifications
   useEffect(() => {

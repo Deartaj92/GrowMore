@@ -18,7 +18,8 @@ export interface ActivityLog {
 
 export interface Notification {
   id: number;
-  recipient_id: number;
+  recipient_id?: number | null;
+  family_recipient_id?: number | null;
   school_id: number;
   notification_type: string;
   title: string;
@@ -231,38 +232,105 @@ class ActivityTrackingService {
             expires_at: null
           });
         }
-        // For student reports: we can't directly notify students via notifications table
-        // because recipient_id references staff(id). However, the filtering logic in
-        // NotificationContext will show reports to students by querying the reports table.
+        // For student reports: notify parents (families) linked to the student
+        if (details.subject_type === 'student' && details.student_id) {
+          try {
+            // Find all families linked to this student
+            const { data: familyMembers, error: familyError } = await supabase
+              .from('family_members')
+              .select('family_id')
+              .eq('student_id', details.student_id)
+              .eq('school_id', schoolId);
+
+            if (!familyError && familyMembers && familyMembers.length > 0) {
+              // Get unique family IDs
+              const familyIds = Array.from(new Set(familyMembers.map(fm => fm.family_id)));
+              
+              // Create notifications for each family using family_recipient_id
+              familyIds.forEach(familyId => {
+                notifications.push({
+                  recipient_id: null, // Explicitly set to null for family notifications
+                  family_recipient_id: familyId,
+                  school_id: schoolId,
+                  notification_type: activityType,
+                  title: teacher.name,
+                  message: message,
+                  activity_log_id: activityLogId,
+                  is_important: isImportant,
+                  expires_at: null
+                });
+              });
+            }
+          } catch (familyNotificationError) {
+            // Don't fail the entire notification process if family notification fails
+            console.error('[ActivityTracking] Error creating family notifications for student report:', familyNotificationError);
+          }
+        }
       }
 
       if (notifications.length > 0) {
-        // Validate that all recipient_ids are staff members (for FK constraint)
-        const recipientIds = Array.from(new Set(notifications.map(n => n.recipient_id)));
-        const { data: validStaff } = await supabase
-          .from('staff')
-          .select('id')
-          .in('id', recipientIds);
-        
-        if (validStaff) {
-          const validStaffIds = new Set(validStaff.map(s => s.id));
-          const validNotifications = notifications.filter(n => validStaffIds.has(n.recipient_id));
-          
-          if (validNotifications.length > 0) {
-            const { error: insertError } = await supabase
-              .from('notifications')
-              .insert(validNotifications);
+        // Separate notifications by type: staff (recipient_id) vs families (family_recipient_id)
+        const staffNotifications = notifications.filter(n => n.recipient_id);
+        const familyNotifications = notifications.filter(n => n.family_recipient_id && !n.recipient_id);
 
-            if (insertError) {
-              console.error('[ActivityTracking] Error creating notifications:', insertError);
-            } else {
-              console.log('[ActivityTracking] Created notifications:', {
-                count: validNotifications.length,
-                activityType,
-                activityAction,
-                entityName,
-                notificationTypes: validNotifications.map(n => n.notification_type)
-              });
+        // Validate and insert staff notifications
+        if (staffNotifications.length > 0) {
+          const recipientIds = Array.from(new Set(staffNotifications.map(n => n.recipient_id!)));
+          const { data: validStaff } = await supabase
+            .from('staff')
+            .select('id')
+            .in('id', recipientIds);
+          
+          if (validStaff) {
+            const validStaffIds = new Set(validStaff.map(s => s.id));
+            const validStaffNotifications = staffNotifications.filter(n => n.recipient_id && validStaffIds.has(n.recipient_id));
+            
+            if (validStaffNotifications.length > 0) {
+              const { error: insertError } = await supabase
+                .from('notifications')
+                .insert(validStaffNotifications);
+
+              if (insertError) {
+                console.error('[ActivityTracking] Error creating staff notifications:', insertError);
+              } else {
+                console.log('[ActivityTracking] Created staff notifications:', {
+                  count: validStaffNotifications.length,
+                  activityType,
+                  activityAction,
+                  entityName
+                });
+              }
+            }
+          }
+        }
+
+        // Validate and insert family notifications
+        if (familyNotifications.length > 0) {
+          const familyIds = Array.from(new Set(familyNotifications.map(n => n.family_recipient_id!)));
+          const { data: validFamilies } = await supabase
+            .from('families')
+            .select('id')
+            .in('id', familyIds);
+          
+          if (validFamilies) {
+            const validFamilyIds = new Set(validFamilies.map(f => f.id));
+            const validFamilyNotifications = familyNotifications.filter(n => n.family_recipient_id && validFamilyIds.has(n.family_recipient_id));
+            
+            if (validFamilyNotifications.length > 0) {
+              const { error: insertError } = await supabase
+                .from('notifications')
+                .insert(validFamilyNotifications);
+
+              if (insertError) {
+                console.error('[ActivityTracking] Error creating family notifications:', insertError);
+              } else {
+                console.log('[ActivityTracking] Created family notifications:', {
+                  count: validFamilyNotifications.length,
+                  activityType,
+                  activityAction,
+                  entityName
+                });
+              }
             }
           }
         }
@@ -593,6 +661,112 @@ class ActivityTrackingService {
       const enrichedNotifications = await this.enrichNotificationsWithActivityAction(allNotifications, schoolId);
 
       // Filter by notification type if specified (after fetching all)
+      if (notificationType) {
+        return enrichedNotifications.filter(n => n.notification_type === notificationType);
+      }
+
+      return enrichedNotifications;
+    } catch (error) {
+      // Return what we have so far on error, filtered if needed
+      if (notificationType) {
+        return allNotifications.filter(n => n.notification_type === notificationType);
+      }
+      return allNotifications;
+    }
+  }
+
+  /**
+   * Get all notifications for a family (fetches in batches to handle Supabase 1000 row limit)
+   * Similar to getAllUserNotifications but queries by family_recipient_id
+   */
+  async getAllFamilyNotifications(
+    familyId: number,
+    schoolId: number,
+    notificationType?: string
+  ): Promise<Notification[]> {
+    const BATCH_SIZE = 1000; // Supabase limit per query
+    const allNotifications: Notification[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    try {
+      // Fetch all notifications in batches using the get_family_notifications function
+      while (hasMore) {
+        const { data: batch, error } = await supabase.rpc('get_family_notifications', {
+          p_family_id: familyId,
+          p_school_id: schoolId,
+          p_limit: BATCH_SIZE,
+          p_offset: offset
+        });
+
+        if (error) {
+          // If function doesn't exist, fallback to direct query
+          if (error.code === '42883' || error.message?.includes('function') || error.message?.includes('does not exist')) {
+            // Fallback: Direct query
+            const { data: directBatch, error: directError } = await supabase
+              .from('notifications')
+              .select('*')
+              .eq('family_recipient_id', familyId)
+              .eq('school_id', schoolId)
+              .order('created_at', { ascending: false })
+              .range(offset, offset + BATCH_SIZE - 1);
+            
+            if (directError || !directBatch) {
+              hasMore = false;
+              break;
+            }
+            
+            const mappedBatch = directBatch.map((n: any) => ({
+              id: n.id,
+              recipient_id: n.recipient_id || 0,
+              school_id: n.school_id,
+              notification_type: n.notification_type,
+              title: n.title,
+              message: n.message,
+              activity_log_id: n.activity_log_id,
+              is_read: n.is_read,
+              is_important: n.is_important,
+              expires_at: n.expires_at,
+              created_at: n.created_at,
+              read_at: n.read_at,
+            }));
+            
+            if (mappedBatch.length === 0) {
+              hasMore = false;
+              break;
+            }
+            
+            allNotifications.push(...mappedBatch);
+            
+            if (mappedBatch.length < BATCH_SIZE) {
+              hasMore = false;
+            } else {
+              offset += BATCH_SIZE;
+            }
+          } else {
+            hasMore = false;
+            break;
+          }
+        } else {
+          if (!batch || batch.length === 0) {
+            hasMore = false;
+            break;
+          }
+
+          allNotifications.push(...batch);
+
+          if (batch.length < BATCH_SIZE) {
+            hasMore = false;
+          } else {
+            offset += BATCH_SIZE;
+          }
+        }
+      }
+
+      // Enrich notifications with activity_action if missing
+      const enrichedNotifications = await this.enrichNotificationsWithActivityAction(allNotifications, schoolId);
+
+      // Filter by notification type if specified
       if (notificationType) {
         return enrichedNotifications.filter(n => n.notification_type === notificationType);
       }

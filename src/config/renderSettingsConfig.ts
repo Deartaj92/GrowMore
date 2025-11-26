@@ -123,6 +123,8 @@ export const ATTENDANCE_DASHBOARD_CARDS_GUEST: MenuItemConfig[] = [
   { key: 'attendance_dash_student_report', label: 'Student Attendance Report Card', description: 'Show "Student Attendance Report" card.', defaultEnabled: true, category: 'guest' },
   { key: 'attendance_dash_mark_staff', label: 'Mark Staff Attendance Card', description: 'Show "Mark Staff Attendance" card.', defaultEnabled: true, category: 'guest' },
   { key: 'attendance_dash_staff_report', label: 'Staff Attendance Report Card', description: 'Show "Staff Attendance Report" card.', defaultEnabled: true, category: 'guest' },
+  { key: 'attendance_dash_half_leaves', label: 'Half Leaves Card', description: 'Show "Half Leaves" card.', defaultEnabled: true, category: 'guest' },
+  { key: 'attendance_dash_leave_requests', label: 'Leave Requests Card', description: 'Show "Leave Requests" card.', defaultEnabled: true, category: 'guest' },
 ];
 
 // Per-dashboard cards toggles for guest users

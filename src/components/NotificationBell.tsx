@@ -27,6 +27,19 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 
+// Helper to get parent session info
+const getParentInfo = () => {
+  try {
+    const parentSessionStr = localStorage.getItem('parentSession');
+    if (parentSessionStr) {
+      return JSON.parse(parentSessionStr);
+    }
+  } catch (error) {
+    // Ignore parse errors
+  }
+  return null;
+};
+
 const NotificationBellContainer = styled.div`
   position: relative;
   display: flex;
@@ -497,6 +510,7 @@ const NotificationBell: React.FC = () => {
   } = useNotifications();
 
   const { user } = useAuth();
+  const parentInfo = getParentInfo();
   const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(false);
@@ -658,7 +672,9 @@ const NotificationBell: React.FC = () => {
       // If it's a report notification, try to open it first
       if (notification.notification_type === 'report') {
         try {
-          if (!user?.school_id) {
+          // Get school_id from user or parentInfo
+          const schoolId = user?.school_id || parentInfo?.school_id;
+          if (!schoolId) {
             showToast('Unable to access reports', 'error');
             return;
           }
@@ -716,7 +732,7 @@ const NotificationBell: React.FC = () => {
               .from('reports')
               .select('id')
               .eq('id', reportId)
-              .eq('school_id', user.school_id)
+              .eq('school_id', schoolId)
               .maybeSingle();
             
             if (!reportCheckError && reportCheck) {
@@ -775,7 +791,7 @@ const NotificationBell: React.FC = () => {
               .from('reports')
               .select('id')
               .eq('id', reportId)
-              .eq('school_id', user.school_id)
+              .eq('school_id', schoolId)
               .maybeSingle();
             
             if (!reportCheckError && reportCheck) {
@@ -852,7 +868,7 @@ const NotificationBell: React.FC = () => {
                 .from('staff')
                 .select('id')
                 .eq('name', notification.title)
-                .eq('school_id', user.school_id)
+                .eq('school_id', schoolId)
                 .maybeSingle();
               
               if (teacherData?.id) {
@@ -869,7 +885,7 @@ const NotificationBell: React.FC = () => {
                     category:report_categories(name),
                     student:students(name)
                   `)
-                  .eq('school_id', user.school_id)
+                  .eq('school_id', schoolId)
                   .eq('reported_by', teacherData.id)
                   .order('created_at', { ascending: false })
                   .limit(50);
@@ -881,7 +897,7 @@ const NotificationBell: React.FC = () => {
                   const simpleQuery = supabase
                     .from('reports')
                     .select('id, student_id, staff_id, subject_type, category_id')
-                    .eq('school_id', user.school_id)
+                    .eq('school_id', schoolId)
                     .eq('reported_by', teacherData.id)
                     .order('created_at', { ascending: false })
                     .limit(50);
@@ -914,7 +930,7 @@ const NotificationBell: React.FC = () => {
                     .from('students')
                     .select('id')
                     .eq('name', subjectName)
-                    .eq('school_id', user.school_id)
+                    .eq('school_id', schoolId)
                     .maybeSingle();
                   
                   if (studentData?.id) {
@@ -922,7 +938,7 @@ const NotificationBell: React.FC = () => {
                     const broaderQuery = supabase
                       .from('reports')
                       .select('id, student_id, staff_id, subject_type, category_id')
-                      .eq('school_id', user.school_id)
+                      .eq('school_id', schoolId)
                       .eq('student_id', studentData.id)
                       .eq('subject_type', 'student')
                       .order('created_at', { ascending: false })
@@ -976,7 +992,7 @@ const NotificationBell: React.FC = () => {
                       .from('reports')
                       .select('id')
                       .eq('id', reportId)
-                      .eq('school_id', user.school_id)
+                      .eq('school_id', schoolId)
                       .maybeSingle();
                     
                     if (reportCheck) {

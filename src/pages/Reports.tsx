@@ -847,7 +847,9 @@ export const Reports = (): JSX.Element => {
                         {
                             entityId: parseInt(reportToDelete.id),
                             entityName: `Report #${reportToDelete.id}`,
-                            createNotification: true // Show delete activity in notifications
+                            createNotification: true, // Show delete activity in notifications
+                            studentId: reportToDelete.subject_type === 'student' ? reportToDelete.student?.id : undefined,
+                            staffId: reportToDelete.subject_type === 'staff' ? reportToDelete.staff?.id : undefined
                         }
                     );
                     

@@ -2026,6 +2026,18 @@ const CustomLandingPage: React.FC = () => {
     try {
       const settings = await fetchRenderSettings(schoolId);
       setRenderSettings(settings);
+      
+      // Fetch active session for students (needed for leave requests)
+      const { data: activeSessionData } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', schoolId)
+        .maybeSingle();
+      
+      if (activeSessionData) {
+        setActiveSessionId(activeSessionData.id);
+      }
     } catch (error) {
       // Handle error silently
     } finally {

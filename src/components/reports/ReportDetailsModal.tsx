@@ -25,6 +25,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../useToast';
 import { supabase } from '../../supabaseClient';
 
+// Helper to get parent session info
+const getParentInfo = () => {
+  try {
+    const parentSessionStr = localStorage.getItem('parentSession');
+    if (parentSessionStr) {
+      return JSON.parse(parentSessionStr);
+    }
+  } catch (error) {
+    // Ignore parse errors
+  }
+  return null;
+};
+
 interface ReportDetailsModalProps {
   open: boolean;
   onClose: () => void;
@@ -72,6 +85,7 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
   reportId
 }) => {
   const { user } = useAuth();
+  const parentInfo = getParentInfo();
   const { showToast } = useToast();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
@@ -87,11 +101,13 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
   }, [open, reportId]);
 
   const loadReport = async () => {
-    if (!reportId || !user?.school_id) return;
+    // Get school_id from user or parentInfo
+    const schoolId = user?.school_id || parentInfo?.school_id;
+    if (!reportId || !schoolId) return;
     
     setLoading(true);
     try {
-      const data = await reportService.getReportById(reportId, user.school_id);
+      const data = await reportService.getReportById(reportId, schoolId);
       
       // Transform the data to match our local Report type
       // Updates are already included in the response from getReportById
