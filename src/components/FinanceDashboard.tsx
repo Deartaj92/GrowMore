@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useContext } from 'react';
 import {
-  School as SchoolIcon,
-  PersonAdd as PersonAddIcon,
-  Assignment as AssignmentIcon,
-  CalendarMonth as CalendarMonthIcon,
+  AccountBalance as AccountBalanceIcon,
+  AttachMoney as AttachMoneyIcon,
+  Receipt as ReceiptIcon,
+  Gavel as GavelIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
+import { ThemeProvider } from 'styled-components';
+import { darkTheme, lightTheme } from './Layout';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -173,7 +175,6 @@ const CardIcon = styled.div<{ $color?: string }>`
   position: relative;
   overflow: hidden;
   
-  /* Perfect vertical and horizontal centering */
   svg {
     width: 24px !important;
     height: 24px !important;
@@ -185,7 +186,6 @@ const CardIcon = styled.div<{ $color?: string }>`
     left: 0;
   }
   
-  /* Override Material-UI icon styles for perfect centering */
   .MuiSvgIcon-root {
     width: 24px !important;
     height: 24px !important;
@@ -198,7 +198,6 @@ const CardIcon = styled.div<{ $color?: string }>`
     left: 0 !important;
   }
   
-  /* Additional centering for Material-UI icons */
   & > * {
     display: flex !important;
     align-items: center !important;
@@ -321,43 +320,37 @@ const CardAction = styled.div<{ $color?: string }>`
   }
 `;
 
-// Employees menu items
-const employeesItems = [
+// Finance Management menu items
+const financeManagementItems = [
   {
-    title: 'All Employees',
-    description: 'View and manage all staff members, teachers, and administrative personnel with comprehensive profiles',
-    icon: <SchoolIcon />,
-    path: '/employees/list',
-    color: '#3b82f6' // Blue
-  },
-  {
-    title: 'Add New',
-    description: 'Register new employees, create staff profiles, and set up user accounts with role-based permissions',
-    icon: <PersonAddIcon />,
-    path: '/employees/add',
+    title: 'Fee Management',
+    description: 'Comprehensive fee collection, structure management, payment tracking, and financial reporting',
+    icon: <AttachMoneyIcon />,
+    path: '/fee-management',
     color: '#10b981' // Green
   },
   {
-    title: 'Teacher Subject Assignment',
-    description: 'Assign subjects to teachers, manage teaching loads, and organize academic responsibilities',
-    icon: <AssignmentIcon />,
-    path: '/teacher-subjects',
-    color: '#f59e0b' // Orange
+    title: 'Expense Management',
+    description: 'Track and manage all school expenditures, categorize expenses, monitor spending, and generate expense reports',
+    icon: <ReceiptIcon />,
+    path: '/expense-management',
+    color: '#3b82f6' // Blue
   },
   {
-    title: 'Timetable',
-    description: 'Create and manage class schedules, periods, and teacher timetables for efficient time management',
-    icon: <CalendarMonthIcon />,
-    path: '/timetable',
-    color: '#8b5cf6' // Purple
+    title: 'Fine Management',
+    description: 'Manage student fines, track fine collections, view fine statistics, and handle fine-related operations',
+    icon: <GavelIcon />,
+    path: '/fine-dashboard',
+    color: '#ef4444' // Red
   }
 ];
 
-const EmployeesDashboard: React.FC = () => {
+const FinanceDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
-  const navigate = useNavigate();
   const { user } = useAuth() as any;
+  const navigate = useNavigate();
   const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const themeObj = theme === 'dark' ? darkTheme : lightTheme;
 
   useEffect(() => {
     if (user?.role === 'Guest' && user?.school_id) {
@@ -371,18 +364,17 @@ const EmployeesDashboard: React.FC = () => {
 
   const getKeyForTitle = (title: string): string | null => {
     switch (title) {
-      case 'All Employees': return 'employees_dash_all';
-      case 'Add New': return 'employees_dash_add';
-      case 'Teacher Subject Assignment': return 'employees_dash_teacher_subjects';
-      case 'Timetable': return 'employees_dash_timetable';
+      case 'Fine Management': return 'finance_dash_fine';
+      case 'Fee Management': return 'finance_dash_fee';
+      case 'Expense Management': return 'finance_dash_expense';
       default: return null;
     }
   };
 
   const visibleItems = useMemo(() => {
-    if (user?.role !== 'Guest') return employeesItems;
-    if (!renderSettings) return employeesItems;
-    return employeesItems.filter(item => {
+    if (user?.role !== 'Guest') return financeManagementItems;
+    if (!renderSettings) return financeManagementItems;
+    return financeManagementItems.filter(item => {
       const key = getKeyForTitle(item.title);
       if (!key) return true;
       return renderSettings.guest?.[key] !== false;
@@ -394,42 +386,44 @@ const EmployeesDashboard: React.FC = () => {
   };
 
   return (
-    <PageContainer theme={theme}>
-      <Header>
-        <Title>
-          <SchoolIcon style={{ fontSize: 40 }} />
-          Employee Management
-        </Title>
-        <Subtitle>
-          Manage staff, teachers, and administrative personnel with comprehensive tools
-        </Subtitle>
-      </Header>
+    <ThemeProvider theme={themeObj}>
+      <PageContainer>
+        <Header>
+          <Title>
+            <AccountBalanceIcon style={{ fontSize: 40 }} />
+            Finance Management
+          </Title>
+          <Subtitle>
+            Comprehensive financial management for fines, fees, and expenses
+          </Subtitle>
+        </Header>
 
-      <CardsGrid>
-        {visibleItems.map((item, index) => (
-          <Card 
-            key={index}
-            onClick={() => handleCardClick(item.path)}
-            theme={theme}
-            $color={item.color}
-          >
-            <CardHeader $color={item.color}>
-              <CardIcon $color={item.color}>
-                {item.icon}
-              </CardIcon>
-              <CardTitle>{item.title}</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <CardDescription>{item.description}</CardDescription>
-              <CardAction $color={item.color}>
-                Get Started
-              </CardAction>
-            </CardBody>
-          </Card>
-        ))}
-      </CardsGrid>
-    </PageContainer>
+        <CardsGrid>
+          {visibleItems.map((item, index) => (
+            <Card 
+              key={index}
+              onClick={() => handleCardClick(item.path)}
+              $color={item.color}
+            >
+              <CardHeader $color={item.color}>
+                <CardIcon $color={item.color}>
+                  {item.icon}
+                </CardIcon>
+                <CardTitle>{item.title}</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <CardDescription>{item.description}</CardDescription>
+                <CardAction $color={item.color}>
+                  Get Started
+                </CardAction>
+              </CardBody>
+            </Card>
+          ))}
+        </CardsGrid>
+      </PageContainer>
+    </ThemeProvider>
   );
 };
 
-export default EmployeesDashboard;
+export default FinanceDashboard;
+

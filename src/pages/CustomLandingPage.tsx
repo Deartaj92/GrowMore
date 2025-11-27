@@ -15,7 +15,16 @@ import { Examination } from '../types/examinations';
 import { fetchRenderSettings, isTeacherCardVisible, isStudentCardVisible, isParentCardVisible, RenderSettings } from '../services/renderSettingsService';
 import { getStudentDisplayId, createStudentSlug } from '../utils/studentUtils';
 import { format } from 'date-fns';
-import { ExpandMore, ExpandLess, Receipt, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined } from '@mui/icons-material';
+import { isWeb as checkIsWeb } from '../utils/platformDetection';
+import { ExpandMore, ExpandLess, Receipt, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined, ExitToApp as ExitIcon } from '@mui/icons-material';
+
+// Capacitor import for mobile back button handling
+let CapacitorApp: any = null;
+try {
+  CapacitorApp = require('@capacitor/app').App;
+} catch (e) {
+  // Capacitor not available, will use fallback
+}
 
 const Container = styled.div`
   padding: 2rem;
@@ -1784,6 +1793,52 @@ const EmptyState = styled.div`
   font-size: 0.9rem;
 `;
 
+// Exit Dialog Styled Components
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ModalBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 2.2rem 2rem 1.7rem 2rem;
+  min-width: 320px;
+  max-width: 95vw;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  border: 1.5px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  margin-bottom: 1.1rem;
+`;
+
+const ModalButton = styled.button<{ $color?: string }>`
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  background: ${({ $color, theme }) => $color || theme.ACCENT};
+  color: #fff;
+  transition: background 0.18s;
+  &:hover {
+    background: ${({ $color, theme }) => $color ? $color + 'cc' : theme.ACCENT + 'cc'};
+  }
+`;
+
 const EventCard = styled.div<{ $eventType?: string }>`
   background: ${({ theme }) => theme.CARD};
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -2051,8 +2106,34 @@ const CustomLandingPage: React.FC = () => {
     suggestionText: '',
   });
   const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   
   const { showToast } = useToast();
+  const isWeb = checkIsWeb();
+
+  // Handle exit function
+  const handleExit = () => {
+    try {
+      if (CapacitorApp) {
+        CapacitorApp.exitApp();
+      } else if ((window as any).electronAPI) {
+        (window as any).electronAPI.close();
+      } else if (isWeb) {
+        // On web, try to close the tab/window
+        const closed = window.close();
+        // If window.close() didn't work, navigate to about:blank as a fallback
+        setTimeout(() => {
+          if (!document.hidden) {
+            window.location.href = 'about:blank';
+          }
+        }, 100);
+      } else {
+        window.close();
+      }
+    } catch (error) {
+      console.error('Error exiting application:', error);
+    }
+  };
 
   // Helper function to notify admins/staff when a suggestion is submitted
   const createSuggestionNotificationForAdmins = async (
@@ -2364,6 +2445,77 @@ const CustomLandingPage: React.FC = () => {
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [activeCardId, isMobile]);
+
+  // Mobile back button handling (Capacitor / WebView)
+  useEffect(() => {
+    // Only handle for Teacher, Parent, or Student roles
+    const isTargetRole = user?.role === 'Teacher' || user?.role === 'Parent' || user?.role === 'Student' || studentInfo || parentInfo;
+    if (!isTargetRole) {
+      return;
+    }
+
+    const handleBackPress = () => {
+      // Show exit confirmation dialog
+      setShowExitConfirm(true);
+    };
+
+    let removeCapListener: (() => void) | null = null;
+
+    // Try to set up Capacitor listener
+    const setupCapacitorListener = async () => {
+      try {
+        if (CapacitorApp) {
+          const listener = await CapacitorApp.addListener('backButton', handleBackPress);
+          removeCapListener = () => {
+            listener.remove();
+          };
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+    };
+
+    // On web, don't set up any custom navigation handlers - let browser handle it
+    if (isWeb) {
+      return;
+    }
+
+    // Set up listener only for Electron/Capacitor
+    setupCapacitorListener();
+
+    // Fallback for non-Capacitor contexts (Electron/Cordova)
+    const handlePopState = (event: PopStateEvent) => {
+      // Only prevent navigation in Electron/Capacitor
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handleBackPress();
+
+      // Push the current state back to prevent navigation
+      window.history.pushState(null, '', window.location.pathname);
+    };
+
+    // Handle beforeunload to prevent accidental exits
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Only show exit confirm in Electron/Capacitor
+      if (showExitConfirm) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+
+    // Push initial state to enable back button handling
+    window.history.pushState(null, '', window.location.pathname);
+
+    // Add event listeners only for Electron/Capacitor
+    window.addEventListener('popstate', handlePopState, true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      removeCapListener?.();
+      window.removeEventListener('popstate', handlePopState, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [showExitConfirm, isWeb, user, studentInfo, parentInfo]);
 
   useEffect(() => {
     const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
@@ -4506,6 +4658,59 @@ const CustomLandingPage: React.FC = () => {
         {leaveRequestModalJSX}
         {complaintModalJSX}
         {suggestionModalJSX}
+        
+        {/* Exit Confirmation Modal */}
+        {showExitConfirm && (
+          <ModalOverlay theme={theme} onClick={() => setShowExitConfirm(false)}>
+            <ModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  margin: '0 auto 16px',
+                  background: theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
+                </div>
+                <ModalTitle theme={theme} style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  Exit Application
+                </ModalTitle>
+                <p style={{
+                  color: theme.BG === '#252525' ? '#9ca3af' : '#6b7280',
+                  marginBottom: '24px',
+                  textAlign: 'center'
+                }}>
+                  Are you sure you want to exit the application?
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <ModalButton
+                    theme={theme}
+                    onClick={() => setShowExitConfirm(false)}
+                    $color="#6b7280"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </ModalButton>
+                  <ModalButton
+                    theme={theme}
+                    onClick={() => {
+                      setShowExitConfirm(false);
+                      handleExit();
+                    }}
+                    $color="#ef4444"
+                    style={{ flex: 1 }}
+                  >
+                    Exit
+                  </ModalButton>
+                </div>
+              </div>
+            </ModalBox>
+          </ModalOverlay>
+        )}
       </Container>
     );
   }
@@ -5250,6 +5455,59 @@ const CustomLandingPage: React.FC = () => {
         {leaveRequestModalJSX}
         {complaintModalJSX}
         {suggestionModalJSX}
+        
+        {/* Exit Confirmation Modal */}
+        {showExitConfirm && (
+          <ModalOverlay theme={theme} onClick={() => setShowExitConfirm(false)}>
+            <ModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  margin: '0 auto 16px',
+                  background: theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
+                </div>
+                <ModalTitle theme={theme} style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  Exit Application
+                </ModalTitle>
+                <p style={{
+                  color: theme.BG === '#252525' ? '#9ca3af' : '#6b7280',
+                  marginBottom: '24px',
+                  textAlign: 'center'
+                }}>
+                  Are you sure you want to exit the application?
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <ModalButton
+                    theme={theme}
+                    onClick={() => setShowExitConfirm(false)}
+                    $color="#6b7280"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </ModalButton>
+                  <ModalButton
+                    theme={theme}
+                    onClick={() => {
+                      setShowExitConfirm(false);
+                      handleExit();
+                    }}
+                    $color="#ef4444"
+                    style={{ flex: 1 }}
+                  >
+                    Exit
+                  </ModalButton>
+                </div>
+              </div>
+            </ModalBox>
+          </ModalOverlay>
+        )}
       </Container>
     );
   }
@@ -5948,6 +6206,59 @@ const CustomLandingPage: React.FC = () => {
         {leaveRequestModalJSX}
         {complaintModalJSX}
         {suggestionModalJSX}
+        
+        {/* Exit Confirmation Modal */}
+        {showExitConfirm && (
+          <ModalOverlay theme={theme} onClick={() => setShowExitConfirm(false)}>
+            <ModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  margin: '0 auto 16px',
+                  background: theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
+                </div>
+                <ModalTitle theme={theme} style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  Exit Application
+                </ModalTitle>
+                <p style={{
+                  color: theme.BG === '#252525' ? '#9ca3af' : '#6b7280',
+                  marginBottom: '24px',
+                  textAlign: 'center'
+                }}>
+                  Are you sure you want to exit the application?
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <ModalButton
+                    theme={theme}
+                    onClick={() => setShowExitConfirm(false)}
+                    $color="#6b7280"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </ModalButton>
+                  <ModalButton
+                    theme={theme}
+                    onClick={() => {
+                      setShowExitConfirm(false);
+                      handleExit();
+                    }}
+                    $color="#ef4444"
+                    style={{ flex: 1 }}
+                  >
+                    Exit
+                  </ModalButton>
+                </div>
+              </div>
+            </ModalBox>
+          </ModalOverlay>
+        )}
       </Container>
     );
   }

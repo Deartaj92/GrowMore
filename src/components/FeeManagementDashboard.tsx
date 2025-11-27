@@ -13,6 +13,7 @@ import {
   Assessment as AssessmentIcon,
   Loyalty as LoyaltyIcon,
   Settings as SettingsIcon,
+  Receipt as ReceiptIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -397,6 +398,13 @@ const feeManagementItems = [
     icon: <SettingsIcon />,
     path: '/fee-settings',
     color: '#6366f1' // Indigo
+  },
+  {
+    title: 'Expense Manager',
+    description: 'Track and manage all school expenditures, categorize expenses, monitor spending, and generate expense reports',
+    icon: <ReceiptIcon />,
+    path: '/expense-manager',
+    color: '#dc2626' // Red
   }
 ];
 
@@ -428,6 +436,7 @@ const FeeManagementDashboard: React.FC = () => {
       case 'Payment History': return 'fee_dash_payment_history';
       case 'Settings': return 'fee_dash_settings';
       case 'Fee Ledger': return 'fee_dash_ledger';
+      case 'Expense Manager': return 'fee_dash_expense_manager';
       default: return null;
     }
   };

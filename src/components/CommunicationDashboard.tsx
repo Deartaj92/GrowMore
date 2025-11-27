@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useContext } from 'react';
 import {
-  School as SchoolIcon,
-  PersonAdd as PersonAddIcon,
-  Assignment as AssignmentIcon,
-  CalendarMonth as CalendarMonthIcon,
+  Message as MessageIcon,
+  Campaign as CampaignIcon,
+  Feedback as FeedbackIcon,
+  Forum as ForumIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
+import { ThemeProvider } from 'styled-components';
+import { darkTheme, lightTheme } from './Layout';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -173,7 +175,6 @@ const CardIcon = styled.div<{ $color?: string }>`
   position: relative;
   overflow: hidden;
   
-  /* Perfect vertical and horizontal centering */
   svg {
     width: 24px !important;
     height: 24px !important;
@@ -185,7 +186,6 @@ const CardIcon = styled.div<{ $color?: string }>`
     left: 0;
   }
   
-  /* Override Material-UI icon styles for perfect centering */
   .MuiSvgIcon-root {
     width: 24px !important;
     height: 24px !important;
@@ -198,7 +198,6 @@ const CardIcon = styled.div<{ $color?: string }>`
     left: 0 !important;
   }
   
-  /* Additional centering for Material-UI icons */
   & > * {
     display: flex !important;
     align-items: center !important;
@@ -321,43 +320,37 @@ const CardAction = styled.div<{ $color?: string }>`
   }
 `;
 
-// Employees menu items
-const employeesItems = [
+// Communication Management menu items
+const communicationItems = [
   {
-    title: 'All Employees',
-    description: 'View and manage all staff members, teachers, and administrative personnel with comprehensive profiles',
-    icon: <SchoolIcon />,
-    path: '/employees/list',
+    title: 'General Message',
+    description: 'Send general messages to students, classes, or the entire school via WhatsApp or SMS',
+    icon: <MessageIcon />,
+    path: '/students/general-message',
+    color: '#ec4899' // Pink
+  },
+  {
+    title: 'User Announcements',
+    description: 'Create announcement pop-ups for students and teachers that show when they open the app',
+    icon: <CampaignIcon />,
+    path: '/settings/user-announcements',
+    color: '#f97316' // Amber
+  },
+  {
+    title: 'Complaints & Suggestions',
+    description: 'Review and manage student and parent complaints and suggestions, respond to feedback',
+    icon: <FeedbackIcon />,
+    path: '/attendance/complaints-suggestions',
     color: '#3b82f6' // Blue
-  },
-  {
-    title: 'Add New',
-    description: 'Register new employees, create staff profiles, and set up user accounts with role-based permissions',
-    icon: <PersonAddIcon />,
-    path: '/employees/add',
-    color: '#10b981' // Green
-  },
-  {
-    title: 'Teacher Subject Assignment',
-    description: 'Assign subjects to teachers, manage teaching loads, and organize academic responsibilities',
-    icon: <AssignmentIcon />,
-    path: '/teacher-subjects',
-    color: '#f59e0b' // Orange
-  },
-  {
-    title: 'Timetable',
-    description: 'Create and manage class schedules, periods, and teacher timetables for efficient time management',
-    icon: <CalendarMonthIcon />,
-    path: '/timetable',
-    color: '#8b5cf6' // Purple
   }
 ];
 
-const EmployeesDashboard: React.FC = () => {
+const CommunicationDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
-  const navigate = useNavigate();
   const { user } = useAuth() as any;
+  const navigate = useNavigate();
   const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const themeObj = theme === 'dark' ? darkTheme : lightTheme;
 
   useEffect(() => {
     if (user?.role === 'Guest' && user?.school_id) {
@@ -371,18 +364,17 @@ const EmployeesDashboard: React.FC = () => {
 
   const getKeyForTitle = (title: string): string | null => {
     switch (title) {
-      case 'All Employees': return 'employees_dash_all';
-      case 'Add New': return 'employees_dash_add';
-      case 'Teacher Subject Assignment': return 'employees_dash_teacher_subjects';
-      case 'Timetable': return 'employees_dash_timetable';
+      case 'General Message': return 'communication_dash_general_message';
+      case 'User Announcements': return 'communication_dash_announcements';
+      case 'Complaints & Suggestions': return 'communication_dash_complaints';
       default: return null;
     }
   };
 
   const visibleItems = useMemo(() => {
-    if (user?.role !== 'Guest') return employeesItems;
-    if (!renderSettings) return employeesItems;
-    return employeesItems.filter(item => {
+    if (user?.role !== 'Guest') return communicationItems;
+    if (!renderSettings) return communicationItems;
+    return communicationItems.filter(item => {
       const key = getKeyForTitle(item.title);
       if (!key) return true;
       return renderSettings.guest?.[key] !== false;
@@ -394,42 +386,44 @@ const EmployeesDashboard: React.FC = () => {
   };
 
   return (
-    <PageContainer theme={theme}>
-      <Header>
-        <Title>
-          <SchoolIcon style={{ fontSize: 40 }} />
-          Employee Management
-        </Title>
-        <Subtitle>
-          Manage staff, teachers, and administrative personnel with comprehensive tools
-        </Subtitle>
-      </Header>
+    <ThemeProvider theme={themeObj}>
+      <PageContainer>
+        <Header>
+          <Title>
+            <ForumIcon style={{ fontSize: 40 }} />
+            Communication Management
+          </Title>
+          <Subtitle>
+            Manage messages, announcements, and feedback for effective school communication
+          </Subtitle>
+        </Header>
 
-      <CardsGrid>
-        {visibleItems.map((item, index) => (
-          <Card 
-            key={index}
-            onClick={() => handleCardClick(item.path)}
-            theme={theme}
-            $color={item.color}
-          >
-            <CardHeader $color={item.color}>
-              <CardIcon $color={item.color}>
-                {item.icon}
-              </CardIcon>
-              <CardTitle>{item.title}</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <CardDescription>{item.description}</CardDescription>
-              <CardAction $color={item.color}>
-                Get Started
-              </CardAction>
-            </CardBody>
-          </Card>
-        ))}
-      </CardsGrid>
-    </PageContainer>
+        <CardsGrid>
+          {visibleItems.map((item, index) => (
+            <Card 
+              key={index}
+              onClick={() => handleCardClick(item.path)}
+              $color={item.color}
+            >
+              <CardHeader $color={item.color}>
+                <CardIcon $color={item.color}>
+                  {item.icon}
+                </CardIcon>
+                <CardTitle>{item.title}</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <CardDescription>{item.description}</CardDescription>
+                <CardAction $color={item.color}>
+                  Get Started
+                </CardAction>
+              </CardBody>
+            </Card>
+          ))}
+        </CardsGrid>
+      </PageContainer>
+    </ThemeProvider>
   );
 };
 
-export default EmployeesDashboard;
+export default CommunicationDashboard;
+

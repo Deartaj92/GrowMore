@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,12 +18,15 @@ import {
   CheckCircle,
   Refresh as RefreshIcon,
   BarChart,
-  PieChart,
+  PieChart as PieChartIcon,
   Receipt,
-  CalendarToday
+  CalendarToday,
+  ChevronLeft,
+  ChevronRight
 } from '@mui/icons-material';
 import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell, Legend } from 'recharts';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -343,6 +346,31 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
   const [sections, setSections] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>('');
+  const classLegendScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Check scroll position
+  const checkScrollPosition = useCallback(() => {
+    if (classLegendScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = classLegendScrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  }, []);
+
+  // Scroll handlers
+  const scrollLeft = () => {
+    if (classLegendScrollRef.current) {
+      classLegendScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (classLegendScrollRef.current) {
+      classLegendScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
 
   // Helper functions
   const formatCurrency = (amount: number): string => {
@@ -387,7 +415,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       // Fetch sessions
       const { data: sessionsData } = await supabase
         .from('sessions')
-        .select('id, name, is_active')
+        .select('id, name, is_active, start_date, end_date')
         .eq('school_id', user.school_id)
         .order('is_active', { ascending: false })
         .order('name', { ascending: false });
@@ -461,6 +489,8 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       invoices.some(inv => inv.id === pay.invoice_id)
     );
     const totalPaidAmount = matchedPayments.reduce((sum, pay) => sum + Number(pay.net_amount || pay.amount || 0), 0);
+    const totalReceived = matchedPayments.reduce((sum, pay) => sum + Number(pay.amount || 0), 0);
+    const totalDiscount = matchedPayments.reduce((sum, pay) => sum + Number(pay.discount_amount || 0), 0);
     const totalRemaining = totalFeeAmount - totalPaidAmount;
     const collectionRate = totalFeeAmount > 0 ? (totalPaidAmount / totalFeeAmount) * 100 : 0;
 
@@ -528,26 +558,68 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
 
     // Monthly trends
     const monthlyTrends: Array<{ month: string; amount: number; count: number }> = [];
-    const monthMap: { [key: string]: { amount: number; count: number } } = {};
     
+    // Determine date range based on selected session
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (selectedSession && selectedSession !== '') {
+      // If a specific session is selected, use session date range
+      const selectedSessionData = sessions.find(s => String(s.id) === selectedSession);
+      if (selectedSessionData && selectedSessionData.start_date && selectedSessionData.end_date) {
+        startDate = new Date(selectedSessionData.start_date);
+        endDate = new Date(selectedSessionData.end_date);
+      } else {
+        // Fallback to last 12 months if session data not available
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 12);
+      }
+    } else {
+      // If "All Sessions" is selected, show last 12 months
+      endDate = new Date();
+      startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 12);
+    }
+    
+    // Generate all months in the date range
+    const monthMap: { [key: string]: { amount: number; count: number } } = {};
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    
+    // Initialize all months in range with 0
+    while (current <= endMonth) {
+      const monthKey = `${current.getFullYear()}-${current.getMonth()}`;
+      monthMap[monthKey] = { amount: 0, count: 0 };
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    // Fill in actual payment data
     payments.forEach(pay => {
       const payDate = new Date(pay.payment_date);
       const monthKey = `${payDate.getFullYear()}-${payDate.getMonth()}`;
       
-      if (!monthMap[monthKey]) {
-        monthMap[monthKey] = { amount: 0, count: 0 };
+      // Only include payments within the date range
+      if (payDate >= startDate && payDate <= endDate && monthMap[monthKey]) {
+        monthMap[monthKey].amount += Number(pay.net_amount || pay.amount || 0);
+        monthMap[monthKey].count += 1;
       }
-      
-      monthMap[monthKey].amount += Number(pay.net_amount || pay.amount || 0);
-      monthMap[monthKey].count += 1;
     });
     
+    // Convert to array and format, ensuring proper chronological order
     Object.entries(monthMap)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .slice(0, 12)
+      .sort(([a], [b]) => {
+        // Sort by year first, then by month
+        const [yearA, monthA] = a.split('-').map(Number);
+        const [yearB, monthB] = b.split('-').map(Number);
+        if (yearA !== yearB) {
+          return yearA - yearB;
+        }
+        return monthA - monthB;
+      })
       .forEach(([monthKey, data]) => {
-        const [year, month] = monthKey.split('-');
-        const date = new Date(parseInt(year), parseInt(month), 1);
+        const [year, month] = monthKey.split('-').map(Number);
+        const date = new Date(year, month, 1);
         monthlyTrends.push({
           month: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
           amount: data.amount,
@@ -582,6 +654,8 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
     return {
       totalFeeAmount,
       totalPaidAmount,
+      totalReceived,
+      totalDiscount,
       totalRemaining,
       collectionRate,
       totalStudents: students.length,
@@ -593,7 +667,14 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       monthlyTrends,
       paymentMethodStats
     };
-  }, [students, invoices, payments, classes, sections]);
+  }, [students, invoices, payments, classes, sections, selectedSession, sessions]);
+
+  // Check scroll position on mount and when data changes
+  useEffect(() => {
+    checkScrollPosition();
+    const timer = setTimeout(checkScrollPosition, 100);
+    return () => clearTimeout(timer);
+  }, [analyticsData?.classWiseData, checkScrollPosition]);
 
   if (isLoadingData) {
     return (
@@ -684,145 +765,358 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         </StatCard>
 
         <StatCard theme={theme}>
-          <StatLabel theme={theme}>Total Students</StatLabel>
-          <StatValue theme={theme}>{analyticsData.totalStudents}</StatValue>
+          <StatLabel theme={theme}>Total Received</StatLabel>
+          <StatValue theme={theme}>{formatCurrency(analyticsData.totalReceived)}</StatValue>
           <StatChange $positive={true} theme={theme}>
             <CheckCircle style={{ fontSize: '0.75rem' }} />
-              {analyticsData.totalInvoices} invoices
+              Without discounts
           </StatChange>
         </StatCard>
 
         <StatCard theme={theme}>
-          <StatLabel theme={theme}>Total Payments</StatLabel>
-          <StatValue theme={theme}>{analyticsData.totalPayments}</StatValue>
+          <StatLabel theme={theme}>Total Discount</StatLabel>
+          <StatValue theme={theme}>{formatCurrency(analyticsData.totalDiscount)}</StatValue>
           <StatChange $positive={true} theme={theme}>
-            <TrendingUp style={{ fontSize: '0.75rem' }} />
-            Avg: {formatCurrency(analyticsData.totalPayments > 0 ? analyticsData.totalPaidAmount / analyticsData.totalPayments : 0)}
+            <TrendingDown style={{ fontSize: '0.75rem' }} />
+            {analyticsData.totalReceived > 0 ? ((analyticsData.totalDiscount / analyticsData.totalReceived) * 100).toFixed(1) : 0}% of received
           </StatChange>
         </StatCard>
       </StatsGrid>
 
       <ContentGrid theme={theme}>
         {/* Monthly Trends */}
-        <ContentCard theme={theme}>
-          <CardTitle theme={theme}>
+        <ContentCard theme={theme} style={{ padding: '1rem' }}>
+          <CardTitle theme={theme} style={{ marginBottom: '0.75rem' }}>
             <TrendingUp />
               Monthly Collection Trends
           </CardTitle>
-          <div style={{ height: '200px', position: 'relative', padding: '1rem 0.5rem 2rem 0.5rem' }}>
+          <div style={{ height: '450px', position: 'relative' }}>
             {analyticsData.monthlyTrends.length === 0 ? (
               <EmptyState theme={theme}>
                 <div style={{ fontSize: '0.9rem' }}>No monthly data available</div>
               </EmptyState>
             ) : (
-              (() => {
-                const maxAmount = Math.max(...analyticsData.monthlyTrends.map(t => t.amount), 1);
-                const chartHeight = 150;
-                const chartWidth = 100;
-                const padding = 20;
-                const points = analyticsData.monthlyTrends.map((trend, index) => {
-                  const x = (index / (analyticsData.monthlyTrends.length - 1 || 1)) * (chartWidth - padding * 2) + padding;
-                  const y = chartHeight - (trend.amount / maxAmount) * (chartHeight - padding * 2) - padding;
-                  return { x, y, amount: trend.amount, month: trend.month };
-                });
-                const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                
-                return (
-                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                    <svg width="100%" height="100%" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-                      {/* Grid lines */}
-                      {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-                        <line
-                          key={i}
-                          x1={padding}
-                          y1={padding + (chartHeight - padding * 2) * ratio}
-                          x2={chartWidth - padding}
-                          y2={padding + (chartHeight - padding * 2) * ratio}
-                          stroke={isDark(theme) ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}
-                          strokeWidth="1"
-                        />
-                      ))}
-                      {/* Line chart */}
-                      <path
-                        d={pathData}
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      {/* Area under line */}
-                      <path
-                        d={`${pathData} L ${points[points.length - 1].x} ${chartHeight - padding} L ${padding} ${chartHeight - padding} Z`}
-                        fill="url(#gradient)"
-                        opacity="0.2"
-                      />
-                      <defs>
-                        <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      {/* Data points */}
-                      {points.map((point, index) => (
-                        <g key={index}>
-                          <circle
-                            cx={point.x}
-                            cy={point.y}
-                            r="4"
-                            fill="#3b82f6"
-                            stroke={theme.CARD}
-                            strokeWidth="2"
-                          />
-                          {/* Tooltip on hover */}
-                          <title>{point.month}: {formatCurrency(point.amount)}</title>
-                        </g>
-                      ))}
-                    </svg>
-                    {/* Month labels */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', padding: '0 0.5rem' }}>
-                      {analyticsData.monthlyTrends.map((trend, index) => (
-                        <div key={index} style={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, textAlign: 'center', flex: 1 }}>
-                  {trend.month}
-                </div>
-                      ))}
-                </div>
-              </div>
-                );
-              })()
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={analyticsData.monthlyTrends}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorCollection" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke={isDark(theme) ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}
+                  />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke={theme.TEXT_SECONDARY}
+                    tick={{ fill: theme.TEXT_SECONDARY, fontSize: 12 }}
+                    tickLine={{ stroke: theme.TEXT_SECONDARY }}
+                  />
+                  <YAxis 
+                    stroke={theme.TEXT_SECONDARY}
+                    tick={{ fill: theme.TEXT_SECONDARY, fontSize: 12 }}
+                    tickLine={{ stroke: theme.TEXT_SECONDARY }}
+                    domain={[0, 1000000]}
+                    ticks={[0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000]}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}m`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value.toFixed(0);
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark(theme) ? '#1e293b' : '#ffffff',
+                      border: `1px solid ${isDark(theme) ? '#334155' : '#e2e8f0'}`,
+                      borderRadius: '8px',
+                      color: theme.TEXT_PRIMARY,
+                      boxShadow: isDark(theme) 
+                        ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+                        : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      padding: '12px'
+                    }}
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelStyle={{ 
+                      color: isDark(theme) ? '#f1f5f9' : '#1e293b',
+                      fontWeight: 600,
+                      marginBottom: '4px'
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fill="url(#colorCollection)"
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 5 }}
+                    activeDot={{ r: 7 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             )}
           </div>
         </ContentCard>
 
         {/* Collection Rate by Class */}
-        <ContentCard theme={theme}>
-          <CardTitle theme={theme}>
-            <PieChart />
+        <ContentCard theme={theme} style={{ padding: '1rem' }}>
+          <CardTitle theme={theme} style={{ marginBottom: '0.75rem' }}>
+            <PieChartIcon />
               Collection Rate by Class
           </CardTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {analyticsData.classWiseData.slice(0, 5).map((classData, index) => (
-              <div key={index}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '600', color: theme.TEXT_PRIMARY }}>
-                    {classData.className}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>
-                    {classData.collectionRate.toFixed(1)}%
-                  </span>
-                </div>
-                <ProgressBar theme={theme}>
-                  <ProgressFill 
-                    $percentage={classData.collectionRate} 
-                    $color={classData.collectionRate >= 80 ? '#22c55e' : classData.collectionRate >= 60 ? '#f59e0b' : '#ef4444'}
+          {analyticsData.classWiseData.filter(c => c.totalPaid > 0).length > 0 ? (
+            <div style={{ height: '450px', position: 'relative', padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart margin={{ top: 0, right: 10, bottom: 0, left: 10 }}>
+                    <Pie
+                      data={sortClasses(
+                        analyticsData.classWiseData
+                          .filter(c => c.totalPaid > 0)
+                          .map((classData) => ({
+                            name: classData.className,
+                            value: classData.totalPaid,
+                            total: classData.totalFee,
+                            rate: classData.collectionRate,
+                            students: classData.totalStudents
+                          }))
+                      )}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={false}
+                      outerRadius={180}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                    {sortClasses(
+                      analyticsData.classWiseData
+                        .filter(c => c.totalPaid > 0)
+                        .map((classData) => ({
+                          name: classData.className,
+                          value: classData.totalPaid,
+                          total: classData.totalFee,
+                          rate: classData.collectionRate,
+                          students: classData.totalStudents
+                        }))
+                    ).map((classData, index) => {
+                        const colors = [
+                          '#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444',
+                          '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
+                          '#14b8a6', '#a855f7', '#f43f5e', '#fb923c', '#38bdf8',
+                          '#34d399', '#fbbf24', '#60a5fa', '#c084fc', '#fb7185',
+                          '#4ade80', '#facc15', '#818cf8', '#e879f9', '#f472b6'
+                        ];
+                        return (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={colors[index % colors.length]}
+                          />
+                        );
+                      })}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      padding: 0
+                    }}
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload || !payload.length) return null;
+                      
+                      const data = payload[0]?.payload;
+                      if (!data) return null;
+                      
+                      return (
+                        <div style={{
+                          backgroundColor: isDark(theme) ? '#1e293b' : '#ffffff',
+                          border: `1px solid ${isDark(theme) ? '#334155' : '#e2e8f0'}`,
+                          borderRadius: '8px',
+                          boxShadow: isDark(theme) 
+                            ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+                            : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                          padding: '12px'
+                        }}>
+                          <div style={{
+                            color: isDark(theme) ? '#ffffff' : '#1e293b',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            marginBottom: '8px',
+                            borderBottom: `1px solid ${isDark(theme) ? '#334155' : '#e2e8f0'}`,
+                            paddingBottom: '6px'
+                          }}>
+                            {data.name}
+                          </div>
+                          <div style={{
+                            color: isDark(theme) ? '#ffffff' : '#1e293b',
+                            fontSize: '12px'
+                          }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <span style={{ color: isDark(theme) ? '#94a3b8' : '#64748b' }}>Collected: </span>
+                              <span style={{ fontWeight: 600 }}>
+                                {formatCurrency(data.value)} / {formatCurrency(data.total)} ({data.rate.toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
                   />
-                </ProgressBar>
-                <div style={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, marginTop: '0.25rem' }}>
-                  {formatCurrency(classData.totalPaid)} / {formatCurrency(classData.totalFee)}
-                </div>
+                    <Legend
+                      wrapperStyle={{ 
+                        fontSize: '0.85rem', 
+                        color: isDark(theme) ? '#f1f5f9' : '#1e293b',
+                        fontWeight: 500
+                      }}
+                      iconType="square"
+                      verticalAlign="top"
+                      height={0}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
+              <div style={{ 
+                paddingTop: '0.75rem',
+                borderTop: `1px solid ${isDark(theme) ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                {canScrollLeft && (
+                  <button
+                    onClick={scrollLeft}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      zIndex: 10,
+                      background: isDark(theme) ? '#1e293b' : '#ffffff',
+                      border: `1px solid ${isDark(theme) ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: isDark(theme) ? '#f1f5f9' : '#1e293b',
+                      boxShadow: isDark(theme) 
+                        ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
+                        : '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      transition: 'all 0.2s ease',
+                      padding: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDark(theme) ? '#334155' : '#f1f5f9';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = isDark(theme) ? '#1e293b' : '#ffffff';
+                    }}
+                  >
+                    <ChevronLeft style={{ fontSize: '20px' }} />
+                  </button>
+                )}
+                <div
+                  ref={classLegendScrollRef}
+                  onScroll={checkScrollPosition}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    gap: '0.75rem',
+                    alignItems: 'center',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    scrollBehavior: 'smooth',
+                    paddingLeft: canScrollLeft ? '40px' : '0',
+                    paddingRight: canScrollRight ? '40px' : '0',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: isDark(theme) ? '#475569 #1e293b' : '#cbd5e1 #f1f5f9'
+                  }}
+                >
+                  {sortClasses(
+                    analyticsData.classWiseData
+                      .filter(c => c.totalPaid > 0)
+                      .map((classData) => ({
+                        name: classData.className,
+                        value: classData.totalPaid,
+                        total: classData.totalFee,
+                        rate: classData.collectionRate,
+                        students: classData.totalStudents
+                      }))
+                  ).map((classData, index) => {
+                    const colors = [
+                      '#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444',
+                      '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
+                      '#14b8a6', '#a855f7', '#f43f5e', '#fb923c', '#38bdf8',
+                      '#34d399', '#fbbf24', '#60a5fa', '#c084fc', '#fb7185',
+                      '#4ade80', '#facc15', '#818cf8', '#e879f9', '#f472b6'
+                    ];
+                    return (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.85rem',
+                        color: isDark(theme) ? '#f1f5f9' : '#1e293b',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        <div style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '2px',
+                          backgroundColor: colors[index % colors.length]
+                        }} />
+                        <span>{classData.name} ({classData.rate.toFixed(1)}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {canScrollRight && (
+                  <button
+                    onClick={scrollRight}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      zIndex: 10,
+                      background: isDark(theme) ? '#1e293b' : '#ffffff',
+                      border: `1px solid ${isDark(theme) ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: isDark(theme) ? '#f1f5f9' : '#1e293b',
+                      boxShadow: isDark(theme) 
+                        ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
+                        : '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      transition: 'all 0.2s ease',
+                      padding: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDark(theme) ? '#334155' : '#f1f5f9';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = isDark(theme) ? '#1e293b' : '#ffffff';
+                    }}
+                  >
+                    <ChevronRight style={{ fontSize: '20px' }} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <EmptyState theme={theme}>
+              <div style={{ fontSize: '0.9rem' }}>No class data available</div>
+            </EmptyState>
+          )}
         </ContentCard>
       </ContentGrid>
 
@@ -915,7 +1209,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       {/* Payment Methods Analysis */}
       <ContentCard theme={theme} style={{ marginBottom: '0.25rem' }}>
         <CardTitle theme={theme}>
-          <PieChart />
+          <PieChartIcon />
           Payment Methods Analysis
         </CardTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>

@@ -377,13 +377,6 @@ const settingsItems = [
     color: '#6366f1' // Indigo
   },
   {
-    title: 'User Announcements',
-    description: 'Create announcement pop-ups for students and teachers that show when they open the app',
-    icon: <CampaignIcon />,
-    path: '/settings/user-announcements',
-    color: '#f97316' // Amber / announcement
-  },
-  {
     title: 'Notification Settings',
     description: 'Manage your notification preferences and control which categories of notifications you receive',
     icon: <NotificationsIcon />,

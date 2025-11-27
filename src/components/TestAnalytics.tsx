@@ -863,6 +863,7 @@ const TestAnalytics: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
 
   // Analytics Data
   const [studentAnalytics, setStudentAnalytics] = useState<StudentAnalytics[]>([]);
@@ -2984,37 +2985,80 @@ const TestAnalytics: React.FC = () => {
                 )}
 
                 {/* Month-wise Test Count with Week Blocks - Individual Teacher Cards */}
-                {teacherMonthlyTests.length > 0 && (
-                  <Section>
-                    <SectionTitle>
-                      <TimelineIcon />
-                      Monthly Test Distribution by Teacher
-                    </SectionTitle>
-                    <Grid2Col>
-                      {teacherMonthlyTests.map((teacherData) => (
+                {teacherMonthlyTests.length > 0 && (() => {
+                  // Extract all unique months from teacherMonthlyTests
+                  const allMonths = new Set<string>();
+                  teacherMonthlyTests.forEach(teacher => {
+                    teacher.months.forEach(month => {
+                      allMonths.add(month.monthKey);
+                    });
+                  });
+                  
+                  const availableMonths = Array.from(allMonths).sort((a, b) => {
+                    return new Date(a).getTime() - new Date(b).getTime();
+                  });
+
+                  // Get current month key
+                  const now = new Date();
+                  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                  
+                  // Set default to current month if available, otherwise first month
+                  const defaultMonth = availableMonths.includes(currentMonthKey) 
+                    ? currentMonthKey 
+                    : (availableMonths.length > 0 ? availableMonths[0] : '');
+                  
+                  const displayMonth = selectedMonth || defaultMonth;
+
+                  // Format month for display
+                  const formatMonthForDisplay = (monthKey: string) => {
+                    const [year, month] = monthKey.split('-').map(Number);
+                    const date = new Date(year, month - 1, 1);
+                    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                  };
+
+                  // Filter teachers to show only those with data in selected month
+                  const filteredTeachers = teacherMonthlyTests
+                    .map(teacher => {
+                      const monthData = teacher.months.find(m => m.monthKey === displayMonth);
+                      if (!monthData || monthData.totalTests === 0) return null;
+                      
+                      return {
+                        ...teacher,
+                        months: [monthData] // Only show the selected month
+                      };
+                    })
+                    .filter((teacher): teacher is TeacherMonthlyTest => teacher !== null);
+
+                  return (
+                    <Section>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <SectionTitle style={{ margin: 0 }}>
+                          <TimelineIcon />
+                          Monthly Test Distribution by Teacher
+                        </SectionTitle>
+                        <Select
+                          value={displayMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          style={{ minWidth: '200px', marginLeft: '16px' }}
+                        >
+                          {availableMonths.map(monthKey => (
+                            <option key={monthKey} value={monthKey}>
+                              {formatMonthForDisplay(monthKey)}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      {filteredTeachers.length > 0 ? (
+                        <Grid2Col>
+                          {filteredTeachers.map((teacherData) => (
                         <CompactCard key={teacherData.teacher_id} style={{ marginBottom: '16px' }}>
                           <CompactCardHeader>
                             <CompactCardTitle>{teacherData.teacher_name}</CompactCardTitle>
-                            <CompactCardValue>{teacherData.totalTests} tests</CompactCardValue>
+                            <CompactCardValue>{teacherData.months[0]?.totalTests || 0}</CompactCardValue>
                           </CompactCardHeader>
                           <div style={{ marginTop: '12px' }}>
                             {teacherData.months.map((monthData) => (
-                              <div key={monthData.monthKey} style={{ marginBottom: '16px' }}>
-                                <div style={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center',
-                                  marginBottom: '8px',
-                                  paddingBottom: '6px',
-                                  borderBottom: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
-                                }}>
-                                  <div style={{ fontSize: '0.9rem', fontWeight: '600', color: theme === 'dark' ? '#C0C0C0' : '#444' }}>
-                                    {monthData.month}
-                                  </div>
-                                  <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#3b82f6' }}>
-                                    {monthData.totalTests} tests
-                                  </div>
-                                </div>
+                              <div key={monthData.monthKey}>
                                 {monthData.weeks.map((week, idx) => (
                                   <WeekBlock key={idx} style={{ marginBottom: '8px' }}>
                                     <WeekHeader>
@@ -3046,10 +3090,19 @@ const TestAnalytics: React.FC = () => {
                             ))}
                           </div>
                         </CompactCard>
-                      ))}
-                    </Grid2Col>
-                  </Section>
-                )}
+                          ))}
+                        </Grid2Col>
+                      ) : (
+                        <EmptyState>
+                          <EmptyStateIcon>
+                            <TimelineIcon />
+                          </EmptyStateIcon>
+                          <EmptyStateText>No test data available for the selected month</EmptyStateText>
+                        </EmptyState>
+                      )}
+                    </Section>
+                  );
+                })()}
 
                 {teacherAnalytics.length === 0 && teacherMonthlyTests.length === 0 && (
                   <EmptyState>

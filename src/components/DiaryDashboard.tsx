@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useContext } from 'react';
 import {
-  School as SchoolIcon,
-  PersonAdd as PersonAddIcon,
   Assignment as AssignmentIcon,
-  CalendarMonth as CalendarMonthIcon,
+  BarChart as BarChartIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -173,7 +171,6 @@ const CardIcon = styled.div<{ $color?: string }>`
   position: relative;
   overflow: hidden;
   
-  /* Perfect vertical and horizontal centering */
   svg {
     width: 24px !important;
     height: 24px !important;
@@ -185,7 +182,6 @@ const CardIcon = styled.div<{ $color?: string }>`
     left: 0;
   }
   
-  /* Override Material-UI icon styles for perfect centering */
   .MuiSvgIcon-root {
     width: 24px !important;
     height: 24px !important;
@@ -198,7 +194,6 @@ const CardIcon = styled.div<{ $color?: string }>`
     left: 0 !important;
   }
   
-  /* Additional centering for Material-UI icons */
   & > * {
     display: flex !important;
     align-items: center !important;
@@ -321,39 +316,25 @@ const CardAction = styled.div<{ $color?: string }>`
   }
 `;
 
-// Employees menu items
-const employeesItems = [
+// Diary menu items
+const diaryItems = [
   {
-    title: 'All Employees',
-    description: 'View and manage all staff members, teachers, and administrative personnel with comprehensive profiles',
-    icon: <SchoolIcon />,
-    path: '/employees/list',
+    title: 'Assign Diary',
+    description: 'Create, edit, and manage daily homework assignments for classes and subjects with comprehensive tracking',
+    icon: <AssignmentIcon />,
+    path: '/homework-diary',
     color: '#3b82f6' // Blue
   },
   {
-    title: 'Add New',
-    description: 'Register new employees, create staff profiles, and set up user accounts with role-based permissions',
-    icon: <PersonAddIcon />,
-    path: '/employees/add',
+    title: 'Analytics',
+    description: 'Analyze homework assignment patterns, completion rates, and performance statistics with interactive dashboards',
+    icon: <BarChartIcon />,
+    path: '/diary-analytics',
     color: '#10b981' // Green
   },
-  {
-    title: 'Teacher Subject Assignment',
-    description: 'Assign subjects to teachers, manage teaching loads, and organize academic responsibilities',
-    icon: <AssignmentIcon />,
-    path: '/teacher-subjects',
-    color: '#f59e0b' // Orange
-  },
-  {
-    title: 'Timetable',
-    description: 'Create and manage class schedules, periods, and teacher timetables for efficient time management',
-    icon: <CalendarMonthIcon />,
-    path: '/timetable',
-    color: '#8b5cf6' // Purple
-  }
 ];
 
-const EmployeesDashboard: React.FC = () => {
+const DiaryDashboard: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const { user } = useAuth() as any;
@@ -369,26 +350,6 @@ const EmployeesDashboard: React.FC = () => {
     }
   }, [user?.role, user?.school_id]);
 
-  const getKeyForTitle = (title: string): string | null => {
-    switch (title) {
-      case 'All Employees': return 'employees_dash_all';
-      case 'Add New': return 'employees_dash_add';
-      case 'Teacher Subject Assignment': return 'employees_dash_teacher_subjects';
-      case 'Timetable': return 'employees_dash_timetable';
-      default: return null;
-    }
-  };
-
-  const visibleItems = useMemo(() => {
-    if (user?.role !== 'Guest') return employeesItems;
-    if (!renderSettings) return employeesItems;
-    return employeesItems.filter(item => {
-      const key = getKeyForTitle(item.title);
-      if (!key) return true;
-      return renderSettings.guest?.[key] !== false;
-    });
-  }, [renderSettings, user?.role]);
-
   const handleCardClick = (path: string) => {
     navigate(path);
   };
@@ -397,16 +358,16 @@ const EmployeesDashboard: React.FC = () => {
     <PageContainer theme={theme}>
       <Header>
         <Title>
-          <SchoolIcon style={{ fontSize: 40 }} />
-          Employee Management
+          <AssignmentIcon style={{ fontSize: 40 }} />
+          Daily Diary Management
         </Title>
         <Subtitle>
-          Manage staff, teachers, and administrative personnel with comprehensive tools
+          Manage homework assignments and analyze diary performance with comprehensive tracking
         </Subtitle>
       </Header>
 
       <CardsGrid>
-        {visibleItems.map((item, index) => (
+        {diaryItems.map((item, index) => (
           <Card 
             key={index}
             onClick={() => handleCardClick(item.path)}
@@ -432,4 +393,5 @@ const EmployeesDashboard: React.FC = () => {
   );
 };
 
-export default EmployeesDashboard;
+export default DiaryDashboard;
+

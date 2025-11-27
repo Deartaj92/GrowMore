@@ -78,6 +78,7 @@ import MarksEntryManager from './components/MarksEntryManager';
 import TestRecordManager from './components/TestRecordManager';
 import TestRecordMasterSheet from './components/TestRecordMasterSheet';
 import TestDashboard from './components/TestDashboard';
+import AssessmentDashboard from './components/AssessmentDashboard';
 import TestAnalytics from './components/TestAnalytics';
 import MasterSheetManager from './components/MasterSheetManager';
 import DetailedMarksCertificate from './components/DetailedMarksCertificate';
@@ -86,6 +87,8 @@ import ExaminationAnalytics from './components/ExaminationAnalytics';
 import ExaminationConfiguration from './pages/ExaminationConfiguration';
 // Homework Diary Management
 import HomeworkDiaryManager from './components/HomeworkDiaryManager';
+import DiaryDashboard from './components/DiaryDashboard';
+import DiaryAnalytics from './components/DiaryAnalytics';
 // Student Management Components
 import StudentDashboard from './components/StudentDashboard';
 import GeneralMessagePage from './pages/GeneralMessagePage';
@@ -95,6 +98,14 @@ import FineDashboard from './components/FineDashboard';
 import AttendanceDashboard from './components/AttendanceDashboard';
 // Fee Management Components
 import FeeManagementDashboard from './components/FeeManagementDashboard';
+// Expense Management Components
+import ExpenseDashboard from './components/ExpenseDashboard';
+import ExpenseManager from './pages/ExpenseManager';
+import ExpenseAnalyticsPage from './pages/ExpenseAnalyticsPage';
+// Finance Management Components
+import FinanceDashboard from './components/FinanceDashboard';
+// Communication Management Components
+import CommunicationDashboard from './components/CommunicationDashboard';
 // Settings Management Components
 import SettingsDashboard from './components/SettingsDashboard';
 // Employee Management Components
@@ -555,9 +566,28 @@ const App: React.FC = () => {
                             }
                           />
 
+                          {/* Finance Management Dashboard */}
+                          <Route
+                            path="finance"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FinanceDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
                           {/* Fine Dashboard */}
                           <Route
                             path="fines"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <FineDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fine-dashboard"
                             element={
                               <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
                                 <FineDashboard />
@@ -705,6 +735,45 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
                                 <LedgerPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Expense Management Dashboard */}
+                          <Route
+                            path="expense-management"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <ExpenseDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Expense Management Routes */}
+                          <Route
+                            path="expense-manager"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                                <ExpenseManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="expense-analytics"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}>
+                                <ExpenseAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Communication Management Dashboard */}
+                          <Route
+                            path="communication"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <CommunicationDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -861,6 +930,17 @@ const App: React.FC = () => {
 
                           {/* Examination Dashboard */}
                           <Route
+                            path="assessment"
+                            element={
+                              <ProtectedRoute
+                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
+                                guestPageKey="examination_results"
+                              >
+                                <AssessmentDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
                             path="examination"
                             element={
                               <ProtectedRoute
@@ -987,12 +1067,30 @@ const App: React.FC = () => {
                             }
                           />
 
+                          {/* Diary Dashboard */}
+                          <Route
+                            path="diary"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <DiaryDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
                           {/* Homework Diary Management */}
                           <Route
                             path="homework-diary"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
                                 <HomeworkDiaryManager />
+                              </ProtectedRoute>
+                            }
+                          />
+                          {/* Diary Analytics */}
+                          <Route
+                            path="diary-analytics"
+                            element={
+                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                                <DiaryAnalytics />
                               </ProtectedRoute>
                             }
                           />

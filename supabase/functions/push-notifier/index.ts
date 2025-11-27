@@ -6,18 +6,19 @@ import * as jose from "https://deno.land/x/jose@v4.13.1/index.ts";
 console.log("Push Notifier Function Started");
 
 interface NotificationPayload {
-  type: "INSERT";
-  table: "notifications";
+  type?: "INSERT";
+  table?: "notifications";
   record: {
     id: number;
-    recipient_id: number;
+    recipient_id?: number | null;
+    family_recipient_id?: number | null;
     school_id: number;
     title: string;
     message: string;
     notification_type: string;
     created_at: string;
   };
-  schema: "public";
+  schema?: "public";
 }
 
 // Utility: strip HTML tags and nbsp, and collapse whitespace so push text is clean
@@ -75,39 +76,97 @@ async function getAccessToken({
 
 serve(async (req) => {
   try {
-    const { record } = (await req.json()) as NotificationPayload;
+    const payload = (await req.json()) as NotificationPayload;
+    const record = payload.record || payload as any;
     
     // 1. Initialize Supabase Client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 2. Check User Preferences
-    // Fetch user's notification preferences
-    const { data: prefs } = await supabase
-      .from("notification_preferences")
-      .select("push_notifications")
-      .eq("user_id", record.recipient_id)
-      .eq("school_id", record.school_id)
-      .single();
+    // 2. Determine recipient user IDs
+    let recipientUserIds: number[] = [];
+    
+    // If recipient_id is set, use it directly
+    if (record.recipient_id) {
+      recipientUserIds.push(record.recipient_id);
+    }
+    
+    // If family_recipient_id is set, find all users/staff/students linked to that family
+    if (record.family_recipient_id) {
+      // First, try to find users with family_id
+      const { data: familyUsers, error: familyError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("family_id", record.family_recipient_id);
+      
+      if (!familyError && familyUsers) {
+        recipientUserIds.push(...familyUsers.map(u => u.id));
+      }
+      
+      // Also find family_members and get their associated staff/student IDs
+      const { data: familyMembers, error: membersError } = await supabase
+        .from("family_members")
+        .select("staff_id, student_id")
+        .eq("family_id", record.family_recipient_id);
+      
+      if (!membersError && familyMembers) {
+        // Add staff IDs
+        const staffIds = familyMembers
+          .filter(m => m.staff_id)
+          .map(m => m.staff_id);
+        recipientUserIds.push(...staffIds);
+        
+        // Add student IDs
+        const studentIds = familyMembers
+          .filter(m => m.student_id)
+          .map(m => m.student_id);
+        recipientUserIds.push(...studentIds);
+      }
+    }
 
-    // If preferences exist and push is disabled, skip
-    if (prefs && !prefs.push_notifications) {
-      console.log(`Push disabled for user ${record.recipient_id}`);
-      return new Response(JSON.stringify({ message: "Push disabled by user" }), {
+    if (recipientUserIds.length === 0) {
+      console.log(`No recipient found for notification ${record.id}`);
+      return new Response(JSON.stringify({ message: "No recipients found" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // 3. Fetch Device Tokens
-    const { data: tokens } = await supabase
-      .from("device_push_tokens")
-      .select("token, platform")
-      .eq("user_id", record.recipient_id)
-      .eq("school_id", record.school_id);
+    // Remove duplicates
+    recipientUserIds = [...new Set(recipientUserIds)];
 
-    if (!tokens || tokens.length === 0) {
-      console.log(`No tokens found for user ${record.recipient_id}`);
+    // 3. Check User Preferences and Fetch Device Tokens for all recipients
+    const allTokens: Array<{ token: string; platform: string; user_id: number }> = [];
+    
+    for (const userId of recipientUserIds) {
+      // Check user preferences
+      const { data: prefs } = await supabase
+        .from("notification_preferences")
+        .select("push_notifications")
+        .eq("user_id", userId)
+        .eq("school_id", record.school_id)
+        .single();
+
+      // If preferences exist and push is disabled, skip this user
+      if (prefs && !prefs.push_notifications) {
+        console.log(`Push disabled for user ${userId}`);
+        continue;
+      }
+
+      // Fetch device tokens for this user
+      const { data: tokens } = await supabase
+        .from("device_push_tokens")
+        .select("token, platform")
+        .eq("user_id", userId)
+        .eq("school_id", record.school_id);
+
+      if (tokens && tokens.length > 0) {
+        allTokens.push(...tokens.map(t => ({ ...t, user_id: userId })));
+      }
+    }
+
+    if (allTokens.length === 0) {
+      console.log(`No tokens found for recipients`);
       return new Response(JSON.stringify({ message: "No devices registered" }), {
         headers: { "Content-Type": "application/json" },
       });
@@ -127,9 +186,11 @@ serve(async (req) => {
       privateKey: serviceAccount.private_key,
     });
 
-    // 5. Send Notifications
+    // 5. Send Notifications to ALL devices for each user
+    // This ensures that if a user is logged in on multiple devices, they receive
+    // the push notification on all their registered devices simultaneously
     const results = await Promise.all(
-      tokens.map(async (t) => {
+      allTokens.map(async (t) => {
         // Clean HTML from the title and message so push notifications show plain text
         const plainTitle = getPlainText(record.title) || record.title;
         const plainBody = getPlainText(record.message) || record.message;

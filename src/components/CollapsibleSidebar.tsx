@@ -33,6 +33,9 @@ import {
   Feedback as FeedbackIcon,
   Lightbulb as LightbulbIcon,
   EventBusy as EventBusyIcon,
+  Receipt as ReceiptIcon,
+  AccountBalance as AccountBalanceIcon,
+  Forum as ForumIcon,
 } from '@mui/icons-material';
 import type { NavigateFunction } from 'react-router-dom';
 
@@ -562,20 +565,12 @@ const allPages = [
     keywords: ['reports', 'analytics', 'statistics', 'data']
   },
   {
-    text: 'Fine Management',
-    icon: <MoneyIcon />,
-    path: '/fines',
+    text: 'Finance',
+    icon: <AccountBalanceIcon />,
+    path: '/finance',
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
     category: 'Main',
-    keywords: ['fines', 'penalties', 'money', 'collection']
-  },
-  {
-    text: 'Fee Management',
-    icon: <AttachMoneyIcon />,
-    path: '/fee-management',
-    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
-    category: 'Main',
-    keywords: ['fees', 'payments', 'tuition', 'billing']
+    keywords: ['finance', 'financial', 'money', 'fines', 'fees', 'expenses', 'expenditure', 'accounting']
   },
   {
     text: 'Enquiry Management',
@@ -586,14 +581,6 @@ const allPages = [
     keywords: ['enquiry', 'inquiry', 'admission', 'questions']
   },
   {
-    text: 'Timetable',
-    icon: <CalendarMonthIcon />,
-    path: '/timetable',
-    allowedRoles: ['Super Admin', 'Principal', 'Admin'],
-    category: 'Main',
-    keywords: ['timetable', 'schedule', 'classes', 'periods']
-  },
-  {
     text: 'Employees',
     icon: <SchoolIcon />,
     path: '/employees',
@@ -602,28 +589,20 @@ const allPages = [
     keywords: ['employees', 'staff', 'teachers', 'workers']
   },
   {
-    text: 'Examination',
+    text: 'Assessment',
     icon: <AssessmentIcon />,
-    path: '/examination',
+    path: '/assessment',
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
     category: 'Main',
-    keywords: ['examination', 'exams', 'tests', 'assessment']
+    keywords: ['assessment', 'examination', 'exams', 'test record', 'tests', 'quiz', 'assignment']
   },
   {
     text: 'Daily Diary',
     icon: <Assignment />,
-    path: '/homework-diary',
+    path: '/diary',
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
     category: 'Main',
     keywords: ['homework', 'diary', 'assignment', 'daily homework', 'homework diary', 'daily diary']
-  },
-  {
-    text: 'Test Record',
-    icon: <QuizIcon />,
-    path: '/test-dashboard',
-    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
-    category: 'Main',
-    keywords: ['test record', 'test management', 'quiz', 'test', 'assignment', 'practice']
   },
   {
     text: 'Settings',
@@ -782,6 +761,24 @@ const allPages = [
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
     category: 'Fees',
     keywords: ['fee ledger', 'student ledger', 'fee accounts', 'invoice ledger', 'payment ledger']
+  },
+
+  // Expense Management Pages
+  {
+    text: 'Expense Management',
+    icon: <ReceiptIcon />,
+    path: '/expense-management',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+    category: 'Expenses',
+    keywords: ['expense management', 'expenditure', 'expense dashboard', 'expense overview']
+  },
+  {
+    text: 'Expense Manager',
+    icon: <ReceiptIcon />,
+    path: '/expense-manager',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+    category: 'Expenses',
+    keywords: ['expense manager', 'manage expenses', 'add expense', 'expense tracking']
   },
 
   // Examination Pages
@@ -952,12 +949,12 @@ const allPages = [
     keywords: ['leave requests', 'leave management', 'student leave', 'staff leave']
   },
   {
-    text: 'Complaints & Suggestions',
-    icon: <FeedbackIcon />,
-    path: '/attendance/complaints-suggestions',
-    allowedRoles: ['Super Admin', 'Principal', 'Admin'],
+    text: 'Communication',
+    icon: <ForumIcon />,
+    path: '/communication',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
     category: 'Main',
-    keywords: ['complaints', 'suggestions', 'feedback', 'review complaints', 'review suggestions']
+    keywords: ['communication', 'messages', 'announcements', 'feedback', 'complaints', 'suggestions']
   },
 
   // Enquiry Pages
@@ -984,6 +981,96 @@ const allPages = [
     allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
     category: 'Enquiry',
     keywords: ['new enquiry', 'create enquiry', 'add inquiry', 'register enquiry']
+  },
+
+  // Test Record Pages
+  {
+    text: 'Test Dashboard',
+    icon: <QuizIcon />,
+    path: '/test-dashboard',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Test Record',
+    keywords: ['test dashboard', 'test records', 'test management', 'quiz dashboard']
+  },
+  {
+    text: 'Test Records',
+    icon: <QuizIcon />,
+    path: '/test-records',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest'],
+    category: 'Test Record',
+    keywords: ['test records', 'test entry', 'test marks', 'quiz records', 'test scores']
+  },
+  {
+    text: 'Test Master Sheet',
+    icon: <AssessmentIcon />,
+    path: '/test-record-master-sheet',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Test Record',
+    keywords: ['test master sheet', 'test results', 'test summary', 'master sheet']
+  },
+  {
+    text: 'Test Analytics',
+    icon: <BarChartIcon />,
+    path: '/test-analytics',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Test Record',
+    keywords: ['test analytics', 'test reports', 'test statistics', 'test performance', 'test analysis']
+  },
+
+  // Examination Analytics
+  {
+    text: 'Exam Analytics',
+    icon: <BarChartIcon />,
+    path: '/exam-analytics',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Examination',
+    keywords: ['exam analytics', 'exam reports', 'exam statistics', 'examination analytics', 'exam performance']
+  },
+
+  // Diary/Homework Pages
+  {
+    text: 'Assign Diary',
+    icon: <Assignment />,
+    path: '/homework-diary',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Diary',
+    keywords: ['assign diary', 'homework diary', 'assign homework', 'homework assignment', 'daily homework']
+  },
+  {
+    text: 'Diary Analytics',
+    icon: <BarChartIcon />,
+    path: '/diary-analytics',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Teacher'],
+    category: 'Diary',
+    keywords: ['diary analytics', 'homework analytics', 'homework reports', 'diary statistics', 'homework statistics']
+  },
+
+  // Expense Analytics
+  {
+    text: 'Expense Analytics',
+    icon: <BarChartIcon />,
+    path: '/expense-analytics',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+    category: 'Expenses',
+    keywords: ['expense analytics', 'expense reports', 'expense statistics', 'expenditure analytics', 'expense analysis']
+  },
+
+  // Timetable Pages
+  {
+    text: 'Time Table',
+    icon: <CalendarMonthIcon />,
+    path: '/timetable',
+    allowedRoles: ['Super Admin', 'Principal', 'Admin'],
+    category: 'Settings',
+    keywords: ['timetable', 'schedule', 'class schedule', 'time table', 'periods', 'routine']
+  },
+  {
+    text: 'My Timetable',
+    icon: <CalendarMonthIcon />,
+    path: '/my-timetable',
+    allowedRoles: ['Teacher'],
+    category: 'Main',
+    keywords: ['my timetable', 'teacher timetable', 'schedule', 'my schedule', 'class schedule']
   },
 ];
 
@@ -1033,14 +1120,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
       case 'Students': return 'menu_students';
       case 'Attendance': return 'menu_attendance';
       case 'Reports': return 'menu_reports';
-      case 'Fine Management': return 'menu_fines';
-      case 'Fee Management': return 'menu_fee_management';
+      case 'Finance': return 'menu_finance';
+      case 'Communication': return 'menu_communication';
       case 'Enquiry Management': return 'menu_enquiries';
-      case 'Timetable': return 'menu_timetable';
       case 'Employees': return 'menu_employees';
-      case 'Examination': return 'menu_examination';
+      case 'Assessment': return 'menu_assessment';
       case 'Daily Diary': return 'menu_daily_diary';
-      case 'Test Record': return 'menu_test_record';
       case 'Settings': return 'menu_settings';
       case 'Schools Management': return 'menu_schools_management';
       default: return null;
@@ -1212,9 +1297,8 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
         return item.text === 'Attendance' ||
                item.text === 'Welcome Page' ||
                item.text === 'Reports' ||
-               item.text === 'Examination' ||
-               item.text === 'Daily Diary' ||
-               item.text === 'Test Record';
+               item.text === 'Assessment' ||
+               item.text === 'Daily Diary';
       }
       // For Guests: bypass role filter and control via render settings
       if (userRole === 'Guest') {
@@ -1247,11 +1331,14 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
           return page.text === 'Attendance' || 
                  page.text === 'Welcome Page' || 
                  page.text === 'Reports' || 
-                 page.text === 'Test Record' ||
-                 page.text === 'Examination' ||
+                 page.text === 'Assessment' ||
                  page.text === 'Daily Diary' ||
+                 page.text === 'Communication' ||
+                 page.text === 'My Timetable' ||
                  page.category === 'Attendance' || 
-                 page.category === 'Examination';
+                 page.category === 'Examination' ||
+                 page.category === 'Test Record' ||
+                 page.category === 'Diary';
         }
         return page.allowedRoles.includes(userRole);
       })
