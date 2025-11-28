@@ -26,8 +26,27 @@ import {
   Assignment,
   Book,
   WhatsApp,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  QuestionAnswer,
+  Group,
+  PersonAdd,
+  AttachMoney
 } from '@mui/icons-material';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  LabelList
+} from 'recharts';
+import Chart from 'react-apexcharts';
+import { Chart as GoogleChart } from 'react-google-charts';
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
 import { useToast } from '../components/useToast';
@@ -81,6 +100,197 @@ const DashboardContainer = styled.div`
     padding: 0.375rem;
     gap: 0.5rem;
   }
+`;
+
+const TabContainer = styled.div`
+  display: flex;
+  gap: 0.25rem;
+  background: transparent;
+  border-bottom: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : '1px solid rgba(0, 0, 0, 0.1)'};
+  padding: 0;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  
+  &::-webkit-scrollbar {
+    height: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.ACCENT || '#6366f1'};
+    border-radius: 1px;
+  }
+  
+  @media (max-width: 768px) {
+    margin-bottom: 1rem;
+    gap: 0.2rem;
+  }
+`;
+
+const TabButton = styled.button<{ active: boolean }>`
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-bottom: ${({ active, theme }) => 
+    active 
+      ? `2px solid ${theme.ACCENT || '#6366f1'}`
+      : '2px solid transparent'};
+  background: transparent;
+  color: ${({ active, theme }) => 
+    active 
+      ? (theme.ACCENT || '#6366f1')
+      : theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#888' : '#666')};
+  font-size: 0.9rem;
+  font-weight: ${({ active }) => active ? 600 : 500};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
+  margin-bottom: -1px;
+  
+  &:hover {
+    color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.02)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.625rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+`;
+
+const TabContent = styled.div<{ active: boolean }>`
+  display: ${({ active }) => active ? 'block' : 'none'};
+  animation: ${({ active }) => active ? 'fadeIn 0.3s ease' : 'none'};
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const AdmissionsSummaryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const AdmissionsSummaryCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+`;
+
+const SummaryCardHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+`;
+
+const SummaryCardTitle = styled.div`
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#888' : '#666')};
+`;
+
+const SummaryCardIcon = styled.div<{ color: string }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: ${({ color }) => color}20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ color }) => color};
+  font-size: 1.5rem;
+`;
+
+const SummaryCardValue = styled.div`
+  font-size: 2rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  line-height: 1;
+`;
+
+const SummaryCardSubtext = styled.div`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#888' : '#666')};
+  margin-top: 0.25rem;
+`;
+
+const AdmissionsChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const AdmissionsChartCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 300px;
+`;
+
+const AdmissionsChartTitle = styled.div`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
 
 const PageHeader = styled.div`
@@ -2735,6 +2945,73 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
   const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
   const [absentDate, setAbsentDate] = useState(() => new Date().toISOString().slice(0,10));
+  
+  // Inject CSS for Google Charts tooltips in dark mode
+  useEffect(() => {
+    const styleId = 'google-charts-tooltip-dark-mode';
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      document.head.appendChild(styleElement);
+    }
+    
+    // Always use white/default theme for tooltips regardless of dark mode
+    styleElement.textContent = `
+      .google-visualization-tooltip {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #1e293b !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+      }
+      .google-visualization-tooltip * {
+        color: #1e293b !important;
+      }
+      .google-visualization-tooltip-item {
+        color: #1e293b !important;
+      }
+      .google-visualization-tooltip-item-list {
+        color: #1e293b !important;
+      }
+      .google-visualization-tooltip-item-label {
+        color: #64748b !important;
+      }
+      .google-visualization-tooltip-item-value {
+        color: #1e293b !important;
+      }
+      .google-visualization-tooltip-square {
+        border-color: #e2e8f0 !important;
+      }
+      .google-visualization-tooltip-text {
+        color: #1e293b !important;
+      }
+      div.google-visualization-tooltip {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #1e293b !important;
+      }
+      div.google-visualization-tooltip div {
+        color: #1e293b !important;
+      }
+      div.google-visualization-tooltip span {
+        color: #1e293b !important;
+      }
+      div.google-visualization-tooltip table {
+        color: #1e293b !important;
+      }
+      div.google-visualization-tooltip table td {
+        color: #1e293b !important;
+      }
+      div.google-visualization-tooltip table tr {
+        color: #1e293b !important;
+      }
+    `;
+    
+    return () => {
+      // Cleanup is handled by updating the style content
+    };
+  }, [isDark]);
   const [absentees, setAbsentees] = useState<any[]>([]);
   const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
   const [dropdownIdx, setDropdownIdx] = useState<number | null>(null);
@@ -2795,10 +3072,42 @@ const Dashboard: React.FC = () => {
     collectionRate: 0
   });
   const [feeSummaryLoading, setFeeSummaryLoading] = useState(false);
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'attendance' | 'fee' | 'admissions'>('attendance');
+  
+  // Admissions data state
+  const [admissionsData, setAdmissionsData] = useState({
+    totalInquiries: 0,
+    inquiriesThisMonth: 0,
+    totalStudents: 0,
+    studentsThisMonth: 0,
+    totalFamilies: 0,
+    familiesThisMonth: 0,
+    totalFeePlans: 0,
+    feePlansThisMonth: 0,
+    admissionsChart: [] as any[],
+    withdrawalsChart: [] as any[],
+    genderData: [] as any[],
+    gradeDistribution: [] as any[],
+    latestAdmissions: [] as any[],
+    todaysBirthdays: [] as any[],
+    todaysBirthdaysCount: 0
+  });
+  const [admissionsLoading, setAdmissionsLoading] = useState(false);
+  
+  // Ensure arrays are always defined
+  const gradeDistribution = admissionsData.gradeDistribution || [];
+  const latestAdmissions = admissionsData.latestAdmissions || [];
+  const todaysBirthdays = admissionsData.todaysBirthdays || [];
 
-  // Helper functions for class and section names
-  const getClassName = (classId: any) => classes.find((c: any) => String(c.id) === String(classId))?.name || '-';
-  const getSectionName = (sectionId: any) => sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
+  // Helper functions for class and section names - memoized to prevent unnecessary re-renders
+  const getClassName = useCallback((classId: any) => {
+    return classes.find((c: any) => String(c.id) === String(classId))?.name || '-';
+  }, [classes]);
+  const getSectionName = useCallback((sectionId: any) => {
+    return sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
+  }, [sections]);
   
   // Format currency helper
   const formatCurrency = (value: number): string => {
@@ -2865,6 +3174,453 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchFeeSummary();
   }, [fetchFeeSummary]);
+  
+  // Helper function to fetch all rows with pagination
+  const fetchAllRows = async <T,>(queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>): Promise<T[]> => {
+    let allResults: T[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await queryFn(from, from + pageSize - 1);
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allResults = allResults.concat(data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allResults;
+  };
+
+  // Fetch admissions data
+  const fetchAdmissionsData = useCallback(async () => {
+    if (!user?.school_id) {
+      setAdmissionsLoading(false);
+      return;
+    }
+    
+    setAdmissionsLoading(true);
+    try {
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      
+      // Get active session and run initial queries in parallel
+      const [sessionResult, enquiriesCount, studentsCount, familiesCount] = await Promise.all([
+        supabase
+          .from('sessions')
+          .select('id')
+          .eq('is_active', true)
+          .eq('school_id', user.school_id)
+          .maybeSingle(),
+        // Use count queries for better performance
+        supabase
+          .from('enquiries')
+          .select('id, created_at', { count: 'exact', head: false })
+          .eq('school_id', user.school_id)
+          .gte('created_at', currentMonthStart.toISOString())
+          .lte('created_at', currentMonthEnd.toISOString()),
+        supabase
+          .from('students')
+          .select('id, created_at, gender', { count: 'exact', head: false })
+          .eq('school_id', user.school_id)
+          .gte('created_at', currentMonthStart.toISOString())
+          .lte('created_at', currentMonthEnd.toISOString()),
+        supabase
+          .from('families')
+          .select('id, created_at', { count: 'exact', head: false })
+          .eq('school_id', user.school_id)
+          .gte('created_at', currentMonthStart.toISOString())
+          .lte('created_at', currentMonthEnd.toISOString())
+      ]);
+      
+      const { data: sessionData } = sessionResult;
+      const inquiriesThisMonth = enquiriesCount.data?.length || 0;
+      const studentsThisMonth = studentsCount.data?.length || 0;
+      const familiesThisMonth = familiesCount.data?.length || 0;
+      
+      // Fetch all data for totals and charts in parallel
+      const [allEnquiriesResult, allStudentsResult, allFamiliesResult, feePlansResult] = await Promise.all([
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('enquiries')
+            .select('id, created_at')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('students')
+            .select('id, created_at, gender, class_id, name, picture_url, dob, status')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('families')
+            .select('id, created_at')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        sessionData?.id
+          ? fetchAllRows(async (from, to) => {
+              return await supabase
+                .from('student_fee_plans')
+                .select('id, created_at')
+                .eq('school_id', user.school_id)
+                .eq('session_id', sessionData.id)
+                .range(from, to);
+            })
+          : Promise.resolve([])
+      ]);
+      
+      const allEnquiries = allEnquiriesResult;
+      const allStudents = allStudentsResult;
+      const allFamilies = allFamiliesResult;
+      const allFeePlans = feePlansResult;
+      
+      const feePlansThisMonth = (allFeePlans || []).filter(fp => {
+        const createdAt = new Date(fp.created_at);
+        return createdAt >= currentMonthStart && createdAt <= currentMonthEnd;
+      }).length;
+      
+      // Prepare chart data - Monthly admissions and withdrawals with gender breakdown (last 12 months)
+      const admissionsByMonth: Record<string, { boys: number; girls: number }> = {};
+      const withdrawalsByMonth: Record<string, { boys: number; girls: number }> = {};
+      
+      // Get student class history for admissions with gender (fetch all rows)
+      if (sessionData?.id) {
+        const classHistory = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('student_class_history')
+            .select('student_id, created_at, status')
+            .eq('school_id', user.school_id)
+            .eq('session_id', sessionData.id)
+            .order('created_at', { ascending: false })
+            .range(from, to);
+        });
+        
+        // Get student genders - batch in chunks of 1000 for .in() query
+        const studentIds = Array.from(new Set(classHistory.map(ch => ch.student_id)));
+        const allStudentsWithGender: any[] = [];
+        
+        for (let i = 0; i < studentIds.length; i += 1000) {
+          const chunk = studentIds.slice(i, i + 1000);
+          const { data: chunkData } = await supabase
+            .from('students')
+            .select('id, gender')
+            .eq('school_id', user.school_id)
+            .in('id', chunk);
+          if (chunkData) {
+            allStudentsWithGender.push(...chunkData);
+          }
+        }
+        
+        const genderMap = new Map(allStudentsWithGender.map(s => [s.id, s.gender]));
+        
+        classHistory.forEach(record => {
+          const date = new Date(record.created_at);
+          const monthKey = format(date, 'MMM yyyy');
+          
+          if (record.status === 'active' || !record.status) {
+            if (!admissionsByMonth[monthKey]) {
+              admissionsByMonth[monthKey] = { boys: 0, girls: 0 };
+            }
+            const gender = genderMap.get(record.student_id);
+            const isMale = gender === 'Male' || gender === 'male' || gender === 'M';
+            const isFemale = gender === 'Female' || gender === 'female' || gender === 'F';
+            
+            if (isMale) {
+              admissionsByMonth[monthKey].boys += 1;
+            } else if (isFemale) {
+              admissionsByMonth[monthKey].girls += 1;
+            }
+          }
+        });
+      }
+      
+      // Get withdrawals from student_status_history table with gender (fetch all rows)
+      const statusHistory = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('student_status_history')
+          .select('id, created_at, action, new_status, student_id')
+          .eq('school_id', user.school_id)
+          .or('action.eq.withdraw,new_status.eq.withdrawn')
+          .order('created_at', { ascending: false })
+          .range(from, to);
+      });
+      
+      // Get student genders for withdrawals - batch in chunks
+      const withdrawalStudentIds = Array.from(new Set(statusHistory.map(sh => sh.student_id).filter(Boolean)));
+      const allWithdrawalStudentsWithGender: any[] = [];
+      
+      if (withdrawalStudentIds.length > 0) {
+        for (let i = 0; i < withdrawalStudentIds.length; i += 1000) {
+          const chunk = withdrawalStudentIds.slice(i, i + 1000);
+          const { data: chunkData } = await supabase
+            .from('students')
+            .select('id, gender, status_updated_at, status, created_at')
+            .eq('school_id', user.school_id)
+            .in('id', chunk);
+          if (chunkData) {
+            allWithdrawalStudentsWithGender.push(...chunkData);
+          }
+        }
+      }
+      
+      // Type for students with optional created_at
+      interface StudentWithDates {
+        id: number;
+        gender: string;
+        status_updated_at: string | null;
+        status: string;
+        created_at?: string;
+      }
+      
+      const withdrawalGenderMap = new Map(allWithdrawalStudentsWithGender.map(s => [s.id, s.gender]));
+      
+      // Track which students have been counted to avoid duplicates
+      const countedStudentIds = new Set<number>();
+      
+      statusHistory.forEach(record => {
+        if (record.action === 'withdraw' || record.new_status === 'withdrawn') {
+          const date = new Date(record.created_at);
+          const monthKey = format(date, 'MMM yyyy');
+          
+          if (!withdrawalsByMonth[monthKey]) {
+            withdrawalsByMonth[monthKey] = { boys: 0, girls: 0 };
+          }
+          
+          const gender = record.student_id ? withdrawalGenderMap.get(record.student_id) : null;
+          const isMale = gender === 'Male' || gender === 'male' || gender === 'M';
+          const isFemale = gender === 'Female' || gender === 'female' || gender === 'F';
+          
+          if (isMale) {
+            withdrawalsByMonth[monthKey].boys += 1;
+          } else if (isFemale) {
+            withdrawalsByMonth[monthKey].girls += 1;
+          }
+        }
+      });
+      
+      // Also check students table for withdrawn status and use status_updated_at (fetch all rows)
+      const withdrawnStudents = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('students')
+          .select('id, status_updated_at, status, gender, created_at')
+          .eq('school_id', user.school_id)
+          .eq('status', 'withdrawn')
+          .range(from, to);
+      });
+      
+      withdrawnStudents.forEach(student => {
+        if (student.status_updated_at) {
+          const date = new Date(student.status_updated_at);
+          const monthKey = format(date, 'MMM yyyy');
+          // Check if this student was already counted in status_history
+          const alreadyCounted = statusHistory.some(sh => 
+            sh.student_id === student.id &&
+            sh.new_status === 'withdrawn' && 
+            new Date(sh.created_at).getTime() === date.getTime()
+          );
+          if (!alreadyCounted) {
+            if (!withdrawalsByMonth[monthKey]) {
+              withdrawalsByMonth[monthKey] = { boys: 0, girls: 0 };
+            }
+            const isMale = student.gender === 'Male' || student.gender === 'male' || student.gender === 'M';
+            const isFemale = student.gender === 'Female' || student.gender === 'female' || student.gender === 'F';
+            
+            if (isMale) {
+              withdrawalsByMonth[monthKey].boys += 1;
+            } else if (isFemale) {
+              withdrawalsByMonth[monthKey].girls += 1;
+            }
+          }
+        } else if ((student as any).created_at) {
+          // Fallback to created_at if status_updated_at is not available
+          const date = new Date((student as any).created_at);
+          const monthKey = format(date, 'MMM yyyy');
+          if (!withdrawalsByMonth[monthKey]) {
+            withdrawalsByMonth[monthKey] = { boys: 0, girls: 0 };
+          }
+          const isMale = student.gender === 'Male' || student.gender === 'male' || student.gender === 'M';
+          const isFemale = student.gender === 'Female' || student.gender === 'female' || student.gender === 'F';
+          
+          if (isMale) {
+            withdrawalsByMonth[monthKey].boys += 1;
+          } else if (isFemale) {
+            withdrawalsByMonth[monthKey].girls += 1;
+          }
+        }
+      });
+      
+      // Convert to array format for charts - last 12 months
+      const months = [];
+      const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = format(date, 'MMM yyyy');
+        const monthLabel = monthLabels[date.getMonth()];
+        months.push({ monthKey, monthLabel, date });
+      }
+      
+      const admissionsChart = months.map(({ monthKey, monthLabel }) => {
+        const data = admissionsByMonth[monthKey] || { boys: 0, girls: 0 };
+        return {
+          month: monthLabel,
+          students: data.boys + data.girls,
+          boys: data.boys,
+          girls: data.girls
+        };
+      });
+      
+      const withdrawalsChart = months.map(({ monthKey, monthLabel }) => {
+        const data = withdrawalsByMonth[monthKey] || { boys: 0, girls: 0 };
+        return {
+          month: monthLabel,
+          students: data.boys + data.girls,
+          boys: data.boys,
+          girls: data.girls
+        };
+      });
+      
+      // Gender distribution
+      const boys = (allStudents || []).filter(s => s.gender === 'Male' || s.gender === 'male' || s.gender === 'M').length;
+      const girls = (allStudents || []).filter(s => s.gender === 'Female' || s.gender === 'female' || s.gender === 'F').length;
+      
+      const genderData = [
+        { name: 'Boys', value: boys, color: '#22c55e' },
+        { name: 'Girls', value: girls, color: '#a78bfa' }
+      ];
+      
+      // Get latest 5 students added to the system from allStudents (already fetched)
+      const latestAdmissions = (allStudents || [])
+        .sort((a: any, b: any) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA;
+        })
+        .slice(0, 5)
+        .map((student: any) => {
+          const className = getClassName(student.class_id);
+          return {
+            name: student.name || 'Unknown',
+            pictureUrl: student.picture_url,
+            className: className || '-',
+            admissionDate: student.created_at
+          };
+        });
+      
+      // Fetch grade distribution (group by class and gender) - fetch all students
+      const gradeDistributionMap = new Map<string, { boys: number; girls: number }>();
+      allStudents.forEach((student: any) => {
+        if (student.class_id) {
+          const className = getClassName(student.class_id);
+          if (!gradeDistributionMap.has(className)) {
+            gradeDistributionMap.set(className, { boys: 0, girls: 0 });
+          }
+          const stats = gradeDistributionMap.get(className)!;
+          const isMale = student.gender === 'Male' || student.gender === 'male' || student.gender === 'M';
+          const isFemale = student.gender === 'Female' || student.gender === 'female' || student.gender === 'F';
+          if (isMale) {
+            stats.boys += 1;
+          } else if (isFemale) {
+            stats.girls += 1;
+          }
+        }
+      });
+      
+      const gradeDistribution = Array.from(gradeDistributionMap.entries()).map(([grade, stats]) => ({
+        grade,
+        boys: stats.boys,
+        girls: stats.girls,
+        total: stats.boys + stats.girls
+      })).sort((a, b) => a.grade.localeCompare(b.grade));
+      
+      // Get today's birthdays from allStudents (already fetched) - filter client-side
+      const today = new Date();
+      const todayMonth = today.getMonth() + 1;
+      const todayDay = today.getDate();
+      
+      const todaysBirthdays = (allStudents || [])
+        .filter((student: any) => {
+          // Filter active students only
+          if (student.status && student.status !== 'active') return false;
+          if (!student.dob) return false;
+          const dob = new Date(student.dob);
+          return dob.getMonth() + 1 === todayMonth && dob.getDate() === todayDay;
+        })
+        .slice(0, 10)
+        .map((student: any) => {
+          const className = getClassName(student.class_id);
+          return {
+            name: student.name || 'Unknown',
+            pictureUrl: student.picture_url,
+            className: className || '-'
+          };
+        });
+      
+      setAdmissionsData({
+        totalInquiries: allEnquiries?.length || 0,
+        inquiriesThisMonth,
+        totalStudents: allStudents?.length || 0,
+        studentsThisMonth,
+        totalFamilies: allFamilies?.length || 0,
+        familiesThisMonth,
+        totalFeePlans: allFeePlans?.length || 0,
+        feePlansThisMonth,
+        admissionsChart,
+        withdrawalsChart,
+        genderData,
+        gradeDistribution,
+        latestAdmissions,
+        todaysBirthdays,
+        todaysBirthdaysCount: todaysBirthdays.length
+      });
+    } catch (error) {
+      console.error('Error fetching admissions data:', error);
+      // Set empty data on error to prevent flashing
+      setAdmissionsData({
+        totalInquiries: 0,
+        inquiriesThisMonth: 0,
+        totalStudents: 0,
+        studentsThisMonth: 0,
+        totalFamilies: 0,
+        familiesThisMonth: 0,
+        totalFeePlans: 0,
+        feePlansThisMonth: 0,
+        admissionsChart: [],
+        withdrawalsChart: [],
+        genderData: [],
+        gradeDistribution: [],
+        latestAdmissions: [],
+        todaysBirthdays: [],
+        todaysBirthdaysCount: 0
+      });
+    } finally {
+      setAdmissionsLoading(false);
+    }
+  }, [user?.school_id, getClassName]);
+  
+  // Track previous tab to detect tab changes
+  const prevTabRef = useRef<'attendance' | 'fee' | 'admissions' | null>(null);
+  
+  // Fetch admissions data when tab is active
+  useEffect(() => {
+    const tabChanged = prevTabRef.current !== activeTab;
+    prevTabRef.current = activeTab;
+    
+    if (activeTab === 'admissions' && tabChanged && !admissionsLoading) {
+      fetchAdmissionsData();
+    }
+  }, [activeTab, fetchAdmissionsData, admissionsLoading]);
 
   // Show delete confirmation modal
   const showDeleteConfirmation = (fine: any) => {
@@ -5245,228 +6001,36 @@ const Dashboard: React.FC = () => {
   const showFineCollection = !isGuest || isDashboardCardVisible(renderSettings, 'fine_collection_card');
   const showAbsentees = !isGuest || isDashboardCardVisible(renderSettings, 'absentees_card');
   const showHomeworkDiary = !isGuest || isDashboardCardVisible(renderSettings, 'homework_diary_card');
-  const hasLeftCards = showClassStrength || showFineCollection;
   const hasRightCards = showAbsentees || showHomeworkDiary;
 
   return (
     <DashboardContainer>
-      {/* Header */}
-      <PageHeader>
-        <HeaderTitle>
-          <School />
-          Dashboard
-        </HeaderTitle>
-        <HeaderActions>
-          <RefreshButton onClick={fetchAll} disabled={loading}>
-            <RefreshIcon style={{ fontSize: '1rem' }} />
-            Refresh
-          </RefreshButton>
-        </HeaderActions>
-      </PageHeader>
+      {/* Tab Navigation - Minimal Header */}
+      <TabContainer>
+        <TabButton 
+          active={activeTab === 'attendance'} 
+          onClick={() => setActiveTab('attendance')}
+        >
+          Attendance
+        </TabButton>
+        <TabButton 
+          active={activeTab === 'fee'} 
+          onClick={() => setActiveTab('fee')}
+        >
+          Fee Collection
+        </TabButton>
+        <TabButton 
+          active={activeTab === 'admissions'} 
+          onClick={() => setActiveTab('admissions')}
+        >
+          Admissions
+        </TabButton>
+      </TabContainer>
       
-      {/* Fee Summary Section */}
-      <FeeStatsGrid>
-        <FeeStatCard>
-          <FeeStatLabel>Total Invoiced</FeeStatLabel>
-          <FeeStatValue>
-            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalInvoiced)}
-          </FeeStatValue>
-        </FeeStatCard>
-        <FeeStatCard>
-          <FeeStatLabel>Total Collected</FeeStatLabel>
-          <FeeStatValue style={{ color: '#22c55e' }}>
-            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalCollected)}
-          </FeeStatValue>
-        </FeeStatCard>
-        <FeeStatCard>
-          <FeeStatLabel>Outstanding</FeeStatLabel>
-          <FeeStatValue style={{ color: '#ef4444' }}>
-            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalOutstanding)}
-          </FeeStatValue>
-        </FeeStatCard>
-        <FeeStatCard>
-          <FeeStatLabel>Collection Rate</FeeStatLabel>
-          <FeeStatValue style={{ color: '#6366f1' }}>
-            {feeSummaryLoading ? '...' : `${feeSummary.collectionRate.toFixed(1)}%`}
-          </FeeStatValue>
-        </FeeStatCard>
-      </FeeStatsGrid>
-      
-      {/* Main Content */}
-      <TwoColumnGrid $columns={(hasLeftCards && hasRightCards) ? 2 : 1}>
-        {hasLeftCards && (
-        <LeftColumn>
-          {showClassStrength && (
-            <ClassStrengthTableCard>
-              <SectionHeader onClick={() => setIsStrengthExpanded(!isStrengthExpanded)}>
-                <SectionHeaderTitle>
-                  Class Wise Strength
-                  <StrengthExpandIcon $isExpanded={isStrengthExpanded} />
-                </SectionHeaderTitle>
-              </SectionHeader>
-            <CollapsibleContent $isExpanded={isStrengthExpanded}>
-              <ClassStrengthTableContainer>
-                <ClassStrengthTable>
-                  <thead>
-                    <tr>
-                      <th>Class</th>
-                      <th>Total</th>
-                      <th>Boys</th>
-                      <th>Girls</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {classStrengths.map(cls => (
-                      <tr key={cls.name}>
-                        <td style={{ color: '#6366f1', fontWeight: 700 }}>{cls.name}</td>
-                        <td style={{ fontWeight: 800, color: isDark ? '#fff' : '#232a3b' }}>{cls.total}</td>
-                        <td style={{ color: '#22c55e', fontWeight: 600 }}>{cls.boys}</td>
-                        <td style={{ color: '#a78bfa', fontWeight: 600 }}>{cls.girls}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </ClassStrengthTable>
-              </ClassStrengthTableContainer>
-              <ClassStrengthFooter>
-                <span>TOTAL</span>
-                <span style={{ color: isDark ? '#fff' : '#232a3b' }}>
-                  {totalStudentsFromHistory}
-                </span>
-                <span style={{ color: '#22c55e' }}>
-                  {totalBoysFromHistory}
-                </span>
-                <span style={{ color: '#a78bfa' }}>
-                  {totalGirlsFromHistory}
-                </span>
-              </ClassStrengthFooter>
-            </CollapsibleContent>
-          </ClassStrengthTableCard>
-          )}
-          
-          {/* Fine Collection Details Card */}
-          {showFineCollection && (
-            <FineTableWrapper>
-            <FineTableHeader onClick={() => setIsFineExpanded(!isFineExpanded)}>
-              <FineHeaderTitleRow>
-                <FineHeaderTitle>
-                  <MonetizationOn style={{ fontSize: '1.3rem' }} />
-                  Fine Collection Details
-                </FineHeaderTitle>
-                <FineExpandIcon $isExpanded={isFineExpanded} />
-              </FineHeaderTitleRow>
-              <FineControls isExpanded={isFineExpanded}>
-                <FineDateInput
-                  type="date"
-                  value={fineDate}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    setFineDate(e.target.value);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <FineAmountButton
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Rs {todayCollectedFine.toLocaleString()}
-                </FineAmountButton>
-              </FineControls>
-            </FineTableHeader>
-            
-            <FineCollapsibleContent $isExpanded={isFineExpanded}>
-              <FineDetailsList>
-                {fineDetails.length === 0 ? (
-                  <NoFineData>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
-                      💰
-                    </div>
-                    <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                      No Fine Collections
-                    </div>
-                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                      No fine payments recorded for {new Date(fineDate).toLocaleDateString()}
-                    </div>
-                  </NoFineData>
-                ) : (
-                  fineDetails.map((fine) => {
-                    const student = fine.students;
-                    const classLabel = `${getClassName(student.class_id)}${getSectionName(student.section_id) ? ' (' + getSectionName(student.section_id) + ')' : ''}`;
-                    const time = new Date(fine.created_at).toLocaleTimeString('en-GB', { 
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                      hour12: false 
-                    });
-                    
-                    // Check if this is a remission entry (has remission amount > 0)
-                    const isRemission = fine.remission && Number(fine.remission) > 0;
-                    
-                    // Use raw database values - no conversion needed
-                    const displayAmount = Number(fine.amount);
-                    const displayRemission = Number(fine.remission);
-                    
-                    
-                    return (
-                      <FineDetailItem key={fine.id} $isRemission={isRemission}>
-                        <FineStudentAvatar>
-                          {student.picture_url ? (
-                            <img src={student.picture_url} alt={student.name} />
-                          ) : (
-                            <AccountCircle style={{ fontSize: '0.8rem' }} />
-                          )}
-                        </FineStudentAvatar>
-                        <FineCardContent>
-                          <FineRow>
-                            <FineStudentId>{getStudentDisplayId(student)}</FineStudentId>
-                            <FineDot />
-                            <FineStudentName>{student.name}</FineStudentName>
-                            {student.father_name && (
-                              <>
-                                <FineDot />
-                                <FineStudentFather>{student.father_name}</FineStudentFather>
-                              </>
-                            )}
-                          </FineRow>
-                          <FineMeta>
-                            <span>{classLabel}</span>
-                            <FineDot />
-                            <FineAmount $isRemission={isRemission}>
-                              <span style={{ color: '#22c55e' }}>
-                                Rs {displayAmount.toLocaleString()}
-                              </span>
-                              <span style={{ marginLeft: '0.3rem', fontSize: '0.8rem', color: '#ec4899' }}>
-                                (Rem: Rs {displayRemission.toLocaleString()})
-                              </span>
-                            </FineAmount>
-                            <FineDot />
-                            <FineTime>{time}</FineTime>
-                          </FineMeta>
-                        </FineCardContent>
-                        {!isGuest && (
-                          <FineActions>
-                            <DeleteButton
-                              onClick={() => showDeleteConfirmation(fine)}
-                              title="Delete fine payment"
-                            >
-                              <Delete style={{ fontSize: '0.7rem' }} />
-                            </DeleteButton>
-                          </FineActions>
-                        )}
-                      </FineDetailItem>
-                    );
-                  })
-                )}
-              </FineDetailsList>
-              <FineStatsRow>
-                <span className="stat total">Total Entries: <b>{fineDetails.length}</b></span>
-                <span className="stat avg">Avg: <b>Rs {fineDetails.length ? Math.round(todayCollectedFine / fineDetails.length) : 0}</b></span>
-                {fineDetails.some(fine => fine.remission && Number(fine.remission) > 0) && (
-                  <span className="stat remission">Remission: <b>Rs {fineDetails.reduce((sum, fine) => sum + (Number(fine.remission) || 0), 0).toLocaleString()}</b></span>
-                )}
-              </FineStatsRow>
-            </FineCollapsibleContent>
-          </FineTableWrapper>
-          )}
-        </LeftColumn>
-        )}
+      {/* Attendance Tab Content */}
+      <TabContent active={activeTab === 'attendance'}>
+        {/* Main Content */}
+      <TwoColumnGrid $columns={hasRightCards ? 1 : 0}>
         {hasRightCards && (
         <RightColumn>
           {showAbsentees && (
@@ -6256,6 +6820,613 @@ const Dashboard: React.FC = () => {
         </RightColumn>
         )}
       </TwoColumnGrid>
+      </TabContent>
+      
+      {/* Fee Tab Content */}
+      <TabContent active={activeTab === 'fee'}>
+        {/* Fee Summary Section */}
+        <FeeStatsGrid>
+          <FeeStatCard>
+            <FeeStatLabel>Total Invoiced</FeeStatLabel>
+            <FeeStatValue>
+              {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalInvoiced)}
+            </FeeStatValue>
+          </FeeStatCard>
+          <FeeStatCard>
+            <FeeStatLabel>Total Collected</FeeStatLabel>
+            <FeeStatValue style={{ color: '#22c55e' }}>
+              {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalCollected)}
+            </FeeStatValue>
+          </FeeStatCard>
+          <FeeStatCard>
+            <FeeStatLabel>Outstanding</FeeStatLabel>
+            <FeeStatValue style={{ color: '#ef4444' }}>
+              {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalOutstanding)}
+            </FeeStatValue>
+          </FeeStatCard>
+          <FeeStatCard>
+            <FeeStatLabel>Collection Rate</FeeStatLabel>
+            <FeeStatValue style={{ color: '#6366f1' }}>
+              {feeSummaryLoading ? '...' : `${feeSummary.collectionRate.toFixed(1)}%`}
+            </FeeStatValue>
+          </FeeStatCard>
+        </FeeStatsGrid>
+      </TabContent>
+      
+      {/* Admissions Tab Content */}
+      <TabContent active={activeTab === 'admissions'}>
+        {admissionsLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+            <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <AdmissionsSummaryGrid>
+              <AdmissionsSummaryCard>
+                <SummaryCardHeader>
+                  <SummaryCardTitle>Inquiries</SummaryCardTitle>
+                  <SummaryCardIcon color="#3b82f6">
+                    <QuestionAnswer />
+                  </SummaryCardIcon>
+                </SummaryCardHeader>
+                <SummaryCardValue>{admissionsData.totalInquiries}</SummaryCardValue>
+                <SummaryCardSubtext>This Month: {admissionsData.inquiriesThisMonth}</SummaryCardSubtext>
+              </AdmissionsSummaryCard>
+              
+              <AdmissionsSummaryCard>
+                <SummaryCardHeader>
+                  <SummaryCardTitle>Students</SummaryCardTitle>
+                  <SummaryCardIcon color="#22c55e">
+                    <School />
+                  </SummaryCardIcon>
+                </SummaryCardHeader>
+                <SummaryCardValue>{admissionsData.totalStudents}</SummaryCardValue>
+                <SummaryCardSubtext>This Month: {admissionsData.studentsThisMonth}</SummaryCardSubtext>
+              </AdmissionsSummaryCard>
+              
+              <AdmissionsSummaryCard>
+                <SummaryCardHeader>
+                  <SummaryCardTitle>Families</SummaryCardTitle>
+                  <SummaryCardIcon color="#f59e0b">
+                    <Group />
+                  </SummaryCardIcon>
+                </SummaryCardHeader>
+                <SummaryCardValue>{admissionsData.totalFamilies}</SummaryCardValue>
+                <SummaryCardSubtext>This Month: {admissionsData.familiesThisMonth}</SummaryCardSubtext>
+              </AdmissionsSummaryCard>
+              
+              <AdmissionsSummaryCard>
+                <SummaryCardHeader>
+                  <SummaryCardTitle>Fee Plans</SummaryCardTitle>
+                  <SummaryCardIcon color="#ef4444">
+                    <AttachMoney />
+                  </SummaryCardIcon>
+                </SummaryCardHeader>
+                <SummaryCardValue>{admissionsData.totalFeePlans}</SummaryCardValue>
+                <SummaryCardSubtext>This Month: {admissionsData.feePlansThisMonth}</SummaryCardSubtext>
+              </AdmissionsSummaryCard>
+            </AdmissionsSummaryGrid>
+            
+            {/* Charts */}
+            <AdmissionsChartsGrid>
+              <AdmissionsChartCard>
+                <AdmissionsChartTitle>Admissions</AdmissionsChartTitle>
+                <GoogleChart
+                  chartType="ColumnChart"
+                  width="100%"
+                  height="280px"
+                  data={[
+                    ['Month', 'Boys', 'Girls', { role: 'annotation', type: 'string' }],
+                    ...(admissionsData.admissionsChart?.map(item => {
+                      const total = (item.boys || 0) + (item.girls || 0);
+                      return [
+                        item.month,
+                        item.boys || 0,
+                        item.girls || 0,
+                        total > 0 ? String(total) : ''
+                      ];
+                    }) || [])
+                  ]}
+                  options={{
+                    title: '',
+                    isStacked: true,
+                    legend: {
+                      position: 'top',
+                      alignment: 'end',
+                      textStyle: {
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        fontSize: 12
+                      }
+                    },
+                    colors: ['#3b82f6', '#ec4899'],
+                    backgroundColor: 'transparent',
+                    hAxis: {
+                      title: '',
+                      textStyle: {
+                        color: isDark ? '#888' : '#666',
+                        fontSize: 12
+                      },
+                      gridlines: {
+                        color: 'transparent'
+                      }
+                    },
+                    vAxis: {
+                      title: 'Students',
+                      textStyle: {
+                        color: isDark ? '#888' : '#666',
+                        fontSize: 12
+                      },
+                      gridlines: {
+                        color: isDark ? '#333' : '#e5e7eb'
+                      },
+                      baselineColor: isDark ? '#444' : '#ddd'
+                    },
+                    tooltip: {
+                      textStyle: {
+                        color: '#1e293b',
+                        fontSize: 12
+                      },
+                      trigger: 'focus'
+                    },
+                    chartArea: {
+                      left: 60,
+                      top: 50,
+                      right: 20,
+                      bottom: 40,
+                      width: '100%',
+                      height: '100%'
+                    },
+                    annotations: {
+                      textStyle: {
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        fontSize: 13,
+                        bold: true
+                      },
+                      alwaysOutside: true,
+                      stem: {
+                        color: 'transparent',
+                        length: 0
+                      }
+                    }
+                  }}
+                  loader={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>Loading...</div>}
+                />
+              </AdmissionsChartCard>
+              
+              <AdmissionsChartCard>
+                <AdmissionsChartTitle>Withdrawals</AdmissionsChartTitle>
+                <GoogleChart
+                  chartType="ColumnChart"
+                  width="100%"
+                  height="280px"
+                  data={[
+                    ['Month', 'Boys', 'Girls', { role: 'annotation', type: 'string' }],
+                    ...(admissionsData.withdrawalsChart?.map(item => {
+                      const total = (item.boys || 0) + (item.girls || 0);
+                      return [
+                        item.month,
+                        item.boys || 0,
+                        item.girls || 0,
+                        total > 0 ? String(total) : ''
+                      ];
+                    }) || [])
+                  ]}
+                  options={{
+                    title: '',
+                    isStacked: true,
+                    legend: {
+                      position: 'top',
+                      alignment: 'end',
+                      textStyle: {
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        fontSize: 12
+                      }
+                    },
+                    colors: ['#ef4444', '#f97316'],
+                    backgroundColor: 'transparent',
+                    hAxis: {
+                      title: '',
+                      textStyle: {
+                        color: isDark ? '#888' : '#666',
+                        fontSize: 12
+                      },
+                      gridlines: {
+                        color: 'transparent'
+                      }
+                    },
+                    vAxis: {
+                      title: 'Students',
+                      textStyle: {
+                        color: isDark ? '#888' : '#666',
+                        fontSize: 12
+                      },
+                      gridlines: {
+                        color: isDark ? '#333' : '#e5e7eb'
+                      },
+                      baselineColor: isDark ? '#444' : '#ddd'
+                    },
+                    tooltip: {
+                      textStyle: {
+                        color: '#1e293b',
+                        fontSize: 12
+                      },
+                      trigger: 'focus'
+                    },
+                    chartArea: {
+                      left: 60,
+                      top: 50,
+                      right: 20,
+                      bottom: 40,
+                      width: '100%',
+                      height: '100%'
+                    },
+                    annotations: {
+                      textStyle: {
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        fontSize: 13,
+                        bold: true
+                      },
+                      alwaysOutside: true,
+                      stem: {
+                        color: 'transparent',
+                        length: 0
+                      }
+                    }
+                  }}
+                  loader={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>Loading...</div>}
+                />
+              </AdmissionsChartCard>
+              
+              <AdmissionsChartCard>
+                <AdmissionsChartTitle>Gender</AdmissionsChartTitle>
+                <GoogleChart
+                  chartType="PieChart"
+                  width="100%"
+                  height="280px"
+                  data={[
+                    ['Gender', 'Students'],
+                    ...(admissionsData.genderData?.map(item => [item.name, item.value]) || [])
+                  ]}
+                  options={{
+                    title: '',
+                    pieHole: 0.4,
+                    pieSliceText: 'percentage',
+                    pieSliceTextStyle: {
+                      color: isDark ? '#e2e8f0' : '#1e293b',
+                      fontSize: 12,
+                      fontWeight: 600
+                    },
+                    legend: {
+                      position: 'bottom',
+                      textStyle: {
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        fontSize: 12
+                      },
+                      alignment: 'center'
+                    },
+                    tooltip: {
+                      textStyle: {
+                        color: '#1e293b',
+                        fontSize: 12
+                      },
+                      trigger: 'focus',
+                      showColorCode: true
+                    },
+                    colors: admissionsData.genderData?.map(item => item.color) || ['#22c55e', '#a78bfa'],
+                    backgroundColor: 'transparent',
+                    chartArea: {
+                      left: 20,
+                      top: 20,
+                      right: 20,
+                      bottom: 60,
+                      width: '100%',
+                      height: '100%'
+                    }
+                  }}
+                  loader={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>Loading...</div>}
+                />
+              </AdmissionsChartCard>
+            </AdmissionsChartsGrid>
+            
+            {/* Additional Cards: Grade Distribution, Latest Admissions, Today's Birthdays */}
+            <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
+              {/* Class Wise Strength Card */}
+              <AdmissionsChartCard style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+                <AdmissionsChartTitle style={{ marginBottom: '1rem' }}>Class Wise Strength</AdmissionsChartTitle>
+                <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={classStrengths} 
+                      layout="vertical"
+                      margin={{ top: 5, right: 50, left: 0, bottom: 5 }}
+                    >
+                      <XAxis type="number" stroke={isDark ? '#888' : '#666'} />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        stroke={isDark ? '#888' : '#666'}
+                        width={100}
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        interval={0}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          background: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          padding: '8px 12px'
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="girls" stackId="a" fill="#22c55e" name="Girls" radius={[0, 4, 4, 0]}>
+                        <LabelList 
+                          dataKey="total" 
+                          position="right" 
+                          style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 600 }}
+                          formatter={(value: number) => value || ''}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </AdmissionsChartCard>
+              
+              {/* Latest Admissions Card */}
+              <AdmissionsChartCard style={{ minHeight: '400px' }}>
+                <AdmissionsChartTitle>Latest Admissions</AdmissionsChartTitle>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.75rem',
+                  padding: '0.5rem 0',
+                  maxHeight: '350px',
+                  overflowY: 'auto'
+                }}>
+                  {latestAdmissions.length === 0 ? (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '2rem',
+                      textAlign: 'center',
+                      color: isDark ? '#888' : '#666'
+                    }}>
+                      <People style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
+                      <div style={{ fontSize: '0.95rem' }}>No recent admissions</div>
+                    </div>
+                  ) : (
+                    latestAdmissions.map((admission, idx) => {
+                      const admissionDate = admission.admissionDate 
+                        ? new Date(admission.admissionDate).toLocaleDateString('en-GB', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })
+                        : 'N/A';
+                      
+                      const initials = admission.name
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2);
+                      
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem',
+                            background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                            borderRadius: '8px',
+                            border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
+                          }}
+                        >
+                          {admission.pictureUrl ? (
+                            <img
+                              src={admission.pictureUrl}
+                              alt={admission.name}
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: '#6366f1',
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.875rem',
+                                fontWeight: 600
+                              }}
+                            >
+                              {initials}
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: '0.95rem',
+                              fontWeight: 600,
+                              color: isDark ? '#e2e8f0' : '#1e293b',
+                              marginBottom: '0.25rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {admission.name}
+                            </div>
+                            <div style={{
+                              fontSize: '0.8rem',
+                              color: isDark ? '#888' : '#666',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem'
+                            }}>
+                              <School style={{ fontSize: '0.75rem' }} />
+                              <span>{admission.className}</span>
+                              <span style={{ margin: '0 0.25rem' }}>•</span>
+                              <span>{admissionDate}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </AdmissionsChartCard>
+            </AdmissionsChartsGrid>
+            
+            {/* Today's Birthdays Card */}
+            <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
+              <AdmissionsChartCard style={{ 
+                minHeight: '200px',
+                background: 'linear-gradient(135deg, #ec4899 0%, #ef4444 100%)',
+                color: '#fff',
+                border: 'none'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  padding: '2rem',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '4rem',
+                    marginBottom: '1rem',
+                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                  }}>
+                    🎂
+                  </div>
+                  <AdmissionsChartTitle style={{ color: '#fff', marginBottom: '0.5rem' }}>
+                    Today's Birthdays
+                  </AdmissionsChartTitle>
+                  <div style={{
+                    fontSize: '1rem',
+                    marginBottom: '1rem',
+                    opacity: 0.95
+                  }}>
+                    {new Date().toLocaleDateString('en-GB', { 
+                      day: 'numeric', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    marginBottom: '1.5rem'
+                  }}>
+                    Celebrating {admissionsData.todaysBirthdaysCount} {admissionsData.todaysBirthdaysCount === 1 ? 'birthday' : 'birthdays'} today!
+                  </div>
+                  {admissionsData.todaysBirthdaysCount > 0 && (
+                    <div style={{
+                      width: '100%',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      marginBottom: '1rem',
+                      padding: '0.5rem',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px'
+                    }}>
+                      {todaysBirthdays.map((student, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.5rem',
+                            marginBottom: '0.5rem',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '6px'
+                          }}
+                        >
+                          {student.pictureUrl ? (
+                            <img
+                              src={student.pictureUrl}
+                              alt={student.name}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: 'rgba(255, 255, 255, 0.3)',
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.75rem',
+                                fontWeight: 600
+                              }}
+                            >
+                              {student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                          )}
+                          <div style={{ flex: 1, textAlign: 'left' }}>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                              {student.name}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                              {student.className}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    }}
+                  >
+                    View Details & Send SMS
+                  </button>
+                </div>
+              </AdmissionsChartCard>
+            </AdmissionsChartsGrid>
+            
+          </>
+        )}
+      </TabContent>
+      
       {hoveredAvatar && (
         <div
           style={{
