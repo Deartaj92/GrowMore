@@ -5557,8 +5557,8 @@ const Dashboard: React.FC = () => {
       
       const [attendanceResult, halfLeavesResult] = await Promise.all([
         supabase
-          .from('attendance_records')
-          .select('student_id, status, date')
+        .from('attendance_records')
+        .select('student_id, status, date')
           .eq('date', dashboardDate)
           .eq('session_id', sessionData.id)
           .eq('school_id', user.school_id),
@@ -5616,7 +5616,7 @@ const Dashboard: React.FC = () => {
   // Fetch Attendance Trend Data (Last 30 working days, excluding Sundays and holidays)
   useEffect(() => {
     const fetchAttendanceTrend = async () => {
-      if (!user?.school_id || !sessionData?.id) return;
+      if (!user?.school_id || !sessionData?.id || !dashboardDate) return;
       
       setAttendanceChartsLoading(true);
       try {
@@ -5625,18 +5625,18 @@ const Dashboard: React.FC = () => {
         const trendData: Array<{ day: string; rate: number }> = [];
         let totalRate = 0;
         
-        // Calculate date range (last 30 days from selected date)
+        // Calculate date range - ensure selected date is included
+        const selectedDateStr = selectedDate.toISOString().slice(0, 10);
         const endDate = new Date(selectedDate);
         endDate.setHours(23, 59, 59, 999);
         const startDate = new Date(selectedDate);
-        startDate.setDate(startDate.getDate() - 29); // 30 days including selected date
+        startDate.setDate(startDate.getDate() - 60); // Go back 60 days to find 30 working days
         startDate.setHours(0, 0, 0, 0);
         
         const startDateStr = startDate.toISOString().slice(0, 10);
         const endDateStr = endDate.toISOString().slice(0, 10);
         
         // Fetch holidays that overlap with the date range
-        // A holiday overlaps if: start_date <= endDate AND end_date >= startDate
         const { data: holidaysData } = await supabase
           .from('holidays')
           .select('start_date, end_date')
@@ -5661,19 +5661,39 @@ const Dashboard: React.FC = () => {
           });
         }
         
+        // Check if selected date is a working day
+        const selectedDayOfWeek = selectedDate.getDay();
+        const isSelectedDateWorkingDay = selectedDayOfWeek !== 0 && !holidayDates.has(selectedDateStr);
+        
         // Get all working days (excluding Sundays and holidays)
+        // Start from selected date and go backwards
         const workingDays: Array<{ date: Date; dateStr: string; dayName: string }> = [];
-        let daysBack = 0;
+        let daysBack = 0; // Start from selected date (daysBack = 0)
         let workingDaysCount = 0;
         
-        while (workingDaysCount < 30 && daysBack < 60) {
+        // First, add selected date if it's a working day
+        if (isSelectedDateWorkingDay) {
+          const dayName = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`;
+          workingDays.push({ 
+            date: new Date(selectedDate), 
+            dateStr: selectedDateStr, 
+            dayName 
+          });
+          workingDaysCount++;
+          daysBack = 1; // Start from next day
+        } else {
+          daysBack = 1; // Skip selected date if it's not a working day
+        }
+        
+        // Continue going backwards to get remaining working days
+        while (workingDaysCount < 30 && daysBack < 90) {
           const date = new Date(selectedDate);
           date.setDate(date.getDate() - daysBack);
           const dateStr = date.toISOString().slice(0, 10);
           const dayOfWeek = date.getDay();
           
           // Skip Sundays (dayOfWeek === 0) and holidays
-          if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr <= endDateStr && dateStr >= startDateStr) {
+          if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr >= startDateStr) {
             const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
             workingDays.push({ date, dateStr, dayName });
             workingDaysCount++;
@@ -5681,8 +5701,19 @@ const Dashboard: React.FC = () => {
           daysBack++;
         }
         
-        // Reverse to get chronological order (oldest first)
-        workingDays.reverse();
+        // Sort to get chronological order (oldest first), but ensure selected date is always last
+        workingDays.sort((a, b) => {
+          if (a.dateStr === selectedDateStr) return 1; // Selected date goes to end
+          if (b.dateStr === selectedDateStr) return -1;
+          return a.dateStr.localeCompare(b.dateStr);
+        });
+        
+        // Ensure selected date is the last item if it exists
+        const selectedDateIndex = workingDays.findIndex(wd => wd.dateStr === selectedDateStr);
+        if (selectedDateIndex >= 0 && selectedDateIndex !== workingDays.length - 1) {
+          const selectedDateItem = workingDays.splice(selectedDateIndex, 1)[0];
+          workingDays.push(selectedDateItem);
+        }
         
         if (workingDays.length === 0) {
           setAttendanceTrendData([]);
@@ -5691,21 +5722,24 @@ const Dashboard: React.FC = () => {
           return;
         }
         
-        const workingDaysDateStrs = workingDays.map(wd => wd.dateStr);
+        const workingDaysDateStrs = new Set(workingDays.map(wd => wd.dateStr));
         const minDate = workingDays[0].dateStr;
         const maxDate = workingDays[workingDays.length - 1].dateStr;
         
-        // Batch fetch: Get all attendance records for the working days
-        const { data: allAttendanceData, error } = await supabase
-          .from('attendance_records')
-          .select('date, status')
-          .gte('date', minDate)
-          .lte('date', maxDate)
-          .in('date', workingDaysDateStrs)
-          .eq('session_id', sessionData.id)
-          .eq('school_id', user.school_id);
+        // Use fetchAllRows to get ALL attendance records in the range (handles pagination)
+        const allAttendanceData = await fetchAllRows(async (from, to) => {
+          const result = await supabase
+            .from('attendance_records')
+            .select('date, status')
+            .gte('date', minDate)
+            .lte('date', maxDate)
+            .eq('session_id', sessionData.id)
+            .eq('school_id', user.school_id)
+            .range(from, to);
+          return { data: result.data, error: result.error };
+        });
         
-        // Group attendance by date
+        // Group attendance by date - only for working days
         const attendanceByDate = new Map<string, { total: number; present: number }>();
         
         // Initialize all working days with 0
@@ -5713,17 +5747,40 @@ const Dashboard: React.FC = () => {
           attendanceByDate.set(dateStr, { total: 0, present: 0 });
         });
         
-        // Process attendance data
-        if (!error && allAttendanceData) {
+        // Process ALL attendance data - filter to only working days
+        if (allAttendanceData && allAttendanceData.length > 0) {
           allAttendanceData.forEach((record: any) => {
-            const dateStr = record.date;
-            if (attendanceByDate.has(dateStr)) {
-              const stats = attendanceByDate.get(dateStr)!;
-              stats.total++;
-              if (record.status === 'present' || record.status === 'late') {
-                stats.present++;
+            // Ensure date is in YYYY-MM-DD format
+            let dateStr = record.date;
+            if (dateStr && typeof dateStr === 'string') {
+              // If date includes time, extract just the date part
+              dateStr = dateStr.split('T')[0];
+              
+              // Only process if it's a working day
+              if (workingDaysDateStrs.has(dateStr)) {
+                const stats = attendanceByDate.get(dateStr);
+                if (stats) {
+                  stats.total++;
+                  if (record.status === 'present' || record.status === 'late') {
+                    stats.present++;
+                  }
+                }
               }
             }
+          });
+        }
+        
+        // For the selected date, override with attendanceDataForDate to ensure consistency with summary cards
+        if (isSelectedDateWorkingDay && workingDaysDateStrs.has(selectedDateStr)) {
+          const selectedDatePresent = attendanceDataForDate.filter(a => 
+            a.status === 'present' || a.status === 'late'
+          ).length;
+          const selectedDateTotal = attendanceDataForDate.length;
+          
+          // Update the stats for selected date
+          attendanceByDate.set(selectedDateStr, {
+            total: selectedDateTotal,
+            present: selectedDatePresent
           });
         }
         
@@ -5738,7 +5795,19 @@ const Dashboard: React.FC = () => {
         setAttendanceTrendData(trendData);
         
         // Calculate today's rate and average
-        const todayRate = trendData[trendData.length - 1]?.rate || 0;
+        // Use the selected date's rate from attendanceDataForDate for consistency
+        let todayRate = 0;
+        if (isSelectedDateWorkingDay) {
+          const selectedDatePresent = attendanceDataForDate.filter(a => 
+            a.status === 'present' || a.status === 'late'
+          ).length;
+          const selectedDateTotal = attendanceDataForDate.length;
+          todayRate = selectedDateTotal > 0 
+            ? Math.round((selectedDatePresent / selectedDateTotal) * 100) 
+            : 0;
+        } else {
+          todayRate = trendData[trendData.length - 1]?.rate || 0;
+        }
         const avg = trendData.length > 0 ? Math.round(totalRate / trendData.length) : 0;
         setTodayAttendanceRate(todayRate);
         setWeekAvgAttendanceRate(avg);
@@ -5750,7 +5819,7 @@ const Dashboard: React.FC = () => {
     };
     
     fetchAttendanceTrend();
-  }, [user?.school_id, sessionData?.id, dashboardDate]);
+  }, [user?.school_id, sessionData?.id, dashboardDate, attendanceDataForDate]);
   
   // Fetch Class Attendance Data (Today) - Optimized with batch queries
   useEffect(() => {
@@ -5920,11 +5989,11 @@ const Dashboard: React.FC = () => {
       try {
         const today = dashboardDate;
         
-        // First, get all students who are absent today (without joins)
+        // First, get all students who are absent on the selected date (without joins)
         const { data: absentTodayRecords, error: absentTodayError } = await supabase
           .from('attendance_records')
           .select('student_id, class_id, section_id')
-          .eq('date', today)
+          .eq('date', dashboardDate)
           .eq('status', 'absent')
           .eq('session_id', sessionData.id)
           .eq('school_id', user.school_id);
@@ -7741,24 +7810,24 @@ const Dashboard: React.FC = () => {
       {/* Tab Navigation - Minimal Header */}
       <TabContainer>
         <TabsWrapper>
-          <TabButton 
-            active={activeTab === 'attendance'} 
-            onClick={() => setActiveTab('attendance')}
-          >
-            Attendance
-          </TabButton>
-          <TabButton 
-            active={activeTab === 'fee'} 
-            onClick={() => setActiveTab('fee')}
-          >
-            Fee Collection
-          </TabButton>
-          <TabButton 
-            active={activeTab === 'admissions'} 
-            onClick={() => setActiveTab('admissions')}
-          >
-            Admissions
-          </TabButton>
+        <TabButton 
+          active={activeTab === 'attendance'} 
+          onClick={() => setActiveTab('attendance')}
+        >
+          Attendance
+        </TabButton>
+        <TabButton 
+          active={activeTab === 'fee'} 
+          onClick={() => setActiveTab('fee')}
+        >
+          Fee Collection
+        </TabButton>
+        <TabButton 
+          active={activeTab === 'admissions'} 
+          onClick={() => setActiveTab('admissions')}
+        >
+          Admissions
+        </TabButton>
         </TabsWrapper>
         <DashboardDateInput
           type="date"
@@ -7879,47 +7948,62 @@ const Dashboard: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
                 <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
               </div>
+            ) : attendanceTrendData.length === 0 ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                No attendance data available
+              </div>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={attendanceTrendData}>
+                  <AreaChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                    <defs>
+                      <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid 
-                      horizontal={true} 
-                      vertical={false} 
                       strokeDasharray="3 3" 
-                      stroke={isDark ? '#555' : '#d1d5db'}
-                      opacity={0.5}
+                      stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                      horizontal={true}
+                      vertical={false}
                     />
                     <XAxis 
                       dataKey="day" 
-                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
                     />
                     <YAxis 
                       domain={[0, 100]}
-                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
                       tickFormatter={(value) => `${value}%`}
+                      width={50}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isDark ? '#1e293b' : '#fff',
-                        border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        color: isDark ? '#e2e8f0' : '#1e293b'
+                        color: '#1e293b',
+                        fontSize: '12px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                       }}
-                      formatter={(value: any) => `${value}%`}
-                      labelFormatter={(label) => label}
+                      formatter={(value: any) => [`${value}%`, 'Attendance Rate']}
+                      labelFormatter={(label) => `Date: ${label}`}
                     />
-                    <Line 
+                    <Area 
                       type="monotone" 
                       dataKey="rate" 
                       stroke="#3b82f6" 
                       strokeWidth={2}
-                      dot={{ fill: '#22c55e', r: 4 }}
-                      activeDot={{ r: 6 }}
+                      fill="url(#colorAttendance)"
+                      dot={{ fill: '#3b82f6', r: 3 }}
+                      activeDot={{ r: 5, fill: '#22c55e' }}
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
                 <AttendanceChartSummary>
                   <AttendanceChartSummaryItem>
@@ -7948,34 +8032,39 @@ const Dashboard: React.FC = () => {
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={classAttendanceData} stackOffset="expand">
+                  <BarChart 
+                    data={classAttendanceData} 
+                    stackOffset="expand"
+                    margin={{ top: 5, right: 10, left: 0, bottom: 20 }}
+                  >
                     <CartesianGrid 
-                      horizontal={true} 
-                      vertical={false} 
                       strokeDasharray="3 3" 
-                      stroke={isDark ? '#555' : '#d1d5db'}
-                      opacity={0.5}
+                      stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                      horizontal={true}
+                      vertical={false}
                     />
                     <XAxis 
                       dataKey="class" 
-                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 10 }}
-                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
+                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
                     />
                     <YAxis 
                       domain={[0, 1]}
-                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
                       tickFormatter={(value) => `${Math.round(value * 100)}%`}
+                      width={50}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isDark ? '#1e293b' : '#fff',
-                        border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        color: isDark ? '#e2e8f0' : '#1e293b'
+                        color: '#1e293b',
+                        fontSize: '12px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                       }}
                       formatter={(value: any, name: string, props: any) => {
                         const className = props.payload?.class;
@@ -7987,11 +8076,6 @@ const Dashboard: React.FC = () => {
                         return [count, name];
                       }}
                       labelFormatter={(label) => `Class: ${label}`}
-                    />
-                    <Legend 
-                      wrapperStyle={{ paddingTop: '10px' }}
-                      iconType="rect"
-                      formatter={(value) => value}
                     />
                     <Bar 
                       dataKey="present" 
@@ -8019,24 +8103,32 @@ const Dashboard: React.FC = () => {
                     />
                   </BarChart>
                 </ResponsiveContainer>
-                {(() => {
-                  const belowAverage = classAttendanceData.filter(c => {
-                    const rate = c.total > 0 ? ((c.present + c.late) / c.total) * 100 : 0;
-                    return rate < 75;
-                  });
-                  if (belowAverage.length > 0) {
-                    const rate = belowAverage[0].total > 0 
-                      ? Math.round(((belowAverage[0].present + belowAverage[0].late) / belowAverage[0].total) * 100)
-                      : 0;
-                    return (
-                      <ClassWarningBanner>
-                        <Warning style={{ color: '#f59e0b', fontSize: '1rem' }} />
-                        {belowAverage[0].class} below average ({rate}%)
-                      </ClassWarningBanner>
-                    );
-                  }
-                  return null;
-                })()}
+                <AttendanceChartSummary>
+                  <AttendanceChartSummaryItem>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#22c55e', borderRadius: '2px' }} />
+                      <AttendanceChartSummaryLabel>Present</AttendanceChartSummaryLabel>
+                    </div>
+                  </AttendanceChartSummaryItem>
+                  <AttendanceChartSummaryItem>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#f59e0b', borderRadius: '2px' }} />
+                      <AttendanceChartSummaryLabel>Late</AttendanceChartSummaryLabel>
+                    </div>
+                  </AttendanceChartSummaryItem>
+                  <AttendanceChartSummaryItem>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#3b82f6', borderRadius: '2px' }} />
+                      <AttendanceChartSummaryLabel>Leave</AttendanceChartSummaryLabel>
+                    </div>
+                  </AttendanceChartSummaryItem>
+                  <AttendanceChartSummaryItem>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#ef4444', borderRadius: '2px' }} />
+                      <AttendanceChartSummaryLabel>Absent</AttendanceChartSummaryLabel>
+                    </div>
+                  </AttendanceChartSummaryItem>
+                </AttendanceChartSummary>
               </>
             )}
           </AttendanceChartCard>
