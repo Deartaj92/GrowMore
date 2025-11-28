@@ -30,7 +30,10 @@ import {
   QuestionAnswer,
   Group,
   PersonAdd,
-  AttachMoney
+  AttachMoney,
+  Warning,
+  Percent,
+  HourglassEmpty
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -41,9 +44,14 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
+  LineChart,
+  Line,
+  CartesianGrid,
   Cell,
   Legend,
-  LabelList
+  LabelList,
+  Area,
+  AreaChart
 } from 'recharts';
 import Chart from 'react-apexcharts';
 import { Chart as GoogleChart } from 'react-google-charts';
@@ -103,15 +111,22 @@ const DashboardContainer = styled.div`
 `;
 
 const TabContainer = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 0.25rem;
-  background: transparent;
+  background: ${({ theme }) => theme.BG};
   border-bottom: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
     ? '1px solid rgba(255, 255, 255, 0.1)'
     : '1px solid rgba(0, 0, 0, 0.1)'};
-  padding: 0;
+  padding: 0.4rem 0;
   margin-bottom: 1.5rem;
   overflow-x: auto;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   
   &::-webkit-scrollbar {
     height: 2px;
@@ -125,11 +140,59 @@ const TabContainer = styled.div`
   @media (max-width: 768px) {
     margin-bottom: 1rem;
     gap: 0.2rem;
+    flex-wrap: wrap;
+    padding: 0.3rem 0;
+  }
+`;
+
+const TabsWrapper = styled.div`
+  display: flex;
+  gap: 0.25rem;
+  flex: 1;
+  
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+  }
+`;
+
+const DashboardDateInput = styled.input`
+  padding: 0.5rem 0.75rem;
+  border: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(0, 0, 0, 0.2)'};
+  border-radius: 6px;
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.02)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.04)'};
+  }
+  
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+    box-shadow: 0 0 0 3px ${({ theme }) => (theme.ACCENT || '#6366f1')}33;
+  }
+  
+  @media (max-width: 768px) {
+    min-width: 120px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
   }
 `;
 
 const TabButton = styled.button<{ active: boolean }>`
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1.25rem;
   border: none;
   border-bottom: ${({ active, theme }) => 
     active 
@@ -291,6 +354,535 @@ const AdmissionsChartTitle = styled.div`
   font-size: 1rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const CollectionChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CollectionChartCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 350px;
+`;
+
+const CollectionChartTitle = styled.div`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const FeeCollectionDetailsCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  margin-top: 1rem;
+  overflow-x: auto;
+`;
+
+const FeeCollectionDetailsTitle = styled.div`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 1rem;
+`;
+
+const FeeCollectionTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+`;
+
+const FeeCollectionTableHeader = styled.thead`
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.03)'};
+`;
+
+const FeeCollectionTableHeaderCell = styled.th`
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-bottom: 2px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(0, 0, 0, 0.1)'};
+  
+  &:first-child {
+    padding-left: 0;
+  }
+  
+  &:last-child {
+    padding-right: 0;
+  }
+`;
+
+const FeeCollectionTableBody = styled.tbody``;
+
+const FeeCollectionTableRow = styled.tr<{ isTotal?: boolean }>`
+  border-bottom: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'};
+  
+  ${({ isTotal }) => isTotal && `
+    font-weight: 600;
+    background: ${({ theme }: any) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  `}
+  
+  &:hover {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  }
+`;
+
+const FeeCollectionTableCell = styled.td`
+  padding: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  &:first-child {
+    padding-left: 0;
+    font-weight: 500;
+  }
+  
+  &:last-child {
+    padding-right: 0;
+  }
+`;
+
+const StatusBadge = styled.span<{ color: string; bgColor: string }>`
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: ${({ bgColor }) => bgColor};
+  color: ${({ color }) => color};
+`;
+
+const DefaultersCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  margin-top: 1rem;
+  overflow-x: auto;
+`;
+
+const DefaultersTitle = styled.div`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 1rem;
+  
+  .underlined {
+    color: #3b82f6;
+    text-decoration: underline;
+    text-decoration-color: #3b82f6;
+    text-underline-offset: 4px;
+  }
+`;
+
+const DefaultersTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+`;
+
+const DefaultersTableHeader = styled.thead`
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.03)'};
+`;
+
+const DefaultersTableHeaderCell = styled.th<{ align?: string }>`
+  padding: 0.75rem;
+  text-align: ${({ align }) => align || 'left'};
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-bottom: 2px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(0, 0, 0, 0.1)'};
+  
+  &:first-child {
+    padding-left: 0;
+  }
+  
+  &:last-child {
+    padding-right: 0;
+  }
+`;
+
+const DefaultersTableBody = styled.tbody``;
+
+const DefaultersTableRow = styled.tr<{ isTotal?: boolean }>`
+  border-bottom: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'};
+  
+  ${({ isTotal }) => isTotal && `
+    font-weight: 600;
+    background: ${({ theme }: any) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  `}
+  
+  &:hover {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  }
+`;
+
+const DefaultersTableCell = styled.td<{ align?: string; isMonth?: boolean }>`
+  padding: 0.75rem;
+  text-align: ${({ align }) => align || 'left'};
+  color: ${({ theme, isMonth }) => isMonth ? '#3b82f6' : theme.TEXT_PRIMARY};
+  
+  &:first-child {
+    padding-left: 0;
+  }
+  
+  &:last-child {
+    padding-right: 0;
+  }
+`;
+
+const AttendanceStatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const AttendanceStatCard = styled.div<{ accentColor: string }>`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 1px 4px rgba(0, 0, 0, 0.2)'
+    : '0 1px 4px rgba(0, 0, 0, 0.06)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: ${({ accentColor }) => accentColor};
+  }
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? '0 2px 8px rgba(0, 0, 0, 0.25)'
+      : '0 2px 8px rgba(0, 0, 0, 0.1)'};
+  }
+`;
+
+const AttendanceStatRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+`;
+
+const AttendanceStatTopRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+`;
+
+const AttendanceStatIcon = styled.div<{ color: string }>`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: ${({ color }) => color}15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ color }) => color};
+  font-size: 1rem;
+  flex-shrink: 0;
+`;
+
+const AttendanceStatTitle = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#9ca3af' : '#6b7280')};
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+`;
+
+const AttendanceStatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  line-height: 1;
+  letter-spacing: -0.3px;
+`;
+
+const AttendanceStatRightInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+`;
+
+const AttendanceStatPercentage = styled.div<{ color: string }>`
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: ${({ color }) => color};
+  letter-spacing: 0.1px;
+`;
+
+const AttendanceStatStatus = styled.div<{ status: 'good' | 'warning' | 'bad' }>`
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: ${({ status, theme }) => {
+    if (status === 'good') return theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)';
+    if (status === 'warning') return theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.08)';
+    return theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)';
+  }};
+  color: ${({ status }) => {
+    if (status === 'good') return '#22c55e';
+    if (status === 'warning') return '#f59e0b';
+    return '#ef4444';
+  }};
+  border: 1px solid ${({ status, theme }) => {
+    if (status === 'good') return theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)';
+    if (status === 'warning') return theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.2)';
+    return theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)';
+  }};
+`;
+
+// Attendance Chart Cards
+const AttendanceChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const AttendanceChartCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 10px;
+  padding: 1rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 1px 4px rgba(0, 0, 0, 0.2)'
+    : '0 1px 4px rgba(0, 0, 0, 0.06)'};
+`;
+
+const AttendanceChartHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-weight: 600;
+  font-size: 0.9rem;
+`;
+
+const AttendanceChartSummary = styled.div`
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'};
+`;
+
+const AttendanceChartSummaryItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const AttendanceChartSummaryLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#9ca3af' : '#6b7280')};
+`;
+
+const AttendanceChartSummaryValue = styled.div`
+  font-size: 1rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const ClassWarningBanner = styled.div`
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(251, 191, 36, 0.15)'
+    : 'rgba(251, 191, 36, 0.1)'};
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+// Consecutive Absent Students Card
+const ConsecutiveAbsentCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 10px;
+  padding: 1rem;
+  border: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? '0 1px 4px rgba(0, 0, 0, 0.2)'
+    : '0 1px 4px rgba(0, 0, 0, 0.06)'};
+  margin-bottom: 1rem;
+`;
+
+const ConsecutiveAbsentHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-weight: 600;
+  font-size: 0.9rem;
+`;
+
+const ConsecutiveAbsentTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+
+const ConsecutiveAbsentTableHeader = styled.thead`
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.03)'};
+`;
+
+const ConsecutiveAbsentTableHeaderCell = styled.th`
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#9ca3af' : '#6b7280')};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ConsecutiveAbsentTableBody = styled.tbody``;
+
+const ConsecutiveAbsentTableRow = styled.tr`
+  border-bottom: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'};
+  
+  &:hover {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(0, 0, 0, 0.02)'};
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ConsecutiveAbsentTableCell = styled.td`
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const ConsecutiveDaysBadge = styled.span<{ days: number }>`
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: ${({ days }) => {
+    if (days >= 5) return 'rgba(239, 68, 68, 0.2)';
+    if (days >= 3) return 'rgba(251, 191, 36, 0.2)';
+    return 'rgba(59, 130, 246, 0.2)';
+  }};
+  color: ${({ days }) => {
+    if (days >= 5) return '#ef4444';
+    if (days >= 3) return '#f59e0b';
+    return '#3b82f6';
+  }};
+  border: 1px solid ${({ days }) => {
+    if (days >= 5) return 'rgba(239, 68, 68, 0.3)';
+    if (days >= 3) return 'rgba(251, 191, 36, 0.3)';
+    return 'rgba(59, 130, 246, 0.3)';
+  }};
 `;
 
 const PageHeader = styled.div`
@@ -2933,6 +3525,15 @@ const Dashboard: React.FC = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<any[]>([]);
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
+  
+  // Attendance stats state
+  const [attendanceStats, setAttendanceStats] = useState({
+    present: 0,
+    absent: 0,
+    chronic: 0,
+    rate: 0,
+    totalStudents: 0
+  });
   const [exportAbsentLoading, setExportAbsentLoading] = useState(false);
   const [exportPresentLoading, setExportPresentLoading] = useState(false);
   const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
@@ -2945,6 +3546,7 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
   const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
   const [absentDate, setAbsentDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [dashboardDate, setDashboardDate] = useState(() => new Date().toISOString().slice(0,10));
   
   // Inject CSS for Google Charts tooltips in dark mode
   useEffect(() => {
@@ -3073,6 +3675,56 @@ const Dashboard: React.FC = () => {
   });
   const [feeSummaryLoading, setFeeSummaryLoading] = useState(false);
   
+  // Collection charts data state
+  const [dailyCollectionData, setDailyCollectionData] = useState<Array<{ day: number; amount: number }>>([]);
+  const [monthlyCollectionData, setMonthlyCollectionData] = useState<Array<{ month: string; amount: number }>>([]);
+  const [collectionChartsLoading, setCollectionChartsLoading] = useState(false);
+  
+  // Fee collection details state
+  const [feeCollectionDetails, setFeeCollectionDetails] = useState({
+    previousArrears: {
+      oldStudents: 0,
+      newAdmissions: 0,
+      totalPayable: 0,
+      paid: 0,
+      discount: 0,
+      droppedOut: 0,
+      remaining: 0
+    },
+    currentMonth: {
+      oldStudents: 0,
+      newAdmissions: 0,
+      totalPayable: 0,
+      paid: 0,
+      discount: 0,
+      droppedOut: 0,
+      remaining: 0
+    },
+    nextMonths: {
+      oldStudents: 0,
+      newAdmissions: 0,
+      totalPayable: 0,
+      paid: 0,
+      discount: 0,
+      droppedOut: 0,
+      remaining: 0
+    },
+    total: {
+      oldStudents: 0,
+      newAdmissions: 0,
+      totalPayable: 0,
+      paid: 0,
+      discount: 0,
+      droppedOut: 0,
+      remaining: 0
+    }
+  });
+  const [feeCollectionDetailsLoading, setFeeCollectionDetailsLoading] = useState(false);
+  
+  // Defaulters data state
+  const [defaultersData, setDefaultersData] = useState<Array<{ month: string; challan: number; amount: number }>>([]);
+  const [defaultersLoading, setDefaultersLoading] = useState(false);
+  
   // Tab state
   const [activeTab, setActiveTab] = useState<'attendance' | 'fee' | 'admissions'>('attendance');
   
@@ -3198,6 +3850,459 @@ const Dashboard: React.FC = () => {
     return allResults;
   };
 
+  // Fetch collection charts data
+  const fetchCollectionChartsData = useCallback(async () => {
+    if (!user?.school_id) return;
+    
+    setCollectionChartsLoading(true);
+    try {
+      // Fetch all payments with pagination
+      const paymentsData = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('fee_payments')
+          .select('amount, payment_date')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      if (!paymentsData || paymentsData.length === 0) {
+        setDailyCollectionData([]);
+        setMonthlyCollectionData([]);
+        return;
+      }
+      
+      const selectedDate = new Date(dashboardDate);
+      const currentMonth = selectedDate.getMonth();
+      const currentYear = selectedDate.getFullYear();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      
+      // Prepare daily collection data for current month
+      const dailyData: { [key: number]: number } = {};
+      for (let day = 1; day <= daysInMonth; day++) {
+        dailyData[day] = 0;
+      }
+      
+      // Process payments for daily collection
+      paymentsData.forEach((payment: any) => {
+        if (payment.payment_date) {
+          const paymentDate = new Date(payment.payment_date);
+          if (paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear) {
+            const day = paymentDate.getDate();
+            dailyData[day] = (dailyData[day] || 0) + (Number(payment.amount) || 0);
+          }
+        }
+      });
+      
+      // Convert to array format
+      const dailyCollection = Object.keys(dailyData).map(day => ({
+        day: parseInt(day),
+        amount: dailyData[parseInt(day)]
+      }));
+      
+      setDailyCollectionData(dailyCollection);
+      
+      // Prepare monthly collection data for last 12 months
+      const monthlyData: { [key: string]: number } = {};
+      
+      // Initialize last 12 months ending at selected date
+      const months: string[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(currentYear, currentMonth - i, 1);
+        const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        months.push(monthKey);
+        monthlyData[monthKey] = 0;
+      }
+      
+      // Process payments for monthly collection
+      paymentsData.forEach((payment: any) => {
+        if (payment.payment_date) {
+          const paymentDate = new Date(payment.payment_date);
+          const monthKey = paymentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          if (monthlyData.hasOwnProperty(monthKey)) {
+            monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (Number(payment.amount) || 0);
+          }
+        }
+      });
+      
+      // Convert to array format
+      const monthlyCollection = months.map(month => ({
+        month,
+        amount: monthlyData[month] || 0
+      }));
+      
+      setMonthlyCollectionData(monthlyCollection);
+    } catch (error) {
+      console.error('Error fetching collection charts data:', error);
+    } finally {
+      setCollectionChartsLoading(false);
+    }
+  }, [user?.school_id, dashboardDate]);
+  
+  // Fetch collection charts data on mount and date change
+  useEffect(() => {
+    fetchCollectionChartsData();
+  }, [fetchCollectionChartsData]);
+  
+  // Fetch fee collection details
+  const fetchFeeCollectionDetails = useCallback(async () => {
+    if (!user?.school_id) return;
+    
+    setFeeCollectionDetailsLoading(true);
+    try {
+      // Get active session
+      const { data: sessionData } = await supabase
+        .from('sessions')
+        .select('id, start_date, end_date')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .maybeSingle();
+      
+      if (!sessionData) {
+        setFeeCollectionDetailsLoading(false);
+        return;
+      }
+      
+      const selectedDate = new Date(dashboardDate);
+      const currentMonth = selectedDate.getMonth() + 1; // 1-12
+      const currentYear = selectedDate.getFullYear();
+      
+      // Fetch all invoices with pagination
+      const invoices = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('fee_invoices')
+          .select('id, student_id, total_amount, month, year, status, invoice_date')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      // Fetch all payments with pagination
+      const payments = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('fee_payments')
+          .select('id, invoice_id, amount, payment_date')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      // Fetch all invoice items for discounts
+      const invoiceItems = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('fee_invoice_items')
+          .select('id, invoice_id, discount')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      // Fetch all students to determine old vs new
+      const students = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('students')
+          .select('id, admission_date, status, session_id')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      // Create maps for quick lookup
+      const paymentsByInvoice = new Map<number, number>();
+      payments.forEach((payment: any) => {
+        const invoiceId = payment.invoice_id;
+        const amount = Number(payment.amount) || 0;
+        paymentsByInvoice.set(invoiceId, (paymentsByInvoice.get(invoiceId) || 0) + amount);
+      });
+      
+      const discountsByInvoice = new Map<number, number>();
+      invoiceItems.forEach((item: any) => {
+        const invoiceId = item.invoice_id;
+        const discount = Number(item.discount) || 0;
+        discountsByInvoice.set(invoiceId, (discountsByInvoice.get(invoiceId) || 0) + discount);
+      });
+      
+      // Create student map
+      const studentMap = new Map<number, { admissionDate: string; status: string; sessionId: number }>();
+      students.forEach((student: any) => {
+        studentMap.set(student.id, {
+          admissionDate: student.admission_date,
+          status: student.status || 'active',
+          sessionId: student.session_id
+        });
+      });
+      
+      // Determine if student is new admission (admitted in current session)
+      const isNewAdmission = (studentId: number): boolean => {
+        const student = studentMap.get(studentId);
+        if (!student) return false;
+        return student.sessionId === sessionData.id;
+      };
+      
+      // Initialize totals
+      const previousArrears = {
+        oldStudents: 0,
+        newAdmissions: 0,
+        totalPayable: 0,
+        paid: 0,
+        discount: 0,
+        droppedOut: 0,
+        remaining: 0
+      };
+      
+      const currentMonthData = {
+        oldStudents: 0,
+        newAdmissions: 0,
+        totalPayable: 0,
+        paid: 0,
+        discount: 0,
+        droppedOut: 0,
+        remaining: 0
+      };
+      
+      const nextMonths = {
+        oldStudents: 0,
+        newAdmissions: 0,
+        totalPayable: 0,
+        paid: 0,
+        discount: 0,
+        droppedOut: 0,
+        remaining: 0
+      };
+      
+      // Helper to parse month (can be string like "January" or number 1-12)
+      const parseMonth = (month: any): number => {
+        if (typeof month === 'number') return month;
+        if (typeof month === 'string') {
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                             'july', 'august', 'september', 'october', 'november', 'december'];
+          const monthIndex = monthNames.findIndex(m => m.toLowerCase().startsWith(month.toLowerCase()));
+          if (monthIndex !== -1) return monthIndex + 1;
+          // Try parsing as number string
+          const num = parseInt(month);
+          if (!isNaN(num) && num >= 1 && num <= 12) return num;
+        }
+        return 0;
+      };
+      
+      // Process each invoice
+      invoices.forEach((invoice: any) => {
+        let invoiceYear = invoice.year;
+        let invoiceMonth = parseMonth(invoice.month);
+        
+        // If month/year not available, try to get from invoice_date
+        if (!invoiceYear || !invoiceMonth) {
+          const invoiceDate = invoice.invoice_date ? new Date(invoice.invoice_date) : 
+                             (invoice.created_at ? new Date(invoice.created_at) : null);
+          if (invoiceDate) {
+            invoiceYear = invoiceYear || invoiceDate.getFullYear();
+            invoiceMonth = invoiceMonth || invoiceDate.getMonth() + 1;
+          }
+        }
+        
+        if (!invoiceYear || !invoiceMonth) return; // Skip if we can't determine date
+        
+        const totalAmount = Number(invoice.total_amount) || 0;
+        const paid = paymentsByInvoice.get(invoice.id) || 0;
+        const discount = discountsByInvoice.get(invoice.id) || 0;
+        const studentId = invoice.student_id;
+        const student = studentMap.get(studentId);
+        const isDroppedOut = student?.status === 'withdrawn' || student?.status === 'dropped';
+        const isNew = isNewAdmission(studentId);
+        
+        let targetCategory: typeof previousArrears;
+        
+        // Categorize invoice
+        if (invoiceYear < currentYear || (invoiceYear === currentYear && invoiceMonth < currentMonth)) {
+          targetCategory = previousArrears;
+        } else if (invoiceYear === currentYear && invoiceMonth === currentMonth) {
+          targetCategory = currentMonthData;
+        } else {
+          targetCategory = nextMonths;
+        }
+        
+        // Add to totals
+        if (isNew) {
+          targetCategory.newAdmissions += totalAmount;
+        } else {
+          targetCategory.oldStudents += totalAmount;
+        }
+        
+        targetCategory.totalPayable += totalAmount;
+        targetCategory.paid += paid;
+        targetCategory.discount += discount;
+        
+        if (isDroppedOut) {
+          targetCategory.droppedOut += totalAmount - paid - discount;
+        }
+        
+        targetCategory.remaining += totalAmount - paid - discount;
+      });
+      
+      // Calculate totals
+      const total = {
+        oldStudents: previousArrears.oldStudents + currentMonthData.oldStudents + nextMonths.oldStudents,
+        newAdmissions: previousArrears.newAdmissions + currentMonthData.newAdmissions + nextMonths.newAdmissions,
+        totalPayable: previousArrears.totalPayable + currentMonthData.totalPayable + nextMonths.totalPayable,
+        paid: previousArrears.paid + currentMonthData.paid + nextMonths.paid,
+        discount: previousArrears.discount + currentMonthData.discount + nextMonths.discount,
+        droppedOut: previousArrears.droppedOut + currentMonthData.droppedOut + nextMonths.droppedOut,
+        remaining: previousArrears.remaining + currentMonthData.remaining + nextMonths.remaining
+      };
+      
+      setFeeCollectionDetails({
+        previousArrears,
+        currentMonth: currentMonthData,
+        nextMonths,
+        total
+      });
+    } catch (error) {
+      console.error('Error fetching fee collection details:', error);
+    } finally {
+      setFeeCollectionDetailsLoading(false);
+    }
+  }, [user?.school_id, dashboardDate]);
+  
+  // Fetch fee collection details on mount and date change
+  useEffect(() => {
+    fetchFeeCollectionDetails();
+  }, [fetchFeeCollectionDetails]);
+  
+  // Fetch defaulters data
+  const fetchDefaultersData = useCallback(async () => {
+    if (!user?.school_id) return;
+    
+    setDefaultersLoading(true);
+    try {
+      const selectedDate = new Date(dashboardDate);
+      const currentMonth = selectedDate.getMonth() + 1; // 1-12
+      const currentYear = selectedDate.getFullYear();
+      
+      // Fetch all invoices with pagination - get unpaid, partial, and overdue
+      const invoices = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('fee_invoices')
+          .select('id, total_amount, month, year, status, due_date, invoice_date')
+          .eq('school_id', user.school_id)
+          .in('status', ['unpaid', 'partial', 'overdue'])
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      // Fetch all payments to calculate remaining amounts
+      const payments = await fetchAllRows(async (from, to) => {
+        const result = await supabase
+          .from('fee_payments')
+          .select('id, invoice_id, amount')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+        return { data: result.data, error: result.error };
+      });
+      
+      // Create payments map
+      const paymentsByInvoice = new Map<number, number>();
+      payments.forEach((payment: any) => {
+        const invoiceId = payment.invoice_id;
+        const amount = Number(payment.amount) || 0;
+        paymentsByInvoice.set(invoiceId, (paymentsByInvoice.get(invoiceId) || 0) + amount);
+      });
+      
+      // Helper to parse month
+      const parseMonth = (month: any): number => {
+        if (typeof month === 'number') return month;
+        if (typeof month === 'string') {
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                             'july', 'august', 'september', 'october', 'november', 'december'];
+          const monthIndex = monthNames.findIndex(m => m.toLowerCase().startsWith(month.toLowerCase()));
+          if (monthIndex !== -1) return monthIndex + 1;
+          const num = parseInt(month);
+          if (!isNaN(num) && num >= 1 && num <= 12) return num;
+        }
+        return 0;
+      };
+      
+      // Initialize last 6 months data
+      const monthlyData: { [key: string]: { challan: number; amount: number } } = {};
+      const months: string[] = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(currentYear, currentMonth - i - 1, 1);
+        const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        const monthLabel = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
+        months.push(monthLabel);
+        monthlyData[monthKey] = { challan: 0, amount: 0 };
+      }
+      
+      // Process invoices
+      invoices.forEach((invoice: any) => {
+        let invoiceYear = invoice.year;
+        let invoiceMonth = parseMonth(invoice.month);
+        
+        // If month/year not available, try to get from invoice_date or due_date
+        if (!invoiceYear || !invoiceMonth) {
+          const invoiceDate = invoice.invoice_date ? new Date(invoice.invoice_date) : 
+                             (invoice.due_date ? new Date(invoice.due_date) : null);
+          if (invoiceDate) {
+            invoiceYear = invoiceYear || invoiceDate.getFullYear();
+            invoiceMonth = invoiceMonth || invoiceDate.getMonth() + 1;
+          }
+        }
+        
+        if (!invoiceYear || !invoiceMonth) return;
+        
+        const monthKey = new Date(invoiceYear, invoiceMonth - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        
+        // Check if this invoice is in the last 6 months
+        if (monthlyData.hasOwnProperty(monthKey)) {
+          const totalAmount = Number(invoice.total_amount) || 0;
+          const paid = paymentsByInvoice.get(invoice.id) || 0;
+          const remaining = totalAmount - paid;
+          
+          // Only count if there's remaining amount
+          if (remaining > 0) {
+            monthlyData[monthKey].challan += 1;
+            monthlyData[monthKey].amount += remaining;
+          }
+        }
+      });
+      
+      // Convert to array format
+      const defaultersArray = months.map(monthLabel => {
+        // Find matching monthKey
+        const monthKey = Object.keys(monthlyData).find(key => {
+          const date = new Date(key);
+          const label = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
+          return label === monthLabel;
+        });
+        
+        if (monthKey) {
+          return {
+            month: monthLabel,
+            challan: monthlyData[monthKey].challan,
+            amount: monthlyData[monthKey].amount
+          };
+        }
+        
+        return {
+          month: monthLabel,
+          challan: 0,
+          amount: 0
+        };
+      });
+      
+      setDefaultersData(defaultersArray);
+    } catch (error) {
+      console.error('Error fetching defaulters data:', error);
+    } finally {
+      setDefaultersLoading(false);
+    }
+  }, [user?.school_id, dashboardDate]);
+  
+  // Fetch defaulters data on mount and date change
+  useEffect(() => {
+    fetchDefaultersData();
+  }, [fetchDefaultersData]);
+
   // Fetch admissions data
   const fetchAdmissionsData = useCallback(async () => {
     if (!user?.school_id) {
@@ -3207,9 +4312,9 @@ const Dashboard: React.FC = () => {
     
     setAdmissionsLoading(true);
     try {
-      const now = new Date();
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const selectedDate = new Date(dashboardDate);
+      const currentMonthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      const currentMonthEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59);
       
       // Get active session and run initial queries in parallel
       const [sessionResult, enquiriesCount, studentsCount, familiesCount] = await Promise.all([
@@ -3465,7 +4570,7 @@ const Dashboard: React.FC = () => {
       const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
       for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - i, 1);
         const monthKey = format(date, 'MMM yyyy');
         const monthLabel = monthLabels[date.getMonth()];
         months.push({ monthKey, monthLabel, date });
@@ -3617,10 +4722,10 @@ const Dashboard: React.FC = () => {
     const tabChanged = prevTabRef.current !== activeTab;
     prevTabRef.current = activeTab;
     
-    if (activeTab === 'admissions' && tabChanged && !admissionsLoading) {
+    if (activeTab === 'admissions' && (tabChanged || !admissionsLoading)) {
       fetchAdmissionsData();
     }
-  }, [activeTab, fetchAdmissionsData, admissionsLoading]);
+  }, [activeTab, fetchAdmissionsData, admissionsLoading, dashboardDate]);
 
   // Show delete confirmation modal
   const showDeleteConfirmation = (fine: any) => {
@@ -4407,28 +5512,656 @@ const Dashboard: React.FC = () => {
   const totalStudents = students.length;
   // Use attendanceData for selected absentDate (already fetched for absentees)
   const [attendanceDataForDate, setAttendanceDataForDate] = useState<any[]>([]);
+  const [halfLeavesForDate, setHalfLeavesForDate] = useState<any[]>([]);
+  
+  // Attendance Trend and Class Attendance Charts
+  const [attendanceTrendData, setAttendanceTrendData] = useState<Array<{ day: string; rate: number }>>([]);
+  const [classAttendanceData, setClassAttendanceData] = useState<Array<{ 
+    class: string; 
+    present: number; 
+    absent: number; 
+    leave: number; 
+    late: number;
+    total: number;
+  }>>([]);
+  const [attendanceChartsLoading, setAttendanceChartsLoading] = useState(false);
+  const [todayAttendanceRate, setTodayAttendanceRate] = useState(0);
+  const [weekAvgAttendanceRate, setWeekAvgAttendanceRate] = useState(0);
+  
+  // Consecutive Absent Students
+  const [consecutiveAbsentStudents, setConsecutiveAbsentStudents] = useState<Array<{
+    student_id: number;
+    student_name: string;
+    class_name: string;
+    section_name?: string;
+    consecutive_days: number;
+  }>>([]);
+  const [consecutiveAbsentLoading, setConsecutiveAbsentLoading] = useState(false);
+  
   useEffect(() => {
     const fetchAttendanceForDate = async () => {
-      if (!user?.school_id) return; // Removed loading check to prevent circular dependency
+      if (!user?.school_id || !dashboardDate) return;
       
-      const { data, error } = await supabase
-        .from('attendance_records')
-        .select('student_id, status, date')
-        .eq('date', absentDate)
-        .eq('school_id', user.school_id);
-      setAttendanceDataForDate(data || []);
+      const { data: sessionData } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .maybeSingle();
+      
+      if (!sessionData?.id) {
+        setAttendanceDataForDate([]);
+        setHalfLeavesForDate([]);
+        return;
+      }
+      
+      const [attendanceResult, halfLeavesResult] = await Promise.all([
+        supabase
+          .from('attendance_records')
+          .select('student_id, status, date')
+          .eq('date', dashboardDate)
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id),
+        supabase
+          .from('half_leaves')
+          .select('person_id')
+          .eq('date', dashboardDate)
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id)
+          .eq('person_type', 'student')
+      ]);
+      
+      if (attendanceResult.error) {
+        console.error('Error fetching attendance:', attendanceResult.error);
+        setAttendanceDataForDate([]);
+      } else {
+        setAttendanceDataForDate(attendanceResult.data || []);
+      }
+      
+      if (halfLeavesResult.error) {
+        console.error('Error fetching half leaves:', halfLeavesResult.error);
+        setHalfLeavesForDate([]);
+      } else {
+        setHalfLeavesForDate(halfLeavesResult.data || []);
+      }
     };
     fetchAttendanceForDate();
-  }, [absentDate, user?.school_id]); // Removed loading dependency to prevent circular dependency
+  }, [dashboardDate, user?.school_id]);
   const presentToday = attendanceDataForDate.filter(a => a.status === 'present').length;
   const absentToday = attendanceDataForDate.filter(a => a.status === 'absent').length;
   const leaveToday = attendanceDataForDate.filter(a => a.status === 'leave').length;
   const lateToday = attendanceDataForDate.filter(a => a.status === 'late').length;
+  const halfLeaveCount = halfLeavesForDate.length;
+  
   const totalMarked = attendanceDataForDate.length;
   const presentPercent = totalMarked ? Math.round((presentToday / totalMarked) * 1000) / 10 : 0;
   const absentPercent = totalMarked ? Math.round((absentToday / totalMarked) * 1000) / 10 : 0;
   const leavePercent = totalMarked ? Math.round((leaveToday / totalMarked) * 1000) / 10 : 0;
   const latePercent = totalMarked ? Math.round((lateToday / totalMarked) * 1000) / 10 : 0;
+  const halfLeavePercent = totalMarked ? Math.round((halfLeaveCount / totalMarked) * 1000) / 10 : 0;
+  
+  // Helper to get status based on percentage
+  const getStatus = (percent: number, isPositive: boolean = false): 'good' | 'warning' | 'bad' => {
+    if (isPositive) {
+      if (percent >= 80) return 'good';
+      if (percent >= 50) return 'warning';
+      return 'bad';
+    } else {
+      if (percent <= 10) return 'good';
+      if (percent <= 30) return 'warning';
+      return 'bad';
+    }
+  };
+  
+  // Fetch Attendance Trend Data (Last 30 working days, excluding Sundays and holidays)
+  useEffect(() => {
+    const fetchAttendanceTrend = async () => {
+      if (!user?.school_id || !sessionData?.id) return;
+      
+      setAttendanceChartsLoading(true);
+      try {
+        const selectedDate = new Date(dashboardDate);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const trendData: Array<{ day: string; rate: number }> = [];
+        let totalRate = 0;
+        
+        // Calculate date range (last 30 days from selected date)
+        const endDate = new Date(selectedDate);
+        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date(selectedDate);
+        startDate.setDate(startDate.getDate() - 29); // 30 days including selected date
+        startDate.setHours(0, 0, 0, 0);
+        
+        const startDateStr = startDate.toISOString().slice(0, 10);
+        const endDateStr = endDate.toISOString().slice(0, 10);
+        
+        // Fetch holidays that overlap with the date range
+        // A holiday overlaps if: start_date <= endDate AND end_date >= startDate
+        const { data: holidaysData } = await supabase
+          .from('holidays')
+          .select('start_date, end_date')
+          .eq('school_id', user.school_id)
+          .lte('start_date', endDateStr)
+          .gte('end_date', startDateStr);
+        
+        // Create a set of holiday dates
+        const holidayDates = new Set<string>();
+        if (holidaysData) {
+          holidaysData.forEach((holiday: any) => {
+            const holidayStart = new Date(holiday.start_date);
+            const holidayEnd = new Date(holiday.end_date);
+            const current = new Date(holidayStart);
+            while (current <= holidayEnd) {
+              const dateStr = current.toISOString().slice(0, 10);
+              if (dateStr >= startDateStr && dateStr <= endDateStr) {
+                holidayDates.add(dateStr);
+              }
+              current.setDate(current.getDate() + 1);
+            }
+          });
+        }
+        
+        // Get all working days (excluding Sundays and holidays)
+        const workingDays: Array<{ date: Date; dateStr: string; dayName: string }> = [];
+        let daysBack = 0;
+        let workingDaysCount = 0;
+        
+        while (workingDaysCount < 30 && daysBack < 60) {
+          const date = new Date(selectedDate);
+          date.setDate(date.getDate() - daysBack);
+          const dateStr = date.toISOString().slice(0, 10);
+          const dayOfWeek = date.getDay();
+          
+          // Skip Sundays (dayOfWeek === 0) and holidays
+          if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr <= endDateStr && dateStr >= startDateStr) {
+            const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
+            workingDays.push({ date, dateStr, dayName });
+            workingDaysCount++;
+          }
+          daysBack++;
+        }
+        
+        // Reverse to get chronological order (oldest first)
+        workingDays.reverse();
+        
+        if (workingDays.length === 0) {
+          setAttendanceTrendData([]);
+          setTodayAttendanceRate(0);
+          setWeekAvgAttendanceRate(0);
+          return;
+        }
+        
+        const workingDaysDateStrs = workingDays.map(wd => wd.dateStr);
+        const minDate = workingDays[0].dateStr;
+        const maxDate = workingDays[workingDays.length - 1].dateStr;
+        
+        // Batch fetch: Get all attendance records for the working days
+        const { data: allAttendanceData, error } = await supabase
+          .from('attendance_records')
+          .select('date, status')
+          .gte('date', minDate)
+          .lte('date', maxDate)
+          .in('date', workingDaysDateStrs)
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id);
+        
+        // Group attendance by date
+        const attendanceByDate = new Map<string, { total: number; present: number }>();
+        
+        // Initialize all working days with 0
+        workingDays.forEach(({ dateStr }) => {
+          attendanceByDate.set(dateStr, { total: 0, present: 0 });
+        });
+        
+        // Process attendance data
+        if (!error && allAttendanceData) {
+          allAttendanceData.forEach((record: any) => {
+            const dateStr = record.date;
+            if (attendanceByDate.has(dateStr)) {
+              const stats = attendanceByDate.get(dateStr)!;
+              stats.total++;
+              if (record.status === 'present' || record.status === 'late') {
+                stats.present++;
+              }
+            }
+          });
+        }
+        
+        // Build trend data array
+        workingDays.forEach(({ dateStr, dayName }) => {
+          const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
+          const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+          trendData.push({ day: dayName, rate });
+          totalRate += rate;
+        });
+        
+        setAttendanceTrendData(trendData);
+        
+        // Calculate today's rate and average
+        const todayRate = trendData[trendData.length - 1]?.rate || 0;
+        const avg = trendData.length > 0 ? Math.round(totalRate / trendData.length) : 0;
+        setTodayAttendanceRate(todayRate);
+        setWeekAvgAttendanceRate(avg);
+      } catch (error) {
+        console.error('Error fetching attendance trend:', error);
+      } finally {
+        setAttendanceChartsLoading(false);
+      }
+    };
+    
+    fetchAttendanceTrend();
+  }, [user?.school_id, sessionData?.id, dashboardDate]);
+  
+  // Fetch Class Attendance Data (Today) - Optimized with batch queries
+  useEffect(() => {
+    const fetchClassAttendance = async () => {
+      if (!user?.school_id || !sessionData?.id) return;
+      
+      try {
+        const today = dashboardDate;
+        
+        // Get all classes
+        const { data: classesData, error: classesError } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('school_id', user.school_id);
+        
+        if (classesError || !classesData || classesData.length === 0) {
+          setClassAttendanceData([]);
+          return;
+        }
+        
+        // Sort classes using the utility function
+        const sortedClasses = sortClasses(classesData);
+        const classIds = sortedClasses.map(c => c.id);
+        
+        // Batch fetch: Get all student_class_history records for all classes at once
+        let allStudentHistory: any[] = [];
+        
+        // Try with status filter first
+        const { data: dataWithStatus, error: errorWithStatus } = await supabase
+          .from('student_class_history')
+          .select('student_id, new_class_id')
+          .in('new_class_id', classIds)
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id)
+          .eq('status', 'active');
+        
+        if (!errorWithStatus && dataWithStatus) {
+          allStudentHistory = dataWithStatus;
+        } else {
+          // Fallback: try without status filter
+          const { data: dataWithoutStatus, error: errorWithoutStatus } = await supabase
+            .from('student_class_history')
+            .select('student_id, new_class_id')
+            .in('new_class_id', classIds)
+            .eq('session_id', sessionData.id)
+            .eq('school_id', user.school_id);
+          
+          if (!errorWithoutStatus && dataWithoutStatus) {
+            allStudentHistory = dataWithoutStatus;
+          }
+        }
+        
+        // Batch fetch: Get all attendance records for today at once
+        const allStudentIds = Array.from(new Set(allStudentHistory.map(sh => sh.student_id)));
+        
+        let allAttendanceRecords: any[] = [];
+        if (allStudentIds.length > 0) {
+          // Split into chunks if needed (Supabase has limits on IN clause size)
+          const chunkSize = 1000;
+          for (let i = 0; i < allStudentIds.length; i += chunkSize) {
+            const chunk = allStudentIds.slice(i, i + chunkSize);
+            const { data: attendanceChunk, error: attendanceError } = await supabase
+              .from('attendance_records')
+              .select('status, student_id')
+              .eq('date', today)
+              .in('student_id', chunk)
+              .eq('session_id', sessionData.id)
+              .eq('school_id', user.school_id);
+            
+            if (!attendanceError && attendanceChunk) {
+              allAttendanceRecords.push(...attendanceChunk);
+            }
+          }
+        }
+        
+        // Create maps for efficient lookup
+        const studentsByClass = new Map<number, Set<number>>();
+        
+        // Group students by class
+        allStudentHistory.forEach(sh => {
+          if (!sh.new_class_id) return;
+          if (!studentsByClass.has(sh.new_class_id)) {
+            studentsByClass.set(sh.new_class_id, new Set());
+          }
+          studentsByClass.get(sh.new_class_id)!.add(sh.student_id);
+        });
+        
+        // Fetch all attendance records with class_id in one batch query
+        const { data: allAttendanceWithClass, error: attendanceClassError } = await supabase
+          .from('attendance_records')
+          .select('class_id, status')
+          .eq('date', today)
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id)
+          .in('class_id', classIds);
+        
+        // Count attendance by class and status
+        const attendanceCounts = new Map<string, number>(); // key: "classId_status", value: count
+        
+        if (!attendanceClassError && allAttendanceWithClass) {
+          allAttendanceWithClass.forEach(record => {
+            const key = `${record.class_id}_${record.status}`;
+            attendanceCounts.set(key, (attendanceCounts.get(key) || 0) + 1);
+          });
+        }
+        
+        // Calculate attendance breakdown for each class
+        const classAttendance: Array<{ 
+          class: string; 
+          present: number; 
+          absent: number; 
+          leave: number; 
+          late: number;
+          total: number;
+        }> = [];
+        
+        for (const cls of sortedClasses) {
+          const studentsInClass = studentsByClass.get(cls.id);
+          if (!studentsInClass || studentsInClass.size === 0) {
+            classAttendance.push({ 
+              class: cls.name, 
+              present: 0, 
+              absent: 0, 
+              leave: 0, 
+              late: 0,
+              total: 0
+            });
+            continue;
+          }
+          
+          // Get actual counts from the attendance records only
+          const presentCount = attendanceCounts.get(`${cls.id}_present`) || 0;
+          const absentCount = attendanceCounts.get(`${cls.id}_absent`) || 0;
+          const leaveCount = attendanceCounts.get(`${cls.id}_leave`) || 0;
+          const lateCount = attendanceCounts.get(`${cls.id}_late`) || 0;
+          
+          // Only count students who have attendance records
+          // Students without attendance records are NOT counted
+          const studentsWithAttendance = presentCount + absentCount + leaveCount + lateCount;
+          
+          classAttendance.push({
+            class: cls.name,
+            present: presentCount,
+            absent: absentCount,
+            leave: leaveCount,
+            late: lateCount,
+            total: studentsInClass.size // Total students in class (for reference)
+          });
+        }
+        
+        setClassAttendanceData(classAttendance);
+      } catch (error) {
+        console.error('Error fetching class attendance:', error);
+        setClassAttendanceData([]);
+      }
+    };
+    
+    fetchClassAttendance();
+  }, [user?.school_id, sessionData?.id, dashboardDate]);
+  
+  // Fetch Consecutive Absent Students
+  useEffect(() => {
+    const fetchConsecutiveAbsent = async () => {
+      if (!user?.school_id || !sessionData?.id) return;
+      
+      setConsecutiveAbsentLoading(true);
+      try {
+        const today = dashboardDate;
+        
+        // First, get all students who are absent today (without joins)
+        const { data: absentTodayRecords, error: absentTodayError } = await supabase
+          .from('attendance_records')
+          .select('student_id, class_id, section_id')
+          .eq('date', today)
+          .eq('status', 'absent')
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id);
+        
+        if (absentTodayError || !absentTodayRecords || absentTodayRecords.length === 0) {
+          setConsecutiveAbsentStudents([]);
+          return;
+        }
+        
+        const absentStudentIds = absentTodayRecords.map(r => r.student_id);
+        const uniqueStudentIds = Array.from(new Set(absentStudentIds));
+        
+        // Fetch student details separately
+        const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, name')
+          .in('id', uniqueStudentIds)
+          .eq('school_id', user.school_id);
+        
+        // Fetch class details
+        const allClassIds = absentTodayRecords.map(r => r.class_id).filter((id): id is number => Boolean(id));
+        const classIds = Array.from(new Set(allClassIds));
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .in('id', classIds)
+          .eq('school_id', user.school_id);
+        
+        // Fetch section details
+        const allSectionIds = absentTodayRecords.map(r => r.section_id).filter((id): id is number => Boolean(id));
+        const sectionIds = Array.from(new Set(allSectionIds));
+        const { data: sectionsData } = await supabase
+          .from('sections')
+          .select('id, name')
+          .in('id', sectionIds)
+          .eq('school_id', user.school_id);
+        
+        // Create lookup maps
+        const studentsMap = new Map((studentsData || []).map(s => [s.id, s]));
+        const classesMap = new Map((classesData || []).map(c => [c.id, c]));
+        const sectionsMap = new Map((sectionsData || []).map(s => [s.id, s]));
+        
+        // Get last 30 days of attendance records for these students
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const startDate = thirtyDaysAgo.toISOString().slice(0, 10);
+        
+        // Fetch attendance records in chunks
+        const chunkSize = 1000;
+        let allAttendanceRecords: any[] = [];
+        
+        for (let i = 0; i < absentStudentIds.length; i += chunkSize) {
+          const chunk = absentStudentIds.slice(i, i + chunkSize);
+          const { data: attendanceChunk, error: attendanceError } = await supabase
+            .from('attendance_records')
+            .select('student_id, date, status')
+            .in('student_id', chunk)
+            .gte('date', startDate)
+            .lte('date', today)
+            .eq('session_id', sessionData.id)
+            .eq('school_id', user.school_id)
+            .order('date', { ascending: false });
+          
+          if (!attendanceError && attendanceChunk) {
+            allAttendanceRecords.push(...attendanceChunk);
+          }
+        }
+        
+        // Group attendance by student
+        const studentAttendanceMap = new Map<number, Array<{ date: string; status: string }>>();
+        
+        allAttendanceRecords.forEach(record => {
+          if (!studentAttendanceMap.has(record.student_id)) {
+            studentAttendanceMap.set(record.student_id, []);
+          }
+          studentAttendanceMap.get(record.student_id)!.push({
+            date: record.date,
+            status: record.status
+          });
+        });
+        
+        // Calculate consecutive absences for students absent today
+        const consecutiveAbsent: Array<{
+          student_id: number;
+          student_name: string;
+          class_name: string;
+          section_name?: string;
+          consecutive_days: number;
+        }> = [];
+        
+        absentTodayRecords.forEach(absentRecord => {
+          const studentId = absentRecord.student_id;
+          const attendanceRecords = studentAttendanceMap.get(studentId) || [];
+          
+          if (attendanceRecords.length === 0) {
+            return;
+          }
+          
+          // Sort by date descending (most recent first)
+          attendanceRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          
+          // Today should be the first record (most recent)
+          // Check if the 2 most recent previous records (index 1 and 2) are also absent
+          if (attendanceRecords.length < 3) {
+            // Need at least 3 records (today + 2 previous) to check
+            return;
+          }
+          
+          // Check the 2 previous records (index 1 and 2, excluding today at index 0)
+          const previousRecord1 = attendanceRecords[1];
+          const previousRecord2 = attendanceRecords[2];
+          
+          // Both previous records must be absent
+          if (previousRecord1.status === 'absent' && previousRecord2.status === 'absent') {
+            // Count total consecutive days going backwards
+            let consecutiveDays = 1; // Today is absent
+            let checkIndex = 1;
+            
+            // Count backwards through records
+            while (checkIndex < attendanceRecords.length) {
+              const record = attendanceRecords[checkIndex];
+              if (record.status === 'absent') {
+                consecutiveDays++;
+                checkIndex++;
+              } else {
+                break;
+              }
+            }
+            
+            // Get student, class, and section names from lookup maps
+            const student = studentsMap.get(studentId);
+            const classData = classesMap.get(absentRecord.class_id);
+            const sectionData = sectionsMap.get(absentRecord.section_id);
+            
+            consecutiveAbsent.push({
+              student_id: studentId,
+              student_name: student?.name || 'Unknown',
+              class_name: classData?.name || 'Unknown',
+              section_name: sectionData?.name,
+              consecutive_days: consecutiveDays
+            });
+          }
+        });
+        
+        // Sort by consecutive days (highest first)
+        consecutiveAbsent.sort((a, b) => b.consecutive_days - a.consecutive_days);
+        
+        setConsecutiveAbsentStudents(consecutiveAbsent);
+      } catch (error) {
+        console.error('Error fetching consecutive absent students:', error);
+        setConsecutiveAbsentStudents([]);
+      } finally {
+        setConsecutiveAbsentLoading(false);
+      }
+    };
+    
+    fetchConsecutiveAbsent();
+  }, [user?.school_id, sessionData?.id, dashboardDate]);
+  
+  // Calculate attendance stats
+  useEffect(() => {
+    const calculateAttendanceStats = async () => {
+      if (!user?.school_id || !sessionData?.id) return;
+      
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const totalToday = attendanceDataForDate.length;
+        const present = attendanceDataForDate.filter(a => a.status === 'present').length;
+        const absent = attendanceDataForDate.filter(a => a.status === 'absent').length;
+        const attendanceRate = totalToday > 0 ? Math.round((present / totalToday) * 100) : 0;
+        
+        // Get total active students
+        const { data: allStudents } = await supabase
+          .from('students')
+          .select('id')
+          .eq('school_id', user.school_id)
+          .eq('status', 'active')
+          .eq('session_id', sessionData.id);
+        
+        const totalStudents = allStudents?.length || 0;
+        
+        // Calculate chronic absentees (absent for last 3 working days)
+        const getWorkingDays = (days: number) => {
+          const dates: string[] = [];
+          let currentDate = new Date();
+          let count = 0;
+          
+          while (count < days) {
+            const dateStr = currentDate.toISOString().slice(0, 10);
+            const dayOfWeek = currentDate.getDay();
+            
+            // Skip weekends (Saturday = 6, Sunday = 0)
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+              dates.push(dateStr);
+              count++;
+            }
+            
+            currentDate.setDate(currentDate.getDate() - 1);
+          }
+          
+          return dates;
+        };
+        
+        const last3WorkingDays = getWorkingDays(3);
+        
+        // Fetch attendance for last 3 working days
+        const { data: chronicAttendance } = await supabase
+          .from('attendance_records')
+          .select('student_id, status, date')
+          .eq('school_id', user.school_id)
+          .eq('session_id', sessionData.id)
+          .in('date', last3WorkingDays)
+          .eq('status', 'absent');
+        
+        // Count unique students who were absent on all 3 days
+        const studentAbsenceCount = new Map<number, number>();
+        chronicAttendance?.forEach((record: any) => {
+          const count = studentAbsenceCount.get(record.student_id) || 0;
+          studentAbsenceCount.set(record.student_id, count + 1);
+        });
+        
+        const chronic = Array.from(studentAbsenceCount.values()).filter(count => count >= 3).length;
+        
+        setAttendanceStats({
+          present,
+          absent,
+          chronic,
+          rate: attendanceRate,
+          totalStudents
+        });
+      } catch (error) {
+        console.error('Error calculating attendance stats:', error);
+      }
+    };
+    
+    calculateAttendanceStats();
+  }, [attendanceDataForDate, user?.school_id, sessionData?.id]);
 
   // --- Class-wise Strength from Class History (Active Session) ---
   const classStrengths = sortClasses(classes).map(cls => {
@@ -6007,28 +7740,356 @@ const Dashboard: React.FC = () => {
     <DashboardContainer>
       {/* Tab Navigation - Minimal Header */}
       <TabContainer>
-        <TabButton 
-          active={activeTab === 'attendance'} 
-          onClick={() => setActiveTab('attendance')}
-        >
-          Attendance
-        </TabButton>
-        <TabButton 
-          active={activeTab === 'fee'} 
-          onClick={() => setActiveTab('fee')}
-        >
-          Fee Collection
-        </TabButton>
-        <TabButton 
-          active={activeTab === 'admissions'} 
-          onClick={() => setActiveTab('admissions')}
-        >
-          Admissions
-        </TabButton>
+        <TabsWrapper>
+          <TabButton 
+            active={activeTab === 'attendance'} 
+            onClick={() => setActiveTab('attendance')}
+          >
+            Attendance
+          </TabButton>
+          <TabButton 
+            active={activeTab === 'fee'} 
+            onClick={() => setActiveTab('fee')}
+          >
+            Fee Collection
+          </TabButton>
+          <TabButton 
+            active={activeTab === 'admissions'} 
+            onClick={() => setActiveTab('admissions')}
+          >
+            Admissions
+          </TabButton>
+        </TabsWrapper>
+        <DashboardDateInput
+          type="date"
+          value={dashboardDate}
+          onChange={(e) => {
+            const newDate = e.target.value;
+            setDashboardDate(newDate);
+            setAbsentDate(newDate);
+            setFineDate(newDate);
+          }}
+        />
       </TabContainer>
       
       {/* Attendance Tab Content */}
       <TabContent active={activeTab === 'attendance'}>
+        {/* Attendance Stats Cards */}
+        <AttendanceStatsGrid>
+          <AttendanceStatCard accentColor="#22c55e">
+            <AttendanceStatTopRow>
+              <AttendanceStatIcon color="#22c55e">
+                <CheckCircle />
+              </AttendanceStatIcon>
+              <AttendanceStatTitle>Present</AttendanceStatTitle>
+            </AttendanceStatTopRow>
+            <AttendanceStatRow>
+              <AttendanceStatValue>{presentToday}</AttendanceStatValue>
+              <AttendanceStatRightInfo>
+                <AttendanceStatStatus status={getStatus(presentPercent, true)}>
+                  {presentPercent >= 80 ? 'Excellent' : presentPercent >= 50 ? 'Good' : 'Needs Attention'}
+                </AttendanceStatStatus>
+                <AttendanceStatPercentage color="#22c55e">{presentPercent}%</AttendanceStatPercentage>
+              </AttendanceStatRightInfo>
+            </AttendanceStatRow>
+          </AttendanceStatCard>
+          
+          <AttendanceStatCard accentColor="#ef4444">
+            <AttendanceStatTopRow>
+              <AttendanceStatIcon color="#ef4444">
+                <Cancel />
+              </AttendanceStatIcon>
+              <AttendanceStatTitle>Absent</AttendanceStatTitle>
+            </AttendanceStatTopRow>
+            <AttendanceStatRow>
+              <AttendanceStatValue>{absentToday}</AttendanceStatValue>
+              <AttendanceStatRightInfo>
+                <AttendanceStatStatus status={getStatus(absentPercent, false)}>
+                  {absentPercent <= 10 ? 'Low' : absentPercent <= 30 ? 'Moderate' : 'High'}
+                </AttendanceStatStatus>
+                <AttendanceStatPercentage color="#ef4444">{absentPercent}%</AttendanceStatPercentage>
+              </AttendanceStatRightInfo>
+            </AttendanceStatRow>
+          </AttendanceStatCard>
+          
+          <AttendanceStatCard accentColor="#3b82f6">
+            <AttendanceStatTopRow>
+              <AttendanceStatIcon color="#3b82f6">
+                <CalendarMonth />
+              </AttendanceStatIcon>
+              <AttendanceStatTitle>Leave</AttendanceStatTitle>
+            </AttendanceStatTopRow>
+            <AttendanceStatRow>
+              <AttendanceStatValue>{leaveToday}</AttendanceStatValue>
+              <AttendanceStatRightInfo>
+                <AttendanceStatStatus status={getStatus(leavePercent, false)}>
+                  {leavePercent <= 10 ? 'Low' : leavePercent <= 30 ? 'Moderate' : 'High'}
+                </AttendanceStatStatus>
+                <AttendanceStatPercentage color="#3b82f6">{leavePercent}%</AttendanceStatPercentage>
+              </AttendanceStatRightInfo>
+            </AttendanceStatRow>
+          </AttendanceStatCard>
+          
+          <AttendanceStatCard accentColor="#f59e0b">
+            <AttendanceStatTopRow>
+              <AttendanceStatIcon color="#f59e0b">
+                <AccessTime />
+              </AttendanceStatIcon>
+              <AttendanceStatTitle>Late</AttendanceStatTitle>
+            </AttendanceStatTopRow>
+            <AttendanceStatRow>
+              <AttendanceStatValue>{lateToday}</AttendanceStatValue>
+              <AttendanceStatRightInfo>
+                <AttendanceStatStatus status={getStatus(latePercent, false)}>
+                  {latePercent <= 10 ? 'Low' : latePercent <= 30 ? 'Moderate' : 'High'}
+                </AttendanceStatStatus>
+                <AttendanceStatPercentage color="#f59e0b">{latePercent}%</AttendanceStatPercentage>
+              </AttendanceStatRightInfo>
+            </AttendanceStatRow>
+          </AttendanceStatCard>
+          
+          <AttendanceStatCard accentColor="#8b5cf6">
+            <AttendanceStatTopRow>
+              <AttendanceStatIcon color="#8b5cf6">
+                <HourglassEmpty />
+              </AttendanceStatIcon>
+              <AttendanceStatTitle>Half Leave</AttendanceStatTitle>
+            </AttendanceStatTopRow>
+            <AttendanceStatRow>
+              <AttendanceStatValue>{halfLeaveCount}</AttendanceStatValue>
+              <AttendanceStatRightInfo>
+                <AttendanceStatStatus status={getStatus(halfLeavePercent, false)}>
+                  {halfLeavePercent <= 10 ? 'Low' : halfLeavePercent <= 30 ? 'Moderate' : 'High'}
+                </AttendanceStatStatus>
+                <AttendanceStatPercentage color="#8b5cf6">{halfLeavePercent}%</AttendanceStatPercentage>
+              </AttendanceStatRightInfo>
+            </AttendanceStatRow>
+          </AttendanceStatCard>
+        </AttendanceStatsGrid>
+        
+        {/* Attendance Charts */}
+        <AttendanceChartsGrid>
+          {/* Attendance Trend Chart */}
+          <AttendanceChartCard>
+            <AttendanceChartHeader>
+              <CheckCircle style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
+              Attendance Trend
+            </AttendanceChartHeader>
+            {attendanceChartsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={attendanceTrendData}>
+                    <CartesianGrid 
+                      horizontal={true} 
+                      vertical={false} 
+                      strokeDasharray="3 3" 
+                      stroke={isDark ? '#555' : '#d1d5db'}
+                      opacity={0.5}
+                    />
+                    <XAxis 
+                      dataKey="day" 
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                    />
+                    <YAxis 
+                      domain={[0, 100]}
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? '#1e293b' : '#fff',
+                        border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        color: isDark ? '#e2e8f0' : '#1e293b'
+                      }}
+                      formatter={(value: any) => `${value}%`}
+                      labelFormatter={(label) => label}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="rate" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      dot={{ fill: '#22c55e', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+                <AttendanceChartSummary>
+                  <AttendanceChartSummaryItem>
+                    <AttendanceChartSummaryLabel>Today</AttendanceChartSummaryLabel>
+                    <AttendanceChartSummaryValue>{todayAttendanceRate}%</AttendanceChartSummaryValue>
+                  </AttendanceChartSummaryItem>
+                  <AttendanceChartSummaryItem>
+                    <AttendanceChartSummaryLabel>Week Avg</AttendanceChartSummaryLabel>
+                    <AttendanceChartSummaryValue>{weekAvgAttendanceRate}%</AttendanceChartSummaryValue>
+                  </AttendanceChartSummaryItem>
+                </AttendanceChartSummary>
+              </>
+            )}
+          </AttendanceChartCard>
+          
+          {/* Class Attendance Chart */}
+          <AttendanceChartCard>
+            <AttendanceChartHeader>
+              <Group style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
+              Class Attendance (Today)
+            </AttendanceChartHeader>
+            {attendanceChartsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={classAttendanceData} stackOffset="expand">
+                    <CartesianGrid 
+                      horizontal={true} 
+                      vertical={false} 
+                      strokeDasharray="3 3" 
+                      stroke={isDark ? '#555' : '#d1d5db'}
+                      opacity={0.5}
+                    />
+                    <XAxis 
+                      dataKey="class" 
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 10 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      domain={[0, 1]}
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 11 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tickFormatter={(value) => `${Math.round(value * 100)}%`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? '#1e293b' : '#fff',
+                        border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        color: isDark ? '#e2e8f0' : '#1e293b'
+                      }}
+                      formatter={(value: any, name: string, props: any) => {
+                        const className = props.payload?.class;
+                        const data = classAttendanceData.find(d => d.class === className);
+                        if (!data) return [value, name];
+                        const count = name === 'Present' ? data.present : 
+                                     name === 'Absent' ? data.absent :
+                                     name === 'Leave' ? data.leave : data.late;
+                        return [count, name];
+                      }}
+                      labelFormatter={(label) => `Class: ${label}`}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '10px' }}
+                      iconType="rect"
+                      formatter={(value) => value}
+                    />
+                    <Bar 
+                      dataKey="present" 
+                      stackId="a"
+                      fill="#22c55e"
+                      name="Present"
+                    />
+                    <Bar 
+                      dataKey="late" 
+                      stackId="a"
+                      fill="#f59e0b"
+                      name="Late"
+                    />
+                    <Bar 
+                      dataKey="leave" 
+                      stackId="a"
+                      fill="#3b82f6"
+                      name="Leave"
+                    />
+                    <Bar 
+                      dataKey="absent" 
+                      stackId="a"
+                      fill="#ef4444"
+                      name="Absent"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+                {(() => {
+                  const belowAverage = classAttendanceData.filter(c => {
+                    const rate = c.total > 0 ? ((c.present + c.late) / c.total) * 100 : 0;
+                    return rate < 75;
+                  });
+                  if (belowAverage.length > 0) {
+                    const rate = belowAverage[0].total > 0 
+                      ? Math.round(((belowAverage[0].present + belowAverage[0].late) / belowAverage[0].total) * 100)
+                      : 0;
+                    return (
+                      <ClassWarningBanner>
+                        <Warning style={{ color: '#f59e0b', fontSize: '1rem' }} />
+                        {belowAverage[0].class} below average ({rate}%)
+                      </ClassWarningBanner>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
+            )}
+          </AttendanceChartCard>
+        </AttendanceChartsGrid>
+        
+        {/* Consecutive Absent Students Card */}
+        <ConsecutiveAbsentCard>
+          <ConsecutiveAbsentHeader>
+            <Warning style={{ color: '#ef4444', fontSize: '1.1rem' }} />
+            Consecutive Absent Students
+          </ConsecutiveAbsentHeader>
+          {consecutiveAbsentLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : consecutiveAbsentStudents.length === 0 ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem', 
+              color: isDark ? '#9ca3af' : '#6b7280',
+              fontSize: '0.875rem'
+            }}>
+              No students with consecutive absences found
+            </div>
+          ) : (
+            <ConsecutiveAbsentTable>
+              <ConsecutiveAbsentTableHeader>
+                <tr>
+                  <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
+                  <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
+                  <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
+                </tr>
+              </ConsecutiveAbsentTableHeader>
+              <ConsecutiveAbsentTableBody>
+                {consecutiveAbsentStudents.map((student, index) => (
+                  <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
+                    <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
+                    <ConsecutiveAbsentTableCell>
+                      {student.class_name}
+                      {student.section_name && ` (${student.section_name})`}
+                    </ConsecutiveAbsentTableCell>
+                    <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
+                      <ConsecutiveDaysBadge days={student.consecutive_days}>
+                        {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                      </ConsecutiveDaysBadge>
+                    </ConsecutiveAbsentTableCell>
+                  </ConsecutiveAbsentTableRow>
+                ))}
+              </ConsecutiveAbsentTableBody>
+            </ConsecutiveAbsentTable>
+          )}
+        </ConsecutiveAbsentCard>
+        
         {/* Main Content */}
       <TwoColumnGrid $columns={hasRightCards ? 1 : 0}>
         {hasRightCards && (
@@ -6851,6 +8912,313 @@ const Dashboard: React.FC = () => {
             </FeeStatValue>
           </FeeStatCard>
         </FeeStatsGrid>
+        
+        {/* Collection Charts Section */}
+        <CollectionChartsGrid>
+          <CollectionChartCard>
+            <CollectionChartTitle>Daily Collection (Current Month)</CollectionChartTitle>
+            {collectionChartsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={dailyCollectionData}>
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke={isDark ? '#555' : '#d1d5db'}
+                    opacity={0.8}
+                    horizontal={true}
+                    vertical={false}
+                  />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                    tickFormatter={(value) => {
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value.toString();
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? '#1e293b' : '#fff',
+                      border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      color: isDark ? '#e2e8f0' : '#1e293b'
+                    }}
+                    formatter={(value: any) => formatCurrency(value)}
+                    labelFormatter={(label) => `Day ${label}`}
+                  />
+                  <Bar 
+                    dataKey="amount" 
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CollectionChartCard>
+          
+          <CollectionChartCard>
+            <CollectionChartTitle>Monthly Collection (Last 12 Months)</CollectionChartTitle>
+            {collectionChartsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={monthlyCollectionData}>
+                  <defs>
+                    <linearGradient id="colorCollection" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke={isDark ? '#555' : '#d1d5db'}
+                    opacity={0.8}
+                    horizontal={true}
+                    vertical={false}
+                  />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                    tickFormatter={(value) => {
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value.toString();
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? '#1e293b' : '#fff',
+                      border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      color: isDark ? '#e2e8f0' : '#1e293b'
+                    }}
+                    formatter={(value: any) => formatCurrency(value)}
+                    labelFormatter={(label) => label}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#22c55e" 
+                    fillOpacity={1}
+                    fill="url(#colorCollection)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CollectionChartCard>
+        </CollectionChartsGrid>
+        
+        {/* Fee Collection Details Table */}
+        <FeeCollectionDetailsCard>
+          <FeeCollectionDetailsTitle>Fee collection details</FeeCollectionDetailsTitle>
+          {feeCollectionDetailsLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (
+            <FeeCollectionTable>
+              <FeeCollectionTableHeader>
+                <tr>
+                  <FeeCollectionTableHeaderCell>Category</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>Old students</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>New admissions</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>Total payable</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>Paid</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>Discount</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>Dropped out</FeeCollectionTableHeaderCell>
+                  <FeeCollectionTableHeaderCell>Remaining</FeeCollectionTableHeaderCell>
+                </tr>
+              </FeeCollectionTableHeader>
+              <FeeCollectionTableBody>
+                <FeeCollectionTableRow>
+                  <FeeCollectionTableCell>Previous arrears</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.oldStudents)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.newAdmissions)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.totalPayable)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#16a34a" 
+                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.previousArrears.paid)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#3b82f6" 
+                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.previousArrears.discount)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#ef4444" 
+                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.previousArrears.droppedOut)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.remaining)}</FeeCollectionTableCell>
+                </FeeCollectionTableRow>
+                
+                <FeeCollectionTableRow>
+                  <FeeCollectionTableCell>Current month</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.oldStudents)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.newAdmissions)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.totalPayable)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#16a34a" 
+                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.currentMonth.paid)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#3b82f6" 
+                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.currentMonth.discount)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#ef4444" 
+                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.currentMonth.droppedOut)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.remaining)}</FeeCollectionTableCell>
+                </FeeCollectionTableRow>
+                
+                <FeeCollectionTableRow>
+                  <FeeCollectionTableCell>Next months</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.oldStudents)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.newAdmissions)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.totalPayable)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#16a34a" 
+                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.nextMonths.paid)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#3b82f6" 
+                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.nextMonths.discount)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#ef4444" 
+                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.nextMonths.droppedOut)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.remaining)}</FeeCollectionTableCell>
+                </FeeCollectionTableRow>
+                
+                <FeeCollectionTableRow isTotal>
+                  <FeeCollectionTableCell>Total</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.oldStudents)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.newAdmissions)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.totalPayable)}</FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#16a34a" 
+                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.total.paid)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#3b82f6" 
+                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.total.discount)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>
+                    <StatusBadge 
+                      color="#ef4444" 
+                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    >
+                      {formatCurrency(feeCollectionDetails.total.droppedOut)}
+                    </StatusBadge>
+                  </FeeCollectionTableCell>
+                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.remaining)}</FeeCollectionTableCell>
+                </FeeCollectionTableRow>
+              </FeeCollectionTableBody>
+            </FeeCollectionTable>
+          )}
+        </FeeCollectionDetailsCard>
+        
+        {/* Defaulters Card */}
+        <DefaultersCard>
+          <DefaultersTitle>
+            <span className="underlined">Defaulters</span> (Last 6 Months Data)
+          </DefaultersTitle>
+          {defaultersLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (
+            <DefaultersTable>
+              <DefaultersTableHeader>
+                <tr>
+                  <DefaultersTableHeaderCell>Month</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="center">Challan</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="right">Amount</DefaultersTableHeaderCell>
+                </tr>
+              </DefaultersTableHeader>
+              <DefaultersTableBody>
+                {defaultersData.map((row, index) => (
+                  <DefaultersTableRow key={index}>
+                    <DefaultersTableCell isMonth>{row.month}</DefaultersTableCell>
+                    <DefaultersTableCell align="center">{row.challan}</DefaultersTableCell>
+                    <DefaultersTableCell align="right">{formatCurrency(row.amount)}</DefaultersTableCell>
+                  </DefaultersTableRow>
+                ))}
+                <DefaultersTableRow isTotal>
+                  <DefaultersTableCell>Total</DefaultersTableCell>
+                  <DefaultersTableCell align="center">
+                    {defaultersData.reduce((sum, row) => sum + row.challan, 0)}
+                  </DefaultersTableCell>
+                  <DefaultersTableCell align="right">
+                    {formatCurrency(defaultersData.reduce((sum, row) => sum + row.amount, 0))}
+                  </DefaultersTableCell>
+                </DefaultersTableRow>
+              </DefaultersTableBody>
+            </DefaultersTable>
+          )}
+        </DefaultersCard>
       </TabContent>
       
       {/* Admissions Tab Content */}
