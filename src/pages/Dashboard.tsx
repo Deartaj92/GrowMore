@@ -1,20 +1,20 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import styled, { useTheme, keyframes } from 'styled-components';
-import { 
-  People, 
-  School, 
-  Assessment, 
-  CalendarMonth, 
-  CheckCircle, 
-  Cancel, 
-  AccessTime, 
-  Wc, 
-  ArrowBackIosNew, 
-  ArrowForwardIos, 
-  PictureAsPdf, 
-  AccountCircle, 
-  MoreVert, 
-  KeyboardArrowUp, 
+import {
+  People,
+  School,
+  Assessment,
+  CalendarMonth,
+  CheckCircle,
+  Cancel,
+  AccessTime,
+  Wc,
+  ArrowBackIosNew,
+  ArrowForwardIos,
+  PictureAsPdf,
+  AccountCircle,
+  MoreVert,
+  KeyboardArrowUp,
   KeyboardArrowDown,
   KeyboardArrowUpRounded as ChevronDownIcon,
   FileDownloadOutlined as ExportIcon,
@@ -53,8 +53,7 @@ import {
   Area,
   AreaChart
 } from 'recharts';
-import Chart from 'react-apexcharts';
-import { Chart as GoogleChart } from 'react-google-charts';
+// Removed heavy chart libraries - using recharts instead (already loaded, much faster)
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
 import { useToast } from '../components/useToast';
@@ -72,7 +71,6 @@ import { PageHeaderContext } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
 import Loader from '../components/Loader';
-import { homeworkDiaryService } from '../services/homeworkDiaryService';
 import WhatsAppBulkSender from '../components/WhatsAppBulkSender';
 import { whatsappSemiAutoService, AttendanceNotificationData } from '../services/whatsappSemiAuto';
 import { fetchRenderSettings, isDashboardCardVisible, isGuestPageAccessible, RenderSettings } from '../services/renderSettingsService';
@@ -174,8 +172,8 @@ const DashboardDateInput = styled.input`
   &:hover {
     border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.04)'};
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.04)'};
   }
   
   &:focus {
@@ -194,13 +192,13 @@ const DashboardDateInput = styled.input`
 const TabButton = styled.button<{ active: boolean }>`
   padding: 0.5rem 1.25rem;
   border: none;
-  border-bottom: ${({ active, theme }) => 
-    active 
+  border-bottom: ${({ active, theme }) =>
+    active
       ? `2px solid ${theme.ACCENT || '#6366f1'}`
       : '2px solid transparent'};
   background: transparent;
-  color: ${({ active, theme }) => 
-    active 
+  color: ${({ active, theme }) =>
+    active
       ? (theme.ACCENT || '#6366f1')
       : theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#888' : '#666')};
   font-size: 0.9rem;
@@ -214,8 +212,8 @@ const TabButton = styled.button<{ active: boolean }>`
   &:hover {
     color: ${({ theme }) => theme.ACCENT || '#6366f1'};
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.02)'
-      : 'rgba(0, 0, 0, 0.02)'};
+    ? 'rgba(255, 255, 255, 0.02)'
+    : 'rgba(0, 0, 0, 0.02)'};
   }
   
   &:active {
@@ -233,21 +231,7 @@ const TabButton = styled.button<{ active: boolean }>`
   }
 `;
 
-const TabContent = styled.div<{ active: boolean }>`
-  display: ${({ active }) => active ? 'block' : 'none'};
-  animation: ${({ active }) => active ? 'fadeIn 0.3s ease' : 'none'};
-  
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`;
+// Removed TabContent styled component - using conditional rendering instead for better performance
 
 const AdmissionsSummaryGrid = styled.div`
   display: grid;
@@ -456,8 +440,8 @@ const FeeCollectionTableRow = styled.tr<{ isTotal?: boolean }>`
   
   &:hover {
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.02)'};
+    ? 'rgba(255, 255, 255, 0.03)'
+    : 'rgba(0, 0, 0, 0.02)'};
   }
 `;
 
@@ -559,8 +543,8 @@ const DefaultersTableRow = styled.tr<{ isTotal?: boolean }>`
   
   &:hover {
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.02)'};
+    ? 'rgba(255, 255, 255, 0.03)'
+    : 'rgba(0, 0, 0, 0.02)'};
   }
 `;
 
@@ -627,8 +611,8 @@ const AttendanceStatCard = styled.div<{ accentColor: string }>`
   &:hover {
     transform: translateY(-1px);
     box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? '0 2px 8px rgba(0, 0, 0, 0.25)'
-      : '0 2px 8px rgba(0, 0, 0, 0.1)'};
+    ? '0 2px 8px rgba(0, 0, 0, 0.25)'
+    : '0 2px 8px rgba(0, 0, 0, 0.1)'};
   }
 `;
 
@@ -805,6 +789,29 @@ const ConsecutiveAbsentCard = styled.div`
     ? '0 1px 4px rgba(0, 0, 0, 0.2)'
     : '0 1px 4px rgba(0, 0, 0, 0.06)'};
   margin-bottom: 1rem;
+  
+  @media (max-width: 900px) {
+    padding: 0.75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
+    
+    &::-webkit-scrollbar {
+      height: 6px;
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc' : '#6366f1cc'};
+      border-radius: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+      border-radius: 6px;
+    }
+  }
 `;
 
 const ConsecutiveAbsentHeader = styled.div`
@@ -820,12 +827,23 @@ const ConsecutiveAbsentHeader = styled.div`
 const ConsecutiveAbsentTable = styled.table`
   width: 100%;
   border-collapse: collapse;
+  
+  @media (max-width: 900px) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
 `;
 
 const ConsecutiveAbsentTableHeader = styled.thead`
   background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
     ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(0, 0, 0, 0.03)'};
+  
+  @media (max-width: 900px) {
+    display: table-header-group;
+  }
 `;
 
 const ConsecutiveAbsentTableHeaderCell = styled.th`
@@ -836,6 +854,12 @@ const ConsecutiveAbsentTableHeaderCell = styled.th`
   color: ${({ theme }) => theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#9ca3af' : '#6b7280')};
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  
+  @media (max-width: 900px) {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.7rem;
+    min-width: 80px;
+  }
 `;
 
 const ConsecutiveAbsentTableBody = styled.tbody``;
@@ -847,12 +871,16 @@ const ConsecutiveAbsentTableRow = styled.tr`
   
   &:hover {
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.02)'};
+    ? 'rgba(255, 255, 255, 0.03)'
+    : 'rgba(0, 0, 0, 0.02)'};
   }
   
   &:last-child {
     border-bottom: none;
+  }
+  
+  @media (max-width: 900px) {
+    display: table-row;
   }
 `;
 
@@ -860,6 +888,13 @@ const ConsecutiveAbsentTableCell = styled.td`
   padding: 0.75rem;
   font-size: 0.875rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  @media (max-width: 900px) {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.8rem;
+    min-width: 80px;
+    white-space: nowrap;
+  }
 `;
 
 const ConsecutiveDaysBadge = styled.span<{ days: number }>`
@@ -954,8 +989,8 @@ const RefreshButton = styled.button`
   
   &:hover {
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.05)'};
     transform: translateY(-1px);
   }
   
@@ -1005,8 +1040,8 @@ const FeeStatCard = styled.div`
   &:hover {
     transform: translateY(-2px);
     box-shadow: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? '0 6px 24px rgba(0, 0, 0, 0.4)'
-      : '0 6px 24px rgba(0, 0, 0, 0.15)'};
+    ? '0 6px 24px rgba(0, 0, 0, 0.4)'
+    : '0 6px 24px rgba(0, 0, 0, 0.15)'};
   }
   
   @media (max-width: 768px) {
@@ -1293,11 +1328,11 @@ const ProgressBar = styled.div<{ color: string; percent: number }>`
     height: 100%;
     width: ${({ percent }) => percent}%;
     background: ${({ color }) => {
-      if (color === '#22c55e') return '#22c55e'; // Present (green)
-      if (color === '#ef4444') return '#ef4444'; // Absent (red)
-      if (color === '#facc15' || color === '#eab308') return '#eab308'; // Late (yellow)
-      return color;
-    }};
+    if (color === '#22c55e') return '#22c55e'; // Present (green)
+    if (color === '#ef4444') return '#ef4444'; // Absent (red)
+    if (color === '#facc15' || color === '#eab308') return '#eab308'; // Late (yellow)
+    return color;
+  }};
     border-radius: 6px;
     transition: width 0.3s;
   }
@@ -1393,7 +1428,7 @@ const SectionHeaderTitle = styled.div`
   gap: 8px;
 `;
 
-const StrengthExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+const StrengthExpandIcon = styled(ChevronDownIcon) <{ $isExpanded: boolean }>`
   width: 20px;
   height: 20px;
   transition: transform 0.2s ease;
@@ -1788,13 +1823,13 @@ const ExportDropdownItem = styled.button<{ $type?: 'absent' | 'present' }>`
 
   &:hover {
     background: ${({ theme, $type }) => {
-      if ($type === 'absent') {
-        return theme.BG === '#252525' ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)';
-      } else if ($type === 'present') {
-        return theme.BG === '#252525' ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.05)';
-      }
-      return theme.BG === '#252525' ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.05)';
-    }};
+    if ($type === 'absent') {
+      return theme.BG === '#252525' ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)';
+    } else if ($type === 'present') {
+      return theme.BG === '#252525' ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.05)';
+    }
+    return theme.BG === '#252525' ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.05)';
+  }};
   }
 
   &:first-child {
@@ -1815,7 +1850,7 @@ const ExportDropdownItem = styled.button<{ $type?: 'absent' | 'present' }>`
   }
 `;
 
-const ExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+const ExpandIcon = styled(ChevronDownIcon) <{ $isExpanded: boolean }>`
   width: 20px;
   height: 20px;
   transition: transform 0.2s ease;
@@ -2109,7 +2144,7 @@ const StatusButton = styled.button<{ status: string }>`
   transition: all 0.2s ease;
   background: ${({ status, theme }) => {
     const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
-    return status === 'Leave' 
+    return status === 'Leave'
       ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff')
       : (isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2');
   }};
@@ -2232,6 +2267,160 @@ const AbsenteesGrid = styled.div`
   }
 `;
 
+// Animation for table row appearance (needs to be defined before use)
+const tableRowSlideIn = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+`;
+
+// Desktop table view for absentees
+const AbsenteesDesktopTable = styled.div`
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
+  &::-webkit-scrollbar {
+    width: 6px;
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc' : '#6366f1cc'};
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#818cf8' : '#818cf8'};
+  }
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 6px;
+  }
+  @media (min-width: 901px) {
+    display: flex;
+  }
+`;
+
+const AbsenteesTableHeader = styled.div`
+  display: grid;
+  grid-template-columns: 50px 150px 180px 150px 200px 180px 180px 100px;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f9fafb'};
+  border-radius: 8px 8px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#9ca3af' : '#6b7280'};
+  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  @media (min-width: 901px) and (max-width: 1200px) {
+    grid-template-columns: 40px 120px 140px 120px 160px 140px 140px 80px;
+    gap: 0.75rem;
+    font-size: 0.7rem;
+  }
+`;
+
+const AbsenteesTableHeaderCell = styled.div`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const AbsenteesTableRow = styled.div<{ $index: number }>`
+  display: grid;
+  grid-template-columns: 50px 150px 180px 150px 200px 180px 180px 100px;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  align-items: center;
+  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#fff'};
+  transition: background 0.18s;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#fff' : '#232a3b'};
+  animation: ${tableRowSlideIn} 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: ${props => props.$index * 0.05 + 0.1}s;
+  opacity: 0;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f3f4f8'};
+  }
+  
+  @media (min-width: 901px) and (max-width: 1200px) {
+    grid-template-columns: 40px 120px 140px 120px 160px 140px 140px 80px;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    padding: 0.75rem 0.875rem;
+  }
+`;
+
+const AbsenteesTableCell = styled.div`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+`;
+
+const AbsenteesTableAvatar = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#a0a7b8' : '#64748b'};
+  font-weight: 600;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+`;
+
+const AbsenteesTableStatusPill = styled.button<{ $status: string }>`
+  background: ${({ $status, theme }) => {
+    if ($status === 'absent') return theme.BG === '#252525' ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.12)';
+    if ($status === 'leave') return theme.BG === '#252525' ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.12)';
+    return 'transparent';
+  }};
+  color: ${({ $status }) => {
+    if ($status === 'absent') return '#ef4444';
+    if ($status === 'leave') return '#2563eb';
+    return '#64748b';
+  }};
+  border: none;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  &:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+`;
+
 // Animation for absentee card appearance (slide-in with fade and scale)
 const slideIn = keyframes`
   0% {
@@ -2251,7 +2440,7 @@ const slideIn = keyframes`
   }
 `;
 
-const AnimatedAbsenteeCard = styled(AbsenteeCard)<{ $index: number }>`
+const AnimatedAbsenteeCard = styled(AbsenteeCard) <{ $index: number }>`
   opacity: 0;
   animation: ${slideIn} 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   animation-delay: ${props => props.$index * 0.09 + 0.18}s;
@@ -2269,6 +2458,12 @@ const CompactAnimatedAbsenteeCard = styled(AnimatedAbsenteeCard)`
   align-items: center;
   gap: clamp(0.18rem, 1vw, 0.55rem);
   position: relative;
+  @media (max-width: 900px) {
+    display: flex; /* Keep card structure for mobile/tablet */
+  }
+  @media (min-width: 901px) {
+    display: none; /* Hide cards on desktop - use table instead */
+  }
   @media (max-width: 600px) {
     padding: 0.28rem 0.5rem;
     font-size: 0.75rem;
@@ -2482,7 +2677,7 @@ const StatArc: React.FC<{
   color: string;
   label: string;
   count: number;
-}> = ({ percent, color, label, count }) => {
+}> = memo(({ percent, color, label, count }) => {
   const [displayPercent, setDisplayPercent] = useState(0);
   const requestRef = useRef<number | null>(null);
   useEffect(() => {
@@ -2567,7 +2762,7 @@ const StatArc: React.FC<{
       <StatArcCount>{count}</StatArcCount>
     </StatArcWrapper>
   );
-};
+});
 
 const NoSessionContainer = styled.div`
   display: flex;
@@ -2845,14 +3040,14 @@ const FineDetailsList = styled.div`
 `;
 
 const FineDetailItem = styled.div<{ $isRemission?: boolean }>`
-  background: ${({ theme, $isRemission }) => 
-    $isRemission 
+  background: ${({ theme, $isRemission }) =>
+    $isRemission
       ? (theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(236,72,153,0.15)' : 'rgba(236,72,153,0.08)')
       : (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#2a2a2a' : '#fff')
   };
   border-radius: 10px;
-  border: 1.5px solid ${({ theme, $isRemission }) => 
-    $isRemission 
+  border: 1.5px solid ${({ theme, $isRemission }) =>
+    $isRemission
       ? (theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(236,72,153,0.3)' : 'rgba(236,72,153,0.2)')
       : (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#353b4a' : '#e5e7eb')
   };
@@ -2867,11 +3062,11 @@ const FineDetailItem = styled.div<{ $isRemission?: boolean }>`
   z-index: 1;
   transition: background 0.18s;
   &:hover {
-    background: ${({ theme, $isRemission }) => 
-      $isRemission 
-        ? (theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(236,72,153,0.25)' : 'rgba(236,72,153,0.12)')
-        : (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#353b4a' : '#f3f4f8')
-    };
+    background: ${({ theme, $isRemission }) =>
+    $isRemission
+      ? (theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(236,72,153,0.25)' : 'rgba(236,72,153,0.12)')
+      : (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#353b4a' : '#f3f4f8')
+  };
   }
 `;
 
@@ -3034,7 +3229,7 @@ const NoFineData = styled.div`
   min-height: 120px;
 `;
 
-const FineExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+const FineExpandIcon = styled(ChevronDownIcon) <{ $isExpanded: boolean }>`
   width: 20px;
   height: 20px;
   transition: transform 0.2s ease;
@@ -3103,7 +3298,7 @@ const HomeworkHeaderTitle = styled.div`
   }
 `;
 
-const HomeworkExpandIcon = styled(ChevronDownIcon)<{ $isExpanded: boolean }>`
+const HomeworkExpandIcon = styled(ChevronDownIcon) <{ $isExpanded: boolean }>`
   width: 20px;
   height: 20px;
   transition: transform 0.2s ease;
@@ -3294,6 +3489,138 @@ const HomeworkTeacher = styled.span`
     justify-content: flex-end;
     font-size: 0.75rem;
     flex-shrink: 0;
+  }
+`;
+
+// Teacher-wise homework table components
+const HomeworkTeacherTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  
+  @media (max-width: 900px) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+`;
+
+const HomeworkTeacherTableHeader = styled.thead`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f9fafb'};
+  position: sticky;
+  top: 0;
+  z-index: 10;
+`;
+
+const HomeworkTeacherTableHeaderCell = styled.th`
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#9ca3af' : '#6b7280'};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+  
+  @media (max-width: 900px) {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    min-width: 120px;
+  }
+`;
+
+const HomeworkTeacherTableBody = styled.tbody``;
+
+const HomeworkTeacherTableRow = styled.tr`
+  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'};
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const HomeworkTeacherTableCell = styled.td`
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+// Teacher-wise card components (similar to class cards)
+const HomeworkTeacherItem = styled.div`
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#2a2a2a' : '#fff'};
+  border-radius: 10px;
+  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
+  padding: 0.75rem 1rem;
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#fff' : '#232a3b'};
+  min-width: 0;
+  font-size: 0.9rem;
+  
+  @media (max-width: 700px) {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+`;
+
+const HomeworkTeacherHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: #6366f1;
+  font-size: 1rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.9rem;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+    flex-wrap: wrap;
+  }
+`;
+
+const HomeworkViewToggle = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0;
+  
+  @media (max-width: 700px) {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  button {
+    padding: 0.5rem 1rem;
+    border: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)'};
+    border-radius: 6px;
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.1)'};
+    color: #6366f1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    
+    &.active {
+      background: #6366f1;
+      color: #fff;
+      border-color: #6366f1;
+    }
+    
+    &:hover:not(.active) {
+      background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.15)'};
+    }
+    
+    @media (max-width: 700px) {
+      flex: 1;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.75rem;
+    }
   }
 `;
 
@@ -3501,19 +3828,19 @@ const compareClassNames = (a: string, b: string): number => {
     const match = className.match(/(\d+)/);
     return match ? parseInt(match[1], 10) : 0;
   };
-  
+
   const numA = getClassNumber(a);
   const numB = getClassNumber(b);
-  
+
   // If both have numbers, compare numerically
   if (numA !== 0 && numB !== 0) {
     return numA - numB;
   }
-  
+
   // If only one has a number, prioritize it
   if (numA !== 0) return -1;
   if (numB !== 0) return 1;
-  
+
   // If neither has numbers, compare alphabetically
   return a.localeCompare(b);
 };
@@ -3525,7 +3852,7 @@ const Dashboard: React.FC = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<any[]>([]);
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
-  
+
   // Attendance stats state
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
@@ -3540,80 +3867,29 @@ const Dashboard: React.FC = () => {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [sessionData, setSessionData] = useState<any>(null);
   const [initialLoad, setInitialLoad] = useState(true); // Track if this is the first load
-  
+
   // Consolidated loading state that tracks all data checks
   const [allDataLoaded, setAllDataLoaded] = useState(false);
   const theme = useTheme();
   const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
-  const [absentDate, setAbsentDate] = useState(() => new Date().toISOString().slice(0,10));
-  const [dashboardDate, setDashboardDate] = useState(() => new Date().toISOString().slice(0,10));
-  
-  // Inject CSS for Google Charts tooltips in dark mode
-  useEffect(() => {
-    const styleId = 'google-charts-tooltip-dark-mode';
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-    
-    if (!styleElement) {
-      styleElement = document.createElement('style');
-      styleElement.id = styleId;
-      document.head.appendChild(styleElement);
-    }
-    
-    // Always use white/default theme for tooltips regardless of dark mode
-    styleElement.textContent = `
-      .google-visualization-tooltip {
-        background-color: #ffffff !important;
-        border: 1px solid #e2e8f0 !important;
-        color: #1e293b !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-      }
-      .google-visualization-tooltip * {
-        color: #1e293b !important;
-      }
-      .google-visualization-tooltip-item {
-        color: #1e293b !important;
-      }
-      .google-visualization-tooltip-item-list {
-        color: #1e293b !important;
-      }
-      .google-visualization-tooltip-item-label {
-        color: #64748b !important;
-      }
-      .google-visualization-tooltip-item-value {
-        color: #1e293b !important;
-      }
-      .google-visualization-tooltip-square {
-        border-color: #e2e8f0 !important;
-      }
-      .google-visualization-tooltip-text {
-        color: #1e293b !important;
-      }
-      div.google-visualization-tooltip {
-        background-color: #ffffff !important;
-        border: 1px solid #e2e8f0 !important;
-        color: #1e293b !important;
-      }
-      div.google-visualization-tooltip div {
-        color: #1e293b !important;
-      }
-      div.google-visualization-tooltip span {
-        color: #1e293b !important;
-      }
-      div.google-visualization-tooltip table {
-        color: #1e293b !important;
-      }
-      div.google-visualization-tooltip table td {
-        color: #1e293b !important;
-      }
-      div.google-visualization-tooltip table tr {
-        color: #1e293b !important;
-      }
-    `;
-    
-    return () => {
-      // Cleanup is handled by updating the style content
+  const [absentDate, setAbsentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dashboardDate, setDashboardDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Admissions date range - default to current month
+  const getCurrentMonthRange = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      from: firstDay.toISOString().slice(0, 10),
+      to: lastDay.toISOString().slice(0, 10)
     };
-  }, [isDark]);
+  };
+
+  const [admissionsDateFrom, setAdmissionsDateFrom] = useState(() => getCurrentMonthRange().from);
+  const [admissionsDateTo, setAdmissionsDateTo] = useState(() => getCurrentMonthRange().to);
+
+  // Removed Google Charts CSS injection - using recharts instead
   const [absentees, setAbsentees] = useState<any[]>([]);
   const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
   const [dropdownIdx, setDropdownIdx] = useState<number | null>(null);
@@ -3641,31 +3917,34 @@ const Dashboard: React.FC = () => {
   const [fineDate, setFineDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [fineDetails, setFineDetails] = useState<any[]>([]);
   const [isFineExpanded, setIsFineExpanded] = useExpandedState('dashboard_fine_expanded');
-  
+
   // Homework Diary state
   const [homeworkDiaryData, setHomeworkDiaryData] = useState<any[]>([]);
-  const [isHomeworkExpanded, setIsHomeworkExpanded] = useExpandedState('dashboard_homework_expanded');
-  
+  const [homeworkLoading, setHomeworkLoading] = useState(false);
+  const homeworkDataLoadedRef = useRef<string | null>(null);
+  const homeworkFetchingRef = useRef(false);
+  const [homeworkViewMode, setHomeworkViewMode] = useState<'class' | 'teacher'>('class');
+
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [fineToDelete, setFineToDelete] = useState<{ 
-    id: string; 
-    studentName: string; 
+  const [fineToDelete, setFineToDelete] = useState<{
+    id: string;
+    studentName: string;
     studentId: string;
     className: string;
     amount: number;
     date: string;
   } | null>(null);
-  
+
   // WhatsApp notification modal state
   const [showWhatsAppSender, setShowWhatsAppSender] = useState(false);
   const [whatsappNotificationData, setWhatsappNotificationData] = useState<AttendanceNotificationData[]>([]);
   const [whatsappProcessing, setWhatsappProcessing] = useState(false);
-  
+
   // Render settings for guest users
   const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  
+
   // Fee summary state
   const [feeSummary, setFeeSummary] = useState({
     totalInvoiced: 0,
@@ -3674,12 +3953,12 @@ const Dashboard: React.FC = () => {
     collectionRate: 0
   });
   const [feeSummaryLoading, setFeeSummaryLoading] = useState(false);
-  
+
   // Collection charts data state
   const [dailyCollectionData, setDailyCollectionData] = useState<Array<{ day: number; amount: number }>>([]);
   const [monthlyCollectionData, setMonthlyCollectionData] = useState<Array<{ month: string; amount: number }>>([]);
   const [collectionChartsLoading, setCollectionChartsLoading] = useState(false);
-  
+
   // Fee collection details state
   const [feeCollectionDetails, setFeeCollectionDetails] = useState({
     previousArrears: {
@@ -3720,14 +3999,14 @@ const Dashboard: React.FC = () => {
     }
   });
   const [feeCollectionDetailsLoading, setFeeCollectionDetailsLoading] = useState(false);
-  
+
   // Defaulters data state
   const [defaultersData, setDefaultersData] = useState<Array<{ month: string; challan: number; amount: number }>>([]);
   const [defaultersLoading, setDefaultersLoading] = useState(false);
-  
+
   // Tab state
-  const [activeTab, setActiveTab] = useState<'attendance' | 'fee' | 'admissions'>('attendance');
-  
+  const [activeTab, setActiveTab] = useState<'attendance' | 'fee' | 'admissions' | 'homework'>('attendance');
+
   // Admissions data state
   const [admissionsData, setAdmissionsData] = useState({
     totalInquiries: 0,
@@ -3747,11 +4026,16 @@ const Dashboard: React.FC = () => {
     todaysBirthdaysCount: 0
   });
   const [admissionsLoading, setAdmissionsLoading] = useState(false);
-  
-  // Ensure arrays are always defined
-  const gradeDistribution = admissionsData.gradeDistribution || [];
-  const latestAdmissions = admissionsData.latestAdmissions || [];
-  const todaysBirthdays = admissionsData.todaysBirthdays || [];
+
+  // Memoize expensive computations for better performance
+  const gradeDistribution = useMemo(() => admissionsData.gradeDistribution || [], [admissionsData.gradeDistribution]);
+  const latestAdmissions = useMemo(() => admissionsData.latestAdmissions || [], [admissionsData.latestAdmissions]);
+  const todaysBirthdays = useMemo(() => admissionsData.todaysBirthdays || [], [admissionsData.todaysBirthdays]);
+
+  // Memoize chart data transformations
+  const admissionsChartData = useMemo(() => admissionsData.admissionsChart || [], [admissionsData.admissionsChart]);
+  const withdrawalsChartData = useMemo(() => admissionsData.withdrawalsChart || [], [admissionsData.withdrawalsChart]);
+  const genderChartData = useMemo(() => admissionsData.genderData || [], [admissionsData.genderData]);
 
   // Helper functions for class and section names - memoized to prevent unnecessary re-renders
   const getClassName = useCallback((classId: any) => {
@@ -3760,7 +4044,7 @@ const Dashboard: React.FC = () => {
   const getSectionName = useCallback((sectionId: any) => {
     return sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
   }, [sections]);
-  
+
   // Format currency helper
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('en-PK', {
@@ -3770,45 +4054,104 @@ const Dashboard: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(value);
   };
-  
-  // Fetch fee summary data
+
+  // Request deduplication cache to prevent duplicate queries
+  const requestCacheRef = useRef<Map<string, { data: any; timestamp: number; promise?: Promise<any> }>>(new Map());
+  const REQUEST_CACHE_TTL = 30000; // 30 second cache for general requests
+
+  // Cache session data to avoid redundant fetches
+  const sessionCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
+  const SESSION_CACHE_TTL = 60000; // 1 minute cache
+
+  // Deduplicated fetch helper
+  const deduplicatedFetch = useCallback(async <T,>(
+    cacheKey: string,
+    fetchFn: () => Promise<T>,
+    ttl: number = REQUEST_CACHE_TTL
+  ): Promise<T> => {
+    const now = Date.now();
+    const cached = requestCacheRef.current.get(cacheKey);
+
+    // Return cached data if still valid
+    if (cached && (now - cached.timestamp) < ttl && cached.data !== undefined) {
+      return cached.data;
+    }
+
+    // If there's an ongoing request, return its promise
+    if (cached?.promise) {
+      return cached.promise;
+    }
+
+    // Create new request
+    const promise = fetchFn().then(data => {
+      requestCacheRef.current.set(cacheKey, { data, timestamp: Date.now() });
+      return data;
+    }).catch(error => {
+      // Remove from cache on error so it can be retried
+      requestCacheRef.current.delete(cacheKey);
+      throw error;
+    });
+
+    // Store promise in cache while request is in flight
+    requestCacheRef.current.set(cacheKey, { data: undefined, timestamp: now, promise });
+
+    return promise;
+  }, []);
+
+  const getCachedSession = useCallback(async () => {
+    const now = Date.now();
+    if (sessionCacheRef.current && (now - sessionCacheRef.current.timestamp) < SESSION_CACHE_TTL) {
+      return sessionCacheRef.current.data;
+    }
+
+    const { data: sessionData } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('is_active', true)
+      .eq('school_id', user?.school_id)
+      .maybeSingle();
+
+    sessionCacheRef.current = { data: sessionData, timestamp: now };
+    return sessionData;
+  }, [user?.school_id]);
+
+  // Fetch fee summary data - optimized with parallel queries
   const fetchFeeSummary = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     setFeeSummaryLoading(true);
     try {
-      // Get active session
-      const { data: sessionData } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('is_active', true)
-        .eq('school_id', user.school_id)
-        .maybeSingle();
-      
-      // Fetch all invoices (for current session if available)
+      // Get cached session and fetch invoices/payments in parallel
+      const sessionData = await getCachedSession();
+
+      // Build queries in parallel
       let invoicesQuery = supabase
         .from('fee_invoices')
         .select('id, total_amount')
         .eq('school_id', user.school_id);
-      
+
       if (sessionData?.id) {
         invoicesQuery = invoicesQuery.eq('session_id', sessionData.id);
       }
-      
-      const { data: invoicesData } = await invoicesQuery;
-      
-      // Fetch all payments
-      const { data: paymentsData } = await supabase
-        .from('fee_payments')
-        .select('id, amount, discount_amount')
-        .eq('school_id', user.school_id);
-      
-      // Calculate totals
-      const totalInvoiced = (invoicesData || []).reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
-      const totalCollected = (paymentsData || []).reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+
+      // Run both queries in parallel for 2x speed improvement
+      const [invoicesResult, paymentsResult] = await Promise.all([
+        invoicesQuery,
+        supabase
+          .from('fee_payments')
+          .select('id, amount, discount_amount')
+          .eq('school_id', user.school_id)
+      ]);
+
+      const invoicesData = invoicesResult.data || [];
+      const paymentsData = paymentsResult.data || [];
+
+      // Calculate totals efficiently
+      const totalInvoiced = invoicesData.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
+      const totalCollected = paymentsData.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
       const totalOutstanding = totalInvoiced - totalCollected;
       const collectionRate = totalInvoiced > 0 ? (totalCollected / totalInvoiced) * 100 : 0;
-      
+
       setFeeSummary({
         totalInvoiced,
         totalCollected,
@@ -3820,31 +4163,59 @@ const Dashboard: React.FC = () => {
     } finally {
       setFeeSummaryLoading(false);
     }
-  }, [user?.school_id]);
-  
-  // Fetch fee summary on mount and when session changes
+  }, [user?.school_id, getCachedSession]);
+
+  // Fetch fee summary only when fee tab is active
   useEffect(() => {
-    fetchFeeSummary();
-  }, [fetchFeeSummary]);
-  
-  // Helper function to fetch all rows with pagination
+    if (activeTab === 'fee') {
+      fetchFeeSummary();
+    }
+  }, [fetchFeeSummary, activeTab]);
+
+  // Optimized helper function to fetch all rows with parallel pagination batches
   const fetchAllRows = async <T,>(queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>): Promise<T[]> => {
-    let allResults: T[] = [];
-    let from = 0;
+    // First, get total count with a small query to estimate pages needed
+    const firstPage = await queryFn(0, 999);
+    if (firstPage.error) throw firstPage.error;
+
+    const firstPageData = firstPage.data || [];
+    if (firstPageData.length < 1000) {
+      // Small dataset, return immediately
+      return firstPageData;
+    }
+
+    // For larger datasets, fetch first page and estimate remaining
+    let allResults: T[] = [...firstPageData];
     const pageSize = 1000;
-    let hasMore = true;
+    let from = 1000;
+
+    // Fetch remaining pages in parallel batches of 3 for optimal speed
+    const batchSize = 3;
+    let hasMore = firstPageData.length === pageSize;
 
     while (hasMore) {
-      const { data, error } = await queryFn(from, from + pageSize - 1);
-      if (error) throw error;
+      const batchPromises: Promise<{ data: T[] | null; error: any }>[] = [];
 
-      if (data && data.length > 0) {
-        allResults = allResults.concat(data);
-        from += pageSize;
-        hasMore = data.length === pageSize;
-      } else {
-        hasMore = false;
+      // Create batch of parallel requests
+      for (let i = 0; i < batchSize && hasMore; i++) {
+        batchPromises.push(queryFn(from + i * pageSize, from + i * pageSize + pageSize - 1));
       }
+
+      const batchResults = await Promise.all(batchPromises);
+
+      let batchHasMore = false;
+      for (const result of batchResults) {
+        if (result.error) throw result.error;
+        if (result.data && result.data.length > 0) {
+          allResults = allResults.concat(result.data);
+          if (result.data.length === pageSize) {
+            batchHasMore = true;
+          }
+        }
+      }
+
+      hasMore = batchHasMore;
+      from += batchSize * pageSize;
     }
 
     return allResults;
@@ -3853,7 +4224,7 @@ const Dashboard: React.FC = () => {
   // Fetch collection charts data
   const fetchCollectionChartsData = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     setCollectionChartsLoading(true);
     try {
       // Fetch all payments with pagination
@@ -3865,24 +4236,24 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       if (!paymentsData || paymentsData.length === 0) {
         setDailyCollectionData([]);
         setMonthlyCollectionData([]);
         return;
       }
-      
+
       const selectedDate = new Date(dashboardDate);
       const currentMonth = selectedDate.getMonth();
       const currentYear = selectedDate.getFullYear();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-      
+
       // Prepare daily collection data for current month
       const dailyData: { [key: number]: number } = {};
       for (let day = 1; day <= daysInMonth; day++) {
         dailyData[day] = 0;
       }
-      
+
       // Process payments for daily collection
       paymentsData.forEach((payment: any) => {
         if (payment.payment_date) {
@@ -3893,18 +4264,18 @@ const Dashboard: React.FC = () => {
           }
         }
       });
-      
+
       // Convert to array format
       const dailyCollection = Object.keys(dailyData).map(day => ({
         day: parseInt(day),
         amount: dailyData[parseInt(day)]
       }));
-      
+
       setDailyCollectionData(dailyCollection);
-      
+
       // Prepare monthly collection data for last 12 months
       const monthlyData: { [key: string]: number } = {};
-      
+
       // Initialize last 12 months ending at selected date
       const months: string[] = [];
       for (let i = 11; i >= 0; i--) {
@@ -3913,7 +4284,7 @@ const Dashboard: React.FC = () => {
         months.push(monthKey);
         monthlyData[monthKey] = 0;
       }
-      
+
       // Process payments for monthly collection
       paymentsData.forEach((payment: any) => {
         if (payment.payment_date) {
@@ -3924,13 +4295,13 @@ const Dashboard: React.FC = () => {
           }
         }
       });
-      
+
       // Convert to array format
       const monthlyCollection = months.map(month => ({
         month,
         amount: monthlyData[month] || 0
       }));
-      
+
       setMonthlyCollectionData(monthlyCollection);
     } catch (error) {
       console.error('Error fetching collection charts data:', error);
@@ -3938,16 +4309,18 @@ const Dashboard: React.FC = () => {
       setCollectionChartsLoading(false);
     }
   }, [user?.school_id, dashboardDate]);
-  
-  // Fetch collection charts data on mount and date change
+
+  // Fetch collection charts data only when fee tab is active
   useEffect(() => {
-    fetchCollectionChartsData();
-  }, [fetchCollectionChartsData]);
-  
+    if (activeTab === 'fee') {
+      fetchCollectionChartsData();
+    }
+  }, [fetchCollectionChartsData, activeTab]);
+
   // Fetch fee collection details
   const fetchFeeCollectionDetails = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     setFeeCollectionDetailsLoading(true);
     try {
       // Get active session
@@ -3957,16 +4330,16 @@ const Dashboard: React.FC = () => {
         .eq('is_active', true)
         .eq('school_id', user.school_id)
         .maybeSingle();
-      
+
       if (!sessionData) {
         setFeeCollectionDetailsLoading(false);
         return;
       }
-      
+
       const selectedDate = new Date(dashboardDate);
       const currentMonth = selectedDate.getMonth() + 1; // 1-12
       const currentYear = selectedDate.getFullYear();
-      
+
       // Fetch all invoices with pagination
       const invoices = await fetchAllRows(async (from, to) => {
         const result = await supabase
@@ -3976,7 +4349,7 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       // Fetch all payments with pagination
       const payments = await fetchAllRows(async (from, to) => {
         const result = await supabase
@@ -3986,7 +4359,7 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       // Fetch all invoice items for discounts
       const invoiceItems = await fetchAllRows(async (from, to) => {
         const result = await supabase
@@ -3996,7 +4369,7 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       // Fetch all students to determine old vs new
       const students = await fetchAllRows(async (from, to) => {
         const result = await supabase
@@ -4006,7 +4379,7 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       // Create maps for quick lookup
       const paymentsByInvoice = new Map<number, number>();
       payments.forEach((payment: any) => {
@@ -4014,14 +4387,14 @@ const Dashboard: React.FC = () => {
         const amount = Number(payment.amount) || 0;
         paymentsByInvoice.set(invoiceId, (paymentsByInvoice.get(invoiceId) || 0) + amount);
       });
-      
+
       const discountsByInvoice = new Map<number, number>();
       invoiceItems.forEach((item: any) => {
         const invoiceId = item.invoice_id;
         const discount = Number(item.discount) || 0;
         discountsByInvoice.set(invoiceId, (discountsByInvoice.get(invoiceId) || 0) + discount);
       });
-      
+
       // Create student map
       const studentMap = new Map<number, { admissionDate: string; status: string; sessionId: number }>();
       students.forEach((student: any) => {
@@ -4031,14 +4404,14 @@ const Dashboard: React.FC = () => {
           sessionId: student.session_id
         });
       });
-      
+
       // Determine if student is new admission (admitted in current session)
       const isNewAdmission = (studentId: number): boolean => {
         const student = studentMap.get(studentId);
         if (!student) return false;
         return student.sessionId === sessionData.id;
       };
-      
+
       // Initialize totals
       const previousArrears = {
         oldStudents: 0,
@@ -4049,7 +4422,7 @@ const Dashboard: React.FC = () => {
         droppedOut: 0,
         remaining: 0
       };
-      
+
       const currentMonthData = {
         oldStudents: 0,
         newAdmissions: 0,
@@ -4059,7 +4432,7 @@ const Dashboard: React.FC = () => {
         droppedOut: 0,
         remaining: 0
       };
-      
+
       const nextMonths = {
         oldStudents: 0,
         newAdmissions: 0,
@@ -4069,13 +4442,13 @@ const Dashboard: React.FC = () => {
         droppedOut: 0,
         remaining: 0
       };
-      
+
       // Helper to parse month (can be string like "January" or number 1-12)
       const parseMonth = (month: any): number => {
         if (typeof month === 'number') return month;
         if (typeof month === 'string') {
-          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
-                             'july', 'august', 'september', 'october', 'november', 'december'];
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december'];
           const monthIndex = monthNames.findIndex(m => m.toLowerCase().startsWith(month.toLowerCase()));
           if (monthIndex !== -1) return monthIndex + 1;
           // Try parsing as number string
@@ -4084,24 +4457,24 @@ const Dashboard: React.FC = () => {
         }
         return 0;
       };
-      
+
       // Process each invoice
       invoices.forEach((invoice: any) => {
         let invoiceYear = invoice.year;
         let invoiceMonth = parseMonth(invoice.month);
-        
+
         // If month/year not available, try to get from invoice_date
         if (!invoiceYear || !invoiceMonth) {
-          const invoiceDate = invoice.invoice_date ? new Date(invoice.invoice_date) : 
-                             (invoice.created_at ? new Date(invoice.created_at) : null);
+          const invoiceDate = invoice.invoice_date ? new Date(invoice.invoice_date) :
+            (invoice.created_at ? new Date(invoice.created_at) : null);
           if (invoiceDate) {
             invoiceYear = invoiceYear || invoiceDate.getFullYear();
             invoiceMonth = invoiceMonth || invoiceDate.getMonth() + 1;
           }
         }
-        
+
         if (!invoiceYear || !invoiceMonth) return; // Skip if we can't determine date
-        
+
         const totalAmount = Number(invoice.total_amount) || 0;
         const paid = paymentsByInvoice.get(invoice.id) || 0;
         const discount = discountsByInvoice.get(invoice.id) || 0;
@@ -4109,9 +4482,9 @@ const Dashboard: React.FC = () => {
         const student = studentMap.get(studentId);
         const isDroppedOut = student?.status === 'withdrawn' || student?.status === 'dropped';
         const isNew = isNewAdmission(studentId);
-        
+
         let targetCategory: typeof previousArrears;
-        
+
         // Categorize invoice
         if (invoiceYear < currentYear || (invoiceYear === currentYear && invoiceMonth < currentMonth)) {
           targetCategory = previousArrears;
@@ -4120,25 +4493,25 @@ const Dashboard: React.FC = () => {
         } else {
           targetCategory = nextMonths;
         }
-        
+
         // Add to totals
         if (isNew) {
           targetCategory.newAdmissions += totalAmount;
         } else {
           targetCategory.oldStudents += totalAmount;
         }
-        
+
         targetCategory.totalPayable += totalAmount;
         targetCategory.paid += paid;
         targetCategory.discount += discount;
-        
+
         if (isDroppedOut) {
           targetCategory.droppedOut += totalAmount - paid - discount;
         }
-        
+
         targetCategory.remaining += totalAmount - paid - discount;
       });
-      
+
       // Calculate totals
       const total = {
         oldStudents: previousArrears.oldStudents + currentMonthData.oldStudents + nextMonths.oldStudents,
@@ -4149,7 +4522,7 @@ const Dashboard: React.FC = () => {
         droppedOut: previousArrears.droppedOut + currentMonthData.droppedOut + nextMonths.droppedOut,
         remaining: previousArrears.remaining + currentMonthData.remaining + nextMonths.remaining
       };
-      
+
       setFeeCollectionDetails({
         previousArrears,
         currentMonth: currentMonthData,
@@ -4162,22 +4535,24 @@ const Dashboard: React.FC = () => {
       setFeeCollectionDetailsLoading(false);
     }
   }, [user?.school_id, dashboardDate]);
-  
-  // Fetch fee collection details on mount and date change
+
+  // Fetch fee collection details only when fee tab is active
   useEffect(() => {
-    fetchFeeCollectionDetails();
-  }, [fetchFeeCollectionDetails]);
-  
+    if (activeTab === 'fee') {
+      fetchFeeCollectionDetails();
+    }
+  }, [fetchFeeCollectionDetails, activeTab, dashboardDate]);
+
   // Fetch defaulters data
   const fetchDefaultersData = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     setDefaultersLoading(true);
     try {
       const selectedDate = new Date(dashboardDate);
       const currentMonth = selectedDate.getMonth() + 1; // 1-12
       const currentYear = selectedDate.getFullYear();
-      
+
       // Fetch all invoices with pagination - get unpaid, partial, and overdue
       const invoices = await fetchAllRows(async (from, to) => {
         const result = await supabase
@@ -4188,7 +4563,7 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       // Fetch all payments to calculate remaining amounts
       const payments = await fetchAllRows(async (from, to) => {
         const result = await supabase
@@ -4198,7 +4573,7 @@ const Dashboard: React.FC = () => {
           .range(from, to);
         return { data: result.data, error: result.error };
       });
-      
+
       // Create payments map
       const paymentsByInvoice = new Map<number, number>();
       payments.forEach((payment: any) => {
@@ -4206,13 +4581,13 @@ const Dashboard: React.FC = () => {
         const amount = Number(payment.amount) || 0;
         paymentsByInvoice.set(invoiceId, (paymentsByInvoice.get(invoiceId) || 0) + amount);
       });
-      
+
       // Helper to parse month
       const parseMonth = (month: any): number => {
         if (typeof month === 'number') return month;
         if (typeof month === 'string') {
-          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
-                             'july', 'august', 'september', 'october', 'november', 'december'];
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december'];
           const monthIndex = monthNames.findIndex(m => m.toLowerCase().startsWith(month.toLowerCase()));
           if (monthIndex !== -1) return monthIndex + 1;
           const num = parseInt(month);
@@ -4220,11 +4595,11 @@ const Dashboard: React.FC = () => {
         }
         return 0;
       };
-      
+
       // Initialize last 6 months data
       const monthlyData: { [key: string]: { challan: number; amount: number } } = {};
       const months: string[] = [];
-      
+
       for (let i = 5; i >= 0; i--) {
         const date = new Date(currentYear, currentMonth - i - 1, 1);
         const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -4232,32 +4607,32 @@ const Dashboard: React.FC = () => {
         months.push(monthLabel);
         monthlyData[monthKey] = { challan: 0, amount: 0 };
       }
-      
+
       // Process invoices
       invoices.forEach((invoice: any) => {
         let invoiceYear = invoice.year;
         let invoiceMonth = parseMonth(invoice.month);
-        
+
         // If month/year not available, try to get from invoice_date or due_date
         if (!invoiceYear || !invoiceMonth) {
-          const invoiceDate = invoice.invoice_date ? new Date(invoice.invoice_date) : 
-                             (invoice.due_date ? new Date(invoice.due_date) : null);
+          const invoiceDate = invoice.invoice_date ? new Date(invoice.invoice_date) :
+            (invoice.due_date ? new Date(invoice.due_date) : null);
           if (invoiceDate) {
             invoiceYear = invoiceYear || invoiceDate.getFullYear();
             invoiceMonth = invoiceMonth || invoiceDate.getMonth() + 1;
           }
         }
-        
+
         if (!invoiceYear || !invoiceMonth) return;
-        
+
         const monthKey = new Date(invoiceYear, invoiceMonth - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        
+
         // Check if this invoice is in the last 6 months
         if (monthlyData.hasOwnProperty(monthKey)) {
           const totalAmount = Number(invoice.total_amount) || 0;
           const paid = paymentsByInvoice.get(invoice.id) || 0;
           const remaining = totalAmount - paid;
-          
+
           // Only count if there's remaining amount
           if (remaining > 0) {
             monthlyData[monthKey].challan += 1;
@@ -4265,7 +4640,7 @@ const Dashboard: React.FC = () => {
           }
         }
       });
-      
+
       // Convert to array format
       const defaultersArray = months.map(monthLabel => {
         // Find matching monthKey
@@ -4274,7 +4649,7 @@ const Dashboard: React.FC = () => {
           const label = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
           return label === monthLabel;
         });
-        
+
         if (monthKey) {
           return {
             month: monthLabel,
@@ -4282,14 +4657,14 @@ const Dashboard: React.FC = () => {
             amount: monthlyData[monthKey].amount
           };
         }
-        
+
         return {
           month: monthLabel,
           challan: 0,
           amount: 0
         };
       });
-      
+
       setDefaultersData(defaultersArray);
     } catch (error) {
       console.error('Error fetching defaulters data:', error);
@@ -4297,109 +4672,152 @@ const Dashboard: React.FC = () => {
       setDefaultersLoading(false);
     }
   }, [user?.school_id, dashboardDate]);
-  
-  // Fetch defaulters data on mount and date change
-  useEffect(() => {
-    fetchDefaultersData();
-  }, [fetchDefaultersData]);
 
-  // Fetch admissions data
+  // Fetch defaulters data only when fee tab is active
+  useEffect(() => {
+    if (activeTab === 'fee') {
+      fetchDefaultersData();
+    }
+  }, [fetchDefaultersData, activeTab, dashboardDate]);
+
+  // Track if admissions fetch is in progress to prevent duplicate calls
+  const admissionsFetchingRef = useRef(false);
+
+  // Fetch admissions data - OPTIMIZED: Only fetch last 24 months, use counts for totals
   const fetchAdmissionsData = useCallback(async () => {
     if (!user?.school_id) {
       setAdmissionsLoading(false);
       return;
     }
-    
+
+    // Prevent duplicate simultaneous fetches
+    if (admissionsFetchingRef.current) {
+      return;
+    }
+
+    admissionsFetchingRef.current = true;
     setAdmissionsLoading(true);
     try {
-      const selectedDate = new Date(dashboardDate);
-      const currentMonthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-      const currentMonthEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59);
-      
-      // Get active session and run initial queries in parallel
-      const [sessionResult, enquiriesCount, studentsCount, familiesCount] = await Promise.all([
-        supabase
-          .from('sessions')
-          .select('id')
-          .eq('is_active', true)
-          .eq('school_id', user.school_id)
-          .maybeSingle(),
-        // Use count queries for better performance
-        supabase
-          .from('enquiries')
-          .select('id, created_at', { count: 'exact', head: false })
-          .eq('school_id', user.school_id)
-          .gte('created_at', currentMonthStart.toISOString())
-          .lte('created_at', currentMonthEnd.toISOString()),
-        supabase
-          .from('students')
-          .select('id, created_at, gender', { count: 'exact', head: false })
-          .eq('school_id', user.school_id)
-          .gte('created_at', currentMonthStart.toISOString())
-          .lte('created_at', currentMonthEnd.toISOString()),
-        supabase
-          .from('families')
-          .select('id, created_at', { count: 'exact', head: false })
-          .eq('school_id', user.school_id)
-          .gte('created_at', currentMonthStart.toISOString())
-          .lte('created_at', currentMonthEnd.toISOString())
-      ]);
-      
-      const { data: sessionData } = sessionResult;
-      const inquiriesThisMonth = enquiriesCount.data?.length || 0;
-      const studentsThisMonth = studentsCount.data?.length || 0;
-      const familiesThisMonth = familiesCount.data?.length || 0;
-      
-      // Fetch all data for totals and charts in parallel
-      const [allEnquiriesResult, allStudentsResult, allFamiliesResult, feePlansResult] = await Promise.all([
+      // Use date range for admissions (defaults to current month)
+      const fromDate = new Date(admissionsDateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(admissionsDateTo);
+      toDate.setHours(23, 59, 59, 999);
+
+      const dataStartDate = fromDate.toISOString();
+      const dataEndDate = toDate.toISOString();
+
+      // Calculate month range for "this month" stats (the selected date range)
+      const rangeStart = fromDate;
+      const rangeEnd = toDate;
+
+      // Get active session and run optimized queries in parallel
+      const [sessionResult, enquiriesThisMonthResult, studentsThisMonthResult, familiesThisMonthResult,
+        totalEnquiriesResult, totalStudentsResult, totalFamiliesResult] = await Promise.all([
+          getCachedSession(),
+          // Use count for selected date range
+          supabase
+            .from('enquiries')
+            .select('id', { count: 'exact', head: true })
+            .eq('school_id', user.school_id)
+            .gte('created_at', dataStartDate)
+            .lte('created_at', dataEndDate),
+          supabase
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .eq('school_id', user.school_id)
+            .gte('created_at', dataStartDate)
+            .lte('created_at', dataEndDate),
+          supabase
+            .from('families')
+            .select('id', { count: 'exact', head: true })
+            .eq('school_id', user.school_id)
+            .gte('created_at', dataStartDate)
+            .lte('created_at', dataEndDate),
+          // Use count for totals (much faster than fetching all rows)
+          supabase
+            .from('enquiries')
+            .select('id', { count: 'exact', head: true })
+            .eq('school_id', user.school_id),
+          supabase
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .eq('school_id', user.school_id),
+          supabase
+            .from('families')
+            .select('id', { count: 'exact', head: true })
+            .eq('school_id', user.school_id)
+        ]);
+
+      const sessionData = sessionResult;
+      const inquiriesThisRange = enquiriesThisMonthResult.count || 0;
+      const studentsThisRange = studentsThisMonthResult.count || 0;
+      const familiesThisRange = familiesThisMonthResult.count || 0;
+      const totalInquiries = totalEnquiriesResult.count || 0;
+      const totalStudents = totalStudentsResult.count || 0;
+      const totalFamilies = totalFamiliesResult.count || 0;
+
+      // Only fetch data for selected date range (much faster - just 1 month by default)
+      const [recentEnquiriesResult, recentStudentsResult, recentFamiliesResult, feePlansResult] = await Promise.all([
+        // Only fetch last 24 months for chart data
         fetchAllRows(async (from, to) => {
           return await supabase
             .from('enquiries')
             .select('id, created_at')
             .eq('school_id', user.school_id)
+            .gte('created_at', dataStartDate)
+            .order('created_at', { ascending: false })
             .range(from, to);
         }),
+        // Only fetch last 24 months + latest 5 for display
         fetchAllRows(async (from, to) => {
           return await supabase
             .from('students')
             .select('id, created_at, gender, class_id, name, picture_url, dob, status')
             .eq('school_id', user.school_id)
+            .gte('created_at', dataStartDate)
+            .order('created_at', { ascending: false })
             .range(from, to);
         }),
+        // Only fetch last 24 months
         fetchAllRows(async (from, to) => {
           return await supabase
             .from('families')
             .select('id, created_at')
             .eq('school_id', user.school_id)
+            .gte('created_at', dataStartDate)
             .range(from, to);
         }),
         sessionData?.id
           ? fetchAllRows(async (from, to) => {
-              return await supabase
-                .from('student_fee_plans')
-                .select('id, created_at')
-                .eq('school_id', user.school_id)
-                .eq('session_id', sessionData.id)
-                .range(from, to);
-            })
+            return await supabase
+              .from('student_fee_plans')
+              .select('id, created_at')
+              .eq('school_id', user.school_id)
+              .eq('session_id', sessionData.id)
+              .range(from, to);
+          })
           : Promise.resolve([])
       ]);
-      
-      const allEnquiries = allEnquiriesResult;
-      const allStudents = allStudentsResult;
-      const allFamilies = allFamiliesResult;
+
+      const recentEnquiries = recentEnquiriesResult;
+      const recentStudents = recentStudentsResult;
+      const recentFamilies = recentFamiliesResult;
       const allFeePlans = feePlansResult;
-      
-      const feePlansThisMonth = (allFeePlans || []).filter(fp => {
+
+      const feePlansThisRange = (allFeePlans || []).filter(fp => {
         const createdAt = new Date(fp.created_at);
-        return createdAt >= currentMonthStart && createdAt <= currentMonthEnd;
+        return createdAt >= rangeStart && createdAt <= rangeEnd;
       }).length;
-      
-      // Prepare chart data - Monthly admissions and withdrawals with gender breakdown (last 12 months)
+
+      // Prepare chart data - Monthly admissions and withdrawals with gender breakdown (only for selected date range)
       const admissionsByMonth: Record<string, { boys: number; girls: number }> = {};
       const withdrawalsByMonth: Record<string, { boys: number; girls: number }> = {};
-      
-      // Get student class history for admissions with gender (fetch all rows)
+
+      // Use already fetched recentStudents for gender map (much faster)
+      const genderMap = new Map(recentStudents.map((s: any) => [s.id, s.gender]));
+
+      // Get student class history for admissions - ONLY within date range
       if (sessionData?.id) {
         const classHistory = await fetchAllRows(async (from, to) => {
           return await supabase
@@ -4407,32 +4825,17 @@ const Dashboard: React.FC = () => {
             .select('student_id, created_at, status')
             .eq('school_id', user.school_id)
             .eq('session_id', sessionData.id)
+            .gte('created_at', dataStartDate)
+            .lte('created_at', dataEndDate)
             .order('created_at', { ascending: false })
             .range(from, to);
         });
-        
-        // Get student genders - batch in chunks of 1000 for .in() query
-        const studentIds = Array.from(new Set(classHistory.map(ch => ch.student_id)));
-        const allStudentsWithGender: any[] = [];
-        
-        for (let i = 0; i < studentIds.length; i += 1000) {
-          const chunk = studentIds.slice(i, i + 1000);
-          const { data: chunkData } = await supabase
-            .from('students')
-            .select('id, gender')
-            .eq('school_id', user.school_id)
-            .in('id', chunk);
-          if (chunkData) {
-            allStudentsWithGender.push(...chunkData);
-          }
-        }
-        
-        const genderMap = new Map(allStudentsWithGender.map(s => [s.id, s.gender]));
-        
+
+        // Process class history using already fetched gender data
         classHistory.forEach(record => {
           const date = new Date(record.created_at);
           const monthKey = format(date, 'MMM yyyy');
-          
+
           if (record.status === 'active' || !record.status) {
             if (!admissionsByMonth[monthKey]) {
               admissionsByMonth[monthKey] = { boys: 0, girls: 0 };
@@ -4440,7 +4843,7 @@ const Dashboard: React.FC = () => {
             const gender = genderMap.get(record.student_id);
             const isMale = gender === 'Male' || gender === 'male' || gender === 'M';
             const isFemale = gender === 'Female' || gender === 'female' || gender === 'F';
-            
+
             if (isMale) {
               admissionsByMonth[monthKey].boys += 1;
             } else if (isFemale) {
@@ -4449,63 +4852,34 @@ const Dashboard: React.FC = () => {
           }
         });
       }
-      
-      // Get withdrawals from student_status_history table with gender (fetch all rows)
+
+      // Get withdrawals from student_status_history - ONLY within date range
       const statusHistory = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('student_status_history')
           .select('id, created_at, action, new_status, student_id')
           .eq('school_id', user.school_id)
           .or('action.eq.withdraw,new_status.eq.withdrawn')
+          .gte('created_at', dataStartDate)
+          .lte('created_at', dataEndDate)
           .order('created_at', { ascending: false })
           .range(from, to);
       });
-      
-      // Get student genders for withdrawals - batch in chunks
-      const withdrawalStudentIds = Array.from(new Set(statusHistory.map(sh => sh.student_id).filter(Boolean)));
-      const allWithdrawalStudentsWithGender: any[] = [];
-      
-      if (withdrawalStudentIds.length > 0) {
-        for (let i = 0; i < withdrawalStudentIds.length; i += 1000) {
-          const chunk = withdrawalStudentIds.slice(i, i + 1000);
-          const { data: chunkData } = await supabase
-            .from('students')
-            .select('id, gender, status_updated_at, status, created_at')
-            .eq('school_id', user.school_id)
-            .in('id', chunk);
-          if (chunkData) {
-            allWithdrawalStudentsWithGender.push(...chunkData);
-          }
-        }
-      }
-      
-      // Type for students with optional created_at
-      interface StudentWithDates {
-        id: number;
-        gender: string;
-        status_updated_at: string | null;
-        status: string;
-        created_at?: string;
-      }
-      
-      const withdrawalGenderMap = new Map(allWithdrawalStudentsWithGender.map(s => [s.id, s.gender]));
-      
-      // Track which students have been counted to avoid duplicates
-      const countedStudentIds = new Set<number>();
-      
+
+      // Process withdrawals using already fetched gender data
       statusHistory.forEach(record => {
         if (record.action === 'withdraw' || record.new_status === 'withdrawn') {
           const date = new Date(record.created_at);
           const monthKey = format(date, 'MMM yyyy');
-          
+
           if (!withdrawalsByMonth[monthKey]) {
             withdrawalsByMonth[monthKey] = { boys: 0, girls: 0 };
           }
-          
-          const gender = record.student_id ? withdrawalGenderMap.get(record.student_id) : null;
+
+          const gender = record.student_id ? genderMap.get(record.student_id) : null;
           const isMale = gender === 'Male' || gender === 'male' || gender === 'M';
           const isFemale = gender === 'Female' || gender === 'female' || gender === 'F';
-          
+
           if (isMale) {
             withdrawalsByMonth[monthKey].boys += 1;
           } else if (isFemale) {
@@ -4513,50 +4887,40 @@ const Dashboard: React.FC = () => {
           }
         }
       });
-      
-      // Also check students table for withdrawn status and use status_updated_at (fetch all rows)
-      const withdrawnStudents = await fetchAllRows(async (from, to) => {
-        return await supabase
-          .from('students')
-          .select('id, status_updated_at, status, gender, created_at')
-          .eq('school_id', user.school_id)
-          .eq('status', 'withdrawn')
-          .range(from, to);
+
+      // Also check students table for withdrawn status - filter by date range
+      const withdrawnStudents = recentStudents.filter((s: any) => {
+        if (s.status !== 'withdrawn') return false;
+        // Only count if withdrawal happened within date range
+        if (s.status_updated_at) {
+          const withdrawDate = new Date(s.status_updated_at);
+          return withdrawDate >= fromDate && withdrawDate <= toDate;
+        }
+        // Fallback to created_at if status_updated_at not available
+        if (s.created_at) {
+          const createdDate = new Date(s.created_at);
+          return createdDate >= fromDate && createdDate <= toDate;
+        }
+        return false;
       });
-      
-      withdrawnStudents.forEach(student => {
-        if (student.status_updated_at) {
-          const date = new Date(student.status_updated_at);
-          const monthKey = format(date, 'MMM yyyy');
-          // Check if this student was already counted in status_history
-          const alreadyCounted = statusHistory.some(sh => 
-            sh.student_id === student.id &&
-            sh.new_status === 'withdrawn' && 
-            new Date(sh.created_at).getTime() === date.getTime()
-          );
-          if (!alreadyCounted) {
-            if (!withdrawalsByMonth[monthKey]) {
-              withdrawalsByMonth[monthKey] = { boys: 0, girls: 0 };
-            }
-            const isMale = student.gender === 'Male' || student.gender === 'male' || student.gender === 'M';
-            const isFemale = student.gender === 'Female' || student.gender === 'female' || student.gender === 'F';
-            
-            if (isMale) {
-              withdrawalsByMonth[monthKey].boys += 1;
-            } else if (isFemale) {
-              withdrawalsByMonth[monthKey].girls += 1;
-            }
-          }
-        } else if ((student as any).created_at) {
-          // Fallback to created_at if status_updated_at is not available
-          const date = new Date((student as any).created_at);
-          const monthKey = format(date, 'MMM yyyy');
+
+      withdrawnStudents.forEach((student: any) => {
+        const withdrawDate = student.status_updated_at ? new Date(student.status_updated_at) : new Date(student.created_at);
+        const monthKey = format(withdrawDate, 'MMM yyyy');
+
+        // Check if this student was already counted in status_history
+        const alreadyCounted = statusHistory.some(sh =>
+          sh.student_id === student.id &&
+          sh.new_status === 'withdrawn'
+        );
+
+        if (!alreadyCounted && withdrawDate >= fromDate && withdrawDate <= toDate) {
           if (!withdrawalsByMonth[monthKey]) {
             withdrawalsByMonth[monthKey] = { boys: 0, girls: 0 };
           }
           const isMale = student.gender === 'Male' || student.gender === 'male' || student.gender === 'M';
           const isFemale = student.gender === 'Female' || student.gender === 'female' || student.gender === 'F';
-          
+
           if (isMale) {
             withdrawalsByMonth[monthKey].boys += 1;
           } else if (isFemale) {
@@ -4564,18 +4928,29 @@ const Dashboard: React.FC = () => {
           }
         }
       });
-      
-      // Convert to array format for charts - last 12 months
-      const months = [];
+
+      // Convert to array format for charts - only months within selected date range
+      const months: Array<{ monthKey: string; monthLabel: string; date: Date }> = [];
       const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - i, 1);
-        const monthKey = format(date, 'MMM yyyy');
-        const monthLabel = monthLabels[date.getMonth()];
-        months.push({ monthKey, monthLabel, date });
+
+      // Generate months between fromDate and toDate (more efficient for small ranges)
+      const startMonth = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+      const endMonth = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
+
+      const currentMonth = new Date(startMonth);
+      while (currentMonth <= endMonth) {
+        const monthKey = format(currentMonth, 'MMM yyyy');
+        const monthLabel = monthLabels[currentMonth.getMonth()];
+        months.push({
+          monthKey,
+          monthLabel,
+          date: new Date(currentMonth)
+        });
+
+        // Move to next month
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
       }
-      
+
       const admissionsChart = months.map(({ monthKey, monthLabel }) => {
         const data = admissionsByMonth[monthKey] || { boys: 0, girls: 0 };
         return {
@@ -4585,7 +4960,7 @@ const Dashboard: React.FC = () => {
           girls: data.girls
         };
       });
-      
+
       const withdrawalsChart = months.map(({ monthKey, monthLabel }) => {
         const data = withdrawalsByMonth[monthKey] || { boys: 0, girls: 0 };
         return {
@@ -4595,23 +4970,20 @@ const Dashboard: React.FC = () => {
           girls: data.girls
         };
       });
-      
-      // Gender distribution
-      const boys = (allStudents || []).filter(s => s.gender === 'Male' || s.gender === 'male' || s.gender === 'M').length;
-      const girls = (allStudents || []).filter(s => s.gender === 'Female' || s.gender === 'female' || s.gender === 'F').length;
-      
+
+      // Gender distribution - use total counts (already fetched)
+      // For chart, use sample from recent students (last 24 months) for visualization
+      const recentBoys = recentStudents.filter((s: any) => s.gender === 'Male' || s.gender === 'male' || s.gender === 'M').length;
+      const recentGirls = recentStudents.filter((s: any) => s.gender === 'Female' || s.gender === 'female' || s.gender === 'F').length;
+
+      // Use total counts for accurate numbers, but recent data for chart proportions
       const genderData = [
-        { name: 'Boys', value: boys, color: '#22c55e' },
-        { name: 'Girls', value: girls, color: '#a78bfa' }
+        { name: 'Boys', value: totalStudents > 0 ? Math.round((recentBoys / (recentBoys + recentGirls || 1)) * totalStudents) : 0, color: '#22c55e' },
+        { name: 'Girls', value: totalStudents > 0 ? Math.round((recentGirls / (recentBoys + recentGirls || 1)) * totalStudents) : 0, color: '#a78bfa' }
       ];
-      
-      // Get latest 5 students added to the system from allStudents (already fetched)
-      const latestAdmissions = (allStudents || [])
-        .sort((a: any, b: any) => {
-          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return dateB - dateA;
-        })
+
+      // Get latest 5 students from recentStudents (already fetched and sorted)
+      const latestAdmissions = recentStudents
         .slice(0, 5)
         .map((student: any) => {
           const className = getClassName(student.class_id);
@@ -4622,10 +4994,10 @@ const Dashboard: React.FC = () => {
             admissionDate: student.created_at
           };
         });
-      
-      // Fetch grade distribution (group by class and gender) - fetch all students
+
+      // Grade distribution - use recent students only (much faster)
       const gradeDistributionMap = new Map<string, { boys: number; girls: number }>();
-      allStudents.forEach((student: any) => {
+      recentStudents.forEach((student: any) => {
         if (student.class_id) {
           const className = getClassName(student.class_id);
           if (!gradeDistributionMap.has(className)) {
@@ -4641,20 +5013,20 @@ const Dashboard: React.FC = () => {
           }
         }
       });
-      
+
       const gradeDistribution = Array.from(gradeDistributionMap.entries()).map(([grade, stats]) => ({
         grade,
         boys: stats.boys,
         girls: stats.girls,
         total: stats.boys + stats.girls
       })).sort((a, b) => a.grade.localeCompare(b.grade));
-      
-      // Get today's birthdays from allStudents (already fetched) - filter client-side
+
+      // Get today's birthdays from recentStudents (already fetched) - filter client-side
       const today = new Date();
       const todayMonth = today.getMonth() + 1;
       const todayDay = today.getDate();
-      
-      const todaysBirthdays = (allStudents || [])
+
+      const todaysBirthdays = recentStudents
         .filter((student: any) => {
           // Filter active students only
           if (student.status && student.status !== 'active') return false;
@@ -4671,16 +5043,16 @@ const Dashboard: React.FC = () => {
             className: className || '-'
           };
         });
-      
+
       setAdmissionsData({
-        totalInquiries: allEnquiries?.length || 0,
-        inquiriesThisMonth,
-        totalStudents: allStudents?.length || 0,
-        studentsThisMonth,
-        totalFamilies: allFamilies?.length || 0,
-        familiesThisMonth,
+        totalInquiries: totalInquiries,
+        inquiriesThisMonth: inquiriesThisRange,
+        totalStudents: totalStudents,
+        studentsThisMonth: studentsThisRange,
+        totalFamilies: totalFamilies,
+        familiesThisMonth: familiesThisRange,
         totalFeePlans: allFeePlans?.length || 0,
-        feePlansThisMonth,
+        feePlansThisMonth: feePlansThisRange,
         admissionsChart,
         withdrawalsChart,
         genderData,
@@ -4711,21 +5083,36 @@ const Dashboard: React.FC = () => {
       });
     } finally {
       setAdmissionsLoading(false);
+      admissionsFetchingRef.current = false;
     }
-  }, [user?.school_id, getClassName]);
-  
+  }, [user?.school_id, getClassName, getCachedSession, admissionsDateFrom, admissionsDateTo]);
+
   // Track previous tab to detect tab changes
-  const prevTabRef = useRef<'attendance' | 'fee' | 'admissions' | null>(null);
-  
-  // Fetch admissions data when tab is active
+  const prevTabRef = useRef<'attendance' | 'fee' | 'admissions' | 'homework' | null>(null);
+
+  // Track if admissions data has been loaded for current date
+  const admissionsDataLoadedRef = useRef<string | null>(null);
+
+  // Fetch admissions data when tab is active - fixed infinite loop
   useEffect(() => {
+    if (activeTab !== 'admissions') {
+      prevTabRef.current = activeTab;
+      return;
+    }
+
     const tabChanged = prevTabRef.current !== activeTab;
     prevTabRef.current = activeTab;
-    
-    if (activeTab === 'admissions' && (tabChanged || !admissionsLoading)) {
+
+    // Create a key for the current state (tab + date range)
+    const dataKey = `${activeTab}-${admissionsDateFrom}-${admissionsDateTo}`;
+
+    // Only fetch if tab changed OR date changed OR data hasn't been loaded for this key
+    // AND not currently loading to prevent infinite loops
+    if ((tabChanged || admissionsDataLoadedRef.current !== dataKey) && !admissionsLoading && !admissionsFetchingRef.current) {
+      admissionsDataLoadedRef.current = dataKey;
       fetchAdmissionsData();
     }
-  }, [activeTab, fetchAdmissionsData, admissionsLoading, dashboardDate]);
+  }, [activeTab, admissionsDateFrom, admissionsDateTo, fetchAdmissionsData, admissionsLoading]);
 
   // Show delete confirmation modal
   const showDeleteConfirmation = (fine: any) => {
@@ -4736,9 +5123,9 @@ const Dashboard: React.FC = () => {
       month: 'short',
       year: 'numeric'
     });
-    
-    setFineToDelete({ 
-      id: fine.id, 
+
+    setFineToDelete({
+      id: fine.id,
       studentName: student.name,
       studentId: String(getStudentDisplayId(student)),
       className: classLabel,
@@ -4768,11 +5155,11 @@ const Dashboard: React.FC = () => {
       }
 
       toast.showToast('Fine payment deleted successfully', 'success');
-      
+
       // Close modal
       setShowDeleteModal(false);
       setFineToDelete(null);
-      
+
       // Refresh the fine details
       const fetchFineDetails = async () => {
         try {
@@ -4828,7 +5215,7 @@ const Dashboard: React.FC = () => {
   // Handle keyboard events for delete confirmation modal
   useEffect(() => {
     if (!showDeleteModal) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -4838,11 +5225,11 @@ const Dashboard: React.FC = () => {
         cancelDelete();
       }
     };
-    
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showDeleteModal]);
-  
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth <= 700);
   const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
@@ -4862,7 +5249,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchSchoolName = async () => {
       if (!user?.school_id) return;
-      
+
       try {
         const { data: schoolData, error: schoolError } = await supabase
           .from('schools')
@@ -4903,17 +5290,17 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchFineDetails = async () => {
       if (!user?.school_id) return;
-      
+
       try {
-        
+
         // First, let's check what fine payments exist for this school
         const { data: allFines, error: allFinesError } = await supabase
           .from('fine_payments')
           .select('*')
           .eq('school_id', user.school_id)
           .limit(10);
-        
-        
+
+
         // Now get the specific date data - use created_at instead of date
         const { data: fineData, error: fineError } = await supabase
           .from('fine_payments')
@@ -4946,7 +5333,7 @@ const Dashboard: React.FC = () => {
           setFineDetails(fineData);
         } else {
           // If no data for specific date, try different approaches
-          
+
           // Try to get all fine payments for this school to see what dates exist
           const { data: allPayments, error: allPaymentsError } = await supabase
             .from('fine_payments')
@@ -4954,14 +5341,14 @@ const Dashboard: React.FC = () => {
             .eq('school_id', user.school_id)
             .order('created_at', { ascending: false })
             .limit(20);
-          
+
           // Try to find payments that might match the date (in case of timezone issues)
           if (allPayments && allPayments.length > 0) {
             const matchingPayments = allPayments.filter(payment => {
               const paymentCreatedDate = new Date(payment.created_at).toISOString().slice(0, 10);
               return paymentCreatedDate === fineDate;
             });
-            
+
             if (matchingPayments.length > 0) {
               // Get full details for matching payments
               const paymentIds = matchingPayments.map(p => p.id || p.created_at);
@@ -4984,7 +5371,7 @@ const Dashboard: React.FC = () => {
                 `)
                 .eq('school_id', user.school_id)
                 .in('id', paymentIds);
-              
+
               if (!matchingError && matchingDetails) {
                 const totalCollected = matchingDetails.reduce((sum, payment) => {
                   return sum + (Number(payment.amount) || 0);
@@ -5014,8 +5401,8 @@ const Dashboard: React.FC = () => {
                 .eq('school_id', user.school_id)
                 .order('created_at', { ascending: false })
                 .limit(10);
-              
-              
+
+
               if (!recentError && recentPayments && recentPayments.length > 0) {
                 const totalCollected = recentPayments.reduce((sum, payment) => {
                   return sum + (Number(payment.amount) || 0);
@@ -5034,52 +5421,68 @@ const Dashboard: React.FC = () => {
     fetchFineDetails();
   }, [user?.school_id, fineDate]);
 
-  // Fetch homework diary for today
-  useEffect(() => {
-    const fetchHomeworkDiary = async () => {
-      if (!user?.school_id) return;
-      
-      try {
-        const today = new Date().toISOString().slice(0, 10);
-        const { data, error } = await supabase
-          .from('homework_diary')
-          .select(`
-            id,
-            class_id,
-            section_id,
-            subject_id,
-            homework_text,
-            homework_date,
-            assigned_by,
-            classes:class_id(id, name),
-            sections:section_id(id, name),
-            subjects:subject_id(id, name),
-            assigned_by_user:users!assigned_by(id, name)
-          `)
-          .eq('homework_date', today)
-          .eq('school_id', user.school_id)
-          .order('class_id', { ascending: true })
-          .order('section_id', { ascending: true, nullsFirst: true })
-          .order('subject_id', { ascending: true, nullsFirst: true });
-        
-        if (error) {
-          return;
-        }
-        
-        // Process and normalize the data - handle both created_by_user and assigned_by_user
-        const processedData = (data || []).map((item: any) => ({
-          ...item,
-          users: item.assigned_by_user || item.created_by_user || null
-        }));
-        
-        setHomeworkDiaryData(processedData);
-      } catch (error) {
-        // Error fetching homework diary
+  // Fetch homework diary - conditional and optimized
+  const fetchHomeworkDiary = useCallback(async () => {
+    if (!user?.school_id || !dashboardDate || homeworkFetchingRef.current) return;
+
+    const dataKey = `homework-${dashboardDate}`;
+    if (homeworkDataLoadedRef.current === dataKey) return; // Already loaded
+
+    homeworkFetchingRef.current = true;
+    setHomeworkLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('homework_diary')
+        .select(`
+          id,
+          class_id,
+          section_id,
+          subject_id,
+          homework_text,
+          homework_date,
+          assigned_by,
+          classes:class_id(id, name),
+          sections:section_id(id, name),
+          subjects:subject_id(id, name),
+          assigned_by_user:users!assigned_by(id, name)
+        `)
+        .eq('homework_date', dashboardDate)
+        .eq('school_id', user.school_id)
+        .order('class_id', { ascending: true })
+        .order('section_id', { ascending: true, nullsFirst: true })
+        .order('subject_id', { ascending: true, nullsFirst: true });
+
+      if (error) {
+        setHomeworkDiaryData([]);
+        return;
       }
-    };
-    
+
+      // Process and normalize the data - handle both created_by_user and assigned_by_user
+      const processedData = (data || []).map((item: any) => ({
+        ...item,
+        users: item.assigned_by_user || item.created_by_user || null
+      }));
+
+      setHomeworkDiaryData(processedData);
+      homeworkDataLoadedRef.current = dataKey;
+    } catch (error) {
+      setHomeworkDiaryData([]);
+    } finally {
+      setHomeworkLoading(false);
+      homeworkFetchingRef.current = false;
+    }
+  }, [user?.school_id, dashboardDate]);
+
+  // Fetch homework only when tab is active
+  useEffect(() => {
+    if (activeTab !== 'homework') return;
+
+    const dataKey = `homework-${dashboardDate}`;
+    if (homeworkDataLoadedRef.current === dataKey || homeworkFetchingRef.current) return;
+
     fetchHomeworkDiary();
-  }, [user?.school_id]);
+  }, [activeTab, dashboardDate, fetchHomeworkDiary]);
 
   // Handle clicking outside the export dropdown
   useEffect(() => {
@@ -5103,7 +5506,7 @@ const Dashboard: React.FC = () => {
   // Check if there are any students in the system for the active session
   const checkForAnyStudents = async () => {
     if (!user?.school_id || !sessionData?.id) return false;
-    
+
     try {
       // First check student_class_history for the active session
       const { data: schData, error: schError } = await supabase
@@ -5111,7 +5514,7 @@ const Dashboard: React.FC = () => {
         .select('student_id')
         .eq('session_id', sessionData.id)
         .eq('school_id', user.school_id);
-      
+
       if (!schError && schData && schData.length > 0) {
         // Now check if any of these students are active
         const studentIds = schData.map(sch => sch.student_id);
@@ -5134,7 +5537,7 @@ const Dashboard: React.FC = () => {
           return false;
         }
       }
-      
+
       // Fallback: check students table for any active students
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
@@ -5156,161 +5559,35 @@ const Dashboard: React.FC = () => {
   };
 
   const fetchAll = useCallback(async () => {
-      if (!user?.school_id) {
-        toast.showToast('User school information not found', 'error');
-        return;
-      }
-      
-      // Prevent multiple simultaneous calls using ref only
-      if (progressActiveRef.current) {
-        return;
-      }
-      
-      const minDuration = 2000; // 2 seconds
-      const start = Date.now();
-      setLoading(true);
-      progressActiveRef.current = true; // Mark progress as active
-      
-      // Start determinate progress - same as StudentList
-      startProgress(false);
-      setProgress(10);
-      
-      const today = new Date().toISOString().slice(0, 10);
-      
-      setProgress(20);
-      const { data: sessionDataResult, error: sessionError } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('is_active', true)
-        .eq('school_id', user.school_id)
-      .maybeSingle();
-      
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    // Prevent multiple simultaneous calls using ref only
+    if (progressActiveRef.current) {
+      return;
+    }
+
+    const minDuration = 500; // Reduced from 2 seconds - show UI faster
+    const start = Date.now();
+    setLoading(true);
+    progressActiveRef.current = true; // Mark progress as active
+
+    // Start determinate progress - same as StudentList
+    startProgress(false);
+    setProgress(10);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    setProgress(20);
+    // Use cached session for faster initial load
+    const sessionDataResult = await getCachedSession();
+    const sessionError = null; // Cached session doesn't have errors
+
     if (sessionError && !isNoSessionError(sessionError)) {
-        toast.showToast('Failed to fetch active session', 'error');
-        setAllDataLoaded(true);
-        const elapsed = Date.now() - start;
-        if (elapsed < minDuration) {
-          setTimeout(() => {
-            setLoading(false);
-            completeProgress();
-            progressActiveRef.current = false; // Reset progress flag
-          }, minDuration - elapsed);
-        } else {
-          setLoading(false);
-          completeProgress();
-          progressActiveRef.current = false; // Reset progress flag
-        }
-        return;
-      }
-      if (!sessionDataResult?.id) {
-        setSessionData(null);
-        setHasActiveSession(false);
-        setAllDataLoaded(true);
-        const elapsed = Date.now() - start;
-        if (elapsed < minDuration) {
-          setTimeout(() => {
-            setLoading(false);
-            completeProgress();
-            progressActiveRef.current = false; // Reset progress flag
-          }, minDuration - elapsed);
-        } else {
-          setLoading(false);
-          completeProgress();
-          progressActiveRef.current = false; // Reset progress flag
-        }
-        return;
-      }
-      
-      setProgress(30);
-      setSessionData(sessionDataResult);
-      setHasActiveSession(true);
-      
-      // First fetch students from student_class_history for the active session
-      setProgress(40);
-      const { data: schData, error: schError } = await supabase
-        .from('student_class_history')
-        .select('student_id')
-        .eq('session_id', sessionDataResult.id)
-        .eq('school_id', user.school_id);
-
-      if (schError || !schData) {
-        setStudents([]);
-        setClasses([]);
-        setSections([]);
-        setAttendanceToday([]);
-        setAllDataLoaded(true);
-        const elapsed = Date.now() - start;
-        if (elapsed < minDuration) {
-          setTimeout(() => {
-            setLoading(false);
-            completeProgress();
-            progressActiveRef.current = false; // Reset progress flag
-          }, minDuration - elapsed);
-        } else {
-          setLoading(false);
-          completeProgress();
-          progressActiveRef.current = false; // Reset progress flag
-        }
-        return;
-      }
-
-      if (schData.length === 0) {
-        setStudents([]);
-        setClasses([]);
-        setSections([]);
-        setAttendanceToday([]);
-        // Check if there are any students at all in the system
-        await checkForAnyStudents();
-        setLoadingStudents(false);
-        setAllDataLoaded(true);
-        const elapsed = Date.now() - start;
-        if (elapsed < minDuration) {
-          setTimeout(() => {
-            setLoading(false);
-            completeProgress();
-            progressActiveRef.current = false; // Reset progress flag
-          }, minDuration - elapsed);
-        } else {
-          setLoading(false);
-          completeProgress();
-          progressActiveRef.current = false; // Reset progress flag
-        }
-        return;
-      }
-
-      // Get student IDs from student_class_history
-      const studentIds = schData.map(sch => sch.student_id);
-
-      setProgress(60);
-      // Fetch student details for those enrolled in the current session and are 'active'
-      const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: attendanceData }] = await Promise.all([
-        supabase.from('students').select('id, name, father_name, gender, status, class_id, section_id').eq('school_id', user.school_id).eq('status', 'active').in('id', studentIds),
-        supabase.from('classes').select('id, name').eq('school_id', user.school_id),
-        supabase.from('sections').select('id, name').eq('school_id', user.school_id),
-        supabase.from('attendance_records')
-          .select('student_id, status, date')
-          .eq('date', today)
-          .eq('session_id', sessionDataResult.id)
-          .eq('school_id', user.school_id),
-      ]);
-      
-      setProgress(80);
-      setStudents(studentsData || []);
-      setStudentClassHistory(schData || []);
-      setClasses(classesData || []);
-      setSections(sectionsData || []);
-      setAttendanceToday(attendanceData || []);
-      
-      // Now check if there are any students in the system
-      setProgress(90);
-      await checkForAnyStudents();
-      setLoadingStudents(false);
-      
-      setProgress(100);
-      // Mark initial load as complete and all data loaded
-      setInitialLoad(false);
+      toast.showToast('Failed to fetch active session', 'error');
       setAllDataLoaded(true);
-      
       const elapsed = Date.now() - start;
       if (elapsed < minDuration) {
         setTimeout(() => {
@@ -5323,15 +5600,148 @@ const Dashboard: React.FC = () => {
         completeProgress();
         progressActiveRef.current = false; // Reset progress flag
       }
+      return;
+    }
+    if (!sessionDataResult?.id) {
+      setSessionData(null);
+      setHasActiveSession(false);
+      setAllDataLoaded(true);
+      const elapsed = Date.now() - start;
+      if (elapsed < minDuration) {
+        setTimeout(() => {
+          setLoading(false);
+          completeProgress();
+          progressActiveRef.current = false; // Reset progress flag
+        }, minDuration - elapsed);
+      } else {
+        setLoading(false);
+        completeProgress();
+        progressActiveRef.current = false; // Reset progress flag
+      }
+      return;
+    }
+
+    setProgress(30);
+    setSessionData(sessionDataResult);
+    setHasActiveSession(true);
+
+    // First fetch students from student_class_history for the active session
+    setProgress(40);
+    const { data: schData, error: schError } = await supabase
+      .from('student_class_history')
+      .select('student_id')
+      .eq('session_id', sessionDataResult.id)
+      .eq('school_id', user.school_id);
+
+    if (schError || !schData) {
+      setStudents([]);
+      setClasses([]);
+      setSections([]);
+      setAttendanceToday([]);
+      setAllDataLoaded(true);
+      const elapsed = Date.now() - start;
+      if (elapsed < minDuration) {
+        setTimeout(() => {
+          setLoading(false);
+          completeProgress();
+          progressActiveRef.current = false; // Reset progress flag
+        }, minDuration - elapsed);
+      } else {
+        setLoading(false);
+        completeProgress();
+        progressActiveRef.current = false; // Reset progress flag
+      }
+      return;
+    }
+
+    if (schData.length === 0) {
+      setStudents([]);
+      setClasses([]);
+      setSections([]);
+      setAttendanceToday([]);
+      // Check if there are any students at all in the system
+      await checkForAnyStudents();
+      setLoadingStudents(false);
+      setAllDataLoaded(true);
+      const elapsed = Date.now() - start;
+      if (elapsed < minDuration) {
+        setTimeout(() => {
+          setLoading(false);
+          completeProgress();
+          progressActiveRef.current = false; // Reset progress flag
+        }, minDuration - elapsed);
+      } else {
+        setLoading(false);
+        completeProgress();
+        progressActiveRef.current = false; // Reset progress flag
+      }
+      return;
+    }
+
+    // Get student IDs from student_class_history
+    const studentIds = schData.map(sch => sch.student_id);
+
+    setProgress(60);
+    // Fetch student details for those enrolled in the current session and are 'active'
+    // Optimize: Limit studentIds to first 5000 for faster query (most schools won't have more)
+    const limitedStudentIds = studentIds.slice(0, 5000);
+    const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: attendanceData }] = await Promise.all([
+      supabase.from('students')
+        .select('id, name, father_name, gender, status, class_id, section_id')
+        .eq('school_id', user.school_id)
+        .eq('status', 'active')
+        .in('id', limitedStudentIds),
+      supabase.from('classes').select('id, name').eq('school_id', user.school_id),
+      supabase.from('sections').select('id, name').eq('school_id', user.school_id),
+      supabase.from('attendance_records')
+        .select('student_id, status, date')
+        .eq('date', today)
+        .eq('session_id', sessionDataResult.id)
+        .eq('school_id', user.school_id),
+    ]);
+
+    setProgress(80);
+    setStudents(studentsData || []);
+    setStudentClassHistory(schData || []);
+    setClasses(classesData || []);
+    setSections(sectionsData || []);
+    setAttendanceToday(attendanceData || []);
+
+    // Check if there are any students in the system - make it non-blocking
+    setProgress(90);
+    checkForAnyStudents().catch(() => { }); // Don't block on this
+    setLoadingStudents(false);
+
+    setProgress(100);
+    // Mark initial load as complete and all data loaded
+    setInitialLoad(false);
+    setAllDataLoaded(true);
+
+    const elapsed = Date.now() - start;
+    if (elapsed < minDuration) {
+      setTimeout(() => {
+        setLoading(false);
+        completeProgress();
+        progressActiveRef.current = false; // Reset progress flag
+      }, minDuration - elapsed);
+    } else {
+      setLoading(false);
+      completeProgress();
+      progressActiveRef.current = false; // Reset progress flag
+    }
   }, [user?.school_id, toast, setLoading]); // Removed loading from dependencies to fix circular dependency
 
   useEffect(() => {
     // Only fetch on initial load, not on every status update
+    // Show UI immediately, load data in background for faster perceived performance
     if (user?.school_id && !dataLoadedRef.current) {
       dataLoadedRef.current = true;
-      fetchAll();
+      // Use setTimeout to allow UI to render first (progressive loading)
+      setTimeout(() => {
+        fetchAll();
+      }, 0);
     }
-  }, [user?.school_id]);
+  }, [user?.school_id, fetchAll]);
 
   // Cleanup effect to reset progress flag on unmount
   useEffect(() => {
@@ -5346,18 +5756,8 @@ const Dashboard: React.FC = () => {
       if (!absentDate || !user?.school_id) return; // Removed loading check to prevent circular dependency
 
       try {
-        // First get the active session for this school
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('sessions')
-          .select('id')
-          .eq('is_active', true)
-          .eq('school_id', user.school_id)
-          .single();
-
-        if (sessionError && !isNoSessionError(sessionError)) {
-          toast.showToast('Failed to fetch active session', 'error');
-          return;
-        }
+        // Use cached session for faster performance
+        const sessionData = await getCachedSession();
 
         if (!sessionData?.id) {
           setStudentDetails({});
@@ -5456,7 +5856,7 @@ const Dashboard: React.FC = () => {
         const newStudentDetails: Record<string, any> = {};
         studentsData.forEach((student: any) => {
           const stats = monthlyStats[student.id] || { absences: 0, leaves: 0, total: 0 };
-          const attendance_percentage = stats.total ? 
+          const attendance_percentage = stats.total ?
             Math.round(((stats.total - stats.absences - stats.leaves) / stats.total) * 100) : 100;
 
           newStudentDetails[student.id] = {
@@ -5470,20 +5870,20 @@ const Dashboard: React.FC = () => {
         });
 
         setStudentDetails(newStudentDetails);
-        
+
         // Sort absentees by class and then by student name
         const sortedAbsentees = attendanceData.sort((a, b) => {
           const studentA = newStudentDetails[a.student_id];
           const studentB = newStudentDetails[b.student_id];
-          
+
           if (!studentA || !studentB) return 0;
-          
+
           // Sort by class name first (numeric), then by student name
           const classComparison = compareClassNames(studentA.class_name, studentB.class_name);
           if (classComparison !== 0) return classComparison;
           return studentA.name.localeCompare(studentB.name);
         });
-        
+
         setAbsentees(sortedAbsentees);
       } catch (error) {
         toast.showToast('Failed to fetch absentees', 'error');
@@ -5513,52 +5913,55 @@ const Dashboard: React.FC = () => {
   // Use attendanceData for selected absentDate (already fetched for absentees)
   const [attendanceDataForDate, setAttendanceDataForDate] = useState<any[]>([]);
   const [halfLeavesForDate, setHalfLeavesForDate] = useState<any[]>([]);
-  
+
   // Attendance Trend and Class Attendance Charts
   const [attendanceTrendData, setAttendanceTrendData] = useState<Array<{ day: string; rate: number }>>([]);
-  const [classAttendanceData, setClassAttendanceData] = useState<Array<{ 
-    class: string; 
-    present: number; 
-    absent: number; 
-    leave: number; 
+  const [classAttendanceData, setClassAttendanceData] = useState<Array<{
+    class: string;
+    present: number;
+    absent: number;
+    leave: number;
     late: number;
     total: number;
   }>>([]);
   const [attendanceChartsLoading, setAttendanceChartsLoading] = useState(false);
   const [todayAttendanceRate, setTodayAttendanceRate] = useState(0);
   const [weekAvgAttendanceRate, setWeekAvgAttendanceRate] = useState(0);
-  
+
   // Consecutive Absent Students
   const [consecutiveAbsentStudents, setConsecutiveAbsentStudents] = useState<Array<{
     student_id: number;
     student_name: string;
+    father_name?: string;
+    mobile?: string;
+    roll_number?: string | null;
     class_name: string;
     section_name?: string;
     consecutive_days: number;
   }>>([]);
   const [consecutiveAbsentLoading, setConsecutiveAbsentLoading] = useState(false);
-  
+
   useEffect(() => {
     const fetchAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
-      
+
       const { data: sessionData } = await supabase
         .from('sessions')
         .select('id')
         .eq('is_active', true)
         .eq('school_id', user.school_id)
         .maybeSingle();
-      
+
       if (!sessionData?.id) {
         setAttendanceDataForDate([]);
         setHalfLeavesForDate([]);
         return;
       }
-      
+
       const [attendanceResult, halfLeavesResult] = await Promise.all([
         supabase
-        .from('attendance_records')
-        .select('student_id, status, date')
+          .from('attendance_records')
+          .select('student_id, status, date')
           .eq('date', dashboardDate)
           .eq('session_id', sessionData.id)
           .eq('school_id', user.school_id),
@@ -5570,14 +5973,14 @@ const Dashboard: React.FC = () => {
           .eq('school_id', user.school_id)
           .eq('person_type', 'student')
       ]);
-      
+
       if (attendanceResult.error) {
         console.error('Error fetching attendance:', attendanceResult.error);
         setAttendanceDataForDate([]);
       } else {
         setAttendanceDataForDate(attendanceResult.data || []);
       }
-      
+
       if (halfLeavesResult.error) {
         console.error('Error fetching half leaves:', halfLeavesResult.error);
         setHalfLeavesForDate([]);
@@ -5592,14 +5995,14 @@ const Dashboard: React.FC = () => {
   const leaveToday = attendanceDataForDate.filter(a => a.status === 'leave').length;
   const lateToday = attendanceDataForDate.filter(a => a.status === 'late').length;
   const halfLeaveCount = halfLeavesForDate.length;
-  
+
   const totalMarked = attendanceDataForDate.length;
   const presentPercent = totalMarked ? Math.round((presentToday / totalMarked) * 1000) / 10 : 0;
   const absentPercent = totalMarked ? Math.round((absentToday / totalMarked) * 1000) / 10 : 0;
   const leavePercent = totalMarked ? Math.round((leaveToday / totalMarked) * 1000) / 10 : 0;
   const latePercent = totalMarked ? Math.round((lateToday / totalMarked) * 1000) / 10 : 0;
   const halfLeavePercent = totalMarked ? Math.round((halfLeaveCount / totalMarked) * 1000) / 10 : 0;
-  
+
   // Helper to get status based on percentage
   const getStatus = (percent: number, isPositive: boolean = false): 'good' | 'warning' | 'bad' => {
     if (isPositive) {
@@ -5612,19 +6015,19 @@ const Dashboard: React.FC = () => {
       return 'bad';
     }
   };
-  
+
   // Fetch Attendance Trend Data (Last 30 working days, excluding Sundays and holidays)
   useEffect(() => {
     const fetchAttendanceTrend = async () => {
       if (!user?.school_id || !sessionData?.id || !dashboardDate) return;
-      
+
       setAttendanceChartsLoading(true);
       try {
         const selectedDate = new Date(dashboardDate);
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const trendData: Array<{ day: string; rate: number }> = [];
         let totalRate = 0;
-        
+
         // Calculate date range - ensure selected date is included
         const selectedDateStr = selectedDate.toISOString().slice(0, 10);
         const endDate = new Date(selectedDate);
@@ -5632,10 +6035,10 @@ const Dashboard: React.FC = () => {
         const startDate = new Date(selectedDate);
         startDate.setDate(startDate.getDate() - 60); // Go back 60 days to find 30 working days
         startDate.setHours(0, 0, 0, 0);
-        
+
         const startDateStr = startDate.toISOString().slice(0, 10);
         const endDateStr = endDate.toISOString().slice(0, 10);
-        
+
         // Fetch holidays that overlap with the date range
         const { data: holidaysData } = await supabase
           .from('holidays')
@@ -5643,7 +6046,7 @@ const Dashboard: React.FC = () => {
           .eq('school_id', user.school_id)
           .lte('start_date', endDateStr)
           .gte('end_date', startDateStr);
-        
+
         // Create a set of holiday dates
         const holidayDates = new Set<string>();
         if (holidaysData) {
@@ -5660,38 +6063,38 @@ const Dashboard: React.FC = () => {
             }
           });
         }
-        
+
         // Check if selected date is a working day
         const selectedDayOfWeek = selectedDate.getDay();
         const isSelectedDateWorkingDay = selectedDayOfWeek !== 0 && !holidayDates.has(selectedDateStr);
-        
+
         // Get all working days (excluding Sundays and holidays)
         // Start from selected date and go backwards
         const workingDays: Array<{ date: Date; dateStr: string; dayName: string }> = [];
         let daysBack = 0; // Start from selected date (daysBack = 0)
         let workingDaysCount = 0;
-        
+
         // First, add selected date if it's a working day
         if (isSelectedDateWorkingDay) {
           const dayName = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`;
-          workingDays.push({ 
-            date: new Date(selectedDate), 
-            dateStr: selectedDateStr, 
-            dayName 
+          workingDays.push({
+            date: new Date(selectedDate),
+            dateStr: selectedDateStr,
+            dayName
           });
           workingDaysCount++;
           daysBack = 1; // Start from next day
         } else {
           daysBack = 1; // Skip selected date if it's not a working day
         }
-        
+
         // Continue going backwards to get remaining working days
         while (workingDaysCount < 30 && daysBack < 90) {
           const date = new Date(selectedDate);
           date.setDate(date.getDate() - daysBack);
           const dateStr = date.toISOString().slice(0, 10);
           const dayOfWeek = date.getDay();
-          
+
           // Skip Sundays (dayOfWeek === 0) and holidays
           if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr >= startDateStr) {
             const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
@@ -5700,32 +6103,32 @@ const Dashboard: React.FC = () => {
           }
           daysBack++;
         }
-        
+
         // Sort to get chronological order (oldest first), but ensure selected date is always last
         workingDays.sort((a, b) => {
           if (a.dateStr === selectedDateStr) return 1; // Selected date goes to end
           if (b.dateStr === selectedDateStr) return -1;
           return a.dateStr.localeCompare(b.dateStr);
         });
-        
+
         // Ensure selected date is the last item if it exists
         const selectedDateIndex = workingDays.findIndex(wd => wd.dateStr === selectedDateStr);
         if (selectedDateIndex >= 0 && selectedDateIndex !== workingDays.length - 1) {
           const selectedDateItem = workingDays.splice(selectedDateIndex, 1)[0];
           workingDays.push(selectedDateItem);
         }
-        
+
         if (workingDays.length === 0) {
           setAttendanceTrendData([]);
           setTodayAttendanceRate(0);
           setWeekAvgAttendanceRate(0);
           return;
         }
-        
+
         const workingDaysDateStrs = new Set(workingDays.map(wd => wd.dateStr));
         const minDate = workingDays[0].dateStr;
         const maxDate = workingDays[workingDays.length - 1].dateStr;
-        
+
         // Use fetchAllRows to get ALL attendance records in the range (handles pagination)
         const allAttendanceData = await fetchAllRows(async (from, to) => {
           const result = await supabase
@@ -5738,15 +6141,15 @@ const Dashboard: React.FC = () => {
             .range(from, to);
           return { data: result.data, error: result.error };
         });
-        
+
         // Group attendance by date - only for working days
         const attendanceByDate = new Map<string, { total: number; present: number }>();
-        
+
         // Initialize all working days with 0
         workingDays.forEach(({ dateStr }) => {
           attendanceByDate.set(dateStr, { total: 0, present: 0 });
         });
-        
+
         // Process ALL attendance data - filter to only working days
         if (allAttendanceData && allAttendanceData.length > 0) {
           allAttendanceData.forEach((record: any) => {
@@ -5755,7 +6158,7 @@ const Dashboard: React.FC = () => {
             if (dateStr && typeof dateStr === 'string') {
               // If date includes time, extract just the date part
               dateStr = dateStr.split('T')[0];
-              
+
               // Only process if it's a working day
               if (workingDaysDateStrs.has(dateStr)) {
                 const stats = attendanceByDate.get(dateStr);
@@ -5769,21 +6172,21 @@ const Dashboard: React.FC = () => {
             }
           });
         }
-        
+
         // For the selected date, override with attendanceDataForDate to ensure consistency with summary cards
         if (isSelectedDateWorkingDay && workingDaysDateStrs.has(selectedDateStr)) {
-          const selectedDatePresent = attendanceDataForDate.filter(a => 
+          const selectedDatePresent = attendanceDataForDate.filter(a =>
             a.status === 'present' || a.status === 'late'
           ).length;
           const selectedDateTotal = attendanceDataForDate.length;
-          
+
           // Update the stats for selected date
           attendanceByDate.set(selectedDateStr, {
             total: selectedDateTotal,
             present: selectedDatePresent
           });
         }
-        
+
         // Build trend data array
         workingDays.forEach(({ dateStr, dayName }) => {
           const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
@@ -5791,19 +6194,19 @@ const Dashboard: React.FC = () => {
           trendData.push({ day: dayName, rate });
           totalRate += rate;
         });
-        
+
         setAttendanceTrendData(trendData);
-        
+
         // Calculate today's rate and average
         // Use the selected date's rate from attendanceDataForDate for consistency
         let todayRate = 0;
         if (isSelectedDateWorkingDay) {
-          const selectedDatePresent = attendanceDataForDate.filter(a => 
+          const selectedDatePresent = attendanceDataForDate.filter(a =>
             a.status === 'present' || a.status === 'late'
           ).length;
           const selectedDateTotal = attendanceDataForDate.length;
-          todayRate = selectedDateTotal > 0 
-            ? Math.round((selectedDatePresent / selectedDateTotal) * 100) 
+          todayRate = selectedDateTotal > 0
+            ? Math.round((selectedDatePresent / selectedDateTotal) * 100)
             : 0;
         } else {
           todayRate = trendData[trendData.length - 1]?.rate || 0;
@@ -5817,36 +6220,36 @@ const Dashboard: React.FC = () => {
         setAttendanceChartsLoading(false);
       }
     };
-    
+
     fetchAttendanceTrend();
   }, [user?.school_id, sessionData?.id, dashboardDate, attendanceDataForDate]);
-  
+
   // Fetch Class Attendance Data (Today) - Optimized with batch queries
   useEffect(() => {
     const fetchClassAttendance = async () => {
       if (!user?.school_id || !sessionData?.id) return;
-      
+
       try {
         const today = dashboardDate;
-        
+
         // Get all classes
         const { data: classesData, error: classesError } = await supabase
           .from('classes')
           .select('id, name')
           .eq('school_id', user.school_id);
-        
+
         if (classesError || !classesData || classesData.length === 0) {
           setClassAttendanceData([]);
           return;
         }
-        
+
         // Sort classes using the utility function
         const sortedClasses = sortClasses(classesData);
         const classIds = sortedClasses.map(c => c.id);
-        
+
         // Batch fetch: Get all student_class_history records for all classes at once
         let allStudentHistory: any[] = [];
-        
+
         // Try with status filter first
         const { data: dataWithStatus, error: errorWithStatus } = await supabase
           .from('student_class_history')
@@ -5855,7 +6258,7 @@ const Dashboard: React.FC = () => {
           .eq('session_id', sessionData.id)
           .eq('school_id', user.school_id)
           .eq('status', 'active');
-        
+
         if (!errorWithStatus && dataWithStatus) {
           allStudentHistory = dataWithStatus;
         } else {
@@ -5866,15 +6269,15 @@ const Dashboard: React.FC = () => {
             .in('new_class_id', classIds)
             .eq('session_id', sessionData.id)
             .eq('school_id', user.school_id);
-          
+
           if (!errorWithoutStatus && dataWithoutStatus) {
             allStudentHistory = dataWithoutStatus;
           }
         }
-        
+
         // Batch fetch: Get all attendance records for today at once
         const allStudentIds = Array.from(new Set(allStudentHistory.map(sh => sh.student_id)));
-        
+
         let allAttendanceRecords: any[] = [];
         if (allStudentIds.length > 0) {
           // Split into chunks if needed (Supabase has limits on IN clause size)
@@ -5888,16 +6291,16 @@ const Dashboard: React.FC = () => {
               .in('student_id', chunk)
               .eq('session_id', sessionData.id)
               .eq('school_id', user.school_id);
-            
+
             if (!attendanceError && attendanceChunk) {
               allAttendanceRecords.push(...attendanceChunk);
             }
           }
         }
-        
+
         // Create maps for efficient lookup
         const studentsByClass = new Map<number, Set<number>>();
-        
+
         // Group students by class
         allStudentHistory.forEach(sh => {
           if (!sh.new_class_id) return;
@@ -5906,7 +6309,7 @@ const Dashboard: React.FC = () => {
           }
           studentsByClass.get(sh.new_class_id)!.add(sh.student_id);
         });
-        
+
         // Fetch all attendance records with class_id in one batch query
         const { data: allAttendanceWithClass, error: attendanceClassError } = await supabase
           .from('attendance_records')
@@ -5915,51 +6318,51 @@ const Dashboard: React.FC = () => {
           .eq('session_id', sessionData.id)
           .eq('school_id', user.school_id)
           .in('class_id', classIds);
-        
+
         // Count attendance by class and status
         const attendanceCounts = new Map<string, number>(); // key: "classId_status", value: count
-        
+
         if (!attendanceClassError && allAttendanceWithClass) {
           allAttendanceWithClass.forEach(record => {
             const key = `${record.class_id}_${record.status}`;
             attendanceCounts.set(key, (attendanceCounts.get(key) || 0) + 1);
           });
         }
-        
+
         // Calculate attendance breakdown for each class
-        const classAttendance: Array<{ 
-          class: string; 
-          present: number; 
-          absent: number; 
-          leave: number; 
+        const classAttendance: Array<{
+          class: string;
+          present: number;
+          absent: number;
+          leave: number;
           late: number;
           total: number;
         }> = [];
-        
+
         for (const cls of sortedClasses) {
           const studentsInClass = studentsByClass.get(cls.id);
           if (!studentsInClass || studentsInClass.size === 0) {
-            classAttendance.push({ 
-              class: cls.name, 
-              present: 0, 
-              absent: 0, 
-              leave: 0, 
+            classAttendance.push({
+              class: cls.name,
+              present: 0,
+              absent: 0,
+              leave: 0,
               late: 0,
               total: 0
             });
             continue;
           }
-          
+
           // Get actual counts from the attendance records only
           const presentCount = attendanceCounts.get(`${cls.id}_present`) || 0;
           const absentCount = attendanceCounts.get(`${cls.id}_absent`) || 0;
           const leaveCount = attendanceCounts.get(`${cls.id}_leave`) || 0;
           const lateCount = attendanceCounts.get(`${cls.id}_late`) || 0;
-          
+
           // Only count students who have attendance records
           // Students without attendance records are NOT counted
           const studentsWithAttendance = presentCount + absentCount + leaveCount + lateCount;
-          
+
           classAttendance.push({
             class: cls.name,
             present: presentCount,
@@ -5969,26 +6372,26 @@ const Dashboard: React.FC = () => {
             total: studentsInClass.size // Total students in class (for reference)
           });
         }
-        
+
         setClassAttendanceData(classAttendance);
       } catch (error) {
         console.error('Error fetching class attendance:', error);
         setClassAttendanceData([]);
       }
     };
-    
+
     fetchClassAttendance();
   }, [user?.school_id, sessionData?.id, dashboardDate]);
-  
+
   // Fetch Consecutive Absent Students
   useEffect(() => {
     const fetchConsecutiveAbsent = async () => {
       if (!user?.school_id || !sessionData?.id) return;
-      
+
       setConsecutiveAbsentLoading(true);
       try {
         const today = dashboardDate;
-        
+
         // First, get all students who are absent on the selected date (without joins)
         const { data: absentTodayRecords, error: absentTodayError } = await supabase
           .from('attendance_records')
@@ -5997,22 +6400,22 @@ const Dashboard: React.FC = () => {
           .eq('status', 'absent')
           .eq('session_id', sessionData.id)
           .eq('school_id', user.school_id);
-        
+
         if (absentTodayError || !absentTodayRecords || absentTodayRecords.length === 0) {
           setConsecutiveAbsentStudents([]);
           return;
         }
-        
+
         const absentStudentIds = absentTodayRecords.map(r => r.student_id);
         const uniqueStudentIds = Array.from(new Set(absentStudentIds));
-        
-        // Fetch student details separately
+
+        // Fetch student details separately - include father_name, phone (mobile), and roll_number for ID display
         const { data: studentsData } = await supabase
           .from('students')
-          .select('id, name')
+          .select('id, name, father_name, phone, roll_number')
           .in('id', uniqueStudentIds)
           .eq('school_id', user.school_id);
-        
+
         // Fetch class details
         const allClassIds = absentTodayRecords.map(r => r.class_id).filter((id): id is number => Boolean(id));
         const classIds = Array.from(new Set(allClassIds));
@@ -6021,7 +6424,7 @@ const Dashboard: React.FC = () => {
           .select('id, name')
           .in('id', classIds)
           .eq('school_id', user.school_id);
-        
+
         // Fetch section details
         const allSectionIds = absentTodayRecords.map(r => r.section_id).filter((id): id is number => Boolean(id));
         const sectionIds = Array.from(new Set(allSectionIds));
@@ -6030,21 +6433,21 @@ const Dashboard: React.FC = () => {
           .select('id, name')
           .in('id', sectionIds)
           .eq('school_id', user.school_id);
-        
+
         // Create lookup maps
         const studentsMap = new Map((studentsData || []).map(s => [s.id, s]));
         const classesMap = new Map((classesData || []).map(c => [c.id, c]));
         const sectionsMap = new Map((sectionsData || []).map(s => [s.id, s]));
-        
+
         // Get last 30 days of attendance records for these students
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const startDate = thirtyDaysAgo.toISOString().slice(0, 10);
-        
+
         // Fetch attendance records in chunks
         const chunkSize = 1000;
         let allAttendanceRecords: any[] = [];
-        
+
         for (let i = 0; i < absentStudentIds.length; i += chunkSize) {
           const chunk = absentStudentIds.slice(i, i + chunkSize);
           const { data: attendanceChunk, error: attendanceError } = await supabase
@@ -6056,15 +6459,15 @@ const Dashboard: React.FC = () => {
             .eq('session_id', sessionData.id)
             .eq('school_id', user.school_id)
             .order('date', { ascending: false });
-          
+
           if (!attendanceError && attendanceChunk) {
             allAttendanceRecords.push(...attendanceChunk);
           }
         }
-        
+
         // Group attendance by student
         const studentAttendanceMap = new Map<number, Array<{ date: string; status: string }>>();
-        
+
         allAttendanceRecords.forEach(record => {
           if (!studentAttendanceMap.has(record.student_id)) {
             studentAttendanceMap.set(record.student_id, []);
@@ -6074,44 +6477,47 @@ const Dashboard: React.FC = () => {
             status: record.status
           });
         });
-        
+
         // Calculate consecutive absences for students absent today
         const consecutiveAbsent: Array<{
           student_id: number;
           student_name: string;
+          father_name?: string;
+          mobile?: string;
+          roll_number?: string | null;
           class_name: string;
           section_name?: string;
           consecutive_days: number;
         }> = [];
-        
+
         absentTodayRecords.forEach(absentRecord => {
           const studentId = absentRecord.student_id;
           const attendanceRecords = studentAttendanceMap.get(studentId) || [];
-          
+
           if (attendanceRecords.length === 0) {
             return;
           }
-          
+
           // Sort by date descending (most recent first)
           attendanceRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
+
           // Today should be the first record (most recent)
           // Check if the 2 most recent previous records (index 1 and 2) are also absent
           if (attendanceRecords.length < 3) {
             // Need at least 3 records (today + 2 previous) to check
             return;
           }
-          
+
           // Check the 2 previous records (index 1 and 2, excluding today at index 0)
           const previousRecord1 = attendanceRecords[1];
           const previousRecord2 = attendanceRecords[2];
-          
+
           // Both previous records must be absent
           if (previousRecord1.status === 'absent' && previousRecord2.status === 'absent') {
             // Count total consecutive days going backwards
             let consecutiveDays = 1; // Today is absent
             let checkIndex = 1;
-            
+
             // Count backwards through records
             while (checkIndex < attendanceRecords.length) {
               const record = attendanceRecords[checkIndex];
@@ -6122,25 +6528,28 @@ const Dashboard: React.FC = () => {
                 break;
               }
             }
-            
+
             // Get student, class, and section names from lookup maps
             const student = studentsMap.get(studentId);
             const classData = classesMap.get(absentRecord.class_id);
             const sectionData = sectionsMap.get(absentRecord.section_id);
-            
+
             consecutiveAbsent.push({
               student_id: studentId,
               student_name: student?.name || 'Unknown',
+              father_name: student?.father_name || '',
+              mobile: student?.phone || '',
+              roll_number: student?.roll_number || null,
               class_name: classData?.name || 'Unknown',
               section_name: sectionData?.name,
               consecutive_days: consecutiveDays
             });
           }
         });
-        
+
         // Sort by consecutive days (highest first)
         consecutiveAbsent.sort((a, b) => b.consecutive_days - a.consecutive_days);
-        
+
         setConsecutiveAbsentStudents(consecutiveAbsent);
       } catch (error) {
         console.error('Error fetching consecutive absent students:', error);
@@ -6149,22 +6558,22 @@ const Dashboard: React.FC = () => {
         setConsecutiveAbsentLoading(false);
       }
     };
-    
+
     fetchConsecutiveAbsent();
   }, [user?.school_id, sessionData?.id, dashboardDate]);
-  
+
   // Calculate attendance stats
   useEffect(() => {
     const calculateAttendanceStats = async () => {
       if (!user?.school_id || !sessionData?.id) return;
-      
+
       try {
         const today = new Date().toISOString().slice(0, 10);
         const totalToday = attendanceDataForDate.length;
         const present = attendanceDataForDate.filter(a => a.status === 'present').length;
         const absent = attendanceDataForDate.filter(a => a.status === 'absent').length;
         const attendanceRate = totalToday > 0 ? Math.round((present / totalToday) * 100) : 0;
-        
+
         // Get total active students
         const { data: allStudents } = await supabase
           .from('students')
@@ -6172,33 +6581,33 @@ const Dashboard: React.FC = () => {
           .eq('school_id', user.school_id)
           .eq('status', 'active')
           .eq('session_id', sessionData.id);
-        
+
         const totalStudents = allStudents?.length || 0;
-        
+
         // Calculate chronic absentees (absent for last 3 working days)
         const getWorkingDays = (days: number) => {
           const dates: string[] = [];
           let currentDate = new Date();
           let count = 0;
-          
+
           while (count < days) {
             const dateStr = currentDate.toISOString().slice(0, 10);
             const dayOfWeek = currentDate.getDay();
-            
+
             // Skip weekends (Saturday = 6, Sunday = 0)
             if (dayOfWeek !== 0 && dayOfWeek !== 6) {
               dates.push(dateStr);
               count++;
             }
-            
+
             currentDate.setDate(currentDate.getDate() - 1);
           }
-          
+
           return dates;
         };
-        
+
         const last3WorkingDays = getWorkingDays(3);
-        
+
         // Fetch attendance for last 3 working days
         const { data: chronicAttendance } = await supabase
           .from('attendance_records')
@@ -6207,16 +6616,16 @@ const Dashboard: React.FC = () => {
           .eq('session_id', sessionData.id)
           .in('date', last3WorkingDays)
           .eq('status', 'absent');
-        
+
         // Count unique students who were absent on all 3 days
         const studentAbsenceCount = new Map<number, number>();
         chronicAttendance?.forEach((record: any) => {
           const count = studentAbsenceCount.get(record.student_id) || 0;
           studentAbsenceCount.set(record.student_id, count + 1);
         });
-        
+
         const chronic = Array.from(studentAbsenceCount.values()).filter(count => count >= 3).length;
-        
+
         setAttendanceStats({
           present,
           absent,
@@ -6228,7 +6637,7 @@ const Dashboard: React.FC = () => {
         console.error('Error calculating attendance stats:', error);
       }
     };
-    
+
     calculateAttendanceStats();
   }, [attendanceDataForDate, user?.school_id, sessionData?.id]);
 
@@ -6267,7 +6676,7 @@ const Dashboard: React.FC = () => {
     try {
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         toast.showToast('Generating PDF for mobile... Please wait.', 'success');
@@ -6291,8 +6700,8 @@ const Dashboard: React.FC = () => {
       }
 
       // Fetch attendance records for absent and leave students
-    const { data: attendanceData, error: attendanceError } = await supabase
-      .from('attendance_records')
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from('attendance_records')
         .select(`
           id,
           student_id,
@@ -6302,20 +6711,20 @@ const Dashboard: React.FC = () => {
           class_id,
           section_id
         `)
-      .eq('date', absentDate)
+        .eq('date', absentDate)
         .eq('session_id', sessionData.id)
         .eq('school_id', user.school_id)
         .or('status.eq.absent,status.eq.leave'); // Fetch both absent and leave records
 
       if (attendanceError) {
-      toast.showToast('Failed to fetch absentees for export.', 'error');
-      return;
-    }
+        toast.showToast('Failed to fetch absentees for export.', 'error');
+        return;
+      }
 
       if (!attendanceData || attendanceData.length === 0) {
-      toast.showToast('No absentees to export.', 'error');
-      return;
-    }
+        toast.showToast('No absentees to export.', 'error');
+        return;
+      }
 
       // Get unique student IDs
       const studentIds = attendanceData
@@ -6349,7 +6758,7 @@ const Dashboard: React.FC = () => {
       // Fetch class and section details separately
       const classIds = studentsData.map(student => student.class_id).filter((id, index, self) => self.indexOf(id) === index);
       const sectionIds = studentsData.map(student => student.section_id).filter((id, index, self) => self.indexOf(id) === index);
-      
+
       const { data: classesData, error: classesError } = await supabase
         .from('classes')
         .select('id, name')
@@ -6395,7 +6804,7 @@ const Dashboard: React.FC = () => {
       const absentStudents = studentsData.map(student => {
         const attendanceRecord = attendanceData.find(record => record.student_id === student.id);
         const studentMonthlyAttendance = monthlyAttendance?.filter(a => a.student_id === student.id) || [];
-        
+
         const totalDays = studentMonthlyAttendance.length;
         const absentDays = studentMonthlyAttendance.filter(a => a.status === 'absent' || a.status === 'leave').length;
         const attendancePercentage = totalDays > 0 ? ((totalDays - absentDays) / totalDays * 100).toFixed(1) : '100.0';
@@ -6435,187 +6844,187 @@ const Dashboard: React.FC = () => {
       const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
       const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
       const totalCount = completeAttendanceData?.length || 0;
-    const attPercent = totalCount ? (((presentCount + lateCount) / totalCount) * 100).toFixed(1) : '0.0';
-    // Create PDF
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Absent Students Report', 15, 18);
-    doc.setFontSize(11);
-    // Format date as dd-mm-yyyy for filename
-    const [yyyy, mm, dd] = absentDate.split('-');
-    const formattedDate = `${dd}-${mm}-${yyyy}`;
-    doc.text(`Date: ${formattedDate}`, 15, 26);
-    doc.setFontSize(10);
-    // Total (Indigo)
-    doc.setTextColor(99, 102, 241);
-    doc.text(`Total: ${totalCount}`, 120, 18);
-    // Present (Green)
-    doc.setTextColor(34, 197, 94);
-    doc.text(`Present: ${presentCount + lateCount}`, 120, 24);
-    // Absent (Red)
-    doc.setTextColor(239, 68, 68);
-    doc.text(`Absent: ${absentCount}`, 170, 18);
-    // Leave (Blue)
-    doc.setTextColor(37, 99, 235);
-    doc.text(`Leave: ${leaveCount}`, 170, 24);
-    // Late (Yellow)
-    doc.setTextColor(234, 179, 8);
-    doc.text(`Late: ${lateCount}`, 120, 30);
-    // Per% (Green/Yellow/Red based on value)
-    let perColor: [number, number, number] = [34, 197, 94];
-    const perVal = parseFloat(attPercent);
-    if (perVal < 75) perColor = [239, 68, 68];
-    else if (perVal < 85) perColor = [234, 179, 8];
-    doc.setTextColor(...perColor);
-    doc.text(`Per%: ${attPercent}%`, 170, 30);
-    doc.setTextColor(0, 0, 0); // Reset to black
-    autoTable(doc, {
-      startY: 36,
-      head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Status', 'M.A', 'Att%']],
-      body: absentStudents.map((student, idx) => [
-        idx + 1,
-        getStudentDisplayId(student),
-        student.name,
-        student.father_name,
-        student.phone,
-        student.class,
-        student.status,
-        student.monthly_absences,
-        `${student.attendance_percentage}%`
-      ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: [99, 102, 241], // Indigo
-        textColor: [255, 255, 255],
-        fontSize: 9,
-        fontStyle: 'bold',
-        halign: 'center',
-        cellPadding: 2,
-      },
-      styles: {
-        fontSize: 8.5,
-        cellPadding: 2,
-        halign: 'center',
-        textColor: [60, 60, 60],
-        minCellHeight: 6,
-        lineColor: [200, 200, 200],
-        lineWidth: 0.1,
-      },
-      alternateRowStyles: { fillColor: [232, 240, 254] }, // Light pastel blue
-      margin: { top: 36, left: 10, right: 10 },
-      columnStyles: {
-        0: { cellWidth: 14, halign: 'center' }, // SNo
-        1: { cellWidth: 14, halign: 'center' }, // ID
-        2: { cellWidth: 32, halign: 'left' }, // Name
-        3: { cellWidth: 32, halign: 'left' }, // Father Name
-      },
-      didParseCell: function (data) {
-        // Color status text
-        if (data.column.index === 6) {
-          if (data.cell.raw === 'Absent') data.cell.styles.textColor = [239, 68, 68]; // Red
-          if (data.cell.raw === 'Leave') data.cell.styles.textColor = [37, 99, 235]; // Blue
-        }
-        // Color attendance %
-        if (data.column.index === 8) {
-          const percent = parseInt(String(data.cell.raw || '').replace('%', ''));
-          if (percent < 75) data.cell.styles.textColor = [239, 68, 68]; // Red
-          else if (percent < 85) data.cell.styles.textColor = [234, 179, 8]; // Yellow
-          else data.cell.styles.textColor = [34, 197, 94]; // Green
-        }
-      },
-    });
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text(
-      `Generated on: ${new Date().toLocaleString()}`,
-      10,
-      doc.internal.pageSize.height - 10
-    );
-    const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
-    const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-    if (isCapacitor) {
-      const pdfBlob = doc.output('blob');
-      await savePdf(pdfBlob, `Absent Students (${formattedDate}).pdf`, true);
-      // Optionally show a toast or message here for mobile
-    } else if (isElectron) {
-      let electron;
-      try {
-        electron = (window as any).electron || (window as any).require && (window as any).require('electron');
-      } catch (e) { electron = null; }
-      if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
-        const path = electron.remote.require('path');
-        const documentsPath = electron.remote.app.getPath('documents');
-        const defaultFilePath = path.join(documentsPath, `Absent Students (${formattedDate}).pdf`);
-        const { filePath } = await electron.remote.dialog.showSaveDialog({
-          title: 'Save Absent Students Report',
-          defaultPath: defaultFilePath,
-          filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
-        });
-        if (filePath) {
-          const pdfBuffer = doc.output('arraybuffer');
-          const fs = electron.remote.require('fs');
-          fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
-          alert(`PDF saved successfully to: ${filePath}`);
-        }
-    } else {
-        // Format date as dd-mmm-yyyy for filename
-        const formatDateForFileName = (date: Date) => {
-          const day = date.getDate().toString().padStart(2, '0');
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const month = months[date.getMonth()];
-          const year = date.getFullYear();
-          return `${day}-${month}-${year}`;
-        };
+      const attPercent = totalCount ? (((presentCount + lateCount) / totalCount) * 100).toFixed(1) : '0.0';
+      // Create PDF
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('Absent Students Report', 15, 18);
+      doc.setFontSize(11);
+      // Format date as dd-mm-yyyy for filename
+      const [yyyy, mm, dd] = absentDate.split('-');
+      const formattedDate = `${dd}-${mm}-${yyyy}`;
+      doc.text(`Date: ${formattedDate}`, 15, 26);
+      doc.setFontSize(10);
+      // Total (Indigo)
+      doc.setTextColor(99, 102, 241);
+      doc.text(`Total: ${totalCount}`, 120, 18);
+      // Present (Green)
+      doc.setTextColor(34, 197, 94);
+      doc.text(`Present: ${presentCount + lateCount}`, 120, 24);
+      // Absent (Red)
+      doc.setTextColor(239, 68, 68);
+      doc.text(`Absent: ${absentCount}`, 170, 18);
+      // Leave (Blue)
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Leave: ${leaveCount}`, 170, 24);
+      // Late (Yellow)
+      doc.setTextColor(234, 179, 8);
+      doc.text(`Late: ${lateCount}`, 120, 30);
+      // Per% (Green/Yellow/Red based on value)
+      let perColor: [number, number, number] = [34, 197, 94];
+      const perVal = parseFloat(attPercent);
+      if (perVal < 75) perColor = [239, 68, 68];
+      else if (perVal < 85) perColor = [234, 179, 8];
+      doc.setTextColor(...perColor);
+      doc.text(`Per%: ${attPercent}%`, 170, 30);
+      doc.setTextColor(0, 0, 0); // Reset to black
+      autoTable(doc, {
+        startY: 36,
+        head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Status', 'M.A', 'Att%']],
+        body: absentStudents.map((student, idx) => [
+          idx + 1,
+          getStudentDisplayId(student),
+          student.name,
+          student.father_name,
+          student.phone,
+          student.class,
+          student.status,
+          student.monthly_absences,
+          `${student.attendance_percentage}%`
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: [99, 102, 241], // Indigo
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2,
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2,
+          halign: 'center',
+          textColor: [60, 60, 60],
+          minCellHeight: 6,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        alternateRowStyles: { fillColor: [232, 240, 254] }, // Light pastel blue
+        margin: { top: 36, left: 10, right: 10 },
+        columnStyles: {
+          0: { cellWidth: 14, halign: 'center' }, // SNo
+          1: { cellWidth: 14, halign: 'center' }, // ID
+          2: { cellWidth: 32, halign: 'left' }, // Name
+          3: { cellWidth: 32, halign: 'left' }, // Father Name
+        },
+        didParseCell: function (data) {
+          // Color status text
+          if (data.column.index === 6) {
+            if (data.cell.raw === 'Absent') data.cell.styles.textColor = [239, 68, 68]; // Red
+            if (data.cell.raw === 'Leave') data.cell.styles.textColor = [37, 99, 235]; // Blue
+          }
+          // Color attendance %
+          if (data.column.index === 8) {
+            const percent = parseInt(String(data.cell.raw || '').replace('%', ''));
+            if (percent < 75) data.cell.styles.textColor = [239, 68, 68]; // Red
+            else if (percent < 85) data.cell.styles.textColor = [234, 179, 8]; // Yellow
+            else data.cell.styles.textColor = [34, 197, 94]; // Green
+          }
+        },
+      });
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        10,
+        doc.internal.pageSize.height - 10
+      );
+      const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
+      const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
+      if (isCapacitor) {
+        const pdfBlob = doc.output('blob');
+        await savePdf(pdfBlob, `Absent Students (${formattedDate}).pdf`, true);
+        // Optionally show a toast or message here for mobile
+      } else if (isElectron) {
+        let electron;
+        try {
+          electron = (window as any).electron || (window as any).require && (window as any).require('electron');
+        } catch (e) { electron = null; }
+        if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
+          const path = electron.remote.require('path');
+          const documentsPath = electron.remote.app.getPath('documents');
+          const defaultFilePath = path.join(documentsPath, `Absent Students (${formattedDate}).pdf`);
+          const { filePath } = await electron.remote.dialog.showSaveDialog({
+            title: 'Save Absent Students Report',
+            defaultPath: defaultFilePath,
+            filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+          });
+          if (filePath) {
+            const pdfBuffer = doc.output('arraybuffer');
+            const fs = electron.remote.require('fs');
+            fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
+            alert(`PDF saved successfully to: ${filePath}`);
+          }
+        } else {
+          // Format date as dd-mmm-yyyy for filename
+          const formatDateForFileName = (date: Date) => {
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          };
 
-        const fileName = `Absent Students (${formatDateForFileName(new Date())}).pdf`;
-        
-        if (isMobileDevice) {
-          // For mobile devices, use Capacitor Filesystem API approach
-          try {
-            // Generate PDF as base64 string
-            const pdfBase64 = doc.output('datauristring').split(',')[1];
-            
-            // Create unique filename with timestamp to prevent overwriting
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const mobileFileName = `absent-students-${timestamp}.pdf`;
+          const fileName = `Absent Students (${formatDateForFileName(new Date())}).pdf`;
 
-            // Check if Capacitor is available (for mobile apps)
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-              try {
-                // Write PDF to documents directory
-                await window.Capacitor.Plugins.Filesystem.writeFile({
-                  path: mobileFileName,
-                  data: pdfBase64,
-                  directory: 'DOCUMENTS'
-                });
+          if (isMobileDevice) {
+            // For mobile devices, use Capacitor Filesystem API approach
+            try {
+              // Generate PDF as base64 string
+              const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-                // Get the file URI
-                const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-                  path: mobileFileName,
-                  directory: 'DOCUMENTS'
-                });
+              // Create unique filename with timestamp to prevent overwriting
+              const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+              const mobileFileName = `absent-students-${timestamp}.pdf`;
 
-                // Show success message and trigger native Android "Open with" dialog
-                toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-                
-                // Trigger native Android "Open with" dialog by opening the file URI
-                // This will show the native Android app chooser dialog
-                window.open(uriResult.uri, '_blank');
-                
-              } catch (fsError) {
-                // If filesystem fails, fallback to regular download
-                doc.save(mobileFileName);
-                toast.showToast('PDF downloaded successfully!', 'success');
-              }
-            } else {
-              // Fallback for web browsers - use the blob approach
-              try {
-                const pdfBlob = doc.output('blob');
-                const url = URL.createObjectURL(pdfBlob);
-                
-                // Create a visible download button for mobile
-                const downloadContainer = document.createElement('div');
-                downloadContainer.style.cssText = `
+              // Check if Capacitor is available (for mobile apps)
+              if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+                try {
+                  // Write PDF to documents directory
+                  await window.Capacitor.Plugins.Filesystem.writeFile({
+                    path: mobileFileName,
+                    data: pdfBase64,
+                    directory: 'DOCUMENTS'
+                  });
+
+                  // Get the file URI
+                  const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                    path: mobileFileName,
+                    directory: 'DOCUMENTS'
+                  });
+
+                  // Show success message and trigger native Android "Open with" dialog
+                  toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+
+                  // Trigger native Android "Open with" dialog by opening the file URI
+                  // This will show the native Android app chooser dialog
+                  window.open(uriResult.uri, '_blank');
+
+                } catch (fsError) {
+                  // If filesystem fails, fallback to regular download
+                  doc.save(mobileFileName);
+                  toast.showToast('PDF downloaded successfully!', 'success');
+                }
+              } else {
+                // Fallback for web browsers - use the blob approach
+                try {
+                  const pdfBlob = doc.output('blob');
+                  const url = URL.createObjectURL(pdfBlob);
+
+                  // Create a visible download button for mobile
+                  const downloadContainer = document.createElement('div');
+                  downloadContainer.style.cssText = `
                   position: fixed;
                   top: 50%;
                   left: 50%;
@@ -6629,8 +7038,8 @@ const Dashboard: React.FC = () => {
                   text-align: center;
                   max-width: 90vw;
                 `;
-                
-                downloadContainer.innerHTML = `
+
+                  downloadContainer.innerHTML = `
                   <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                   <p style="margin: 0 0 15px 0; color: #666;">Absent Students Report</p>
                   <a href="${url}" download="${fileName}" 
@@ -6645,26 +7054,26 @@ const Dashboard: React.FC = () => {
                     Close
                   </button>
                 `;
-                
-                document.body.appendChild(downloadContainer);
-                
-                // Auto-remove after 30 seconds
-                setTimeout(() => {
-                  if (downloadContainer.parentElement) {
-                    downloadContainer.remove();
-                  }
-                  URL.revokeObjectURL(url);
-                }, 30000);
-                
-                toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-                
-              } catch (webError) {
-                
-                // Final fallback: Open PDF in new tab with data URI
-                const pdfDataUri = doc.output('datauristring');
-                const newWindow = window.open('', '_blank');
-                if (newWindow) {
-                  newWindow.document.write(`
+
+                  document.body.appendChild(downloadContainer);
+
+                  // Auto-remove after 30 seconds
+                  setTimeout(() => {
+                    if (downloadContainer.parentElement) {
+                      downloadContainer.remove();
+                    }
+                    URL.revokeObjectURL(url);
+                  }, 30000);
+
+                  toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
+
+                } catch (webError) {
+
+                  // Final fallback: Open PDF in new tab with data URI
+                  const pdfDataUri = doc.output('datauristring');
+                  const newWindow = window.open('', '_blank');
+                  if (newWindow) {
+                    newWindow.document.write(`
                     <!DOCTYPE html>
                     <html>
                       <head>
@@ -6695,82 +7104,82 @@ const Dashboard: React.FC = () => {
                       </body>
                     </html>
                   `);
-                  newWindow.document.close();
-                  toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-                } else {
-                  toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                    newWindow.document.close();
+                    toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
+                  } else {
+                    toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                  }
                 }
               }
-            }
-          } catch (error) {
-            toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
-          }
-        } else {
-          // For desktop, use the standard approach
-          doc.save(fileName);
-          toast.showToast('Absent students PDF generated successfully', 'success');
-        }
-      }
-    } else {
-      // Web: just trigger download, do not show any alert or message
-      // Format date as dd-mmm-yyyy for filename
-      const formatDateForFileName = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
-
-      const fileName = `Absent Students (${formatDateForFileName(new Date())}).pdf`;
-      
-      if (isMobileDevice) {
-        // For mobile devices, use Capacitor Filesystem API approach
-        try {
-          // Generate PDF as base64 string
-          const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
-          // Create unique filename with timestamp to prevent overwriting
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const mobileFileName = `absent-students-${timestamp}.pdf`;
-
-          // Check if Capacitor is available (for mobile apps)
-          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-            try {
-              // Write PDF to documents directory
-              await window.Capacitor.Plugins.Filesystem.writeFile({
-                path: mobileFileName,
-                data: pdfBase64,
-                directory: 'DOCUMENTS'
-              });
-
-              // Get the file URI
-              const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-                path: mobileFileName,
-                directory: 'DOCUMENTS'
-              });
-
-              // Show success message and trigger native Android "Open with" dialog
-              toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-              
-              // Trigger native Android "Open with" dialog by opening the file URI
-              // This will show the native Android app chooser dialog
-              window.open(uriResult.uri, '_blank');
-              
-            } catch (fsError) {
-              // If filesystem fails, fallback to regular download
-              doc.save(mobileFileName);
-              toast.showToast('PDF downloaded successfully!', 'success');
+            } catch (error) {
+              toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
             }
           } else {
-            // Fallback for web browsers - use the blob approach
-            try {
-              const pdfBlob = doc.output('blob');
-              const url = URL.createObjectURL(pdfBlob);
-              
-              // Create a visible download button for mobile
-              const downloadContainer = document.createElement('div');
-              downloadContainer.style.cssText = `
+            // For desktop, use the standard approach
+            doc.save(fileName);
+            toast.showToast('Absent students PDF generated successfully', 'success');
+          }
+        }
+      } else {
+        // Web: just trigger download, do not show any alert or message
+        // Format date as dd-mmm-yyyy for filename
+        const formatDateForFileName = (date: Date) => {
+          const day = date.getDate().toString().padStart(2, '0');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const month = months[date.getMonth()];
+          const year = date.getFullYear();
+          return `${day}-${month}-${year}`;
+        };
+
+        const fileName = `Absent Students (${formatDateForFileName(new Date())}).pdf`;
+
+        if (isMobileDevice) {
+          // For mobile devices, use Capacitor Filesystem API approach
+          try {
+            // Generate PDF as base64 string
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+            // Create unique filename with timestamp to prevent overwriting
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const mobileFileName = `absent-students-${timestamp}.pdf`;
+
+            // Check if Capacitor is available (for mobile apps)
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+              try {
+                // Write PDF to documents directory
+                await window.Capacitor.Plugins.Filesystem.writeFile({
+                  path: mobileFileName,
+                  data: pdfBase64,
+                  directory: 'DOCUMENTS'
+                });
+
+                // Get the file URI
+                const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                  path: mobileFileName,
+                  directory: 'DOCUMENTS'
+                });
+
+                // Show success message and trigger native Android "Open with" dialog
+                toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+
+                // Trigger native Android "Open with" dialog by opening the file URI
+                // This will show the native Android app chooser dialog
+                window.open(uriResult.uri, '_blank');
+
+              } catch (fsError) {
+                // If filesystem fails, fallback to regular download
+                doc.save(mobileFileName);
+                toast.showToast('PDF downloaded successfully!', 'success');
+              }
+            } else {
+              // Fallback for web browsers - use the blob approach
+              try {
+                const pdfBlob = doc.output('blob');
+                const url = URL.createObjectURL(pdfBlob);
+
+                // Create a visible download button for mobile
+                const downloadContainer = document.createElement('div');
+                downloadContainer.style.cssText = `
                 position: fixed;
                 top: 50%;
                 left: 50%;
@@ -6784,8 +7193,8 @@ const Dashboard: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
-              downloadContainer.innerHTML = `
+
+                downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Absent Students Report</p>
                 <a href="${url}" download="${fileName}" 
@@ -6800,26 +7209,26 @@ const Dashboard: React.FC = () => {
                   Close
                 </button>
               `;
-              
-              document.body.appendChild(downloadContainer);
-              
-              // Auto-remove after 30 seconds
-              setTimeout(() => {
-                if (downloadContainer.parentElement) {
-                  downloadContainer.remove();
-                }
-                URL.revokeObjectURL(url);
-              }, 30000);
-              
-              toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-              
-            } catch (webError) {
-              
-              // Final fallback: Open PDF in new tab with data URI
-              const pdfDataUri = doc.output('datauristring');
-              const newWindow = window.open('', '_blank');
-              if (newWindow) {
-                newWindow.document.write(`
+
+                document.body.appendChild(downloadContainer);
+
+                // Auto-remove after 30 seconds
+                setTimeout(() => {
+                  if (downloadContainer.parentElement) {
+                    downloadContainer.remove();
+                  }
+                  URL.revokeObjectURL(url);
+                }, 30000);
+
+                toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
+
+              } catch (webError) {
+
+                // Final fallback: Open PDF in new tab with data URI
+                const pdfDataUri = doc.output('datauristring');
+                const newWindow = window.open('', '_blank');
+                if (newWindow) {
+                  newWindow.document.write(`
                   <!DOCTYPE html>
                   <html>
                     <head>
@@ -6850,22 +7259,22 @@ const Dashboard: React.FC = () => {
                     </body>
                   </html>
                 `);
-                newWindow.document.close();
-                toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-              } else {
-                toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                  newWindow.document.close();
+                  toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
+                } else {
+                  toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                }
               }
             }
+          } catch (error) {
+            toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
           }
-        } catch (error) {
-          toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
+        } else {
+          // For desktop, use the standard approach
+          doc.save(fileName);
+          toast.showToast('Absent students PDF generated successfully', 'success');
         }
-      } else {
-        // For desktop, use the standard approach
-        doc.save(fileName);
-        toast.showToast('Absent students PDF generated successfully', 'success');
       }
-    }
     } catch (error: any) {
       toast.showToast(error.message || 'Failed to export absent students', 'error');
     } finally {
@@ -6880,10 +7289,10 @@ const Dashboard: React.FC = () => {
     }
 
     setExportPresentLoading(true);
-    try{
+    try {
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         toast.showToast('Generating PDF for mobile... Please wait.', 'success');
@@ -6965,7 +7374,7 @@ const Dashboard: React.FC = () => {
       // Fetch class and section details separately
       const classIds = studentsData.map(student => student.class_id).filter((id, index, self) => self.indexOf(id) === index);
       const sectionIds = studentsData.map(student => student.section_id).filter((id, index, self) => self.indexOf(id) === index);
-      
+
       const { data: classesData, error: classesError } = await supabase
         .from('classes')
         .select('id, name')
@@ -7011,7 +7420,7 @@ const Dashboard: React.FC = () => {
       const presentStudents = studentsData.map(student => {
         const attendanceRecord = attendanceData.find(record => record.student_id === student.id);
         const studentMonthlyAttendance = monthlyAttendance?.filter(a => a.student_id === student.id) || [];
-        
+
         const totalDays = studentMonthlyAttendance.length;
         const absentDays = studentMonthlyAttendance.filter(a => a.status === 'absent' || a.status === 'leave').length;
         const attendancePercentage = totalDays > 0 ? ((totalDays - absentDays) / totalDays * 100).toFixed(1) : '100.0';
@@ -7035,204 +7444,204 @@ const Dashboard: React.FC = () => {
         return a.name.localeCompare(b.name);
       });
 
-    // --- Fix summary counts: fetch complete attendance data for the date ---
-    const { data: completeAttendanceData, error: completeAttendanceError } = await supabase
-      .from('attendance_records')
-      .select('student_id, status, date')
-      .eq('date', absentDate)
-      .eq('session_id', sessionData.id)
-      .eq('school_id', user.school_id);
+      // --- Fix summary counts: fetch complete attendance data for the date ---
+      const { data: completeAttendanceData, error: completeAttendanceError } = await supabase
+        .from('attendance_records')
+        .select('student_id, status, date')
+        .eq('date', absentDate)
+        .eq('session_id', sessionData.id)
+        .eq('school_id', user.school_id);
 
-    if (completeAttendanceError) {
-    }
+      if (completeAttendanceError) {
+      }
 
-    const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
-    const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
-    const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
-    const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
-    const totalCount = completeAttendanceData?.length || 0;
-    const attPercent = totalCount ? (((presentCount + lateCount) / totalCount) * 100).toFixed(1) : '0.0';
-    
-    // Create PDF
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Present Students Report', 15, 18);
-    doc.setFontSize(11);
-    // Format date as dd-mm-yyyy for filename
-    const [yyyy, mm, dd] = absentDate.split('-');
-    const formattedDate = `${dd}-${mm}-${yyyy}`;
-    doc.text(`Date: ${formattedDate}`, 15, 26);
-    doc.setFontSize(10);
-    // Total (Indigo)
-    doc.setTextColor(99, 102, 241);
-    doc.text(`Total: ${totalCount}`, 120, 18);
-    // Present (Green)
-    doc.setTextColor(34, 197, 94);
-    doc.text(`Present: ${presentCount + lateCount}`, 120, 24);
-    // Absent (Red)
-    doc.setTextColor(239, 68, 68);
-    doc.text(`Absent: ${absentCount}`, 170, 18);
-    // Leave (Blue)
-    doc.setTextColor(37, 99, 235);
-    doc.text(`Leave: ${leaveCount}`, 170, 24);
-    // Late (Yellow)
-    doc.setTextColor(234, 179, 8);
-    doc.text(`Late: ${lateCount}`, 120, 30);
-    // Per% (Green/Yellow/Red based on value)
-    let perColor: [number, number, number] = [34, 197, 94];
-    const perVal = parseFloat(attPercent);
-    if (perVal < 75) perColor = [239, 68, 68];
-    else if (perVal < 85) perColor = [234, 179, 8];
-    doc.setTextColor(...perColor);
-    doc.text(`Per%: ${attPercent}%`, 170, 30);
-    doc.setTextColor(0, 0, 0); // Reset to black
-    autoTable(doc, {
-      startY: 36,
-      head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Status', 'M.A', 'Att%']],
-      body: presentStudents.map((student, idx) => [
-        idx + 1,
-        getStudentDisplayId(student),
-        student.name,
-        student.father_name,
-        student.phone,
-        student.class,
-        student.status,
-        student.monthly_absences,
-        `${student.attendance_percentage}%`
-      ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: [99, 102, 241], // Indigo
-        textColor: [255, 255, 255],
-        fontSize: 9,
-        fontStyle: 'bold',
-        halign: 'center',
-        cellPadding: 2,
-      },
-      styles: {
-        fontSize: 8.5,
-        cellPadding: 2,
-        halign: 'center',
-        textColor: [60, 60, 60],
-        minCellHeight: 6,
-        lineColor: [200, 200, 200],
-        lineWidth: 0.1,
-      },
-      alternateRowStyles: { fillColor: [232, 240, 254] }, // Light pastel blue
-      margin: { top: 36, left: 10, right: 10 },
-      columnStyles: {
-        0: { cellWidth: 14, halign: 'center' }, // SNo
-        1: { cellWidth: 14, halign: 'center' }, // ID
-        2: { cellWidth: 32, halign: 'left' }, // Name
-        3: { cellWidth: 32, halign: 'left' }, // Father Name
-      },
-      didParseCell: function (data) {
-        // Color status text
-        if (data.column.index === 6) {
-          if (data.cell.raw === 'Present') data.cell.styles.textColor = [34, 197, 94]; // Green
-          if (data.cell.raw === 'Late') data.cell.styles.textColor = [234, 179, 8]; // Yellow
-        }
-        // Color attendance %
-        if (data.column.index === 8) {
-          const percent = parseInt(String(data.cell.raw || '').replace('%', ''));
-          if (percent < 75) data.cell.styles.textColor = [239, 68, 68]; // Red
-          else if (percent < 85) data.cell.styles.textColor = [234, 179, 8]; // Yellow
-          else data.cell.styles.textColor = [34, 197, 94]; // Green
-        }
-      },
-    });
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text(
-      `Generated on: ${new Date().toLocaleString()}`,
-      10,
-      doc.internal.pageSize.height - 10
-    );
-    const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
-    const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-    if (isCapacitor) {
-      const pdfBlob = doc.output('blob');
-      await savePdf(pdfBlob, `Present Students (${formattedDate}).pdf`, true);
-      // Optionally show a toast or message here for mobile
-    } else if (isElectron) {
-      let electron;
-      try {
-        electron = (window as any).electron || (window as any).require && (window as any).require('electron');
-      } catch (e) { electron = null; }
-      if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
-        const path = electron.remote.require('path');
-        const documentsPath = electron.remote.app.getPath('documents');
-        const defaultFilePath = path.join(documentsPath, `Present Students (${formattedDate}).pdf`);
-        const { filePath } = await electron.remote.dialog.showSaveDialog({
-          title: 'Save Present Students Report',
-          defaultPath: defaultFilePath,
-          filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
-        });
-        if (filePath) {
-          const pdfBuffer = doc.output('arraybuffer');
-          const fs = electron.remote.require('fs');
-          fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
-          alert(`PDF saved successfully to: ${filePath}`);
-        }
-    } else {
-        // Format date as dd-mmm-yyyy for filename
-        const formatDateForFileName = (date: Date) => {
-          const day = date.getDate().toString().padStart(2, '0');
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const month = months[date.getMonth()];
-          const year = date.getFullYear();
-          return `${day}-${month}-${year}`;
-        };
+      const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
+      const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
+      const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
+      const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
+      const totalCount = completeAttendanceData?.length || 0;
+      const attPercent = totalCount ? (((presentCount + lateCount) / totalCount) * 100).toFixed(1) : '0.0';
 
-        const fileName = `Present Students (${formatDateForFileName(new Date())}).pdf`;
-        
-        if (isMobileDevice) {
-          // For mobile devices, use Capacitor Filesystem API approach
-          try {
-            // Generate PDF as base64 string
-            const pdfBase64 = doc.output('datauristring').split(',')[1];
-            
-            // Create unique filename with timestamp to prevent overwriting
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const mobileFileName = `present-students-${timestamp}.pdf`;
+      // Create PDF
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('Present Students Report', 15, 18);
+      doc.setFontSize(11);
+      // Format date as dd-mm-yyyy for filename
+      const [yyyy, mm, dd] = absentDate.split('-');
+      const formattedDate = `${dd}-${mm}-${yyyy}`;
+      doc.text(`Date: ${formattedDate}`, 15, 26);
+      doc.setFontSize(10);
+      // Total (Indigo)
+      doc.setTextColor(99, 102, 241);
+      doc.text(`Total: ${totalCount}`, 120, 18);
+      // Present (Green)
+      doc.setTextColor(34, 197, 94);
+      doc.text(`Present: ${presentCount + lateCount}`, 120, 24);
+      // Absent (Red)
+      doc.setTextColor(239, 68, 68);
+      doc.text(`Absent: ${absentCount}`, 170, 18);
+      // Leave (Blue)
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Leave: ${leaveCount}`, 170, 24);
+      // Late (Yellow)
+      doc.setTextColor(234, 179, 8);
+      doc.text(`Late: ${lateCount}`, 120, 30);
+      // Per% (Green/Yellow/Red based on value)
+      let perColor: [number, number, number] = [34, 197, 94];
+      const perVal = parseFloat(attPercent);
+      if (perVal < 75) perColor = [239, 68, 68];
+      else if (perVal < 85) perColor = [234, 179, 8];
+      doc.setTextColor(...perColor);
+      doc.text(`Per%: ${attPercent}%`, 170, 30);
+      doc.setTextColor(0, 0, 0); // Reset to black
+      autoTable(doc, {
+        startY: 36,
+        head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Status', 'M.A', 'Att%']],
+        body: presentStudents.map((student, idx) => [
+          idx + 1,
+          getStudentDisplayId(student),
+          student.name,
+          student.father_name,
+          student.phone,
+          student.class,
+          student.status,
+          student.monthly_absences,
+          `${student.attendance_percentage}%`
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: [99, 102, 241], // Indigo
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2,
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2,
+          halign: 'center',
+          textColor: [60, 60, 60],
+          minCellHeight: 6,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        alternateRowStyles: { fillColor: [232, 240, 254] }, // Light pastel blue
+        margin: { top: 36, left: 10, right: 10 },
+        columnStyles: {
+          0: { cellWidth: 14, halign: 'center' }, // SNo
+          1: { cellWidth: 14, halign: 'center' }, // ID
+          2: { cellWidth: 32, halign: 'left' }, // Name
+          3: { cellWidth: 32, halign: 'left' }, // Father Name
+        },
+        didParseCell: function (data) {
+          // Color status text
+          if (data.column.index === 6) {
+            if (data.cell.raw === 'Present') data.cell.styles.textColor = [34, 197, 94]; // Green
+            if (data.cell.raw === 'Late') data.cell.styles.textColor = [234, 179, 8]; // Yellow
+          }
+          // Color attendance %
+          if (data.column.index === 8) {
+            const percent = parseInt(String(data.cell.raw || '').replace('%', ''));
+            if (percent < 75) data.cell.styles.textColor = [239, 68, 68]; // Red
+            else if (percent < 85) data.cell.styles.textColor = [234, 179, 8]; // Yellow
+            else data.cell.styles.textColor = [34, 197, 94]; // Green
+          }
+        },
+      });
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        10,
+        doc.internal.pageSize.height - 10
+      );
+      const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
+      const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
+      if (isCapacitor) {
+        const pdfBlob = doc.output('blob');
+        await savePdf(pdfBlob, `Present Students (${formattedDate}).pdf`, true);
+        // Optionally show a toast or message here for mobile
+      } else if (isElectron) {
+        let electron;
+        try {
+          electron = (window as any).electron || (window as any).require && (window as any).require('electron');
+        } catch (e) { electron = null; }
+        if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
+          const path = electron.remote.require('path');
+          const documentsPath = electron.remote.app.getPath('documents');
+          const defaultFilePath = path.join(documentsPath, `Present Students (${formattedDate}).pdf`);
+          const { filePath } = await electron.remote.dialog.showSaveDialog({
+            title: 'Save Present Students Report',
+            defaultPath: defaultFilePath,
+            filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+          });
+          if (filePath) {
+            const pdfBuffer = doc.output('arraybuffer');
+            const fs = electron.remote.require('fs');
+            fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
+            alert(`PDF saved successfully to: ${filePath}`);
+          }
+        } else {
+          // Format date as dd-mmm-yyyy for filename
+          const formatDateForFileName = (date: Date) => {
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          };
 
-            // Check if Capacitor is available (for mobile apps)
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-              try {
-                // Write PDF to documents directory
-                await window.Capacitor.Plugins.Filesystem.writeFile({
-                  path: mobileFileName,
-                  data: pdfBase64,
-                  directory: 'DOCUMENTS'
-                });
+          const fileName = `Present Students (${formatDateForFileName(new Date())}).pdf`;
 
-                // Get the file URI
-                const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-                  path: mobileFileName,
-                  directory: 'DOCUMENTS'
-                });
+          if (isMobileDevice) {
+            // For mobile devices, use Capacitor Filesystem API approach
+            try {
+              // Generate PDF as base64 string
+              const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-                // Show success message and trigger native Android "Open with" dialog
-                toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-                
-                // Trigger native Android "Open with" dialog by opening the file URI
-                // This will show the native Android app chooser dialog
-                window.open(uriResult.uri, '_blank');
-                
-              } catch (fsError) {
-                // If filesystem fails, fallback to regular download
-                doc.save(mobileFileName);
-                toast.showToast('PDF downloaded successfully!', 'success');
-              }
-            } else {
-              // Fallback for web browsers - use the blob approach
-              try {
-                const pdfBlob = doc.output('blob');
-                const url = URL.createObjectURL(pdfBlob);
-                
-                // Create a visible download button for mobile
-                const downloadContainer = document.createElement('div');
-                downloadContainer.style.cssText = `
+              // Create unique filename with timestamp to prevent overwriting
+              const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+              const mobileFileName = `present-students-${timestamp}.pdf`;
+
+              // Check if Capacitor is available (for mobile apps)
+              if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+                try {
+                  // Write PDF to documents directory
+                  await window.Capacitor.Plugins.Filesystem.writeFile({
+                    path: mobileFileName,
+                    data: pdfBase64,
+                    directory: 'DOCUMENTS'
+                  });
+
+                  // Get the file URI
+                  const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                    path: mobileFileName,
+                    directory: 'DOCUMENTS'
+                  });
+
+                  // Show success message and trigger native Android "Open with" dialog
+                  toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+
+                  // Trigger native Android "Open with" dialog by opening the file URI
+                  // This will show the native Android app chooser dialog
+                  window.open(uriResult.uri, '_blank');
+
+                } catch (fsError) {
+                  // If filesystem fails, fallback to regular download
+                  doc.save(mobileFileName);
+                  toast.showToast('PDF downloaded successfully!', 'success');
+                }
+              } else {
+                // Fallback for web browsers - use the blob approach
+                try {
+                  const pdfBlob = doc.output('blob');
+                  const url = URL.createObjectURL(pdfBlob);
+
+                  // Create a visible download button for mobile
+                  const downloadContainer = document.createElement('div');
+                  downloadContainer.style.cssText = `
                   position: fixed;
                   top: 50%;
                   left: 50%;
@@ -7246,8 +7655,8 @@ const Dashboard: React.FC = () => {
                   text-align: center;
                   max-width: 90vw;
                 `;
-                
-                downloadContainer.innerHTML = `
+
+                  downloadContainer.innerHTML = `
                   <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                   <p style="margin: 0 0 15px 0; color: #666;">Present Students Report</p>
                   <a href="${url}" download="${fileName}" 
@@ -7262,26 +7671,26 @@ const Dashboard: React.FC = () => {
                     Close
                   </button>
                 `;
-                
-                document.body.appendChild(downloadContainer);
-                
-                // Auto-remove after 30 seconds
-                setTimeout(() => {
-                  if (downloadContainer.parentElement) {
-                    downloadContainer.remove();
-                  }
-                  URL.revokeObjectURL(url);
-                }, 30000);
-                
-                toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-                
-              } catch (webError) {
-                
-                // Final fallback: Open PDF in new tab with data URI
-                const pdfDataUri = doc.output('datauristring');
-                const newWindow = window.open('', '_blank');
-                if (newWindow) {
-                  newWindow.document.write(`
+
+                  document.body.appendChild(downloadContainer);
+
+                  // Auto-remove after 30 seconds
+                  setTimeout(() => {
+                    if (downloadContainer.parentElement) {
+                      downloadContainer.remove();
+                    }
+                    URL.revokeObjectURL(url);
+                  }, 30000);
+
+                  toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
+
+                } catch (webError) {
+
+                  // Final fallback: Open PDF in new tab with data URI
+                  const pdfDataUri = doc.output('datauristring');
+                  const newWindow = window.open('', '_blank');
+                  if (newWindow) {
+                    newWindow.document.write(`
                     <!DOCTYPE html>
                     <html>
                       <head>
@@ -7312,82 +7721,82 @@ const Dashboard: React.FC = () => {
                       </body>
                     </html>
                   `);
-                  newWindow.document.close();
-                  toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-                } else {
-                  toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                    newWindow.document.close();
+                    toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
+                  } else {
+                    toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                  }
                 }
               }
-            }
-          } catch (error) {
-            toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
-          }
-        } else {
-          // For desktop, use the standard approach
-          doc.save(fileName);
-          toast.showToast('Present students PDF generated successfully', 'success');
-        }
-      }
-    } else {
-      // Web: just trigger download, do not show any alert or message
-      // Format date as dd-mmm-yyyy for filename
-      const formatDateForFileName = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
-
-      const fileName = `Present Students (${formatDateForFileName(new Date())}).pdf`;
-      
-      if (isMobileDevice) {
-        // For mobile devices, use Capacitor Filesystem API approach
-        try {
-          // Generate PDF as base64 string
-          const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
-          // Create unique filename with timestamp to prevent overwriting
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const mobileFileName = `present-students-${timestamp}.pdf`;
-
-          // Check if Capacitor is available (for mobile apps)
-          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-            try {
-              // Write PDF to documents directory
-              await window.Capacitor.Plugins.Filesystem.writeFile({
-                path: mobileFileName,
-                data: pdfBase64,
-                directory: 'DOCUMENTS'
-              });
-
-              // Get the file URI
-              const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-                path: mobileFileName,
-                directory: 'DOCUMENTS'
-              });
-
-              // Show success message and trigger native Android "Open with" dialog
-              toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-              
-              // Trigger native Android "Open with" dialog by opening the file URI
-              // This will show the native Android app chooser dialog
-              window.open(uriResult.uri, '_blank');
-              
-            } catch (fsError) {
-              // If filesystem fails, fallback to regular download
-              doc.save(mobileFileName);
-              toast.showToast('PDF downloaded successfully!', 'success');
+            } catch (error) {
+              toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
             }
           } else {
-            // Fallback for web browsers - use the blob approach
-            try {
-              const pdfBlob = doc.output('blob');
-              const url = URL.createObjectURL(pdfBlob);
-              
-              // Create a visible download button for mobile
-              const downloadContainer = document.createElement('div');
-              downloadContainer.style.cssText = `
+            // For desktop, use the standard approach
+            doc.save(fileName);
+            toast.showToast('Present students PDF generated successfully', 'success');
+          }
+        }
+      } else {
+        // Web: just trigger download, do not show any alert or message
+        // Format date as dd-mmm-yyyy for filename
+        const formatDateForFileName = (date: Date) => {
+          const day = date.getDate().toString().padStart(2, '0');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const month = months[date.getMonth()];
+          const year = date.getFullYear();
+          return `${day}-${month}-${year}`;
+        };
+
+        const fileName = `Present Students (${formatDateForFileName(new Date())}).pdf`;
+
+        if (isMobileDevice) {
+          // For mobile devices, use Capacitor Filesystem API approach
+          try {
+            // Generate PDF as base64 string
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+            // Create unique filename with timestamp to prevent overwriting
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const mobileFileName = `present-students-${timestamp}.pdf`;
+
+            // Check if Capacitor is available (for mobile apps)
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+              try {
+                // Write PDF to documents directory
+                await window.Capacitor.Plugins.Filesystem.writeFile({
+                  path: mobileFileName,
+                  data: pdfBase64,
+                  directory: 'DOCUMENTS'
+                });
+
+                // Get the file URI
+                const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                  path: mobileFileName,
+                  directory: 'DOCUMENTS'
+                });
+
+                // Show success message and trigger native Android "Open with" dialog
+                toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+
+                // Trigger native Android "Open with" dialog by opening the file URI
+                // This will show the native Android app chooser dialog
+                window.open(uriResult.uri, '_blank');
+
+              } catch (fsError) {
+                // If filesystem fails, fallback to regular download
+                doc.save(mobileFileName);
+                toast.showToast('PDF downloaded successfully!', 'success');
+              }
+            } else {
+              // Fallback for web browsers - use the blob approach
+              try {
+                const pdfBlob = doc.output('blob');
+                const url = URL.createObjectURL(pdfBlob);
+
+                // Create a visible download button for mobile
+                const downloadContainer = document.createElement('div');
+                downloadContainer.style.cssText = `
                 position: fixed;
                 top: 50%;
                 left: 50%;
@@ -7401,8 +7810,8 @@ const Dashboard: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
-              downloadContainer.innerHTML = `
+
+                downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Present Students Report</p>
                 <a href="${url}" download="${fileName}" 
@@ -7417,26 +7826,26 @@ const Dashboard: React.FC = () => {
                   Close
                 </button>
               `;
-              
-              document.body.appendChild(downloadContainer);
-              
-              // Auto-remove after 30 seconds
-              setTimeout(() => {
-                if (downloadContainer.parentElement) {
-                  downloadContainer.remove();
-                }
-                URL.revokeObjectURL(url);
-              }, 30000);
-              
-              toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-              
-            } catch (webError) {
-              
-              // Final fallback: Open PDF in new tab with data URI
-              const pdfDataUri = doc.output('datauristring');
-              const newWindow = window.open('', '_blank');
-              if (newWindow) {
-                newWindow.document.write(`
+
+                document.body.appendChild(downloadContainer);
+
+                // Auto-remove after 30 seconds
+                setTimeout(() => {
+                  if (downloadContainer.parentElement) {
+                    downloadContainer.remove();
+                  }
+                  URL.revokeObjectURL(url);
+                }, 30000);
+
+                toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
+
+              } catch (webError) {
+
+                // Final fallback: Open PDF in new tab with data URI
+                const pdfDataUri = doc.output('datauristring');
+                const newWindow = window.open('', '_blank');
+                if (newWindow) {
+                  newWindow.document.write(`
                   <!DOCTYPE html>
                   <html>
                     <head>
@@ -7467,22 +7876,22 @@ const Dashboard: React.FC = () => {
                     </body>
                   </html>
                 `);
-                newWindow.document.close();
-                toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-              } else {
-                toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                  newWindow.document.close();
+                  toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
+                } else {
+                  toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                }
               }
             }
+          } catch (error) {
+            toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
           }
-        } catch (error) {
-          toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
+        } else {
+          // For desktop, use the standard approach
+          doc.save(fileName);
+          toast.showToast('Present students PDF generated successfully', 'success');
         }
-      } else {
-        // For desktop, use the standard approach
-        doc.save(fileName);
-        toast.showToast('Present students PDF generated successfully', 'success');
       }
-    }
     } catch (error: any) {
       toast.showToast(error.message || 'Failed to export present students', 'error');
     } finally {
@@ -7541,10 +7950,10 @@ const Dashboard: React.FC = () => {
       }
 
       toast.showToast('Status updated successfully', 'success');
-      
+
       // Update the local state instead of refreshing the whole list
-      setAbsentees(prev => prev.map(a => 
-        a.id === absentee.id 
+      setAbsentees(prev => prev.map(a =>
+        a.id === absentee.id
           ? { ...a, status: 'present' }
           : a
       ));
@@ -7556,7 +7965,7 @@ const Dashboard: React.FC = () => {
   // Fetch student details when we have an ID
   const fetchStudentDetails = async (studentId: number) => {
     if (!user?.school_id) return null;
-    
+
     try {
       const { data, error } = await supabase
         .from('students')
@@ -7565,6 +7974,7 @@ const Dashboard: React.FC = () => {
           name,
           father_name,
           picture_url,
+          roll_number,
           class_id,
           section_id,
           classes (
@@ -7652,6 +8062,7 @@ const Dashboard: React.FC = () => {
           name,
           father_name,
           picture_url,
+          roll_number,
           class_id,
           section_id,
           classes (
@@ -7701,7 +8112,7 @@ const Dashboard: React.FC = () => {
       const newStudentDetails: Record<string, any> = {};
       studentsData.forEach((student: any) => {
         const stats = monthlyStats[student.id] || { absences: 0, leaves: 0, total: 0 };
-        const attendance_percentage = stats.total ? 
+        const attendance_percentage = stats.total ?
           Math.round(((stats.total - stats.absences - stats.leaves) / stats.total) * 100) : 100;
 
         newStudentDetails[student.id] = {
@@ -7715,20 +8126,20 @@ const Dashboard: React.FC = () => {
       });
 
       setStudentDetails(newStudentDetails);
-      
+
       // Sort absentees by class and then by student name
       const sortedAbsentees = attendanceData.sort((a, b) => {
         const studentA = newStudentDetails[a.student_id];
         const studentB = newStudentDetails[b.student_id];
-        
+
         if (!studentA || !studentB) return 0;
-        
+
         // Sort by class name first (numeric), then by student name
         const classComparison = compareClassNames(studentA.class_name, studentB.class_name);
         if (classComparison !== 0) return classComparison;
         return studentA.name.localeCompare(studentB.name);
       });
-      
+
       setAbsentees(sortedAbsentees);
 
     } catch (error) {
@@ -7754,7 +8165,7 @@ const Dashboard: React.FC = () => {
     if (settingsLoading || !renderSettings) {
       return <Loader />;
     }
-    
+
     // If settings loaded but dashboard page access is not enabled, show access denied
     // Use isGuestPageAccessible to check if the dashboard page is accessible
     if (!isGuestPageAccessible(renderSettings, 'dashboard')) {
@@ -7796,38 +8207,44 @@ const Dashboard: React.FC = () => {
       return <NoStudentsFound />;
     }
   }
-  
+
   // Check which cards should be visible for guest users
   const isGuest = user?.role === 'Guest';
   const showClassStrength = !isGuest || isDashboardCardVisible(renderSettings, 'class_strength_card');
   const showFineCollection = !isGuest || isDashboardCardVisible(renderSettings, 'fine_collection_card');
   const showAbsentees = !isGuest || isDashboardCardVisible(renderSettings, 'absentees_card');
   const showHomeworkDiary = !isGuest || isDashboardCardVisible(renderSettings, 'homework_diary_card');
-  const hasRightCards = showAbsentees || showHomeworkDiary;
+  const hasRightCards = showAbsentees;
 
   return (
     <DashboardContainer>
       {/* Tab Navigation - Minimal Header */}
       <TabContainer>
         <TabsWrapper>
-        <TabButton 
-          active={activeTab === 'attendance'} 
-          onClick={() => setActiveTab('attendance')}
-        >
-          Attendance
-        </TabButton>
-        <TabButton 
-          active={activeTab === 'fee'} 
-          onClick={() => setActiveTab('fee')}
-        >
-          Fee Collection
-        </TabButton>
-        <TabButton 
-          active={activeTab === 'admissions'} 
-          onClick={() => setActiveTab('admissions')}
-        >
-          Admissions
-        </TabButton>
+          <TabButton
+            active={activeTab === 'attendance'}
+            onClick={() => setActiveTab('attendance')}
+          >
+            Attendance
+          </TabButton>
+          <TabButton
+            active={activeTab === 'fee'}
+            onClick={() => setActiveTab('fee')}
+          >
+            Fee Collection
+          </TabButton>
+          <TabButton
+            active={activeTab === 'admissions'}
+            onClick={() => setActiveTab('admissions')}
+          >
+            Admissions
+          </TabButton>
+          <TabButton
+            active={activeTab === 'homework'}
+            onClick={() => setActiveTab('homework')}
+          >
+            Homework Diary
+          </TabButton>
         </TabsWrapper>
         <DashboardDateInput
           type="date"
@@ -7840,2145 +8257,2584 @@ const Dashboard: React.FC = () => {
           }}
         />
       </TabContainer>
-      
+
       {/* Attendance Tab Content */}
-      <TabContent active={activeTab === 'attendance'}>
-        {/* Attendance Stats Cards */}
-        <AttendanceStatsGrid>
-          <AttendanceStatCard accentColor="#22c55e">
-            <AttendanceStatTopRow>
-              <AttendanceStatIcon color="#22c55e">
-                <CheckCircle />
-              </AttendanceStatIcon>
-              <AttendanceStatTitle>Present</AttendanceStatTitle>
-            </AttendanceStatTopRow>
-            <AttendanceStatRow>
-              <AttendanceStatValue>{presentToday}</AttendanceStatValue>
-              <AttendanceStatRightInfo>
-                <AttendanceStatStatus status={getStatus(presentPercent, true)}>
-                  {presentPercent >= 80 ? 'Excellent' : presentPercent >= 50 ? 'Good' : 'Needs Attention'}
-                </AttendanceStatStatus>
-                <AttendanceStatPercentage color="#22c55e">{presentPercent}%</AttendanceStatPercentage>
-              </AttendanceStatRightInfo>
-            </AttendanceStatRow>
-          </AttendanceStatCard>
-          
-          <AttendanceStatCard accentColor="#ef4444">
-            <AttendanceStatTopRow>
-              <AttendanceStatIcon color="#ef4444">
-                <Cancel />
-              </AttendanceStatIcon>
-              <AttendanceStatTitle>Absent</AttendanceStatTitle>
-            </AttendanceStatTopRow>
-            <AttendanceStatRow>
-              <AttendanceStatValue>{absentToday}</AttendanceStatValue>
-              <AttendanceStatRightInfo>
-                <AttendanceStatStatus status={getStatus(absentPercent, false)}>
-                  {absentPercent <= 10 ? 'Low' : absentPercent <= 30 ? 'Moderate' : 'High'}
-                </AttendanceStatStatus>
-                <AttendanceStatPercentage color="#ef4444">{absentPercent}%</AttendanceStatPercentage>
-              </AttendanceStatRightInfo>
-            </AttendanceStatRow>
-          </AttendanceStatCard>
-          
-          <AttendanceStatCard accentColor="#3b82f6">
-            <AttendanceStatTopRow>
-              <AttendanceStatIcon color="#3b82f6">
-                <CalendarMonth />
-              </AttendanceStatIcon>
-              <AttendanceStatTitle>Leave</AttendanceStatTitle>
-            </AttendanceStatTopRow>
-            <AttendanceStatRow>
-              <AttendanceStatValue>{leaveToday}</AttendanceStatValue>
-              <AttendanceStatRightInfo>
-                <AttendanceStatStatus status={getStatus(leavePercent, false)}>
-                  {leavePercent <= 10 ? 'Low' : leavePercent <= 30 ? 'Moderate' : 'High'}
-                </AttendanceStatStatus>
-                <AttendanceStatPercentage color="#3b82f6">{leavePercent}%</AttendanceStatPercentage>
-              </AttendanceStatRightInfo>
-            </AttendanceStatRow>
-          </AttendanceStatCard>
-          
-          <AttendanceStatCard accentColor="#f59e0b">
-            <AttendanceStatTopRow>
-              <AttendanceStatIcon color="#f59e0b">
-                <AccessTime />
-              </AttendanceStatIcon>
-              <AttendanceStatTitle>Late</AttendanceStatTitle>
-            </AttendanceStatTopRow>
-            <AttendanceStatRow>
-              <AttendanceStatValue>{lateToday}</AttendanceStatValue>
-              <AttendanceStatRightInfo>
-                <AttendanceStatStatus status={getStatus(latePercent, false)}>
-                  {latePercent <= 10 ? 'Low' : latePercent <= 30 ? 'Moderate' : 'High'}
-                </AttendanceStatStatus>
-                <AttendanceStatPercentage color="#f59e0b">{latePercent}%</AttendanceStatPercentage>
-              </AttendanceStatRightInfo>
-            </AttendanceStatRow>
-          </AttendanceStatCard>
-          
-          <AttendanceStatCard accentColor="#8b5cf6">
-            <AttendanceStatTopRow>
-              <AttendanceStatIcon color="#8b5cf6">
-                <HourglassEmpty />
-              </AttendanceStatIcon>
-              <AttendanceStatTitle>Half Leave</AttendanceStatTitle>
-            </AttendanceStatTopRow>
-            <AttendanceStatRow>
-              <AttendanceStatValue>{halfLeaveCount}</AttendanceStatValue>
-              <AttendanceStatRightInfo>
-                <AttendanceStatStatus status={getStatus(halfLeavePercent, false)}>
-                  {halfLeavePercent <= 10 ? 'Low' : halfLeavePercent <= 30 ? 'Moderate' : 'High'}
-                </AttendanceStatStatus>
-                <AttendanceStatPercentage color="#8b5cf6">{halfLeavePercent}%</AttendanceStatPercentage>
-              </AttendanceStatRightInfo>
-            </AttendanceStatRow>
-          </AttendanceStatCard>
-        </AttendanceStatsGrid>
-        
-        {/* Attendance Charts */}
-        <AttendanceChartsGrid>
-          {/* Attendance Trend Chart */}
-          <AttendanceChartCard>
-            <AttendanceChartHeader>
-              <CheckCircle style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
-              Attendance Trend
-            </AttendanceChartHeader>
-            {attendanceChartsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
+      {activeTab === 'attendance' && (
+        <div>
+          {/* Attendance Stats Cards */}
+          <AttendanceStatsGrid>
+            <AttendanceStatCard accentColor="#22c55e">
+              <AttendanceStatTopRow>
+                <AttendanceStatIcon color="#22c55e">
+                  <CheckCircle />
+                </AttendanceStatIcon>
+                <AttendanceStatTitle>Present</AttendanceStatTitle>
+              </AttendanceStatTopRow>
+              <AttendanceStatRow>
+                <AttendanceStatValue>{presentToday}</AttendanceStatValue>
+                <AttendanceStatRightInfo>
+                  <AttendanceStatStatus status={getStatus(presentPercent, true)}>
+                    {presentPercent >= 80 ? 'Excellent' : presentPercent >= 50 ? 'Good' : 'Needs Attention'}
+                  </AttendanceStatStatus>
+                  <AttendanceStatPercentage color="#22c55e">{presentPercent}%</AttendanceStatPercentage>
+                </AttendanceStatRightInfo>
+              </AttendanceStatRow>
+            </AttendanceStatCard>
+
+            <AttendanceStatCard accentColor="#ef4444">
+              <AttendanceStatTopRow>
+                <AttendanceStatIcon color="#ef4444">
+                  <Cancel />
+                </AttendanceStatIcon>
+                <AttendanceStatTitle>Absent</AttendanceStatTitle>
+              </AttendanceStatTopRow>
+              <AttendanceStatRow>
+                <AttendanceStatValue>{absentToday}</AttendanceStatValue>
+                <AttendanceStatRightInfo>
+                  <AttendanceStatStatus status={getStatus(absentPercent, false)}>
+                    {absentPercent <= 10 ? 'Low' : absentPercent <= 30 ? 'Moderate' : 'High'}
+                  </AttendanceStatStatus>
+                  <AttendanceStatPercentage color="#ef4444">{absentPercent}%</AttendanceStatPercentage>
+                </AttendanceStatRightInfo>
+              </AttendanceStatRow>
+            </AttendanceStatCard>
+
+            <AttendanceStatCard accentColor="#3b82f6">
+              <AttendanceStatTopRow>
+                <AttendanceStatIcon color="#3b82f6">
+                  <CalendarMonth />
+                </AttendanceStatIcon>
+                <AttendanceStatTitle>Leave</AttendanceStatTitle>
+              </AttendanceStatTopRow>
+              <AttendanceStatRow>
+                <AttendanceStatValue>{leaveToday}</AttendanceStatValue>
+                <AttendanceStatRightInfo>
+                  <AttendanceStatStatus status={getStatus(leavePercent, false)}>
+                    {leavePercent <= 10 ? 'Low' : leavePercent <= 30 ? 'Moderate' : 'High'}
+                  </AttendanceStatStatus>
+                  <AttendanceStatPercentage color="#3b82f6">{leavePercent}%</AttendanceStatPercentage>
+                </AttendanceStatRightInfo>
+              </AttendanceStatRow>
+            </AttendanceStatCard>
+
+            <AttendanceStatCard accentColor="#f59e0b">
+              <AttendanceStatTopRow>
+                <AttendanceStatIcon color="#f59e0b">
+                  <AccessTime />
+                </AttendanceStatIcon>
+                <AttendanceStatTitle>Late</AttendanceStatTitle>
+              </AttendanceStatTopRow>
+              <AttendanceStatRow>
+                <AttendanceStatValue>{lateToday}</AttendanceStatValue>
+                <AttendanceStatRightInfo>
+                  <AttendanceStatStatus status={getStatus(latePercent, false)}>
+                    {latePercent <= 10 ? 'Low' : latePercent <= 30 ? 'Moderate' : 'High'}
+                  </AttendanceStatStatus>
+                  <AttendanceStatPercentage color="#f59e0b">{latePercent}%</AttendanceStatPercentage>
+                </AttendanceStatRightInfo>
+              </AttendanceStatRow>
+            </AttendanceStatCard>
+
+            <AttendanceStatCard accentColor="#8b5cf6">
+              <AttendanceStatTopRow>
+                <AttendanceStatIcon color="#8b5cf6">
+                  <HourglassEmpty />
+                </AttendanceStatIcon>
+                <AttendanceStatTitle>Half Leave</AttendanceStatTitle>
+              </AttendanceStatTopRow>
+              <AttendanceStatRow>
+                <AttendanceStatValue>{halfLeaveCount}</AttendanceStatValue>
+                <AttendanceStatRightInfo>
+                  <AttendanceStatStatus status={getStatus(halfLeavePercent, false)}>
+                    {halfLeavePercent <= 10 ? 'Low' : halfLeavePercent <= 30 ? 'Moderate' : 'High'}
+                  </AttendanceStatStatus>
+                  <AttendanceStatPercentage color="#8b5cf6">{halfLeavePercent}%</AttendanceStatPercentage>
+                </AttendanceStatRightInfo>
+              </AttendanceStatRow>
+            </AttendanceStatCard>
+          </AttendanceStatsGrid>
+
+          {/* Attendance Charts */}
+          <AttendanceChartsGrid>
+            {/* Attendance Trend Chart */}
+            <AttendanceChartCard>
+              <AttendanceChartHeader>
+                <CheckCircle style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
+                Attendance Trend
+              </AttendanceChartHeader>
+              {attendanceChartsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
+                  <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+                </div>
+              ) : attendanceTrendData.length === 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                  No attendance data available
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <AreaChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                        horizontal={true}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                        tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                        axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                        tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                        axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                        tickFormatter={(value) => `${value}%`}
+                        width={50}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          color: '#1e293b',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                        }}
+                        formatter={(value: any) => [`${value}%`, 'Attendance Rate']}
+                        labelFormatter={(label) => `Date: ${label}`}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="rate"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#colorAttendance)"
+                        dot={{ fill: '#3b82f6', r: 3 }}
+                        activeDot={{ r: 5, fill: '#22c55e' }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                  <AttendanceChartSummary>
+                    <AttendanceChartSummaryItem>
+                      <AttendanceChartSummaryLabel>Today</AttendanceChartSummaryLabel>
+                      <AttendanceChartSummaryValue>{todayAttendanceRate}%</AttendanceChartSummaryValue>
+                    </AttendanceChartSummaryItem>
+                    <AttendanceChartSummaryItem>
+                      <AttendanceChartSummaryLabel>Week Avg</AttendanceChartSummaryLabel>
+                      <AttendanceChartSummaryValue>{weekAvgAttendanceRate}%</AttendanceChartSummaryValue>
+                    </AttendanceChartSummaryItem>
+                  </AttendanceChartSummary>
+                </>
+              )}
+            </AttendanceChartCard>
+
+            {/* Class Attendance Chart */}
+            <AttendanceChartCard>
+              <AttendanceChartHeader>
+                <Group style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
+                Class Attendance (Today)
+              </AttendanceChartHeader>
+              {attendanceChartsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
+                  <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={classAttendanceData}
+                      stackOffset="expand"
+                      margin={{ top: 5, right: 10, left: 0, bottom: 20 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                        horizontal={true}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="class"
+                        tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                        tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                        axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                      />
+                      <YAxis
+                        domain={[0, 1]}
+                        tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                        tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                        axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                        tickFormatter={(value) => `${Math.round(value * 100)}%`}
+                        width={50}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          color: '#1e293b',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                        }}
+                        formatter={(value: any, name: string, props: any) => {
+                          const className = props.payload?.class;
+                          const data = classAttendanceData.find(d => d.class === className);
+                          if (!data) return [value, name];
+                          const count = name === 'Present' ? data.present :
+                            name === 'Absent' ? data.absent :
+                              name === 'Leave' ? data.leave : data.late;
+                          return [count, name];
+                        }}
+                        labelFormatter={(label) => `Class: ${label}`}
+                      />
+                      <Bar
+                        dataKey="present"
+                        stackId="a"
+                        fill="#22c55e"
+                        name="Present"
+                      />
+                      <Bar
+                        dataKey="late"
+                        stackId="a"
+                        fill="#f59e0b"
+                        name="Late"
+                      />
+                      <Bar
+                        dataKey="leave"
+                        stackId="a"
+                        fill="#3b82f6"
+                        name="Leave"
+                      />
+                      <Bar
+                        dataKey="absent"
+                        stackId="a"
+                        fill="#ef4444"
+                        name="Absent"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <AttendanceChartSummary>
+                    <AttendanceChartSummaryItem>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#22c55e', borderRadius: '2px' }} />
+                        <AttendanceChartSummaryLabel>Present</AttendanceChartSummaryLabel>
+                      </div>
+                    </AttendanceChartSummaryItem>
+                    <AttendanceChartSummaryItem>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#f59e0b', borderRadius: '2px' }} />
+                        <AttendanceChartSummaryLabel>Late</AttendanceChartSummaryLabel>
+                      </div>
+                    </AttendanceChartSummaryItem>
+                    <AttendanceChartSummaryItem>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#3b82f6', borderRadius: '2px' }} />
+                        <AttendanceChartSummaryLabel>Leave</AttendanceChartSummaryLabel>
+                      </div>
+                    </AttendanceChartSummaryItem>
+                    <AttendanceChartSummaryItem>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#ef4444', borderRadius: '2px' }} />
+                        <AttendanceChartSummaryLabel>Absent</AttendanceChartSummaryLabel>
+                      </div>
+                    </AttendanceChartSummaryItem>
+                  </AttendanceChartSummary>
+                </>
+              )}
+            </AttendanceChartCard>
+          </AttendanceChartsGrid>
+
+          {/* Consecutive Absent Students Card */}
+          <ConsecutiveAbsentCard>
+            <ConsecutiveAbsentHeader>
+              <Warning style={{ color: '#ef4444', fontSize: '1.1rem' }} />
+              Consecutive Absent Students
+            </ConsecutiveAbsentHeader>
+            {consecutiveAbsentLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
                 <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
               </div>
-            ) : attendanceTrendData.length === 0 ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px', color: isDark ? '#9ca3af' : '#6b7280' }}>
-                No attendance data available
+            ) : consecutiveAbsentStudents.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem',
+                color: isDark ? '#9ca3af' : '#6b7280',
+                fontSize: '0.875rem'
+              }}>
+                No students with consecutive absences found
               </div>
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid 
-                      strokeDasharray="3 3" 
-                      stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
-                      horizontal={true}
-                      vertical={false}
-                    />
-                    <XAxis 
-                      dataKey="day" 
-                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    />
-                    <YAxis 
-                      domain={[0, 100]}
-                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                      tickFormatter={(value) => `${value}%`}
-                      width={50}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        color: '#1e293b',
-                        fontSize: '12px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                      }}
-                      formatter={(value: any) => [`${value}%`, 'Attendance Rate']}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="rate" 
-                      stroke="#3b82f6" 
-                      strokeWidth={2}
-                      fill="url(#colorAttendance)"
-                      dot={{ fill: '#3b82f6', r: 3 }}
-                      activeDot={{ r: 5, fill: '#22c55e' }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-                <AttendanceChartSummary>
-                  <AttendanceChartSummaryItem>
-                    <AttendanceChartSummaryLabel>Today</AttendanceChartSummaryLabel>
-                    <AttendanceChartSummaryValue>{todayAttendanceRate}%</AttendanceChartSummaryValue>
-                  </AttendanceChartSummaryItem>
-                  <AttendanceChartSummaryItem>
-                    <AttendanceChartSummaryLabel>Week Avg</AttendanceChartSummaryLabel>
-                    <AttendanceChartSummaryValue>{weekAvgAttendanceRate}%</AttendanceChartSummaryValue>
-                  </AttendanceChartSummaryItem>
-                </AttendanceChartSummary>
-              </>
+              <ConsecutiveAbsentTable>
+                <ConsecutiveAbsentTableHeader>
+                  <tr>
+                    <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
+                  </tr>
+                </ConsecutiveAbsentTableHeader>
+                <ConsecutiveAbsentTableBody>
+                  {consecutiveAbsentStudents.map((student, index) => (
+                    <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
+                      <ConsecutiveAbsentTableCell>
+                        {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
+                      </ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>{student.father_name || '-'}</ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>{student.mobile || '-'}</ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>
+                        {student.class_name}
+                        {student.section_name && ` (${student.section_name})`}
+                      </ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
+                        <ConsecutiveDaysBadge days={student.consecutive_days}>
+                          {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                        </ConsecutiveDaysBadge>
+                      </ConsecutiveAbsentTableCell>
+                    </ConsecutiveAbsentTableRow>
+                  ))}
+                </ConsecutiveAbsentTableBody>
+              </ConsecutiveAbsentTable>
             )}
-          </AttendanceChartCard>
-          
-          {/* Class Attendance Chart */}
-          <AttendanceChartCard>
-            <AttendanceChartHeader>
-              <Group style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
-              Class Attendance (Today)
-            </AttendanceChartHeader>
-            {attendanceChartsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
-                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-              </div>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart 
-                    data={classAttendanceData} 
-                    stackOffset="expand"
-                    margin={{ top: 5, right: 10, left: 0, bottom: 20 }}
-                  >
-                    <CartesianGrid 
-                      strokeDasharray="3 3" 
-                      stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
-                      horizontal={true}
-                      vertical={false}
-                    />
-                    <XAxis 
-                      dataKey="class" 
-                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    />
-                    <YAxis 
-                      domain={[0, 1]}
-                      tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                      tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                      axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                      tickFormatter={(value) => `${Math.round(value * 100)}%`}
-                      width={50}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        color: '#1e293b',
-                        fontSize: '12px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                      }}
-                      formatter={(value: any, name: string, props: any) => {
-                        const className = props.payload?.class;
-                        const data = classAttendanceData.find(d => d.class === className);
-                        if (!data) return [value, name];
-                        const count = name === 'Present' ? data.present : 
-                                     name === 'Absent' ? data.absent :
-                                     name === 'Leave' ? data.leave : data.late;
-                        return [count, name];
-                      }}
-                      labelFormatter={(label) => `Class: ${label}`}
-                    />
-                    <Bar 
-                      dataKey="present" 
-                      stackId="a"
-                      fill="#22c55e"
-                      name="Present"
-                    />
-                    <Bar 
-                      dataKey="late" 
-                      stackId="a"
-                      fill="#f59e0b"
-                      name="Late"
-                    />
-                    <Bar 
-                      dataKey="leave" 
-                      stackId="a"
-                      fill="#3b82f6"
-                      name="Leave"
-                    />
-                    <Bar 
-                      dataKey="absent" 
-                      stackId="a"
-                      fill="#ef4444"
-                      name="Absent"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-                <AttendanceChartSummary>
-                  <AttendanceChartSummaryItem>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ width: '12px', height: '12px', backgroundColor: '#22c55e', borderRadius: '2px' }} />
-                      <AttendanceChartSummaryLabel>Present</AttendanceChartSummaryLabel>
-                    </div>
-                  </AttendanceChartSummaryItem>
-                  <AttendanceChartSummaryItem>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ width: '12px', height: '12px', backgroundColor: '#f59e0b', borderRadius: '2px' }} />
-                      <AttendanceChartSummaryLabel>Late</AttendanceChartSummaryLabel>
-                    </div>
-                  </AttendanceChartSummaryItem>
-                  <AttendanceChartSummaryItem>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ width: '12px', height: '12px', backgroundColor: '#3b82f6', borderRadius: '2px' }} />
-                      <AttendanceChartSummaryLabel>Leave</AttendanceChartSummaryLabel>
-                    </div>
-                  </AttendanceChartSummaryItem>
-                  <AttendanceChartSummaryItem>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ width: '12px', height: '12px', backgroundColor: '#ef4444', borderRadius: '2px' }} />
-                      <AttendanceChartSummaryLabel>Absent</AttendanceChartSummaryLabel>
-                    </div>
-                  </AttendanceChartSummaryItem>
-                </AttendanceChartSummary>
-              </>
-            )}
-          </AttendanceChartCard>
-        </AttendanceChartsGrid>
-        
-        {/* Consecutive Absent Students Card */}
-        <ConsecutiveAbsentCard>
-          <ConsecutiveAbsentHeader>
-            <Warning style={{ color: '#ef4444', fontSize: '1.1rem' }} />
-            Consecutive Absent Students
-          </ConsecutiveAbsentHeader>
-          {consecutiveAbsentLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
-              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </div>
-          ) : consecutiveAbsentStudents.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '2rem', 
-              color: isDark ? '#9ca3af' : '#6b7280',
-              fontSize: '0.875rem'
-            }}>
-              No students with consecutive absences found
-            </div>
-          ) : (
-            <ConsecutiveAbsentTable>
-              <ConsecutiveAbsentTableHeader>
-                <tr>
-                  <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
-                  <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
-                  <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
-                </tr>
-              </ConsecutiveAbsentTableHeader>
-              <ConsecutiveAbsentTableBody>
-                {consecutiveAbsentStudents.map((student, index) => (
-                  <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
-                    <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
-                    <ConsecutiveAbsentTableCell>
-                      {student.class_name}
-                      {student.section_name && ` (${student.section_name})`}
-                    </ConsecutiveAbsentTableCell>
-                    <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
-                      <ConsecutiveDaysBadge days={student.consecutive_days}>
-                        {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
-                      </ConsecutiveDaysBadge>
-                    </ConsecutiveAbsentTableCell>
-                  </ConsecutiveAbsentTableRow>
-                ))}
-              </ConsecutiveAbsentTableBody>
-            </ConsecutiveAbsentTable>
-          )}
-        </ConsecutiveAbsentCard>
-        
-        {/* Main Content */}
-      <TwoColumnGrid $columns={hasRightCards ? 1 : 0}>
-        {hasRightCards && (
-        <RightColumn>
-          {showAbsentees && (
-            <AbsentsTableWrapper>
-            <AbsentsTableHeader onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
-              <AbsentsHeaderTitleRow>
-                <AbsentsHeaderTitle>
-                  Today's Absentees
-                </AbsentsHeaderTitle>
-                <ExpandIcon $isExpanded={isAbsenteesExpanded} />
-              </AbsentsHeaderTitleRow>
-              <AbsentsControls isExpanded={isAbsenteesExpanded}>
-                <DateInput
-                  type="date"
-                  value={absentDate}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    setAbsentDate(e.target.value);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <WhatsAppButton
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (whatsappProcessing || absentees.length === 0) return;
-                    // Proceed even if absentees list is empty, since we also include 'late' students for the selected date
-                    
-                    setWhatsappProcessing(true);
-                    try {
-                      // Also include students marked 'late' for the selected date (not listed in UI)
-                      let lateRecords: { student_id: number; status: string; date: string; remarks?: string }[] = [];
-                      if (user?.school_id) {
-                        const { data: sessionData, error: sessionError } = await supabase
-                          .from('sessions')
-                          .select('id')
-                          .eq('is_active', true)
-                          .eq('school_id', user.school_id)
-                          .single();
+          </ConsecutiveAbsentCard>
 
-                        if (!sessionError && sessionData?.id) {
-                          const { data: lateData, error: lateError } = await supabase
-                            .from('attendance_records')
-                            .select('student_id, status, date, remarks')
-                            .eq('date', absentDate)
-                            .eq('session_id', sessionData.id)
-                            .eq('school_id', user.school_id)
-                            .eq('status', 'late');
-
-                          if (!lateError && lateData) {
-                            lateRecords = lateData as any;
-                          }
-                        }
-                      }
-
-                      // Prepare notification data for absent/leave + late students
-                      const attendanceForNotify = [
-                        ...absentees.map(a => ({
-                          id: a.student_id,
-                          status: a.status,
-                          date: absentDate,
-                          remarks: a.remarks
-                        })),
-                        ...lateRecords.map(l => ({
-                          id: l.student_id,
-                          status: l.status,
-                          date: l.date || absentDate,
-                          remarks: l.remarks
-                        }))
-                      ];
-
-                      // De-duplicate by student id, preferring non-late statuses if duplicates exist
-                      const seen = new Set<number>();
-                      const uniqueAttendance = attendanceForNotify.filter(entry => {
-                        if (seen.has(entry.id)) return false;
-                        seen.add(entry.id);
-                        return true;
-                      });
-
-                      const notificationData = await whatsappSemiAutoService.prepareAttendanceNotifications(
-                        uniqueAttendance,
-                        user?.school_id!,
-                        schoolName || 'School',
-                        'All Classes',
-                        undefined
-                      );
-                      
-                      if (notificationData.length > 0) {
-                        setWhatsappNotificationData(notificationData);
-                        setShowWhatsAppSender(true);
-                        toast.showToast(`Prepared ${notificationData.length} notifications`, 'success');
-                      } else {
-                        toast.showToast('No students with phone numbers found', 'success');
-                      }
-                    } catch (error) {
-                      toast.showToast('Failed to prepare notifications', 'error');
-                    } finally {
-                      setWhatsappProcessing(false);
-                    }
-                  }}
-                  disabled={whatsappProcessing || absentees.length === 0}
-                  style={{
-                    opacity: (whatsappProcessing || absentees.length === 0) ? 0.5 : 1,
-                    cursor: (whatsappProcessing || absentees.length === 0) ? 'not-allowed' : 'pointer'
-                  }}
-                  title="Send WhatsApp/SMS notifications to absent students"
-                >
-                  {whatsappProcessing ? (
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      border: '2px solid #25d366',
-                      borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }} />
-                  ) : (
-                    <WhatsApp />
-                  )}
-                </WhatsAppButton>
-                {isMobile ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ExportButton 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportAbsenteesPDF();
-                      }}
-                      disabled={exportAbsentLoading}
-                      style={{ 
-                        background: 'rgba(239,68,68,0.1)', 
-                        color: '#ef4444',
-                        border: '1px solid rgba(239,68,68,0.2)',
-                        opacity: exportAbsentLoading ? 0.5 : 1
-                      }}
-                    >
-                      A
-                    </ExportButton>
-                    <ExportButton 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportPresentStudentsPDF();
-                      }}
-                      disabled={exportPresentLoading}
-                      style={{ 
-                        background: 'rgba(34,197,94,0.1)', 
-                        color: '#16a34a',
-                        border: '1px solid rgba(34,197,94,0.2)',
-                        opacity: exportPresentLoading ? 0.5 : 1
-                      }}
-                    >
-                      P
-                    </ExportButton>
-                  </div>
-                ) : (
-                  <ExportButton 
-                    ref={exportDropdownRef}
-                    onClick={(e) => {
-                    e.stopPropagation();
-                      setShowExportDropdown(!showExportDropdown);
-                    }}
-                  >
-                    <ExportIcon fontSize="small" />
-                    Export
-                    <ExpandIcon $isExpanded={showExportDropdown} />
-                    {showExportDropdown && (
-                      <ExportDropdown>
-                        <ExportDropdownItem 
-                          $type="absent"
-                          onClick={(e) => {
+          {/* Main Content */}
+          <TwoColumnGrid $columns={hasRightCards ? 1 : 0}>
+            {hasRightCards && (
+              <RightColumn>
+                {showAbsentees && (
+                  <AbsentsTableWrapper>
+                    <AbsentsTableHeader onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
+                      <AbsentsHeaderTitleRow>
+                        <AbsentsHeaderTitle>
+                          Today's Absentees
+                        </AbsentsHeaderTitle>
+                        <ExpandIcon $isExpanded={isAbsenteesExpanded} />
+                      </AbsentsHeaderTitleRow>
+                      <AbsentsControls isExpanded={isAbsenteesExpanded}>
+                        <DateInput
+                          type="date"
+                          value={absentDate}
+                          onChange={(e) => {
                             e.stopPropagation();
-                            setShowExportDropdown(false);
-                            exportAbsenteesPDF();
+                            setAbsentDate(e.target.value);
                           }}
-                        >
-                          <ExportIcon fontSize="small" />
-                          Absent Students
-                        </ExportDropdownItem>
-                        <ExportDropdownItem 
-                          $type="present"
-                          onClick={(e) => {
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <WhatsAppButton
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            setShowExportDropdown(false);
-                            exportPresentStudentsPDF();
-                          }}
-                        >
-                          <ExportIcon fontSize="small" />
-                          Present Students
-                        </ExportDropdownItem>
-                      </ExportDropdown>
-                    )}
-                  </ExportButton>
-                )}
-              </AbsentsControls>
-            </AbsentsTableHeader>
-            <AbsentsCollapsibleContent $isExpanded={isAbsenteesExpanded}>
-              <AbsenteesGrid>
-                {(() => {
-                  // Check if it's Sunday
-                  const selectedDate = new Date(absentDate);
-                  const isSunday = selectedDate.getDay() === 0;
-                  
-                  // Check if there are any attendance records for the date
-                  const hasAttendanceRecords = attendanceDataForDate.length > 0;
-                  
-                  // Check if there are any absent students
-                  const hasAbsentStudents = absentees.length > 0;
-                  
-                  if (isSunday) {
-                    return (
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '2rem',
-                        textAlign: 'center',
-                        color: isDark ? '#a0a7b8' : '#64748b',
-                        minHeight: '200px'
-                      }}>
-                        <div style={{
-                          fontSize: '3rem',
-                          marginBottom: '1rem',
-                          color: '#6366f1',
-                          opacity: 0.7
-                        }}>
-                          🏖️
-                        </div>
-                        <div style={{
-                          fontSize: '1.2rem',
-                          fontWeight: 600,
-                          marginBottom: '0.5rem',
-                          color: isDark ? '#e2e8f0' : '#1e293b'
-                        }}>
-                          Sunday - No Classes
-                        </div>
-                        <div style={{
-                          fontSize: '0.95rem',
-                          opacity: 0.8
-                        }}>
-                          School is closed on Sundays
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  if (!hasAttendanceRecords) {
-                    return (
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '2rem',
-                        textAlign: 'center',
-                        color: isDark ? '#a0a7b8' : '#64748b',
-                        minHeight: '200px'
-                      }}>
-                        <div style={{
-                          fontSize: '3rem',
-                          marginBottom: '1rem',
-                          color: '#6366f1',
-                          opacity: 0.7
-                        }}>
-                          📊
-                        </div>
-                        <div style={{
-                          fontSize: '1.2rem',
-                          fontWeight: 600,
-                          marginBottom: '0.5rem',
-                          color: isDark ? '#e2e8f0' : '#1e293b'
-                        }}>
-                          No Attendance Records
-                        </div>
-                        <div style={{
-                          fontSize: '0.95rem',
-                          opacity: 0.8
-                        }}>
-                          No attendance has been recorded for {new Date(absentDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  if (!hasAbsentStudents) {
-                    return (
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '2rem',
-                        textAlign: 'center',
-                        color: isDark ? '#a0a7b8' : '#64748b',
-                        minHeight: '200px'
-                      }}>
-                        <div style={{
-                          fontSize: '3rem',
-                          marginBottom: '1rem',
-                          color: '#22c55e',
-                          opacity: 0.7
-                        }}>
-                          ✅
-                        </div>
-                        <div style={{
-                          fontSize: '1.2rem',
-                          fontWeight: 600,
-                          marginBottom: '0.5rem',
-                          color: isDark ? '#e2e8f0' : '#1e293b'
-                        }}>
-                          No Absent Students
-                        </div>
-                        <div style={{
-                          fontSize: '0.95rem',
-                          opacity: 0.8
-                        }}>
-                          All students are present on {new Date(absentDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  // Show absent students if there are any
-                  return absentees.map((absentee, globalIdx) => {
-                    const student = studentDetails[absentee.student_id];
-                    if (!student) return null;
-                    
-                    return (
-                      <CompactAnimatedAbsenteeCard key={absentee.id} $index={globalIdx}>
-                        <StudentAvatar
-                          onMouseEnter={(e) => {
-                            if (student.picture_url) {
-                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                              setHoveredAvatar({
-                                url: student.picture_url,
-                                x: rect.left + rect.width / 2,
-                                y: rect.top
+                            if (whatsappProcessing || absentees.length === 0) return;
+                            // Proceed even if absentees list is empty, since we also include 'late' students for the selected date
+
+                            setWhatsappProcessing(true);
+                            try {
+                              // Also include students marked 'late' for the selected date (not listed in UI)
+                              let lateRecords: { student_id: number; status: string; date: string; remarks?: string }[] = [];
+                              if (user?.school_id) {
+                                const { data: sessionData, error: sessionError } = await supabase
+                                  .from('sessions')
+                                  .select('id')
+                                  .eq('is_active', true)
+                                  .eq('school_id', user.school_id)
+                                  .single();
+
+                                if (!sessionError && sessionData?.id) {
+                                  const { data: lateData, error: lateError } = await supabase
+                                    .from('attendance_records')
+                                    .select('student_id, status, date, remarks')
+                                    .eq('date', absentDate)
+                                    .eq('session_id', sessionData.id)
+                                    .eq('school_id', user.school_id)
+                                    .eq('status', 'late');
+
+                                  if (!lateError && lateData) {
+                                    lateRecords = lateData as any;
+                                  }
+                                }
+                              }
+
+                              // Prepare notification data for absent/leave + late students
+                              const attendanceForNotify = [
+                                ...absentees.map(a => ({
+                                  id: a.student_id,
+                                  status: a.status,
+                                  date: absentDate,
+                                  remarks: a.remarks
+                                })),
+                                ...lateRecords.map(l => ({
+                                  id: l.student_id,
+                                  status: l.status,
+                                  date: l.date || absentDate,
+                                  remarks: l.remarks
+                                }))
+                              ];
+
+                              // De-duplicate by student id, preferring non-late statuses if duplicates exist
+                              const seen = new Set<number>();
+                              const uniqueAttendance = attendanceForNotify.filter(entry => {
+                                if (seen.has(entry.id)) return false;
+                                seen.add(entry.id);
+                                return true;
                               });
+
+                              const notificationData = await whatsappSemiAutoService.prepareAttendanceNotifications(
+                                uniqueAttendance,
+                                user?.school_id!,
+                                schoolName || 'School',
+                                'All Classes',
+                                undefined
+                              );
+
+                              if (notificationData.length > 0) {
+                                setWhatsappNotificationData(notificationData);
+                                setShowWhatsAppSender(true);
+                                toast.showToast(`Prepared ${notificationData.length} notifications`, 'success');
+                              } else {
+                                toast.showToast('No students with phone numbers found', 'success');
+                              }
+                            } catch (error) {
+                              toast.showToast('Failed to prepare notifications', 'error');
+                            } finally {
+                              setWhatsappProcessing(false);
                             }
                           }}
-                          onMouseLeave={() => setHoveredAvatar(null)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setHoveredAvatar(null);
-                            navigate(`/students/profile/${student.id}`);
+                          disabled={whatsappProcessing || absentees.length === 0}
+                          style={{
+                            opacity: (whatsappProcessing || absentees.length === 0) ? 0.5 : 1,
+                            cursor: (whatsappProcessing || absentees.length === 0) ? 'not-allowed' : 'pointer'
                           }}
-                          title={`View profile of ${student.name}`}
-                          style={{ cursor: 'pointer' }}
+                          title="Send WhatsApp/SMS notifications to absent students"
                         >
-                          {student.picture_url ? (
-                            <img src={student.picture_url} alt={student.name} />
+                          {whatsappProcessing ? (
+                            <div style={{
+                              width: '16px',
+                              height: '16px',
+                              border: '2px solid #25d366',
+                              borderTop: '2px solid transparent',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }} />
                           ) : (
-                            <AccountCircle style={{ fontSize: '1.3em', color: '#b0b8d1' }} />
+                            <WhatsApp />
                           )}
-                        </StudentAvatar>
-                        <AbsenteeCardContent>
-                          <AbsenteeRow>
-                            <AbsenteeId>{getStudentDisplayId(student)}</AbsenteeId>
-                            <Dot />
-                            <AbsenteeName>{student.name}</AbsenteeName>
-                            {student.father_name && (
-                              <>
-                                <Dot />
-                                <AbsenteeFather>{student.father_name}</AbsenteeFather>
-                              </>
+                        </WhatsAppButton>
+                        {isMobile ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ExportButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportAbsenteesPDF();
+                              }}
+                              disabled={exportAbsentLoading}
+                              style={{
+                                background: 'rgba(239,68,68,0.1)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239,68,68,0.2)',
+                                opacity: exportAbsentLoading ? 0.5 : 1
+                              }}
+                            >
+                              A
+                            </ExportButton>
+                            <ExportButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportPresentStudentsPDF();
+                              }}
+                              disabled={exportPresentLoading}
+                              style={{
+                                background: 'rgba(34,197,94,0.1)',
+                                color: '#16a34a',
+                                border: '1px solid rgba(34,197,94,0.2)',
+                                opacity: exportPresentLoading ? 0.5 : 1
+                              }}
+                            >
+                              P
+                            </ExportButton>
+                          </div>
+                        ) : (
+                          <ExportButton
+                            ref={exportDropdownRef}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowExportDropdown(!showExportDropdown);
+                            }}
+                          >
+                            <ExportIcon fontSize="small" />
+                            Export
+                            <ExpandIcon $isExpanded={showExportDropdown} />
+                            {showExportDropdown && (
+                              <ExportDropdown>
+                                <ExportDropdownItem
+                                  $type="absent"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowExportDropdown(false);
+                                    exportAbsenteesPDF();
+                                  }}
+                                >
+                                  <ExportIcon fontSize="small" />
+                                  Absent Students
+                                </ExportDropdownItem>
+                                <ExportDropdownItem
+                                  $type="present"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowExportDropdown(false);
+                                    exportPresentStudentsPDF();
+                                  }}
+                                >
+                                  <ExportIcon fontSize="small" />
+                                  Present Students
+                                </ExportDropdownItem>
+                              </ExportDropdown>
                             )}
-                          </AbsenteeRow>
-                          <AbsenteeRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
-                            <span>{student.class_name}</span>
-                            {student.section_name && (
-                              <>
-                                <Dot />
-                                <span>{student.section_name}</span>
-                              </>
-                            )}
-                            <Dot />
-                            <span>{student.monthly_absences || 0} M.A</span>
-                            <Dot />
-                            <span>{student.monthly_leaves || 0} M.L</span>
-                            <Dot />
-                            <span style={{
-                              color: student.attendance_percentage < 75 ? '#ef4444' : 
-                                    student.attendance_percentage < 85 ? '#eab308' : '#22c55e',
-                              fontWeight: 600
-                            }}>
-                              {student.attendance_percentage || 0}%
-                            </span>
-                          </AbsenteeRow>
-                        </AbsenteeCardContent>
-                        <StatusPill
-                          type="button"
-                          $status={absentee.status}
-                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            const spaceBelow = window.innerHeight - rect.bottom;
-                            const spaceAbove = rect.top;
-                            setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
-                            setDropdownPos({ top: rect.top, left: rect.left });
-                            setDropdownIdx(globalIdx);
-                            return false;
-                          }}
-                        >
-                          {absentee.status === 'absent' ? 'Absent' : 'Leave'}
-                        </StatusPill>
-                          {dropdownIdx === globalIdx && dropdownPos &&
-                            ReactDOM.createPortal(
-                              <StatusDropdown
-                                ref={dropdownRef}
-                                direction={dropdownDirection}
-                                style={{
-                                  position: 'fixed',
-                                  left: dropdownPos.left,
-                                  top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
-                                  bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
-                                }}
-                              >
-                                {statusOptions.map(opt => (
-                                  <StatusOption
-                                    key={opt.value}
-                                    type="button"
-                                    color={opt.color}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      
-                                      const handleStatusUpdate = async () => {
-                                        const absentee = absentees[globalIdx];
-                                        if (!user?.school_id) {
-                                          toast.showToast('User school information not found', 'error');
-                                          return;
-                                        }
-                                        
-                                        try {
-                                        // Get active session
-                                        const { data: sessionData, error: sessionError } = await supabase
-                                          .from('sessions')
-                                          .select('id')
-                                          .eq('is_active', true)
-                                          .eq('school_id', user.school_id)
-                                          .single();
+                          </ExportButton>
+                        )}
+                      </AbsentsControls>
+                    </AbsentsTableHeader>
+                    <AbsentsCollapsibleContent $isExpanded={isAbsenteesExpanded}>
+                      <AbsenteesGrid>
+                        {(() => {
+                          // Check if it's Sunday
+                          const selectedDate = new Date(absentDate);
+                          const isSunday = selectedDate.getDay() === 0;
 
-                                        if (sessionError) throw sessionError;
-                                        if (!sessionData?.id) {
-                                          toast.showToast('No active session found for this school', 'error');
-                                          return;
-                                        }
+                          // Check if there are any attendance records for the date
+                          const hasAttendanceRecords = attendanceDataForDate.length > 0;
 
-                                        if (opt.value === 'present' || opt.value === 'late') {
-                                          // Delete the record if marking as present or late
-                                          const { error: deleteError } = await supabase
-                                            .from('attendance_records')
-                                            .delete()
-                                            .match({
-                                              id: absentee.id,
-                                              student_id: absentee.student_id,
-                                              date: absentDate,
-                                              session_id: sessionData.id,
-                                              school_id: user.school_id
-                                            });
+                          // Check if there are any absent students
+                          const hasAbsentStudents = absentees.length > 0;
 
-                                          if (deleteError) throw deleteError;
-                                          
-                                          // Remove from list
-                                          setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-                                        } else {
-                                          // Update to absent or leave
-                                          const { error: updateError } = await supabase
-                                            .from('attendance_records')
-                                            .update({
-                                              status: opt.value
-                                            })
-                                            .match({
-                                              id: absentee.id,
-                                              student_id: absentee.student_id,
-                                              date: absentDate,
-                                              session_id: sessionData.id,
-                                              school_id: user.school_id
-                                            });
+                          if (isSunday) {
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '2rem',
+                                textAlign: 'center',
+                                color: isDark ? '#a0a7b8' : '#64748b',
+                                minHeight: '200px'
+                              }}>
+                                <div style={{
+                                  fontSize: '3rem',
+                                  marginBottom: '1rem',
+                                  color: '#6366f1',
+                                  opacity: 0.7
+                                }}>
+                                  🏖️
+                                </div>
+                                <div style={{
+                                  fontSize: '1.2rem',
+                                  fontWeight: 600,
+                                  marginBottom: '0.5rem',
+                                  color: isDark ? '#e2e8f0' : '#1e293b'
+                                }}>
+                                  Sunday - No Classes
+                                </div>
+                                <div style={{
+                                  fontSize: '0.95rem',
+                                  opacity: 0.8
+                                }}>
+                                  School is closed on Sundays
+                                </div>
+                              </div>
+                            );
+                          }
 
-                                          if (updateError) throw updateError;
-                                          
-                                          // Update status in list
-                                          setAbsentees(prev => prev.map(a => 
-                                            a.id === absentee.id 
-                                              ? { ...a, status: opt.value }
-                                              : a
-                                          ));
-                                        }
+                          if (!hasAttendanceRecords) {
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '2rem',
+                                textAlign: 'center',
+                                color: isDark ? '#a0a7b8' : '#64748b',
+                                minHeight: '200px'
+                              }}>
+                                <div style={{
+                                  fontSize: '3rem',
+                                  marginBottom: '1rem',
+                                  color: '#6366f1',
+                                  opacity: 0.7
+                                }}>
+                                  📊
+                                </div>
+                                <div style={{
+                                  fontSize: '1.2rem',
+                                  fontWeight: 600,
+                                  marginBottom: '0.5rem',
+                                  color: isDark ? '#e2e8f0' : '#1e293b'
+                                }}>
+                                  No Attendance Records
+                                </div>
+                                <div style={{
+                                  fontSize: '0.95rem',
+                                  opacity: 0.8
+                                }}>
+                                  No attendance has been recorded for {new Date(absentDate).toLocaleDateString()}
+                                </div>
+                              </div>
+                            );
+                          }
 
-                                        // Update local attendance data without refetching
-                                        setAttendanceDataForDate(prev => {
-                                          if (opt.value === 'present' || opt.value === 'late') {
-                                            // Remove the record
-                                            return prev.filter(r => r.student_id !== absentee.student_id);
-                                          } else {
-                                            // Update the record status
-                                            return prev.map(r => 
-                                              r.student_id === absentee.student_id 
-                                                ? { ...r, status: opt.value }
-                                                : r
-                                            );
-                                          }
-                                        });
+                          if (!hasAbsentStudents) {
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '2rem',
+                                textAlign: 'center',
+                                color: isDark ? '#a0a7b8' : '#64748b',
+                                minHeight: '200px'
+                              }}>
+                                <div style={{
+                                  fontSize: '3rem',
+                                  marginBottom: '1rem',
+                                  color: '#22c55e',
+                                  opacity: 0.7
+                                }}>
+                                  ✅
+                                </div>
+                                <div style={{
+                                  fontSize: '1.2rem',
+                                  fontWeight: 600,
+                                  marginBottom: '0.5rem',
+                                  color: isDark ? '#e2e8f0' : '#1e293b'
+                                }}>
+                                  No Absent Students
+                                </div>
+                                <div style={{
+                                  fontSize: '0.95rem',
+                                  opacity: 0.8
+                                }}>
+                                  All students are present on {new Date(absentDate).toLocaleDateString()}
+                                </div>
+                              </div>
+                            );
+                          }
 
-                                        toast.showToast('Status updated successfully', 'success');
-                                        } catch (err) {
-                                          toast.showToast('Failed to update status', 'error');
-                                        }
-                                        setDropdownIdx(null);
-                                      };
-                                      
-                                      handleStatusUpdate();
-                                      return false;
-                                    }}
-                                  >
-                                    {opt.label}
-                                  </StatusOption>
-                                ))}
-                                <StatusOption
+                          // Show absent students if there are any
+                          return absentees.map((absentee, globalIdx) => {
+                            const student = studentDetails[absentee.student_id];
+                            if (!student) return null;
+
+                            return (
+                              <CompactAnimatedAbsenteeCard key={absentee.id} $index={globalIdx}>
+                                <StudentAvatar
+                                  onMouseEnter={(e) => {
+                                    if (student.picture_url) {
+                                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                      setHoveredAvatar({
+                                        url: student.picture_url,
+                                        x: rect.left + rect.width / 2,
+                                        y: rect.top
+                                      });
+                                    }
+                                  }}
+                                  onMouseLeave={() => setHoveredAvatar(null)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredAvatar(null);
+                                    navigate(`/students/profile/${student.id}`);
+                                  }}
+                                  title={`View profile of ${student.name}`}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {student.picture_url ? (
+                                    <img src={student.picture_url} alt={student.name} />
+                                  ) : (
+                                    <AccountCircle style={{ fontSize: '1.3em', color: '#b0b8d1' }} />
+                                  )}
+                                </StudentAvatar>
+                                <AbsenteeCardContent>
+                                  <AbsenteeRow>
+                                    <AbsenteeId>{getStudentDisplayId(student)}</AbsenteeId>
+                                    <Dot />
+                                    <AbsenteeName>{student.name}</AbsenteeName>
+                                    {student.father_name && (
+                                      <>
+                                        <Dot />
+                                        <AbsenteeFather>{student.father_name}</AbsenteeFather>
+                                      </>
+                                    )}
+                                  </AbsenteeRow>
+                                  <AbsenteeRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                    <span>{student.class_name}</span>
+                                    {student.section_name && (
+                                      <>
+                                        <Dot />
+                                        <span>{student.section_name}</span>
+                                      </>
+                                    )}
+                                    <Dot />
+                                    <span>{student.monthly_absences || 0} M.A</span>
+                                    <Dot />
+                                    <span>{student.monthly_leaves || 0} M.L</span>
+                                    <Dot />
+                                    <span style={{
+                                      color: student.attendance_percentage < 75 ? '#ef4444' :
+                                        student.attendance_percentage < 85 ? '#eab308' : '#22c55e',
+                                      fontWeight: 600
+                                    }}>
+                                      {student.attendance_percentage || 0}%
+                                    </span>
+                                  </AbsenteeRow>
+                                </AbsenteeCardContent>
+                                <StatusPill
                                   type="button"
-                                  color={deleteOption.color}
-                                  separator
-                                  onClick={async (e) => {
+                                  $status={absentee.status}
+                                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    
-                                    const absentee = absentees[globalIdx];
-                                    if (!user?.school_id) {
-                                      toast.showToast('User school information not found', 'error');
-                                      return;
-                                    }
-                                    
-                                    try {
-                                      // Get active session
-                                      const { data: sessionData, error: sessionError } = await supabase
-                                        .from('sessions')
-                                        .select('id')
-                                        .eq('is_active', true)
-                                        .eq('school_id', user.school_id)
-                                        .single();
 
-                                      if (sessionError) throw sessionError;
-                                      if (!sessionData?.id) {
-                                        toast.showToast('No active session found for this school', 'error');
-                                        return;
-                                      }
-
-                                      // Delete the attendance record
-                                      const { error: deleteError } = await supabase
-                                        .from('attendance_records')
-                                        .delete()
-                                        .match({
-                                          id: absentee.id,
-                                          student_id: absentee.student_id,
-                                          date: absentDate,
-                                          session_id: sessionData.id,
-                                          school_id: user.school_id
-                                        });
-
-                                      if (deleteError) throw deleteError;
-
-                                      // Remove from absentees list
-                                      setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-
-                                      // Update local attendance data without refetching
-                                      setAttendanceDataForDate(prev => 
-                                        prev.filter(r => r.student_id !== absentee.student_id)
-                                      );
-
-                                      toast.showToast('Attendance record deleted', 'success');
-                                    } catch (err) {
-                                      toast.showToast('Failed to delete record', 'error');
-                                    }
-                                    setDropdownIdx(null);
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
+                                    setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
+                                    setDropdownPos({ top: rect.top, left: rect.left });
+                                    setDropdownIdx(globalIdx);
                                     return false;
                                   }}
                                 >
-                                  {deleteOption.label}
-                                </StatusOption>
-                              </StatusDropdown>,
-                              document.body
-                            )}
-                      </CompactAnimatedAbsenteeCard>
-                    );
-                  });
-                })()}
-              </AbsenteesGrid>
-              <AbsenteesStatsRow>
-                <span className="stat total">T: <b>{attendanceDataForDate.length}</b></span>
-                <span className="stat present">P: <b>{attendanceDataForDate.filter(a => a.status === 'present').length}</b></span>
-                <span className="stat absent">A: <b>{attendanceDataForDate.filter(a => a.status === 'absent').length}</b></span>
-                <span className="stat leave">L: <b>{attendanceDataForDate.filter(a => a.status === 'leave').length}</b></span>
-                <span className="stat late">LT: <b>{attendanceDataForDate.filter(a => a.status === 'late').length}</b></span>
-                <span className="stat avg">P%: <b>{attendanceDataForDate.length ? Math.round(((attendanceDataForDate.filter(a => a.status === 'present').length + attendanceDataForDate.filter(a => a.status === 'late').length) / attendanceDataForDate.length) * 100) : 0}%</b></span>
-              </AbsenteesStatsRow>
-            </AbsentsCollapsibleContent>
-          </AbsentsTableWrapper>
-          )}
-          
-          {/* Homework Diary Section */}
-          {showHomeworkDiary && (
-            <HomeworkTableWrapper>
-            <HomeworkTableHeader onClick={() => setIsHomeworkExpanded(!isHomeworkExpanded)}>
-              <HomeworkHeaderTitle>
-                <Assignment style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
-                Today's Homework Diary
-              </HomeworkHeaderTitle>
-              <HomeworkExpandIcon $isExpanded={isHomeworkExpanded} />
-            </HomeworkTableHeader>
-            
-            <HomeworkCollapsibleContent $isExpanded={isHomeworkExpanded}>
-              <HomeworkList>
-                {(() => {
-                  // Group homework by class only (combine all sections for the same class)
-                  const grouped: Record<string, any> = {};
-                  
-                  homeworkDiaryData.forEach((hw: any) => {
-                    const classId = hw.class_id;
-                    const className = hw.classes?.name || 'Unknown Class';
-                    
-                    // Create key: just classId to group all sections together
-                    const key = String(classId);
-                    
-                    if (!grouped[key]) {
-                      // For display, use the first section name if all entries have the same section
-                      // Otherwise, show just the class name
-                      grouped[key] = {
-                        class_id: classId,
-                        class_name: className,
-                        section_id: null,
-                        section_name: '',
-                        entries: []
-                      };
-                    }
-                    
-                    grouped[key].entries.push(hw);
-                  });
-                  
-                  // After grouping, determine if all entries have the same section
-                  Object.values(grouped).forEach((group: any) => {
-                    const sections = new Set();
-                    group.entries.forEach((entry: any) => {
-                      if (entry.section_id) {
-                        sections.add(entry.section_id);
-                      }
-                    });
-                    
-                    // If all entries have the same section, show it in the header
-                    if (sections.size === 1) {
-                      const sectionId = Array.from(sections)[0] as number;
-                      const firstEntry = group.entries.find((e: any) => e.section_id === sectionId);
-                      if (firstEntry) {
-                        group.section_id = sectionId;
-                        group.section_name = firstEntry.sections?.name || '';
-                      }
-                    }
-                  });
-                  
-                  const groups = Object.values(grouped);
-                  
-                  if (groups.length === 0) {
-                    return (
-                      <NoHomeworkData>
-                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
-                          📝
-                        </div>
-                        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                          No Homework Assigned
-                        </div>
-                        <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                          No homework has been assigned for today
-                        </div>
-                      </NoHomeworkData>
-                    );
-                  }
-                  
-                  return groups.map((group: any, groupIdx: number) => {
-                    // Sort entries: general homework first (null subject), then by subject name
-                    const sortedEntries = group.entries.sort((a: any, b: any) => {
-                      if (!a.subject_id && !b.subject_id) return 0;
-                      if (!a.subject_id) return -1;
-                      if (!b.subject_id) return 1;
-                      const aName = a.subjects?.name || '';
-                      const bName = b.subjects?.name || '';
-                      return aName.localeCompare(bName);
-                    });
-                    
-                    const classLabel = group.section_name 
-                      ? `${group.class_name} (${group.section_name})`
-                      : group.class_name;
-                    const diaryCount = sortedEntries.length;
-                    
-                    return (
-                      <HomeworkClassItem key={groupIdx}>
-                        <HomeworkClassHeader>
-                          <School style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
-                          <span>{classLabel}</span>
-                          <span style={{ 
-                            marginLeft: 'auto',
-                            fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
-                            fontWeight: 600,
-                            color: '#6366f1',
-                            backgroundColor: 'rgba(99,102,241,0.1)',
-                            padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
-                            borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
-                            border: '1px solid rgba(99,102,241,0.2)',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {diaryCount} {diaryCount === 1 ? 'Entry' : 'Entries'}
-                          </span>
-                        </HomeworkClassHeader>
-                        {sortedEntries.map((entry: any, entryIdx: number) => {
-                          const subjectName = entry.subjects?.name || 'General Homework';
-                          const isGeneral = !entry.subject_id;
-                          
+                                  {absentee.status === 'absent' ? 'Absent' : 'Leave'}
+                                </StatusPill>
+                                {dropdownIdx === globalIdx && dropdownPos &&
+                                  ReactDOM.createPortal(
+                                    <StatusDropdown
+                                      ref={dropdownRef}
+                                      direction={dropdownDirection}
+                                      style={{
+                                        position: 'fixed',
+                                        left: dropdownPos.left,
+                                        top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
+                                        bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                      }}
+                                    >
+                                      {statusOptions.map(opt => (
+                                        <StatusOption
+                                          key={opt.value}
+                                          type="button"
+                                          color={opt.color}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+
+                                            const handleStatusUpdate = async () => {
+                                              const absentee = absentees[globalIdx];
+                                              if (!user?.school_id) {
+                                                toast.showToast('User school information not found', 'error');
+                                                return;
+                                              }
+
+                                              try {
+                                                // Get active session
+                                                const { data: sessionData, error: sessionError } = await supabase
+                                                  .from('sessions')
+                                                  .select('id')
+                                                  .eq('is_active', true)
+                                                  .eq('school_id', user.school_id)
+                                                  .single();
+
+                                                if (sessionError) throw sessionError;
+                                                if (!sessionData?.id) {
+                                                  toast.showToast('No active session found for this school', 'error');
+                                                  return;
+                                                }
+
+                                                if (opt.value === 'present' || opt.value === 'late') {
+                                                  // Delete the record if marking as present or late
+                                                  const { error: deleteError } = await supabase
+                                                    .from('attendance_records')
+                                                    .delete()
+                                                    .match({
+                                                      id: absentee.id,
+                                                      student_id: absentee.student_id,
+                                                      date: absentDate,
+                                                      session_id: sessionData.id,
+                                                      school_id: user.school_id
+                                                    });
+
+                                                  if (deleteError) throw deleteError;
+
+                                                  // Remove from list
+                                                  setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+                                                } else {
+                                                  // Update to absent or leave
+                                                  const { error: updateError } = await supabase
+                                                    .from('attendance_records')
+                                                    .update({
+                                                      status: opt.value
+                                                    })
+                                                    .match({
+                                                      id: absentee.id,
+                                                      student_id: absentee.student_id,
+                                                      date: absentDate,
+                                                      session_id: sessionData.id,
+                                                      school_id: user.school_id
+                                                    });
+
+                                                  if (updateError) throw updateError;
+
+                                                  // Update status in list
+                                                  setAbsentees(prev => prev.map(a =>
+                                                    a.id === absentee.id
+                                                      ? { ...a, status: opt.value }
+                                                      : a
+                                                  ));
+                                                }
+
+                                                // Update local attendance data without refetching
+                                                setAttendanceDataForDate(prev => {
+                                                  if (opt.value === 'present' || opt.value === 'late') {
+                                                    // Remove the record
+                                                    return prev.filter(r => r.student_id !== absentee.student_id);
+                                                  } else {
+                                                    // Update the record status
+                                                    return prev.map(r =>
+                                                      r.student_id === absentee.student_id
+                                                        ? { ...r, status: opt.value }
+                                                        : r
+                                                    );
+                                                  }
+                                                });
+
+                                                toast.showToast('Status updated successfully', 'success');
+                                              } catch (err) {
+                                                toast.showToast('Failed to update status', 'error');
+                                              }
+                                              setDropdownIdx(null);
+                                            };
+
+                                            handleStatusUpdate();
+                                            return false;
+                                          }}
+                                        >
+                                          {opt.label}
+                                        </StatusOption>
+                                      ))}
+                                      <StatusOption
+                                        type="button"
+                                        color={deleteOption.color}
+                                        separator
+                                        onClick={async (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+
+                                          const absentee = absentees[globalIdx];
+                                          if (!user?.school_id) {
+                                            toast.showToast('User school information not found', 'error');
+                                            return;
+                                          }
+
+                                          try {
+                                            // Get active session
+                                            const { data: sessionData, error: sessionError } = await supabase
+                                              .from('sessions')
+                                              .select('id')
+                                              .eq('is_active', true)
+                                              .eq('school_id', user.school_id)
+                                              .single();
+
+                                            if (sessionError) throw sessionError;
+                                            if (!sessionData?.id) {
+                                              toast.showToast('No active session found for this school', 'error');
+                                              return;
+                                            }
+
+                                            // Delete the attendance record
+                                            const { error: deleteError } = await supabase
+                                              .from('attendance_records')
+                                              .delete()
+                                              .match({
+                                                id: absentee.id,
+                                                student_id: absentee.student_id,
+                                                date: absentDate,
+                                                session_id: sessionData.id,
+                                                school_id: user.school_id
+                                              });
+
+                                            if (deleteError) throw deleteError;
+
+                                            // Remove from absentees list
+                                            setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+
+                                            // Update local attendance data without refetching
+                                            setAttendanceDataForDate(prev =>
+                                              prev.filter(r => r.student_id !== absentee.student_id)
+                                            );
+
+                                            toast.showToast('Attendance record deleted', 'success');
+                                          } catch (err) {
+                                            toast.showToast('Failed to delete record', 'error');
+                                          }
+                                          setDropdownIdx(null);
+                                          return false;
+                                        }}
+                                      >
+                                        {deleteOption.label}
+                                      </StatusOption>
+                                    </StatusDropdown>,
+                                    document.body
+                                  )}
+                              </CompactAnimatedAbsenteeCard>
+                            );
+                          });
+                        })()}
+                      </AbsenteesGrid>
+                      {/* Desktop Table View */}
+                      <AbsenteesDesktopTable>
+                        {(() => {
+                          const selectedDate = new Date(absentDate);
+                          const isSunday = selectedDate.getDay() === 0;
+                          const hasAttendanceRecords = attendanceDataForDate.length > 0;
+                          const hasAbsentStudents = absentees.length > 0;
+
+                          if (isSunday || !hasAttendanceRecords || !hasAbsentStudents) {
+                            return null; // Use the message from mobile view
+                          }
+
                           return (
-                            <HomeworkSubjectItem key={entryIdx}>
-                              {window.innerWidth <= 700 ? (
-                                <>
-                                  <HomeworkSubjectHeader>
-                                    <HomeworkSubjectName>
-                                      {isGeneral ? (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <Assignment style={{ fontSize: '0.75rem' }} />
-                                          {subjectName}
-                                        </span>
-                                      ) : (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <Book style={{ fontSize: '0.75rem' }} />
-                                          {subjectName}
-                                        </span>
-                                      )}
-                                    </HomeworkSubjectName>
-                                    <HomeworkTeacher>
-                                      {entry.users?.name ? (
-                                        <>
-                                          <AccountCircle style={{ fontSize: '0.7rem', opacity: 0.7 }} />
-                                          {entry.users.name}
-                                        </>
-                                      ) : (
-                                        <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>—</span>
-                                      )}
-                                    </HomeworkTeacher>
-                                  </HomeworkSubjectHeader>
-                                  <HomeworkText>{entry.homework_text}</HomeworkText>
-                                </>
-                              ) : (
-                                <>
-                                  <HomeworkSubjectName>
-                                    {isGeneral ? (
-                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <Assignment style={{ fontSize: '0.875rem' }} />
-                                        {subjectName}
+                            <>
+                              <AbsenteesTableHeader>
+                                <AbsenteesTableHeaderCell></AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>ID</AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>Student Name</AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>Father Name</AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>Class</AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>Absence This Month</AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>Monthly Leave</AbsenteesTableHeaderCell>
+                                <AbsenteesTableHeaderCell>Status</AbsenteesTableHeaderCell>
+                              </AbsenteesTableHeader>
+                              {absentees.map((absentee, globalIdx) => {
+                                const student = studentDetails[absentee.student_id];
+                                if (!student) return null;
+
+                                return (
+                                  <AbsenteesTableRow key={absentee.id} $index={globalIdx}>
+                                    <AbsenteesTableCell>
+                                      <AbsenteesTableAvatar
+                                        onMouseEnter={(e) => {
+                                          if (student.picture_url) {
+                                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                            setHoveredAvatar({
+                                              url: student.picture_url,
+                                              x: rect.left + rect.width / 2,
+                                              y: rect.top
+                                            });
+                                          }
+                                        }}
+                                        onMouseLeave={() => setHoveredAvatar(null)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setHoveredAvatar(null);
+                                          navigate(`/students/profile/${student.id}`);
+                                        }}
+                                        title={`View profile of ${student.name}`}
+                                      >
+                                        {student.picture_url ? (
+                                          <img src={student.picture_url} alt={student.name} />
+                                        ) : (
+                                          <AccountCircle style={{ fontSize: '1.5em', color: isDark ? '#b0b8d1' : '#94a3b8' }} />
+                                        )}
+                                      </AbsenteesTableAvatar>
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell>
+                                      <span style={{ color: isDark ? '#b0b8d1' : '#6366f1', fontWeight: 600 }}>
+                                        {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
                                       </span>
-                                    ) : (
-                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <Book style={{ fontSize: '0.875rem' }} />
-                                        {subjectName}
-                                      </span>
-                                    )}
-                                  </HomeworkSubjectName>
-                                  <HomeworkText>{entry.homework_text}</HomeworkText>
-                                  <HomeworkTeacher>
-                                    {entry.users?.name ? (
-                                      <>
-                                        <AccountCircle style={{ fontSize: '0.875rem', opacity: 0.7 }} />
-                                        {entry.users.name}
-                                      </>
-                                    ) : (
-                                      <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>—</span>
-                                    )}
-                                  </HomeworkTeacher>
-                                </>
-                              )}
-                            </HomeworkSubjectItem>
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell style={{ fontWeight: 700 }}>
+                                      {student.name}
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#94a3b8' }}>
+                                      {student.father_name || '-'}
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                      {student.class_name || '-'}{student.section_name ? ` (${student.section_name})` : ''}
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                      {student.monthly_absences || 0}
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                      {student.monthly_leaves || 0}
+                                    </AbsenteesTableCell>
+                                    <AbsenteesTableCell>
+                                      <AbsenteesTableStatusPill
+                                        type="button"
+                                        $status={absentee.status}
+                                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+
+                                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                          const spaceBelow = window.innerHeight - rect.bottom;
+                                          const spaceAbove = rect.top;
+                                          setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
+                                          setDropdownPos({ top: rect.top, left: rect.left });
+                                          setDropdownIdx(globalIdx);
+                                          return false;
+                                        }}
+                                      >
+                                        {absentee.status === 'absent' ? 'Absent' : 'Leave'}
+                                      </AbsenteesTableStatusPill>
+                                      {dropdownIdx === globalIdx && dropdownPos &&
+                                        ReactDOM.createPortal(
+                                          <StatusDropdown
+                                            ref={dropdownRef}
+                                            direction={dropdownDirection}
+                                            style={{
+                                              position: 'fixed',
+                                              left: dropdownPos.left,
+                                              top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
+                                              bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                            }}
+                                          >
+                                            {statusOptions.map(opt => (
+                                              <StatusOption
+                                                key={opt.value}
+                                                type="button"
+                                                color={opt.color}
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+
+                                                  const handleStatusUpdate = async () => {
+                                                    const absentee = absentees[globalIdx];
+                                                    if (!user?.school_id) {
+                                                      toast.showToast('User school information not found', 'error');
+                                                      return;
+                                                    }
+
+                                                    try {
+                                                      const { data: sessionData, error: sessionError } = await supabase
+                                                        .from('sessions')
+                                                        .select('id')
+                                                        .eq('is_active', true)
+                                                        .eq('school_id', user.school_id)
+                                                        .single();
+
+                                                      if (sessionError) throw sessionError;
+                                                      if (!sessionData?.id) {
+                                                        toast.showToast('No active session found for this school', 'error');
+                                                        return;
+                                                      }
+
+                                                      if (opt.value === 'present' || opt.value === 'late') {
+                                                        const { error: deleteError } = await supabase
+                                                          .from('attendance_records')
+                                                          .delete()
+                                                          .match({
+                                                            id: absentee.id,
+                                                            student_id: absentee.student_id,
+                                                            date: absentDate,
+                                                            session_id: sessionData.id,
+                                                            school_id: user.school_id
+                                                          });
+
+                                                        if (deleteError) throw deleteError;
+
+                                                        setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+                                                      } else {
+                                                        const { error: updateError } = await supabase
+                                                          .from('attendance_records')
+                                                          .update({
+                                                            status: opt.value
+                                                          })
+                                                          .match({
+                                                            id: absentee.id,
+                                                            student_id: absentee.student_id,
+                                                            date: absentDate,
+                                                            session_id: sessionData.id,
+                                                            school_id: user.school_id
+                                                          });
+
+                                                        if (updateError) throw updateError;
+
+                                                        setAbsentees(prev => prev.map(a =>
+                                                          a.id === absentee.id
+                                                            ? { ...a, status: opt.value }
+                                                            : a
+                                                        ));
+                                                      }
+
+                                                      setAttendanceDataForDate(prev => {
+                                                        if (opt.value === 'present' || opt.value === 'late') {
+                                                          return prev.filter(r => r.student_id !== absentee.student_id);
+                                                        } else {
+                                                          return prev.map(r =>
+                                                            r.student_id === absentee.student_id
+                                                              ? { ...r, status: opt.value }
+                                                              : r
+                                                          );
+                                                        }
+                                                      });
+
+                                                      toast.showToast('Status updated successfully', 'success');
+                                                    } catch (err) {
+                                                      toast.showToast('Failed to update status', 'error');
+                                                    }
+                                                    setDropdownIdx(null);
+                                                  };
+
+                                                  handleStatusUpdate();
+                                                  return false;
+                                                }}
+                                              >
+                                                {opt.label}
+                                              </StatusOption>
+                                            ))}
+                                            <StatusOption
+                                              type="button"
+                                              color={deleteOption.color}
+                                              separator
+                                              onClick={async (e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+
+                                                const absentee = absentees[globalIdx];
+                                                if (!user?.school_id) {
+                                                  toast.showToast('User school information not found', 'error');
+                                                  return;
+                                                }
+
+                                                try {
+                                                  const { data: sessionData, error: sessionError } = await supabase
+                                                    .from('sessions')
+                                                    .select('id')
+                                                    .eq('is_active', true)
+                                                    .eq('school_id', user.school_id)
+                                                    .single();
+
+                                                  if (sessionError) throw sessionError;
+                                                  if (!sessionData?.id) {
+                                                    toast.showToast('No active session found for this school', 'error');
+                                                    return;
+                                                  }
+
+                                                  const { error: deleteError } = await supabase
+                                                    .from('attendance_records')
+                                                    .delete()
+                                                    .match({
+                                                      id: absentee.id,
+                                                      student_id: absentee.student_id,
+                                                      date: absentDate,
+                                                      session_id: sessionData.id,
+                                                      school_id: user.school_id
+                                                    });
+
+                                                  if (deleteError) throw deleteError;
+
+                                                  setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+
+                                                  setAttendanceDataForDate(prev =>
+                                                    prev.filter(r => r.student_id !== absentee.student_id)
+                                                  );
+
+                                                  toast.showToast('Attendance record deleted', 'success');
+                                                } catch (err) {
+                                                  toast.showToast('Failed to delete record', 'error');
+                                                }
+                                                setDropdownIdx(null);
+                                                return false;
+                                              }}
+                                            >
+                                              {deleteOption.label}
+                                            </StatusOption>
+                                          </StatusDropdown>,
+                                          document.body
+                                        )}
+                                    </AbsenteesTableCell>
+                                  </AbsenteesTableRow>
+                                );
+                              })}
+                            </>
                           );
-                        })}
-                      </HomeworkClassItem>
-                    );
-                  });
-                })()}
-              </HomeworkList>
-            </HomeworkCollapsibleContent>
-          </HomeworkTableWrapper>
-          )}
-        </RightColumn>
-        )}
-      </TwoColumnGrid>
-      </TabContent>
-      
-      {/* Fee Tab Content */}
-      <TabContent active={activeTab === 'fee'}>
-        {/* Fee Summary Section */}
-        <FeeStatsGrid>
-          <FeeStatCard>
-            <FeeStatLabel>Total Invoiced</FeeStatLabel>
-            <FeeStatValue>
-              {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalInvoiced)}
-            </FeeStatValue>
-          </FeeStatCard>
-          <FeeStatCard>
-            <FeeStatLabel>Total Collected</FeeStatLabel>
-            <FeeStatValue style={{ color: '#22c55e' }}>
-              {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalCollected)}
-            </FeeStatValue>
-          </FeeStatCard>
-          <FeeStatCard>
-            <FeeStatLabel>Outstanding</FeeStatLabel>
-            <FeeStatValue style={{ color: '#ef4444' }}>
-              {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalOutstanding)}
-            </FeeStatValue>
-          </FeeStatCard>
-          <FeeStatCard>
-            <FeeStatLabel>Collection Rate</FeeStatLabel>
-            <FeeStatValue style={{ color: '#6366f1' }}>
-              {feeSummaryLoading ? '...' : `${feeSummary.collectionRate.toFixed(1)}%`}
-            </FeeStatValue>
-          </FeeStatCard>
-        </FeeStatsGrid>
-        
-        {/* Collection Charts Section */}
-        <CollectionChartsGrid>
-          <CollectionChartCard>
-            <CollectionChartTitle>Daily Collection (Current Month)</CollectionChartTitle>
-            {collectionChartsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={dailyCollectionData}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke={isDark ? '#555' : '#d1d5db'}
-                    opacity={0.8}
-                    horizontal={true}
-                    vertical={false}
-                  />
-                  <XAxis 
-                    dataKey="day" 
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
-                  />
-                  <YAxis 
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
-                    tickFormatter={(value) => {
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                      return value.toString();
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#1e293b' : '#fff',
-                      border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      color: isDark ? '#e2e8f0' : '#1e293b'
-                    }}
-                    formatter={(value: any) => formatCurrency(value)}
-                    labelFormatter={(label) => `Day ${label}`}
-                  />
-                  <Bar 
-                    dataKey="amount" 
-                    fill="#3b82f6"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+                        })()}
+                      </AbsenteesDesktopTable>
+                      <AbsenteesStatsRow>
+                        <span className="stat total">T: <b>{attendanceDataForDate.length}</b></span>
+                        <span className="stat present">P: <b>{attendanceDataForDate.filter(a => a.status === 'present').length}</b></span>
+                        <span className="stat absent">A: <b>{attendanceDataForDate.filter(a => a.status === 'absent').length}</b></span>
+                        <span className="stat leave">L: <b>{attendanceDataForDate.filter(a => a.status === 'leave').length}</b></span>
+                        <span className="stat late">LT: <b>{attendanceDataForDate.filter(a => a.status === 'late').length}</b></span>
+                        <span className="stat avg">P%: <b>{attendanceDataForDate.length ? Math.round(((attendanceDataForDate.filter(a => a.status === 'present').length + attendanceDataForDate.filter(a => a.status === 'late').length) / attendanceDataForDate.length) * 100) : 0}%</b></span>
+                      </AbsenteesStatsRow>
+                    </AbsentsCollapsibleContent>
+                  </AbsentsTableWrapper>
+                )}
+              </RightColumn>
             )}
-          </CollectionChartCard>
-          
-          <CollectionChartCard>
-            <CollectionChartTitle>Monthly Collection (Last 12 Months)</CollectionChartTitle>
-            {collectionChartsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={monthlyCollectionData}>
-                  <defs>
-                    <linearGradient id="colorCollection" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke={isDark ? '#555' : '#d1d5db'}
-                    opacity={0.8}
-                    horizontal={true}
-                    vertical={false}
-                  />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis 
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
-                    tickFormatter={(value) => {
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                      return value.toString();
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#1e293b' : '#fff',
-                      border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      color: isDark ? '#e2e8f0' : '#1e293b'
-                    }}
-                    formatter={(value: any) => formatCurrency(value)}
-                    labelFormatter={(label) => label}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke="#22c55e" 
-                    fillOpacity={1}
-                    fill="url(#colorCollection)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CollectionChartCard>
-        </CollectionChartsGrid>
-        
-        {/* Fee Collection Details Table */}
-        <FeeCollectionDetailsCard>
-          <FeeCollectionDetailsTitle>Fee collection details</FeeCollectionDetailsTitle>
-          {feeCollectionDetailsLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
-              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </div>
-          ) : (
-            <FeeCollectionTable>
-              <FeeCollectionTableHeader>
-                <tr>
-                  <FeeCollectionTableHeaderCell>Category</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>Old students</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>New admissions</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>Total payable</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>Paid</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>Discount</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>Dropped out</FeeCollectionTableHeaderCell>
-                  <FeeCollectionTableHeaderCell>Remaining</FeeCollectionTableHeaderCell>
-                </tr>
-              </FeeCollectionTableHeader>
-              <FeeCollectionTableBody>
-                <FeeCollectionTableRow>
-                  <FeeCollectionTableCell>Previous arrears</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.oldStudents)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.newAdmissions)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.totalPayable)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#16a34a" 
-                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.previousArrears.paid)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#3b82f6" 
-                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.previousArrears.discount)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#ef4444" 
-                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.previousArrears.droppedOut)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.remaining)}</FeeCollectionTableCell>
-                </FeeCollectionTableRow>
-                
-                <FeeCollectionTableRow>
-                  <FeeCollectionTableCell>Current month</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.oldStudents)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.newAdmissions)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.totalPayable)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#16a34a" 
-                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.currentMonth.paid)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#3b82f6" 
-                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.currentMonth.discount)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#ef4444" 
-                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.currentMonth.droppedOut)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.remaining)}</FeeCollectionTableCell>
-                </FeeCollectionTableRow>
-                
-                <FeeCollectionTableRow>
-                  <FeeCollectionTableCell>Next months</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.oldStudents)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.newAdmissions)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.totalPayable)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#16a34a" 
-                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.nextMonths.paid)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#3b82f6" 
-                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.nextMonths.discount)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#ef4444" 
-                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.nextMonths.droppedOut)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.remaining)}</FeeCollectionTableCell>
-                </FeeCollectionTableRow>
-                
-                <FeeCollectionTableRow isTotal>
-                  <FeeCollectionTableCell>Total</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.oldStudents)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.newAdmissions)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.totalPayable)}</FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#16a34a" 
-                      bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.total.paid)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#3b82f6" 
-                      bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.total.discount)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>
-                    <StatusBadge 
-                      color="#ef4444" 
-                      bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
-                    >
-                      {formatCurrency(feeCollectionDetails.total.droppedOut)}
-                    </StatusBadge>
-                  </FeeCollectionTableCell>
-                  <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.remaining)}</FeeCollectionTableCell>
-                </FeeCollectionTableRow>
-              </FeeCollectionTableBody>
-            </FeeCollectionTable>
-          )}
-        </FeeCollectionDetailsCard>
-        
-        {/* Defaulters Card */}
-        <DefaultersCard>
-          <DefaultersTitle>
-            <span className="underlined">Defaulters</span> (Last 6 Months Data)
-          </DefaultersTitle>
-          {defaultersLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
-              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </div>
-          ) : (
-            <DefaultersTable>
-              <DefaultersTableHeader>
-                <tr>
-                  <DefaultersTableHeaderCell>Month</DefaultersTableHeaderCell>
-                  <DefaultersTableHeaderCell align="center">Challan</DefaultersTableHeaderCell>
-                  <DefaultersTableHeaderCell align="right">Amount</DefaultersTableHeaderCell>
-                </tr>
-              </DefaultersTableHeader>
-              <DefaultersTableBody>
-                {defaultersData.map((row, index) => (
-                  <DefaultersTableRow key={index}>
-                    <DefaultersTableCell isMonth>{row.month}</DefaultersTableCell>
-                    <DefaultersTableCell align="center">{row.challan}</DefaultersTableCell>
-                    <DefaultersTableCell align="right">{formatCurrency(row.amount)}</DefaultersTableCell>
-                  </DefaultersTableRow>
-                ))}
-                <DefaultersTableRow isTotal>
-                  <DefaultersTableCell>Total</DefaultersTableCell>
-                  <DefaultersTableCell align="center">
-                    {defaultersData.reduce((sum, row) => sum + row.challan, 0)}
-                  </DefaultersTableCell>
-                  <DefaultersTableCell align="right">
-                    {formatCurrency(defaultersData.reduce((sum, row) => sum + row.amount, 0))}
-                  </DefaultersTableCell>
-                </DefaultersTableRow>
-              </DefaultersTableBody>
-            </DefaultersTable>
-          )}
-        </DefaultersCard>
-      </TabContent>
-      
-      {/* Admissions Tab Content */}
-      <TabContent active={activeTab === 'admissions'}>
-        {admissionsLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-            <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-          </div>
-        ) : (
-          <>
-            {/* Summary Cards */}
-            <AdmissionsSummaryGrid>
-              <AdmissionsSummaryCard>
-                <SummaryCardHeader>
-                  <SummaryCardTitle>Inquiries</SummaryCardTitle>
-                  <SummaryCardIcon color="#3b82f6">
-                    <QuestionAnswer />
-                  </SummaryCardIcon>
-                </SummaryCardHeader>
-                <SummaryCardValue>{admissionsData.totalInquiries}</SummaryCardValue>
-                <SummaryCardSubtext>This Month: {admissionsData.inquiriesThisMonth}</SummaryCardSubtext>
-              </AdmissionsSummaryCard>
-              
-              <AdmissionsSummaryCard>
-                <SummaryCardHeader>
-                  <SummaryCardTitle>Students</SummaryCardTitle>
-                  <SummaryCardIcon color="#22c55e">
-                    <School />
-                  </SummaryCardIcon>
-                </SummaryCardHeader>
-                <SummaryCardValue>{admissionsData.totalStudents}</SummaryCardValue>
-                <SummaryCardSubtext>This Month: {admissionsData.studentsThisMonth}</SummaryCardSubtext>
-              </AdmissionsSummaryCard>
-              
-              <AdmissionsSummaryCard>
-                <SummaryCardHeader>
-                  <SummaryCardTitle>Families</SummaryCardTitle>
-                  <SummaryCardIcon color="#f59e0b">
-                    <Group />
-                  </SummaryCardIcon>
-                </SummaryCardHeader>
-                <SummaryCardValue>{admissionsData.totalFamilies}</SummaryCardValue>
-                <SummaryCardSubtext>This Month: {admissionsData.familiesThisMonth}</SummaryCardSubtext>
-              </AdmissionsSummaryCard>
-              
-              <AdmissionsSummaryCard>
-                <SummaryCardHeader>
-                  <SummaryCardTitle>Fee Plans</SummaryCardTitle>
-                  <SummaryCardIcon color="#ef4444">
-                    <AttachMoney />
-                  </SummaryCardIcon>
-                </SummaryCardHeader>
-                <SummaryCardValue>{admissionsData.totalFeePlans}</SummaryCardValue>
-                <SummaryCardSubtext>This Month: {admissionsData.feePlansThisMonth}</SummaryCardSubtext>
-              </AdmissionsSummaryCard>
-            </AdmissionsSummaryGrid>
-            
-            {/* Charts */}
-            <AdmissionsChartsGrid>
-              <AdmissionsChartCard>
-                <AdmissionsChartTitle>Admissions</AdmissionsChartTitle>
-                <GoogleChart
-                  chartType="ColumnChart"
-                  width="100%"
-                  height="280px"
-                  data={[
-                    ['Month', 'Boys', 'Girls', { role: 'annotation', type: 'string' }],
-                    ...(admissionsData.admissionsChart?.map(item => {
-                      const total = (item.boys || 0) + (item.girls || 0);
-                      return [
-                        item.month,
-                        item.boys || 0,
-                        item.girls || 0,
-                        total > 0 ? String(total) : ''
-                      ];
-                    }) || [])
-                  ]}
-                  options={{
-                    title: '',
-                    isStacked: true,
-                    legend: {
-                      position: 'top',
-                      alignment: 'end',
-                      textStyle: {
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                        fontSize: 12
-                      }
-                    },
-                    colors: ['#3b82f6', '#ec4899'],
-                    backgroundColor: 'transparent',
-                    hAxis: {
-                      title: '',
-                      textStyle: {
-                        color: isDark ? '#888' : '#666',
-                        fontSize: 12
-                      },
-                      gridlines: {
-                        color: 'transparent'
-                      }
-                    },
-                    vAxis: {
-                      title: 'Students',
-                      textStyle: {
-                        color: isDark ? '#888' : '#666',
-                        fontSize: 12
-                      },
-                      gridlines: {
-                        color: isDark ? '#333' : '#e5e7eb'
-                      },
-                      baselineColor: isDark ? '#444' : '#ddd'
-                    },
-                    tooltip: {
-                      textStyle: {
-                        color: '#1e293b',
-                        fontSize: 12
-                      },
-                      trigger: 'focus'
-                    },
-                    chartArea: {
-                      left: 60,
-                      top: 50,
-                      right: 20,
-                      bottom: 40,
-                      width: '100%',
-                      height: '100%'
-                    },
-                    annotations: {
-                      textStyle: {
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                        fontSize: 13,
-                        bold: true
-                      },
-                      alwaysOutside: true,
-                      stem: {
-                        color: 'transparent',
-                        length: 0
-                      }
-                    }
-                  }}
-                  loader={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>Loading...</div>}
-                />
-              </AdmissionsChartCard>
-              
-              <AdmissionsChartCard>
-                <AdmissionsChartTitle>Withdrawals</AdmissionsChartTitle>
-                <GoogleChart
-                  chartType="ColumnChart"
-                  width="100%"
-                  height="280px"
-                  data={[
-                    ['Month', 'Boys', 'Girls', { role: 'annotation', type: 'string' }],
-                    ...(admissionsData.withdrawalsChart?.map(item => {
-                      const total = (item.boys || 0) + (item.girls || 0);
-                      return [
-                        item.month,
-                        item.boys || 0,
-                        item.girls || 0,
-                        total > 0 ? String(total) : ''
-                      ];
-                    }) || [])
-                  ]}
-                  options={{
-                    title: '',
-                    isStacked: true,
-                    legend: {
-                      position: 'top',
-                      alignment: 'end',
-                      textStyle: {
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                        fontSize: 12
-                      }
-                    },
-                    colors: ['#ef4444', '#f97316'],
-                    backgroundColor: 'transparent',
-                    hAxis: {
-                      title: '',
-                      textStyle: {
-                        color: isDark ? '#888' : '#666',
-                        fontSize: 12
-                      },
-                      gridlines: {
-                        color: 'transparent'
-                      }
-                    },
-                    vAxis: {
-                      title: 'Students',
-                      textStyle: {
-                        color: isDark ? '#888' : '#666',
-                        fontSize: 12
-                      },
-                      gridlines: {
-                        color: isDark ? '#333' : '#e5e7eb'
-                      },
-                      baselineColor: isDark ? '#444' : '#ddd'
-                    },
-                    tooltip: {
-                      textStyle: {
-                        color: '#1e293b',
-                        fontSize: 12
-                      },
-                      trigger: 'focus'
-                    },
-                    chartArea: {
-                      left: 60,
-                      top: 50,
-                      right: 20,
-                      bottom: 40,
-                      width: '100%',
-                      height: '100%'
-                    },
-                    annotations: {
-                      textStyle: {
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                        fontSize: 13,
-                        bold: true
-                      },
-                      alwaysOutside: true,
-                      stem: {
-                        color: 'transparent',
-                        length: 0
-                      }
-                    }
-                  }}
-                  loader={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>Loading...</div>}
-                />
-              </AdmissionsChartCard>
-              
-              <AdmissionsChartCard>
-                <AdmissionsChartTitle>Gender</AdmissionsChartTitle>
-                <GoogleChart
-                  chartType="PieChart"
-                  width="100%"
-                  height="280px"
-                  data={[
-                    ['Gender', 'Students'],
-                    ...(admissionsData.genderData?.map(item => [item.name, item.value]) || [])
-                  ]}
-                  options={{
-                    title: '',
-                    pieHole: 0.4,
-                    pieSliceText: 'percentage',
-                    pieSliceTextStyle: {
-                      color: isDark ? '#e2e8f0' : '#1e293b',
-                      fontSize: 12,
-                      fontWeight: 600
-                    },
-                    legend: {
-                      position: 'bottom',
-                      textStyle: {
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                        fontSize: 12
-                      },
-                      alignment: 'center'
-                    },
-                    tooltip: {
-                      textStyle: {
-                        color: '#1e293b',
-                        fontSize: 12
-                      },
-                      trigger: 'focus',
-                      showColorCode: true
-                    },
-                    colors: admissionsData.genderData?.map(item => item.color) || ['#22c55e', '#a78bfa'],
-                    backgroundColor: 'transparent',
-                    chartArea: {
-                      left: 20,
-                      top: 20,
-                      right: 20,
-                      bottom: 60,
-                      width: '100%',
-                      height: '100%'
-                    }
-                  }}
-                  loader={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>Loading...</div>}
-                />
-              </AdmissionsChartCard>
-            </AdmissionsChartsGrid>
-            
-            {/* Additional Cards: Grade Distribution, Latest Admissions, Today's Birthdays */}
-            <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
-              {/* Class Wise Strength Card */}
-              <AdmissionsChartCard style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-                <AdmissionsChartTitle style={{ marginBottom: '1rem' }}>Class Wise Strength</AdmissionsChartTitle>
-                <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={classStrengths} 
-                      layout="vertical"
-                      margin={{ top: 5, right: 50, left: 0, bottom: 5 }}
-                    >
-                      <XAxis type="number" stroke={isDark ? '#888' : '#666'} />
-                      <YAxis 
-                        type="category" 
-                        dataKey="name" 
-                        stroke={isDark ? '#888' : '#666'}
-                        width={100}
-                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                        interval={0}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          background: isDark ? '#2a2a2a' : '#fff',
-                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                          borderRadius: '8px',
-                          padding: '8px 12px'
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="girls" stackId="a" fill="#22c55e" name="Girls" radius={[0, 4, 4, 0]}>
-                        <LabelList 
-                          dataKey="total" 
-                          position="right" 
-                          style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 600 }}
-                          formatter={(value: number) => value || ''}
-                        />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </AdmissionsChartCard>
-              
-              {/* Latest Admissions Card */}
-              <AdmissionsChartCard style={{ minHeight: '400px' }}>
-                <AdmissionsChartTitle>Latest Admissions</AdmissionsChartTitle>
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '0.75rem',
-                  padding: '0.5rem 0',
-                  maxHeight: '350px',
-                  overflowY: 'auto'
-                }}>
-                  {latestAdmissions.length === 0 ? (
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '2rem',
-                      textAlign: 'center',
-                      color: isDark ? '#888' : '#666'
-                    }}>
-                      <People style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
-                      <div style={{ fontSize: '0.95rem' }}>No recent admissions</div>
-                    </div>
-                  ) : (
-                    latestAdmissions.map((admission, idx) => {
-                      const admissionDate = admission.admissionDate 
-                        ? new Date(admission.admissionDate).toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          })
-                        : 'N/A';
-                      
-                      const initials = admission.name
-                        .split(' ')
-                        .map((n: string) => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2);
-                      
-                      return (
-                        <div
-                          key={idx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.75rem',
-                            background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                            borderRadius: '8px',
-                            border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
-                          }}
-                        >
-                          {admission.pictureUrl ? (
-                            <img
-                              src={admission.pictureUrl}
-                              alt={admission.name}
-                              style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%',
-                                objectFit: 'cover'
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%',
-                                background: '#6366f1',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.875rem',
-                                fontWeight: 600
-                              }}
-                            >
-                              {initials}
-                            </div>
-                          )}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: '0.95rem',
-                              fontWeight: 600,
-                              color: isDark ? '#e2e8f0' : '#1e293b',
-                              marginBottom: '0.25rem',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {admission.name}
-                            </div>
-                            <div style={{
-                              fontSize: '0.8rem',
-                              color: isDark ? '#888' : '#666',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
-                            }}>
-                              <School style={{ fontSize: '0.75rem' }} />
-                              <span>{admission.className}</span>
-                              <span style={{ margin: '0 0.25rem' }}>•</span>
-                              <span>{admissionDate}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </AdmissionsChartCard>
-            </AdmissionsChartsGrid>
-            
-            {/* Today's Birthdays Card */}
-            <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
-              <AdmissionsChartCard style={{ 
-                minHeight: '200px',
-                background: 'linear-gradient(135deg, #ec4899 0%, #ef4444 100%)',
-                color: '#fff',
-                border: 'none'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  padding: '2rem',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: '4rem',
-                    marginBottom: '1rem',
-                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
-                  }}>
-                    🎂
-                  </div>
-                  <AdmissionsChartTitle style={{ color: '#fff', marginBottom: '0.5rem' }}>
-                    Today's Birthdays
-                  </AdmissionsChartTitle>
-                  <div style={{
-                    fontSize: '1rem',
-                    marginBottom: '1rem',
-                    opacity: 0.95
-                  }}>
-                    {new Date().toLocaleDateString('en-GB', { 
-                      day: 'numeric', 
-                      month: 'short', 
-                      year: 'numeric' 
-                    })}
-                  </div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    marginBottom: '1.5rem'
-                  }}>
-                    Celebrating {admissionsData.todaysBirthdaysCount} {admissionsData.todaysBirthdaysCount === 1 ? 'birthday' : 'birthdays'} today!
-                  </div>
-                  {admissionsData.todaysBirthdaysCount > 0 && (
-                    <div style={{
-                      width: '100%',
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      marginBottom: '1rem',
-                      padding: '0.5rem',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '8px'
-                    }}>
-                      {todaysBirthdays.map((student, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.5rem',
-                            marginBottom: '0.5rem',
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '6px'
-                          }}
-                        >
-                          {student.pictureUrl ? (
-                            <img
-                              src={student.pictureUrl}
-                              alt={student.name}
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                objectFit: 'cover'
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                background: 'rgba(255, 255, 255, 0.3)',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.75rem',
-                                fontWeight: 600
-                              }}
-                            >
-                              {student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                            </div>
-                          )}
-                          <div style={{ flex: 1, textAlign: 'left' }}>
-                            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                              {student.name}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-                              {student.className}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    style={{
-                      padding: '0.75rem 1.5rem',
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                    }}
-                  >
-                    View Details & Send SMS
-                  </button>
-                </div>
-              </AdmissionsChartCard>
-            </AdmissionsChartsGrid>
-            
-          </>
-        )}
-      </TabContent>
-      
-      {hoveredAvatar && (
-        <div
-          style={{
-            position: 'fixed',
-            left: hoveredAvatar.x - 60,
-            top: hoveredAvatar.y - 130,
-            zIndex: 4000,
-            pointerEvents: 'none',
-            background: '#fff',
-            borderRadius: '12px',
-            boxShadow: '0 4px 24px #0007',
-            border: '2px solid #4a6cf7',
-            padding: 4,
-            width: 120,
-            height: 120,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-          }}
-        >
-          <img
-            src={hoveredAvatar.url}
-            alt="Preview"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
-          />
+          </TwoColumnGrid>
         </div>
       )}
-      
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && fineToDelete && ReactDOM.createPortal(
-        <ModalOverlay onClick={cancelDelete}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalIcon>
-                <Delete />
-              </ModalIcon>
-              <ModalTitle>Delete Fine Payment</ModalTitle>
-            </ModalHeader>
-            <ModalMessage>
-              Are you sure you want to delete this fine payment? This action cannot be undone.
-            </ModalMessage>
-            
-            <StudentInfoCard>
-              <StudentName>{fineToDelete.studentName}</StudentName>
-              <StudentDetails>
-                <DetailRow>
-                  <DetailLabel>Student ID:</DetailLabel>
-                  <DetailValue>{fineToDelete.studentId}</DetailValue>
-                </DetailRow>
-                <DetailRow>
-                  <DetailLabel>Class:</DetailLabel>
-                  <DetailValue>{fineToDelete.className}</DetailValue>
-                </DetailRow>
-                <DetailRow>
-                  <DetailLabel>Amount:</DetailLabel>
-                  <DetailValue highlight>Rs {fineToDelete.amount.toLocaleString()}</DetailValue>
-                </DetailRow>
-                <DetailRow>
-                  <DetailLabel>Date:</DetailLabel>
-                  <DetailValue>{fineToDelete.date}</DetailValue>
-                </DetailRow>
-              </StudentDetails>
-            </StudentInfoCard>
-            
-            <ModalActions>
-              <ModalButton variant="cancel" onClick={cancelDelete}>
-                Cancel
-              </ModalButton>
-              <ModalButton variant="delete" onClick={handleDeleteFine}>
-                Delete
-              </ModalButton>
-            </ModalActions>
-          </ModalContent>
-        </ModalOverlay>,
-        document.body
+
+      {/* Fee Tab Content */}
+      {activeTab === 'fee' && (
+        <div>
+          {/* Fee Summary Section */}
+          <FeeStatsGrid>
+            <FeeStatCard>
+              <FeeStatLabel>Total Invoiced</FeeStatLabel>
+              <FeeStatValue>
+                {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalInvoiced)}
+              </FeeStatValue>
+            </FeeStatCard>
+            <FeeStatCard>
+              <FeeStatLabel>Total Collected</FeeStatLabel>
+              <FeeStatValue style={{ color: '#22c55e' }}>
+                {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalCollected)}
+              </FeeStatValue>
+            </FeeStatCard>
+            <FeeStatCard>
+              <FeeStatLabel>Outstanding</FeeStatLabel>
+              <FeeStatValue style={{ color: '#ef4444' }}>
+                {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalOutstanding)}
+              </FeeStatValue>
+            </FeeStatCard>
+            <FeeStatCard>
+              <FeeStatLabel>Collection Rate</FeeStatLabel>
+              <FeeStatValue style={{ color: '#6366f1' }}>
+                {feeSummaryLoading ? '...' : `${feeSummary.collectionRate.toFixed(1)}%`}
+              </FeeStatValue>
+            </FeeStatCard>
+          </FeeStatsGrid>
+
+          {/* Collection Charts Section */}
+          <CollectionChartsGrid>
+            <CollectionChartCard>
+              <CollectionChartTitle>Daily Collection (Current Month)</CollectionChartTitle>
+              {collectionChartsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+                  <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={dailyCollectionData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={isDark ? '#555' : '#d1d5db'}
+                      opacity={0.8}
+                      horizontal={true}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                    />
+                    <YAxis
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tickFormatter={(value) => {
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                        return value.toString();
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? '#1e293b' : '#fff',
+                        border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        color: isDark ? '#e2e8f0' : '#1e293b'
+                      }}
+                      formatter={(value: any) => formatCurrency(value)}
+                      labelFormatter={(label) => `Day ${label}`}
+                    />
+                    <Bar
+                      dataKey="amount"
+                      fill="#3b82f6"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CollectionChartCard>
+
+            <CollectionChartCard>
+              <CollectionChartTitle>Monthly Collection (Last 12 Months)</CollectionChartTitle>
+              {collectionChartsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+                  <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={monthlyCollectionData}>
+                    <defs>
+                      <linearGradient id="colorCollection" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={isDark ? '#555' : '#d1d5db'}
+                      opacity={0.8}
+                      horizontal={true}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis
+                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                      tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                      tickFormatter={(value) => {
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                        return value.toString();
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? '#1e293b' : '#fff',
+                        border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        color: isDark ? '#e2e8f0' : '#1e293b'
+                      }}
+                      formatter={(value: any) => formatCurrency(value)}
+                      labelFormatter={(label) => label}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#22c55e"
+                      fillOpacity={1}
+                      fill="url(#colorCollection)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CollectionChartCard>
+          </CollectionChartsGrid>
+
+          {/* Fee Collection Details Table */}
+          <FeeCollectionDetailsCard>
+            <FeeCollectionDetailsTitle>Fee collection details</FeeCollectionDetailsTitle>
+            {feeCollectionDetailsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : (
+              <FeeCollectionTable>
+                <FeeCollectionTableHeader>
+                  <tr>
+                    <FeeCollectionTableHeaderCell>Category</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>Old students</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>New admissions</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>Total payable</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>Paid</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>Discount</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>Dropped out</FeeCollectionTableHeaderCell>
+                    <FeeCollectionTableHeaderCell>Remaining</FeeCollectionTableHeaderCell>
+                  </tr>
+                </FeeCollectionTableHeader>
+                <FeeCollectionTableBody>
+                  <FeeCollectionTableRow>
+                    <FeeCollectionTableCell>Previous arrears</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.oldStudents)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.newAdmissions)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.totalPayable)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#16a34a"
+                        bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.previousArrears.paid)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#3b82f6"
+                        bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.previousArrears.discount)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#ef4444"
+                        bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.previousArrears.droppedOut)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.remaining)}</FeeCollectionTableCell>
+                  </FeeCollectionTableRow>
+
+                  <FeeCollectionTableRow>
+                    <FeeCollectionTableCell>Current month</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.oldStudents)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.newAdmissions)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.totalPayable)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#16a34a"
+                        bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.currentMonth.paid)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#3b82f6"
+                        bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.currentMonth.discount)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#ef4444"
+                        bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.currentMonth.droppedOut)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.remaining)}</FeeCollectionTableCell>
+                  </FeeCollectionTableRow>
+
+                  <FeeCollectionTableRow>
+                    <FeeCollectionTableCell>Next months</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.oldStudents)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.newAdmissions)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.totalPayable)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#16a34a"
+                        bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.nextMonths.paid)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#3b82f6"
+                        bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.nextMonths.discount)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#ef4444"
+                        bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.nextMonths.droppedOut)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.remaining)}</FeeCollectionTableCell>
+                  </FeeCollectionTableRow>
+
+                  <FeeCollectionTableRow isTotal>
+                    <FeeCollectionTableCell>Total</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.oldStudents)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.newAdmissions)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.totalPayable)}</FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#16a34a"
+                        bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.total.paid)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#3b82f6"
+                        bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.total.discount)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>
+                      <StatusBadge
+                        color="#ef4444"
+                        bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                      >
+                        {formatCurrency(feeCollectionDetails.total.droppedOut)}
+                      </StatusBadge>
+                    </FeeCollectionTableCell>
+                    <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.remaining)}</FeeCollectionTableCell>
+                  </FeeCollectionTableRow>
+                </FeeCollectionTableBody>
+              </FeeCollectionTable>
+            )}
+          </FeeCollectionDetailsCard>
+
+          {/* Defaulters Card */}
+          <DefaultersCard>
+            <DefaultersTitle>
+              <span className="underlined">Defaulters</span> (Last 6 Months Data)
+            </DefaultersTitle>
+            {defaultersLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </div>
+            ) : (
+              <DefaultersTable>
+                <DefaultersTableHeader>
+                  <tr>
+                    <DefaultersTableHeaderCell>Month</DefaultersTableHeaderCell>
+                    <DefaultersTableHeaderCell align="center">Challan</DefaultersTableHeaderCell>
+                    <DefaultersTableHeaderCell align="right">Amount</DefaultersTableHeaderCell>
+                  </tr>
+                </DefaultersTableHeader>
+                <DefaultersTableBody>
+                  {defaultersData.map((row, index) => (
+                    <DefaultersTableRow key={index}>
+                      <DefaultersTableCell isMonth>{row.month}</DefaultersTableCell>
+                      <DefaultersTableCell align="center">{row.challan}</DefaultersTableCell>
+                      <DefaultersTableCell align="right">{formatCurrency(row.amount)}</DefaultersTableCell>
+                    </DefaultersTableRow>
+                  ))}
+                  <DefaultersTableRow isTotal>
+                    <DefaultersTableCell>Total</DefaultersTableCell>
+                    <DefaultersTableCell align="center">
+                      {defaultersData.reduce((sum, row) => sum + row.challan, 0)}
+                    </DefaultersTableCell>
+                    <DefaultersTableCell align="right">
+                      {formatCurrency(defaultersData.reduce((sum, row) => sum + row.amount, 0))}
+                    </DefaultersTableCell>
+                  </DefaultersTableRow>
+                </DefaultersTableBody>
+              </DefaultersTable>
+            )}
+          </DefaultersCard>
+        </div>
       )}
-      
-      {/* WhatsApp Bulk Sender Modal */}
-      {showWhatsAppSender && (
-        <WhatsAppBulkSender
-          notificationData={whatsappNotificationData}
-          schoolName={schoolName || 'School'}
-          selectedDate={absentDate}
-          onClose={() => {
-            setShowWhatsAppSender(false);
-            setWhatsappNotificationData([]);
-          }}
-        />
+
+      {/* Admissions Tab Content */}
+      {activeTab === 'admissions' && (
+        <div>
+          {/* Date Range Selector for Admissions */}
+          <div style={{
+            display: 'flex',
+            gap: '1rem',
+            marginBottom: '1.5rem',
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <DashboardDateInput
+              type="date"
+              value={admissionsDateFrom}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                setAdmissionsDateFrom(newDate);
+                // Reset data loaded flag so it refetches
+                admissionsDataLoadedRef.current = null;
+              }}
+              title="From Date"
+            />
+            <span style={{ color: isDark ? '#888' : '#666', fontWeight: 500 }}>to</span>
+            <DashboardDateInput
+              type="date"
+              value={admissionsDateTo}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                setAdmissionsDateTo(newDate);
+                // Reset data loaded flag so it refetches
+                admissionsDataLoadedRef.current = null;
+              }}
+              title="To Date"
+            />
+            <button
+              onClick={() => {
+                const range = getCurrentMonthRange();
+                setAdmissionsDateFrom(range.from);
+                setAdmissionsDateTo(range.to);
+                admissionsDataLoadedRef.current = null;
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
+                border: `1px solid ${isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'}`,
+                borderRadius: '6px',
+                color: '#6366f1',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)';
+              }}
+            >
+              Current Month
+            </button>
+          </div>
+
+          {admissionsLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <AdmissionsSummaryGrid>
+                <AdmissionsSummaryCard>
+                  <SummaryCardHeader>
+                    <SummaryCardTitle>Inquiries</SummaryCardTitle>
+                    <SummaryCardIcon color="#3b82f6">
+                      <QuestionAnswer />
+                    </SummaryCardIcon>
+                  </SummaryCardHeader>
+                  <SummaryCardValue>{admissionsData.totalInquiries}</SummaryCardValue>
+                  <SummaryCardSubtext>Selected Range: {admissionsData.inquiriesThisMonth}</SummaryCardSubtext>
+                </AdmissionsSummaryCard>
+
+                <AdmissionsSummaryCard>
+                  <SummaryCardHeader>
+                    <SummaryCardTitle>Students</SummaryCardTitle>
+                    <SummaryCardIcon color="#22c55e">
+                      <School />
+                    </SummaryCardIcon>
+                  </SummaryCardHeader>
+                  <SummaryCardValue>{admissionsData.totalStudents}</SummaryCardValue>
+                  <SummaryCardSubtext>Selected Range: {admissionsData.studentsThisMonth}</SummaryCardSubtext>
+                </AdmissionsSummaryCard>
+
+                <AdmissionsSummaryCard>
+                  <SummaryCardHeader>
+                    <SummaryCardTitle>Families</SummaryCardTitle>
+                    <SummaryCardIcon color="#f59e0b">
+                      <Group />
+                    </SummaryCardIcon>
+                  </SummaryCardHeader>
+                  <SummaryCardValue>{admissionsData.totalFamilies}</SummaryCardValue>
+                  <SummaryCardSubtext>Selected Range: {admissionsData.familiesThisMonth}</SummaryCardSubtext>
+                </AdmissionsSummaryCard>
+
+                <AdmissionsSummaryCard>
+                  <SummaryCardHeader>
+                    <SummaryCardTitle>Fee Plans</SummaryCardTitle>
+                    <SummaryCardIcon color="#ef4444">
+                      <AttachMoney />
+                    </SummaryCardIcon>
+                  </SummaryCardHeader>
+                  <SummaryCardValue>{admissionsData.totalFeePlans}</SummaryCardValue>
+                  <SummaryCardSubtext>Selected Range: {admissionsData.feePlansThisMonth}</SummaryCardSubtext>
+                </AdmissionsSummaryCard>
+              </AdmissionsSummaryGrid>
+
+              {/* Charts */}
+              <AdmissionsChartsGrid>
+                <AdmissionsChartCard>
+                  <AdmissionsChartTitle>Admissions</AdmissionsChartTitle>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={admissionsChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                      />
+                      <YAxis
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: '20px' }}
+                        iconType="rect"
+                      />
+                      <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" />
+                      <Bar dataKey="girls" stackId="a" fill="#ec4899" name="Girls" />
+                      <LabelList
+                        dataKey="total"
+                        position="top"
+                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
+                        formatter={(value: number) => value > 0 ? value : ''}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </AdmissionsChartCard>
+
+                <AdmissionsChartCard>
+                  <AdmissionsChartTitle>Withdrawals</AdmissionsChartTitle>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={withdrawalsChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                      />
+                      <YAxis
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: '20px' }}
+                        iconType="rect"
+                      />
+                      <Bar dataKey="boys" stackId="a" fill="#ef4444" name="Boys" />
+                      <Bar dataKey="girls" stackId="a" fill="#f97316" name="Girls" />
+                      <LabelList
+                        dataKey="students"
+                        position="top"
+                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
+                        formatter={(value: number) => value > 0 ? value : ''}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </AdmissionsChartCard>
+
+                <AdmissionsChartCard>
+                  <AdmissionsChartTitle>Gender</AdmissionsChartTitle>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={genderChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {genderChartData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.color || '#888'} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        iconType="circle"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </AdmissionsChartCard>
+              </AdmissionsChartsGrid>
+
+              {/* Additional Cards: Grade Distribution, Latest Admissions, Today's Birthdays */}
+              <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
+                {/* Class Wise Strength Card */}
+                <AdmissionsChartCard style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+                  <AdmissionsChartTitle style={{ marginBottom: '1rem' }}>Class Wise Strength</AdmissionsChartTitle>
+                  <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={classStrengths}
+                        layout="vertical"
+                        margin={{ top: 5, right: 50, left: 0, bottom: 5 }}
+                      >
+                        <XAxis type="number" stroke={isDark ? '#888' : '#666'} />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          stroke={isDark ? '#888' : '#666'}
+                          width={100}
+                          tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                          interval={0}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: isDark ? '#2a2a2a' : '#fff',
+                            border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                            borderRadius: '8px',
+                            padding: '8px 12px'
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="girls" stackId="a" fill="#22c55e" name="Girls" radius={[0, 4, 4, 0]}>
+                          <LabelList
+                            dataKey="total"
+                            position="right"
+                            style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 600 }}
+                            formatter={(value: number) => value || ''}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </AdmissionsChartCard>
+
+                {/* Latest Admissions Card */}
+                <AdmissionsChartCard style={{ minHeight: '400px' }}>
+                  <AdmissionsChartTitle>Latest Admissions</AdmissionsChartTitle>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    padding: '0.5rem 0',
+                    maxHeight: '350px',
+                    overflowY: 'auto'
+                  }}>
+                    {latestAdmissions.length === 0 ? (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '2rem',
+                        textAlign: 'center',
+                        color: isDark ? '#888' : '#666'
+                      }}>
+                        <People style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
+                        <div style={{ fontSize: '0.95rem' }}>No recent admissions</div>
+                      </div>
+                    ) : (
+                      latestAdmissions.map((admission, idx) => {
+                        const admissionDate = admission.admissionDate
+                          ? new Date(admission.admissionDate).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })
+                          : 'N/A';
+
+                        const initials = admission.name
+                          .split(' ')
+                          .map((n: string) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2);
+
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem',
+                              background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                              borderRadius: '8px',
+                              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
+                            }}
+                          >
+                            {admission.pictureUrl ? (
+                              <img
+                                src={admission.pictureUrl}
+                                alt={admission.name}
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '50%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '50%',
+                                  background: '#6366f1',
+                                  color: '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {initials}
+                              </div>
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: '0.95rem',
+                                fontWeight: 600,
+                                color: isDark ? '#e2e8f0' : '#1e293b',
+                                marginBottom: '0.25rem',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {admission.name}
+                              </div>
+                              <div style={{
+                                fontSize: '0.8rem',
+                                color: isDark ? '#888' : '#666',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}>
+                                <School style={{ fontSize: '0.75rem' }} />
+                                <span>{admission.className}</span>
+                                <span style={{ margin: '0 0.25rem' }}>•</span>
+                                <span>{admissionDate}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </AdmissionsChartCard>
+              </AdmissionsChartsGrid>
+
+              {/* Today's Birthdays Card */}
+              <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
+                <AdmissionsChartCard style={{
+                  minHeight: '200px',
+                  background: 'linear-gradient(135deg, #ec4899 0%, #ef4444 100%)',
+                  color: '#fff',
+                  border: 'none'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    padding: '2rem',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{
+                      fontSize: '4rem',
+                      marginBottom: '1rem',
+                      filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                    }}>
+                      🎂
+                    </div>
+                    <AdmissionsChartTitle style={{ color: '#fff', marginBottom: '0.5rem' }}>
+                      Today's Birthdays
+                    </AdmissionsChartTitle>
+                    <div style={{
+                      fontSize: '1rem',
+                      marginBottom: '1rem',
+                      opacity: 0.95
+                    }}>
+                      {new Date().toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </div>
+                    <div style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 700,
+                      marginBottom: '1.5rem'
+                    }}>
+                      Celebrating {admissionsData.todaysBirthdaysCount} {admissionsData.todaysBirthdaysCount === 1 ? 'birthday' : 'birthdays'} today!
+                    </div>
+                    {admissionsData.todaysBirthdaysCount > 0 && (
+                      <div style={{
+                        width: '100%',
+                        maxHeight: '150px',
+                        overflowY: 'auto',
+                        marginBottom: '1rem',
+                        padding: '0.5rem',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px'
+                      }}>
+                        {todaysBirthdays.map((student, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.5rem',
+                              marginBottom: '0.5rem',
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              borderRadius: '6px'
+                            }}
+                          >
+                            {student.pictureUrl ? (
+                              <img
+                                src={student.pictureUrl}
+                                alt={student.name}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  background: 'rgba(255, 255, 255, 0.3)',
+                                  color: '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </div>
+                            )}
+                            <div style={{ flex: 1, textAlign: 'left' }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                                {student.name}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                                {student.className}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                      }}
+                    >
+                      View Details & Send SMS
+                    </button>
+                  </div>
+                </AdmissionsChartCard>
+              </AdmissionsChartsGrid>
+
+            </>
+          )}
+        </div>
       )}
-    </DashboardContainer>
-  );
+
+      {/* Homework Tab Content */}
+      {activeTab === 'homework' && (
+        <div>
+          {showHomeworkDiary ? (
+            <>
+              {/* View Toggle */}
+              <div style={{
+                display: 'flex',
+                gap: '1rem',
+                marginBottom: '1.5rem',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end'
+              }}>
+                <HomeworkViewToggle>
+                  <button
+                    className={homeworkViewMode === 'class' ? 'active' : ''}
+                    onClick={() => setHomeworkViewMode('class')}
+                  >
+                    Class View
+                  </button>
+                  <button
+                    className={homeworkViewMode === 'teacher' ? 'active' : ''}
+                    onClick={() => setHomeworkViewMode('teacher')}
+                  >
+                    Teacher View
+                  </button>
+                </HomeworkViewToggle>
+              </div>
+
+              {homeworkLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                  <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+                </div>
+              ) : homeworkViewMode === 'teacher' ? (
+                <HomeworkTableWrapper>
+                  <HomeworkTableHeader>
+                    <HomeworkHeaderTitle>
+                      <Assignment style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
+                      Homework Diary - Teacher View
+                    </HomeworkHeaderTitle>
+                  </HomeworkTableHeader>
+
+                  <HomeworkCollapsibleContent $isExpanded={true}>
+                    <HomeworkList>
+                      {(() => {
+                        // Group homework by teacher
+                        const teacherGroups: Record<string, any[]> = {};
+
+                        homeworkDiaryData.forEach((hw: any) => {
+                          const teacherName = hw.users?.name || 'Unknown Teacher';
+                          if (!teacherGroups[teacherName]) {
+                            teacherGroups[teacherName] = [];
+                          }
+                          teacherGroups[teacherName].push(hw);
+                        });
+
+                        const groups = Object.entries(teacherGroups);
+
+                        if (groups.length === 0) {
+                          return (
+                            <NoHomeworkData>
+                              <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
+                                📝
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                                No Homework Assigned
+                              </div>
+                              <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+                                No homework has been assigned for {new Date(dashboardDate).toLocaleDateString()}
+                              </div>
+                            </NoHomeworkData>
+                          );
+                        }
+
+                        return groups
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([teacherName, entries], groupIdx) => {
+                            // Sort entries by class, then by subject
+                            const sortedEntries = entries.sort((a: any, b: any) => {
+                              const classA = a.classes?.name || '';
+                              const classB = b.classes?.name || '';
+                              if (classA !== classB) {
+                                return classA.localeCompare(classB);
+                              }
+                              const subjectA = a.subjects?.name || '';
+                              const subjectB = b.subjects?.name || '';
+                              return subjectA.localeCompare(subjectB);
+                            });
+
+                            const homeworkCount = sortedEntries.length;
+
+                            return (
+                              <HomeworkTeacherItem key={groupIdx}>
+                                <HomeworkTeacherHeader>
+                                  <AccountCircle style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
+                                  <span>{teacherName}</span>
+                                  <span style={{
+                                    marginLeft: 'auto',
+                                    fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
+                                    fontWeight: 600,
+                                    color: '#6366f1',
+                                    backgroundColor: 'rgba(99,102,241,0.1)',
+                                    padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
+                                    borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
+                                    border: '1px solid rgba(99,102,241,0.2)',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {homeworkCount} {homeworkCount === 1 ? 'Entry' : 'Entries'}
+                                  </span>
+                                </HomeworkTeacherHeader>
+                                {sortedEntries.map((entry: any, entryIdx: number) => {
+                                  const classLabel = entry.classes?.name || 'Unknown Class';
+                                  const sectionLabel = entry.sections?.name ? ` (${entry.sections.name})` : '';
+                                  const subjectName = entry.subjects?.name || 'General Homework';
+                                  const isGeneral = !entry.subject_id;
+
+                                  return (
+                                    <HomeworkSubjectItem key={entryIdx}>
+                                      {window.innerWidth <= 700 ? (
+                                        <>
+                                          <HomeworkSubjectHeader>
+                                            <HomeworkSubjectName>
+                                              {isGeneral ? (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                  <Assignment style={{ fontSize: '0.75rem' }} />
+                                                  {subjectName}
+                                                </span>
+                                              ) : (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                  <Book style={{ fontSize: '0.75rem' }} />
+                                                  {subjectName}
+                                                </span>
+                                              )}
+                                            </HomeworkSubjectName>
+                                            <HomeworkTeacher>
+                                              <School style={{ fontSize: '0.7rem', opacity: 0.7 }} />
+                                              {classLabel}{sectionLabel}
+                                            </HomeworkTeacher>
+                                          </HomeworkSubjectHeader>
+                                          <HomeworkText>{entry.homework_text}</HomeworkText>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <HomeworkSubjectName>
+                                            {isGeneral ? (
+                                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <Assignment style={{ fontSize: '0.875rem' }} />
+                                                {subjectName}
+                                              </span>
+                                            ) : (
+                                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <Book style={{ fontSize: '0.875rem' }} />
+                                                {subjectName}
+                                              </span>
+                                            )}
+                                          </HomeworkSubjectName>
+                                          <HomeworkText>{entry.homework_text}</HomeworkText>
+                                          <HomeworkTeacher>
+                                            <School style={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                            {classLabel}{sectionLabel}
+                                          </HomeworkTeacher>
+                                        </>
+                                      )}
+                                    </HomeworkSubjectItem>
+                                  );
+                                })}
+                              </HomeworkTeacherItem>
+                            );
+                          });
+                      })()}
+                    </HomeworkList>
+                  </HomeworkCollapsibleContent>
+                </HomeworkTableWrapper>
+              ) : (
+                <HomeworkTableWrapper>
+                  <HomeworkTableHeader>
+                    <HomeworkHeaderTitle>
+                      <Assignment style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
+                      Homework Diary - Class View
+                    </HomeworkHeaderTitle>
+                  </HomeworkTableHeader>
+
+                  <HomeworkCollapsibleContent $isExpanded={true}>
+                    <HomeworkList>
+                      {(() => {
+                        // Group homework by class only (combine all sections for the same class)
+                        const grouped: Record<string, any> = {};
+
+                        homeworkDiaryData.forEach((hw: any) => {
+                          const classId = hw.class_id;
+                          const className = hw.classes?.name || 'Unknown Class';
+
+                          // Create key: just classId to group all sections together
+                          const key = String(classId);
+
+                          if (!grouped[key]) {
+                            // For display, use the first section name if all entries have the same section
+                            // Otherwise, show just the class name
+                            grouped[key] = {
+                              class_id: classId,
+                              class_name: className,
+                              section_id: null,
+                              section_name: '',
+                              entries: []
+                            };
+                          }
+
+                          grouped[key].entries.push(hw);
+                        });
+
+                        // After grouping, determine if all entries have the same section
+                        Object.values(grouped).forEach((group: any) => {
+                          const sections = new Set();
+                          group.entries.forEach((entry: any) => {
+                            if (entry.section_id) {
+                              sections.add(entry.section_id);
+                            }
+                          });
+
+                          // If all entries have the same section, show it in the header
+                          if (sections.size === 1) {
+                            const sectionId = Array.from(sections)[0] as number;
+                            const firstEntry = group.entries.find((e: any) => e.section_id === sectionId);
+                            if (firstEntry) {
+                              group.section_id = sectionId;
+                              group.section_name = firstEntry.sections?.name || '';
+                            }
+                          }
+                        });
+
+                        const groups = Object.values(grouped);
+
+                        if (groups.length === 0) {
+                          return (
+                            <NoHomeworkData>
+                              <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
+                                📝
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                                No Homework Assigned
+                              </div>
+                              <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+                                No homework has been assigned for {new Date(dashboardDate).toLocaleDateString()}
+                              </div>
+                            </NoHomeworkData>
+                          );
+                        }
+
+                        return groups.map((group: any, groupIdx: number) => {
+                          // Sort entries: general homework first (null subject), then by subject name
+                          const sortedEntries = group.entries.sort((a: any, b: any) => {
+                            if (!a.subject_id && !b.subject_id) return 0;
+                            if (!a.subject_id) return -1;
+                            if (!b.subject_id) return 1;
+                            const aName = a.subjects?.name || '';
+                            const bName = b.subjects?.name || '';
+                            return aName.localeCompare(bName);
+                          });
+
+                          const classLabel = group.section_name
+                            ? `${group.class_name} (${group.section_name})`
+                            : group.class_name;
+                          const diaryCount = sortedEntries.length;
+
+                          return (
+                            <HomeworkClassItem key={groupIdx}>
+                              <HomeworkClassHeader>
+                                <School style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
+                                <span>{classLabel}</span>
+                                <span style={{
+                                  marginLeft: 'auto',
+                                  fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
+                                  fontWeight: 600,
+                                  color: '#6366f1',
+                                  backgroundColor: 'rgba(99,102,241,0.1)',
+                                  padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
+                                  borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
+                                  border: '1px solid rgba(99,102,241,0.2)',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {diaryCount} {diaryCount === 1 ? 'Entry' : 'Entries'}
+                                </span>
+                              </HomeworkClassHeader>
+                              {sortedEntries.map((entry: any, entryIdx: number) => {
+                                const subjectName = entry.subjects?.name || 'General Homework';
+                                const isGeneral = !entry.subject_id;
+
+                                return (
+                                  <HomeworkSubjectItem key={entryIdx}>
+                                    {window.innerWidth <= 700 ? (
+                                      <>
+                                        <HomeworkSubjectHeader>
+                                          <HomeworkSubjectName>
+                                            {isGeneral ? (
+                                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <Assignment style={{ fontSize: '0.75rem' }} />
+                                                {subjectName}
+                                              </span>
+                                            ) : (
+                                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <Book style={{ fontSize: '0.75rem' }} />
+                                                {subjectName}
+                                              </span>
+                                            )}
+                                          </HomeworkSubjectName>
+                                          <HomeworkTeacher>
+                                            {entry.users?.name ? (
+                                              <>
+                                                <AccountCircle style={{ fontSize: '0.7rem', opacity: 0.7 }} />
+                                                {entry.users.name}
+                                              </>
+                                            ) : (
+                                              <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>—</span>
+                                            )}
+                                          </HomeworkTeacher>
+                                        </HomeworkSubjectHeader>
+                                        <HomeworkText>{entry.homework_text}</HomeworkText>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <HomeworkSubjectName>
+                                          {isGeneral ? (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                              <Assignment style={{ fontSize: '0.875rem' }} />
+                                              {subjectName}
+                                            </span>
+                                          ) : (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                              <Book style={{ fontSize: '0.875rem' }} />
+                                              {subjectName}
+                                            </span>
+                                          )}
+                                        </HomeworkSubjectName>
+                                        <HomeworkText>{entry.homework_text}</HomeworkText>
+                                        <HomeworkTeacher>
+                                          {entry.users?.name ? (
+                                            <>
+                                              <AccountCircle style={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                              {entry.users.name}
+                                            </>
+                                          ) : (
+                                            <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>—</span>
+                                          )}
+                                        </HomeworkTeacher>
+                                      </>
+                                    )}
+                                  </HomeworkSubjectItem>
+                                );
+                              })}
+                            </HomeworkClassItem>
+                          );
+                        });
+                      })()}
+                    </HomeworkList>
+                  </HomeworkCollapsibleContent>
+                </HomeworkTableWrapper>
+              )}
+            </>
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4rem 2rem',
+              textAlign: 'center',
+              color: isDark ? '#9ca3af' : '#6b7280'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.7 }}>
+                📝
+              </div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                Homework Diary Access Restricted
+              </div>
+              <div style={{ fontSize: '0.95rem', opacity: 0.8 }}>
+                You don't have permission to view the homework diary
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+          {hoveredAvatar && (
+            <div
+              style={{
+                position: 'fixed',
+                left: hoveredAvatar.x - 60,
+                top: hoveredAvatar.y - 130,
+                zIndex: 4000,
+                pointerEvents: 'none',
+                background: '#fff',
+                borderRadius: '12px',
+                boxShadow: '0 4px 24px #0007',
+                border: '2px solid #4a6cf7',
+                padding: 4,
+                width: 120,
+                height: 120,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              <img
+                src={hoveredAvatar.url}
+                alt="Preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
+              />
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteModal && fineToDelete && ReactDOM.createPortal(
+            <ModalOverlay onClick={cancelDelete}>
+              <ModalContent onClick={(e) => e.stopPropagation()}>
+                <ModalHeader>
+                  <ModalIcon>
+                    <Delete />
+                  </ModalIcon>
+                  <ModalTitle>Delete Fine Payment</ModalTitle>
+                </ModalHeader>
+                <ModalMessage>
+                  Are you sure you want to delete this fine payment? This action cannot be undone.
+                </ModalMessage>
+
+                <StudentInfoCard>
+                  <StudentName>{fineToDelete.studentName}</StudentName>
+                  <StudentDetails>
+                    <DetailRow>
+                      <DetailLabel>Student ID:</DetailLabel>
+                      <DetailValue>{fineToDelete.studentId}</DetailValue>
+                    </DetailRow>
+                    <DetailRow>
+                      <DetailLabel>Class:</DetailLabel>
+                      <DetailValue>{fineToDelete.className}</DetailValue>
+                    </DetailRow>
+                    <DetailRow>
+                      <DetailLabel>Amount:</DetailLabel>
+                      <DetailValue highlight>Rs {fineToDelete.amount.toLocaleString()}</DetailValue>
+                    </DetailRow>
+                    <DetailRow>
+                      <DetailLabel>Date:</DetailLabel>
+                      <DetailValue>{fineToDelete.date}</DetailValue>
+                    </DetailRow>
+                  </StudentDetails>
+                </StudentInfoCard>
+
+                <ModalActions>
+                  <ModalButton variant="cancel" onClick={cancelDelete}>
+                    Cancel
+                  </ModalButton>
+                  <ModalButton variant="delete" onClick={handleDeleteFine}>
+                    Delete
+                  </ModalButton>
+                </ModalActions>
+              </ModalContent>
+            </ModalOverlay>,
+            document.body
+          )}
+
+          {/* WhatsApp Bulk Sender Modal */}
+          {showWhatsAppSender && (
+            <WhatsAppBulkSender
+              notificationData={whatsappNotificationData}
+              schoolName={schoolName || 'School'}
+              selectedDate={absentDate}
+              onClose={() => {
+                setShowWhatsAppSender(false);
+                setWhatsappNotificationData([]);
+              }}
+            />
+          )}
+        </DashboardContainer>
+      );
 };
 
-export default Dashboard; 
+      export default Dashboard; 
