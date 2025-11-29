@@ -7,12 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { sortClasses } from '../utils/classUtils';
 import { homeworkDiaryService } from '../services/homeworkDiaryService';
 import { HomeworkDiary, BulkHomeworkAssignmentDTO } from '../types/homeworkDiary';
-import { 
-  Assignment, 
-  CalendarToday, 
-  Class, 
-  Book, 
-  Save, 
+import {
+  Assignment,
+  CalendarToday,
+  Class,
+  Book,
+  Save,
   Delete,
   Edit,
   Add,
@@ -386,7 +386,7 @@ const HomeworkCardsGrid = styled.div`
 `;
 
 const HomeworkCard = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525' 
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%), ' + theme.CARD
     : 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.03) 100%), ' + theme.CARD};
   border-radius: 16px;
@@ -416,9 +416,9 @@ const HomeworkCard = styled.div`
     box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
     transform: translateY(-2px);
     border-color: ${({ theme }) => theme.BG === '#252525' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)'};
-    background: ${({ theme }) => theme.BG === '#252525' 
-      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.08) 100%), ' + theme.CARD
-      : 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%), ' + theme.CARD};
+    background: ${({ theme }) => theme.BG === '#252525'
+    ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.08) 100%), ' + theme.CARD
+    : 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%), ' + theme.CARD};
     
     &::before {
       opacity: 1;
@@ -910,6 +910,28 @@ const EmptyStateSubtext = styled.p`
   }
 `;
 
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem;
+  width: 100%;
+`;
+
+const Spinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 4px solid ${({ theme }) => theme.BORDER};
+  border-top: 4px solid ${({ theme }) => theme.ACCENT};
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
 const FormSection = styled.div`
   background: ${({ theme }) => theme.CARD};
   border-radius: 16px;
@@ -1172,15 +1194,59 @@ interface ClassSubject {
   };
 }
 
+const ToggleChip = styled.button<{ active: boolean }>`
+  background: ${({ theme, active }) => active ? theme.ACCENT : 'transparent'};
+  color: ${({ theme, active }) => active ? '#fff' : theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme, active }) => active ? theme.ACCENT : theme.BORDER};
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  
+  &:hover {
+    background: ${({ theme, active }) => active ? theme.ACCENT : theme.HOVER_BG};
+  }
+`;
+
+const FixedFooter = styled.div`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: ${({ theme }) => theme.CARD};
+  padding: 1rem 2rem;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  z-index: 100;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    
+    button {
+      flex: 1;
+      padding: 0.625rem;
+      font-size: 0.875rem;
+    }
+  }
+`;
+
 const HomeworkDiaryManager: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const { user } = useAuth();
   const toast = useToast();
   const { logHomeworkDiaryActivity } = useActivityTracking();
-  
+
   // Get the actual theme object
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
-  
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<number | ''>('');
   const [classes, setClasses] = useState<Class[]>([]);
@@ -1193,7 +1259,7 @@ const HomeworkDiaryManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState(true);
-  
+
   // Form state for adding/editing homework
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -1202,10 +1268,41 @@ const HomeworkDiaryManager: React.FC = () => {
   const editFormRef = useRef<HTMLDivElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
-  
+
   // Bulk assignment state
   const [showBulkForm, setShowBulkForm] = useState(false);
   const [bulkAssignments, setBulkAssignments] = useState<Array<{ subject_id: number | null; homework_text: string }>>([]);
+
+  // New Bulk Mode State
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkGroups, setBulkGroups] = useState<BulkClassSectionGroup[]>([]);
+  const [hiddenGroups, setHiddenGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroupVisibility = (groupId: string) => {
+    const newHidden = new Set(hiddenGroups);
+    if (newHidden.has(groupId)) {
+      newHidden.delete(groupId);
+    } else {
+      newHidden.add(groupId);
+    }
+    setHiddenGroups(newHidden);
+  };
+
+  interface BulkSubjectAssignment {
+    id?: number;
+    subject_id: number;
+    subject_name: string;
+    homework_text: string;
+    original_text?: string;
+  }
+
+  interface BulkClassSectionGroup {
+    class_id: number;
+    class_name: string;
+    section_id: number | null;
+    section_name: string | null;
+    assignments: BulkSubjectAssignment[];
+  }
 
   // Check if selected date is Sunday (use useMemo to avoid recalculation on every render)
   const isSelectedDateSunday = useMemo(() => {
@@ -1221,35 +1318,35 @@ const HomeworkDiaryManager: React.FC = () => {
   // Fetch active sessions
   useEffect(() => {
     if (!user?.school_id) return;
-    
+
     const fetchSessions = async () => {
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
         .eq('school_id', user.school_id)
         .order('name', { ascending: false });
-      
+
       if (error) {
         return;
       }
-      
+
       setSessions(data || []);
       const activeSession = data?.find(s => s.is_active);
       if (activeSession) {
         setSelectedSession(activeSession.id);
       }
     };
-    
+
     fetchSessions();
   }, [user?.school_id]);
 
   // Fetch classes (no session requirement)
   useEffect(() => {
     if (!user?.school_id) return;
-    
+
     const fetchClasses = async () => {
       setLoading(true);
-      
+
       try {
         if (user?.role === 'Teacher' && user?.staff_id) {
           // For teachers, get classes where they have assigned subjects
@@ -1264,9 +1361,9 @@ const HomeworkDiaryManager: React.FC = () => {
             `)
             .eq('teacher_id', user.staff_id)
             .eq('school_id', user?.school_id);
-          
+
           if (error) throw error;
-          
+
           // Extract unique classes from the nested structure
           const uniqueClasses = new Map();
           data?.forEach(item => {
@@ -1275,7 +1372,7 @@ const HomeworkDiaryManager: React.FC = () => {
               uniqueClasses.set(classData.id, classData);
             }
           });
-          
+
           const teacherClasses = Array.from(uniqueClasses.values());
           const sortedClasses = sortClasses(teacherClasses);
           setClasses(sortedClasses);
@@ -1286,9 +1383,9 @@ const HomeworkDiaryManager: React.FC = () => {
             .select('id, name, has_sections')
             .eq('school_id', user.school_id)
             .order('name');
-          
+
           if (error) throw error;
-          
+
           const sortedClasses = sortClasses(data || []);
           setClasses(sortedClasses);
         }
@@ -1298,7 +1395,7 @@ const HomeworkDiaryManager: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchClasses();
   }, [user?.school_id, user?.role, user?.staff_id]);
 
@@ -1318,17 +1415,17 @@ const HomeworkDiaryManager: React.FC = () => {
       setSelectedSection('');
       return;
     }
-    
+
     const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
     const hasSections = selectedClassObj?.has_sections ?? true;
     setSelectedClassHasSections(hasSections);
-    
+
     if (!hasSections) {
       setSections([]);
       setSelectedSection('');
       return;
     }
-    
+
     const fetchSections = async () => {
       try {
         if (user?.role === 'Teacher' && user?.staff_id) {
@@ -1345,9 +1442,9 @@ const HomeworkDiaryManager: React.FC = () => {
             .eq('teacher_id', user.staff_id)
             .eq('school_id', user?.school_id)
             .eq('class_subjects.class_id', selectedClass);
-          
+
           if (error) throw error;
-          
+
           // Extract unique sections from the nested structure
           const uniqueSections = new Map();
           data?.forEach(item => {
@@ -1358,7 +1455,7 @@ const HomeworkDiaryManager: React.FC = () => {
               }
             }
           });
-          
+
           // Fetch full section details for the unique section IDs
           if (uniqueSections.size > 0) {
             const sectionIds = Array.from(uniqueSections.keys());
@@ -1368,14 +1465,14 @@ const HomeworkDiaryManager: React.FC = () => {
               .in('id', sectionIds)
               .eq('school_id', user.school_id)
               .order('name');
-            
+
             if (sectionsError) throw sectionsError;
-          setSections(sectionsData || []);
-          // If teacher has exactly one class and there is exactly one section, auto-select it
-          if (classes.length === 1 && (sectionsData?.length || 0) === 1 && !selectedSection) {
-            setSelectedSection(sectionsData![0].id);
-          }
-        } else {
+            setSections(sectionsData || []);
+            // If teacher has exactly one class and there is exactly one section, auto-select it
+            if (classes.length === 1 && (sectionsData?.length || 0) === 1 && !selectedSection) {
+              setSelectedSection(sectionsData![0].id);
+            }
+          } else {
             setSections([]);
           }
         } else {
@@ -1386,12 +1483,12 @@ const HomeworkDiaryManager: React.FC = () => {
             .eq('class_id', selectedClass)
             .eq('school_id', user.school_id)
             .order('name');
-          
+
           if (error) {
             toast.showToast('Failed to load sections', 'error');
             return;
           }
-          
+
           const filteredSections = data || [];
           setSections(filteredSections);
           // If teacher has exactly one class and there is exactly one section, auto-select it
@@ -1403,7 +1500,7 @@ const HomeworkDiaryManager: React.FC = () => {
         toast.showToast('Failed to load sections', 'error');
       }
     };
-    
+
     fetchSections();
   }, [selectedClass, selectedSession, user?.school_id, user?.role, user?.staff_id, classes]);
 
@@ -1413,7 +1510,7 @@ const HomeworkDiaryManager: React.FC = () => {
       setSubjects([]);
       return;
     }
-    
+
     const fetchSubjects = async () => {
       try {
         if (user?.role === 'Teacher' && user?.staff_id) {
@@ -1431,9 +1528,9 @@ const HomeworkDiaryManager: React.FC = () => {
             .eq('teacher_id', user.staff_id)
             .eq('school_id', user.school_id)
             .eq('class_subjects.class_id', selectedClass);
-          
+
           if (error) throw error;
-          
+
           if (data && data.length > 0) {
             const subjects = data.map((item: any) => item.class_subjects).filter(Boolean);
             setSubjects(subjects);
@@ -1452,7 +1549,7 @@ const HomeworkDiaryManager: React.FC = () => {
             `)
             .eq('class_id', selectedClass)
             .eq('school_id', user.school_id);
-          
+
           if (error) throw error;
           // Fix: Ensure subject is a single object, not an array
           const fixedData = (data || []).map((item: any) => ({
@@ -1465,23 +1562,23 @@ const HomeworkDiaryManager: React.FC = () => {
         toast.showToast('Failed to load subjects', 'error');
       }
     };
-    
+
     fetchSubjects();
   }, [selectedClass, user?.school_id, user?.role, user?.staff_id]);
 
   // Fetch existing homework entries
   const fetchHomeworkEntries = async () => {
     if (!user?.school_id || !selectedClass || !selectedDate) return;
-    
+
     try {
       setLoading(true);
       const dateStr = selectedDate.format('YYYY-MM-DD');
       // For non-sectioned classes, section_id should be null
       // For sectioned classes, use the selected section (can be empty to show all sections)
-      const sectionId = selectedClassHasSections 
+      const sectionId = selectedClassHasSections
         ? (selectedSection ? Number(selectedSection) : null)
         : null;
-      
+
       // Pass teacher ID if user is a teacher to filter by teacher's subjects
       const entries = await homeworkDiaryService.getHomeworkByClassAndDate(
         Number(selectedClass),
@@ -1490,15 +1587,15 @@ const HomeworkDiaryManager: React.FC = () => {
         user.school_id,
         user?.role === 'Teacher' ? user.staff_id : null
       );
-      
+
       setHomeworkEntries(entries);
-      
+
       // Log view activity
       try {
         const selectedClassObj = classes.find(c => c.id === Number(selectedClass));
         const selectedSectionObj = sections.find(s => s.id === Number(selectedSection));
         const dateStr = selectedDate.format('YYYY-MM-DD');
-        
+
         await logHomeworkDiaryActivity(
           'view',
           selectedClassObj?.name || 'Unknown Class',
@@ -1544,7 +1641,7 @@ const HomeworkDiaryManager: React.FC = () => {
         subject_id: subj.subject_id,
         homework_text: homeworkMap.get(subj.subject_id) || ''
       }));
-      
+
       setBulkAssignments(assignments);
     } else if (subjects.length > 0 && showBulkForm) {
       // If class/date not selected yet, initialize with empty fields
@@ -1555,12 +1652,302 @@ const HomeworkDiaryManager: React.FC = () => {
     }
   }, [subjects, showBulkForm, homeworkEntries, selectedClass, selectedDate]);
 
+  // Fetch data for Bulk Mode
+  useEffect(() => {
+    if (!isBulkMode || !user?.school_id || !selectedDate) return;
+
+    const loadBulkData = async () => {
+      setLoading(true);
+      try {
+        // 1. Get all relevant sections
+        let allSections: Section[] = [];
+        const classIds = classes.map(c => c.id);
+
+        if (classIds.length === 0) {
+          setBulkGroups([]);
+          setLoading(false);
+          return;
+        }
+
+        if (user?.role === 'Teacher' && user?.staff_id) {
+          // Fetch sections assigned to teacher
+          const { data: teacherData, error: teacherError } = await supabase
+            .from('teacher_class_subjects')
+            .select('section_id, class_subjects(class_id)')
+            .eq('teacher_id', user.staff_id)
+            .eq('school_id', user.school_id);
+
+          if (teacherError) throw teacherError;
+
+          const sectionIds = teacherData
+            .map((t: any) => t.section_id)
+            .filter((id: any) => id !== null); // Filter nulls
+
+          if (sectionIds.length > 0) {
+            const { data: secData, error: secError } = await supabase
+              .from('sections')
+              .select('*')
+              .in('id', sectionIds)
+              .order('name');
+            if (secError) throw secError;
+            allSections = secData || [];
+          }
+        } else {
+          // Admin: Fetch all sections for these classes
+          const { data: secData, error: secError } = await supabase
+            .from('sections')
+            .select('*')
+            .in('class_id', classIds)
+            .eq('school_id', user.school_id)
+            .order('name');
+          if (secError) throw secError;
+          allSections = secData || [];
+        }
+
+        // 2. Get all relevant subjects
+        let allSubjects: any[] = []; // Store class_subjects
+
+        if (user?.role === 'Teacher' && user?.staff_id) {
+          const { data: subData, error: subError } = await supabase
+            .from('teacher_class_subjects')
+            .select(`
+                  class_subjects!inner(
+                    id,
+                    class_id,
+                    subject_id,
+                    subject:subjects(name, code)
+                  ),
+                  section_id
+                `)
+            .eq('teacher_id', user.staff_id)
+            .eq('school_id', user.school_id);
+
+          if (subError) throw subError;
+          // Map to a structure we can use
+          allSubjects = subData.map((item: any) => ({
+            ...item.class_subjects,
+            section_id: item.section_id // Attach section_id if specific
+          }));
+        } else {
+          const { data: subData, error: subError } = await supabase
+            .from('class_subjects')
+            .select(`
+                  id,
+                  class_id,
+                  subject_id,
+                  subject:subjects(name, code)
+                `)
+            .in('class_id', classIds)
+            .eq('school_id', user.school_id);
+
+          if (subError) throw subError;
+          allSubjects = subData || [];
+        }
+
+        // 3. Fetch existing homework for this date
+        const dateStr = selectedDate.format('YYYY-MM-DD');
+        const { data: existingHomework, error: homeworkError } = await supabase
+          .from('homework_diary')
+          .select('*')
+          .eq('school_id', user.school_id)
+          .eq('homework_date', dateStr);
+
+        if (homeworkError) throw homeworkError;
+
+        // Create a lookup map: `${class_id}-${section_id || 'null'}-${subject_id}` -> Entry
+        const homeworkMap = new Map();
+        existingHomework?.forEach(h => {
+          const key = `${h.class_id}-${h.section_id || 'null'}-${h.subject_id}`;
+          homeworkMap.set(key, h);
+        });
+
+        // 4. Build Groups
+        const groups: BulkClassSectionGroup[] = [];
+
+        for (const cls of classes) {
+          // Determine sections for this class
+          const classSections = allSections.filter(s => s.class_id === cls.id);
+
+          if (cls.has_sections) {
+            if (classSections.length === 0) {
+              continue;
+            }
+
+            for (const section of classSections) {
+              // Find subjects for this class/section
+              let relevantSubjects = [];
+              if (user?.role === 'Teacher') {
+                relevantSubjects = allSubjects.filter(s =>
+                  s.class_id === cls.id &&
+                  (s.section_id === section.id || s.section_id === null)
+                );
+              } else {
+                relevantSubjects = allSubjects.filter(s => s.class_id === cls.id);
+              }
+
+              // Deduplicate subjects
+              const uniqueSubjects = new Map();
+              relevantSubjects.forEach(s => {
+                const subj = Array.isArray(s.subject) ? s.subject[0] : s.subject;
+                if (!uniqueSubjects.has(s.subject_id)) {
+                  const key = `${cls.id}-${section.id}-${s.subject_id}`;
+                  const existing = homeworkMap.get(key);
+
+                  uniqueSubjects.set(s.subject_id, {
+                    id: existing?.id,
+                    subject_id: s.subject_id,
+                    subject_name: subj.name,
+                    homework_text: existing?.homework_text || '',
+                    original_text: existing?.homework_text || ''
+                  });
+                }
+              });
+
+              if (uniqueSubjects.size > 0) {
+                groups.push({
+                  class_id: cls.id,
+                  class_name: cls.name,
+                  section_id: section.id,
+                  section_name: section.name,
+                  assignments: Array.from(uniqueSubjects.values())
+                });
+              }
+            }
+          } else {
+            // No sections
+            let relevantSubjects = [];
+            if (user?.role === 'Teacher') {
+              relevantSubjects = allSubjects.filter(s => s.class_id === cls.id);
+            } else {
+              relevantSubjects = allSubjects.filter(s => s.class_id === cls.id);
+            }
+
+            const uniqueSubjects = new Map();
+            relevantSubjects.forEach(s => {
+              const subj = Array.isArray(s.subject) ? s.subject[0] : s.subject;
+              if (!uniqueSubjects.has(s.subject_id)) {
+                const key = `${cls.id}-null-${s.subject_id}`;
+                const existing = homeworkMap.get(key);
+
+                uniqueSubjects.set(s.subject_id, {
+                  id: existing?.id,
+                  subject_id: s.subject_id,
+                  subject_name: subj.name,
+                  homework_text: existing?.homework_text || '',
+                  original_text: existing?.homework_text || ''
+                });
+              }
+            });
+
+            if (uniqueSubjects.size > 0) {
+              groups.push({
+                class_id: cls.id,
+                class_name: cls.name,
+                section_id: null,
+                section_name: null,
+                assignments: Array.from(uniqueSubjects.values())
+              });
+            }
+          }
+        }
+
+        setBulkGroups(groups);
+
+      } catch (error) {
+        console.error(error);
+        toast.showToast('Failed to load bulk data', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBulkData();
+  }, [isBulkMode, user?.school_id, classes, selectedDate]);
+
+  const handleGlobalBulkSave = async () => {
+    if (!user?.school_id || !selectedSession || !selectedDate) {
+      toast.showToast('Missing required information', 'error');
+      return;
+    }
+
+    const dateStr = selectedDate.format('YYYY-MM-DD');
+    if (isSunday(parseISO(dateStr))) {
+      toast.showToast('Homework cannot be assigned on Sunday', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const promises = [];
+
+      for (const group of bulkGroups) {
+        for (const assignment of group.assignments) {
+          // Skip if no changes
+          if (assignment.homework_text === assignment.original_text) continue;
+
+          if (assignment.id) {
+            // Update existing
+            if (!assignment.homework_text.trim()) {
+              // If empty, delete
+              promises.push(homeworkDiaryService.deleteHomeworkDiary(assignment.id, user.school_id!));
+            } else {
+              // Update - Only send content, preserve creator
+              promises.push(homeworkDiaryService.updateHomeworkDiary(
+                assignment.id,
+                {
+                  id: assignment.id,
+                  homework_text: assignment.homework_text,
+                  // Explicitly NOT sending created_by or user_id to preserve original creator
+                },
+                user.school_id!
+              ));
+            }
+          } else if (assignment.homework_text.trim()) {
+            // Create new
+            promises.push(homeworkDiaryService.createHomeworkDiary(
+              {
+                class_id: group.class_id,
+                section_id: group.section_id,
+                session_id: Number(selectedSession),
+                subject_id: assignment.subject_id,
+                homework_date: dateStr,
+                homework_text: assignment.homework_text
+              },
+              user.school_id!,
+              user.id!
+            ));
+          }
+        }
+      }
+
+      await Promise.all(promises);
+
+      toast.showToast(`Successfully saved changes`, 'success');
+
+      // Reload data to reflect changes
+      // We can just trigger the effect by toggling a dummy state or just calling the function if we extracted it.
+      // Or simpler: just close bulk mode or let the user stay. 
+      // If staying, we should update 'original_text' to match current.
+      // For now, let's just exit bulk mode as per previous behavior, or maybe stay?
+      // Previous behavior was exit.
+      setIsBulkMode(false);
+
+      if (selectedClass) {
+        fetchHomeworkEntries();
+      }
+    } catch (error: any) {
+      toast.showToast(error.message || 'Failed to save bulk homework', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveHomework = async () => {
     if (!user?.school_id || !selectedClass || !selectedDate || !homeworkText.trim() || !selectedSubjectForEdit) {
       toast.showToast('Please fill in all required fields including subject', 'error');
       return;
     }
-    
+
     // Check if selected date is Sunday
     if (selectedDate) {
       const dateStr = selectedDate.format('YYYY-MM-DD');
@@ -1569,32 +1956,32 @@ const HomeworkDiaryManager: React.FC = () => {
         return;
       }
     }
-    
+
     // Session is required for saving homework
     if (!selectedSession) {
       toast.showToast('Please select a session to assign homework', 'error');
       return;
     }
-    
+
     // Validate section selection for sectioned classes
     if (selectedClassHasSections && !selectedSection) {
       toast.showToast('Please select a section for this class', 'error');
       return;
     }
-    
+
     try {
       setSaving(true);
       const dateStr = selectedDate.format('YYYY-MM-DD');
       // For non-sectioned classes, section_id should be null
       // For sectioned classes, use the selected section or null if not selected
-      const sectionId = selectedClassHasSections 
+      const sectionId = selectedClassHasSections
         ? (selectedSection ? Number(selectedSection) : null)
         : null;
       const subjectId =
-      typeof selectedSubjectForEdit === 'number'
-        ? selectedSubjectForEdit
-        : (selectedSubjectForEdit ? Number(selectedSubjectForEdit) : null);
-      
+        typeof selectedSubjectForEdit === 'number'
+          ? selectedSubjectForEdit
+          : (selectedSubjectForEdit ? Number(selectedSubjectForEdit) : null);
+
       if (isEditing && editingId) {
         await homeworkDiaryService.updateHomeworkDiary(
           editingId,
@@ -1606,13 +1993,13 @@ const HomeworkDiaryManager: React.FC = () => {
           user.school_id
         );
         toast.showToast('Homework updated successfully', 'success');
-        
+
         // Log update activity
         try {
           const selectedClassObj = classes.find(c => c.id === Number(selectedClass));
           const selectedSectionObj = sections.find(s => s.id === Number(selectedSection));
           const selectedSubjectObj = subjects.find(s => s.subject_id === subjectId);
-          
+
           await logHomeworkDiaryActivity(
             'update',
             selectedClassObj?.name || 'Unknown Class',
@@ -1638,13 +2025,13 @@ const HomeworkDiaryManager: React.FC = () => {
           user.id!
         );
         toast.showToast('Homework assigned successfully', 'success');
-        
+
         // Log create activity
         try {
           const selectedClassObj = classes.find(c => c.id === Number(selectedClass));
           const selectedSectionObj = sections.find(s => s.id === Number(selectedSection));
           const selectedSubjectObj = subjects.find(s => s.subject_id === subjectId);
-          
+
           await logHomeworkDiaryActivity(
             'create',
             selectedClassObj?.name || 'Unknown Class',
@@ -1657,98 +2044,15 @@ const HomeworkDiaryManager: React.FC = () => {
           // Don't fail the operation if activity logging fails
         }
       }
-      
+
       // Reset form
       setHomeworkText('');
       setSelectedSubjectForEdit('');
       setIsEditing(false);
       setEditingId(null);
       setShowBulkForm(false);
-      
-      // Refresh homework entries
-      await fetchHomeworkEntries();
-    } catch (error: any) {
-      toast.showToast(error.message || 'Failed to save homework', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
-  const handleBulkSave = async () => {
-    if (!user?.school_id || !selectedClass || !selectedDate) {
-      toast.showToast('Please select class and date', 'error');
-      return;
-    }
-    
-    // Check if selected date is Sunday
-    if (selectedDate) {
-      const dateStr = selectedDate.format('YYYY-MM-DD');
-      if (isSunday(parseISO(dateStr))) {
-        toast.showToast('Homework cannot be assigned on Sunday', 'error');
-        return;
-      }
-    }
-    
-    // Session is required for saving homework
-    if (!selectedSession) {
-      toast.showToast('Please select a session to assign homework', 'error');
-      return;
-    }
-    
-    // Validate section selection for sectioned classes
-    if (selectedClassHasSections && !selectedSection) {
-      toast.showToast('Please select a section for this class', 'error');
-      return;
-    }
-    
-    const validAssignments = bulkAssignments.filter(a => a.homework_text.trim());
-    if (validAssignments.length === 0) {
-      toast.showToast('Please enter at least one homework assignment', 'error');
-      return;
-    }
-    
-    try {
-      setSaving(true);
-      const dateStr = selectedDate.format('YYYY-MM-DD');
-      // For non-sectioned classes, section_id should be null
-      // For sectioned classes, use the selected section
-      const sectionId = selectedClassHasSections 
-        ? (selectedSection ? Number(selectedSection) : null)
-        : null;
-      
-      await homeworkDiaryService.bulkAssignHomework(
-        {
-          class_id: Number(selectedClass),
-          section_id: sectionId,
-          session_id: Number(selectedSession),
-          homework_date: dateStr,
-          assignments: validAssignments
-        },
-        user.school_id,
-        user.id!
-      );
-      
-      toast.showToast(`Successfully assigned homework for ${validAssignments.length} subject(s)`, 'success');
-      
-      // Log create activity for bulk assignment
-      try {
-        const selectedClassObj = classes.find(c => c.id === Number(selectedClass));
-        const selectedSectionObj = sections.find(s => s.id === Number(selectedSection));
-        
-        await logHomeworkDiaryActivity(
-          'create',
-          selectedClassObj?.name || 'Unknown Class',
-          selectedSectionObj?.name || null,
-          null, // Multiple subjects, so null
-          dateStr,
-          validAssignments.length
-        );
-      } catch (activityError) {
-        // Don't fail the operation if activity logging fails
-      }
-      
-      setShowBulkForm(false);
-      setBulkAssignments([]);
+      // Refresh homework entries
       await fetchHomeworkEntries();
     } catch (error: any) {
       toast.showToast(error.message || 'Failed to save homework', 'error');
@@ -1773,12 +2077,12 @@ const HomeworkDiaryManager: React.FC = () => {
     setSelectedSubjectForEdit(entry.subject_id || '');
     setHomeworkText(entry.homework_text);
     setShowBulkForm(false);
-    
+
     // Scroll to edit form after state update
     setTimeout(() => {
       if (editFormRef.current) {
-        editFormRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
+        editFormRef.current.scrollIntoView({
+          behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
         });
@@ -1797,21 +2101,21 @@ const HomeworkDiaryManager: React.FC = () => {
       setEntryToDelete(null);
       return;
     }
-    
+
     try {
       // Get entry details before deleting for activity logging
       const entryToDeleteData = homeworkEntries.find(e => e.id === entryToDelete);
-      
+
       await homeworkDiaryService.deleteHomeworkDiary(entryToDelete, user.school_id);
       toast.showToast('Homework deleted successfully', 'success');
-      
+
       // Log delete activity
       if (entryToDeleteData) {
         try {
           const selectedClassObj = classes.find(c => c.id === entryToDeleteData.class_id);
           const selectedSectionObj = sections.find(s => s.id === entryToDeleteData.section_id);
           const selectedSubjectObj = subjects.find(s => s.subject_id === entryToDeleteData.subject_id);
-          
+
           await logHomeworkDiaryActivity(
             'delete',
             selectedClassObj?.name || 'Unknown Class',
@@ -1824,7 +2128,7 @@ const HomeworkDiaryManager: React.FC = () => {
           // Don't fail the operation if activity logging fails
         }
       }
-      
+
       setDeleteModalOpen(false);
       setEntryToDelete(null);
       await fetchHomeworkEntries();
@@ -1865,107 +2169,233 @@ const HomeworkDiaryManager: React.FC = () => {
           <Title theme={theme}>
             <Assignment /> Daily Homework Diary
           </Title>
-          
-          <SegmentedGroup theme={theme}>
-            <SegmentedSelect
-                theme={theme}
-                value={selectedClass}
-                onChange={(e) => {
-                  setSelectedClass(e.target.value ? Number(e.target.value) : '');
-                  setSelectedSection('');
-                  clearFormFields(); // Clear form fields when class changes
-                }}
-              style={{ minWidth: 120 }}
-              first
-              >
-                <option value="">Select Class</option>
-                {classes.map(cls => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </option>
-                ))}
-            </SegmentedSelect>
 
-            {selectedClassHasSections && (
-              <SegmentedSelect
-                  theme={theme}
-                  value={selectedSection}
-                  onChange={(e) => {
-                    setSelectedSection(e.target.value ? Number(e.target.value) : '');
-                    clearFormFields(); // Clear form fields when section changes
-                  }}
-                  disabled={!selectedClass || sections.length === 0}
-                style={{ minWidth: 120 }}
-                >
-                  <option value="">
-                    {sections.length === 0 
-                      ? 'No sections found' 
-                      : 'All Sections'}
-                  </option>
-                  {sections.map(section => (
-                    <option key={section.id} value={section.id}>
-                      {section.name}
-                    </option>
-                  ))}
-              </SegmentedSelect>
-            )}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              variant={isBulkMode ? "primary" : "secondary"}
+              onClick={() => {
+                setIsBulkMode(!isBulkMode);
+                setShowBulkForm(false);
+                setIsEditing(false);
+              }}
+              style={{ height: '32px', padding: '0 12px', fontSize: '0.85rem' }}
+            >
+              <SubjectIcon style={{ width: '16px', height: '16px' }} />
+              {isBulkMode ? 'Exit Bulk Mode' : 'Bulk Mode'}
+            </Button>
 
-            <SegmentedDatePicker theme={theme} last>
-            <DatePicker
-              value={selectedDate}
-              onChange={(newValue) => setSelectedDate(newValue)}
-              format="DD-MM-YYYY"
-              slotProps={{
-                textField: {
-                  size: 'small',
-                    variant: 'standard',
-                    InputProps: {
-                      disableUnderline: true,
+            <SegmentedGroup theme={theme}>
+              {!isBulkMode && (
+                <>
+                  <SegmentedSelect
+                    theme={theme}
+                    value={selectedClass}
+                    onChange={(e) => {
+                      setSelectedClass(e.target.value ? Number(e.target.value) : '');
+                      setSelectedSection('');
+                      clearFormFields();
+                    }}
+                    style={{ minWidth: 120 }}
+                    first
+                  >
+                    <option value="">Select Class</option>
+                    {classes.map(cls => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </SegmentedSelect>
+
+                  {selectedClassHasSections && (
+                    <SegmentedSelect
+                      theme={theme}
+                      value={selectedSection}
+                      onChange={(e) => {
+                        setSelectedSection(e.target.value ? Number(e.target.value) : '');
+                        clearFormFields();
+                      }}
+                      disabled={!selectedClass || sections.length === 0}
+                      style={{ minWidth: 120 }}
+                    >
+                      <option value="">
+                        {sections.length === 0
+                          ? 'No sections found'
+                          : 'All Sections'}
+                      </option>
+                      {sections.map(section => (
+                        <option key={section.id} value={section.id}>
+                          {section.name}
+                        </option>
+                      ))}
+                    </SegmentedSelect>
+                  )}
+                </>
+              )}
+
+              <SegmentedDatePicker theme={theme} first={isBulkMode} last>
+                <DatePicker
+                  value={selectedDate}
+                  onChange={(newValue) => setSelectedDate(newValue)}
+                  format="DD-MM-YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      variant: 'standard',
+                      InputProps: {
+                        disableUnderline: true,
+                        sx: {
+                          fontSize: '0.77em',
+                          color: theme.BG === '#252525' ? '#C0C0C0' : '#444',
+                          '& input': {
+                            padding: '0 0.5rem 0 0',
+                            height: '32px',
+                            fontSize: '0.875rem',
+                            fontFamily: 'inherit',
+                            fontWeight: 400,
+                          },
+                          '& .MuiInputAdornment-root': {
+                            marginLeft: 0,
+                            marginRight: '0.5rem',
+                            '& .MuiIconButton-root': {
+                              padding: '0.375rem',
+                              '& svg': {
+                                fontSize: '0.875rem',
+                                width: '0.875rem',
+                                height: '0.875rem',
+                              },
+                            },
+                          },
+                        },
+                      },
                       sx: {
-                        fontSize: '0.77em',
-                        color: theme.BG === '#252525' ? '#C0C0C0' : '#444',
-                        '& input': {
-                          padding: '0 0.5rem 0 0',
+                        width: '100%',
+                        '& .MuiInputBase-root': {
                           height: '32px',
-                      fontSize: '0.875rem',
+                          fontSize: '0.875rem',
+                          color: theme.BG === '#252525' ? '#C0C0C0' : '#444',
                           fontFamily: 'inherit',
                           fontWeight: 400,
-                    },
-                    '& .MuiInputAdornment-root': {
-                      marginLeft: 0,
-                          marginRight: '0.5rem',
-                      '& .MuiIconButton-root': {
-                        padding: '0.375rem',
-                        '& svg': {
-                              fontSize: '0.875rem',
-                              width: '0.875rem',
-                              height: '0.875rem',
-                        },
-                      },
                         },
                       },
                     },
-                    sx: {
-                      width: '100%',
-                      '& .MuiInputBase-root': {
-                        height: '32px',
-                        fontSize: '0.875rem',
-                        color: theme.BG === '#252525' ? '#C0C0C0' : '#444',
-                        fontFamily: 'inherit',
-                        fontWeight: 400,
-                    },
-                  },
-                },
-              }}
-            />
-            </SegmentedDatePicker>
-          </SegmentedGroup>
+                  }}
+                />
+              </SegmentedDatePicker>
+            </SegmentedGroup>
+          </div>
         </Header>
 
-        <MainContent theme={theme}>
-          {selectedClass && selectedDate ? (
+        <MainContent theme={theme} style={{ paddingBottom: '80px' }}>
+          {isBulkMode ? (
+            <div style={{ padding: '0 0.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h3 style={{ margin: 0, color: theme.TEXT_PRIMARY }}>Bulk Assignment</h3>
+                </div>
+
+                {/* Class/Section Toggles */}
+                {bulkGroups.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {bulkGroups.map(group => {
+                      const groupId = `${group.class_id}-${group.section_id}`;
+                      const isVisible = !hiddenGroups.has(groupId);
+                      return (
+                        <ToggleChip
+                          key={groupId}
+                          theme={theme}
+                          active={isVisible}
+                          onClick={() => toggleGroupVisibility(groupId)}
+                        >
+                          {isVisible ? <CheckCircle style={{ fontSize: '14px' }} /> : <Cancel style={{ fontSize: '14px' }} />}
+                          {group.class_name} {group.section_name ? `(${group.section_name})` : ''}
+                        </ToggleChip>
+                      );
+
+                    })}
+                    <ToggleChip
+                      theme={theme}
+                      active={hiddenGroups.size < bulkGroups.length}
+                      onClick={() => {
+                        if (hiddenGroups.size === bulkGroups.length) {
+                          // Select All (Clear hidden)
+                          setHiddenGroups(new Set());
+                        } else {
+                          // Deselect All (Add all to hidden)
+                          const allGroupIds = new Set(bulkGroups.map(g => `${g.class_id}-${g.section_id}`));
+                          setHiddenGroups(allGroupIds);
+                        }
+                      }}
+                      style={{ marginLeft: 'auto' }}
+                    >
+                      {hiddenGroups.size === bulkGroups.length ? (
+                        <>
+                          <CheckCircle style={{ fontSize: '14px' }} /> Select All
+                        </>
+                      ) : (
+                        <>
+                          <Cancel style={{ fontSize: '14px' }} /> Deselect All
+                        </>
+                      )}
+                    </ToggleChip>
+                  </div>
+                )}
+              </div>
+
+              {loading ? (
+                <LoadingContainer>
+                  <Spinner theme={theme} />
+                </LoadingContainer>
+              ) : (
+                <>
+                  {bulkGroups.length === 0 && (
+                    <EmptyState theme={theme}>
+                      <EmptyStateText>No classes found for bulk assignment</EmptyStateText>
+                    </EmptyState>
+                  )}
+
+                  {bulkGroups.map((group, groupIndex) => {
+                    const groupId = `${group.class_id}-${group.section_id}`;
+                    if (hiddenGroups.has(groupId)) return null;
+
+                    return (
+                      <FormSection key={groupId} theme={theme} style={{ marginBottom: '2rem' }}>
+                        <FormTitle theme={theme} style={{ borderBottom: `1px solid ${theme.BORDER}`, paddingBottom: '0.5rem' }}>
+                          <Class /> {group.class_name} {group.section_name ? `- ${group.section_name}` : ''}
+                        </FormTitle>
+                        <SubjectsGrid>
+                          {group.assignments.map((assignment, assignIndex) => (
+                            <SubjectCard key={assignment.subject_id} theme={theme}>
+                              <SubjectCardHeader theme={theme} style={{ justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  📚 {assignment.subject_name}
+                                </div>
+                                <span style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
+                                  {group.class_name} {group.section_name ? `(${group.section_name})` : ''}
+                                </span>
+                              </SubjectCardHeader>
+                              <TextArea
+                                theme={theme}
+                                placeholder={`Homework for ${assignment.subject_name}...`}
+                                value={assignment.homework_text}
+                                onChange={(e) => {
+                                  const newGroups = [...bulkGroups];
+                                  newGroups[groupIndex].assignments[assignIndex].homework_text = e.target.value;
+                                  setBulkGroups(newGroups);
+                                }}
+                                style={{ minHeight: '100px' }}
+                              />
+                            </SubjectCard>
+                          ))}
+                        </SubjectsGrid>
+                      </FormSection>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          ) : selectedClass && selectedDate ? (
             <>
-              {!showBulkForm && !isEditing && (
+              {!isEditing && (
                 <FormSection theme={theme}>
                   <FormTitle theme={theme}>
                     <Add /> Add New Homework
@@ -1993,68 +2423,6 @@ const HomeworkDiaryManager: React.FC = () => {
                     value={homeworkText}
                     onChange={(e) => setHomeworkText(e.target.value)}
                   />
-                  <ActionButtons>
-                    <Button
-                      variant="primary"
-                      onClick={handleSaveHomework}
-                      disabled={saving || !homeworkText.trim() || isSelectedDateSunday}
-                    >
-                      <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Save Homework'}
-                    </Button>
-                    {subjects.length > 0 && (
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setShowBulkForm(true);
-                          setIsEditing(false);
-                          setHomeworkText('');
-                          setSelectedSubjectForEdit('');
-                        }}
-                      >
-                        <Add /> Bulk Assign
-                      </Button>
-                    )}
-                  </ActionButtons>
-                </FormSection>
-              )}
-
-              {showBulkForm && (
-                <FormSection theme={theme}>
-                  <FormTitle theme={theme}>
-                    <SubjectIcon /> Bulk Assign Homework
-                  </FormTitle>
-                  <SubjectsGrid>
-                    {bulkAssignments.filter(a => a.subject_id !== null).map((assignment, index) => {
-                      const subject = subjects.find(s => s.subject_id === assignment.subject_id);
-                      
-                      return (
-                        <SubjectCard key={index} theme={theme}>
-                          <SubjectCardHeader theme={theme}>
-                            📚 {subject?.subject?.name || 'Unknown Subject'}
-                          </SubjectCardHeader>
-                          <TextArea
-                            theme={theme}
-                            placeholder={`Enter homework for ${subject?.subject?.name || 'this subject'}...`}
-                            value={assignment.homework_text}
-                            onChange={(e) => {
-                              const updated = [...bulkAssignments];
-                              updated[index].homework_text = e.target.value;
-                              setBulkAssignments(updated);
-                            }}
-                            style={{ minHeight: '100px' }}
-                          />
-                        </SubjectCard>
-                      );
-                    })}
-                  </SubjectsGrid>
-                  <ActionButtons>
-                    <Button variant="primary" onClick={handleBulkSave} disabled={saving || isSelectedDateSunday}>
-                      <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Save All'}
-                    </Button>
-                    <Button variant="secondary" onClick={handleCancel}>
-                      <Cancel /> Cancel
-                    </Button>
-                  </ActionButtons>
                 </FormSection>
               )}
 
@@ -2086,40 +2454,32 @@ const HomeworkDiaryManager: React.FC = () => {
                     value={homeworkText}
                     onChange={(e) => setHomeworkText(e.target.value)}
                   />
-                  <ActionButtons>
-                    <Button variant="primary" onClick={handleSaveHomework} disabled={saving || !homeworkText.trim() || isSelectedDateSunday}>
-                      <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Update Homework'}
-                    </Button>
-                    <Button variant="secondary" onClick={handleCancel}>
-                      <Cancel /> Cancel
-                    </Button>
-                  </ActionButtons>
                 </FormSection>
               )}
 
               {homeworkEntries.filter(entry => entry.subject_id !== null).length > 0 ? (
                 <HomeworkCardsGrid theme={theme}>
                   {homeworkEntries.filter(entry => entry.subject_id !== null).map(entry => (
-                  <HomeworkCard key={entry.id} theme={theme}>
-                    <HomeworkHeader theme={theme}>
-                      <SubjectName theme={theme}>
-                        <Book /> {entry.subject_name || 'Unknown Subject'}
-                      </SubjectName>
-                      <ActionButtons>
-                        <Button variant="secondary" onClick={() => handleEdit(entry)}>
-                          <Edit /> Edit
-                        </Button>
+                    <HomeworkCard key={entry.id} theme={theme}>
+                      <HomeworkHeader theme={theme}>
+                        <SubjectName theme={theme}>
+                          <Book /> {entry.subject_name || 'Unknown Subject'}
+                        </SubjectName>
+                        <ActionButtons>
+                          <Button variant="secondary" onClick={() => handleEdit(entry)}>
+                            <Edit /> Edit
+                          </Button>
                           <Button variant="danger" onClick={() => handleDeleteClick(entry.id)}>
-                          <Delete /> Delete
-                        </Button>
-                      </ActionButtons>
-                    </HomeworkHeader>
-                    <HomeworkText theme={theme}>{entry.homework_text}</HomeworkText>
-                    <HomeworkMeta theme={theme}>
-                      <span>📅 {format(parseISO(entry.homework_date), 'dd-MM-yyyy')}</span>
-                      {entry.assigned_by_name && <span>👤 {entry.assigned_by_name}</span>}
-                    </HomeworkMeta>
-                  </HomeworkCard>
+                            <Delete /> Delete
+                          </Button>
+                        </ActionButtons>
+                      </HomeworkHeader>
+                      <HomeworkText theme={theme}>{entry.homework_text}</HomeworkText>
+                      <HomeworkMeta theme={theme}>
+                        <span>📅 {format(parseISO(entry.homework_date), 'dd-MM-yyyy')}</span>
+                        {entry.assigned_by_name && <span>👤 {entry.assigned_by_name}</span>}
+                      </HomeworkMeta>
+                    </HomeworkCard>
                   ))}
                 </HomeworkCardsGrid>
               ) : (
@@ -2137,6 +2497,35 @@ const HomeworkDiaryManager: React.FC = () => {
               <EmptyStateIcon>📚</EmptyStateIcon>
               <EmptyStateText>Select class and date to view or assign homework</EmptyStateText>
             </EmptyState>
+          )}
+
+          {/* Fixed Footer for Actions */}
+          {(isBulkMode || (selectedClass && selectedDate)) && (
+            <FixedFooter theme={theme}>
+              {isBulkMode ? (
+                <>
+                  <Button variant="secondary" onClick={() => setIsBulkMode(false)}>
+                    <Cancel /> Cancel
+                  </Button>
+                  <Button variant="primary" onClick={handleGlobalBulkSave} disabled={saving || isSelectedDateSunday}>
+                    <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Save Changes'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="secondary" onClick={handleCancel}>
+                    <Cancel /> Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSaveHomework}
+                    disabled={saving || !homeworkText.trim() || isSelectedDateSunday}
+                  >
+                    <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : (isEditing ? 'Update Homework' : 'Save Homework')}
+                  </Button>
+                </>
+              )}
+            </FixedFooter>
           )}
         </MainContent>
 

@@ -238,12 +238,6 @@ const menuItems = [
     path: '/settings',
     allowedRoles: ['Super Admin', 'Principal', 'Admin'],
   },
-  {
-    text: 'Schools Management',
-    icon: <BusinessIcon />,
-    path: '/schools',
-    allowedRoles: ['Super Admin']
-  },
 ];
 
 const BG = '#252525';
@@ -2960,25 +2954,26 @@ const Layout: React.FC = () => {
       // Students use studentSession in localStorage, not user in AuthContext
       // Hard reload causes white screen because InitialRouteHandler redirects before student session is checked
       const studentSession = localStorage.getItem('studentSession');
-      if (studentSession) {
+      const parentSession = localStorage.getItem('parentSession');
+
+      // Check for Student, Parent, or Teacher role to use soft refresh
+      if (studentSession || parentSession || (user && user.role === 'Teacher')) {
         try {
-          const parsed = JSON.parse(studentSession);
-          if (parsed?.id) {
-            // Student user: navigate to the same route with a timestamp query param
-            // This forces React Router to remount the component without full page reload
-            const currentPath = location.pathname;
-            const searchParams = new URLSearchParams(location.search);
-            searchParams.set('_refresh', Date.now().toString());
-            navigate(`${currentPath}?${searchParams.toString()}`, { replace: true });
-            // Remove the refresh param after a short delay
-            setTimeout(() => {
-              navigate(currentPath, { replace: true });
-              completeProgress();
-            }, 100);
-            return;
-          }
+          // For these roles, navigate to the same route with a timestamp query param
+          // This forces React Router to remount the component without full page reload
+          const currentPath = location.pathname;
+          const searchParams = new URLSearchParams(location.search);
+          searchParams.set('_refresh', Date.now().toString());
+          navigate(`${currentPath}?${searchParams.toString()}`, { replace: true });
+
+          // Remove the refresh param after a short delay
+          setTimeout(() => {
+            navigate(currentPath, { replace: true });
+            completeProgress();
+          }, 100);
+          return;
         } catch (e) {
-          // If parsing fails, fall through to normal refresh
+          // If fails, fall through to normal refresh
         }
       }
 
@@ -3056,8 +3051,8 @@ const Layout: React.FC = () => {
           const downloadState = localStorage.getItem('gm_download_state');
           if (downloadState) {
             const state = JSON.parse(downloadState);
-            const progress = state.totalBytes > 0 
-              ? Math.round((state.downloadedBytes / state.totalBytes) * 100) 
+            const progress = state.totalBytes > 0
+              ? Math.round((state.downloadedBytes / state.totalBytes) * 100)
               : 0;
             const status = state.isPaused ? ' - Paused' : '';
             downloadInfo = ` (${state.fileName} - ${progress}%${status})`;
@@ -3155,8 +3150,8 @@ const Layout: React.FC = () => {
         const downloadState = localStorage.getItem('gm_download_state');
         if (downloadState) {
           const state = JSON.parse(downloadState);
-          const progress = state.totalBytes > 0 
-            ? Math.round((state.downloadedBytes / state.totalBytes) * 100) 
+          const progress = state.totalBytes > 0
+            ? Math.round((state.downloadedBytes / state.totalBytes) * 100)
             : 0;
           const status = state.isPaused ? ' (Paused)' : '';
           downloadDetails = `\n\nDownload: ${state.fileName}\nProgress: ${progress}%${status}`;
@@ -3827,12 +3822,12 @@ const Layout: React.FC = () => {
                           <HeaderLeft>
                             {user && ['Principal', 'Admin', 'Super Admin'].includes(user.role) ? (
                               isMobile && (
-                              <MenuButton
-                                onClick={() => setSidebarOpen((v) => !v)}
-                                aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-                              >
-                                <MenuIcon />
-                              </MenuButton>
+                                <MenuButton
+                                  onClick={() => setSidebarOpen((v) => !v)}
+                                  aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+                                >
+                                  <MenuIcon />
+                                </MenuButton>
                               )
                             ) : (user || studentInfo || parentInfo) ? (
                               <MenuButton

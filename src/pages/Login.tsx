@@ -409,7 +409,7 @@ const Login: React.FC = () => {
         if (staffUser?.staff_id && staffUser?.school_id) {
           await pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff');
         }
-        
+
         // Redirect based on role
         if (staffUser?.role === 'Teacher') {
           // Teachers go to landing page
@@ -437,13 +437,13 @@ const Login: React.FC = () => {
 
           familyLookup = { data: family, error: familyError };
         }
-        
+
         if (!familyLookup || familyLookup.error || !familyLookup.data) {
           setError('Family not found. Please check your Family ID.');
           setLoading(false);
           return;
         }
-        
+
         const family = familyLookup.data;
         // Check password logic, fallback to 'aa' if empty/null
         const passToCheck = family.password || 'aa';
@@ -452,10 +452,10 @@ const Login: React.FC = () => {
           setLoading(false);
           return;
         }
-        
+
         // Clear any existing student/staff session when parent logs in
         localStorage.removeItem('studentSession');
-        
+
         // Store parent session info
         localStorage.setItem('parentSession', JSON.stringify({
           id: family.id,
@@ -472,7 +472,7 @@ const Login: React.FC = () => {
         // Priority: 1. Full roll_number format (S1-1), 2. Sequence number (1), 3. Numeric ID
         let studentLookup = null;
         const trimmedId = studentId.trim();
-        
+
         // First try by full roll_number format (e.g., "S1-1")
         // Normalize input: convert to uppercase for case-insensitive matching
         const normalizedId = trimmedId.toUpperCase();
@@ -488,7 +488,7 @@ const Login: React.FC = () => {
           // If roll_number fails, try by sequence number (extract number after dash)
           // Handle formats: "S1-1" -> "1", "1" -> "1", "S1" -> try as roll_number prefix
           let sequenceNum: string | null = null;
-          
+
           // Try to extract sequence from "S1-1" format
           const rollNumberMatch = normalizedId.match(/^[Ss]?\d+\-(\d+)$/);
           if (rollNumberMatch) {
@@ -500,7 +500,7 @@ const Login: React.FC = () => {
               sequenceNum = pureNumberMatch[1];
             }
           }
-          
+
           if (sequenceNum) {
             // Search for roll_number ending with "-{sequence}"
             const { data: bySequence, error: sequenceError } = await supabase
@@ -553,7 +553,7 @@ const Login: React.FC = () => {
             }
           }
         }
-        
+
         if (!studentLookup || studentLookup.error || !studentLookup.data) {
           setError('Student not found. Please check your ID.');
           setLoading(false);
@@ -586,7 +586,7 @@ const Login: React.FC = () => {
           .update({
             is_online: true,
             last_online: new Date().toISOString(),
-            app_version: process.env.REACT_APP_VERSION || 'v1.3.1'
+            app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
           })
           .eq('id', student.id);
 
@@ -645,9 +645,9 @@ const Login: React.FC = () => {
           {!loginMode ? (
             <>
               <Title>Select Login Type</Title>
-              <div style={{ 
-                textAlign: 'center', 
-                color: 'var(--text-secondary, #666)', 
+              <div style={{
+                textAlign: 'center',
+                color: 'var(--text-secondary, #666)',
                 fontSize: '0.95rem',
                 padding: '20px 0'
               }}>
@@ -769,8 +769,8 @@ const Login: React.FC = () => {
             </>
           )}
           {error && <ErrorMsg>{error}</ErrorMsg>}
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={loading || !loginMode}
           >
             {loading ? 'Signing in...' : 'Sign In'}

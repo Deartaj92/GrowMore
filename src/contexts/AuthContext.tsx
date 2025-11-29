@@ -182,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .update({
               is_online: true,
               last_online: new Date().toISOString(),
-              app_version: process.env.REACT_APP_VERSION || 'v1.3.1'
+              app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
             })
             .eq('id', user.staff_id);
         }

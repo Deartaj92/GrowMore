@@ -3863,7 +3863,7 @@ const Dashboard: React.FC = () => {
   });
   const [exportAbsentLoading, setExportAbsentLoading] = useState(false);
   const [exportPresentLoading, setExportPresentLoading] = useState(false);
-  const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
+
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [sessionData, setSessionData] = useState<any>(null);
   const [initialLoad, setInitialLoad] = useState(true); // Track if this is the first load
@@ -5503,60 +5503,7 @@ const Dashboard: React.FC = () => {
 
   // Consolidated dashboard visibility logic is now handled in the render section
 
-  // Check if there are any students in the system for the active session
-  const checkForAnyStudents = async () => {
-    if (!user?.school_id || !sessionData?.id) return false;
 
-    try {
-      // First check student_class_history for the active session
-      const { data: schData, error: schError } = await supabase
-        .from('student_class_history')
-        .select('student_id')
-        .eq('session_id', sessionData.id)
-        .eq('school_id', user.school_id);
-
-      if (!schError && schData && schData.length > 0) {
-        // Now check if any of these students are active
-        const studentIds = schData.map(sch => sch.student_id);
-        if (studentIds.length === 0) {
-          setHasAnyStudents(false);
-          return false;
-        }
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('students')
-          .select('id')
-          .eq('school_id', user.school_id)
-          .eq('status', 'active')
-          .in('id', studentIds)
-          .limit(1);
-        if (!studentsError && studentsData && studentsData.length > 0) {
-          setHasAnyStudents(true);
-          return true;
-        } else {
-          setHasAnyStudents(false);
-          return false;
-        }
-      }
-
-      // Fallback: check students table for any active students
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('school_id', user.school_id)
-        .eq('status', 'active')
-        .limit(1);
-      if (!studentsError && studentsData && studentsData.length > 0) {
-        setHasAnyStudents(true);
-        return true;
-      } else {
-        setHasAnyStudents(false);
-        return false;
-      }
-    } catch (error) {
-      setHasAnyStudents(false);
-      return false;
-    }
-  };
 
   const fetchAll = useCallback(async () => {
     if (!user?.school_id) {
@@ -5659,8 +5606,7 @@ const Dashboard: React.FC = () => {
       setClasses([]);
       setSections([]);
       setAttendanceToday([]);
-      // Check if there are any students at all in the system
-      await checkForAnyStudents();
+
       setLoadingStudents(false);
       setAllDataLoaded(true);
       const elapsed = Date.now() - start;
@@ -5707,13 +5653,10 @@ const Dashboard: React.FC = () => {
     setSections(sectionsData || []);
     setAttendanceToday(attendanceData || []);
 
-    // Check if there are any students in the system - make it non-blocking
     setProgress(90);
-    checkForAnyStudents().catch(() => { }); // Don't block on this
     setLoadingStudents(false);
 
     setProgress(100);
-    // Mark initial load as complete and all data loaded
     setInitialLoad(false);
     setAllDataLoaded(true);
 
@@ -8203,9 +8146,7 @@ const Dashboard: React.FC = () => {
 
   // Check if no students are found
   if (students.length === 0) {
-    if (hasAnyStudents === false) {
-      return <NoStudentsFound />;
-    }
+    return <NoStudentsFound />;
   }
 
   // Check which cards should be visible for guest users
@@ -10743,98 +10684,98 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-          {hoveredAvatar && (
-            <div
-              style={{
-                position: 'fixed',
-                left: hoveredAvatar.x - 60,
-                top: hoveredAvatar.y - 130,
-                zIndex: 4000,
-                pointerEvents: 'none',
-                background: '#fff',
-                borderRadius: '12px',
-                boxShadow: '0 4px 24px #0007',
-                border: '2px solid #4a6cf7',
-                padding: 4,
-                width: 120,
-                height: 120,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-              }}
-            >
-              <img
-                src={hoveredAvatar.url}
-                alt="Preview"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
-              />
-            </div>
-          )}
+      {hoveredAvatar && (
+        <div
+          style={{
+            position: 'fixed',
+            left: hoveredAvatar.x - 60,
+            top: hoveredAvatar.y - 130,
+            zIndex: 4000,
+            pointerEvents: 'none',
+            background: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 4px 24px #0007',
+            border: '2px solid #4a6cf7',
+            padding: 4,
+            width: 120,
+            height: 120,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+          }}
+        >
+          <img
+            src={hoveredAvatar.url}
+            alt="Preview"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
+          />
+        </div>
+      )}
 
-          {/* Delete Confirmation Modal */}
-          {showDeleteModal && fineToDelete && ReactDOM.createPortal(
-            <ModalOverlay onClick={cancelDelete}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalIcon>
-                    <Delete />
-                  </ModalIcon>
-                  <ModalTitle>Delete Fine Payment</ModalTitle>
-                </ModalHeader>
-                <ModalMessage>
-                  Are you sure you want to delete this fine payment? This action cannot be undone.
-                </ModalMessage>
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && fineToDelete && ReactDOM.createPortal(
+        <ModalOverlay onClick={cancelDelete}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalIcon>
+                <Delete />
+              </ModalIcon>
+              <ModalTitle>Delete Fine Payment</ModalTitle>
+            </ModalHeader>
+            <ModalMessage>
+              Are you sure you want to delete this fine payment? This action cannot be undone.
+            </ModalMessage>
 
-                <StudentInfoCard>
-                  <StudentName>{fineToDelete.studentName}</StudentName>
-                  <StudentDetails>
-                    <DetailRow>
-                      <DetailLabel>Student ID:</DetailLabel>
-                      <DetailValue>{fineToDelete.studentId}</DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Class:</DetailLabel>
-                      <DetailValue>{fineToDelete.className}</DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Amount:</DetailLabel>
-                      <DetailValue highlight>Rs {fineToDelete.amount.toLocaleString()}</DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Date:</DetailLabel>
-                      <DetailValue>{fineToDelete.date}</DetailValue>
-                    </DetailRow>
-                  </StudentDetails>
-                </StudentInfoCard>
+            <StudentInfoCard>
+              <StudentName>{fineToDelete.studentName}</StudentName>
+              <StudentDetails>
+                <DetailRow>
+                  <DetailLabel>Student ID:</DetailLabel>
+                  <DetailValue>{fineToDelete.studentId}</DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Class:</DetailLabel>
+                  <DetailValue>{fineToDelete.className}</DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Amount:</DetailLabel>
+                  <DetailValue highlight>Rs {fineToDelete.amount.toLocaleString()}</DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Date:</DetailLabel>
+                  <DetailValue>{fineToDelete.date}</DetailValue>
+                </DetailRow>
+              </StudentDetails>
+            </StudentInfoCard>
 
-                <ModalActions>
-                  <ModalButton variant="cancel" onClick={cancelDelete}>
-                    Cancel
-                  </ModalButton>
-                  <ModalButton variant="delete" onClick={handleDeleteFine}>
-                    Delete
-                  </ModalButton>
-                </ModalActions>
-              </ModalContent>
-            </ModalOverlay>,
-            document.body
-          )}
+            <ModalActions>
+              <ModalButton variant="cancel" onClick={cancelDelete}>
+                Cancel
+              </ModalButton>
+              <ModalButton variant="delete" onClick={handleDeleteFine}>
+                Delete
+              </ModalButton>
+            </ModalActions>
+          </ModalContent>
+        </ModalOverlay>,
+        document.body
+      )}
 
-          {/* WhatsApp Bulk Sender Modal */}
-          {showWhatsAppSender && (
-            <WhatsAppBulkSender
-              notificationData={whatsappNotificationData}
-              schoolName={schoolName || 'School'}
-              selectedDate={absentDate}
-              onClose={() => {
-                setShowWhatsAppSender(false);
-                setWhatsappNotificationData([]);
-              }}
-            />
-          )}
-        </DashboardContainer>
-      );
+      {/* WhatsApp Bulk Sender Modal */}
+      {showWhatsAppSender && (
+        <WhatsAppBulkSender
+          notificationData={whatsappNotificationData}
+          schoolName={schoolName || 'School'}
+          selectedDate={absentDate}
+          onClose={() => {
+            setShowWhatsAppSender(false);
+            setWhatsappNotificationData([]);
+          }}
+        />
+      )}
+    </DashboardContainer>
+  );
 };
 
-      export default Dashboard; 
+export default Dashboard; 

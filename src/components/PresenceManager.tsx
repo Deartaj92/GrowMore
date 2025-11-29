@@ -22,7 +22,7 @@ const PresenceManager: React.FC = () => {
         const now = new Date().toISOString();
         const studentSession = getStudentSession();
         const familySession = getFamilySession();
-        const appVersion = process.env.REACT_APP_VERSION || 'v1.3.1';
+        const appVersion = process.env.REACT_APP_VERSION || 'v1.4.0';
 
         // Update Staff
         if (user?.staff_id) {

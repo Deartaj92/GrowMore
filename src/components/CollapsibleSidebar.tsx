@@ -51,8 +51,8 @@ const SidebarContainer = styled.nav<{ expanded: boolean; isMobile: boolean }>`
   top: 0;
   left: 0;
   height: 100vh;
-  width: ${({ expanded, isMobile }) => 
-    isMobile 
+  width: ${({ expanded, isMobile }) =>
+    isMobile
       ? expanded ? '85vw' : '0px'
       : expanded ? 'max-content' : SIDEBAR_COLLAPSED + 'px'
   };
@@ -63,8 +63,8 @@ const SidebarContainer = styled.nav<{ expanded: boolean; isMobile: boolean }>`
   background: ${({ theme }) => theme.SIDEBAR_BG || '#23242a'};
   color: ${({ theme }) => theme.TEXT_PRIMARY || '#e0e0e0'};
   box-shadow: ${({ isMobile }) => isMobile ? 'none' : '2px 0 16px #0005'};
-  transition: ${({ isMobile }) => 
-    isMobile 
+  transition: ${({ isMobile }) =>
+    isMobile
       ? `transform 0.2s ${MOBILE_TRANSITION_TIMING}, box-shadow 0.2s ${MOBILE_TRANSITION_TIMING}`
       : `width 0.15s ${MOBILE_TRANSITION_TIMING}`
   };
@@ -73,8 +73,8 @@ const SidebarContainer = styled.nav<{ expanded: boolean; isMobile: boolean }>`
   display: flex;
   flex-direction: column;
   will-change: transform;
-  transform: ${({ expanded, isMobile }) => 
-    isMobile 
+  transform: ${({ expanded, isMobile }) =>
+    isMobile
       ? `translateX(${expanded ? '0' : '-100%'}) translateZ(0)`
       : 'translateZ(0)'
   };
@@ -188,8 +188,8 @@ const SidebarMenuItem = styled.li<{ active?: boolean; expanded: boolean; dashboa
     dashboard
       ? 'rgba(37,99,235,0.13)'
       : active
-      ? theme.HOVER_BG || '#2a2a2a'
-      : 'transparent'};
+        ? theme.HOVER_BG || '#2a2a2a'
+        : 'transparent'};
   color: ${({ dashboard }) => (dashboard ? '#2563eb' : 'inherit')};
   border-radius: ${({ dashboard }) => (dashboard ? '0' : '8px')};
   margin: 1px 0;
@@ -221,7 +221,7 @@ const MenuItemButton = styled.button<{ expanded: boolean; dashboard?: boolean }>
   backface-visibility: hidden;
   &:hover {
     background: ${({ dashboard }) =>
-      dashboard ? 'rgba(37,99,235,0.22)' : 'rgba(74, 108, 247, 0.18)'};
+    dashboard ? 'rgba(37,99,235,0.22)' : 'rgba(74, 108, 247, 0.18)'};
     border-radius: ${({ dashboard }) => (dashboard ? '0' : '8px')};
   }
   &:active {
@@ -439,16 +439,16 @@ const Backdrop = memo(({ onClose, visible }: { onClose: () => void; visible: boo
 ));
 
 // Memoized search result item
-const SearchResultItem = memo(({ 
-  result, 
-  expanded, 
-  onNavigate, 
-  onClose 
-}: { 
-  result: any; 
-  expanded: boolean; 
-  onNavigate: (path: string) => void; 
-  onClose: () => void; 
+const SearchResultItem = memo(({
+  result,
+  expanded,
+  onNavigate,
+  onClose
+}: {
+  result: any;
+  expanded: boolean;
+  onNavigate: (path: string) => void;
+  onClose: () => void;
 }) => (
   <SidebarMenuItem expanded={expanded} dashboard={result.text === 'Dashboard'}>
     <MenuItemButton
@@ -465,9 +465,9 @@ const SearchResultItem = memo(({
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
         <Label expanded={expanded}>{result.text}</Label>
         {expanded && result.category && result.category !== 'Main' && (
-          <span style={{ 
-            fontSize: '0.75rem', 
-            color: '#888', 
+          <span style={{
+            fontSize: '0.75rem',
+            color: '#888',
             marginTop: '2px',
             opacity: 0.8
           }}>
@@ -480,23 +480,23 @@ const SearchResultItem = memo(({
 ));
 
 // Memoized menu item
-const MenuItem = memo(({ 
-  item, 
-  idx, 
-  expanded, 
-  openDrawer, 
-  onNavigate, 
-  onClose, 
+const MenuItem = memo(({
+  item,
+  idx,
+  expanded,
+  openDrawer,
+  onNavigate,
+  onClose,
   setOpenDrawer,
   userRole
-}: { 
-  item: any; 
-  idx: number; 
-  expanded: boolean; 
-  openDrawer: number | null; 
-  onNavigate: (path: string) => void; 
-  onClose: () => void; 
-  setOpenDrawer: (idx: number | null) => void; 
+}: {
+  item: any;
+  idx: number;
+  expanded: boolean;
+  openDrawer: number | null;
+  onNavigate: (path: string) => void;
+  onClose: () => void;
+  setOpenDrawer: (idx: number | null) => void;
   userRole: string;
 }) => {
   const handleClick = useCallback(() => {
@@ -612,14 +612,8 @@ const allPages = [
     category: 'Main',
     keywords: ['settings', 'configuration', 'preferences', 'options']
   },
-  {
-    text: 'Schools Management',
-    icon: <BusinessIcon />,
-    path: '/schools',
-    allowedRoles: ['Super Admin', 'Principal'],
-    category: 'Main',
-    keywords: ['schools', 'institutions', 'management', 'multi-school']
-  },
+
+
 
   // Student Management Pages
   {
@@ -1127,7 +1121,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
       case 'Assessment': return 'menu_assessment';
       case 'Daily Diary': return 'menu_daily_diary';
       case 'Settings': return 'menu_settings';
-      case 'Schools Management': return 'menu_schools_management';
+
       default: return null;
     }
   }, []);
@@ -1137,7 +1131,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
     if (resizeTimeoutRef.current) {
       window.cancelAnimationFrame(resizeTimeoutRef.current);
     }
-    
+
     resizeTimeoutRef.current = window.requestAnimationFrame(() => {
       const newIsMobile = window.innerWidth <= 700;
       if (newIsMobile !== isMobile) {
@@ -1165,10 +1159,10 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isMobile) return;
-    
+
     const touchX = e.touches[0].clientX;
     const diff = touchX - touchStartXRef.current;
-    
+
     // Only handle left swipe when menu is open
     if (expanded && diff < -50) {
       onClose();
@@ -1182,11 +1176,11 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
   // Enhanced swipe gesture handling
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!isMobile) return;
-    
+
     const touchX = e.changedTouches[0].clientX;
     const diff = touchX - touchStartXRef.current;
     const minSwipeDistance = 80; // Minimum distance for swipe gesture
-    
+
     if (Math.abs(diff) >= minSwipeDistance) {
       if (diff > 0 && !expanded && touchStartXRef.current < 50) {
         // Right swipe from left edge - open sidebar
@@ -1216,7 +1210,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
       if (!isSwiping) {
         const deltaX = Math.abs(e.touches[0].clientX - startX);
         const deltaY = Math.abs(e.touches[0].clientY - startY);
-        
+
         // Start swiping if horizontal movement is greater than vertical
         if (deltaX > 20 && deltaX > deltaY) {
           isSwiping = true;
@@ -1226,10 +1220,10 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
 
     const handleGlobalTouchEnd = (e: TouchEvent) => {
       if (!isSwiping) return;
-      
+
       const deltaX = e.changedTouches[0].clientX - startX;
       const deltaY = Math.abs(e.changedTouches[0].clientY - startY);
-      
+
       // Only handle horizontal swipes with minimal vertical movement
       if (Math.abs(deltaX) > 80 && deltaY < 100) {
         if (deltaX > 0 && startX < 50 && !expanded) {
@@ -1290,66 +1284,66 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
   // Memoized filtered menu items
   const filteredMenuItems = useMemo(() => {
     return menuItems
-    .filter(item => {
-      if (!userRole) return false;
-      // For teachers, show Welcome Page, Attendance, Reports, Examination, Daily Diary, and Test Record
-      if (userRole === 'Teacher') {
-        return item.text === 'Attendance' ||
-               item.text === 'Welcome Page' ||
-               item.text === 'Reports' ||
-               item.text === 'Assessment' ||
-               item.text === 'Daily Diary';
-      }
-      // For Guests: bypass role filter and control via render settings
-      if (userRole === 'Guest') {
-        const key = getGuestMenuKey(item.text);
-        if (!key) return true;
-        if (!renderSettings) return true; // default allow before load
-        return renderSettings.guest?.[key] !== false;
-      }
-      // Other roles: enforce allowedRoles as usual
-      return item.allowedRoles?.includes(userRole);
-    })
-    .filter(item => {
-      // Filter main menu by search
-      if (!search) return true;
-      return item.text.toLowerCase().includes(search.toLowerCase());
-    });
+      .filter(item => {
+        if (!userRole) return false;
+        // For teachers, show Welcome Page, Attendance, Reports, Examination, Daily Diary, and Test Record
+        if (userRole === 'Teacher') {
+          return item.text === 'Attendance' ||
+            item.text === 'Welcome Page' ||
+            item.text === 'Reports' ||
+            item.text === 'Assessment' ||
+            item.text === 'Daily Diary';
+        }
+        // For Guests: bypass role filter and control via render settings
+        if (userRole === 'Guest') {
+          const key = getGuestMenuKey(item.text);
+          if (!key) return true;
+          if (!renderSettings) return true; // default allow before load
+          return renderSettings.guest?.[key] !== false;
+        }
+        // Other roles: enforce allowedRoles as usual
+        return item.allowedRoles?.includes(userRole);
+      })
+      .filter(item => {
+        // Filter main menu by search
+        if (!search) return true;
+        return item.text.toLowerCase().includes(search.toLowerCase());
+      });
   }, [userRole, search, renderSettings, getGuestMenuKey]);
 
   // Memoized comprehensive search results
   const flatSearchResults = useMemo(() => {
     if (!search) return [];
-    
+
     const searchTerm = search.toLowerCase();
-    
+
     return allPages
       .filter(page => {
         // Role-based filtering
         if (!userRole || !page.allowedRoles) return false;
         if (userRole === 'Teacher') {
-          return page.text === 'Attendance' || 
-                 page.text === 'Welcome Page' || 
-                 page.text === 'Reports' || 
-                 page.text === 'Assessment' ||
-                 page.text === 'Daily Diary' ||
-                 page.text === 'Communication' ||
-                 page.text === 'My Timetable' ||
-                 page.category === 'Attendance' || 
-                 page.category === 'Examination' ||
-                 page.category === 'Test Record' ||
-                 page.category === 'Diary';
+          return page.text === 'Attendance' ||
+            page.text === 'Welcome Page' ||
+            page.text === 'Reports' ||
+            page.text === 'Assessment' ||
+            page.text === 'Daily Diary' ||
+            page.text === 'Communication' ||
+            page.text === 'My Timetable' ||
+            page.category === 'Attendance' ||
+            page.category === 'Examination' ||
+            page.category === 'Test Record' ||
+            page.category === 'Diary';
         }
         return page.allowedRoles.includes(userRole);
       })
       .filter(page => {
         // Comprehensive search matching
         const textMatch = page.text.toLowerCase().includes(searchTerm);
-        const keywordMatch = page.keywords.some(keyword => 
+        const keywordMatch = page.keywords.some(keyword =>
           keyword.toLowerCase().includes(searchTerm)
         );
         const categoryMatch = page.category.toLowerCase().includes(searchTerm);
-        
+
         return textMatch || keywordMatch || categoryMatch;
       })
       .map(page => ({
@@ -1366,13 +1360,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
         const bExact = b.text.toLowerCase() === searchTerm;
         if (aExact && !bExact) return -1;
         if (!aExact && bExact) return 1;
-        
+
         // Then prioritize main menu items
         const aMain = a.category === 'Main';
         const bMain = b.category === 'Main';
         if (aMain && !bMain) return -1;
         if (!aMain && bMain) return 1;
-        
+
         // Finally sort alphabetically
         return a.text.localeCompare(b.text);
       });
@@ -1500,7 +1494,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
                 <SearchResultItem
                   key={result.text + idx}
                   result={result}
-                    expanded={expanded}
+                  expanded={expanded}
                   onNavigate={handleNavigate}
                   onClose={onClose}
                 />
@@ -1512,7 +1506,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
                 key={item.text}
                 item={item}
                 idx={idx}
-                    expanded={expanded}
+                expanded={expanded}
                 openDrawer={openDrawer}
                 onNavigate={handleNavigate}
                 onClose={onClose}
@@ -1522,10 +1516,10 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({ navigate, theme
             ))
           )}
         </SidebarMenu>
-        
+
         {/* Simple About Us Button */}
         {expanded && (
-          <AboutUsButton 
+          <AboutUsButton
             onClick={() => {
               if (onAboutUsClick) {
                 onAboutUsClick();
