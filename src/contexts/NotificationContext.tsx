@@ -281,23 +281,38 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Update student and parent info when it changes
   useEffect(() => {
-    const studentInfoData = getStudentInfo();
-    const parentInfoData = getParentInfo();
-    setStudentInfo(studentInfoData);
-    setParentInfo(parentInfoData);
+    const loadInfo = () => {
+      const studentInfoData = getStudentInfo();
+      const parentInfoData = getParentInfo();
+      setStudentInfo(studentInfoData);
+      // Ensure parentInfo has all required fields (id and school_id)
+      if (parentInfoData && parentInfoData.id) {
+        setParentInfo(parentInfoData);
+      } else {
+        setParentInfo(null);
+      }
+    };
+
+    loadInfo();
 
     // Listen for storage changes (when student/parent logs in/out)
     const handleStorageChange = () => {
       const updatedStudentInfo = getStudentInfo();
       const updatedParentInfo = getParentInfo();
       setStudentInfo(updatedStudentInfo);
-      setParentInfo(updatedParentInfo);
+      // Ensure parentInfo has all required fields
+      if (updatedParentInfo && updatedParentInfo.id) {
+        setParentInfo(updatedParentInfo);
+      } else {
+        setParentInfo(null);
+      }
     };
 
     window.addEventListener('storage', handleStorageChange);
     const customListener = handleStorageChange as EventListener;
     window.addEventListener('student-session-changed', customListener);
     window.addEventListener('parent-session-changed', customListener);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('student-session-changed', customListener);
@@ -494,7 +509,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Fetch announcements and convert them to notifications
   const fetchAnnouncementsAsNotifications = useCallback(async (preferences?: NotificationPreferences | null): Promise<Notification[]> => {
-    const schoolId = user?.school_id || studentInfo?.school_id;
+    const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
 
     if (!schoolId) {
       return [];
@@ -522,6 +537,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       if (studentInfo) {
         // Students: Only show student-targeted announcements that match them
+        filteredAnnouncements = announcements.filter(announcement => {
+          if (announcement.audience_group !== 'students') return false;
+          return matchesAnnouncementAudience(announcement);
+        });
+      } else if (parentInfo) {
+        // Parents: Show student-targeted announcements (same as students, since they're viewing for their children)
         filteredAnnouncements = announcements.filter(announcement => {
           if (announcement.audience_group !== 'students') return false;
           return matchesAnnouncementAudience(announcement);
@@ -586,7 +607,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     } catch (error) {
       return [];
     }
-  }, [user?.school_id, user?.staff_id, studentInfo?.school_id, matchesAnnouncementAudience, getViewerIdentifier]);
+  }, [user?.school_id, user?.staff_id, studentInfo?.school_id, parentInfo?.school_id, matchesAnnouncementAudience, getViewerIdentifier, cleanText]);
 
   // Request notification permission
   const requestPermission = useCallback(async () => {
@@ -771,10 +792,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         if (parentInfo?.id && !userId && schoolId) {
           try {
             // Fetch all notifications for parents using the family service function
-            allNotificationsData = await activityTrackingService.getAllFamilyNotifications(
+            const rawParentNotifications = await activityTrackingService.getAllFamilyNotifications(
               parentInfo.id,
               schoolId
             );
+
+            // Clean parent notifications to strip HTML tags (same as staff/students)
+            allNotificationsData = rawParentNotifications.map(cleanNotification);
 
             // Separate reports from other notifications
             allReportsData = allNotificationsData.filter(n => n.notification_type === 'report');
@@ -1078,9 +1102,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           }
 
           // For parents: Update by family_recipient_id
-          if (parentInfo?.id) {
+          if (parentInfo?.id && schoolId) {
             try {
-              await supabase
+              const { error: updateError } = await supabase
                 .from('notifications')
                 .update({
                   is_read: true,
@@ -1089,6 +1113,23 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                 .in('id', notificationIds)
                 .eq('family_recipient_id', parentInfo.id)
                 .eq('school_id', schoolId);
+              
+              if (updateError) {
+                console.error('Error marking parent notifications as read:', updateError);
+                // Try without school_id filter as fallback
+                const { error: fallbackError } = await supabase
+                  .from('notifications')
+                  .update({
+                    is_read: true,
+                    read_at: new Date().toISOString()
+                  })
+                  .in('id', notificationIds)
+                  .eq('family_recipient_id', parentInfo.id);
+                
+                if (fallbackError) {
+                  console.error('Error marking parent notifications as read (fallback):', fallbackError);
+                }
+              }
             } catch (error) {
               console.error('Error marking parent notifications as read:', error);
             }

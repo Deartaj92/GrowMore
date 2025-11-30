@@ -67,7 +67,7 @@ export const Header = styled.header<{ $hasSidebar?: boolean }>`
   top: 0;
   left: 0;
   right: 0;
-  z-index: 2200;
+  z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: space-between;

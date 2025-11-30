@@ -35,7 +35,6 @@ import { checkConnection } from './utils/layoutUtils';
 import { getAnnouncementIdentity } from './utils/announcementUtils';
 
 // Import components
-import CollapsibleSidebar from '../CollapsibleSidebar';
 import NotificationBell from '../NotificationBell';
 import AnnouncementHandler from '../AnnouncementHandler';
 import AboutUsModal from '../AboutUsModal';
@@ -82,7 +81,6 @@ const Layout: React.FC = () => {
 
   // State management
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 700);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageHeaderText, setPageHeaderText] = useState('');
   const [isTitleOverflowing, setIsTitleOverflowing] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -398,7 +396,15 @@ const Layout: React.FC = () => {
       const studentSession = localStorage.getItem('studentSession');
       const parentSession = localStorage.getItem('parentSession');
 
-      if (studentSession || parentSession || (user && user.role === 'Teacher')) {
+      // For students and parents, use window.location.reload() to ensure proper refresh
+      if (studentSession || parentSession) {
+        completeProgress();
+        window.location.reload();
+        return;
+      }
+
+      // For teachers, use navigation-based refresh
+      if (user && user.role === 'Teacher') {
         try {
           const currentPath = location.pathname;
           const searchParams = new URLSearchParams(location.search);
@@ -790,11 +796,6 @@ const Layout: React.FC = () => {
   // Mobile back button handling
   useEffect(() => {
     const handleBackPress = () => {
-      if (sidebarOpen) {
-        setSidebarOpen(false);
-        return;
-      }
-
       if (location.pathname !== '/dashboard') {
         handleGoBack();
         return;
@@ -847,7 +848,7 @@ const Layout: React.FC = () => {
       window.removeEventListener('popstate', handlePopState, true);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [sidebarOpen, location.pathname, handleGoBack, showExitConfirm, isWeb]);
+  }, [location.pathname, handleGoBack, showExitConfirm, isWeb]);
 
   // Keyboard shortcuts for navigation
   useEffect(() => {
@@ -885,16 +886,6 @@ const Layout: React.FC = () => {
     const handleTouchEnd = () => {
       if (!touchStart || !touchEnd) return;
 
-      const dx = touchEnd - touchStart;
-      const isRightSwipe = dx > 50;
-      const isLeftSwipe = dx < -50;
-
-      if (!sidebarOpen && isRightSwipe && touchStart < 50) {
-        setSidebarOpen(true);
-      } else if (sidebarOpen && isLeftSwipe) {
-        setSidebarOpen(false);
-      }
-
       setTouchStart(null);
       setTouchEnd(null);
     };
@@ -908,7 +899,7 @@ const Layout: React.FC = () => {
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [touchStart, touchEnd, sidebarOpen, isMobile]);
+  }, [touchStart, touchEnd, isMobile]);
 
   // User interaction unlock
   React.useEffect(() => {
@@ -1032,40 +1023,13 @@ const Layout: React.FC = () => {
         <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
         <AppContainer>
           <LayoutWrapper>
-            {/* Sidebar shown only for Principal, Admin, or Super Admin */}
-            {user && ['Principal', 'Admin', 'Super Admin'].includes(user.role) && (
-              <CollapsibleSidebar
-                navigate={navigate}
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                userRole={user?.role}
-                instituteProfile={instituteProfile ?? undefined}
-                open={isMobile ? sidebarOpen : true}
-                onClose={() => setSidebarOpen(false)}
-                onAboutUsClick={() => setAboutUsModalOpen(true)}
-              />
-            )}
-            <MainArea $isTeacher={!user || !['Principal', 'Admin', 'Super Admin'].includes(user.role)}>
+            <MainArea $isTeacher={true}>
               <Header
                 user={user}
                 studentInfo={studentInfo}
                 parentInfo={parentInfo}
-                isMobile={isMobile}
-                isWeb={isWeb}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-                instituteProfile={instituteProfile}
-                pageHeader={pageHeaderText}
-                isTitleOverflowing={isTitleOverflowing}
-                titleRef={titleRef}
-                isWeakConnection={isWeakConnection}
                 isDownloadActive={isDownloadActive}
                 onRefresh={handleRefresh}
-                navHistory={navHistory}
-                forwardHistory={forwardHistory}
-                onGoBack={handleGoBack}
-                onGoForward={handleGoForward}
-                isMaximized={isMaximized}
-                showStudentSearch={showStudentSearch}
                 avatarUrl={avatarUrl}
                 staffName={staffName}
                 profileMenuOpen={profileMenuOpen}
@@ -1075,11 +1039,13 @@ const Layout: React.FC = () => {
                 theme={theme}
                 onToggleTheme={toggleTheme}
                 onOpenChangePassword={openChangePasswordModal}
+                isWeb={isWeb}
                 onCheckForUpdates={handleCheckForUpdates}
                 isCheckingUpdate={isCheckingUpdate}
                 onAboutUsClick={() => setAboutUsModalOpen(true)}
                 onLogout={handleLogout}
                 appVersion={appVersion}
+                instituteProfile={instituteProfile}
               />
               <ContentArea>
                 <AnimatePresence mode="wait">

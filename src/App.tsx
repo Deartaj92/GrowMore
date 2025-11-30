@@ -72,13 +72,10 @@ import EnquiryListPage from './pages/EnquiryListPage';
 import EnquiryDetailPage from './pages/EnquiryDetailPage';
 import EnquiryFormPage from './pages/EnquiryFormPage';
 // Examination Management Components
-import ExaminationDashboard from './components/ExaminationDashboard';
 import ExaminationManager from './components/ExaminationManager';
 import MarksEntryManager from './components/MarksEntryManager';
 import TestRecordManager from './components/TestRecordManager';
 import TestRecordMasterSheet from './components/TestRecordMasterSheet';
-import TestDashboard from './components/TestDashboard';
-import AssessmentDashboard from './components/AssessmentDashboard';
 import TestAnalytics from './components/TestAnalytics';
 import MasterSheetManager from './components/MasterSheetManager';
 import DetailedMarksCertificate from './components/DetailedMarksCertificate';
@@ -87,15 +84,12 @@ import ExaminationAnalytics from './components/ExaminationAnalytics';
 import ExaminationConfiguration from './pages/ExaminationConfiguration';
 // Homework Diary Management
 import HomeworkDiaryManager from './components/HomeworkDiaryManager';
-import DiaryDashboard from './components/DiaryDashboard';
 import DiaryAnalytics from './components/DiaryAnalytics';
 // Student Management Components
-import StudentDashboard from './components/StudentDashboard';
 import GeneralMessagePage from './pages/GeneralMessagePage';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
 // Attendance Management Components
-import AttendanceDashboard from './components/AttendanceDashboard';
 // Fee Management Components
 import FeeManagementDashboard from './components/FeeManagementDashboard';
 // Expense Management Components
@@ -311,18 +305,6 @@ const App: React.FC = () => {
                             }
                           />
 
-                          {/* Student Dashboard */}
-                          <Route
-                            path="students"
-                            element={
-                              <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                                guestPageKey="dashboard"
-                              >
-                                <StudentDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
 
                           {/* Student Management */}
                           <Route
@@ -846,15 +828,6 @@ const App: React.FC = () => {
                             }
                           />
 
-                          {/* Attendance Dashboard */}
-                          <Route
-                            path="attendance"
-                            element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
-                                <AttendanceDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
 
                           {/* Attendance Routes */}
                           <Route
@@ -934,28 +907,6 @@ const App: React.FC = () => {
                           />
 
                           {/* Examination Dashboard */}
-                          <Route
-                            path="assessment"
-                            element={
-                              <ProtectedRoute
-                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                                guestPageKey="examination_results"
-                              >
-                                <AssessmentDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="examination"
-                            element={
-                              <ProtectedRoute
-                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                                guestPageKey="examination_results"
-                              >
-                                <ExaminationDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
 
                           {/* Examination Management */}
                           <Route
@@ -1027,14 +978,6 @@ const App: React.FC = () => {
 
                           {/* Test Record Management */}
                           <Route
-                            path="test-dashboard"
-                            element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                                <TestDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
                             path="test-records"
                             element={
                               <ProtectedRoute
@@ -1072,15 +1015,6 @@ const App: React.FC = () => {
                             }
                           />
 
-                          {/* Diary Dashboard */}
-                          <Route
-                            path="diary"
-                            element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
-                                <DiaryDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
                           {/* Homework Diary Management */}
                           <Route
                             path="homework-diary"
