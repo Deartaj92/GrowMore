@@ -100,11 +100,15 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 3. Create trigger to call push-notifier on notification insert
+-- TEMPORARILY DISABLED: Edge function trigger
+-- DROP TRIGGER IF EXISTS trigger_send_push_notification ON public.notifications;
+-- CREATE TRIGGER trigger_send_push_notification
+--   AFTER INSERT ON public.notifications
+--   FOR EACH ROW
+--   EXECUTE FUNCTION public.trigger_push_notification();
+
+-- Disable the trigger if it exists
 DROP TRIGGER IF EXISTS trigger_send_push_notification ON public.notifications;
-CREATE TRIGGER trigger_send_push_notification
-  AFTER INSERT ON public.notifications
-  FOR EACH ROW
-  EXECUTE FUNCTION public.trigger_push_notification();
 
 -- 4. Add comment for documentation
 COMMENT ON FUNCTION public.trigger_push_notification() IS 

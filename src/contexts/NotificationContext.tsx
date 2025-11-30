@@ -133,7 +133,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const isRefreshingRef = useRef(false); // Prevent concurrent refresh calls
   const isLoadingMoreRef = useRef(false); // Prevent concurrent loadMore calls
   const PAGE_SIZE = 20;
-  
+
   // Keep preferences ref in sync
   useEffect(() => {
     preferencesRef.current = preferences;
@@ -201,11 +201,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       if (staffData?.id) {
         // For reports, check if message indicates delete (starts with "Report #")
-        const isDeleteMessage = notification.notification_type === 'report' && 
-                                notification.message.includes('Report #') &&
-                                !notification.message.toLowerCase().includes('new') &&
-                                !notification.message.toLowerCase().includes('updated');
-        
+        const isDeleteMessage = notification.notification_type === 'report' &&
+          notification.message.includes('Report #') &&
+          !notification.message.toLowerCase().includes('new') &&
+          !notification.message.toLowerCase().includes('updated');
+
         // Query activity_logs to find a match, prioritize delete actions for reports
         const { data: activityLogs } = await supabase
           .from('activity_logs')
@@ -228,38 +228,38 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               let matchingLog = activityLogs.find(
                 log => log.entity_id === reportId
               );
-              
+
               // If delete message, prioritize delete actions
               if (isDeleteMessage && !matchingLog) {
                 matchingLog = activityLogs.find(
-                  log => log.activity_action === 'delete' && 
-                         (log.entity_id === reportId || log.entity_name?.includes(`Report #${reportId}`))
+                  log => log.activity_action === 'delete' &&
+                    (log.entity_id === reportId || log.entity_name?.includes(`Report #${reportId}`))
                 );
               }
-              
+
               // Fallback to entity_name match
               if (!matchingLog) {
                 matchingLog = activityLogs.find(
                   log => log.entity_name?.includes(`Report #${reportId}`)
                 );
               }
-              
+
               if (matchingLog) {
-                return { 
-                  ...notification, 
-                  activity_action: matchingLog.activity_action, 
-                  activity_log_id: matchingLog.id 
+                return {
+                  ...notification,
+                  activity_action: matchingLog.activity_action,
+                  activity_log_id: matchingLog.id
                 };
               }
-              
+
               // If delete message but no exact match, use most recent delete action
               if (isDeleteMessage) {
                 const deleteLog = activityLogs.find(log => log.activity_action === 'delete');
                 if (deleteLog) {
-                  return { 
-                    ...notification, 
-                    activity_action: deleteLog.activity_action, 
-                    activity_log_id: deleteLog.id 
+                  return {
+                    ...notification,
+                    activity_action: deleteLog.activity_action,
+                    activity_log_id: deleteLog.id
                   };
                 }
               }
@@ -267,10 +267,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           }
 
           // For other types or if no exact match, use the most recent activity log
-          return { 
-            ...notification, 
-            activity_action: activityLogs[0].activity_action, 
-            activity_log_id: activityLogs[0].id 
+          return {
+            ...notification,
+            activity_action: activityLogs[0].activity_action,
+            activity_log_id: activityLogs[0].id
           };
         }
       }
@@ -344,14 +344,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
     // Get report ID from activity_log_id
     let reportId: number | null = null;
-    
+
     if (notification.activity_log_id) {
       const { data: activityLog } = await supabase
         .from('activity_logs')
         .select('entity_id')
         .eq('id', notification.activity_log_id)
         .maybeSingle();
-      
+
       if (activityLog?.entity_id) {
         reportId = activityLog.entity_id;
       }
@@ -412,7 +412,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
 
     if (!prefs) return true; // If no preferences, show all (default behavior)
-    
+
     // Map notification types to preference keys (only boolean properties)
     const categoryMap: { [key: string]: 'notify_attendance' | 'notify_test_marks' | 'notify_examination_marks' | 'notify_homework_diary' | 'notify_subject_assignment' | 'notify_reports' | 'notify_system' } = {
       'attendance': 'notify_attendance',
@@ -425,7 +425,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
 
     const preferenceKey = categoryMap[notification.notification_type];
-    
+
     // If notification type doesn't have a specific preference, check general activity_notifications
     if (!preferenceKey) {
       return prefs.activity_notifications ?? true;
@@ -529,11 +529,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       } else if (user) {
         // Check if user is Principal/Admin with notification settings access
         const hasNotificationSettingsAccess = user.role === 'Principal' || user.role === 'Admin';
-        
+
         if (hasNotificationSettingsAccess && preferences) {
           // Principal/Admin: Show ALL announcements (both student and staff) when notify_announcements is enabled
           const notifyAnnouncements = preferences.notify_announcements ?? true;
-          
+
           if (notifyAnnouncements) {
             // Show all announcements regardless of audience_group
             filteredAnnouncements = announcements;
@@ -662,7 +662,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     if (isRefreshingRef.current) {
       return;
     }
-    
+
     const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
     if (!schoolId) {
       return;
@@ -678,7 +678,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       // For Principal/Admin: Show BOTH teacher activity notifications AND announcements
       const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
-      
+
       if (hasNotificationSettingsAccess && user?.staff_id && user?.school_id) {
         // Fetch preferences with error handling
         let preferencesData: NotificationPreferences | null = null;
@@ -718,7 +718,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
         // Separate reports from other notifications
         const allReportsRaw = allReportsData.filter(n => n.notification_type === 'report');
-        
+
         // Filter reports based on user role and ownership
         // Teachers: reports they filed OR reports filed on them
         // Students: reports filed on them
@@ -736,19 +736,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           })
         );
         const filteredReports = allReports.filter((n): n is Notification => n !== null);
-        
+
         // Merge teacher activity notifications and announcements
         // Filter out any "announcement" type and "report" type notifications from the DB notifications to avoid duplicates/stale data
-        const cleanNotificationsData = notificationsData.filter(n => 
+        const cleanNotificationsData = notificationsData.filter(n =>
           n.notification_type !== 'announcement' && n.notification_type !== 'report'
         );
-        
+
         // Filter activity notifications based on category preferences (announcements already filtered in fetchAnnouncementsAsNotifications)
         // Reports are always shown regardless of preferences
-        const filteredActivityNotifications = cleanNotificationsData.filter(n => 
+        const filteredActivityNotifications = cleanNotificationsData.filter(n =>
           shouldShowNotificationByCategory(n, preferencesData, user.role)
         );
-        
+
         // Combine: activity notifications + filtered reports + announcements
         allNotifications = [...filteredActivityNotifications, ...filteredReports, ...announcementNotifications];
         setPreferences(preferencesData);
@@ -761,13 +761,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         // For Teachers, Students, Parents, and other users: Show reports AND announcements AND other notifications
         // Determine user ID for fetching notifications (staff_id for staff, student_id for students, staff_id for parents via user account)
         let userId: number | undefined = user?.staff_id || studentInfo?.id;
-        
+
         // For parents: Query notifications using getAllFamilyNotifications (similar to students)
         // Parents log in using family_id, so we query notifications for that family
         let parentNotificationsData: Notification[] = [];
         let allNotificationsData: Notification[] = [];
         let allReportsData: Notification[] = [];
-        
+
         if (parentInfo?.id && !userId && schoolId) {
           try {
             // Fetch all notifications for parents using the family service function
@@ -775,7 +775,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               parentInfo.id,
               schoolId
             );
-            
+
             // Separate reports from other notifications
             allReportsData = allNotificationsData.filter(n => n.notification_type === 'report');
             parentNotificationsData = allNotificationsData.filter(n => n.notification_type !== 'report');
@@ -786,10 +786,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           try {
             // Fetch all notifications from notifications table (works for both staff and students)
             allNotificationsData = await activityTrackingService.getAllUserNotifications(userId, schoolId);
-            
+
             // Separate reports from other notifications
             allReportsData = allNotificationsData.filter(n => n.notification_type === 'report');
-            
+
             // For students: Also query reports table directly as fallback (if no notifications found)
             if (studentInfo?.id && allReportsData.length === 0) {
               // Query reports table directly for student reports
@@ -837,7 +837,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   const reporterName = (report.reporter as any)?.name || 'Unknown';
                   const severity = report.severity || 'low';
                   const activityLogId = activityLogMap.get(report.id) || null;
-                  
+
                   return {
                     id: report.id + 1000000, // Offset to avoid conflicts with real notification IDs
                     recipient_id: studentInfo.id,
@@ -863,7 +863,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
         // Separate reports from other notifications
         const allReportsRaw = allReportsData.filter(n => n.notification_type === 'report');
-        
+
         // Filter reports based on user role and ownership
         // Teachers: reports they filed OR reports filed on them
         // Students: reports filed on them (already filtered by query above)
@@ -885,15 +885,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           })
         );
         const validReports = filteredReports.filter((n): n is Notification => n !== null);
-        
+
         // Filter out announcements and reports from allNotificationsData to avoid duplicates
-        const otherNotifications = allNotificationsData.filter(n => 
+        const otherNotifications = allNotificationsData.filter(n =>
           n.notification_type !== 'announcement' && n.notification_type !== 'report'
         );
-        
+
         // Fetch announcements
         const announcementNotifications = await fetchAnnouncementsAsNotifications();
-        
+
         // For parents: Combine all notifications (already fetched via getAllFamilyNotifications)
         if (parentInfo?.id && !userId) {
           // Combine: all parent notifications (already includes everything) + announcements
@@ -950,15 +950,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const hasMoreRef = useRef(hasMore);
   const isLoadingRef = useRef(isLoading);
   const pageRef = useRef(page);
-  
+
   useEffect(() => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
-  
+
   useEffect(() => {
     isLoadingRef.current = isLoading;
   }, [isLoading]);
-  
+
   useEffect(() => {
     pageRef.current = page;
   }, [page]);
@@ -968,9 +968,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     if (isLoadingMoreRef.current) {
       return;
     }
-    
+
     const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
-    
+
     // Early return checks - use refs to get current values
     if (!hasMoreRef.current || isLoadingRef.current || !hasNotificationSettingsAccess || !user?.staff_id || !user?.school_id) {
       return;
@@ -979,7 +979,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     isLoadingMoreRef.current = true;
     // Set loading state - don't change hasMore yet, let it stay true so UI shows loading indicator
     setIsLoading(true);
-    
+
     try {
       const nextPage = pageRef.current + 1;
       const offset = nextPage * PAGE_SIZE;
@@ -993,12 +993,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       // Filter out announcement and report type notifications from DB
       // (announcements are loaded separately, reports are loaded separately on initial load)
-      const cleanNewNotifications = newNotifications.filter(n => 
+      const cleanNewNotifications = newNotifications.filter(n =>
         n.notification_type !== 'announcement' && n.notification_type !== 'report'
       );
 
       // Filter by category preferences (reports are always shown, so they're not in this list)
-      const filteredNewNotifications = cleanNewNotifications.filter(n => 
+      const filteredNewNotifications = cleanNewNotifications.filter(n =>
         shouldShowNotificationByCategory(n, preferences, user.role)
       );
 
@@ -1059,7 +1059,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
         if (schoolId) {
           const notificationIds = activityAndReportNotifications.map(n => n.id);
-          
+
           // For students: Update by recipient_id
           if (studentInfo?.id) {
             try {
@@ -1076,7 +1076,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               console.error('Error marking student notifications as read:', error);
             }
           }
-          
+
           // For parents: Update by family_recipient_id
           if (parentInfo?.id) {
             try {
@@ -1093,7 +1093,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               console.error('Error marking parent notifications as read:', error);
             }
           }
-          
+
           // For other staff users (Teachers, etc.): Update by recipient_id
           if (user?.staff_id && !hasNotificationSettingsAccess) {
             try {
@@ -1119,13 +1119,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         if (viewerIdentifier) {
           const announcementIds = announcementNotifications.map(n => n.id);
           const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
-          
+
           if (schoolId) {
             // Build viewer payload
             const viewerType = studentInfo ? 'student' : (parentInfo ? 'parent' : 'staff');
             const viewerRole = studentInfo ? 'Student' : (parentInfo ? 'Parent' : (user?.role || 'Staff'));
             const viewerName = studentInfo?.name || parentInfo?.name || user?.name || 'User';
-            
+
             const basePayload: any = {
               school_id: schoolId,
               viewer_type: viewerType,
@@ -1133,7 +1133,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               viewer_name: viewerName,
               viewer_identifier: viewerIdentifier,
             };
-            
+
             if (studentInfo?.id) {
               basePayload.student_id = studentInfo.id;
             } else if (parentInfo?.id) {
@@ -1142,7 +1142,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             } else if (user?.staff_id) {
               basePayload.staff_id = user.staff_id;
             }
-            
+
             // Mark each announcement as viewed
             for (const announcementId of announcementIds) {
               try {
@@ -1177,7 +1177,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       });
 
       // Update unread count - count only notifications that were actually unread before marking
-      const actuallyUnread = notifications.filter(n => 
+      const actuallyUnread = notifications.filter(n =>
         notificationIds.includes(n.id) && !n.is_read
       ).length;
       setUnreadCount(prev => Math.max(0, prev - actuallyUnread));
@@ -1243,10 +1243,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
 
     try {
-      const channelName = recipientId 
+      const channelName = recipientId
         ? `notifications-${schoolId}-${recipientId}`
         : `notifications-family-${schoolId}-${familyRecipientId}`;
-      
+
       const channel = supabase
         .channel(channelName, {
           config: {
@@ -1268,16 +1268,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             },
             async (payload) => {
               const rawNotification = cleanNotification(payload.new as Notification);
-              
+
               // Enrich notification with activity_action (real-time payloads don't include JOINed data)
               const newNotification = await enrichNotificationWithActivityAction(
                 rawNotification,
                 schoolId
               );
-              
+
               // Use ref to get latest preferences
               const currentPreferences = preferencesRef.current;
-              
+
               // For reports, check ownership (teachers/students only see their reports)
               // For other notifications, check category preferences
               let shouldShow = false;
@@ -1289,15 +1289,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   studentInfo?.id,
                   schoolId
                 );
-              } else if (newNotification.notification_type === 'leave_request' || 
-                         newNotification.notification_type === 'suggestion' ||
-                         newNotification.notification_type === 'complaint') {
+              } else if (newNotification.notification_type === 'leave_request' ||
+                newNotification.notification_type === 'suggestion' ||
+                newNotification.notification_type === 'complaint') {
                 // Always show leave_request, suggestion, and complaint notifications to the recipient
                 shouldShow = true;
               } else {
                 shouldShow = shouldShowNotificationByCategory(newNotification, currentPreferences, user?.role);
               }
-              
+
               if (shouldShow) {
                 setNotifications(prev => {
                   // Check if notification already exists (avoid duplicates)
@@ -1305,7 +1305,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   if (exists) {
                     return prev;
                   }
-                  
+
                   // Add new notification and sort
                   const updated = [newNotification, ...prev];
                   return sortNotifications(updated);
@@ -1363,19 +1363,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
               if (payload.new?.family_recipient_id !== familyRecipientId) {
                 return;
               }
-              
+
               const rawNotification = cleanNotification(payload.new as Notification);
-              
+
               // Enrich notification with activity_action (real-time payloads don't include JOINed data)
               const newNotification = await enrichNotificationWithActivityAction(
                 rawNotification,
                 schoolId
               );
-              
+
               // For family notifications, show all types (leave_request, announcements, reports, etc.)
               // Always show to the recipient since they're specifically targeted
               const shouldShow = true;
-              
+
               if (shouldShow) {
                 setNotifications(prev => {
                   // Check if notification already exists (avoid duplicates)
@@ -1383,7 +1383,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                   if (exists) {
                     return prev;
                   }
-                  
+
                   // Add new notification and sort
                   const updated = [newNotification, ...prev];
                   return sortNotifications(updated);
@@ -1439,11 +1439,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
             const newAnnouncement = payload.new;
             // Use ref to get latest preferences
             const currentPreferences = preferencesRef.current;
-            
+
             // Determine if announcement should be shown
             const shouldShow = (() => {
               const hasNotificationSettingsAccess = user?.role === 'Principal' || user?.role === 'Admin';
-              
+
               if (studentInfo) {
                 // Students: Only show student-targeted announcements that match them
                 return newAnnouncement.audience_group === 'students' && matchesAnnouncementAudience(newAnnouncement);
@@ -1481,7 +1481,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                 // Check if notification already exists (avoid duplicates)
                 const exists = prev.some(n => n.id === notification.id && n.notification_type === 'announcement');
                 if (exists) return prev;
-                
+
                 // Add new notification and sort
                 const updated = [notification, ...prev];
                 return sortNotifications(updated);
@@ -1579,15 +1579,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const refreshNotificationsRef = useRef(refreshNotifications);
   const subscribeToNotificationsRef = useRef(subscribeToNotifications);
   const unsubscribeFromNotificationsRef = useRef(unsubscribeFromNotifications);
-  
+
   useEffect(() => {
     refreshNotificationsRef.current = refreshNotifications;
   }, [refreshNotifications]);
-  
+
   useEffect(() => {
     subscribeToNotificationsRef.current = subscribeToNotifications;
   }, [subscribeToNotifications]);
-  
+
   useEffect(() => {
     unsubscribeFromNotificationsRef.current = unsubscribeFromNotifications;
   }, [unsubscribeFromNotifications]);
@@ -1597,10 +1597,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   useEffect(() => {
     const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
     if (!schoolId) return;
-    
+
     // Prevent concurrent calls
     if (isRefreshingRef.current) return;
-    
+
     refreshNotificationsRef.current();
     subscribeToNotificationsRef.current();
 

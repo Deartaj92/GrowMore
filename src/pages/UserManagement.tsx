@@ -205,9 +205,9 @@ const StatusBadge = styled.div<{ status: string }>`
   font-weight: 700;
   background: ${({ status }) =>
     status === 'active' ? 'rgba(34, 197, 94, 0.3)' :
-    status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
-    status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
-    'rgba(99, 102, 241, 0.3)'};
+      status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
+        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
+          'rgba(99, 102, 241, 0.3)'};
   color: #fff;
   letter-spacing: 0.02em;
 
@@ -296,17 +296,17 @@ const StatusInfo = styled.div`
 const CardActionButton = styled.button<{ $variant?: 'primary' | 'danger' }>`
   background: ${({ $variant }) =>
     $variant === 'danger' ? 'rgba(239, 68, 68, 0.13)' :
-    $variant === 'primary' ? 'rgba(99, 102, 241, 0.13)' :
-    'rgba(120,120,120,0.10)'};
+      $variant === 'primary' ? 'rgba(99, 102, 241, 0.13)' :
+        'rgba(120,120,120,0.10)'};
   color: ${({ $variant }) =>
     $variant === 'danger' ? '#ef4444' :
-    $variant === 'primary' ? '#6366f1' :
-    '#888'};
+      $variant === 'primary' ? '#6366f1' :
+        '#888'};
   border: 1.1px solid
     ${({ $variant }) =>
-      $variant === 'danger' ? 'rgba(239, 68, 68, 0.25)' :
+    $variant === 'danger' ? 'rgba(239, 68, 68, 0.25)' :
       $variant === 'primary' ? 'rgba(99, 102, 241, 0.25)' :
-      'rgba(120,120,120,0.13)'};
+        'rgba(120,120,120,0.13)'};
   border-radius: 6px;
   padding: 0.18rem 0.55rem;
   font-size: 0.85rem;
@@ -321,13 +321,13 @@ const CardActionButton = styled.button<{ $variant?: 'primary' | 'danger' }>`
   white-space: nowrap;
   &:hover {
     background: ${({ $variant }) =>
-      $variant === 'danger' ? 'rgba(239, 68, 68, 0.22)' :
+    $variant === 'danger' ? 'rgba(239, 68, 68, 0.22)' :
       $variant === 'primary' ? 'rgba(99, 102, 241, 0.22)' :
-      'rgba(120,120,120,0.18)'};
+        'rgba(120,120,120,0.18)'};
     border-color: ${({ $variant }) =>
-      $variant === 'danger' ? '#ef4444' :
+    $variant === 'danger' ? '#ef4444' :
       $variant === 'primary' ? '#6366f1' :
-      '#888'};
+        '#888'};
     color: #fff;
   }
   &:disabled {
@@ -339,9 +339,9 @@ const CardActionButton = styled.button<{ $variant?: 'primary' | 'danger' }>`
 // Helper for status color (reuse from StudentStatusManager)
 const getStatusColor = (status: string) =>
   status === 'active' ? '34,197,94' : // green
-  status === 'suspended' ? '245,158,11' : // orange
-  status === 'withdrawn' ? '239,68,68' : // red
-  '99,102,241'; // blue
+    status === 'suspended' ? '245,158,11' : // orange
+      status === 'withdrawn' ? '239,68,68' : // red
+        '99,102,241'; // blue
 
 // Modal and related styled components for password modal
 const PasswordModal = styled.div`
@@ -771,14 +771,14 @@ const UserManagement: React.FC = () => {
     if (!user?.school_id || !hasActiveSession || activeTab !== 0) return;
 
     const channel = supabase
-      .channel(`staff-online-status-${user.school_id}`)
+      .channel(`staff-online-status-${user?.school_id}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'staff',
-          filter: `school_id=eq.${user.school_id}`,
+          filter: `school_id=eq.${user?.school_id}`,
         },
         (payload) => {
           console.log('Staff online status update received:', payload);
@@ -788,11 +788,11 @@ const UserManagement: React.FC = () => {
             prevUsers.map((user) =>
               user.staff_id === updatedStaff.id
                 ? {
-                    ...user,
-                    is_online: updatedStaff.is_online,
-                    last_online: updatedStaff.last_online,
-                    app_version: updatedStaff.app_version,
-                  }
+                  ...user,
+                  is_online: updatedStaff.is_online,
+                  last_online: updatedStaff.last_online,
+                  app_version: updatedStaff.app_version,
+                }
                 : user
             )
           );
@@ -818,14 +818,14 @@ const UserManagement: React.FC = () => {
     if (!user?.school_id || !hasActiveSession || activeTab !== 2) return;
 
     const channel = supabase
-      .channel(`students-online-status-${user.school_id}`)
+      .channel(`students-online-status-${user?.school_id}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'students',
-          filter: `school_id=eq.${user.school_id}`,
+          filter: `school_id=eq.${user?.school_id}`,
         },
         (payload) => {
           console.log('Student online status update received:', payload);
@@ -834,11 +834,11 @@ const UserManagement: React.FC = () => {
             prevStudents.map((student) =>
               student.id === updatedStudent.id
                 ? {
-                    ...student,
-                    is_online: updatedStudent.is_online,
-                    last_online: updatedStudent.last_online,
-                    app_version: updatedStudent.app_version,
-                  }
+                  ...student,
+                  is_online: updatedStudent.is_online,
+                  last_online: updatedStudent.last_online,
+                  app_version: updatedStudent.app_version,
+                }
                 : student
             )
           );
@@ -864,14 +864,14 @@ const UserManagement: React.FC = () => {
     if (!user?.school_id || !hasActiveSession || activeTab !== 1) return;
 
     const channel = supabase
-      .channel(`families-online-status-${user.school_id}`)
+      .channel(`families-online-status-${user?.school_id}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'families',
-          filter: `school_id=eq.${user.school_id}`,
+          filter: `school_id=eq.${user?.school_id}`,
         },
         (payload) => {
           console.log('Family online status update received:', payload);
@@ -880,11 +880,11 @@ const UserManagement: React.FC = () => {
             prevParents.map((parent) =>
               parent.id === updatedFamily.id
                 ? {
-                    ...parent,
-                    is_online: updatedFamily.is_online,
-                    last_online: updatedFamily.last_online,
-                    app_version: updatedFamily.app_version,
-                  }
+                  ...parent,
+                  is_online: updatedFamily.is_online,
+                  last_online: updatedFamily.last_online,
+                  app_version: updatedFamily.app_version,
+                }
                 : parent
             )
           );
@@ -1084,7 +1084,7 @@ const UserManagement: React.FC = () => {
         .filter((id, index, self) => self.indexOf(id) === index);
 
       let staffOnlineStatus: Record<number, { is_online?: boolean; last_online?: string; app_version?: string }> = {};
-      
+
       if (staffIds.length > 0) {
         const { data: staffData } = await supabase
           .from('staff')
@@ -1138,24 +1138,24 @@ const UserManagement: React.FC = () => {
   // Helper function to format last online time
   const formatLastOnline = (lastOnline: string | null | undefined): string => {
     if (!lastOnline) return 'Never';
-    
+
     const now = new Date();
     const lastOnlineDate = new Date(lastOnline);
     const diffMs = now.getTime() - lastOnlineDate.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    
+
     // For longer periods, show the date
-    return lastOnlineDate.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: lastOnlineDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined 
+    return lastOnlineDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: lastOnlineDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
   };
 
@@ -1367,58 +1367,58 @@ const UserManagement: React.FC = () => {
 
   const renderStaffTab = () => {
     const now = new Date();
-    
+
     return (
-    <>
-      <UserGrid>
-        {loading ? (
-          <>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <SkeletonUserCard key={i} />
-            ))}
-          </>
-        ) : filteredUsers.length === 0 ? (
-          <>
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No users found</div>
-            <AddUserCard status="active" onClick={handleAdd} title="Add User">
-              <Add style={{ fontSize: 48, marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
-            </AddUserCard>
-          </>
-        ) : (
-          <>
-            <AddUserCard status="active" onClick={handleAdd} title="Add User">
-              <Add style={{ fontSize: 48, marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
-            </AddUserCard>
-            {filteredUsers.map(user => {
-              const staffInfo = getStaffInfo(user.staff_id);
-              // For Guest users, use the user's name directly instead of staff name
-              const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
-              const displayAvatar = user.role === 'Guest' ? user.avatar_url : staffInfo.avatar;
+      <>
+        <UserGrid>
+          {loading ? (
+            <>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <SkeletonUserCard key={i} />
+              ))}
+            </>
+          ) : filteredUsers.length === 0 ? (
+            <>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No users found</div>
+              <AddUserCard status="active" onClick={handleAdd} title="Add User">
+                <Add style={{ fontSize: 48, marginBottom: 8 }} />
+                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
+              </AddUserCard>
+            </>
+          ) : (
+            <>
+              <AddUserCard status="active" onClick={handleAdd} title="Add User">
+                <Add style={{ fontSize: 48, marginBottom: 8 }} />
+                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
+              </AddUserCard>
+              {filteredUsers.map(user => {
+                const staffInfo = getStaffInfo(user.staff_id);
+                // For Guest users, use the user's name directly instead of staff name
+                const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
+                const displayAvatar = user.role === 'Guest' ? user.avatar_url : staffInfo.avatar;
                 // Use is_online flag if explicitly set to false, otherwise calculate from timestamp
-                const isOnline = user.is_online === false 
+                const isOnline = user.is_online === false
                   ? false
                   : user.last_online && (now.getTime() - new Date(user.last_online).getTime() < 5 * 60 * 1000);
-                
-              return (
-                <UserCard key={user.id} status={user.status}>
-                  <RoleBadge role={user.role}>{user.role}</RoleBadge>
-                  <CardTop>
-                    <Avatar src={displayAvatar}>
-                      {!displayAvatar && displayName.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <UserName>
-                        {displayName}
-                        <StatusBadge status={user.status}>
-                          {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                        </StatusBadge>
-                      </UserName>
-                      <UsernameText>@{user.username}</UsernameText>
-                    </div>
-                  </CardTop>
-                  <ActionButtons>
+
+                return (
+                  <UserCard key={user.id} status={user.status}>
+                    <RoleBadge role={user.role}>{user.role}</RoleBadge>
+                    <CardTop>
+                      <Avatar src={displayAvatar}>
+                        {!displayAvatar && displayName.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <UserName>
+                          {displayName}
+                          <StatusBadge status={user.status}>
+                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                          </StatusBadge>
+                        </UserName>
+                        <UsernameText>@{user.username}</UsernameText>
+                      </div>
+                    </CardTop>
+                    <ActionButtons>
                       <StatusInfo>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <div style={{
@@ -1446,66 +1446,66 @@ const UserManagement: React.FC = () => {
                         )}
                       </StatusInfo>
                       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                    <CardActionButton onClick={() => handleViewPassword(user)} title="View/Change Password">
-                      <Lock />
-                    </CardActionButton>
-                    <CardActionButton onClick={() => handleEdit(user)} title="Edit User">
-                      <Edit />
-                    </CardActionButton>
-                    <CardActionButton $variant="danger" onClick={() => handleDelete(user.id)} title="Delete User">
-                      <Delete />
-                    </CardActionButton>
+                        <CardActionButton onClick={() => handleViewPassword(user)} title="View/Change Password">
+                          <Lock />
+                        </CardActionButton>
+                        <CardActionButton onClick={() => handleEdit(user)} title="Edit User">
+                          <Edit />
+                        </CardActionButton>
+                        <CardActionButton $variant="danger" onClick={() => handleDelete(user.id)} title="Delete User">
+                          <Delete />
+                        </CardActionButton>
                       </div>
-                  </ActionButtons>
-                </UserCard>
-              );
-            })}
-          </>
-        )}
-      </UserGrid>
-    </>
-  );
+                    </ActionButtons>
+                  </UserCard>
+                );
+              })}
+            </>
+          )}
+        </UserGrid>
+      </>
+    );
   };
 
   const renderParentsTab = () => {
     const now = new Date();
-    
+
     return (
-    <>
-      <UserGrid>
-        {loading ? (
-          <>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <SkeletonUserCard key={i} />
-            ))}
-          </>
-        ) : filteredParents.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No parents found</div>
-        ) : (
+      <>
+        <UserGrid>
+          {loading ? (
+            <>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <SkeletonUserCard key={i} />
+              ))}
+            </>
+          ) : filteredParents.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No parents found</div>
+          ) : (
             filteredParents.map(parent => {
               // Use is_online flag if explicitly set to false, otherwise calculate from timestamp
               const isOnline = parent.is_online === false
                 ? false
                 : parent.last_online && (now.getTime() - new Date(parent.last_online).getTime() < 5 * 60 * 1000);
-              
+
               return (
-            <UserCard key={parent.id} status="active">
+                <UserCard key={parent.id} status="active">
                   <RoleBadge role="Parent">ID: {getFamilyDisplayId(parent.id)}</RoleBadge>
-              <CardTop>
-                <Avatar src={parent.avatar_url}>
-                  {!parent.avatar_url && parent.name.charAt(0).toUpperCase()}
-                </Avatar>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <UserName>
-                    {parent.name}
-                    <StatusBadge status="active">Active</StatusBadge>
-                  </UserName>
-                  <UsernameText>Contact: {parent.contact_person}</UsernameText>
-                  <InfoRow>Phone: {parent.contact_number}</InfoRow>
-                  {parent.address && <InfoRow>Address: {parent.address}</InfoRow>}
-                </div>
-              </CardTop>
-              <ActionButtons>
+                  <CardTop>
+                    <Avatar src={parent.avatar_url}>
+                      {!parent.avatar_url && parent.name.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <UserName>
+                        {parent.name}
+                        <StatusBadge status="active">Active</StatusBadge>
+                      </UserName>
+                      <UsernameText>Contact: {parent.contact_person}</UsernameText>
+                      <InfoRow>Phone: {parent.contact_number}</InfoRow>
+                      {parent.address && <InfoRow>Address: {parent.address}</InfoRow>}
+                    </div>
+                  </CardTop>
+                  <ActionButtons>
                     <StatusInfo>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{
@@ -1533,26 +1533,26 @@ const UserManagement: React.FC = () => {
                       )}
                     </StatusInfo>
                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                <CardActionButton onClick={() => {/* TODO: Edit parent */}} title="Edit Parent">
-                  <Edit />
-                </CardActionButton>
-                <CardActionButton $variant="danger" onClick={() => {/* TODO: Delete parent */}} title="Delete Parent">
-                  <Delete />
-                </CardActionButton>
+                      <CardActionButton onClick={() => {/* TODO: Edit parent */ }} title="Edit Parent">
+                        <Edit />
+                      </CardActionButton>
+                      <CardActionButton $variant="danger" onClick={() => {/* TODO: Delete parent */ }} title="Delete Parent">
+                        <Delete />
+                      </CardActionButton>
                     </div>
-              </ActionButtons>
-            </UserCard>
+                  </ActionButtons>
+                </UserCard>
               );
             })
-        )}
-      </UserGrid>
-    </>
-  );
+          )}
+        </UserGrid>
+      </>
+    );
   };
 
   const renderStudentsTab = () => {
     const now = new Date();
-    
+
     return (
       <>
         <UserGrid>
@@ -1570,7 +1570,7 @@ const UserManagement: React.FC = () => {
               const isOnline = student.is_online === false
                 ? false
                 : student.last_online && (now.getTime() - new Date(student.last_online).getTime() < 5 * 60 * 1000);
-              
+
               return (
                 <UserCard key={student.id} status={student.status}>
                   <RoleBadge role="Student">ID: {getStudentDisplayId(student)}</RoleBadge>
@@ -1597,38 +1597,38 @@ const UserManagement: React.FC = () => {
                   </CardTop>
                   <ActionButtons>
                     <StatusInfo>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
-                            boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
-                          }} />
-                          <span style={{ fontSize: '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
+                          boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
+                        }} />
+                        <span style={{ fontSize: '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
                           {isOnline ? 'Online' : `Last Online: ${formatLastOnline(student.last_online)}`}
-                          </span>
-                        </div>
-                        {student.app_version && (
-                          <span style={{
-                            fontSize: '11px',
-                            fontFamily: 'monospace',
-                            background: 'rgba(99, 102, 241, 0.1)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            color: '#6366f1'
-                          }}>
-                            v{student.app_version}
-                          </span>
-                        )}
+                        </span>
+                      </div>
+                      {student.app_version && (
+                        <span style={{
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          background: 'rgba(99, 102, 241, 0.1)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          color: '#6366f1'
+                        }}>
+                          v{student.app_version}
+                        </span>
+                      )}
                     </StatusInfo>
                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                    <CardActionButton onClick={() => window.location.href = `/student/${student.id}`} title="View Profile">
-                      <AccountCircle />
-                    </CardActionButton>
-                    <CardActionButton onClick={() => handleViewStudentPassword(student)} title="Manage Password">
-                      <Lock />
-                    </CardActionButton>
+                      <CardActionButton onClick={() => window.location.href = `/student/${student.id}`} title="View Profile">
+                        <AccountCircle />
+                      </CardActionButton>
+                      <CardActionButton onClick={() => handleViewStudentPassword(student)} title="Manage Password">
+                        <Lock />
+                      </CardActionButton>
                     </div>
                   </ActionButtons>
                 </UserCard>
@@ -1650,8 +1650,8 @@ const UserManagement: React.FC = () => {
             <SearchInput
               placeholder={
                 activeTab === 0 ? "Search by name..." :
-                activeTab === 1 ? "Search by name..." :
-                "Search by name..."
+                  activeTab === 1 ? "Search by name..." :
+                    "Search by name..."
               }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -1827,8 +1827,8 @@ const UserManagement: React.FC = () => {
       )}
 
       {hoveredAvatar && (
-        <AvatarImagePreview 
-          style={{ 
+        <AvatarImagePreview
+          style={{
             top: hoveredAvatar.y - 130,
             left: hoveredAvatar.x - 60
           }}

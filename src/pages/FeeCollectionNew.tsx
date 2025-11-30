@@ -598,8 +598,8 @@ const DialogHeader = styled(Box)(({ theme }) => ({
 const StyledDialogTitle = styled(Typography)(({ theme }) => ({
   fontSize: '1.25rem',
   fontWeight: 600,
-  color: theme?.palette?.mode === 'dark' 
-    ? '#ffffff' 
+  color: theme?.palette?.mode === 'dark'
+    ? '#ffffff'
     : theme?.palette?.primary?.main || '#1976d2',
 }));
 
@@ -710,7 +710,7 @@ const ModalButton = styled.button<{ primary?: boolean }>`
       border-color: ${theme.ACCENT_DANGER_DARK || '#c53030'};
     }
   ` : `
-    background-color: ${theme.BUTTON_SECONDARY_BG || theme.FIELD_BG };
+    background-color: ${theme.BUTTON_SECONDARY_BG || theme.FIELD_BG};
     color: ${theme.TEXT_PRIMARY};
     border: 1px solid ${theme.BUTTON_SECONDARY_BORDER || theme.FIELD_BORDER};
     &:hover {
@@ -748,7 +748,7 @@ const FeeCollectionNew: React.FC = () => {
   const { startProgress, setProgress, completeProgress } = useProgress();
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width:768px)');
-  
+
   // State variables
   const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -761,14 +761,14 @@ const FeeCollectionNew: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [justSelectedStudent, setJustSelectedStudent] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  
+
   // Fee-related state
   const [feeInvoices, setFeeInvoices] = useState<any[]>([]);
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeError, setFeeError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any>(null);
-  
+
   // Payment-related state
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -780,21 +780,21 @@ const FeeCollectionNew: React.FC = () => {
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [paymentHistoryError, setPaymentHistoryError] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
-  
+
   // Amount distribution state
-  const [distributedAmounts, setDistributedAmounts] = useState<{[key: string]: number}>({});
-  
+  const [distributedAmounts, setDistributedAmounts] = useState<{ [key: string]: number }>({});
+
   // Delete payment state
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Refs
   const inputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Check if user has school_id
   if (!user?.school_id) {
     return (
@@ -818,7 +818,7 @@ const FeeCollectionNew: React.FC = () => {
       setLoading(true);
       const minDuration = 1500;
       const start = Date.now();
-      
+
       const dataPromise = (async () => {
         const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: sessionsData }, { data: usersData }] = await Promise.all([
           supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
@@ -837,7 +837,7 @@ const FeeCollectionNew: React.FC = () => {
         }
         if (usersData) setUsers(usersData);
       })();
-      
+
       const timerPromise = new Promise(res => setTimeout(res, minDuration));
       await Promise.all([dataPromise, timerPromise]);
       setProgress(100);
@@ -893,7 +893,7 @@ const FeeCollectionNew: React.FC = () => {
     // Blur search to allow amount field to grab focus
     searchInputRef.current?.blur();
     inputRef.current?.blur();
-    
+
     // Reset all form fields to default values
     setPaymentAmount('');
     setPaymentMethod('Cash');
@@ -934,7 +934,7 @@ const FeeCollectionNew: React.FC = () => {
       setSuggestionsLoading(false);
       return;
     }
-     
+
     const s = search.trim().toLowerCase();
     let filtered = students.filter(
       (stu: any) => {
@@ -963,7 +963,7 @@ const FeeCollectionNew: React.FC = () => {
   const getSectionName = (sectionId: number) => sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
   const getUserName = (userId: number) => users.find((u: any) => u.id === userId)?.name || 'Unknown User';
   const getPaymentDisplayId = (paymentId: number) => `S${user.school_id}-${paymentId}`;
-  
+
   // Get default print type from settings
   const getDefaultPrintType = (): 'invoice' | 'thermal' => {
     if (!user?.school_id) return 'invoice';
@@ -1082,7 +1082,7 @@ const FeeCollectionNew: React.FC = () => {
 
       // Fetch payment items from fee_payment_items using payment_id
       let allFeeItems: any[] = [];
-      
+
       if (paymentData.paymentId) {
         // Fetch ALL items from fee_payment_items table using payment_id
         // This includes items with paid_amount = 0 to show what items were available at payment time
@@ -1125,8 +1125,8 @@ const FeeCollectionNew: React.FC = () => {
       } else if (paymentData.paymentItems && paymentData.paymentItems.length > 0) {
         // Legacy: Fallback to using paymentItems (for backward compatibility)
         const feeItemIds = paymentData.paymentItems.map(item => item.fee_item_id).filter(Boolean);
-        
-        const fetchPromises = feeItemIds.map(id => 
+
+        const fetchPromises = feeItemIds.map(id =>
           supabase
             .from('fee_invoice_items')
             .select('id, amount, fee_head_id, invoice_id, fee_heads(id, name)')
@@ -1134,12 +1134,12 @@ const FeeCollectionNew: React.FC = () => {
             .eq('school_id', user.school_id)
             .maybeSingle()
         );
-        
+
         const results = await Promise.all(fetchPromises);
         const feeInvoiceItems = results
           .map(r => r.data)
           .filter(Boolean) as any[];
-        
+
         const feeItemsError = results.find(r => r.error)?.error;
         if (feeItemsError) throw feeItemsError;
 
@@ -1176,7 +1176,7 @@ const FeeCollectionNew: React.FC = () => {
 
       // Calculate total from payment items' full amounts (this is what's shown in the table)
       const totalRemaining = allFeeItems.reduce((sum, item) => sum + item.amount, 0);
-      
+
       // For remaining amount calculation, we still need all fee items to get the overall remaining
       // Use provided fee invoices or fall back to state
       const invoicesToUse = paymentData.feeInvoicesOverride || feeInvoices;
@@ -1189,7 +1189,7 @@ const FeeCollectionNew: React.FC = () => {
         });
       });
       const totalAllFeeItems = allStudentFeeItems.reduce((sum, item) => sum + item.amount, 0);
-      
+
       // Calculate total paid across ALL payments (including previous ones)
       // Get all payment items for this student to calculate total paid
       let totalPaidAllPayments = 0;
@@ -1212,7 +1212,7 @@ const FeeCollectionNew: React.FC = () => {
             .eq('fee_invoices.student_id', selectedStudent.id)
             .eq('fee_invoices.session_id', currentSession.id)
             .eq('school_id', user.school_id);
-          
+
           if (allPaymentsData) {
             // Sum all payment amounts (including discounts)
             totalPaidAllPayments = allPaymentsData.reduce((sum, payment) => {
@@ -1229,7 +1229,7 @@ const FeeCollectionNew: React.FC = () => {
         // Fallback to just this payment if student/session not available
         totalPaidAllPayments = paymentData.netAmount;
       }
-      
+
       // Remaining amount = Total All Fee Items - All payments (including this one)
       const remainingAmount = totalAllFeeItems - totalPaidAllPayments;
 
@@ -1256,7 +1256,7 @@ const FeeCollectionNew: React.FC = () => {
           </tr>
         `;
       }).join('');
-      
+
       // Add empty rows if needed to reach minimum of 11 rows (without numbers)
       const emptyRows = Math.max(0, minRows - allFeeItems.length);
       const emptyRowsHtml = Array(emptyRows).fill(0).map(() => {
@@ -1268,7 +1268,7 @@ const FeeCollectionNew: React.FC = () => {
           </tr>
         `;
       }).join('');
-      
+
       const allItemsRows = itemsRows + emptyRowsHtml;
 
       // Create HTML content
@@ -1508,14 +1508,14 @@ const FeeCollectionNew: React.FC = () => {
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-        
+
         // Wait for content to load, then trigger print
         printWindow.onload = () => {
           setTimeout(() => {
             printWindow.print();
           }, 250);
         };
-        
+
         showToast('Print preview opened!', 'success');
       } else {
         showToast('Failed to open print preview. Please allow popups.', 'error');
@@ -1784,15 +1784,15 @@ const FeeCollectionNew: React.FC = () => {
             
             <div class="items-section">
               ${paymentItems.length > 0 ? paymentItems.map((item: any) => {
-                const itemName = item.monthYear ? `${item.fee_head_name} (${item.monthYear})` : item.fee_head_name;
-                // Show full amount like invoice (not paid_amount)
-                return `
+        const itemName = item.monthYear ? `${item.fee_head_name} (${item.monthYear})` : item.fee_head_name;
+        // Show full amount like invoice (not paid_amount)
+        return `
                   <div class="item-row">
                     <span class="item-name">${itemName}</span>
                     <span class="item-amount">${formatCurrency(item.amount)}</span>
                   </div>
                 `;
-              }).join('') : '<div class="item-row"><span>No items</span></div>'}
+      }).join('') : '<div class="item-row"><span>No items</span></div>'}
             </div>
             
             <div class="summary-section">
@@ -1847,14 +1847,14 @@ const FeeCollectionNew: React.FC = () => {
       if (printWindow) {
         printWindow.document.write(receiptContent);
         printWindow.document.close();
-        
+
         // Wait for content to load, then trigger print
         printWindow.onload = () => {
           setTimeout(() => {
             printWindow.print();
           }, 250);
         };
-        
+
         showToast('Thermal receipt opened!', 'success');
       } else {
         showToast('Failed to open print preview. Please allow popups.', 'error');
@@ -1984,7 +1984,7 @@ const FeeCollectionNew: React.FC = () => {
   const distributePaymentAmount = (amount: number, discount: number = 0) => {
     if (!feeInvoices.length) return;
 
-    const newDistributedAmounts: {[key: string]: number} = {};
+    const newDistributedAmounts: { [key: string]: number } = {};
     const netAmount = amount + discount;
     let remainingAmount = netAmount;
 
@@ -1993,7 +1993,7 @@ const FeeCollectionNew: React.FC = () => {
     feeInvoices.forEach((invoice: any, invoiceIndex: number) => {
       invoice.fee_invoice_items?.forEach((item: any, itemIndex: number) => {
         const itemAmount = Number(item.amount || 0);
-        
+
         // Calculate already paid amount for this specific fee item
         const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
           if (payment.fee_payment_items) {
@@ -2009,9 +2009,9 @@ const FeeCollectionNew: React.FC = () => {
           }
           return sum;
         }, 0);
-        
+
         const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
-        
+
         // Only include items that still need payment
         if (remainingItemAmount > 0) {
           unpaidItems.push({
@@ -2043,10 +2043,10 @@ const FeeCollectionNew: React.FC = () => {
   const handlePaymentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPaymentAmount(value);
-    
+
     const amount = parseFloat(value || '0');
     const discount = parseFloat(discountAmount || '0');
-    
+
     if (amount > 0 || discount > 0) {
       distributePaymentAmount(amount, discount);
     } else {
@@ -2058,10 +2058,10 @@ const FeeCollectionNew: React.FC = () => {
   const handleDiscountAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setDiscountAmount(value);
-    
+
     const amount = parseFloat(paymentAmount || '0');
     const discount = parseFloat(value || '0');
-    
+
     if (amount > 0 || discount > 0) {
       distributePaymentAmount(amount, discount);
     } else {
@@ -2073,7 +2073,7 @@ const FeeCollectionNew: React.FC = () => {
   useEffect(() => {
     const amount = parseFloat(paymentAmount || '0');
     const discount = parseFloat(discountAmount || '0');
-    
+
     if (amount > 0 || discount > 0) {
       distributePaymentAmount(amount, discount);
     } else {
@@ -2104,7 +2104,7 @@ const FeeCollectionNew: React.FC = () => {
 
     const discount = parseFloat(discountAmount || '0');
     const netAmount = amount + discount;
-    
+
     if (netAmount > totalRemainingAmount) {
       showToast(`Net payment amount (Rs. ${formatCurrency(netAmount)}) cannot exceed remaining fee (Rs. ${formatCurrency(totalRemainingAmount)}).`, 'error');
       return;
@@ -2116,11 +2116,11 @@ const FeeCollectionNew: React.FC = () => {
       // Store: amount (remaining amount from fee summary table), paid_amount (distributed amount)
       const paymentItems: any[] = [];
       const invoicePaymentItems: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }> = [];
-      
+
       feeInvoices.forEach((invoice: any, invoiceIndex: number) => {
         invoice.fee_invoice_items?.forEach((item: any, itemIndex: number) => {
           const itemAmount = Number(item.amount || 0);
-          
+
           // Calculate already paid amount for this specific fee item (same logic as fee summary)
           const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
             if (payment.fee_payment_items) {
@@ -2136,21 +2136,21 @@ const FeeCollectionNew: React.FC = () => {
             }
             return sum;
           }, 0);
-          
+
           const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
-          
+
           // Only record items that are shown in fee summary (items with remaining amount > 0)
           if (remainingItemAmount > 0) {
-          const key = `${invoice.id}-${item.id}`;
-          const distributedAmount = distributedAmounts[key] || 0;
-          
+            const key = `${invoice.id}-${item.id}`;
+            const distributedAmount = distributedAmounts[key] || 0;
+
             // Store the remaining amount (what's shown in fee summary) and paid amount
             paymentItems.push({
               fee_item_id: item.id,
               amount: remainingItemAmount, // Remaining amount from fee summary table (not full amount)
               paid_amount: distributedAmount // Paid amount for this payment
             });
-            
+
             // Build invoice items with fee head info
             const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
             const monthYear = new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
@@ -2271,18 +2271,18 @@ const FeeCollectionNew: React.FC = () => {
             // Update both states
             if (invoicesData) setFeeInvoices(invoicesData);
             if (paymentData) setPaymentHistory(paymentData);
-            
+
             return invoicesData; // Return fresh invoices data
           } catch (err) {
             showToast("Payment collected but failed to refresh data. Please refresh the page.", 'error');
             return null;
           }
         };
-        
+
         const freshInvoicesData = await refreshAllData();
-        
+
         showToast("Payment collected successfully!", 'success');
-        
+
         // Generate default print type based on settings
         const defaultPrintType = getDefaultPrintType();
         const paymentData = {
@@ -2296,7 +2296,7 @@ const FeeCollectionNew: React.FC = () => {
           receivedBy: user.id,
           feeInvoicesOverride: freshInvoicesData || undefined
         };
-        
+
         if (defaultPrintType === 'invoice') {
           // Generate invoice as default
           await generateInvoicePDF(paymentData);
@@ -2310,13 +2310,13 @@ const FeeCollectionNew: React.FC = () => {
             await generateInvoicePDF(paymentData);
           }
         }
-        
+
         setPaymentAmount('');
         setPaymentRemarks('');
         setDiscountAmount('');
         setPaymentDate(new Date().toISOString().slice(0, 10));
         setDistributedAmounts({});
-        
+
         // Focus back on search and select its content
         setTimeout(() => {
           if (searchInputRef.current) {
@@ -2391,7 +2391,7 @@ const FeeCollectionNew: React.FC = () => {
           showToast("Payment deleted but failed to refresh data. Please refresh the page.", 'error');
         }
       };
-      
+
       await refreshAllData();
       showToast("Payment deleted successfully!", 'success');
     } catch (err: any) {
@@ -2413,7 +2413,7 @@ const FeeCollectionNew: React.FC = () => {
   // Handle Enter key for delete confirmation modal
   useEffect(() => {
     if (!showDeleteModal) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !isDeleting) {
         e.preventDefault();
@@ -2423,7 +2423,7 @@ const FeeCollectionNew: React.FC = () => {
         setShowDeleteModal(false);
       }
     };
-    
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showDeleteModal, isDeleting]);
@@ -2440,10 +2440,10 @@ const FeeCollectionNew: React.FC = () => {
           {/* Header Skeleton */}
           <Header>
             <Title>Fee Collection</Title>
-          <SearchContainer>
-            <SearchIcon style={{ color: (theme as any).TEXT_SECONDARY }} />
-            <SearchInput placeholder="Search by name or ID..." disabled />
-          </SearchContainer>
+            <SearchContainer>
+              <SearchIcon style={{ color: (theme as any).TEXT_SECONDARY }} />
+              <SearchInput placeholder="Search by name or ID..." disabled />
+            </SearchContainer>
           </Header>
 
           {/* Main Content Skeleton */}
@@ -2530,14 +2530,14 @@ const FeeCollectionNew: React.FC = () => {
                   >
                     <SuggestionAvatar>
                       {student.picture_url ? (
-                        <img 
-                          src={student.picture_url} 
+                        <img
+                          src={student.picture_url}
                           alt={student.name}
-                          style={{ 
-                            width: '100%', 
-                            height: '100%', 
-                            objectFit: 'cover', 
-                            borderRadius: '50%' 
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '50%'
                           }}
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
@@ -2548,12 +2548,12 @@ const FeeCollectionNew: React.FC = () => {
                           }}
                         />
                       ) : null}
-                      <div 
-                        style={{ 
+                      <div
+                        style={{
                           display: student.picture_url ? 'none' : 'flex',
-                          width: '100%', 
-                          height: '100%', 
-                          alignItems: 'center', 
+                          width: '100%',
+                          height: '100%',
+                          alignItems: 'center',
                           justifyContent: 'center',
                           background: 'inherit',
                           color: 'inherit',
@@ -2587,7 +2587,7 @@ const FeeCollectionNew: React.FC = () => {
               <Payment style={{ color: (theme as any).ACCENT }} />
               Fee Summary
             </CardTitle>
-            
+
             <TableContainer>
               {selectedStudent ? (
                 feeLoading ? (
@@ -2609,7 +2609,7 @@ const FeeCollectionNew: React.FC = () => {
                   </SkeletonTable>
                 ) : feeInvoices.length > 0 ? (
                   <>
-                    <TableWrapper style={{ 
+                    <TableWrapper style={{
                       overflowY: 'scroll',
                       scrollbarGutter: 'stable'
                     }}>
@@ -2625,10 +2625,10 @@ const FeeCollectionNew: React.FC = () => {
                         <tbody>
                           {(() => {
                             let globalIndex = 0;
-                            return feeInvoices.flatMap((invoice: any, invoiceIndex: number) => 
+                            return feeInvoices.flatMap((invoice: any, invoiceIndex: number) =>
                               invoice.fee_invoice_items?.map((item: any, itemIndex: number) => {
                                 const itemAmount = Number(item.amount || 0);
-                                
+
                                 // Calculate already paid amount for this specific fee item
                                 const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
                                   if (payment.fee_payment_items) {
@@ -2644,12 +2644,12 @@ const FeeCollectionNew: React.FC = () => {
                                   }
                                   return sum;
                                 }, 0);
-                                
+
                                 const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
-                                
+
                                 // Only show items that still need payment
                                 if (remainingItemAmount <= 0) return null;
-                                
+
                                 globalIndex++;
                                 return (
                                   <TableRow key={`${invoice.id}-${item.id}`}>
@@ -2671,7 +2671,7 @@ const FeeCollectionNew: React.FC = () => {
                                         placeholder="0"
                                         value={distributedAmounts[`${invoice.id}-${item.id}`] || ''}
                                         readOnly
-                                        style={{ 
+                                        style={{
                                           backgroundColor: distributedAmounts[`${invoice.id}-${item.id}`] ? '#e8f5e8' : 'transparent',
                                           color: distributedAmounts[`${invoice.id}-${item.id}`] ? '#16a34a' : 'inherit'
                                         }}
@@ -2685,7 +2685,7 @@ const FeeCollectionNew: React.FC = () => {
                         </tbody>
                       </Table>
                     </TableWrapper>
-                    
+
                     <Footer>
                       <div style={{
                         display: 'grid',
@@ -2768,14 +2768,14 @@ const FeeCollectionNew: React.FC = () => {
               <AccountCircle style={{ color: (theme as any).ACCENT }} />
               Student Details
             </CardTitle>
-            
+
             {selectedStudent ? (
               <>
                 <StudentInfo>
                   <StudentAvatar>
                     {selectedStudent.picture_url ? (
-                      <img 
-                        src={selectedStudent.picture_url} 
+                      <img
+                        src={selectedStudent.picture_url}
                         alt={selectedStudent.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                         onError={(e) => {
@@ -2787,12 +2787,12 @@ const FeeCollectionNew: React.FC = () => {
                         }}
                       />
                     ) : null}
-                    <div 
-                      style={{ 
+                    <div
+                      style={{
                         display: selectedStudent.picture_url ? 'none' : 'flex',
-                        width: '100%', 
-                        height: '100%', 
-                        alignItems: 'center', 
+                        width: '100%',
+                        height: '100%',
+                        alignItems: 'center',
                         justifyContent: 'center',
                         background: 'inherit',
                         color: 'inherit',
@@ -2810,119 +2810,119 @@ const FeeCollectionNew: React.FC = () => {
                     <StudentInfoText>Class: 9th B | ID: {getStudentDisplayId(selectedStudent)}</StudentInfoText>
                   </StudentDetails>
                 </StudentInfo>
-                
+
                 <PaymentForm>
                   <FormFields>
                     <FormRow style={{ display: 'flex', gap: '1rem' }}>
-                    <TextField
-                      inputRef={amountInputRef}
-                      label="Amount"
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePaymentAmountChange(e)}
-                      onKeyDown={handleFormKeyDown}
-                      placeholder="Enter payment amount"
-                      size="small"
-                      required
-                      disabled={isPaymentDisabled}
-                      error={isAmountExceeded}
-                      helperText={isAmountExceeded ? `Amount exceeds remaining fee (Rs. ${formatCurrency(totalRemainingAmount)})` : ''}
-                      sx={{
-                        flex: 1,
-                        '& .MuiOutlinedInput-root': {
-                          '&.Mui-error fieldset': {
-                            borderColor: '#f44336',
+                      <TextField
+                        inputRef={amountInputRef}
+                        label="Amount"
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePaymentAmountChange(e)}
+                        onKeyDown={handleFormKeyDown}
+                        placeholder="Enter payment amount"
+                        size="small"
+                        required
+                        disabled={isPaymentDisabled}
+                        error={isAmountExceeded}
+                        helperText={isAmountExceeded ? `Amount exceeds remaining fee (Rs. ${formatCurrency(totalRemainingAmount)})` : ''}
+                        sx={{
+                          flex: 1,
+                          '& .MuiOutlinedInput-root': {
+                            '&.Mui-error fieldset': {
+                              borderColor: '#f44336',
+                            },
                           },
-                        },
-                      }}
-                    />
-                    <TextField
-                      label="Discount Amount"
-                      type="number"
-                      value={discountAmount}
-                      onChange={handleDiscountAmountChange}
-                      onKeyDown={handleFormKeyDown}
-                      placeholder="Enter discount amount (optional)"
-                      size="small"
-                      inputProps={{ min: 0, step: 0.01 }}
-                      sx={{ flex: 1 }}
-                    />
-                  </FormRow>
-                  
-                  <FormRow>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Payment Method</InputLabel>
-                      <Select
-                        value={paymentMethod}
-                        label="Payment Method"
-                        onChange={(e: SelectChangeEvent<string>) => setPaymentMethod(e.target.value)}
-                      >
-                        <MenuItem value="Cash">Cash</MenuItem>
-                        <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
-                        <MenuItem value="Cheque">Cheque</MenuItem>
-                        <MenuItem value="Online">Online</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormRow>
-                  
-                  <FormRow>
-                    <TextField
-                      label="Payment Date"
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentDate(e.target.value)}
-                      onKeyDown={handleFormKeyDown}
-                      fullWidth
-                      size="small"
-                      required
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </FormRow>
-                  
-                  <FormRow>
-                    <TextField
-                      label="Remarks"
-                      value={paymentRemarks}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentRemarks(e.target.value)}
-                      onKeyDown={handleFormKeyDown}
-                      placeholder="Enter payment remarks (optional)"
-                      fullWidth
-                      size="small"
-                      multiline
-                      rows={2}
-                    />
-                  </FormRow>
+                        }}
+                      />
+                      <TextField
+                        label="Discount Amount"
+                        type="number"
+                        value={discountAmount}
+                        onChange={handleDiscountAmountChange}
+                        onKeyDown={handleFormKeyDown}
+                        placeholder="Enter discount amount (optional)"
+                        size="small"
+                        inputProps={{ min: 0, step: 0.01 }}
+                        sx={{ flex: 1 }}
+                      />
+                    </FormRow>
+
+                    <FormRow>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Payment Method</InputLabel>
+                        <Select
+                          value={paymentMethod}
+                          label="Payment Method"
+                          onChange={(e: SelectChangeEvent<string>) => setPaymentMethod(e.target.value)}
+                        >
+                          <MenuItem value="Cash">Cash</MenuItem>
+                          <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
+                          <MenuItem value="Cheque">Cheque</MenuItem>
+                          <MenuItem value="Online">Online</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormRow>
+
+                    <FormRow>
+                      <TextField
+                        label="Payment Date"
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentDate(e.target.value)}
+                        onKeyDown={handleFormKeyDown}
+                        fullWidth
+                        size="small"
+                        required
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </FormRow>
+
+                    <FormRow>
+                      <TextField
+                        label="Remarks"
+                        value={paymentRemarks}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentRemarks(e.target.value)}
+                        onKeyDown={handleFormKeyDown}
+                        placeholder="Enter payment remarks (optional)"
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={2}
+                      />
+                    </FormRow>
                   </FormFields>
-                  
+
                   <FormButton>
                     <Button
-                    onClick={handleCollectPayment}
-                    disabled={!paymentAmount || isCollecting}
-                    variant="contained"
-                    fullWidth
-                    size="small"
-                    sx={{
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      py: 1.5,
-                      background: '#16a34a',
-                      '&:hover': {
-                        background: '#15803d',
-                      }
-                    }}
-                  >
-                    {isCollecting ? (
-                      <>
-                        <CircularProgress size={16} style={{ marginRight: '8px', color: '#fff' }} />
-                        Collecting...
-                      </>
-                    ) : (
-                      <>
-                        <Payment style={{ fontSize: 18, marginRight: '8px' }} />
-                        Collect Payment
-                      </>
-                    )}
+                      onClick={handleCollectPayment}
+                      disabled={!paymentAmount || isCollecting}
+                      variant="contained"
+                      fullWidth
+                      size="small"
+                      sx={{
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        py: 1.5,
+                        background: '#16a34a',
+                        '&:hover': {
+                          background: '#15803d',
+                        }
+                      }}
+                    >
+                      {isCollecting ? (
+                        <>
+                          <CircularProgress size={16} style={{ marginRight: '8px', color: '#fff' }} />
+                          Collecting...
+                        </>
+                      ) : (
+                        <>
+                          <Payment style={{ fontSize: 18, marginRight: '8px' }} />
+                          Collect Payment
+                        </>
+                      )}
                     </Button>
                   </FormButton>
                 </PaymentForm>
@@ -2944,7 +2944,7 @@ const FeeCollectionNew: React.FC = () => {
                 <History style={{ color: (theme as any).ACCENT }} />
                 Payment History
               </CardTitle>
-              
+
               {paymentHistoryLoading ? (
                 <LoadingContainer>Loading payment history...</LoadingContainer>
               ) : paymentHistory.length > 0 ? (
@@ -2974,68 +2974,68 @@ const FeeCollectionNew: React.FC = () => {
                           return bTime - aTime; // most recent first (descending order)
                         })
                         .map((payment: any, idx: number) => (
-                        <TableRow key={payment.id || idx}>
-                          <TableCell style={{ fontWeight: '600' }}>{getPaymentDisplayId(payment.id)}</TableCell>
-                          <TableCell>{formatDate(payment.payment_date)}</TableCell>
-                          <TableCell>Rs. {formatCurrency(Number(payment.amount || 0))}</TableCell>
-                          <TableCell>
-                            {Number(payment.discount_amount || 0) > 0 ? (
-                              <span style={{ color: '#f59e0b', fontWeight: '500' }}>
-                                Rs. {formatCurrency(Number(payment.discount_amount || 0))}
-                              </span>
-                            ) : (
-                              '-'
-                            )}
-                          </TableCell>
-                          <TableCell style={{ fontWeight: '600' }}>
-                            Rs. {formatCurrency(Number(payment.net_amount || payment.amount || 0))}
-                          </TableCell>
-                          <TableCell>{payment.payment_mode}</TableCell>
-                          <TableCell>
-                            {payment.received_by ? `${payment.received_by} - ${getUserName(payment.received_by)}` : '-'}
-                          </TableCell>
-                          <TableCell>{payment.remarks || '-'}</TableCell>
-                          <TableCell>
-                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                              <Button
-                                onClick={() => generateInvoiceForPayment(payment)}
-                                size="small"
-                                variant="outlined"
-                                color="primary"
-                                sx={{ minWidth: 'auto', padding: '4px 8px' }}
-                                title="Generate Invoice"
-                              >
-                                <Receipt fontSize="small" />
-                              </Button>
-                              <Button
-                                onClick={() => generateThermalReceiptForPayment(payment)}
-                                size="small"
-                                variant="outlined"
-                                color="info"
-                                sx={{ minWidth: 'auto', padding: '4px 8px' }}
-                                title="Generate Thermal Receipt"
-                              >
-                                <PrintIcon fontSize="small" />
-                              </Button>
-                            <Button
-                              onClick={() => showDeleteConfirmation(payment.id)}
-                              disabled={deletingPayment === payment.id}
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              sx={{ minWidth: 'auto', padding: '4px 8px' }}
-                                title="Delete Payment"
-                            >
-                              {deletingPayment === payment.id ? (
-                                <CircularProgress size={16} />
+                          <TableRow key={payment.id || idx}>
+                            <TableCell style={{ fontWeight: '600' }}>{getPaymentDisplayId(payment.id)}</TableCell>
+                            <TableCell>{formatDate(payment.payment_date)}</TableCell>
+                            <TableCell>Rs. {formatCurrency(Number(payment.amount || 0))}</TableCell>
+                            <TableCell>
+                              {Number(payment.discount_amount || 0) > 0 ? (
+                                <span style={{ color: '#f59e0b', fontWeight: '500' }}>
+                                  Rs. {formatCurrency(Number(payment.discount_amount || 0))}
+                                </span>
                               ) : (
-                                <DeleteIconMUI fontSize="small" />
+                                '-'
                               )}
-                            </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell style={{ fontWeight: '600' }}>
+                              Rs. {formatCurrency(Number(payment.net_amount || payment.amount || 0))}
+                            </TableCell>
+                            <TableCell>{payment.payment_mode}</TableCell>
+                            <TableCell>
+                              {payment.received_by ? `${payment.received_by} - ${getUserName(payment.received_by)}` : '-'}
+                            </TableCell>
+                            <TableCell>{payment.remarks || '-'}</TableCell>
+                            <TableCell>
+                              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                <Button
+                                  onClick={() => generateInvoiceForPayment(payment)}
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                  sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                                  title="Generate Invoice"
+                                >
+                                  <Receipt fontSize="small" />
+                                </Button>
+                                <Button
+                                  onClick={() => generateThermalReceiptForPayment(payment)}
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                  sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                                  title="Generate Thermal Receipt"
+                                >
+                                  <PrintIcon fontSize="small" />
+                                </Button>
+                                <Button
+                                  onClick={() => showDeleteConfirmation(payment.id)}
+                                  disabled={deletingPayment === payment.id}
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  sx={{ minWidth: 'auto', padding: '4px 8px' }}
+                                  title="Delete Payment"
+                                >
+                                  {deletingPayment === payment.id ? (
+                                    <CircularProgress size={16} />
+                                  ) : (
+                                    <DeleteIconMUI fontSize="small" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                     </tbody>
                   </Table>
                 </TableWrapper>
@@ -3060,9 +3060,9 @@ const FeeCollectionNew: React.FC = () => {
                 <ModalButton onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
                   Cancel
                 </ModalButton>
-                <ModalButton 
-                  primary 
-                  onClick={handleDeleteConfirmation} 
+                <ModalButton
+                  primary
+                  onClick={handleDeleteConfirmation}
                   disabled={isDeleting}
                 >
                   {isDeleting ? 'Deleting...' : 'Delete Payment'}

@@ -1234,7 +1234,7 @@ const AttendanceReport: React.FC = () => {
 
     // Unsubscribe previous
     if (subscriptionRef.current) {
-      supabase.removeChannel(subscriptionRef.current);
+      supabase.removeChannel(subscriptionRef.current!);
       subscriptionRef.current = null;
     }
 

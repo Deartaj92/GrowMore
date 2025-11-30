@@ -406,8 +406,11 @@ const Login: React.FC = () => {
         localStorage.removeItem('studentSession');
         localStorage.removeItem('parentSession');
         const staffUser = await signIn(username, password);
+        // OPTIMIZED: Make push notification rehydration non-blocking (fire and forget)
         if (staffUser?.staff_id && staffUser?.school_id) {
-          await pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff');
+          pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff').catch(() => {
+            // Silently fail - push notifications are not critical for login
+          });
         }
 
         // Redirect based on role
@@ -469,89 +472,85 @@ const Login: React.FC = () => {
         return;
       } else {
         // Student authentication: lookup by roll_number (e.g., "S1-1") or id
-        // Priority: 1. Full roll_number format (S1-1), 2. Sequence number (1), 3. Numeric ID
-        let studentLookup = null;
+        // OPTIMIZED: Try all lookup methods in parallel for faster response
         const trimmedId = studentId.trim();
-
-        // First try by full roll_number format (e.g., "S1-1")
-        // Normalize input: convert to uppercase for case-insensitive matching
         const normalizedId = trimmedId.toUpperCase();
-        const { data: byRollNumber, error: rollNumberError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('roll_number', normalizedId)
-          .single();
+        const isNumeric = !isNaN(Number(trimmedId));
+        
+        // Extract sequence number if possible
+        const rollNumberMatch = normalizedId.match(/^[Ss]?\d+\-(\d+)$/);
+        const pureNumberMatch = normalizedId.match(/^(\d+)$/);
+        const sequenceNum = rollNumberMatch?.[1] || pureNumberMatch?.[1] || null;
 
-        if (!rollNumberError && byRollNumber) {
-          studentLookup = { data: byRollNumber, error: null };
-        } else {
-          // If roll_number fails, try by sequence number (extract number after dash)
-          // Handle formats: "S1-1" -> "1", "1" -> "1", "S1" -> try as roll_number prefix
-          let sequenceNum: string | null = null;
-
-          // Try to extract sequence from "S1-1" format
-          const rollNumberMatch = normalizedId.match(/^[Ss]?\d+\-(\d+)$/);
-          if (rollNumberMatch) {
-            sequenceNum = rollNumberMatch[1];
-          } else {
-            // Try pure numeric sequence
-            const pureNumberMatch = normalizedId.match(/^(\d+)$/);
-            if (pureNumberMatch) {
-              sequenceNum = pureNumberMatch[1];
-            }
-          }
-
-          if (sequenceNum) {
-            // Search for roll_number ending with "-{sequence}"
-            const { data: bySequence, error: sequenceError } = await supabase
+        // OPTIMIZED: Run all possible queries in parallel
+        const queries = [
+          // Try exact roll_number match
+          Promise.resolve(
+            supabase
               .from('students')
               .select('*')
-              .like('roll_number', `%-${sequenceNum}`)
-              .limit(1);
-
-            if (!sequenceError && bySequence && bySequence.length > 0) {
-              // Find exact match by sequence
-              const exactMatch = bySequence.find((s: any) => {
-                const seq = s.roll_number?.match(/-(\d+)$/)?.[1];
-                return seq === sequenceNum;
-              });
-              studentLookup = { data: exactMatch || bySequence[0], error: null };
-            } else {
-              // Last fallback: try by numeric ID
-              if (!isNaN(Number(trimmedId))) {
-                const { data: byId, error: idError } = await supabase
+              .eq('roll_number', normalizedId)
+              .single()
+          )
+            .then(result => ({ type: 'roll_number', ...result }))
+            .catch(() => ({ type: 'roll_number', data: null, error: null })),
+          
+          // Try by sequence if we have one
+          sequenceNum
+            ? Promise.resolve(
+                supabase
+                  .from('students')
+                  .select('*')
+                  .like('roll_number', `%-${sequenceNum}`)
+                  .limit(10)
+              )
+                .then(result => ({ type: 'sequence', ...result }))
+                .catch(() => ({ type: 'sequence', data: null, error: null }))
+            : Promise.resolve({ type: 'sequence', data: null, error: null }),
+          
+          // Try by numeric ID if input is numeric
+          isNumeric
+            ? Promise.resolve(
+                supabase
                   .from('students')
                   .select('*')
                   .eq('id', parseInt(trimmedId))
-                  .single();
+                  .single()
+              )
+                .then(result => ({ type: 'id', ...result }))
+                .catch(() => ({ type: 'id', data: null, error: null }))
+            : Promise.resolve({ type: 'id', data: null, error: null })
+        ];
 
-                if (!idError && byId) {
-                  studentLookup = { data: byId, error: null };
-                } else {
-                  studentLookup = { data: null, error: idError };
-                }
-              } else {
-                studentLookup = { data: null, error: { message: 'Invalid student ID format' } };
-              }
-            }
-          } else {
-            // Last fallback: try by numeric ID if input is numeric
-            if (!isNaN(Number(trimmedId))) {
-              const { data: byId, error: idError } = await supabase
-                .from('students')
-                .select('*')
-                .eq('id', parseInt(trimmedId))
-                .single();
-
-              if (!idError && byId) {
-                studentLookup = { data: byId, error: null };
-              } else {
-                studentLookup = { data: null, error: idError };
+        const results = await Promise.all(queries);
+        
+        // Find the first successful result in priority order
+        let studentLookup = null;
+        for (const result of results) {
+          if (result.data && !result.error) {
+            // For sequence results, find exact match
+            if (result.type === 'sequence' && Array.isArray(result.data) && sequenceNum) {
+              const exactMatch = result.data.find((s: any) => {
+                const seq = s.roll_number?.match(/-(\d+)$/)?.[1];
+                return seq === sequenceNum;
+              });
+              if (exactMatch) {
+                studentLookup = { data: exactMatch, error: null };
+                break;
+              } else if (result.data.length > 0) {
+                studentLookup = { data: result.data[0], error: null };
+                break;
               }
             } else {
-              studentLookup = { data: null, error: { message: 'Invalid student ID format' } };
+              studentLookup = { data: result.data, error: null };
+              break;
             }
           }
+        }
+        
+        // If no match found, set error
+        if (!studentLookup) {
+          studentLookup = { data: null, error: { message: 'Student not found' } };
         }
 
         if (!studentLookup || studentLookup.error || !studentLookup.data) {
@@ -578,17 +577,24 @@ const Login: React.FC = () => {
         }));
         broadcastStudentSessionChange();
 
-        await pushNotificationService.rehydrateStoredToken(student.id, student.school_id, 'student');
-
-        // Update student online status
-        await supabase
-          .from('students')
-          .update({
-            is_online: true,
-            last_online: new Date().toISOString(),
-            app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
+        // OPTIMIZED: Run push notification and online status update in parallel, non-blocking
+        Promise.allSettled([
+          pushNotificationService.rehydrateStoredToken(student.id, student.school_id, 'student').catch(() => {
+            // Silently fail - push notifications are not critical for login
+          }),
+          Promise.resolve(
+            supabase
+              .from('students')
+              .update({
+                is_online: true,
+                last_online: new Date().toISOString(),
+                app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
+              })
+              .eq('id', student.id)
+          ).catch(() => {
+            // Silently fail - online status update is not critical for login
           })
-          .eq('id', student.id);
+        ]);
 
         // Redirect to landing page
         navigate('/home', { replace: true });

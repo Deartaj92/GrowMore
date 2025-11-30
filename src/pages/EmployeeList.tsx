@@ -519,7 +519,7 @@ const EmployeeList: React.FC = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'staff',
-          filter: `school_id=eq.${user.school_id}`,
+          filter: `school_id=eq.${user?.school_id}`,
         },
         (payload) => {
           const updatedStaff = payload.new;

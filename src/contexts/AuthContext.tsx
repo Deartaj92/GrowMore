@@ -97,26 +97,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Store credentials in localStorage first
       localStorage.setItem('auth_credentials', JSON.stringify({ username, password }));
 
-      // Set auth context
-      await setAuthContext(username, password);
+      // OPTIMIZED: Run auth context and queries in parallel
+      const [authContextResult, superAdminResult, userResult] = await Promise.allSettled([
+        Promise.resolve(setAuthContext(username, password)).catch(() => null), // Don't block on auth context
+        Promise.resolve(
+          supabase
+            .from('super_admins')
+            .select('*')
+            .eq('username', username)
+            .single()
+        )
+          .then(result => ({ data: result.data, error: result.error }))
+          .catch(() => ({ data: null, error: null })), // Ignore errors if table doesn't exist
+        Promise.resolve(
+          supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single()
+        )
+          .then(result => ({ data: result.data, error: result.error }))
+          .catch(() => ({ data: null, error: { message: 'User not found' } }))
+      ]);
 
-      // Try super admin login first (only if super_admins table exists)
-      // Handle 406 errors gracefully - table might not exist
-      let superAdminData = null;
-      try {
-        const { data, error } = await supabase
-          .from('super_admins')
-          .select('*')
-          .eq('username', username)
-          .single();
-
-        // Only use data if no error or if error is just "no rows" (PGRST116)
-        if (!error || error.code === 'PGRST116') {
-          superAdminData = data;
-        }
-      } catch (err) {
-        // Ignore errors from super_admins table (might not exist)
-      }
+      // Check super admin first
+      const superAdminData = superAdminResult.status === 'fulfilled' && 
+        superAdminResult.value?.data && 
+        !superAdminResult.value?.error
+        ? superAdminResult.value.data 
+        : null;
 
       if (superAdminData && superAdminData.password === password && superAdminData.status === 'active') {
         const user = {
@@ -131,36 +140,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(user));
         navigate('/welcome', { replace: true });
         clearNavigationHistory('/welcome');
+        setLoading(false);
         return user;
       }
 
-      // Try regular user login (simplified approach)
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .single();
-
-      // Handle case where user is not found (PGRST116 = no rows returned)
-      if (userError && userError.code !== 'PGRST116') {
-        // Don't throw here - let it fall through to show "Invalid username or password"
-      }
+      // Check regular user
+      const userData = userResult.status === 'fulfilled' && 
+        userResult.value?.data && 
+        !userResult.value?.error
+        ? userResult.value.data 
+        : null;
 
       if (userData && userData.password === password && userData.status === 'active') {
-        // Fetch active session for the school
-        let sessionId: number | undefined;
-        if (userData.school_id) {
-          const { data: sessionData } = await supabase
-            .from('sessions')
-            .select('id')
-            .eq('school_id', userData.school_id)
-            .eq('is_active', true)
-            .single();
+        // OPTIMIZED: Fetch session and update online status in parallel
+        const [sessionResult, updateStatusResult] = await Promise.allSettled([
+          userData.school_id 
+            ? Promise.resolve(
+                supabase
+                  .from('sessions')
+                  .select('id')
+                  .eq('school_id', userData.school_id)
+                  .eq('is_active', true)
+                  .single()
+              )
+                .then(result => result.data?.id)
+                .catch(() => undefined)
+            : Promise.resolve(undefined),
+          userData.staff_id
+            ? Promise.resolve(
+                supabase
+                  .from('staff')
+                  .update({
+                    is_online: true,
+                    last_online: new Date().toISOString(),
+                    app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
+                  })
+                  .eq('id', userData.staff_id)
+              )
+                .then(() => true)
+                .catch(() => false)
+            : Promise.resolve(false)
+        ]);
 
-          if (sessionData) {
-            sessionId = sessionData.id;
-          }
-        }
+        const sessionId = sessionResult.status === 'fulfilled' ? sessionResult.value : undefined;
 
         const user: User = {
           id: userData.id,
@@ -175,18 +197,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
 
-        // Update staff online status
-        if (user.staff_id) {
-          await supabase
-            .from('staff')
-            .update({
-              is_online: true,
-              last_online: new Date().toISOString(),
-              app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
-            })
-            .eq('id', user.staff_id);
-        }
-
         // Redirect based on user role
         if (userData.role === 'Teacher') {
           navigate('/teacher', { replace: true });
@@ -198,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           navigate('/welcome', { replace: true });
           clearNavigationHistory('/welcome');
         }
+        setLoading(false);
         return user;
       }
 

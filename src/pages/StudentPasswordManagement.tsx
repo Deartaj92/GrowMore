@@ -954,7 +954,7 @@ const StudentPasswordManagement: React.FC = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'students',
-          filter: `school_id=eq.${user.school_id}`,
+          filter: `school_id=eq.${user?.school_id}`,
         },
         (payload) => {
           const updatedStudent = payload.new as Partial<Student>;

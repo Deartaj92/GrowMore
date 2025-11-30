@@ -182,7 +182,12 @@ const App: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <AppRouter>
+      <AppRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
         <MuiThemeProvider theme={muiTheme}>
           <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
             <ProgressProvider>
