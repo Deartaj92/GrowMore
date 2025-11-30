@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { batchProcess } from '../utils/requestQueue';
 
 export interface ActivityLog {
   id: number;
@@ -553,9 +554,11 @@ class ActivityTrackingService {
 
     const staffMap = new Map(staffData.map(s => [s.name, s.id]));
 
-    // For each notification, try to find matching activity log
-    const enrichedNotifications = await Promise.all(
-      notifications.map(async (notification) => {
+    // Batch process notifications to avoid overwhelming connection pool
+    // Process in groups of 3 to limit concurrent requests (WiFi routers typically limit to 50-100)
+    const enrichedNotifications = await batchProcess(
+      notifications,
+      async (notification) => {
         // If already has activity_action, return as is
         if (notification.activity_action) {
           return notification;
@@ -617,7 +620,8 @@ class ActivityTrackingService {
 
         // If no exact match, use the most recent activity log (best guess)
         return { ...notification, activity_action: activityLogs[0].activity_action, activity_log_id: activityLogs[0].id };
-      })
+      },
+      3 // Process 3 at a time to stay well under connection limits
     );
 
     return enrichedNotifications;

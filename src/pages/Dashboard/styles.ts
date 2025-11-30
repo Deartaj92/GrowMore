@@ -49,6 +49,24 @@ const modalSlideIn = keyframes`
   }
 `;
 
+const fadeInSlideUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const resetAnimation = keyframes`
+  from, to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+`;
+
 // ==========================================
 // LAYOUT COMPONENTS
 // ==========================================
@@ -85,31 +103,22 @@ export const TabContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.75rem;
   background: ${({ theme }) => theme.BG};
   border-bottom: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
     ? '1px solid rgba(255, 255, 255, 0.1)'
     : '1px solid rgba(0, 0, 0, 0.1)'};
   padding: 0.4rem 0;
   margin-bottom: 1.5rem;
-  overflow-x: auto;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   
-  &::-webkit-scrollbar {
-    height: 2px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.ACCENT || '#6366f1'};
-    border-radius: 1px;
-  }
-  
   @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
     margin-bottom: 1rem;
-    gap: 0.2rem;
-    flex-wrap: wrap;
-    padding: 0.3rem 0;
+    padding: 0.75rem 0;
   }
 `;
 
@@ -117,9 +126,33 @@ export const TabsWrapper = styled.div`
   display: flex;
   gap: 0.25rem;
   flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
+  
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #6366f1cc;
+    border-radius: 2px;
+    
+    &:hover {
+      background: #6366f1;
+    }
+  }
   
   @media (max-width: 768px) {
-    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
   }
 `;
 
@@ -142,6 +175,7 @@ export const TabButton = styled.button<{ active: boolean }>`
   white-space: nowrap;
   position: relative;
   margin-bottom: -1px;
+  flex-shrink: 0;
   
   &:hover {
     color: ${({ theme }) => theme.ACCENT || '#6366f1'};
@@ -157,10 +191,14 @@ export const TabButton = styled.button<{ active: boolean }>`
   @media (max-width: 768px) {
     padding: 0.625rem 1rem;
     font-size: 0.85rem;
+    border-bottom: ${({ active, theme }) =>
+      active
+        ? `3px solid ${theme.ACCENT || '#6366f1'}`
+        : '3px solid transparent'};
   }
   
   @media (max-width: 480px) {
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.875rem;
     font-size: 0.8rem;
   }
 `;
@@ -180,6 +218,7 @@ export const DashboardDateInput = styled.input`
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 140px;
+  flex-shrink: 0;
   
   &:hover {
     border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
@@ -195,9 +234,11 @@ export const DashboardDateInput = styled.input`
   }
   
   @media (max-width: 768px) {
-    min-width: 120px;
-    padding: 0.4rem 0.6rem;
-    font-size: 0.8rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
   }
 `;
 
@@ -553,12 +594,12 @@ export const AttendanceStatsGrid = styled.div`
   margin-bottom: 1.5rem;
   
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
   }
 `;
 
-export const AttendanceStatCard = styled.div<{ accentColor: string }>`
+export const AttendanceStatCard = styled.div<{ accentColor: string; $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
   border-radius: 14px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
@@ -566,6 +607,11 @@ export const AttendanceStatCard = styled.div<{ accentColor: string }>`
   border: 1px solid ${({ theme }) => theme.BORDER};
   border-left: 4px solid ${({ accentColor }) => accentColor};
   transition: all 0.2s ease;
+  
+  @media (max-width: 768px) {
+    padding: 0.875rem;
+    border-radius: 10px;
+  }
   
   &:hover {
     transform: translateY(-2px);
@@ -578,6 +624,10 @@ export const AttendanceStatTopRow = styled.div`
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.75rem;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 0.5rem;
+  }
 `;
 
 export const AttendanceStatIcon = styled.div<{ color: string }>`
@@ -589,12 +639,26 @@ export const AttendanceStatIcon = styled.div<{ color: string }>`
   align-items: center;
   justify-content: center;
   color: ${({ color }) => color};
+  
+  @media (max-width: 768px) {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    
+    svg {
+      font-size: 1.1rem !important;
+    }
+  }
 `;
 
 export const AttendanceStatTitle = styled.div`
   font-size: 0.9rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+  }
 `;
 
 export const AttendanceStatRow = styled.div`
@@ -607,6 +671,10 @@ export const AttendanceStatValue = styled.div`
   font-size: 2rem;
   font-weight: 800;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
 `;
 
 export const AttendanceStatRightInfo = styled.div`
@@ -614,12 +682,20 @@ export const AttendanceStatRightInfo = styled.div`
   flex-direction: column;
   align-items: flex-end;
   gap: 0.25rem;
+  
+  @media (max-width: 768px) {
+    gap: 0.2rem;
+  }
 `;
 
 export const AttendanceStatPercentage = styled.div<{ color: string }>`
   font-size: 1.1rem;
   font-weight: 700;
   color: ${({ color }) => color};
+  
+  @media (max-width: 768px) {
+    font-size: 0.95rem;
+  }
 `;
 
 export const AttendanceStatStatus = styled.div<{ status: string }>`
@@ -639,6 +715,11 @@ export const AttendanceStatStatus = styled.div<{ status: string }>`
     if (status === 'Needs Attention') return '#ef4444';
     return '#666';
   }};
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+  }
 `;
 
 export const AttendanceChartsGrid = styled.div`
@@ -708,15 +789,53 @@ export const ConsecutiveAbsentCard = styled.div`
 `;
 
 export const ConsecutiveAbsentHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 1rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  svg {
+    flex-shrink: 0;
+  }
+`;
+
+export const ConsecutiveAbsentTableContainer = styled.div`
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #6366f1cc;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #6366f1;
+    }
+  }
 `;
 
 export const ConsecutiveAbsentTable = styled.table`
   width: 100%;
   border-collapse: collapse;
+  
+  @media (max-width: 900px) {
+    display: none; /* Hide table on mobile - use cards instead */
+  }
 `;
 
 export const ConsecutiveAbsentTableHeader = styled.thead``;
@@ -761,6 +880,119 @@ export const ConsecutiveDaysBadge = styled.span<{ days: number }>`
     if (days >= 4) return '#f59e0b';
     return '#3b82f6';
   }};
+`;
+
+// Mobile card styles for consecutive absent students
+export const ConsecutiveAbsentGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc' : '#6366f1cc'};
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#6366f1' : '#6366f1'};
+  }
+  
+  @media (min-width: 901px) {
+    display: none; /* Hide cards on desktop - use table instead */
+  }
+`;
+
+export const ConsecutiveAbsentMobileCard = styled.div<{ $index?: number }>`
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
+  border-radius: 10px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: clamp(0.18rem, 1vw, 0.38rem) clamp(0.5rem, 2vw, 0.7rem);
+  font-size: clamp(0.72rem, 1.7vw, 0.8rem);
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(0.18rem, 1vw, 0.55rem);
+  position: relative;
+  animation: ${tableRowSlideIn} 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: ${props => (props.$index || 0) * 0.05 + 0.1}s;
+  opacity: 0;
+  
+  @media (max-width: 600px) {
+    padding: 0.28rem 0.5rem;
+    font-size: 0.75rem;
+    gap: 0.35rem;
+  }
+`;
+
+export const ConsecutiveAbsentCardContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+`;
+
+export const ConsecutiveAbsentRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.18rem;
+  font-size: 0.92rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  @media (max-width: 600px) {
+    gap: 0.12rem;
+    font-size: 0.85rem;
+  }
+`;
+
+export const ConsecutiveAbsentId = styled.span`
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#b0b8d1' : '#6366f1'};
+  font-weight: 600;
+  font-size: 0.85rem;
+`;
+
+export const ConsecutiveAbsentName = styled.span`
+  font-weight: 700;
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#fff' : '#232a3b'};
+  font-size: clamp(0.75rem, 2vw, 0.93rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const ConsecutiveAbsentClass = styled.span`
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#a0a7b8' : '#94a3b8'};
+  font-size: clamp(0.7rem, 1.8vw, 0.82rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const ConsecutiveAbsentDaysContainer = styled.div`
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
 `;
 
 export const AbsentsTableWrapper = styled.div`
@@ -871,36 +1103,96 @@ export const ExportDropdown = styled.div`
   right: 0;
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : '#fff')};
   border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  min-width: 150px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  min-width: 180px;
   z-index: 1000;
   overflow: hidden;
+  padding: 0.25rem;
 `;
 
 export const ExportDropdownItem = styled.button<{ $type?: string }>`
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
   padding: 0.75rem 1rem;
   border: none;
-  background: transparent;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: 8px;
+  background: ${({ $type, theme }) => {
+    if ($type === 'absent') {
+      return theme.BG === '#252525' 
+        ? 'rgba(239, 68, 68, 0.15)' 
+        : 'rgba(239, 68, 68, 0.08)';
+    }
+    if ($type === 'present') {
+      return theme.BG === '#252525' 
+        ? 'rgba(34, 197, 94, 0.15)' 
+        : 'rgba(34, 197, 94, 0.08)';
+    }
+    return 'transparent';
+  }};
+  color: ${({ $type, theme }) => {
+    if ($type === 'absent') {
+      return theme.BG === '#252525' ? '#f87171' : '#dc2626';
+    }
+    if ($type === 'present') {
+      return theme.BG === '#252525' ? '#4ade80' : '#16a34a';
+    }
+    return theme.TEXT_PRIMARY;
+  }};
   font-size: 0.875rem;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  border-left: 3px solid ${({ $type }) => {
+    if ($type === 'absent') return '#ef4444';
+    if ($type === 'present') return '#22c55e';
+    return 'transparent';
+  }};
+  
+  svg {
+    color: ${({ $type }) => {
+      if ($type === 'absent') return '#ef4444';
+      if ($type === 'present') return '#22c55e';
+      return 'inherit';
+    }};
+    font-size: 1rem;
+  }
   
   &:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f3f4f6'};
+    background: ${({ $type, theme }) => {
+      if ($type === 'absent') {
+        return theme.BG === '#252525' 
+          ? 'rgba(239, 68, 68, 0.25)' 
+          : 'rgba(239, 68, 68, 0.15)';
+      }
+      if ($type === 'present') {
+        return theme.BG === '#252525' 
+          ? 'rgba(34, 197, 94, 0.25)' 
+          : 'rgba(34, 197, 94, 0.15)';
+      }
+      return theme.BG === '#252525' ? '#353b4a' : '#f3f4f6';
+    }};
+    transform: translateX(2px);
+    box-shadow: ${({ $type }) => {
+      if ($type === 'absent') return '0 2px 8px rgba(239, 68, 68, 0.2)';
+      if ($type === 'present') return '0 2px 8px rgba(34, 197, 94, 0.2)';
+      return 'none';
+    }};
+  }
+  
+  &:active {
+    transform: translateX(0);
   }
   
   &:first-child {
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    margin-bottom: 0.25rem;
   }
   
   &:last-child {
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
+    margin-top: 0.25rem;
   }
 `;
 
@@ -1375,24 +1667,31 @@ export const FeeStatsGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
   
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+  &.animate-on-scroll {
+    animation: ${fadeInSlideUp} 0.6s ease-out forwards;
   }
 `;
 
-export const FeeStatCard = styled.div`
+export const FeeStatCard = styled.div<{ $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
   border-radius: 14px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.2rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
   transition: all 0.2s ease;
+  
+  @media (max-width: 768px) {
+    padding: 0.875rem;
+    border-radius: 10px;
+  }
   
   &:hover {
     transform: translateY(-2px);
@@ -1407,12 +1706,22 @@ export const FeeStatLabel = styled.div`
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    margin-bottom: 0.375rem;
+    letter-spacing: 0.3px;
+  }
 `;
 
 export const FeeStatValue = styled.div`
   font-size: 1.75rem;
   font-weight: 800;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  @media (max-width: 768px) {
+    font-size: 1.35rem;
+  }
 `;
 
 export const CollectionChartsGrid = styled.div`
@@ -1420,9 +1729,15 @@ export const CollectionChartsGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
   
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
+  }
+  
+  &.animate-on-scroll {
+    animation: ${fadeInSlideUp} 0.6s ease-out forwards;
   }
 `;
 
@@ -1575,24 +1890,27 @@ export const AdmissionsSummaryGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-  }
-  
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 `;
 
-export const AdmissionsSummaryCard = styled.div`
+export const AdmissionsSummaryCard = styled.div<{ $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
   border-radius: 14px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.2rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
   transition: all 0.2s ease;
+  
+  @media (max-width: 768px) {
+    padding: 0.875rem;
+    border-radius: 10px;
+  }
   
   &:hover {
     transform: translateY(-2px);
@@ -1605,12 +1923,20 @@ export const SummaryCardHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.75rem;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 0.5rem;
+  }
 `;
 
 export const SummaryCardTitle = styled.div`
   font-size: 0.9rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+  }
 `;
 
 export const SummaryCardIcon = styled.div<{ color: string }>`
@@ -1622,6 +1948,16 @@ export const SummaryCardIcon = styled.div<{ color: string }>`
   align-items: center;
   justify-content: center;
   color: ${({ color }) => color};
+  
+  @media (max-width: 768px) {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    
+    svg {
+      font-size: 1.1rem !important;
+    }
+  }
 `;
 
 export const SummaryCardValue = styled.div`
@@ -1629,11 +1965,20 @@ export const SummaryCardValue = styled.div`
   font-weight: 800;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+  }
 `;
 
 export const SummaryCardSubtext = styled.div`
   font-size: 0.85rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+  }
 `;
 
 export const AdmissionsChartsGrid = styled.div`
@@ -1684,30 +2029,108 @@ export const AdmissionsChartTitle = styled.div`
 export const HomeworkViewToggle = styled.div`
   display: flex;
   gap: 0.5rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f3f4f6'};
-  border-radius: 10px;
-  padding: 0.25rem;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#1f2937' : '#ffffff'};
+  border-radius: 12px;
+  padding: 0.375rem;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 280px;
   
-  button {
-    flex: 1;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: ${({ theme }) => theme.TEXT_SECONDARY};
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: stretch;
+    min-width: 0;
+  }
+`;
+
+export const HomeworkToggleButton = styled.button<{ $active: boolean }>`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: ${({ $active, theme }) => 
+    $active 
+      ? `linear-gradient(135deg, ${theme.ACCENT} 0%, ${theme.ACCENT}dd 100%)`
+      : 'transparent'
+  };
+  color: ${({ $active, theme }) => 
+    $active 
+      ? '#ffffff'
+      : theme.TEXT_SECONDARY
+  };
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: ${({ $active, theme }) => 
+      $active 
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'transparent'
+    };
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover::before {
+    opacity: 1;
+  }
+  
+  svg {
+    transition: transform 0.2s ease;
+    ${({ $active }) => $active ? 'transform: scale(1.1);' : ''}
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.625rem 1rem;
+    font-size: 0.8rem;
+    gap: 0.375rem;
     
-    &.active {
-      background: ${({ theme }) => theme.ACCENT};
-      color: white;
+    svg {
+      font-size: 0.9rem;
     }
-    
-    &:hover:not(.active) {
-      background: ${({ theme }) => theme.BG === '#252525' ? '#3d4557' : '#e5e7eb'};
-    }
+  }
+  
+  &:hover:not(:disabled) {
+    background: ${({ $active, theme }) => 
+      $active 
+        ? `linear-gradient(135deg, ${theme.ACCENT} 0%, ${theme.ACCENT}dd 100%)`
+        : theme.BG === '#252525' ? '#2a3441' : '#f8fafc'
+    };
+    transform: ${({ $active }) => $active ? 'translateY(-1px)' : 'none'};
+    box-shadow: ${({ $active }) => 
+      $active 
+        ? '0 4px 12px rgba(99, 102, 241, 0.3)'
+        : '0 2px 4px rgba(0, 0, 0, 0.1)'
+    };
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: ${({ $active }) => 
+      $active 
+        ? '0 2px 6px rgba(99, 102, 241, 0.2)'
+        : 'none'
+    };
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
@@ -1717,17 +2140,43 @@ export const HomeworkTableWrapper = styled.div`
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   border: 1px solid ${({ theme }) => theme.BORDER};
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(20px);
+  
+  &.animate-on-scroll {
+    animation: ${fadeInSlideUp} 0.6s ease-out forwards;
+  }
 `;
 
 export const HomeworkTableHeader = styled.div`
   padding: 1rem 1.5rem;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    padding: 0.875rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
 `;
 
 export const HomeworkHeaderTitle = styled.div`
   font-size: 1.1rem;
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    width: 100%;
+  }
 `;
 
 export const HomeworkCollapsibleContent = styled.div<{ $expanded: boolean }>`
@@ -1748,6 +2197,149 @@ export const NoHomeworkData = styled.div`
   text-align: center;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.95rem;
+`;
+
+export const HomeworkTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+export const HomeworkTableHead = styled.thead`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f9fafb'};
+`;
+
+export const HomeworkTableRow = styled.tr`
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#fafafa'};
+  }
+`;
+
+export const HomeworkTableHeaderCell = styled.th`
+  padding: 0.875rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+  
+  &:first-child {
+    width: 20%;
+  }
+  
+  &:nth-child(2) {
+    width: 20%;
+  }
+  
+  &:last-child {
+    width: 60%;
+  }
+`;
+
+export const HomeworkTableBody = styled.tbody``;
+
+export const HomeworkTableCell = styled.td`
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  vertical-align: top;
+  
+  &:first-child {
+    width: 25%;
+    min-width: 150px;
+  }
+  
+  &:nth-child(2) {
+    width: 20%;
+    min-width: 120px;
+  }
+  
+  &:last-child {
+    width: 55%;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+`;
+
+// Mobile-specific components
+export const HomeworkMobileList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  
+  @media (min-width: 769px) {
+    display: none;
+  }
+`;
+
+export const HomeworkMobileCard = styled.div`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f9fafb'};
+  border-radius: 10px;
+  border-left: 4px solid ${({ theme }) => theme.ACCENT};
+  padding: 1rem;
+  transition: all 0.2s ease;
+  
+  &:active {
+    transform: scale(0.98);
+    background: ${({ theme }) => theme.BG === '#252525' ? '#3a4250' : '#f3f4f6'};
+  }
+`;
+
+export const HomeworkMobileCardHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+export const HomeworkMobileClass = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  svg {
+    color: ${({ theme }) => theme.ACCENT};
+    opacity: 0.8;
+  }
+`;
+
+export const HomeworkMobileSubject = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  
+  svg {
+    color: ${({ theme }) => theme.ACCENT};
+  }
+`;
+
+export const HomeworkMobileDescription = styled.div`
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  white-space: pre-wrap;
+  word-wrap: break-word;
 `;
 
 export const HomeworkTeacherItem = styled.div`
@@ -1771,7 +2363,7 @@ export const HomeworkTeacherHeader = styled.div`
 `;
 
 export const HomeworkClassItem = styled.div`
-  margin-left: 2rem;
+  margin-left: 1.5rem;
   margin-bottom: 1rem;
   
   &:last-child {
@@ -1791,18 +2383,41 @@ export const HomeworkClassHeader = styled.div`
 
 export const HomeworkSubjectItem = styled.div`
   margin-left: 1.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f9fafb'};
+  border-radius: 6px;
+  border-left: 3px solid ${({ theme }) => theme.ACCENT};
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   
   &:last-child {
     margin-bottom: 0;
   }
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 `;
 
 export const HomeworkSubjectName = styled.div`
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  
+  svg {
+    font-size: 0.875rem;
+    color: ${({ theme }) => theme.ACCENT};
+  }
 `;
 
 export const HomeworkSubjectHeader = styled.div`
@@ -1815,17 +2430,57 @@ export const HomeworkSubjectHeader = styled.div`
 export const HomeworkText = styled.div`
   font-size: 0.875rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  line-height: 1.6;
-  padding: 0.75rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f9fafb'};
-  border-radius: 8px;
-  border-left: 3px solid ${({ theme }) => theme.ACCENT};
+  line-height: 1.5;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  
+  @media (max-width: 768px) {
+    -webkit-line-clamp: 2;
+    width: 100%;
+  }
 `;
 
 export const HomeworkTeacher = styled.div`
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  
+  svg {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+  }
+`;
+
+export const HomeworkDivider = styled.span`
+  color: ${({ theme }) => theme.BORDER};
+  margin: 0 0.25rem;
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+export const HomeworkBadge = styled.span`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  white-space: nowrap;
 `;
 
 // ==========================================

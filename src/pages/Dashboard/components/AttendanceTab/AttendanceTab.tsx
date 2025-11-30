@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'styled-components';
+import DottedLoader from '../shared/DottedLoader';
 import {
   CheckCircle,
   Cancel,
@@ -51,6 +52,7 @@ import {
   AttendanceChartSummaryValue,
   ConsecutiveAbsentCard,
   ConsecutiveAbsentHeader,
+  ConsecutiveAbsentTableContainer,
   ConsecutiveAbsentTable,
   ConsecutiveAbsentTableHeader,
   ConsecutiveAbsentTableHeaderCell,
@@ -58,6 +60,14 @@ import {
   ConsecutiveAbsentTableRow,
   ConsecutiveAbsentTableCell,
   ConsecutiveDaysBadge,
+  ConsecutiveAbsentGrid,
+  ConsecutiveAbsentMobileCard,
+  ConsecutiveAbsentCardContent,
+  ConsecutiveAbsentRow,
+  ConsecutiveAbsentId,
+  ConsecutiveAbsentName,
+  ConsecutiveAbsentClass,
+  ConsecutiveAbsentDaysContainer,
   TwoColumnGrid,
   RightColumn,
   AbsentsTableWrapper,
@@ -108,6 +118,7 @@ interface AttendanceTabProps {
   leavePercent: number;
   latePercent: number;
   halfLeavePercent: number;
+  attendanceStatsLoading?: boolean;
   
   // Charts data
   attendanceChartsLoading: boolean;
@@ -168,6 +179,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   leavePercent,
   latePercent,
   halfLeavePercent,
+  attendanceStatsLoading = false,
   attendanceChartsLoading,
   attendanceTrendData,
   classAttendanceData,
@@ -227,12 +239,16 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
             <AttendanceStatTitle>Present</AttendanceStatTitle>
           </AttendanceStatTopRow>
           <AttendanceStatRow>
-            <AttendanceStatValue>{presentToday}</AttendanceStatValue>
+            <AttendanceStatValue>
+              {attendanceStatsLoading ? <DottedLoader /> : presentToday}
+            </AttendanceStatValue>
             <AttendanceStatRightInfo>
               <AttendanceStatStatus status={getStatus(presentPercent, true)}>
-                {presentPercent >= 80 ? 'Excellent' : presentPercent >= 50 ? 'Good' : 'Needs Attention'}
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (presentPercent >= 80 ? 'Excellent' : presentPercent >= 50 ? 'Good' : 'Needs Attention')}
               </AttendanceStatStatus>
-              <AttendanceStatPercentage color="#22c55e">{presentPercent}%</AttendanceStatPercentage>
+              <AttendanceStatPercentage color="#22c55e">
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${presentPercent}%`}
+              </AttendanceStatPercentage>
             </AttendanceStatRightInfo>
           </AttendanceStatRow>
         </AttendanceStatCard>
@@ -245,12 +261,16 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
             <AttendanceStatTitle>Absent</AttendanceStatTitle>
           </AttendanceStatTopRow>
           <AttendanceStatRow>
-            <AttendanceStatValue>{absentToday}</AttendanceStatValue>
+            <AttendanceStatValue>
+              {attendanceStatsLoading ? <DottedLoader /> : absentToday}
+            </AttendanceStatValue>
             <AttendanceStatRightInfo>
               <AttendanceStatStatus status={getStatus(absentPercent, false)}>
-                {absentPercent <= 10 ? 'Low' : absentPercent <= 30 ? 'Moderate' : 'High'}
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (absentPercent <= 10 ? 'Low' : absentPercent <= 30 ? 'Moderate' : 'High')}
               </AttendanceStatStatus>
-              <AttendanceStatPercentage color="#ef4444">{absentPercent}%</AttendanceStatPercentage>
+              <AttendanceStatPercentage color="#ef4444">
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${absentPercent}%`}
+              </AttendanceStatPercentage>
             </AttendanceStatRightInfo>
           </AttendanceStatRow>
         </AttendanceStatCard>
@@ -263,12 +283,16 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
             <AttendanceStatTitle>Leave</AttendanceStatTitle>
           </AttendanceStatTopRow>
           <AttendanceStatRow>
-            <AttendanceStatValue>{leaveToday}</AttendanceStatValue>
+            <AttendanceStatValue>
+              {attendanceStatsLoading ? <DottedLoader /> : leaveToday}
+            </AttendanceStatValue>
             <AttendanceStatRightInfo>
               <AttendanceStatStatus status={getStatus(leavePercent, false)}>
-                {leavePercent <= 10 ? 'Low' : leavePercent <= 30 ? 'Moderate' : 'High'}
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (leavePercent <= 10 ? 'Low' : leavePercent <= 30 ? 'Moderate' : 'High')}
               </AttendanceStatStatus>
-              <AttendanceStatPercentage color="#3b82f6">{leavePercent}%</AttendanceStatPercentage>
+              <AttendanceStatPercentage color="#3b82f6">
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${leavePercent}%`}
+              </AttendanceStatPercentage>
             </AttendanceStatRightInfo>
           </AttendanceStatRow>
         </AttendanceStatCard>
@@ -281,12 +305,16 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
             <AttendanceStatTitle>Late</AttendanceStatTitle>
           </AttendanceStatTopRow>
           <AttendanceStatRow>
-            <AttendanceStatValue>{lateToday}</AttendanceStatValue>
+            <AttendanceStatValue>
+              {attendanceStatsLoading ? <DottedLoader /> : lateToday}
+            </AttendanceStatValue>
             <AttendanceStatRightInfo>
               <AttendanceStatStatus status={getStatus(latePercent, false)}>
-                {latePercent <= 10 ? 'Low' : latePercent <= 30 ? 'Moderate' : 'High'}
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (latePercent <= 10 ? 'Low' : latePercent <= 30 ? 'Moderate' : 'High')}
               </AttendanceStatStatus>
-              <AttendanceStatPercentage color="#f59e0b">{latePercent}%</AttendanceStatPercentage>
+              <AttendanceStatPercentage color="#f59e0b">
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${latePercent}%`}
+              </AttendanceStatPercentage>
             </AttendanceStatRightInfo>
           </AttendanceStatRow>
         </AttendanceStatCard>
@@ -299,12 +327,16 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
             <AttendanceStatTitle>Half Leave</AttendanceStatTitle>
           </AttendanceStatTopRow>
           <AttendanceStatRow>
-            <AttendanceStatValue>{halfLeaveCount}</AttendanceStatValue>
+            <AttendanceStatValue>
+              {attendanceStatsLoading ? <DottedLoader /> : halfLeaveCount}
+            </AttendanceStatValue>
             <AttendanceStatRightInfo>
               <AttendanceStatStatus status={getStatus(halfLeavePercent, false)}>
-                {halfLeavePercent <= 10 ? 'Low' : halfLeavePercent <= 30 ? 'Moderate' : 'High'}
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (halfLeavePercent <= 10 ? 'Low' : halfLeavePercent <= 30 ? 'Moderate' : 'High')}
               </AttendanceStatStatus>
-              <AttendanceStatPercentage color="#8b5cf6">{halfLeavePercent}%</AttendanceStatPercentage>
+              <AttendanceStatPercentage color="#8b5cf6">
+                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${halfLeavePercent}%`}
+              </AttendanceStatPercentage>
             </AttendanceStatRightInfo>
           </AttendanceStatRow>
         </AttendanceStatCard>
@@ -528,39 +560,102 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
             No students with consecutive absences found
           </div>
         ) : (
-          <ConsecutiveAbsentTable>
-            <ConsecutiveAbsentTableHeader>
-              <tr>
-                <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
-                <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
-                <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
-                <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
-                <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
-                <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
-              </tr>
-            </ConsecutiveAbsentTableHeader>
-            <ConsecutiveAbsentTableBody>
+          <>
+            {/* Mobile Card View */}
+            <ConsecutiveAbsentGrid>
               {consecutiveAbsentStudents.map((student, index) => (
-                <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
-                  <ConsecutiveAbsentTableCell>
-                    {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
-                  </ConsecutiveAbsentTableCell>
-                  <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
-                  <ConsecutiveAbsentTableCell>{student.father_name || '-'}</ConsecutiveAbsentTableCell>
-                  <ConsecutiveAbsentTableCell>{student.mobile || '-'}</ConsecutiveAbsentTableCell>
-                  <ConsecutiveAbsentTableCell>
-                    {student.class_name}
-                    {student.section_name && ` (${student.section_name})`}
-                  </ConsecutiveAbsentTableCell>
-                  <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
+                <ConsecutiveAbsentMobileCard key={`${student.student_id}-${index}`} $index={index}>
+                  <StudentAvatar>
+                    {student.picture_url ? (
+                      <img
+                        src={student.picture_url}
+                        alt={student.student_name}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          if (target.nextSibling) {
+                            (target.nextSibling as HTMLElement).style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div style={{ display: student.picture_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                      {student.student_name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                  </StudentAvatar>
+                  <ConsecutiveAbsentCardContent>
+                    <ConsecutiveAbsentRow>
+                      <ConsecutiveAbsentId>
+                        {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
+                      </ConsecutiveAbsentId>
+                      <Dot />
+                      <ConsecutiveAbsentName>{student.student_name}</ConsecutiveAbsentName>
+                      {student.father_name && (
+                        <>
+                          <Dot />
+                          <AbsenteeFather>{student.father_name}</AbsenteeFather>
+                        </>
+                      )}
+                    </ConsecutiveAbsentRow>
+                    <ConsecutiveAbsentRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                      <span>
+                        {student.class_name}
+                        {student.section_name && ` (${student.section_name})`}
+                      </span>
+                      {student.mobile && (
+                        <>
+                          <Dot />
+                          <span>{student.mobile}</span>
+                        </>
+                      )}
+                    </ConsecutiveAbsentRow>
+                  </ConsecutiveAbsentCardContent>
+                  <ConsecutiveAbsentDaysContainer>
                     <ConsecutiveDaysBadge days={student.consecutive_days}>
                       {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
                     </ConsecutiveDaysBadge>
-                  </ConsecutiveAbsentTableCell>
-                </ConsecutiveAbsentTableRow>
+                  </ConsecutiveAbsentDaysContainer>
+                </ConsecutiveAbsentMobileCard>
               ))}
-            </ConsecutiveAbsentTableBody>
-          </ConsecutiveAbsentTable>
+            </ConsecutiveAbsentGrid>
+
+            {/* Desktop Table View */}
+            <ConsecutiveAbsentTableContainer>
+              <ConsecutiveAbsentTable>
+                <ConsecutiveAbsentTableHeader>
+                  <tr>
+                    <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
+                  </tr>
+                </ConsecutiveAbsentTableHeader>
+                <ConsecutiveAbsentTableBody>
+                  {consecutiveAbsentStudents.map((student, index) => (
+                    <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
+                      <ConsecutiveAbsentTableCell>
+                        {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
+                      </ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>{student.father_name || '-'}</ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>{student.mobile || '-'}</ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell>
+                        {student.class_name}
+                        {student.section_name && ` (${student.section_name})`}
+                      </ConsecutiveAbsentTableCell>
+                      <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
+                        <ConsecutiveDaysBadge days={student.consecutive_days}>
+                          {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                        </ConsecutiveDaysBadge>
+                      </ConsecutiveAbsentTableCell>
+                    </ConsecutiveAbsentTableRow>
+                  ))}
+                </ConsecutiveAbsentTableBody>
+              </ConsecutiveAbsentTable>
+            </ConsecutiveAbsentTableContainer>
+          </>
         )}
       </ConsecutiveAbsentCard>
 
@@ -576,15 +671,6 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       Today's Absentees
                     </AbsentsHeaderTitle>
                     <AbsentsControls isExpanded={isAbsenteesExpanded}>
-                      <DateInput
-                        type="date"
-                        value={absentDate}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setAbsentDate(e.target.value);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
                       <WhatsAppButton
                       onClick={async (e) => {
                         e.stopPropagation();

@@ -114,6 +114,7 @@ const Dashboard: React.FC = () => {
   const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
   const [attendanceDataForDate, setAttendanceDataForDate] = useState<any[]>([]);
   const [halfLeavesForDate, setHalfLeavesForDate] = useState<any[]>([]);
+  const [attendanceStatsLoading, setAttendanceStatsLoading] = useState(false);
   const [attendanceTrendData, setAttendanceTrendData] = useState<Array<{ day: string; rate: number }>>([]);
   const [classAttendanceData, setClassAttendanceData] = useState<Array<{
     class: string;
@@ -485,6 +486,7 @@ const Dashboard: React.FC = () => {
     const fetchAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
 
+      setAttendanceStatsLoading(true);
       if (USE_DUMMY_DATA) {
         const dummyStudentIds = students.length > 0 
           ? students.map(s => s.id)
@@ -492,6 +494,7 @@ const Dashboard: React.FC = () => {
         const dummyAttendance = generateDummyAttendance(dummyStudentIds, dashboardDate, sessionData?.id || 1);
         setAttendanceDataForDate(dummyAttendance);
         setHalfLeavesForDate([]);
+        setAttendanceStatsLoading(false);
         return;
       }
 
@@ -499,6 +502,7 @@ const Dashboard: React.FC = () => {
       if (!sessionDataResult?.id) {
         setAttendanceDataForDate([]);
         setHalfLeavesForDate([]);
+        setAttendanceStatsLoading(false);
         return;
       }
 
@@ -520,6 +524,7 @@ const Dashboard: React.FC = () => {
 
       setAttendanceDataForDate(attendanceResult.data || []);
       setHalfLeavesForDate(halfLeavesResult.data || []);
+      setAttendanceStatsLoading(false);
     };
     fetchAttendanceForDate();
   }, [dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession]);
@@ -1993,6 +1998,7 @@ const Dashboard: React.FC = () => {
           leavePercent={leavePercent}
           latePercent={latePercent}
           halfLeavePercent={halfLeavePercent}
+          attendanceStatsLoading={attendanceStatsLoading}
           attendanceChartsLoading={attendanceChartsLoading}
           attendanceTrendData={attendanceTrendData}
           classAttendanceData={classAttendanceData}

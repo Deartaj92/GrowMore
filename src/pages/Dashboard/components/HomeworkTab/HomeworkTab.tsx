@@ -5,26 +5,37 @@ import {
   Book,
   School,
   AccountCircle,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  ViewModule,
+  People
 } from '@mui/icons-material';
 import {
   HomeworkViewToggle,
+  HomeworkToggleButton,
   HomeworkTableWrapper,
   HomeworkTableHeader,
   HomeworkHeaderTitle,
   HomeworkCollapsibleContent,
   HomeworkList,
   NoHomeworkData,
+  HomeworkTable,
+  HomeworkTableHead,
+  HomeworkTableRow,
+  HomeworkTableHeaderCell,
+  HomeworkTableBody,
+  HomeworkTableCell,
+  HomeworkMobileList,
+  HomeworkMobileCard,
+  HomeworkMobileCardHeader,
+  HomeworkMobileClass,
+  HomeworkMobileSubject,
+  HomeworkMobileDescription,
   HomeworkTeacherItem,
   HomeworkTeacherHeader,
   HomeworkClassItem,
-  HomeworkClassHeader,
-  HomeworkSubjectItem,
-  HomeworkSubjectName,
-  HomeworkSubjectHeader,
-  HomeworkText,
-  HomeworkTeacher
+  HomeworkClassHeader
 } from '../../styles';
+import { sortClasses } from '../../../../utils/classUtils';
 
 interface HomeworkTabProps {
   showHomeworkDiary: boolean;
@@ -72,50 +83,57 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
 
   return (
     <div>
-      {/* View Toggle */}
-      <div style={{
-        display: 'flex',
-        gap: '1rem',
-        marginBottom: '1.5rem',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-end'
-      }}>
-        <HomeworkViewToggle>
-          <button
-            className={homeworkViewMode === 'class' ? 'active' : ''}
-            onClick={() => setHomeworkViewMode('class')}
-          >
-            Class View
-          </button>
-          <button
-            className={homeworkViewMode === 'teacher' ? 'active' : ''}
-            onClick={() => setHomeworkViewMode('teacher')}
-          >
-            Teacher View
-          </button>
-        </HomeworkViewToggle>
-      </div>
-
       {homeworkLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
           <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
         </div>
-      ) : homeworkViewMode === 'teacher' ? (
+      ) : (
         <HomeworkTableWrapper>
           <HomeworkTableHeader>
             <HomeworkHeaderTitle>
               <Assignment style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
-              Homework Diary - Teacher View
+              Homework Diary
             </HomeworkHeaderTitle>
+            <HomeworkViewToggle>
+              <HomeworkToggleButton
+                $active={homeworkViewMode === 'class'}
+                onClick={() => setHomeworkViewMode('class')}
+              >
+                <ViewModule style={{ fontSize: '1rem' }} />
+                <span>Class View</span>
+              </HomeworkToggleButton>
+              <HomeworkToggleButton
+                $active={homeworkViewMode === 'teacher'}
+                onClick={() => setHomeworkViewMode('teacher')}
+              >
+                <People style={{ fontSize: '1rem' }} />
+                <span>Teacher View</span>
+              </HomeworkToggleButton>
+            </HomeworkViewToggle>
           </HomeworkTableHeader>
 
           <HomeworkCollapsibleContent $expanded={true}>
-            <HomeworkList>
-              {(() => {
-                // Group homework by teacher
-                const teacherGroups: Record<string, any[]> = {};
+            {(() => {
+              if (homeworkDiaryData.length === 0) {
+                return (
+                  <NoHomeworkData>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
+                      📝
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                      No Homework Assigned
+                    </div>
+                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+                      No homework has been assigned for {new Date(dashboardDate).toLocaleDateString()}
+                    </div>
+                  </NoHomeworkData>
+                );
+              }
 
+              // Group entries based on view mode
+              if (homeworkViewMode === 'teacher') {
+                // Group by teacher
+                const teacherGroups: Record<string, any[]> = {};
                 homeworkDiaryData.forEach((hw: any) => {
                   const teacherName = hw.users?.name || 'Unknown Teacher';
                   if (!teacherGroups[teacherName]) {
@@ -124,148 +142,123 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
                   teacherGroups[teacherName].push(hw);
                 });
 
-                const groups = Object.entries(teacherGroups);
+                const groups = Object.entries(teacherGroups).sort(([a], [b]) => a.localeCompare(b));
 
-                if (groups.length === 0) {
-                  return (
-                    <NoHomeworkData>
-                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
-                        📝
-                      </div>
-                      <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                        No Homework Assigned
-                      </div>
-                      <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                        No homework has been assigned for {new Date(dashboardDate).toLocaleDateString()}
-                      </div>
-                    </NoHomeworkData>
-                  );
-                }
+                return (
+                  <HomeworkList>
+                    {groups.map(([teacherName, entries], groupIdx) => {
+                      // Sort entries by class, then by subject
+                      const sortedEntries = entries.sort((a: any, b: any) => {
+                        const classA = a.classes?.name || '';
+                        const classB = b.classes?.name || '';
+                        if (classA !== classB) {
+                          return classA.localeCompare(classB);
+                        }
+                        const subjectA = a.subjects?.name || '';
+                        const subjectB = b.subjects?.name || '';
+                        return subjectA.localeCompare(subjectB);
+                      });
 
-                return groups
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([teacherName, entries], groupIdx) => {
-                    // Sort entries by class, then by subject
-                    const sortedEntries = entries.sort((a: any, b: any) => {
-                      const classA = a.classes?.name || '';
-                      const classB = b.classes?.name || '';
-                      if (classA !== classB) {
-                        return classA.localeCompare(classB);
-                      }
-                      const subjectA = a.subjects?.name || '';
-                      const subjectB = b.subjects?.name || '';
-                      return subjectA.localeCompare(subjectB);
-                    });
+                      return (
+                        <HomeworkTeacherItem key={groupIdx}>
+                          <HomeworkTeacherHeader>
+                            <AccountCircle style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
+                            <span>{teacherName}</span>
+                            <span style={{
+                              marginLeft: 'auto',
+                              fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
+                              fontWeight: 600,
+                              color: '#6366f1',
+                              backgroundColor: 'rgba(99,102,241,0.1)',
+                              padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
+                              borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {sortedEntries.length} {sortedEntries.length === 1 ? 'Entry' : 'Entries'}
+                            </span>
+                          </HomeworkTeacherHeader>
+                          
+                          {/* Desktop: Table layout */}
+                          <HomeworkTable>
+                            <HomeworkTableBody>
+                              {sortedEntries.map((entry: any, idx: number) => {
+                                const classLabel = entry.classes?.name || 'Unknown Class';
+                                const sectionLabel = entry.sections?.name ? ` (${entry.sections.name})` : '';
+                                const subjectName = entry.subjects?.name || 'General Homework';
+                                const isGeneral = !entry.subject_id;
 
-                    const homeworkCount = sortedEntries.length;
+                                return (
+                                  <HomeworkTableRow key={idx}>
+                                    <HomeworkTableCell>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <School style={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                        {classLabel}{sectionLabel}
+                                      </div>
+                                    </HomeworkTableCell>
+                                    <HomeworkTableCell>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {isGeneral ? (
+                                          <Assignment style={{ fontSize: '0.875rem', color: '#6366f1' }} />
+                                        ) : (
+                                          <Book style={{ fontSize: '0.875rem', color: '#6366f1' }} />
+                                        )}
+                                        {subjectName}
+                                      </div>
+                                    </HomeworkTableCell>
+                                    <HomeworkTableCell>
+                                      {entry.homework_text}
+                                    </HomeworkTableCell>
+                                  </HomeworkTableRow>
+                                );
+                              })}
+                            </HomeworkTableBody>
+                          </HomeworkTable>
 
-                    return (
-                      <HomeworkTeacherItem key={groupIdx}>
-                        <HomeworkTeacherHeader>
-                          <AccountCircle style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
-                          <span>{teacherName}</span>
-                          <span style={{
-                            marginLeft: 'auto',
-                            fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
-                            fontWeight: 600,
-                            color: '#6366f1',
-                            backgroundColor: 'rgba(99,102,241,0.1)',
-                            padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
-                            borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
-                            border: '1px solid rgba(99,102,241,0.2)',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {homeworkCount} {homeworkCount === 1 ? 'Entry' : 'Entries'}
-                          </span>
-                        </HomeworkTeacherHeader>
-                        {sortedEntries.map((entry: any, entryIdx: number) => {
-                          const classLabel = entry.classes?.name || 'Unknown Class';
-                          const sectionLabel = entry.sections?.name ? ` (${entry.sections.name})` : '';
-                          const subjectName = entry.subjects?.name || 'General Homework';
-                          const isGeneral = !entry.subject_id;
+                          {/* Mobile: Card-based layout */}
+                          <HomeworkMobileList>
+                            {sortedEntries.map((entry: any, idx: number) => {
+                              const classLabel = entry.classes?.name || 'Unknown Class';
+                              const sectionLabel = entry.sections?.name ? ` (${entry.sections.name})` : '';
+                              const subjectName = entry.subjects?.name || 'General Homework';
+                              const isGeneral = !entry.subject_id;
 
-                          return (
-                            <HomeworkSubjectItem key={entryIdx}>
-                              {window.innerWidth <= 700 ? (
-                                <>
-                                  <HomeworkSubjectHeader>
-                                    <HomeworkSubjectName>
-                                      {isGeneral ? (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <Assignment style={{ fontSize: '0.75rem' }} />
-                                          {subjectName}
-                                        </span>
-                                      ) : (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <Book style={{ fontSize: '0.75rem' }} />
-                                          {subjectName}
-                                        </span>
-                                      )}
-                                    </HomeworkSubjectName>
-                                    <HomeworkTeacher>
-                                      <School style={{ fontSize: '0.7rem', opacity: 0.7 }} />
+                              return (
+                                <HomeworkMobileCard key={idx}>
+                                  <HomeworkMobileCardHeader>
+                                    <HomeworkMobileClass>
+                                      <School style={{ fontSize: '0.875rem' }} />
                                       {classLabel}{sectionLabel}
-                                    </HomeworkTeacher>
-                                  </HomeworkSubjectHeader>
-                                  <HomeworkText>{entry.homework_text}</HomeworkText>
-                                </>
-                              ) : (
-                                <>
-                                  <HomeworkSubjectName>
-                                    {isGeneral ? (
-                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    </HomeworkMobileClass>
+                                    <HomeworkMobileSubject>
+                                      {isGeneral ? (
                                         <Assignment style={{ fontSize: '0.875rem' }} />
-                                        {subjectName}
-                                      </span>
-                                    ) : (
-                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      ) : (
                                         <Book style={{ fontSize: '0.875rem' }} />
-                                        {subjectName}
-                                      </span>
-                                    )}
-                                  </HomeworkSubjectName>
-                                  <HomeworkText>{entry.homework_text}</HomeworkText>
-                                  <HomeworkTeacher>
-                                    <School style={{ fontSize: '0.875rem', opacity: 0.7 }} />
-                                    {classLabel}{sectionLabel}
-                                  </HomeworkTeacher>
-                                </>
-                              )}
-                            </HomeworkSubjectItem>
-                          );
-                        })}
-                      </HomeworkTeacherItem>
-                    );
-                  });
-              })()}
-            </HomeworkList>
-          </HomeworkCollapsibleContent>
-        </HomeworkTableWrapper>
-      ) : (
-        <HomeworkTableWrapper>
-          <HomeworkTableHeader>
-            <HomeworkHeaderTitle>
-              <Assignment style={{ fontSize: window.innerWidth <= 700 ? '1.1rem' : '1.3rem' }} />
-              Homework Diary - Class View
-            </HomeworkHeaderTitle>
-          </HomeworkTableHeader>
-
-          <HomeworkCollapsibleContent $expanded={true}>
-            <HomeworkList>
-              {(() => {
-                // Group homework by class only (combine all sections for the same class)
+                                      )}
+                                      {subjectName}
+                                    </HomeworkMobileSubject>
+                                  </HomeworkMobileCardHeader>
+                                  <HomeworkMobileDescription>
+                                    {entry.homework_text}
+                                  </HomeworkMobileDescription>
+                                </HomeworkMobileCard>
+                              );
+                            })}
+                          </HomeworkMobileList>
+                        </HomeworkTeacherItem>
+                      );
+                    })}
+                  </HomeworkList>
+                );
+              } else {
+                // Group by class
                 const grouped: Record<string, any> = {};
-
                 homeworkDiaryData.forEach((hw: any) => {
                   const classId = hw.class_id;
                   const className = hw.classes?.name || 'Unknown Class';
-
-                  // Create key: just classId to group all sections together
                   const key = String(classId);
 
                   if (!grouped[key]) {
-                    // For display, use the first section name if all entries have the same section
-                    // Otherwise, show just the class name
                     grouped[key] = {
                       class_id: classId,
                       class_name: className,
@@ -274,11 +267,10 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
                       entries: []
                     };
                   }
-
                   grouped[key].entries.push(hw);
                 });
 
-                // After grouping, determine if all entries have the same section
+                // Determine section names
                 Object.values(grouped).forEach((group: any) => {
                   const sections = new Set();
                   group.entries.forEach((entry: any) => {
@@ -286,8 +278,6 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
                       sections.add(entry.section_id);
                     }
                   });
-
-                  // If all entries have the same section, show it in the header
                   if (sections.size === 1) {
                     const sectionId = Array.from(sections)[0] as number;
                     const firstEntry = group.entries.find((e: any) => e.section_id === sectionId);
@@ -298,130 +288,138 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
                   }
                 });
 
-                const groups = Object.values(grouped);
+                // Get unique classes and sort them
+                const uniqueClasses = Array.from(
+                  new Map(
+                    Object.values(grouped).map((g: any) => [g.class_id, { name: g.class_name }])
+                  ).values()
+                );
+                const sortedClasses = sortClasses(uniqueClasses);
+                const classSortOrder = new Map(
+                  sortedClasses.map((cls, idx) => [cls.name, idx])
+                );
 
-                if (groups.length === 0) {
-                  return (
-                    <NoHomeworkData>
-                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.7 }}>
-                        📝
-                      </div>
-                      <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                        No Homework Assigned
-                      </div>
-                      <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                        No homework has been assigned for {new Date(dashboardDate).toLocaleDateString()}
-                      </div>
-                    </NoHomeworkData>
-                  );
-                }
-
-                return groups.map((group: any, groupIdx: number) => {
-                  // Sort entries: general homework first (null subject), then by subject name
-                  const sortedEntries = group.entries.sort((a: any, b: any) => {
-                    if (!a.subject_id && !b.subject_id) return 0;
-                    if (!a.subject_id) return -1;
-                    if (!b.subject_id) return 1;
-                    const aName = a.subjects?.name || '';
-                    const bName = b.subjects?.name || '';
-                    return aName.localeCompare(bName);
-                  });
-
-                  const classLabel = group.section_name
-                    ? `${group.class_name} (${group.section_name})`
-                    : group.class_name;
-                  const diaryCount = sortedEntries.length;
-
-                  return (
-                    <HomeworkClassItem key={groupIdx}>
-                      <HomeworkClassHeader>
-                        <School style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
-                        <span>{classLabel}</span>
-                        <span style={{
-                          marginLeft: 'auto',
-                          fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
-                          fontWeight: 600,
-                          color: '#6366f1',
-                          backgroundColor: 'rgba(99,102,241,0.1)',
-                          padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
-                          borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
-                          border: '1px solid rgba(99,102,241,0.2)',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {diaryCount} {diaryCount === 1 ? 'Entry' : 'Entries'}
-                        </span>
-                      </HomeworkClassHeader>
-                      {sortedEntries.map((entry: any, entryIdx: number) => {
-                        const subjectName = entry.subjects?.name || 'General Homework';
-                        const isGeneral = !entry.subject_id;
-
-                        return (
-                          <HomeworkSubjectItem key={entryIdx}>
-                            {window.innerWidth <= 700 ? (
-                              <>
-                                <HomeworkSubjectHeader>
-                                  <HomeworkSubjectName>
-                                    {isGeneral ? (
-                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <Assignment style={{ fontSize: '0.75rem' }} />
-                                        {subjectName}
-                                      </span>
-                                    ) : (
-                                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <Book style={{ fontSize: '0.75rem' }} />
-                                        {subjectName}
-                                      </span>
-                                    )}
-                                  </HomeworkSubjectName>
-                                  <HomeworkTeacher>
-                                    {entry.users?.name ? (
-                                      <>
-                                        <AccountCircle style={{ fontSize: '0.7rem', opacity: 0.7 }} />
-                                        {entry.users.name}
-                                      </>
-                                    ) : (
-                                      <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>—</span>
-                                    )}
-                                  </HomeworkTeacher>
-                                </HomeworkSubjectHeader>
-                                <HomeworkText>{entry.homework_text}</HomeworkText>
-                              </>
-                            ) : (
-                              <>
-                                <HomeworkSubjectName>
-                                  {isGeneral ? (
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                      <Assignment style={{ fontSize: '0.875rem' }} />
-                                      {subjectName}
-                                    </span>
-                                  ) : (
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                      <Book style={{ fontSize: '0.875rem' }} />
-                                      {subjectName}
-                                    </span>
-                                  )}
-                                </HomeworkSubjectName>
-                                <HomeworkText>{entry.homework_text}</HomeworkText>
-                                <HomeworkTeacher>
-                                  {entry.users?.name ? (
-                                    <>
-                                      <AccountCircle style={{ fontSize: '0.875rem', opacity: 0.7 }} />
-                                      {entry.users.name}
-                                    </>
-                                  ) : (
-                                    <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>—</span>
-                                  )}
-                                </HomeworkTeacher>
-                              </>
-                            )}
-                          </HomeworkSubjectItem>
-                        );
-                      })}
-                    </HomeworkClassItem>
-                  );
+                // Sort groups by class
+                const groups = Object.values(grouped).sort((a: any, b: any) => {
+                  const orderA = classSortOrder.get(a.class_name) ?? 999;
+                  const orderB = classSortOrder.get(b.class_name) ?? 999;
+                  return orderA - orderB;
                 });
-              })()}
-            </HomeworkList>
+
+                return (
+                  <HomeworkList>
+                    {groups.map((group: any, groupIdx: number) => {
+                      // Sort entries: general homework first, then by subject name
+                      const sortedEntries = group.entries.sort((a: any, b: any) => {
+                        if (!a.subject_id && !b.subject_id) return 0;
+                        if (!a.subject_id) return -1;
+                        if (!b.subject_id) return 1;
+                        const aName = a.subjects?.name || '';
+                        const bName = b.subjects?.name || '';
+                        return aName.localeCompare(bName);
+                      });
+
+                      const classLabel = group.section_name
+                        ? `${group.class_name} (${group.section_name})`
+                        : group.class_name;
+
+                      return (
+                        <HomeworkClassItem key={groupIdx}>
+                          <HomeworkClassHeader>
+                            <School style={{ fontSize: window.innerWidth <= 700 ? '0.9rem' : '1rem' }} />
+                            <span>{classLabel}</span>
+                            <span style={{
+                              marginLeft: 'auto',
+                              fontSize: window.innerWidth <= 700 ? '0.75rem' : '0.875rem',
+                              fontWeight: 600,
+                              color: '#6366f1',
+                              backgroundColor: 'rgba(99,102,241,0.1)',
+                              padding: window.innerWidth <= 700 ? '0.2rem 0.5rem' : '0.25rem 0.625rem',
+                              borderRadius: window.innerWidth <= 700 ? '8px' : '12px',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {sortedEntries.length} {sortedEntries.length === 1 ? 'Entry' : 'Entries'}
+                            </span>
+                          </HomeworkClassHeader>
+
+                          {/* Desktop: Table layout */}
+                          <HomeworkTable>
+                            <HomeworkTableBody>
+                              {sortedEntries.map((entry: any, idx: number) => {
+                                const subjectName = entry.subjects?.name || 'General Homework';
+                                const isGeneral = !entry.subject_id;
+
+                                return (
+                                  <HomeworkTableRow key={idx}>
+                                    <HomeworkTableCell>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {entry.users?.name ? (
+                                          <>
+                                            <AccountCircle style={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                            {entry.users.name}
+                                          </>
+                                        ) : (
+                                          <span style={{ opacity: 0.5 }}>—</span>
+                                        )}
+                                      </div>
+                                    </HomeworkTableCell>
+                                    <HomeworkTableCell>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {isGeneral ? (
+                                          <Assignment style={{ fontSize: '0.875rem', color: '#6366f1' }} />
+                                        ) : (
+                                          <Book style={{ fontSize: '0.875rem', color: '#6366f1' }} />
+                                        )}
+                                        {subjectName}
+                                      </div>
+                                    </HomeworkTableCell>
+                                    <HomeworkTableCell>
+                                      {entry.homework_text}
+                                    </HomeworkTableCell>
+                                  </HomeworkTableRow>
+                                );
+                              })}
+                            </HomeworkTableBody>
+                          </HomeworkTable>
+
+                          {/* Mobile: Card-based layout */}
+                          <HomeworkMobileList>
+                            {sortedEntries.map((entry: any, idx: number) => {
+                              const subjectName = entry.subjects?.name || 'General Homework';
+                              const isGeneral = !entry.subject_id;
+
+                              return (
+                                <HomeworkMobileCard key={idx}>
+                                  <HomeworkMobileCardHeader>
+                                    {entry.users?.name && (
+                                      <HomeworkMobileClass>
+                                        <AccountCircle style={{ fontSize: '0.875rem' }} />
+                                        {entry.users.name}
+                                      </HomeworkMobileClass>
+                                    )}
+                                    <HomeworkMobileSubject>
+                                      {isGeneral ? (
+                                        <Assignment style={{ fontSize: '0.875rem' }} />
+                                      ) : (
+                                        <Book style={{ fontSize: '0.875rem' }} />
+                                      )}
+                                      {subjectName}
+                                    </HomeworkMobileSubject>
+                                  </HomeworkMobileCardHeader>
+                                  <HomeworkMobileDescription>
+                                    {entry.homework_text}
+                                  </HomeworkMobileDescription>
+                                </HomeworkMobileCard>
+                              );
+                            })}
+                          </HomeworkMobileList>
+                        </HomeworkClassItem>
+                      );
+                    })}
+                  </HomeworkList>
+                );
+              }
+            })()}
           </HomeworkCollapsibleContent>
         </HomeworkTableWrapper>
       )}

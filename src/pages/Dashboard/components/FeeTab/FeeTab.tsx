@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from 'styled-components';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
+import DottedLoader from '../shared/DottedLoader';
 import {
   BarChart,
   Bar,
@@ -74,25 +75,25 @@ const FeeTab: React.FC<FeeTabProps> = ({
         <FeeStatCard>
           <FeeStatLabel>Total Invoiced</FeeStatLabel>
           <FeeStatValue>
-            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalInvoiced)}
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary.totalInvoiced)}
           </FeeStatValue>
         </FeeStatCard>
         <FeeStatCard>
           <FeeStatLabel>Total Collected</FeeStatLabel>
           <FeeStatValue style={{ color: '#22c55e' }}>
-            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalCollected)}
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary.totalCollected)}
           </FeeStatValue>
         </FeeStatCard>
         <FeeStatCard>
           <FeeStatLabel>Outstanding</FeeStatLabel>
           <FeeStatValue style={{ color: '#ef4444' }}>
-            {feeSummaryLoading ? '...' : formatCurrency(feeSummary.totalOutstanding)}
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary.totalOutstanding)}
           </FeeStatValue>
         </FeeStatCard>
         <FeeStatCard>
           <FeeStatLabel>Collection Rate</FeeStatLabel>
           <FeeStatValue style={{ color: '#6366f1' }}>
-            {feeSummaryLoading ? '...' : `${feeSummary.collectionRate.toFixed(1)}%`}
+            {feeSummaryLoading ? <DottedLoader /> : `${feeSummary.collectionRate.toFixed(1)}%`}
           </FeeStatValue>
         </FeeStatCard>
       </FeeStatsGrid>

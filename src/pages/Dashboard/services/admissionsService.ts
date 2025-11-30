@@ -32,42 +32,52 @@ export const fetchAdmissionsData = async (
     const dataStartDate = new Date(fromDate).toISOString();
     const dataEndDate = new Date(toDate).toISOString();
 
-    const [sessionResult, enquiriesThisMonthResult, studentsThisMonthResult, familiesThisMonthResult,
-      totalEnquiriesResult, totalStudentsResult, totalFamiliesResult] = await Promise.all([
-        getCachedSession(),
-        supabase
-          .from('enquiries')
-          .select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-          .gte('created_at', dataStartDate)
-          .lte('created_at', dataEndDate),
-        supabase
-          .from('students')
-          .select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-          .gte('created_at', dataStartDate)
-          .lte('created_at', dataEndDate),
-        supabase
-          .from('families')
-          .select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-          .gte('created_at', dataStartDate)
-          .lte('created_at', dataEndDate),
-        supabase
-          .from('enquiries')
-          .select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId),
-        supabase
-          .from('students')
-          .select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId),
-        supabase
-          .from('families')
-          .select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-      ]);
+    // Batch requests to avoid hitting WiFi router connection limits
+    // WiFi routers typically limit to 50-100 concurrent connections
+    // Batch into groups of 3-4 to stay under limits
+    const [sessionResult, ...rangeResults] = await Promise.all([
+      getCachedSession(),
+      supabase
+        .from('enquiries')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .gte('created_at', dataStartDate)
+        .lte('created_at', dataEndDate),
+      supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .gte('created_at', dataStartDate)
+        .lte('created_at', dataEndDate),
+      supabase
+        .from('families')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .gte('created_at', dataStartDate)
+        .lte('created_at', dataEndDate),
+    ]);
+
+    // Second batch for total counts
+    const [totalEnquiriesResult, totalStudentsResult, totalFamiliesResult] = await Promise.all([
+      supabase
+        .from('enquiries')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId),
+      supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId),
+      supabase
+        .from('families')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+    ]);
 
     const sessionData = sessionResult;
+    const enquiriesThisMonthResult = rangeResults[0];
+    const studentsThisMonthResult = rangeResults[1];
+    const familiesThisMonthResult = rangeResults[2];
+    
     const inquiriesThisRange = enquiriesThisMonthResult.count || 0;
     const studentsThisRange = studentsThisMonthResult.count || 0;
     const familiesThisRange = familiesThisMonthResult.count || 0;

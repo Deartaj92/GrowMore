@@ -8,6 +8,7 @@ import {
   People,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
+import DottedLoader from '../shared/DottedLoader';
 import {
   BarChart,
   Bar,
@@ -141,8 +142,12 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   <QuestionAnswer />
                 </SummaryCardIcon>
               </SummaryCardHeader>
-              <SummaryCardValue>{admissionsData.totalInquiries}</SummaryCardValue>
-              <SummaryCardSubtext>Selected Range: {admissionsData.inquiriesThisMonth}</SummaryCardSubtext>
+              <SummaryCardValue>
+                {admissionsLoading ? <DottedLoader /> : admissionsData.totalInquiries}
+              </SummaryCardValue>
+              <SummaryCardSubtext>
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.inquiriesThisMonth}`}
+              </SummaryCardSubtext>
             </AdmissionsSummaryCard>
 
             <AdmissionsSummaryCard>
@@ -152,8 +157,12 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   <School />
                 </SummaryCardIcon>
               </SummaryCardHeader>
-              <SummaryCardValue>{admissionsData.totalStudents}</SummaryCardValue>
-              <SummaryCardSubtext>Selected Range: {admissionsData.studentsThisMonth}</SummaryCardSubtext>
+              <SummaryCardValue>
+                {admissionsLoading ? <DottedLoader /> : admissionsData.totalStudents}
+              </SummaryCardValue>
+              <SummaryCardSubtext>
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.studentsThisMonth}`}
+              </SummaryCardSubtext>
             </AdmissionsSummaryCard>
 
             <AdmissionsSummaryCard>
@@ -163,8 +172,12 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   <Group />
                 </SummaryCardIcon>
               </SummaryCardHeader>
-              <SummaryCardValue>{admissionsData.totalFamilies}</SummaryCardValue>
-              <SummaryCardSubtext>Selected Range: {admissionsData.familiesThisMonth}</SummaryCardSubtext>
+              <SummaryCardValue>
+                {admissionsLoading ? <DottedLoader /> : admissionsData.totalFamilies}
+              </SummaryCardValue>
+              <SummaryCardSubtext>
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.familiesThisMonth}`}
+              </SummaryCardSubtext>
             </AdmissionsSummaryCard>
 
             <AdmissionsSummaryCard>
@@ -174,8 +187,12 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   <AttachMoney />
                 </SummaryCardIcon>
               </SummaryCardHeader>
-              <SummaryCardValue>{admissionsData.totalFeePlans}</SummaryCardValue>
-              <SummaryCardSubtext>Selected Range: {admissionsData.feePlansThisMonth}</SummaryCardSubtext>
+              <SummaryCardValue>
+                {admissionsLoading ? <DottedLoader /> : admissionsData.totalFeePlans}
+              </SummaryCardValue>
+              <SummaryCardSubtext>
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.feePlansThisMonth}`}
+              </SummaryCardSubtext>
             </AdmissionsSummaryCard>
           </AdmissionsSummaryGrid>
 
