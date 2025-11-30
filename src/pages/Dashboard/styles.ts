@@ -1645,6 +1645,11 @@ export const AdmissionsChartsGrid = styled.div`
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
   }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 `;
 
 export const AdmissionsChartCard = styled.div`
@@ -1653,6 +1658,16 @@ export const AdmissionsChartCard = styled.div`
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.5rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
+  display: flex;
+  flex-direction: column;
+  min-height: 350px;
+  position: relative;
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+    min-height: 300px;
+  }
 `;
 
 export const AdmissionsChartTitle = styled.div`
@@ -1660,6 +1675,7 @@ export const AdmissionsChartTitle = styled.div`
   font-weight: 700;
   margin-bottom: 1rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  flex-shrink: 0;
 `;
 
 // ==========================================

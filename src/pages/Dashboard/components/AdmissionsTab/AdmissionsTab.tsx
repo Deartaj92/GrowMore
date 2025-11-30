@@ -183,163 +183,227 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
           <AdmissionsChartsGrid>
             <AdmissionsChartCard>
               <AdmissionsChartTitle>Admissions</AdmissionsChartTitle>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart
-                  data={admissionsChartData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    stroke={isDark ? '#888' : '#666'}
-                  />
-                  <YAxis
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    stroke={isDark ? '#888' : '#666'}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                      border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                      borderRadius: '8px',
-                      color: isDark ? '#e2e8f0' : '#1e293b'
-                    }}
-                  />
-                  <Legend
-                    wrapperStyle={{ paddingTop: '20px' }}
-                    iconType="rect"
-                  />
-                  <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" />
-                  <Bar dataKey="girls" stackId="a" fill="#ec4899" name="Girls" />
-                  <LabelList
-                    dataKey="total"
-                    position="top"
-                    style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
-                    formatter={(value: number) => value > 0 ? value : ''}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                {admissionsChartData && admissionsChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+                    <BarChart
+                      data={admissionsChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: '10px' }}
+                        iconType="rect"
+                      />
+                      <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" />
+                      <Bar dataKey="girls" stackId="a" fill="#ec4899" name="Girls" />
+                      <LabelList
+                        dataKey="total"
+                        position="top"
+                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
+                        formatter={(value: number) => value > 0 ? value : ''}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '280px',
+                    color: isDark ? '#888' : '#666',
+                    fontSize: '0.95rem'
+                  }}>
+                    No data available
+                  </div>
+                )}
+              </div>
             </AdmissionsChartCard>
 
             <AdmissionsChartCard>
               <AdmissionsChartTitle>Withdrawals</AdmissionsChartTitle>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart
-                  data={withdrawalsChartData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    stroke={isDark ? '#888' : '#666'}
-                  />
-                  <YAxis
-                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                    stroke={isDark ? '#888' : '#666'}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                      border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                      borderRadius: '8px',
-                      color: isDark ? '#e2e8f0' : '#1e293b'
-                    }}
-                  />
-                  <Legend
-                    wrapperStyle={{ paddingTop: '20px' }}
-                    iconType="rect"
-                  />
-                  <Bar dataKey="boys" stackId="a" fill="#ef4444" name="Boys" />
-                  <Bar dataKey="girls" stackId="a" fill="#f97316" name="Girls" />
-                  <LabelList
-                    dataKey="students"
-                    position="top"
-                    style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
-                    formatter={(value: number) => value > 0 ? value : ''}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                {withdrawalsChartData && withdrawalsChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+                    <BarChart
+                      data={withdrawalsChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        stroke={isDark ? '#888' : '#666'}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: '10px' }}
+                        iconType="rect"
+                      />
+                      <Bar dataKey="boys" stackId="a" fill="#ef4444" name="Boys" />
+                      <Bar dataKey="girls" stackId="a" fill="#f97316" name="Girls" />
+                      <LabelList
+                        dataKey="students"
+                        position="top"
+                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
+                        formatter={(value: number) => value > 0 ? value : ''}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '280px',
+                    color: isDark ? '#888' : '#666',
+                    fontSize: '0.95rem'
+                  }}>
+                    No data available
+                  </div>
+                )}
+              </div>
             </AdmissionsChartCard>
 
             <AdmissionsChartCard>
               <AdmissionsChartTitle>Gender</AdmissionsChartTitle>
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={genderChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {genderChartData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color || '#888'} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                      border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                      borderRadius: '8px',
-                      color: isDark ? '#e2e8f0' : '#1e293b'
-                    }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    iconType="circle"
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                {genderChartData && genderChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+                    <PieChart>
+                      <Pie
+                        data={genderChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {genderChartData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.color || '#888'} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          color: isDark ? '#e2e8f0' : '#1e293b'
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        iconType="circle"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '280px',
+                    color: isDark ? '#888' : '#666',
+                    fontSize: '0.95rem'
+                  }}>
+                    No data available
+                  </div>
+                )}
+              </div>
             </AdmissionsChartCard>
           </AdmissionsChartsGrid>
 
           {/* Additional Cards: Grade Distribution, Latest Admissions, Today's Birthdays */}
           <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
             {/* Class Wise Strength Card */}
-            <AdmissionsChartCard style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+            <AdmissionsChartCard style={{ minHeight: '400px' }}>
               <AdmissionsChartTitle style={{ marginBottom: '1rem' }}>Class Wise Strength</AdmissionsChartTitle>
-              <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={classStrengths}
-                    layout="vertical"
-                    margin={{ top: 5, right: 50, left: 0, bottom: 5 }}
-                  >
-                    <XAxis type="number" stroke={isDark ? '#888' : '#666'} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      stroke={isDark ? '#888' : '#666'}
-                      width={100}
-                      tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                      interval={0}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: isDark ? '#2a2a2a' : '#fff',
-                        border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                        borderRadius: '8px',
-                        padding: '8px 12px'
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="girls" stackId="a" fill="#22c55e" name="Girls" radius={[0, 4, 4, 0]}>
-                      <LabelList
-                        dataKey="total"
-                        position="right"
-                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 600 }}
-                        formatter={(value: number) => value || ''}
+              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                {classStrengths && classStrengths.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%" minHeight={350}>
+                    <BarChart
+                      data={classStrengths}
+                      layout="vertical"
+                      margin={{ top: 5, right: 50, left: 0, bottom: 5 }}
+                    >
+                      <XAxis type="number" stroke={isDark ? '#888' : '#666'} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        stroke={isDark ? '#888' : '#666'}
+                        width={100}
+                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                        interval={0}
                       />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                      <Tooltip
+                        contentStyle={{
+                          background: isDark ? '#2a2a2a' : '#fff',
+                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                          borderRadius: '8px',
+                          padding: '8px 12px'
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="girls" stackId="a" fill="#22c55e" name="Girls" radius={[0, 4, 4, 0]}>
+                        <LabelList
+                          dataKey="total"
+                          position="right"
+                          style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 12, fontWeight: 600 }}
+                          formatter={(value: number) => value || ''}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '350px',
+                    color: isDark ? '#888' : '#666',
+                    fontSize: '0.95rem'
+                  }}>
+                    No data available
+                  </div>
+                )}
               </div>
             </AdmissionsChartCard>
 

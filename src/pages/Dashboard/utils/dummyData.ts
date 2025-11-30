@@ -165,11 +165,14 @@ export const generateDummyAdmissions = () => {
   const months = [];
   for (let i = 11; i >= 0; i--) {
     const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const boys = Math.floor(Math.random() * 20) + 5;
+    const girls = Math.floor(Math.random() * 15) + 3;
     months.push({
       month: date.toLocaleDateString('en-US', { month: 'short' }),
-      students: Math.floor(Math.random() * 30) + 10,
-      boys: Math.floor(Math.random() * 20) + 5,
-      girls: Math.floor(Math.random() * 15) + 3,
+      students: boys + girls,
+      boys: boys,
+      girls: girls,
+      total: boys + girls
     });
   }
 
@@ -183,10 +186,15 @@ export const generateDummyAdmissions = () => {
     totalFeePlans: 1000,
     feePlansThisMonth: 30,
     admissionsChart: months,
-    withdrawalsChart: months.map(m => ({ ...m, students: Math.floor(m.students * 0.1) })),
+    withdrawalsChart: months.map(m => ({ 
+      month: m.month,
+      boys: Math.floor(m.boys * 0.1),
+      girls: Math.floor(m.girls * 0.1),
+      students: Math.floor((m.boys + m.girls) * 0.1)
+    })),
     genderData: [
-      { name: 'Boys', value: 650, color: '#22c55e' },
-      { name: 'Girls', value: 550, color: '#a78bfa' },
+      { name: 'Boys', value: 650, color: '#3b82f6' },
+      { name: 'Girls', value: 550, color: '#ec4899' },
     ],
     gradeDistribution: ['1st', '2nd', '3rd', '4th', '5th'].map((grade, i) => ({
       grade,
