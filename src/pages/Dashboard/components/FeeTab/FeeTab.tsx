@@ -75,25 +75,25 @@ const FeeTab: React.FC<FeeTabProps> = ({
         <FeeStatCard>
           <FeeStatLabel>Total Invoiced</FeeStatLabel>
           <FeeStatValue>
-            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary.totalInvoiced)}
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalInvoiced || 0)}
           </FeeStatValue>
         </FeeStatCard>
         <FeeStatCard>
           <FeeStatLabel>Total Collected</FeeStatLabel>
           <FeeStatValue style={{ color: '#22c55e' }}>
-            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary.totalCollected)}
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalCollected || 0)}
           </FeeStatValue>
         </FeeStatCard>
         <FeeStatCard>
           <FeeStatLabel>Outstanding</FeeStatLabel>
           <FeeStatValue style={{ color: '#ef4444' }}>
-            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary.totalOutstanding)}
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalOutstanding || 0)}
           </FeeStatValue>
         </FeeStatCard>
         <FeeStatCard>
           <FeeStatLabel>Collection Rate</FeeStatLabel>
           <FeeStatValue style={{ color: '#6366f1' }}>
-            {feeSummaryLoading ? <DottedLoader /> : `${feeSummary.collectionRate.toFixed(1)}%`}
+            {feeSummaryLoading ? <DottedLoader /> : `${(feeSummary?.collectionRate || 0).toFixed(1)}%`}
           </FeeStatValue>
         </FeeStatCard>
       </FeeStatsGrid>
@@ -235,15 +235,15 @@ const FeeTab: React.FC<FeeTabProps> = ({
             <FeeCollectionTableBody>
               <FeeCollectionTableRow>
                 <FeeCollectionTableCell>Previous arrears</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.oldStudents)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.newAdmissions)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.totalPayable)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.oldStudents || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
                     bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.previousArrears.paid)}
+                    {formatCurrency(feeCollectionDetails?.previousArrears?.paid || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -251,7 +251,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#3b82f6"
                     bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.previousArrears.discount)}
+                    {formatCurrency(feeCollectionDetails?.previousArrears?.discount || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -259,23 +259,23 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#ef4444"
                     bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.previousArrears.droppedOut)}
+                    {formatCurrency(feeCollectionDetails?.previousArrears?.droppedOut || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.previousArrears.remaining)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.remaining || 0)}</FeeCollectionTableCell>
               </FeeCollectionTableRow>
 
               <FeeCollectionTableRow>
                 <FeeCollectionTableCell>Current month</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.oldStudents)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.newAdmissions)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.totalPayable)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.oldStudents || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
                     bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.currentMonth.paid)}
+                    {formatCurrency(feeCollectionDetails?.currentMonth?.paid || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -283,7 +283,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#3b82f6"
                     bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.currentMonth.discount)}
+                    {formatCurrency(feeCollectionDetails?.currentMonth?.discount || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -291,23 +291,23 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#ef4444"
                     bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.currentMonth.droppedOut)}
+                    {formatCurrency(feeCollectionDetails?.currentMonth?.droppedOut || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.currentMonth.remaining)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.remaining || 0)}</FeeCollectionTableCell>
               </FeeCollectionTableRow>
 
               <FeeCollectionTableRow>
                 <FeeCollectionTableCell>Next months</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.oldStudents)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.newAdmissions)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.totalPayable)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.oldStudents || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
                     bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.nextMonths.paid)}
+                    {formatCurrency(feeCollectionDetails?.nextMonths?.paid || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -315,7 +315,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#3b82f6"
                     bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.nextMonths.discount)}
+                    {formatCurrency(feeCollectionDetails?.nextMonths?.discount || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -323,23 +323,23 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#ef4444"
                     bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.nextMonths.droppedOut)}
+                    {formatCurrency(feeCollectionDetails?.nextMonths?.droppedOut || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.nextMonths.remaining)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.remaining || 0)}</FeeCollectionTableCell>
               </FeeCollectionTableRow>
 
               <FeeCollectionTableRow isTotal>
                 <FeeCollectionTableCell>Total</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.oldStudents)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.newAdmissions)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.totalPayable)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.oldStudents || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
                     bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.total.paid)}
+                    {formatCurrency(feeCollectionDetails?.total?.paid || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -347,7 +347,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#3b82f6"
                     bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.total.discount)}
+                    {formatCurrency(feeCollectionDetails?.total?.discount || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>
@@ -355,10 +355,10 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     color="#ef4444"
                     bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
                   >
-                    {formatCurrency(feeCollectionDetails.total.droppedOut)}
+                    {formatCurrency(feeCollectionDetails?.total?.droppedOut || 0)}
                   </StatusBadge>
                 </FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails.total.remaining)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.remaining || 0)}</FeeCollectionTableCell>
               </FeeCollectionTableRow>
             </FeeCollectionTableBody>
           </FeeCollectionTable>
@@ -384,20 +384,20 @@ const FeeTab: React.FC<FeeTabProps> = ({
               </tr>
             </DefaultersTableHeader>
             <DefaultersTableBody>
-              {defaultersData.map((row, index) => (
+              {(defaultersData || []).map((row, index) => (
                 <DefaultersTableRow key={index}>
                   <DefaultersTableCell isMonth>{row.month}</DefaultersTableCell>
-                  <DefaultersTableCell align="center">{row.challan}</DefaultersTableCell>
-                  <DefaultersTableCell align="right">{formatCurrency(row.amount)}</DefaultersTableCell>
+                  <DefaultersTableCell align="center">{row.challan || 0}</DefaultersTableCell>
+                  <DefaultersTableCell align="right">{formatCurrency(row.amount || 0)}</DefaultersTableCell>
                 </DefaultersTableRow>
               ))}
               <DefaultersTableRow isTotal>
                 <DefaultersTableCell>Total</DefaultersTableCell>
                 <DefaultersTableCell align="center">
-                  {defaultersData.reduce((sum, row) => sum + row.challan, 0)}
+                  {(defaultersData || []).reduce((sum, row) => sum + (row.challan || 0), 0)}
                 </DefaultersTableCell>
                 <DefaultersTableCell align="right">
-                  {formatCurrency(defaultersData.reduce((sum, row) => sum + row.amount, 0))}
+                  {formatCurrency((defaultersData || []).reduce((sum, row) => sum + (row.amount || 0), 0))}
                 </DefaultersTableCell>
               </DefaultersTableRow>
             </DefaultersTableBody>

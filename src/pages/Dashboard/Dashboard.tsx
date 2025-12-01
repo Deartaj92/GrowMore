@@ -108,6 +108,7 @@ const Dashboard: React.FC = () => {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<DashboardTab>('attendance');
+  const prevActiveTabRef = useRef<DashboardTab | null>(null);
 
   // Attendance state
   const [absentees, setAbsentees] = useState<any[]>([]);
@@ -1047,9 +1048,11 @@ const Dashboard: React.FC = () => {
   // Fetch fee summary
   useEffect(() => {
     if (activeTab !== 'fee') return;
-    const cacheKey = getTabCacheKey('fee_summary', { school_id: user?.school_id });
+    if (!user?.school_id) return;
+    
+    const cacheKey = getTabCacheKey('fee_summary', { school_id: user.school_id });
     const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user?.school_id })) {
+    if (isTabCacheValid(cached, { school_id: user.school_id })) {
       const cachedData = getCachedTabData(cached);
       if (cachedData) {
         setFeeSummary(cachedData);
@@ -1057,8 +1060,11 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
+    
+    // Set loading state before fetching
+    setFeeSummaryLoading(true);
     fetchFeeSummaryService(
-      user?.school_id ? String(user.school_id) : '',
+      String(user.school_id),
       setFeeSummary,
       setFeeSummaryLoading,
       getCachedSession,
@@ -1069,12 +1075,14 @@ const Dashboard: React.FC = () => {
   // Fetch collection charts
   useEffect(() => {
     if (activeTab !== 'fee') return;
+    if (!user?.school_id) return;
+    
     const cacheKey = getTabCacheKey('fee_collection_charts', { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       dashboardDate 
     });
     const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user?.school_id, dashboardDate })) {
+    if (isTabCacheValid(cached, { school_id: user.school_id, dashboardDate })) {
       const cachedData = getCachedTabData(cached);
       if (cachedData) {
         setDailyCollectionData(cachedData.daily || []);
@@ -1083,8 +1091,11 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
+    
+    // Set loading state before fetching
+    setCollectionChartsLoading(true);
     fetchCollectionChartsDataService(
-      user?.school_id ? String(user.school_id) : '',
+      String(user.school_id),
       dashboardDate,
       setDailyCollectionData,
       setMonthlyCollectionData,
@@ -1096,12 +1107,14 @@ const Dashboard: React.FC = () => {
   // Fetch fee collection details
   useEffect(() => {
     if (activeTab !== 'fee') return;
+    if (!user?.school_id) return;
+    
     const cacheKey = getTabCacheKey('fee_collection_details', { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       dashboardDate 
     });
     const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user?.school_id, dashboardDate })) {
+    if (isTabCacheValid(cached, { school_id: user.school_id, dashboardDate })) {
       const cachedData = getCachedTabData(cached);
       if (cachedData) {
         setFeeCollectionDetails(cachedData);
@@ -1109,8 +1122,11 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
+    
+    // Set loading state before fetching
+    setFeeCollectionDetailsLoading(true);
     fetchFeeCollectionDetailsService(
-      user?.school_id ? String(user.school_id) : '',
+      String(user.school_id),
       dashboardDate,
       setFeeCollectionDetails,
       setFeeCollectionDetailsLoading,
@@ -1121,12 +1137,14 @@ const Dashboard: React.FC = () => {
   // Fetch defaulters
   useEffect(() => {
     if (activeTab !== 'fee') return;
+    if (!user?.school_id) return;
+    
     const cacheKey = getTabCacheKey('fee_defaulters', { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       dashboardDate 
     });
     const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user?.school_id, dashboardDate })) {
+    if (isTabCacheValid(cached, { school_id: user.school_id, dashboardDate })) {
       const cachedData = getCachedTabData(cached);
       if (cachedData) {
         setDefaultersData(cachedData);
@@ -1134,8 +1152,11 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
+    
+    // Set loading state before fetching
+    setDefaultersLoading(true);
     fetchDefaultersDataService(
-      user?.school_id ? String(user.school_id) : '',
+      String(user.school_id),
       dashboardDate,
       setDefaultersData,
       setDefaultersLoading,
@@ -1149,16 +1170,18 @@ const Dashboard: React.FC = () => {
       prevTabRef.current = activeTab;
       return;
     }
+    
+    if (!user?.school_id) return;
 
     const cacheKey = getTabCacheKey('admissions', { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       fromDate: admissionsDateFrom, 
       toDate: admissionsDateTo 
     });
     const cached = tabCacheRef.current.get(cacheKey);
     
     if (isTabCacheValid(cached, { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       fromDate: admissionsDateFrom, 
       toDate: admissionsDateTo 
     })) {
@@ -1170,8 +1193,10 @@ const Dashboard: React.FC = () => {
       }
     }
 
+    // Set loading state before fetching
+    setAdmissionsLoading(true);
     fetchAdmissionsDataService(
-      user?.school_id ? String(user.school_id) : '',
+      String(user.school_id),
       admissionsDateFrom,
       admissionsDateTo,
       setAdmissionsData,
@@ -1184,16 +1209,17 @@ const Dashboard: React.FC = () => {
   // Fetch homework diary
   useEffect(() => {
     if (activeTab !== 'homework') return;
+    if (!user?.school_id) return;
     if (homeworkFetchingRef.current) return;
 
     const cacheKey = getTabCacheKey('homework', { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       dashboardDate 
     });
     const cached = tabCacheRef.current.get(cacheKey);
 
     if (isTabCacheValid(cached, { 
-      school_id: user?.school_id, 
+      school_id: user.school_id, 
       dashboardDate 
     })) {
       const cachedData = getCachedTabData(cached);
@@ -1204,9 +1230,11 @@ const Dashboard: React.FC = () => {
       }
     }
 
+    // Set loading state before fetching
+    setHomeworkLoading(true);
     homeworkFetchingRef.current = true;
     fetchHomeworkDiaryService(
-      user?.school_id ? String(user.school_id) : '',
+      String(user.school_id),
       dashboardDate,
       setHomeworkDiaryData,
       setHomeworkLoading,

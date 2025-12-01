@@ -143,10 +143,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 </SummaryCardIcon>
               </SummaryCardHeader>
               <SummaryCardValue>
-                {admissionsLoading ? <DottedLoader /> : admissionsData.totalInquiries}
+                {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalInquiries || 0)}
               </SummaryCardValue>
               <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.inquiriesThisMonth}`}
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.inquiriesThisMonth || 0}`}
               </SummaryCardSubtext>
             </AdmissionsSummaryCard>
 
@@ -158,10 +158,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 </SummaryCardIcon>
               </SummaryCardHeader>
               <SummaryCardValue>
-                {admissionsLoading ? <DottedLoader /> : admissionsData.totalStudents}
+                {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalStudents || 0)}
               </SummaryCardValue>
               <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.studentsThisMonth}`}
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.studentsThisMonth || 0}`}
               </SummaryCardSubtext>
             </AdmissionsSummaryCard>
 
@@ -173,10 +173,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 </SummaryCardIcon>
               </SummaryCardHeader>
               <SummaryCardValue>
-                {admissionsLoading ? <DottedLoader /> : admissionsData.totalFamilies}
+                {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalFamilies || 0)}
               </SummaryCardValue>
               <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.familiesThisMonth}`}
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.familiesThisMonth || 0}`}
               </SummaryCardSubtext>
             </AdmissionsSummaryCard>
 
@@ -188,10 +188,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 </SummaryCardIcon>
               </SummaryCardHeader>
               <SummaryCardValue>
-                {admissionsLoading ? <DottedLoader /> : admissionsData.totalFeePlans}
+                {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalFeePlans || 0)}
               </SummaryCardValue>
               <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData.feePlansThisMonth}`}
+                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.feePlansThisMonth || 0}`}
               </SummaryCardSubtext>
             </AdmissionsSummaryCard>
           </AdmissionsSummaryGrid>
@@ -583,9 +583,9 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   fontWeight: 700,
                   marginBottom: '1.5rem'
                 }}>
-                  Celebrating {admissionsData.todaysBirthdaysCount} {admissionsData.todaysBirthdaysCount === 1 ? 'birthday' : 'birthdays'} today!
+                  Celebrating {admissionsData?.todaysBirthdaysCount || 0} {(admissionsData?.todaysBirthdaysCount || 0) === 1 ? 'birthday' : 'birthdays'} today!
                 </div>
-                {admissionsData.todaysBirthdaysCount > 0 && (
+                {(admissionsData?.todaysBirthdaysCount || 0) > 0 && (
                   <div style={{
                     width: '100%',
                     maxHeight: '150px',
