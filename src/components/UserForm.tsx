@@ -9,12 +9,18 @@ interface User {
   id?: number;
   username: string;
   name: string;
-  role: 'Principal' | 'Management Staff' | 'Teacher' | 'Accountant' | 'Store Manager' | 'Guest' | 'Other';
+  role: string;
+  role_id?: number | null;
   status: string;
   avatar_url: string | null;
   password: string;
   staff_id?: number;
   school_id?: number;
+}
+
+interface Role {
+  id: number;
+  name: string;
 }
 
 interface Staff {
@@ -158,7 +164,8 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
   const [form, setForm] = useState<User>({
     username: '',
     name: '',
-    role: 'Teacher',
+    role: '',
+    role_id: null,
     status: 'active',
     avatar_url: null,
     password: '',
@@ -167,13 +174,30 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
   const [usernameStatus, setUsernameStatus] = useState<'checking' | 'available' | 'taken' | 'idle'>('idle');
   const toast = useToast();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
+    fetchRoles();
+    fetchStaff();
+  }, []);
+
+  useEffect(() => {
     if (user) {
-      setForm(user);
+      // If role_id is missing, try to find it from the role name
+      let roleId = user.role_id;
+      if (!roleId && user.role && roles.length > 0) {
+        const matchingRole = roles.find(r => r.name === user.role);
+        roleId = matchingRole?.id || null;
+      }
+      
+      setForm({
+        ...user,
+        role_id: roleId || null
+      });
       // For existing users, check if their username meets requirements
       if (user.username && user.username.length >= 4) {
         setUsernameStatus('available');
@@ -184,9 +208,17 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
       // For new users, reset username status and fetch default password
       setUsernameStatus('idle');
       fetchDefaultPassword();
+      // Set default role to first available role (usually Teacher)
+      if (roles.length > 0) {
+        const defaultRole = roles.find(r => r.name === 'Teacher') || roles[0];
+        setForm(prev => ({
+          ...prev,
+          role: defaultRole.name,
+          role_id: defaultRole.id
+        }));
+      }
     }
-    fetchStaff();
-  }, [user]);
+  }, [user, roles]);
 
   const fetchDefaultPassword = async () => {
     if (!currentUser?.school_id) return;
@@ -220,6 +252,23 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
       setForm(prev => ({ ...prev, staff_id: undefined }));
     }
   }, [form.role, staff, staffLoading, toast]);
+
+  const fetchRoles = async () => {
+    setRolesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('roles')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setRoles(data || []);
+    } catch (error) {
+      toast.showToast('Failed to fetch roles', 'error');
+    } finally {
+      setRolesLoading(false);
+    }
+  };
 
   const fetchStaff = async () => {
     setStaffLoading(true);
@@ -291,12 +340,17 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
       } else {
         setUsernameStatus('idle');
       }
+    } else if (name === 'role') {
+      // Find the role_id for the selected role
+      const selectedRole = roles.find(r => r.name === value);
+      setForm(prev => ({
+        ...prev,
+        role: value,
+        role_id: selectedRole?.id || null,
+        staff_id: undefined
+      }));
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
-    }
-    
-    if (name === 'role') {
-      setForm(prev => ({ ...prev, staff_id: undefined }));
     }
   };
 
@@ -304,11 +358,14 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
     const staffId = parseInt(e.target.value);
     const selectedStaff = staff.find(s => s.id === staffId);
     if (selectedStaff) {
+      // Find the role_id for the staff member's role
+      const staffRole = roles.find(r => r.name === selectedStaff.role);
       setForm(prev => ({
         ...prev,
         staff_id: staffId,
         name: selectedStaff.name,
-        role: selectedStaff.role as User['role']
+        role: selectedStaff.role,
+        role_id: staffRole?.id || null
       }));
     }
   };
@@ -355,6 +412,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
             username: form.username,
             name: form.name,
             role: form.role,
+            role_id: form.role_id,
             status: form.status,
             staff_id: form.staff_id,
             school_id: currentUser?.school_id
@@ -383,6 +441,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
             username: form.username,
             name: form.name,
             role: form.role,
+            role_id: form.role_id,
             status: form.status,
             password: form.password,
             staff_id: form.staff_id,
@@ -414,14 +473,27 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
         <Form onSubmit={handleSubmit}>
           <FormGroup>
             <Label>Role*</Label>
-            <Select name="role" value={form.role} onChange={handleChange} required>
-              <option value="Principal">Principal</option>
-              <option value="Management Staff">Management Staff</option>
-              <option value="Teacher">Teacher</option>
-              <option value="Accountant">Accountant</option>
-              <option value="Store Manager">Store Manager</option>
-              <option value="Guest">Guest</option>
-              <option value="Other">Other</option>
+            <Select 
+              name="role" 
+              value={form.role} 
+              onChange={handleChange} 
+              required
+              disabled={rolesLoading}
+            >
+              {rolesLoading ? (
+                <option value="">Loading roles...</option>
+              ) : roles.length === 0 ? (
+                <option value="">No roles available</option>
+              ) : (
+                <>
+                  <option value="">Select a role</option>
+                  {roles.map(role => (
+                    <option key={role.id} value={role.name}>
+                      {role.name}
+                    </option>
+                  ))}
+                </>
+              )}
             </Select>
           </FormGroup>
 

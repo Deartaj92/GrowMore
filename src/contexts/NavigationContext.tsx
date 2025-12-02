@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+import { hasPermission } from '../services/permissionService';
 
 interface NavigationContextType {
   navHistory: string[];
@@ -27,6 +29,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
   const [forwardHistory, setForwardHistory] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Initialize nav history on mount
   React.useEffect(() => {
@@ -48,7 +51,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     });
   }, [location.pathname]);
 
-  const handleGoBack = useCallback(() => {
+  const handleGoBack = useCallback(async () => {
     if (location.pathname === '/dashboard') return;
     
     const currentPath = location.pathname;
@@ -59,9 +62,22 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
       setNavHistory(prev => prev.slice(0, -1));
       navigate(previousPath);
     } else {
-      navigate('/dashboard');
+      // Check dashboard permission before navigating
+      if (user?.role === 'Super Admin') {
+        navigate('/dashboard');
+      } else if (user?.id && user?.school_id) {
+        try {
+          const hasDashboardPermission = await hasPermission(user.id, 'dashboard', user.school_id);
+          navigate(hasDashboardPermission ? '/dashboard' : '/user');
+        } catch (error) {
+          console.error('Error checking dashboard permission:', error);
+          navigate('/user');
+        }
+      } else {
+        navigate('/user');
+      }
     }
-  }, [navHistory, navigate, location.pathname]);
+  }, [navHistory, navigate, location.pathname, user]);
 
   const handleGoForward = useCallback(() => {
     if (forwardHistory.length === 0) return;

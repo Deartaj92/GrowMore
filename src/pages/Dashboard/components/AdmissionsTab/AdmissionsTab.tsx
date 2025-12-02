@@ -71,14 +71,15 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
   const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       {/* Date Range Selector for Admissions */}
       <div style={{
         display: 'flex',
         gap: '1rem',
         marginBottom: '1.5rem',
         alignItems: 'center',
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
+        justifyContent: 'flex-end'
       }}>
         <DashboardDateInput
           type="date"
@@ -99,32 +100,6 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
           }}
           title="To Date"
         />
-        <button
-          onClick={() => {
-            const range = getCurrentMonthRange();
-            setAdmissionsDateFrom(range.from);
-            setAdmissionsDateTo(range.to);
-          }}
-          style={{
-            padding: '0.5rem 1rem',
-            background: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
-            border: `1px solid ${isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'}`,
-            borderRadius: '6px',
-            color: '#6366f1',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)';
-          }}
-        >
-          Current Month
-        </button>
       </div>
 
       {admissionsLoading ? (
@@ -200,21 +175,16 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
           <AdmissionsChartsGrid>
             <AdmissionsChartCard>
               <AdmissionsChartTitle>Admissions</AdmissionsChartTitle>
-              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                {admissionsChartData && admissionsChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+              <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={admissionsChartData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
                       <XAxis
                         dataKey="month"
                         tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
                         stroke={isDark ? '#888' : '#666'}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
                       />
                       <YAxis
                         tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
@@ -229,7 +199,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                         }}
                       />
                       <Legend
-                        wrapperStyle={{ paddingTop: '10px' }}
+                    wrapperStyle={{ paddingTop: '20px' }}
                         iconType="rect"
                       />
                       <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" />
@@ -242,38 +212,20 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '280px',
-                    color: isDark ? '#888' : '#666',
-                    fontSize: '0.95rem'
-                  }}>
-                    No data available
-                  </div>
-                )}
-              </div>
             </AdmissionsChartCard>
 
             <AdmissionsChartCard>
               <AdmissionsChartTitle>Withdrawals</AdmissionsChartTitle>
-              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                {withdrawalsChartData && withdrawalsChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+              <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={withdrawalsChartData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
                       <XAxis
                         dataKey="month"
                         tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
                         stroke={isDark ? '#888' : '#666'}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
                       />
                       <YAxis
                         tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
@@ -288,7 +240,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                         }}
                       />
                       <Legend
-                        wrapperStyle={{ paddingTop: '10px' }}
+                    wrapperStyle={{ paddingTop: '20px' }}
                         iconType="rect"
                       />
                       <Bar dataKey="boys" stackId="a" fill="#ef4444" name="Boys" />
@@ -301,33 +253,18 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '280px',
-                    color: isDark ? '#888' : '#666',
-                    fontSize: '0.95rem'
-                  }}>
-                    No data available
-                  </div>
-                )}
-              </div>
             </AdmissionsChartCard>
 
             <AdmissionsChartCard>
               <AdmissionsChartTitle>Gender</AdmissionsChartTitle>
-              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                {genderChartData && genderChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+              <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
                         data={genderChartData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
+                    innerRadius={50}
+                    outerRadius={85}
                         paddingAngle={2}
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -338,43 +275,25 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                      backgroundColor: '#fff',
+                      border: '1px solid #ddd',
                           borderRadius: '8px',
-                          color: isDark ? '#e2e8f0' : '#1e293b'
+                      color: '#1e293b'
                         }}
-                      />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={36}
-                        iconType="circle"
                       />
                     </PieChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '280px',
-                    color: isDark ? '#888' : '#666',
-                    fontSize: '0.95rem'
-                  }}>
-                    No data available
-                  </div>
-                )}
-              </div>
             </AdmissionsChartCard>
           </AdmissionsChartsGrid>
 
           {/* Additional Cards: Grade Distribution, Latest Admissions, Today's Birthdays */}
           <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
             {/* Class Wise Strength Card */}
-            <AdmissionsChartCard style={{ minHeight: '400px' }}>
+            {classStrengths && classStrengths.length > 0 && (
+              <AdmissionsChartCard style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
               <AdmissionsChartTitle style={{ marginBottom: '1rem' }}>Class Wise Strength</AdmissionsChartTitle>
-              <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                {classStrengths && classStrengths.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minHeight={350}>
+                <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={classStrengths}
                       layout="vertical"
@@ -409,20 +328,9 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '350px',
-                    color: isDark ? '#888' : '#666',
-                    fontSize: '0.95rem'
-                  }}>
-                    No data available
-                  </div>
-                )}
               </div>
             </AdmissionsChartCard>
+            )}
 
             {/* Latest Admissions Card */}
             <AdmissionsChartCard style={{ minHeight: '400px' }}>
@@ -449,21 +357,27 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                     <div style={{ fontSize: '0.95rem' }}>No recent admissions</div>
                   </div>
                 ) : (
-                  latestAdmissions.map((admission, idx) => {
-                    const admissionDate = admission.admissionDate
-                      ? new Date(admission.admissionDate).toLocaleDateString('en-GB', {
+                  latestAdmissions.map((admission: any, idx: number) => {
+                    const admissionDate = admission.admissionDate || admission.admission_date
+                      ? new Date(admission.admissionDate || admission.admission_date).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric'
                       })
                       : 'N/A';
 
-                    const initials = admission.name
+                    const studentName = admission.name || 'N/A';
+                    const initials = studentName !== 'N/A'
+                      ? studentName
                       .split(' ')
                       .map((n: string) => n[0])
                       .join('')
                       .toUpperCase()
-                      .slice(0, 2);
+                          .slice(0, 2)
+                      : 'N/A';
+
+                    const className = admission.className || admission.class_name || 'N/A';
+                    const pictureUrl = admission.pictureUrl || admission.picture_url;
 
                     return (
                       <div
@@ -478,10 +392,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                           border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
                         }}
                       >
-                        {admission.pictureUrl ? (
+                        {pictureUrl ? (
                           <img
-                            src={admission.pictureUrl}
-                            alt={admission.name}
+                            src={pictureUrl}
+                            alt={studentName}
                             style={{
                               width: '40px',
                               height: '40px',
@@ -517,7 +431,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
                           }}>
-                            {admission.name}
+                            {studentName}
                           </div>
                           <div style={{
                             fontSize: '0.8rem',
@@ -527,7 +441,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                             gap: '0.5rem'
                           }}>
                             <School style={{ fontSize: '0.75rem' }} />
-                            <span>{admission.className}</span>
+                            <span>{className}</span>
                             <span style={{ margin: '0 0.25rem' }}>•</span>
                             <span>{admissionDate}</span>
                           </div>
@@ -541,6 +455,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
           </AdmissionsChartsGrid>
 
           {/* Today's Birthdays Card */}
+          {(todaysBirthdays && todaysBirthdays.length > 0) || (admissionsData?.todaysBirthdaysCount > 0) ? (
           <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
             <AdmissionsChartCard style={{
               minHeight: '200px',
@@ -581,98 +496,51 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 <div style={{
                   fontSize: '1.5rem',
                   fontWeight: 700,
-                  marginBottom: '1.5rem'
+                    marginBottom: '1rem'
                 }}>
-                  Celebrating {admissionsData?.todaysBirthdaysCount || 0} {(admissionsData?.todaysBirthdaysCount || 0) === 1 ? 'birthday' : 'birthdays'} today!
+                    {admissionsData?.todaysBirthdaysCount || todaysBirthdays?.length || 0} {(admissionsData?.todaysBirthdaysCount || todaysBirthdays?.length || 0) === 1 ? 'Birthday' : 'Birthdays'}
                 </div>
-                {(admissionsData?.todaysBirthdaysCount || 0) > 0 && (
+                  {todaysBirthdays && todaysBirthdays.length > 0 && (
                   <div style={{
-                    width: '100%',
-                    maxHeight: '150px',
-                    overflowY: 'auto',
-                    marginBottom: '1rem',
-                    padding: '0.5rem',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px'
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      justifyContent: 'center',
+                      maxWidth: '600px'
                   }}>
-                    {todaysBirthdays.map((student, idx) => (
+                      {todaysBirthdays.slice(0, 10).map((birthday: any, idx: number) => (
                       <div
                         key={idx}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          padding: '0.5rem',
-                          marginBottom: '0.5rem',
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          borderRadius: '6px'
-                        }}
-                      >
-                        {student.pictureUrl ? (
-                          <img
-                            src={student.pictureUrl}
-                            alt={student.name}
-                            style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '50%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '50%',
-                              background: 'rgba(255, 255, 255, 0.3)',
-                              color: '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.75rem',
-                              fontWeight: 600
-                            }}
-                          >
-                            {student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                            padding: '0.5rem 0.75rem',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            borderRadius: '20px',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            backdropFilter: 'blur(10px)'
+                          }}
+                        >
+                          {birthday.name || 'N/A'}
+                        </div>
+                      ))}
+                      {todaysBirthdays.length > 10 && (
+                        <div style={{
+                          padding: '0.5rem 0.75rem',
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: '20px',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          backdropFilter: 'blur(10px)'
+                        }}>
+                          +{todaysBirthdays.length - 10} more
                           </div>
                         )}
-                        <div style={{ flex: 1, textAlign: 'left' }}>
-                          <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                            {student.name}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-                            {student.className}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 )}
-                <button
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                  }}
-                >
-                  View Details & Send SMS
-                </button>
               </div>
             </AdmissionsChartCard>
           </AdmissionsChartsGrid>
+          ) : null}
         </>
       )}
     </div>
@@ -680,4 +548,3 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
 };
 
 export default AdmissionsTab;
-

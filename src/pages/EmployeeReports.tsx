@@ -58,12 +58,11 @@ import {
     ReportStatus
 } from '../types/reports';
 import { useAuth } from '../contexts/AuthContext';
-import { CreateStudentReportForm } from '../components/reports/CreateStudentReportForm';
+import { CreateEmployeeReportForm } from '../components/reports/CreateEmployeeReportForm';
 import { ModifyReportModal } from '../components/reports/ModifyReportModal';
 import { EditReportForm } from '../components/reports/EditReportForm';
 import { EditUpdateForm } from '../components/reports/EditUpdateForm';
 import { useToast } from '../components/useToast';
-import NoStudentsFound from '../components/NoStudentsFound';
 import { supabase } from '../supabaseClient';
 import { useProgress } from '../components/Layout';
 import { useActivityTracking } from '../hooks/useActivityTracking';
@@ -551,7 +550,7 @@ const AddHeaderIconButton = styled('button')`
   }
 `;
 
-export const Reports = (): JSX.Element => {
+export const EmployeeReports = (): JSX.Element => {
     const { user } = useAuth();
     const { startProgress, setProgress, completeProgress } = useProgress();
     const { logReportActivity } = useActivityTracking();
@@ -574,101 +573,20 @@ export const Reports = (): JSX.Element => {
     const [editingUpdate, setEditingUpdate] = useState<{ update: any; reportId: string } | undefined>(undefined);
     const { showToast } = useToast();
     const [expandedUpdates, setExpandedUpdates] = useState<{ [key: string]: boolean }>({});
-    const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
-    const [loadingStudents, setLoadingStudents] = useState(true);
-    const [activeSession, setActiveSession] = useState<any>(null);
-    const [activeSessionStudents, setActiveSessionStudents] = useState<Set<number>>(new Set());
-
-    // Check if there are any students in the system for the active session
-    useEffect(() => {
-        const checkForAnyStudents = async () => {
-            if (!user?.school_id) return;
-            
-            try {
-                // Get active session
-                const { data: sessionsData, error: sessionsError } = await supabase
-                    .from('sessions')
-                    .select('id, is_active')
-                    .eq('school_id', user?.school_id);
-                
-                if (sessionsError) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                const activeSessionData = sessionsData?.find(s => s.is_active);
-                if (!activeSessionData) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                setActiveSession(activeSessionData);
-                
-                // Check if there are any students in student_class_history for the active session
-                const { data: schData, error: schError } = await supabase
-                    .from('student_class_history')
-                    .select('student_id')
-                    .eq('session_id', activeSessionData.id)
-                    .eq('school_id', user?.school_id)
-                    .limit(1);
-                
-                if (schError) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                if (!schData || schData.length === 0) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                // Now check if any of these students are active
-                const studentIds = schData.map(sch => sch.student_id);
-                const { data: studentsData, error: studentsError } = await supabase
-                    .from('students')
-                    .select('id')
-                    .eq('school_id', user?.school_id)
-                    .eq('status', 'active')
-                    .in('id', studentIds)
-                    .limit(1);
-                
-                if (studentsError) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                setHasAnyStudents(studentsData && studentsData.length > 0);
-                setLoadingStudents(false);
-            } catch (err: any) {
-                setHasAnyStudents(false);
-                setLoadingStudents(false);
-            }
-        };
-        
-        checkForAnyStudents();
-    }, [user?.school_id]);
 
     // Define functions that will be used in useEffect
     const loadReports = async () => {
-        if (!activeSession) return;
-        
         try {
-            const data = await reportService.getStudentReports({
+            const data = await reportService.getEmployeeReports({
                 category_id: filters.category_id || undefined,
                 status: filters.status || undefined,
-                subject_type: 'student'
+                subject_type: 'staff'
             }, user?.school_id);
             
             // Apply search filter
             const searchFilteredData = data.filter(report => {
                 const searchMatch = !filters.searchQuery || (
-                    (report.student?.name?.toLowerCase() || '').includes(filters.searchQuery.toLowerCase()) ||
-                    (report.student?.father_name?.toLowerCase() || '').includes(filters.searchQuery.toLowerCase())
+                    (report.staff?.name?.toLowerCase() || '').includes(filters.searchQuery.toLowerCase())
                 );
                 return searchMatch;
             });
@@ -694,8 +612,8 @@ export const Reports = (): JSX.Element => {
 
     const loadCategories = async () => {
         try {
-            // Only load student categories
-            const data = await reportService.getCategories('student', user?.school_id);
+            // Only load staff categories
+            const data = await reportService.getCategories('staff', user?.school_id);
             setCategories(data);
         } catch (error) {
             // TODO: Show error notification
@@ -703,7 +621,7 @@ export const Reports = (): JSX.Element => {
     };
 
     useEffect(() => {
-        if (!user?.school_id || !activeSession) return;
+        if (!user?.school_id) return;
         
         let isMounted = true;
         const loadAll = async () => {
@@ -727,7 +645,7 @@ export const Reports = (): JSX.Element => {
         };
         loadAll();
         return () => { isMounted = false; };
-    }, [filters, user?.school_id, activeSession]);
+    }, [filters, user?.school_id]);
 
     const sortedReports = useMemo(() => {
         // Split reports into unresolved and resolved first
@@ -824,14 +742,14 @@ export const Reports = (): JSX.Element => {
             // Log activity FIRST, BEFORE deleting the report
             // This ensures the activity log is created with the report ID while it still exists
             if (reportToDelete.category?.name && user?.staff_id) {
-                const subjectName = reportToDelete.student?.name || 'Unknown Student';
+                const subjectName = reportToDelete.staff?.name || 'Unknown Staff';
                 
                 try {
                     console.log('[Reports] Logging report delete activity:', {
                         reportId: reportToDelete.id,
                         category: reportToDelete.category.name,
                         subjectName,
-                        subjectType: 'student',
+                        subjectType: reportToDelete.subject_type,
                         severity: reportToDelete.severity
                     });
                     
@@ -839,14 +757,13 @@ export const Reports = (): JSX.Element => {
                         'delete',
                         reportToDelete.category.name,
                         subjectName,
-                        'student',
+                        reportToDelete.subject_type,
                         reportToDelete.severity,
                         {
                             entityId: parseInt(reportToDelete.id),
                             entityName: `Report #${reportToDelete.id}`,
                             createNotification: true, // Show delete activity in notifications
-                            studentId: reportToDelete.student?.id,
-                            staffId: undefined
+                            staffId: reportToDelete.staff?.id
                         }
                     );
                     
@@ -861,7 +778,7 @@ export const Reports = (): JSX.Element => {
             }
             
             // Now delete the report
-            await reportService.deleteStudentReport(parseInt(reportToDelete.id), user?.school_id);
+            await reportService.deleteEmployeeReport(parseInt(reportToDelete.id), user?.school_id);
             
             await loadReports();
             setDeleteDialogOpen(false);
@@ -881,7 +798,7 @@ export const Reports = (): JSX.Element => {
 
     const handleCreateReport = async (reportData: CreateReportDTO) => {
         try {
-            const createdReport = await reportService.createStudentReport({ ...reportData, subject_type: 'student' }, user?.school_id);
+            const createdReport = await reportService.createEmployeeReport({ ...reportData, subject_type: 'staff' }, user?.school_id);
             
             // Log activity - this will create high-priority notification for admins
             if (createdReport && user?.staff_id) {
@@ -889,20 +806,19 @@ export const Reports = (): JSX.Element => {
                 const categoryName = createdReport.category?.name || categories.find(c => c.id === reportData.category_id)?.name || 'Report';
                 
                 // Get subject name from created report data
-                const subjectName = createdReport.student?.name || 'Unknown Student';
+                const subjectName = createdReport.staff?.name || 'Unknown Staff';
                 
                 await logReportActivity(
                     'create',
                     categoryName,
                     subjectName,
-                    'student',
+                    reportData.subject_type,
                     reportData.severity,
                     {
                         entityId: createdReport.id,
                         entityName: `Report #${createdReport.id}`,
                         createNotification: true, // Create high-priority notification
-                        studentId: reportData.student_id,
-                        staffId: undefined
+                        staffId: reportData.staff_id
                     }
                 );
             }
@@ -925,20 +841,20 @@ export const Reports = (): JSX.Element => {
                 update_note: notes
             };
             
-            await reportService.updateStudentReport(reportId, updateData, user?.school_id);
+            await reportService.updateEmployeeReport(reportId, updateData, user?.school_id);
             
             // Log activity for report status modification
             if (user?.staff_id) {
                 // Find the report to get its details
                 const report = reports.find(r => r.id === reportId);
                 if (report && report.category?.name) {
-                    const subjectName = report.student?.name || 'Unknown Student';
+                    const subjectName = report.staff?.name || 'Unknown Staff';
                     
                     await logReportActivity(
                         'update',
                         report.category.name,
                         subjectName,
-                        'student',
+                        report.subject_type,
                         report.severity,
                         {
                             entityId: parseInt(reportId),
@@ -958,17 +874,17 @@ export const Reports = (): JSX.Element => {
     const handleEditSubmit = async (data: { severity: ReportSeverity; description: string; created_at: string }) => {
         if (!editingReport?.id) return;
         try {
-            await reportService.updateStudentReportDetails(editingReport.id, data, user?.school_id);
+            await reportService.updateEmployeeReportDetails(editingReport.id, data, user?.school_id);
             
             // Log activity
             if (editingReport.category?.name && user?.staff_id) {
-                const subjectName = editingReport.student?.name || 'Unknown Student';
+                const subjectName = editingReport.staff?.name || 'Unknown Staff';
                 
                 await logReportActivity(
                     'update',
                     editingReport.category.name,
                     subjectName,
-                    'student',
+                    editingReport.subject_type,
                     data.severity,
                     {
                         entityId: parseInt(editingReport.id),
@@ -1006,7 +922,7 @@ export const Reports = (): JSX.Element => {
 
     const handleEditUpdateSubmit = async (updateId: string, updateNote: string) => {
         try {
-            await reportService.updateStudentReportUpdate(updateId, updateNote, user?.school_id);
+            await reportService.updateEmployeeReportUpdate(updateId, updateNote, user?.school_id);
             await loadReports();
             setEditingUpdate(undefined);
             showToast('Update note updated successfully', 'success');
@@ -1032,11 +948,6 @@ export const Reports = (): JSX.Element => {
         }
     };
 
-    // Top-level check for no active students in student_class_history for active session
-    if (!loadingStudents && hasAnyStudents === false) {
-        return <NoStudentsFound />;
-    }
-
     if (loading) {
         return <ReportsSkeleton />;
     }
@@ -1061,7 +972,7 @@ export const Reports = (): JSX.Element => {
                             flex: 1
                         }}
                     >
-                        Student Reports
+                        Employee Reports
                     </Typography>
                     <Box sx={{ 
                         display: 'flex',
@@ -1149,7 +1060,7 @@ export const Reports = (): JSX.Element => {
                                     maxWidth: '400px'
                                 }}
                             >
-                                Get started by creating your first report to track incidents and manage student/staff behavior.
+                                Get started by creating your first report to track incidents and manage employee behavior.
                             </Typography>
                             <Button
                                 variant="contained"
@@ -1177,7 +1088,7 @@ export const Reports = (): JSX.Element => {
                     </Grid>
                 </Grid>
 
-                <CreateStudentReportForm
+                <CreateEmployeeReportForm
                     onSubmit={handleCreateReport}
                     onCancel={() => setCreateDialogOpen(false)}
                     open={createDialogOpen}
@@ -1202,7 +1113,7 @@ export const Reports = (): JSX.Element => {
                     }}
                 >
                     <Title>
-                        Student Reports <span style={{fontWeight:400, fontSize:'1rem', color: '#b0b8d1'}}>({reports.length})</span>
+                        Employee Reports <span style={{fontWeight:400, fontSize:'1rem', color: '#b0b8d1'}}>({reports.length})</span>
                     </Title>
                     {/* Mobile filter toggle button and add button */}
                     <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
@@ -1386,7 +1297,7 @@ export const Reports = (): JSX.Element => {
                                     maxWidth: '400px'
                                 }}
                             >
-                                Get started by creating your first report to track incidents and manage student/staff behavior.
+                                Get started by creating your first report to track incidents and manage employee behavior.
                             </Typography>
                             <Button
                                 variant="contained"
@@ -1576,7 +1487,7 @@ export const Reports = (): JSX.Element => {
 
                                             <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                                                 <Avatar 
-                                                    src={report.student?.picture_url} 
+                                                    src={report.staff?.picture_url} 
                                                                                     sx={{ 
                                                         width: 48, 
                                                         height: 48,
@@ -1584,16 +1495,18 @@ export const Reports = (): JSX.Element => {
                                                         color: 'primary.main'
                                                                                     }}
                                                                                 >
-                                                    {!report.student?.picture_url && report.student?.name?.[0]}
+                                                    {!report.staff?.picture_url && report.staff?.name?.[0]}
                                                 </Avatar>
                                                 <Box sx={{ flex: 1 }}>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                                                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {report.student?.name}
+                                                            {report.staff?.name}
                                                                                     </Typography>
-                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                            • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
+                                                        {report.staff?.role && (
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                • {report.staff.role}
                                                                                     </Typography>
+                                                        )}
                                                         {report.reporter?.name && (
                                                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                                                 • by {report.reporter.name}
@@ -1978,7 +1891,7 @@ export const Reports = (): JSX.Element => {
 
                                             <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                                                 <Avatar 
-                                                    src={report.student?.picture_url} 
+                                                    src={report.staff?.picture_url} 
                                                                                     sx={{ 
                                                         width: 48, 
                                                         height: 48,
@@ -1986,16 +1899,18 @@ export const Reports = (): JSX.Element => {
                                                         color: 'primary.main'
                                                                                     }}
                                                                                 >
-                                                    {!report.student?.picture_url && report.student?.name?.[0]}
+                                                    {!report.staff?.picture_url && report.staff?.name?.[0]}
                                                 </Avatar>
                                                 <Box sx={{ flex: 1 }}>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                                                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {report.student?.name}
+                                                            {report.staff?.name}
                                                                                     </Typography>
-                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                            • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
+                                                        {report.staff?.role && (
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                • {report.staff.role}
                                                                                     </Typography>
+                                                        )}
                                                         {report.reporter?.name && (
                                                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                                                 • by {report.reporter.name}
@@ -2256,7 +2171,7 @@ export const Reports = (): JSX.Element => {
                                 <strong>Category:</strong> {reportToDelete.category?.name}
                             </Typography>
                             <Typography variant="body2">
-                                <strong>Subject:</strong> {reportToDelete.student?.name}
+                                <strong>Subject:</strong> {reportToDelete.staff?.name}
                             </Typography>
                             <Typography variant="body2" sx={{ 
                                 mt: 1,
@@ -2305,7 +2220,7 @@ export const Reports = (): JSX.Element => {
                 </DialogActions>
             </StyledDialog>
 
-            <CreateStudentReportForm
+            <CreateEmployeeReportForm
                 onSubmit={handleCreateReport}
                 onCancel={() => setCreateDialogOpen(false)}
                 open={createDialogOpen}

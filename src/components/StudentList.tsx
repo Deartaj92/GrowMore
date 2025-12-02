@@ -2059,12 +2059,12 @@ const StudentList: React.FC = () => {
       }
     }
 
-    // Sort by score descending (higher scores first), then by ID ascending
+    // Sort by score descending (higher scores first), then by ID descending
     scoredResults.sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score; // Higher score first
       }
-      return a.student.id - b.student.id; // Then by ID ascending
+      return b.student.id - a.student.id; // Then by ID descending
     });
 
     return scoredResults.map(item => item.student);
@@ -2150,7 +2150,7 @@ const StudentList: React.FC = () => {
         .from('students')
         .select('*')
         .eq('school_id', user.school_id)
-        .order('name');
+        .order('id', { ascending: false });
 
       if (studentsError) {
         showToast('Failed to load students', 'error');
@@ -2237,7 +2237,9 @@ const StudentList: React.FC = () => {
       });
 
       setProgress(100);
-      setStudents(studentsWithCurrentClass);
+      // Sort students by ID descending
+      const sortedStudents = studentsWithCurrentClass.sort((a, b) => b.id - a.id);
+      setStudents(sortedStudents);
 
       const elapsed = Date.now() - start;
       if (elapsed < minDuration) {

@@ -2,7 +2,6 @@ import { supabase } from '../../../supabaseClient';
 import { FeeSummary, FeeCollectionDetails } from '../types';
 import { generateDummyFeeSummary, generateDummyFeeCollectionCharts, generateDummyFeeCollectionDetails, generateDummyDefaulters } from '../utils/dummyData';
 import { USE_DUMMY_DATA } from '../constants';
-import { getTabCacheKey, isTabCacheValid, getCachedTabData, createTabCacheEntry } from '../utils/cacheUtils';
 
 // Helper function to fetch all rows with parallel pagination batches
 export const fetchAllRows = async <T,>(queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>): Promise<T[]> => {
@@ -59,8 +58,7 @@ export const fetchFeeSummary = async (
   schoolId: string,
   setFeeSummary: (data: FeeSummary) => void,
   setFeeSummaryLoading: (loading: boolean) => void,
-  getCachedSession: () => Promise<any>,
-  setCachedTabData: (key: string, data: any, params?: Record<string, any>) => void
+  getCachedSession: () => Promise<any>
 ): Promise<void> => {
   if (!schoolId) return;
 
@@ -108,9 +106,6 @@ export const fetchFeeSummary = async (
     };
     
     setFeeSummary(summaryData);
-    
-    const cacheKey = getTabCacheKey('fee_summary', { school_id: schoolId });
-    setCachedTabData(cacheKey, summaryData);
   } catch (error) {
     console.error('Error fetching fee summary:', error);
   } finally {
@@ -123,8 +118,7 @@ export const fetchCollectionChartsData = async (
   dashboardDate: string,
   setDailyCollectionData: (data: Array<{ day: string; amount: number }>) => void,
   setMonthlyCollectionData: (data: Array<{ month: string; amount: number }>) => void,
-  setCollectionChartsLoading: (loading: boolean) => void,
-  setCachedTabData: (key: string, data: any, params?: Record<string, any>) => void
+  setCollectionChartsLoading: (loading: boolean) => void
 ): Promise<void> => {
   if (!schoolId) return;
 
@@ -166,37 +160,27 @@ export const fetchCollectionChartsData = async (
       error: dailyQuery.error
     };
 
-    try {
-      const monthlyRpc = await supabase.rpc('get_fee_payments_by_month', {
-        p_school_id: schoolId,
-        p_start_date: monthlyStartDate.toISOString().slice(0, 10),
-        p_end_date: monthlyEndDate.toISOString().slice(0, 10)
-      });
-      if (!monthlyRpc.error && monthlyRpc.data) {
-        monthlyResult = monthlyRpc;
-      } else {
-        throw new Error('RPC not available');
+    // Use direct query instead of RPC to avoid errors
+    const monthlyQuery = await supabase
+      .from('fee_payments')
+      .select('amount, payment_date')
+      .eq('school_id', schoolId)
+      .gte('payment_date', monthlyStartDate.toISOString().slice(0, 10))
+      .lte('payment_date', monthlyEndDate.toISOString().slice(0, 10));
+    
+    const monthlyData: { [key: string]: number } = {};
+    monthlyQuery.data?.forEach((p: any) => {
+      if (p.payment_date) {
+        const date = new Date(p.payment_date);
+        const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (Number(p.amount) || 0);
       }
-    } catch {
-      const fallback = await supabase
-        .from('fee_payments')
-        .select('amount, payment_date')
-        .eq('school_id', schoolId)
-        .gte('payment_date', monthlyStartDate.toISOString().slice(0, 10))
-        .lte('payment_date', monthlyEndDate.toISOString().slice(0, 10));
-      const monthlyData: { [key: string]: number } = {};
-      fallback.data?.forEach((p: any) => {
-        if (p.payment_date) {
-          const date = new Date(p.payment_date);
-          const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (Number(p.amount) || 0);
-        }
-      });
-      monthlyResult = {
-        data: Object.entries(monthlyData).map(([month, amount]) => ({ month, amount })),
-        error: fallback.error
-      };
-    }
+    });
+    
+    monthlyResult = {
+      data: Object.entries(monthlyData).map(([month, amount]) => ({ month, amount })),
+      error: monthlyQuery.error
+    };
 
     const dailyDataMap: { [key: string]: number } = {};
     for (let i = 6; i >= 0; i--) {
@@ -257,15 +241,6 @@ export const fetchCollectionChartsData = async (
     }));
 
     setMonthlyCollectionData(monthlyCollection);
-
-    const cacheKey = getTabCacheKey('fee_collection_charts', { 
-      school_id: schoolId, 
-      dashboardDate 
-    });
-    setCachedTabData(cacheKey, {
-      daily: dailyCollection,
-      monthly: monthlyCollection
-    }, { school_id: schoolId, dashboardDate });
   } catch (error) {
     console.error('Error fetching collection charts data:', error);
   } finally {
@@ -277,8 +252,7 @@ export const fetchFeeCollectionDetails = async (
   schoolId: string,
   dashboardDate: string,
   setFeeCollectionDetails: (data: FeeCollectionDetails) => void,
-  setFeeCollectionDetailsLoading: (loading: boolean) => void,
-  setCachedTabData: (key: string, data: any, params?: Record<string, any>) => void
+  setFeeCollectionDetailsLoading: (loading: boolean) => void
 ): Promise<void> => {
   if (!schoolId) return;
 
@@ -502,12 +476,6 @@ export const fetchFeeCollectionDetails = async (
     };
     
     setFeeCollectionDetails(detailsData);
-    
-    const cacheKey = getTabCacheKey('fee_collection_details', { 
-      school_id: schoolId, 
-      dashboardDate 
-    });
-    setCachedTabData(cacheKey, detailsData, { school_id: schoolId, dashboardDate });
   } catch (error) {
     console.error('Error fetching fee collection details:', error);
   } finally {
@@ -519,8 +487,7 @@ export const fetchDefaultersData = async (
   schoolId: string,
   dashboardDate: string,
   setDefaultersData: (data: Array<{ month: string; challan: number; amount: number }>) => void,
-  setDefaultersLoading: (loading: boolean) => void,
-  setCachedTabData: (key: string, data: any, params?: Record<string, any>) => void
+  setDefaultersLoading: (loading: boolean) => void
 ): Promise<void> => {
   if (!schoolId) return;
 
@@ -647,12 +614,6 @@ export const fetchDefaultersData = async (
     });
 
     setDefaultersData(defaultersArray);
-    
-    const cacheKey = getTabCacheKey('fee_defaulters', { 
-      school_id: schoolId, 
-      dashboardDate 
-    });
-    setCachedTabData(cacheKey, defaultersArray, { school_id: schoolId, dashboardDate });
   } catch (error) {
     console.error('Error fetching defaulters data:', error);
   } finally {

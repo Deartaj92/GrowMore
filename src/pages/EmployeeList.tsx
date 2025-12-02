@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon } from '@mui/icons-material';
@@ -414,27 +414,6 @@ const EmployeeSkeletonLine = styled.div<{ width?: string; height?: string }>`
   margin: 10px auto 0 auto;
 `;
 
-const OnlineDot = styled.div<{ isOnline: boolean }>`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: ${({ isOnline }) => isOnline ? '#22c55e' : '#9ca3af'};
-  box-shadow: ${({ isOnline }) => isOnline ? '0 0 4px #22c55e' : 'none'};
-  display: inline-block;
-`;
-
-const VersionTag = styled.span`
-  font-size: 0.7rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  margin-left: 6px;
-  display: inline-flex;
-  align-items: center;
-`;
-
 const EmployeeListSkeleton: React.FC = () => (
   <EmployeeSkeletonContainer>
     <EmployeeSkeletonGrid>
@@ -457,12 +436,6 @@ const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Check if user has school_id
   if (!user?.school_id) {
@@ -493,7 +466,7 @@ const EmployeeList: React.FC = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('staff')
-        .select('*, last_online, is_online, app_version')
+        .select('*')
         .eq('school_id', user.school_id)
         .order('created_at', { ascending: false });
       if (!error) setEmployees(data || []);
@@ -582,67 +555,6 @@ const EmployeeList: React.FC = () => {
               onClick={() => handleProfile(employee)}
               data-employee-card
             >
-              {(() => {
-                const isOnline = employee.is_online && employee.last_online && (now.getTime() - new Date(employee.last_online).getTime() < 5 * 60 * 1000);
-                return (
-                  <div style={{
-                    position: 'absolute',
-                    top: '12px',
-                    right: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    gap: '4px',
-                    zIndex: 1
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: 'rgba(0, 0, 0, 0.05)',
-                      padding: '4px 8px',
-                      borderRadius: '12px'
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
-                        boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
-                      }} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 500, color: isOnline ? '#22c55e' : 'inherit' }}>
-                          {isOnline ? 'Online' : 'Offline'}
-                        </span>
-                        {!isOnline && employee.last_online && (
-                          <span style={{ fontSize: '9px', color: '#6b7280' }}>
-                            {(() => {
-                              const date = new Date(employee.last_online);
-                              const day = date.getDate().toString().padStart(2, '0');
-                              const month = date.toLocaleString('en-US', { month: 'short' });
-                              const year = date.getFullYear();
-                              const time = date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                              return `${day}-${month}-${year} ${time}`;
-                            })()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {employee.app_version && (
-                      <span style={{
-                        fontSize: '0.6rem',
-                        color: '#6b7280',
-                        fontFamily: 'monospace',
-                        background: 'rgba(0, 0, 0, 0.05)',
-                        padding: '2px 6px',
-                        borderRadius: '8px'
-                      }}>
-                        {employee.app_version}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
               <CardTop>
                 <Avatar
                   onClick={(e) => {

@@ -7,7 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import * as Icons from '@mui/icons-material';
 import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, AccessTime as AccessTimeIcon, Person as PersonIcon, Event as EventIcon, CalendarToday as CalendarIcon, LocationOn as LocationIcon, Phone as PhoneIcon, Sms as SmsIcon, WhatsApp as WhatsAppIcon, AccountCircle, AttachMoney as AttachMoneyIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon } from '@mui/icons-material';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Typography, IconButton, Tabs, Tab, Chip } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Typography, IconButton, Tabs, Tab, Chip, useTheme as useMuiTheme, useMediaQuery, Theme } from '@mui/material';
+import { styled as muiStyled } from '@mui/material/styles';
 import { useToast } from '../components/useToast';
 import Loader from '../components/Loader';
 import { examinationService } from '../services/examinationService';
@@ -1956,10 +1957,253 @@ const EventDetailRow = styled.div`
   }
 `;
 
+// Styled Dialog Components (matching UserDashboard.tsx)
+const StyledDialog = muiStyled(Dialog)(({ theme }) => ({
+  zIndex: 1300,
+  '& .MuiDialog-paper': {
+    borderRadius: '16px',
+    background: theme.palette.mode === 'dark' 
+      ? theme.palette.background.paper 
+      : theme.palette.background.paper,
+    maxWidth: '600px',
+    width: '95%',
+    margin: '84px 16px 16px',
+    overflow: 'hidden',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
+      : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)',
+    border: theme.palette.mode === 'dark'
+      ? '1px solid rgba(255, 255, 255, 0.05)'
+      : '1px solid rgba(0, 0, 0, 0.05)',
+    transform: 'translateY(0)',
+    transition: 'all 0.3s ease-in-out',
+    position: 'relative',
+    zIndex: 1301,
+    [theme.breakpoints.down('sm')]: {
+      width: 'calc(100% - 32px)',
+      height: 'calc(100% - 96px)',
+      margin: '76px 16px 20px',
+      borderRadius: '16px',
+      maxHeight: 'calc(100% - 96px)'
+    }
+  },
+  '& .MuiBackdrop-root': {
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(0, 0, 0, 0.5)'
+      : 'rgba(255, 255, 255, 0.5)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    position: 'fixed',
+    zIndex: 1300
+  }
+}));
+
+const DialogHeader = muiStyled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '20px 24px',
+  borderBottom: `1px solid ${theme.palette.mode === 'dark' 
+    ? 'rgba(255, 255, 255, 0.05)' 
+    : 'rgba(0, 0, 0, 0.05)'}`,
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+  backdropFilter: 'blur(8px)',
+  position: 'relative',
+  zIndex: 1
+}));
+
+const DialogTitleStyled = muiStyled(Typography)(({ theme }) => ({
+  fontSize: '1.5rem',
+  fontWeight: 600,
+  color: theme.palette.mode === 'dark'
+    ? theme.palette.primary.light
+    : theme.palette.primary.main,
+  textShadow: theme.palette.mode === 'dark'
+    ? '0 2px 4px rgba(0, 0, 0, 0.5)'
+    : 'none'
+}));
+
+const StyledDialogContent = muiStyled(DialogContent)(({ theme }) => ({
+  padding: '24px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '20px',
+  maxHeight: 'calc(100vh - 180px)',
+  overflowY: 'auto',
+  scrollbarWidth: 'thin',
+  scrollbarColor: theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.2) transparent'
+    : 'rgba(0, 0, 0, 0.2) transparent',
+  '&::-webkit-scrollbar': {
+    width: '8px',
+    backgroundColor: 'transparent'
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'transparent',
+    borderRadius: '4px',
+    margin: '4px'
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.2)'
+      : 'rgba(0, 0, 0, 0.2)',
+    borderRadius: '4px',
+    border: `2px solid ${theme.palette.mode === 'dark'
+      ? theme.palette.background.paper
+      : theme.palette.background.paper}`,
+    '&:hover': {
+      backgroundColor: theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)'
+    }
+  },
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
+    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)',
+  '& .MuiFormControl-root': {
+    transition: 'background-color 0.2s ease',
+  },
+  '& .MuiInputBase-root': {
+    background: theme.palette.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(8px)',
+    borderRadius: '8px',
+    border: theme.palette.mode === 'dark'
+      ? '1px solid rgba(255, 255, 255, 0.05)'
+      : '1px solid rgba(0, 0, 0, 0.05)',
+    transition: 'background-color 0.2s ease',
+    '&:hover, &.Mui-focused': {
+      background: theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(255, 255, 255, 0.9)',
+    },
+    '& .MuiSelect-select, & .MuiInputBase-input': {
+      padding: '12px 14px',
+      fontSize: '0.95rem',
+      '&::placeholder': {
+        color: theme.palette.mode === 'dark'
+          ? 'rgba(255, 255, 255, 0.3)'
+          : 'rgba(0, 0, 0, 0.3)',
+        opacity: 1
+      }
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      border: 'none'
+    }
+  }
+}));
+
+const FormActions = muiStyled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '12px',
+  padding: '16px 24px',
+  borderTop: `1px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'}`,
+  background: theme.palette.mode === 'dark'
+    ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+  '& .MuiButton-root': {
+    borderRadius: '8px',
+    textTransform: 'none',
+    padding: '8px 20px',
+    fontWeight: 500,
+    transition: 'background-color 0.2s ease'
+  }
+}));
+
+// Select menu props configuration
+const selectMenuProps = {
+  PaperProps: {
+    sx: {
+      maxHeight: 300,
+      backgroundColor: (theme: Theme) => theme.palette.mode === 'dark' 
+        ? theme.palette.background.paper
+        : theme.palette.background.paper,
+      '& .MuiList-root': {
+        padding: '4px 0',
+        maxHeight: 300,
+        overflowY: 'auto',
+        scrollbarWidth: 'thin',
+        scrollbarColor: (theme: Theme) => theme.palette.mode === 'dark'
+          ? 'rgba(255, 255, 255, 0.2) transparent'
+          : 'rgba(0, 0, 0, 0.2) transparent',
+        '&::-webkit-scrollbar': {
+          width: '12px',
+          background: 'transparent'
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent'
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: (theme: Theme) => theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.2)'
+            : 'rgba(0, 0, 0, 0.2)',
+          borderRadius: '6px',
+          border: (theme: Theme) => `3px solid ${theme.palette.mode === 'dark' 
+            ? theme.palette.background.paper 
+            : theme.palette.background.paper}`,
+          '&:hover': {
+            backgroundColor: (theme: Theme) => theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.3)'
+              : 'rgba(0, 0, 0, 0.3)'
+          }
+        },
+        '@supports (-moz-appearance: none)': {
+          scrollbarWidth: 'thin',
+          scrollbarColor: (theme: Theme) => theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.2) transparent'
+            : 'rgba(0, 0, 0, 0.2) transparent'
+        }
+      },
+      '& .MuiMenuItem-root': {
+        padding: '10px 14px',
+        fontSize: '0.95rem',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          backgroundColor: (theme: Theme) => theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.08)'
+            : theme.palette.action.hover
+        },
+        '&.Mui-selected': {
+          backgroundColor: (theme: Theme) => theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.16)'
+            : theme.palette.action.selected,
+          fontWeight: 500,
+          '&:hover': {
+            backgroundColor: (theme: Theme) => theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.24)'
+              : theme.palette.action.selected
+          }
+        }
+      }
+    }
+  },
+  MenuListProps: {
+    style: {
+      padding: 0
+    }
+  },
+  anchorOrigin: {
+    vertical: 'bottom' as const,
+    horizontal: 'left' as const
+  },
+  transformOrigin: {
+    vertical: 'top' as const,
+    horizontal: 'left' as const
+  }
+};
+
 const CustomLandingPage: React.FC = () => {
   const { user } = useAuth();
   const { theme: themeMode } = useContext(ThemeContext);
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
+  const muiTheme = useMuiTheme();
+  const fullScreen = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const [widgets, setWidgets] = useState<WidgetWithPreference[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3448,38 +3692,42 @@ const CustomLandingPage: React.FC = () => {
     const isTeacher = user?.role === 'Teacher';
 
     return (
-      <Dialog
+      <StyledDialog
         open={suggestionModalOpen}
         onClose={() => !submittingSuggestion && setSuggestionModalOpen(false)}
+        fullScreen={fullScreen}
         maxWidth="sm"
-        fullWidth
+        slotProps={{
+          backdrop: {
+            sx: {
+              position: 'fixed',
+              zIndex: 1300
+            }
+          }
+        }}
         PaperProps={{
           sx: {
-            background: theme.CARD,
-            border: `1px solid ${theme.BORDER}`,
+            maxHeight: {
+              xs: 'calc(100% - 96px)',
+              sm: 'calc(100% - 100px)'
+            }
           }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: theme.TEXT_PRIMARY,
-          borderBottom: `1px solid ${theme.BORDER}`,
-          pb: 2,
-          fontWeight: 600
-        }}>
-          Submit Suggestion
+        <DialogHeader>
+          <DialogTitleStyled>
+            Submit Suggestion
+          </DialogTitleStyled>
           <IconButton
             onClick={() => setSuggestionModalOpen(false)}
             disabled={submittingSuggestion}
             size="small"
-            sx={{ color: theme.TEXT_SECONDARY }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
+        </DialogHeader>
+
+        <StyledDialogContent>
           <Box display="flex" flexDirection="column" gap={2}>
             <TextField
               label="Subject"
@@ -3487,24 +3735,8 @@ const CustomLandingPage: React.FC = () => {
               onChange={(e) => setSuggestionForm({ ...suggestionForm, subject: e.target.value })}
               fullWidth
               required
+              size="small"
               placeholder="Brief description of your suggestion"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: theme.TEXT_PRIMARY,
-                  '& fieldset': {
-                    borderColor: theme.BORDER,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: theme.TEXT_SECONDARY,
-                },
-              }}
             />
 
             <TextField
@@ -3514,38 +3746,24 @@ const CustomLandingPage: React.FC = () => {
               fullWidth
               required
               multiline
-              rows={6}
+              rows={3}
+              size="small"
               placeholder="Please provide detailed information about your suggestion..."
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: theme.TEXT_PRIMARY,
-                  '& fieldset': {
-                    borderColor: theme.BORDER,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: theme.TEXT_SECONDARY,
-                },
-              }}
             />
           </Box>
-        </DialogContent>
-        <DialogActions sx={{
-          px: 3,
-          pb: 2,
-          borderTop: `1px solid ${theme.BORDER}`,
-          pt: 2
-        }}>
+        </StyledDialogContent>
+
+        <FormActions>
           <Button
             onClick={() => setSuggestionModalOpen(false)}
             disabled={submittingSuggestion}
-            sx={{ color: theme.TEXT_SECONDARY }}
+            variant="outlined"
+            size="small"
+            sx={{ 
+              borderRadius: '6px',
+              textTransform: 'none',
+              px: 2
+            }}
           >
             Cancel
           </Button>
@@ -3622,21 +3840,20 @@ const CustomLandingPage: React.FC = () => {
               }
             }}
             variant="contained"
+            size="small"
             disabled={submittingSuggestion || !suggestionForm.subject.trim() || !suggestionForm.suggestionText.trim()}
-            sx={{
-              background: theme.ACCENT,
-              '&:hover': {
-                background: theme.ACCENT,
-                opacity: 0.9,
-              },
+            sx={{ 
+              borderRadius: '6px',
+              textTransform: 'none',
+              px: 2
             }}
           >
             {submittingSuggestion ? 'Submitting...' : 'Submit Suggestion'}
           </Button>
-        </DialogActions>
-      </Dialog>
+        </FormActions>
+      </StyledDialog>
     );
-  }, [suggestionModalOpen, submittingSuggestion, suggestionForm, theme, user, studentInfo, parentInfo, showToast, setSuggestionModalOpen, setSubmittingSuggestion, setSuggestionForm]);
+  }, [suggestionModalOpen, submittingSuggestion, suggestionForm, user, studentInfo, parentInfo, showToast, fullScreen]);
 
   // Complaint Modal JSX (memoized to prevent re-renders on input)
   // MUST be defined before any conditional returns (including loading check) to follow Rules of Hooks
@@ -3646,38 +3863,42 @@ const CustomLandingPage: React.FC = () => {
     const isTeacher = user?.role === 'Teacher';
 
     return (
-      <Dialog
+      <StyledDialog
         open={complaintModalOpen}
         onClose={() => !submittingComplaint && setComplaintModalOpen(false)}
+        fullScreen={fullScreen}
         maxWidth="sm"
-        fullWidth
+        slotProps={{
+          backdrop: {
+            sx: {
+              position: 'fixed',
+              zIndex: 1300
+            }
+          }
+        }}
         PaperProps={{
           sx: {
-            background: theme.CARD,
-            border: `1px solid ${theme.BORDER}`,
+            maxHeight: {
+              xs: 'calc(100% - 96px)',
+              sm: 'calc(100% - 100px)'
+            }
           }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: theme.TEXT_PRIMARY,
-          borderBottom: `1px solid ${theme.BORDER}`,
-          pb: 2,
-          fontWeight: 600
-        }}>
-          Register Complaint
+        <DialogHeader>
+          <DialogTitleStyled>
+            Register Complaint
+          </DialogTitleStyled>
           <IconButton
             onClick={() => setComplaintModalOpen(false)}
             disabled={submittingComplaint}
             size="small"
-            sx={{ color: theme.TEXT_SECONDARY }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
+        </DialogHeader>
+
+        <StyledDialogContent>
           <Box display="flex" flexDirection="column" gap={2}>
             <TextField
               label="Subject"
@@ -3685,24 +3906,8 @@ const CustomLandingPage: React.FC = () => {
               onChange={(e) => setComplaintForm({ ...complaintForm, subject: e.target.value })}
               fullWidth
               required
+              size="small"
               placeholder="Brief description of your complaint"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: theme.TEXT_PRIMARY,
-                  '& fieldset': {
-                    borderColor: theme.BORDER,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: theme.TEXT_SECONDARY,
-                },
-              }}
             />
 
             <TextField
@@ -3712,38 +3917,24 @@ const CustomLandingPage: React.FC = () => {
               fullWidth
               required
               multiline
-              rows={6}
+              rows={3}
+              size="small"
               placeholder="Please provide detailed information about your complaint..."
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: theme.TEXT_PRIMARY,
-                  '& fieldset': {
-                    borderColor: theme.BORDER,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: theme.TEXT_SECONDARY,
-                },
-              }}
             />
           </Box>
-        </DialogContent>
-        <DialogActions sx={{
-          px: 3,
-          pb: 2,
-          borderTop: `1px solid ${theme.BORDER}`,
-          pt: 2
-        }}>
+        </StyledDialogContent>
+
+        <FormActions>
           <Button
             onClick={() => setComplaintModalOpen(false)}
             disabled={submittingComplaint}
-            sx={{ color: theme.TEXT_SECONDARY }}
+            variant="outlined"
+            size="small"
+            sx={{ 
+              borderRadius: '6px',
+              textTransform: 'none',
+              px: 2
+            }}
           >
             Cancel
           </Button>
@@ -3819,21 +4010,20 @@ const CustomLandingPage: React.FC = () => {
               }
             }}
             variant="contained"
+            size="small"
             disabled={submittingComplaint || !complaintForm.subject.trim() || !complaintForm.complaintText.trim()}
-            sx={{
-              background: theme.ACCENT,
-              '&:hover': {
-                background: theme.ACCENT,
-                opacity: 0.9,
-              },
+            sx={{ 
+              borderRadius: '6px',
+              textTransform: 'none',
+              px: 2
             }}
           >
             {submittingComplaint ? 'Submitting...' : 'Submit Complaint'}
           </Button>
-        </DialogActions>
-      </Dialog>
+        </FormActions>
+      </StyledDialog>
     );
-  }, [complaintModalOpen, submittingComplaint, complaintForm, theme, user, studentInfo, parentInfo, showToast, setComplaintModalOpen, setSubmittingComplaint, setComplaintForm]);
+  }, [complaintModalOpen, submittingComplaint, complaintForm, user, studentInfo, parentInfo, showToast, fullScreen]);
 
   // Leave Request Modal JSX (memoized to prevent re-renders on input)
   // MUST be defined before any conditional returns (including loading check) to follow Rules of Hooks
@@ -3842,58 +4032,51 @@ const CustomLandingPage: React.FC = () => {
     const isParent = user?.role === 'Parent' || !!parentInfo;
 
     return (
-      <Dialog
+      <StyledDialog
         open={leaveRequestModalOpen}
         onClose={() => !submittingLeaveRequest && setLeaveRequestModalOpen(false)}
+        fullScreen={fullScreen}
         maxWidth="sm"
-        fullWidth
+        slotProps={{
+          backdrop: {
+            sx: {
+              position: 'fixed',
+              zIndex: 1300
+            }
+          }
+        }}
         PaperProps={{
           sx: {
-            background: theme.CARD,
-            border: `1px solid ${theme.BORDER}`,
+            maxHeight: {
+              xs: 'calc(100% - 96px)',
+              sm: 'calc(100% - 100px)'
+            }
           }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: theme.TEXT_PRIMARY,
-          borderBottom: `1px solid ${theme.BORDER}`,
-          pb: 2,
-          fontWeight: 600
-        }}>
-          Request for Leave
+        <DialogHeader>
+          <DialogTitleStyled>
+            Request for Leave
+          </DialogTitleStyled>
           <IconButton
             onClick={() => setLeaveRequestModalOpen(false)}
             disabled={submittingLeaveRequest}
             size="small"
-            sx={{ color: theme.TEXT_SECONDARY }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
+        </DialogHeader>
+
+        <StyledDialogContent>
           <Box display="flex" flexDirection="column" gap={2}>
             {isParent && linkedStudents.length > 1 && (
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: theme.TEXT_SECONDARY }}>Select Student</InputLabel>
+              <FormControl fullWidth size="small">
+                <InputLabel>Select Student</InputLabel>
                 <Select
                   value={leaveRequestForm.studentId}
                   onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, studentId: e.target.value })}
                   label="Select Student"
-                  sx={{
-                    color: theme.TEXT_PRIMARY,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.BORDER,
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.ACCENT,
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.ACCENT,
-                    },
-                  }}
+                  MenuProps={selectMenuProps}
                 >
                   {linkedStudents.map((student) => (
                     <MenuItem key={student.id} value={student.id.toString()}>
@@ -3911,30 +4094,19 @@ const CustomLandingPage: React.FC = () => {
                 bgcolor: theme.BG === '#252525' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
                 border: `1px solid ${theme.BORDER}`
               }}>
-                <Typography variant="body2" sx={{ color: theme.TEXT_PRIMARY, fontWeight: 500 }}>
+                <Box component="span" sx={{ color: theme.TEXT_PRIMARY, fontWeight: 500 }}>
                   Requesting leave for: <strong>{user.name || 'You'}</strong>
-                </Typography>
+                </Box>
               </Box>
             )}
 
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: theme.TEXT_SECONDARY }}>Leave Type</InputLabel>
+            <FormControl fullWidth size="small">
+              <InputLabel>Leave Type</InputLabel>
               <Select
                 value={leaveRequestForm.leaveType}
                 onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, leaveType: e.target.value })}
                 label="Leave Type"
-                sx={{
-                  color: theme.TEXT_PRIMARY,
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.BORDER,
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.ACCENT,
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.ACCENT,
-                  },
-                }}
+                MenuProps={selectMenuProps}
               >
                 <MenuItem value="sick">Sick Leave</MenuItem>
                 <MenuItem value="personal">Personal Leave</MenuItem>
@@ -3952,24 +4124,8 @@ const CustomLandingPage: React.FC = () => {
                 onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, startDate: e.target.value })}
                 fullWidth
                 required
+                size="small"
                 InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: theme.TEXT_PRIMARY,
-                    '& fieldset': {
-                      borderColor: theme.BORDER,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.ACCENT,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.ACCENT,
-                    },
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: theme.TEXT_SECONDARY,
-                  },
-                }}
               />
               <TextField
                 label="End Date"
@@ -3978,24 +4134,8 @@ const CustomLandingPage: React.FC = () => {
                 onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, endDate: e.target.value })}
                 fullWidth
                 required
+                size="small"
                 InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: theme.TEXT_PRIMARY,
-                    '& fieldset': {
-                      borderColor: theme.BORDER,
-                    },
-                    '&:hover fieldset': {
-                      borderColor: theme.ACCENT,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.ACCENT,
-                    },
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: theme.TEXT_SECONDARY,
-                  },
-                }}
               />
             </Box>
 
@@ -4006,38 +4146,24 @@ const CustomLandingPage: React.FC = () => {
               fullWidth
               required
               multiline
-              rows={4}
+              rows={3}
+              size="small"
               placeholder="Please provide a detailed reason for the leave request..."
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: theme.TEXT_PRIMARY,
-                  '& fieldset': {
-                    borderColor: theme.BORDER,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: theme.ACCENT,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: theme.TEXT_SECONDARY,
-                },
-              }}
             />
           </Box>
-        </DialogContent>
-        <DialogActions sx={{
-          px: 3,
-          pb: 2,
-          borderTop: `1px solid ${theme.BORDER}`,
-          pt: 2
-        }}>
+        </StyledDialogContent>
+
+        <FormActions>
           <Button
             onClick={() => setLeaveRequestModalOpen(false)}
             disabled={submittingLeaveRequest}
-            sx={{ color: theme.TEXT_SECONDARY }}
+            variant="outlined"
+            size="small"
+            sx={{ 
+              borderRadius: '6px',
+              textTransform: 'none',
+              px: 2
+            }}
           >
             Cancel
           </Button>
@@ -4126,21 +4252,20 @@ const CustomLandingPage: React.FC = () => {
               }
             }}
             variant="contained"
+            size="small"
             disabled={submittingLeaveRequest || (!leaveRequestForm.studentId && !(user?.role === 'Teacher' && user?.staff_id)) || !leaveRequestForm.startDate || !leaveRequestForm.endDate || !leaveRequestForm.reason.trim()}
-            sx={{
-              background: theme.ACCENT,
-              '&:hover': {
-                background: theme.ACCENT,
-                opacity: 0.9,
-              },
+            sx={{ 
+              borderRadius: '6px',
+              textTransform: 'none',
+              px: 2
             }}
           >
             {submittingLeaveRequest ? 'Submitting...' : 'Submit Request'}
           </Button>
-        </DialogActions>
-      </Dialog>
+        </FormActions>
+      </StyledDialog>
     );
-  }, [leaveRequestModalOpen, submittingLeaveRequest, linkedStudents, theme, user, studentInfo, parentInfo, activeSessionId, leaveRequestForm]);
+  }, [leaveRequestModalOpen, submittingLeaveRequest, linkedStudents, theme, user, studentInfo, parentInfo, activeSessionId, leaveRequestForm, fullScreen, showToast]);
 
   // Early return for loading state - must be AFTER all hooks
   if (loading) {
@@ -5569,7 +5694,7 @@ const CustomLandingPage: React.FC = () => {
         <QuickLinksGrid>
           {/* My Profile Card */}
           {user?.staff_id && isTeacherCardVisible(renderSettings, 'my_profile') && (
-            <QuickLinkCard onClick={() => navigate(`/employees/profile/${user.staff_id}`)} $color="#6366f1">
+            <QuickLinkCard onClick={() => navigate('/profile')} $color="#6366f1">
               <CardHeader $color="#6366f1">
                 <CardIcon $color="#6366f1">
                   <PersonIcon />

@@ -69,7 +69,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
   const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       {/* Fee Summary Section */}
       <FeeStatsGrid>
         <FeeStatCard>
@@ -105,6 +105,10 @@ const FeeTab: React.FC<FeeTabProps> = ({
           {collectionChartsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (!dailyCollectionData || dailyCollectionData.length === 0) ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: isDark ? '#888' : '#666' }}>
+              No data available
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -154,6 +158,10 @@ const FeeTab: React.FC<FeeTabProps> = ({
           {collectionChartsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (!monthlyCollectionData || monthlyCollectionData.length === 0) ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: isDark ? '#888' : '#666' }}>
+              No data available
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -409,4 +417,3 @@ const FeeTab: React.FC<FeeTabProps> = ({
 };
 
 export default FeeTab;
-

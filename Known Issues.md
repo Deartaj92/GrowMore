@@ -1,2 +1,2 @@
-1. Fix profile picutre in header
+Test in teacher profile is incorrect
 2. fix update download for dekstop

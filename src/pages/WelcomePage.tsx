@@ -488,32 +488,32 @@ const WelcomePage: React.FC = () => {
 
   // Reset navigation history when WelcomePage is mounted/navigated to
   useEffect(() => {
-    if (location.pathname === '/teacher') {
+    if (location.pathname === '/user') {
       
       // Clear any existing navigation history by replacing current entry
       // This ensures back button always shows exit dialog instead of navigating to previous pages
-      window.history.replaceState(null, '', '/teacher');
+      window.history.replaceState(null, '', '/user');
       
       // Push a new state to enable back button handling
       setTimeout(() => {
-        window.history.pushState(null, '', '/teacher');
+        window.history.pushState(null, '', '/user');
       }, 0);
     }
-  }, [location.pathname]); // Run whenever pathname changes to /teacher
+  }, [location.pathname]); // Run whenever pathname changes to /user
 
   // Block navigation when exit dialog is shown
   useEffect(() => {
-    if (!showExitConfirm || location.pathname !== '/teacher') {
+    if (!showExitConfirm || location.pathname !== '/user') {
       return;
     }
 
-    // If somehow we navigated away while dialog is open, force back to /teacher
+    // If somehow we navigated away while dialog is open, force back to /user
     const checkLocation = () => {
-      if (location.pathname !== '/teacher' && showExitConfirmRef.current) {
-        navigate('/teacher', { replace: true });
+      if (location.pathname !== '/user' && showExitConfirmRef.current) {
+        navigate('/user', { replace: true });
         // Reset history again after navigation
-        window.history.replaceState(null, '', '/teacher');
-        window.history.pushState(null, '', '/teacher');
+        window.history.replaceState(null, '', '/user');
+        window.history.pushState(null, '', '/user');
       }
     };
 
@@ -685,7 +685,7 @@ const WelcomePage: React.FC = () => {
     
     // Immediately push state back to prevent any navigation
     const currentPath = window.location.pathname;
-    if (currentPath === '/teacher') {
+    if (currentPath === '/user') {
       window.history.pushState(null, '', currentPath);
     }
     
@@ -696,8 +696,8 @@ const WelcomePage: React.FC = () => {
 
   // Mobile back button handling (similar to Layout.tsx)
   useEffect(() => {
-    // Only handle back button on the teacher welcome page
-    if (location.pathname !== '/teacher') {
+    // Only handle back button on the user dashboard page
+    if (location.pathname !== '/user') {
       return;
     }
 
@@ -735,13 +735,13 @@ const WelcomePage: React.FC = () => {
       
       // Push state back immediately to prevent navigation
       // Since we reset history on mount, there should be no previous page to go to
-      window.history.pushState(null, '', '/teacher');
+      window.history.pushState(null, '', '/user');
       
       // Force React Router to stay on current route if it tried to navigate
       setTimeout(() => {
-        if (window.location.pathname !== '/teacher') {
-          navigate('/teacher', { replace: true });
-          window.history.pushState(null, '', '/teacher');
+        if (window.location.pathname !== '/user') {
+          navigate('/user', { replace: true });
+          window.history.pushState(null, '', '/user');
         }
       }, 10);
     };
@@ -823,7 +823,7 @@ const WelcomePage: React.FC = () => {
       <QuickLinksGrid>
         {/* My Profile Card */}
         {user?.staff_id && isTeacherCardVisible(renderSettings, 'my_profile') && (
-          <QuickLinkCard onClick={() => navigate(`/employees/profile/${user.staff_id}`)} $color="#6366f1">
+          <QuickLinkCard onClick={() => navigate('/profile')} $color="#6366f1">
             <CardHeader $color="#6366f1">
               <CardIcon $color="#6366f1">
                 <PersonIcon />

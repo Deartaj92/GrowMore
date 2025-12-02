@@ -45,11 +45,6 @@ import {
   generateDummyConsecutiveAbsent
 } from './utils/dummyData';
 import {
-  getTabCacheKey,
-  isTabCacheValid,
-  getCachedTabData
-} from './utils/cacheUtils';
-import {
   fetchFeeSummary as fetchFeeSummaryService,
   fetchCollectionChartsData as fetchCollectionChartsDataService,
   fetchFeeCollectionDetails as fetchFeeCollectionDetailsService,
@@ -103,12 +98,53 @@ const Dashboard: React.FC = () => {
   const [absentDate, setAbsentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dashboardDate, setDashboardDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [fineDate, setFineDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [admissionsDateFrom, setAdmissionsDateFrom] = useState(() => getCurrentMonthRange().from);
-  const [admissionsDateTo, setAdmissionsDateTo] = useState(() => getCurrentMonthRange().to);
+  // Calculate admissions date range based on dashboardDate
+  // to = dashboardDate, from = one year before dashboardDate
+  const calculateAdmissionsDateRange = useCallback((toDate: string) => {
+    const to = new Date(toDate);
+    const from = new Date(to);
+    from.setFullYear(from.getFullYear() - 1);
+    return {
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10)
+    };
+  }, []);
+
+  const [admissionsDateFrom, setAdmissionsDateFrom] = useState(() => {
+    const range = calculateAdmissionsDateRange(new Date().toISOString().slice(0, 10));
+    return range.from;
+  });
+  const [admissionsDateTo, setAdmissionsDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Update admissions date range when dashboardDate changes
+  useEffect(() => {
+    const range = calculateAdmissionsDateRange(dashboardDate);
+    setAdmissionsDateFrom(range.from);
+    setAdmissionsDateTo(range.to);
+  }, [dashboardDate, calculateAdmissionsDateRange]);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<DashboardTab>('attendance');
   const prevActiveTabRef = useRef<DashboardTab | null>(null);
+
+  // Handle tab change with immediate loading state reset
+  const handleTabChange = useCallback((newTab: DashboardTab) => {
+    if (newTab === activeTab) return;
+    
+    // Immediately set loading states for the new tab before changing
+    if (newTab === 'fee') {
+      setFeeSummaryLoading(true);
+      setCollectionChartsLoading(true);
+      setFeeCollectionDetailsLoading(true);
+      setDefaultersLoading(true);
+    } else if (newTab === 'admissions') {
+      setAdmissionsLoading(true);
+    } else if (newTab === 'homework') {
+      setHomeworkLoading(true);
+    }
+    
+    setActiveTab(newTab);
+  }, [activeTab]);
 
   // Attendance state
   const [absentees, setAbsentees] = useState<any[]>([]);
@@ -251,16 +287,12 @@ const Dashboard: React.FC = () => {
   const progressActiveRef = useRef(false);
   const dataLoadedRef = useRef(false);
   const prevTabRef = useRef<DashboardTab | null>(null);
-  const requestCacheRef = useRef<Map<string, { data: any; timestamp: number; promise?: Promise<any> }>>(new Map());
   const sessionCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
-  const tabCacheRef = useRef<Map<string, { data: any; timestamp: number; params?: string }>>(new Map());
 
   // ==========================================
-  // CACHE HELPERS
+  // SESSION HELPERS
   // ==========================================
-  const REQUEST_CACHE_TTL = 30000; // 30 seconds
   const SESSION_CACHE_TTL = 60000; // 1 minute
-  const TAB_CACHE_TTL = 300000; // 5 minutes
 
   const getCachedSession = useCallback(async () => {
     const now = Date.now();
@@ -278,15 +310,6 @@ const Dashboard: React.FC = () => {
     sessionCacheRef.current = { data: sessionData, timestamp: now };
     return sessionData;
   }, [user?.school_id]);
-
-  const setCachedTabData = useCallback((cacheKey: string, data: any, params?: Record<string, any>) => {
-    const paramsStr = params ? JSON.stringify(params) : '';
-    tabCacheRef.current.set(cacheKey, {
-      data,
-      timestamp: Date.now(),
-      params: paramsStr
-    });
-  }, []);
 
   // ==========================================
   // HELPER FUNCTIONS
@@ -1050,25 +1073,13 @@ const Dashboard: React.FC = () => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
     
-    const cacheKey = getTabCacheKey('fee_summary', { school_id: user.school_id });
-    const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user.school_id })) {
-      const cachedData = getCachedTabData(cached);
-      if (cachedData) {
-        setFeeSummary(cachedData);
-        setFeeSummaryLoading(false);
-        return;
-      }
-    }
-    
     // Set loading state before fetching
     setFeeSummaryLoading(true);
     fetchFeeSummaryService(
       String(user.school_id),
       setFeeSummary,
       setFeeSummaryLoading,
-      getCachedSession,
-      setCachedTabData
+      getCachedSession
     );
   }, [activeTab, user?.school_id, getCachedSession]);
 
@@ -1077,21 +1088,6 @@ const Dashboard: React.FC = () => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
     
-    const cacheKey = getTabCacheKey('fee_collection_charts', { 
-      school_id: user.school_id, 
-      dashboardDate 
-    });
-    const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user.school_id, dashboardDate })) {
-      const cachedData = getCachedTabData(cached);
-      if (cachedData) {
-        setDailyCollectionData(cachedData.daily || []);
-        setMonthlyCollectionData(cachedData.monthly || []);
-        setCollectionChartsLoading(false);
-        return;
-      }
-    }
-    
     // Set loading state before fetching
     setCollectionChartsLoading(true);
     fetchCollectionChartsDataService(
@@ -1099,29 +1095,14 @@ const Dashboard: React.FC = () => {
       dashboardDate,
       setDailyCollectionData,
       setMonthlyCollectionData,
-      setCollectionChartsLoading,
-      setCachedTabData
+      setCollectionChartsLoading
     );
-  }, [activeTab, dashboardDate, user?.school_id, setCachedTabData]);
+  }, [activeTab, dashboardDate, user?.school_id]);
 
   // Fetch fee collection details
   useEffect(() => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
-    
-    const cacheKey = getTabCacheKey('fee_collection_details', { 
-      school_id: user.school_id, 
-      dashboardDate 
-    });
-    const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user.school_id, dashboardDate })) {
-      const cachedData = getCachedTabData(cached);
-      if (cachedData) {
-        setFeeCollectionDetails(cachedData);
-        setFeeCollectionDetailsLoading(false);
-        return;
-      }
-    }
     
     // Set loading state before fetching
     setFeeCollectionDetailsLoading(true);
@@ -1129,29 +1110,14 @@ const Dashboard: React.FC = () => {
       String(user.school_id),
       dashboardDate,
       setFeeCollectionDetails,
-      setFeeCollectionDetailsLoading,
-      setCachedTabData
+      setFeeCollectionDetailsLoading
     );
-  }, [activeTab, dashboardDate, user?.school_id, setCachedTabData]);
+  }, [activeTab, dashboardDate, user?.school_id]);
 
   // Fetch defaulters
   useEffect(() => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
-    
-    const cacheKey = getTabCacheKey('fee_defaulters', { 
-      school_id: user.school_id, 
-      dashboardDate 
-    });
-    const cached = tabCacheRef.current.get(cacheKey);
-    if (isTabCacheValid(cached, { school_id: user.school_id, dashboardDate })) {
-      const cachedData = getCachedTabData(cached);
-      if (cachedData) {
-        setDefaultersData(cachedData);
-        setDefaultersLoading(false);
-        return;
-      }
-    }
     
     // Set loading state before fetching
     setDefaultersLoading(true);
@@ -1159,10 +1125,9 @@ const Dashboard: React.FC = () => {
       String(user.school_id),
       dashboardDate,
       setDefaultersData,
-      setDefaultersLoading,
-      setCachedTabData
+      setDefaultersLoading
     );
-  }, [activeTab, dashboardDate, user?.school_id, setCachedTabData]);
+  }, [activeTab, dashboardDate, user?.school_id]);
 
   // Fetch admissions data
   useEffect(() => {
@@ -1170,28 +1135,8 @@ const Dashboard: React.FC = () => {
       prevTabRef.current = activeTab;
       return;
     }
-    
-    if (!user?.school_id) return;
 
-    const cacheKey = getTabCacheKey('admissions', { 
-      school_id: user.school_id, 
-      fromDate: admissionsDateFrom, 
-      toDate: admissionsDateTo 
-    });
-    const cached = tabCacheRef.current.get(cacheKey);
-    
-    if (isTabCacheValid(cached, { 
-      school_id: user.school_id, 
-      fromDate: admissionsDateFrom, 
-      toDate: admissionsDateTo 
-    })) {
-      const cachedData = getCachedTabData(cached);
-      if (cachedData) {
-        setAdmissionsData(cachedData);
-        setAdmissionsLoading(false);
-        return;
-      }
-    }
+    if (!user?.school_id) return;
 
     // Set loading state before fetching
     setAdmissionsLoading(true);
@@ -1201,34 +1146,15 @@ const Dashboard: React.FC = () => {
       admissionsDateTo,
       setAdmissionsData,
       setAdmissionsLoading,
-      getCachedSession,
-      setCachedTabData
+      getCachedSession
     );
-  }, [activeTab, admissionsDateFrom, admissionsDateTo, user?.school_id, getCachedSession, setCachedTabData]);
+  }, [activeTab, admissionsDateFrom, admissionsDateTo, user?.school_id, getCachedSession]);
 
   // Fetch homework diary
   useEffect(() => {
     if (activeTab !== 'homework') return;
     if (!user?.school_id) return;
     if (homeworkFetchingRef.current) return;
-
-    const cacheKey = getTabCacheKey('homework', { 
-      school_id: user.school_id, 
-      dashboardDate 
-    });
-    const cached = tabCacheRef.current.get(cacheKey);
-
-    if (isTabCacheValid(cached, { 
-      school_id: user.school_id, 
-      dashboardDate 
-    })) {
-      const cachedData = getCachedTabData(cached);
-      if (cachedData) {
-        setHomeworkDiaryData(cachedData);
-        setHomeworkLoading(false);
-        return;
-      }
-    }
 
     // Set loading state before fetching
     setHomeworkLoading(true);
@@ -1237,50 +1163,35 @@ const Dashboard: React.FC = () => {
       String(user.school_id),
       dashboardDate,
       setHomeworkDiaryData,
-      setHomeworkLoading,
-      setCachedTabData
+      setHomeworkLoading
     ).finally(() => {
       homeworkFetchingRef.current = false;
     });
   }, [activeTab, dashboardDate, user?.school_id]);
+
+  // Reset loading states when switching tabs
+  useEffect(() => {
+    if (prevActiveTabRef.current !== null && prevActiveTabRef.current !== activeTab) {
+      // Tab changed - reset loading states for the new tab
+      if (activeTab === 'fee') {
+        setFeeSummaryLoading(true);
+        setCollectionChartsLoading(true);
+        setFeeCollectionDetailsLoading(true);
+        setDefaultersLoading(true);
+      } else if (activeTab === 'admissions') {
+        setAdmissionsLoading(true);
+      } else if (activeTab === 'homework') {
+        setHomeworkLoading(true);
+      }
+    }
+    prevActiveTabRef.current = activeTab;
+  }, [activeTab]);
 
   // ==========================================
   // INITIAL DATA LOADING
   // ==========================================
   useEffect(() => {
     if (user?.school_id && !dataLoadedRef.current) {
-      const sessionData = sessionCacheRef.current?.data;
-      if (sessionData?.id) {
-        const cacheKey = getTabCacheKey('attendance_main', { 
-          school_id: user.school_id,
-          session_id: sessionData.id
-        });
-        const cached = tabCacheRef.current.get(cacheKey);
-        
-        if (isTabCacheValid(cached, { 
-          school_id: user.school_id,
-          session_id: sessionData.id
-        })) {
-          const cachedData = getCachedTabData(cached);
-          if (cachedData) {
-            setStudents(cachedData.students || []);
-            setStudentClassHistory(cachedData.studentClassHistory || []);
-            setClasses(cachedData.classes || []);
-            setSections(cachedData.sections || []);
-            setAttendanceToday(cachedData.attendanceToday || []);
-            if (cachedData.sessionData) {
-              setSessionData(cachedData.sessionData);
-              setHasActiveSession(true);
-            }
-            setLoadingStudents(false);
-            setAllDataLoaded(true);
-            setInitialLoad(false);
-            dataLoadedRef.current = true;
-            return;
-          }
-        }
-      }
-      
       dataLoadedRef.current = true;
       setTimeout(() => {
         fetchAll();
@@ -2007,7 +1918,7 @@ const Dashboard: React.FC = () => {
     <DashboardContainer>
       <TabNavigation
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
         dashboardDate={dashboardDate}
         setDashboardDate={setDashboardDate}
         setAbsentDate={setAbsentDate}

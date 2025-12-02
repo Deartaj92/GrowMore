@@ -16,7 +16,8 @@ interface User {
   id: number;
   username: string;
   name: string;
-  role: 'Principal' | 'Management Staff' | 'Teacher' | 'Accountant' | 'Store Manager' | 'Guest' | 'Other';
+  role: string;
+  role_id?: number | null;
   status: string;
   avatar_url: string | null;
   created_at: string;

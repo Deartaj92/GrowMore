@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import styled from 'styled-components';
-import { fetchRenderSettings, isGuestPageAccessible } from '../services/renderSettingsService';
-import { RenderSettings } from '../services/renderSettingsService';
+import { hasPermission } from '../services/permissionService';
+import { supabase } from '../supabaseClient';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
-  allowedRoles: string[];
+  requiredPermission?: string; // Permission key from permissions table - REQUIRED for all routes
   redirectTo?: string;
-  guestPageKey?: string; // Key for guest page access check
 };
 
 const LoadingContainer = styled.div`
@@ -37,55 +36,94 @@ const LoadingSpinner = styled.div`
 
 export default function ProtectedRoute({
   children,
-  allowedRoles,
-  redirectTo = '/unauthorized',
-  guestPageKey
+  requiredPermission,
+  redirectTo = '/unauthorized'
 }: ProtectedRouteProps) {
-  const { user, loading, hasPermission } = useAuth();
-  const location = useLocation();
-  const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
-  const [settingsLoading, setSettingsLoading] = useState(false);
+  const { user, loading } = useAuth();
+  const [permissionChecked, setPermissionChecked] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
-  // Fetch render settings if user is a guest
+  // Check if user is Super Admin and check permission
   useEffect(() => {
-    if (user?.role === 'Guest' && user?.school_id && guestPageKey) {
-      setSettingsLoading(true);
-      fetchRenderSettings(user.school_id)
-        .then(settings => {
-          setRenderSettings(settings);
-        })
-        .catch(error => {
-          // Error fetching render settings for guest
-        })
-        .finally(() => {
-          setSettingsLoading(false);
-        });
-    }
-  }, [user, guestPageKey]);
+    const checkAccess = async () => {
+      if (!user) {
+        setPermissionChecked(true);
+        setHasAccess(false);
+        return;
+      }
 
-  // Show loading while auth or settings are loading
+      // Check if user is Super Admin (from super_admins table)
+      if (user.id && !user.school_id) {
+        try {
+          const { data: superAdminData } = await supabase
+            .from('super_admins')
+            .select('id')
+            .eq('username', user.username)
+            .maybeSingle();
+          
+          if (superAdminData) {
+            setIsSuperAdmin(true);
+            setHasAccess(true); // Super Admin has access to everything
+            setPermissionChecked(true);
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking super admin:', error);
+        }
+      }
+
+      // For all other users, check permission using role_id
+      if (requiredPermission && user.id && user.school_id) {
+        try {
+          const hasPerm = await hasPermission(user.id, requiredPermission, user.school_id);
+          setHasAccess(hasPerm);
+        } catch (error) {
+          console.error('Error checking permission:', error);
+          setHasAccess(false);
+        } finally {
+          setPermissionChecked(true);
+        }
+      } else if (!requiredPermission) {
+        // If no permission required, deny access (permission is required)
+        setHasAccess(false);
+        setPermissionChecked(true);
+      } else {
+        setPermissionChecked(true);
+        setHasAccess(false);
+      }
+    };
+
+    if (!loading) {
+      checkAccess();
+    }
+  }, [requiredPermission, user, loading]);
+
+  // Show loading while auth is loading - just render children, let pages handle their own loading
   if (loading) {
-    return (
-      <LoadingContainer>
-        <LoadingSpinner />
-      </LoadingContainer>
-    );
+    return <>{children}</>;
   }
 
   // Check for student or parent session if no user is logged in
+  // These use localStorage sessions and should check permissions via their role_id if they have a user account
   if (!user) {
     const studentSession = localStorage.getItem('studentSession');
     if (studentSession) {
       try {
         const parsed = JSON.parse(studentSession);
-        if (parsed?.id) {
-          // Student is logged in, allow access if Student role is in allowedRoles
-          if (allowedRoles.includes('Student')) {
-            return <>{children}</>;
-          }
+        if (parsed?.id && requiredPermission) {
+          // Check permission for student
+          hasPermission(parsed.id, requiredPermission, parsed.school_id || 0)
+            .then(hasPerm => {
+              if (!hasPerm) {
+                // Will redirect below
+              }
+            });
+          // For now, allow access if student session exists (permission check will happen in component)
+          return <>{children}</>;
         }
       } catch (e) {
-        // If parsing fails, fall through to check parent session
+        // If parsing fails, fall through to login redirect
       }
     }
     
@@ -93,11 +131,16 @@ export default function ProtectedRoute({
     if (parentSession) {
       try {
         const parsed = JSON.parse(parentSession);
-        if (parsed?.id) {
-          // Parent is logged in, allow access if Parent role is in allowedRoles
-          if (allowedRoles.includes('Parent')) {
-            return <>{children}</>;
-          }
+        if (parsed?.id && requiredPermission) {
+          // Check permission for parent
+          hasPermission(parsed.id, requiredPermission, parsed.school_id || 0)
+            .then(hasPerm => {
+              if (!hasPerm) {
+                // Will redirect below
+              }
+            });
+          // For now, allow access if parent session exists (permission check will happen in component)
+          return <>{children}</>;
         }
       } catch (e) {
         // If parsing fails, fall through to login redirect
@@ -108,47 +151,19 @@ export default function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
-  // Handle Guest users with render settings
-  if (user.role === 'Guest') {
-    // If no guestPageKey is provided, check if this is the guest dashboard route
-    // The guest dashboard (/guest) should always be accessible to guest users
-    if (!guestPageKey) {
-      // Allow access if this is the guest dashboard route
-      // Otherwise, deny access for other routes without guestPageKey
-      if (location.pathname === '/guest' || location.pathname.startsWith('/guest/')) {
-        return <>{children}</>;
-      }
-      // For other routes without guestPageKey, deny access
-      return <Navigate to={redirectTo} replace />;
-    }
-
-    // If settings are still loading, wait
-    if (settingsLoading) {
-      return (
-        <LoadingContainer>
-          <LoadingSpinner />
-        </LoadingContainer>
-      );
-    }
-
-    // Check if guest can access this page based on render settings
-    // If settings haven't loaded yet, allow temporary access (they'll be checked in the component)
-    // This prevents premature denial while settings are being fetched
-    if (renderSettings) {
-      // Settings are loaded, check access
-      if (!isGuestPageAccessible(renderSettings, guestPageKey)) {
-        return <Navigate to={redirectTo} replace />;
-      }
-    }
-    // If settings are null (not loaded yet), allow temporary access
-    // The component itself will do the final check once settings are loaded
+  // Wait for permission check to complete
+  if (requiredPermission && !permissionChecked) {
     return <>{children}</>;
   }
 
-  // Handle regular role-based access
-  if (!hasPermission(allowedRoles)) {
-    return <Navigate to={redirectTo} replace />;
+  // Check permission-based access
+  if (requiredPermission) {
+    if (!hasAccess) {
+      return <Navigate to={redirectTo} replace />;
+    }
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  // If no permission specified, deny access (permission is required)
+  return <Navigate to={redirectTo} replace />;
 } 

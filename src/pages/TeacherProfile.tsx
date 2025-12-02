@@ -2105,12 +2105,16 @@ const getScoreLabel = (score: number): string => {
   return 'Poor';
 };
 
-export const TeacherProfile: React.FC = () => {
+export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfile = false }) => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showToast } = useToast();
   const { setPageHeader } = React.useContext(PageHeaderContext);
+  
+  // For my-profile route, use staff_id from user context instead of URL
+  const staffId = isMyProfile && user?.staff_id ? user.staff_id.toString() : id;
   const [loading, setLoading] = useState(true);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [attendanceStats, setAttendanceStats] = useState<AttendanceStats | null>(null);
@@ -2206,7 +2210,6 @@ export const TeacherProfile: React.FC = () => {
   const diaryLoadingRef = useRef(false);
   const lastDiarySessionIdRef = useRef<number | null>(null);
   const { startProgress, setProgress, completeProgress } = useProgress();
-  const { user } = useAuth();
   
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -2240,7 +2243,7 @@ export const TeacherProfile: React.FC = () => {
   const ROLE_OPTIONS = ['Principal', 'Management Staff', 'Teacher', 'Accountant', 'Store Manager', 'Other'];
   
   // Check if current user is viewing their own profile
-  const isOwnProfile = user?.staff_id && id && parseInt(id) === user.staff_id;
+  const isOwnProfile = user?.staff_id && staffId && parseInt(staffId) === user.staff_id;
 
   // Fetch render settings
   useEffect(() => {
@@ -2262,14 +2265,14 @@ export const TeacherProfile: React.FC = () => {
   // Fetch individual teacher score deduction settings
   useEffect(() => {
     const fetchTeacherScoreSettings = async () => {
-      if (!user?.school_id || !id) return;
+      if (!user?.school_id || !staffId) return;
       
       try {
         const { data, error } = await supabase
           .from('teacher_score_deduction_settings')
           .select('enable_attendance_deduction, enable_diary_deduction, enable_test_deduction')
           .eq('school_id', user.school_id)
-          .eq('teacher_id', parseInt(id))
+          .eq('teacher_id', parseInt(staffId))
           .single();
 
         if (!error && data) {
@@ -2292,7 +2295,7 @@ export const TeacherProfile: React.FC = () => {
     };
 
     fetchTeacherScoreSettings();
-  }, [user?.school_id, id]);
+  }, [user?.school_id, staffId]);
 
   useEffect(() => {
     if (isOwnProfile) {
@@ -2353,7 +2356,7 @@ export const TeacherProfile: React.FC = () => {
 
   useEffect(() => {
     const fetchTeacherData = async () => {
-      if (!id || !user?.school_id) return;
+      if (!staffId || !user?.school_id) return;
 
       const minDuration = 800; // Reduced minimum loading time
       const start = Date.now();
@@ -2374,13 +2377,13 @@ export const TeacherProfile: React.FC = () => {
           supabase
             .from('staff')
             .select('*')
-            .eq('id', parseInt(id))
+            .eq('id', parseInt(staffId))
             .eq('school_id', user.school_id)
             .single(),
           supabase
             .from('users')
             .select('id')
-            .eq('staff_id', parseInt(id))
+            .eq('staff_id', parseInt(staffId))
             .eq('school_id', user.school_id)
             .maybeSingle()
         ]);
@@ -2407,7 +2410,7 @@ export const TeacherProfile: React.FC = () => {
               class_id,
               classes!inner(id, name)
             `)
-            .eq('teacher_id', parseInt(id))
+            .eq('teacher_id', parseInt(staffId))
             .eq('school_id', user.school_id),
           supabase.from('subjects').select('id, name').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name').eq('school_id', user.school_id),
@@ -2415,7 +2418,7 @@ export const TeacherProfile: React.FC = () => {
             ? supabase
                 .from('timetable')
                 .select('period_index, subject_id, class_id, day_of_week')
-                .eq('teacher_id', parseInt(id))
+                .eq('teacher_id', parseInt(staffId))
                 .eq('session_id', sessionData.id)
                 .eq('school_id', user.school_id)
                 .eq('day_of_week', 1)
@@ -2451,7 +2454,7 @@ export const TeacherProfile: React.FC = () => {
             supabase
               .from('staff_attendance_records')
               .select('date, status, remarks')
-              .eq('staff_id', parseInt(id))
+              .eq('staff_id', parseInt(staffId))
               .eq('session_id', sessionData.id)
               .eq('school_id', user.school_id)
               .order('date', { ascending: false }),
@@ -2459,7 +2462,7 @@ export const TeacherProfile: React.FC = () => {
               .from('half_leaves')
               .select('date, leave_type, arrival_time, departure_time')
               .eq('person_type', 'staff')
-              .eq('person_id', parseInt(id))
+              .eq('person_id', parseInt(staffId))
               .eq('session_id', sessionData.id)
               .eq('school_id', user.school_id)
           ]);
@@ -2778,7 +2781,7 @@ export const TeacherProfile: React.FC = () => {
     };
 
     fetchTeacherData();
-  }, [id, user?.school_id, showToast, startProgress, setProgress, completeProgress, calculateMonthlyStats]);
+  }, [staffId, user?.school_id, showToast, startProgress, setProgress, completeProgress, calculateMonthlyStats, isMyProfile]);
 
   // Lazy load test data when Test Analysis tab is accessed or session changes
   useEffect(() => {
@@ -3024,7 +3027,7 @@ export const TeacherProfile: React.FC = () => {
     if (testAnalysisSessionId) {
       loadTestData();
     }
-  }, [activeTab, testAnalysisSessionId, id, user?.school_id]); // tabDataLoaded intentionally excluded to prevent infinite loop
+  }, [activeTab, testAnalysisSessionId, staffId, user?.school_id, isMyProfile]); // tabDataLoaded intentionally excluded to prevent infinite loop
 
   // Fetch sessions when Test Analysis tab is accessed
   useEffect(() => {
@@ -3337,7 +3340,7 @@ export const TeacherProfile: React.FC = () => {
     if (diaryAnalysisSessionId) {
       loadDiaryData();
     }
-  }, [activeTab, diaryAnalysisSessionId, id, user?.school_id]);
+  }, [activeTab, diaryAnalysisSessionId, staffId, user?.school_id, isMyProfile]);
 
   // Edit modal functions
   const handleOpenEditModal = () => {
@@ -3404,7 +3407,7 @@ export const TeacherProfile: React.FC = () => {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.school_id || !id) {
+    if (!user?.school_id || !staffId) {
       showToast('No school context found', 'error');
       return;
     }
@@ -3446,7 +3449,7 @@ export const TeacherProfile: React.FC = () => {
       const { error: updateError } = await supabase
         .from('staff')
         .update(staffData)
-        .eq('id', parseInt(id))
+        .eq('id', parseInt(staffId))
         .eq('school_id', user.school_id);
 
       if (updateError) throw updateError;
@@ -3458,7 +3461,7 @@ export const TeacherProfile: React.FC = () => {
       const { data: updatedTeacher, error: fetchError } = await supabase
         .from('staff')
         .select('*')
-        .eq('id', parseInt(id))
+        .eq('id', parseInt(staffId))
         .eq('school_id', user.school_id)
         .single();
       

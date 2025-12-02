@@ -55,14 +55,8 @@ export const menuItems: MenuItem[] = [
   {
     text: 'Welcome Page',
     icon: React.createElement(HomeIcon),
-    path: '/teacher',
+    path: '/user',
     allowedRoles: ['Teacher']
-  },
-  {
-    text: 'Dashboard',
-    icon: React.createElement(HomeIcon),
-    path: '/dashboard',
-    allowedRoles: ['Super Admin', 'Principal', 'Admin']
   },
   {
     text: 'Students',

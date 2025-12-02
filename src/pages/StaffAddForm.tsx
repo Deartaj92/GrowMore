@@ -316,7 +316,6 @@ const RsInputWrapper = styled.div`
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 const RELIGION_OPTIONS = ['Muslim', 'Christianity', 'Hinduism', 'Sikhism', 'Other'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'];
-const ROLE_OPTIONS = ['Principal', 'Management Staff', 'Teacher', 'Accountant', 'Store Manager', 'Other'];
 
 const getToday = () => {
   const d = new Date();
@@ -379,6 +378,7 @@ const StaffAddForm: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [sessions, setSessions] = useState<Array<{ id: number; name: string }>>([]);
+  const [roles, setRoles] = useState<Array<{ id: number; name: string }>>([]);
 
   useEffect(() => {
     if (editId) {
@@ -432,6 +432,25 @@ const StaffAddForm: React.FC = () => {
       }
     };
     fetchSessions();
+  }, [user?.school_id]);
+
+  // Fetch roles from roles table
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (!user?.school_id) return;
+      
+      const { data, error } = await supabase
+        .from('roles')
+        .select('id, name')
+        .eq('school_id', user.school_id)
+        .order('name');
+      if (!error && data) {
+        setRoles(data);
+      } else if (error) {
+        console.error('Error fetching roles:', error);
+      }
+    };
+    fetchRoles();
   }, [user?.school_id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -618,7 +637,7 @@ const StaffAddForm: React.FC = () => {
               <ModernGrid>
                 <Field><Label>Employee Name*</Label><Input name="name" value={form.name} onChange={handleChange} required /></Field>
                 <Field><Label>Mobile No for SMS/WhatsApp*</Label><Input name="mobile" value={form.mobile} onChange={handleChange} placeholder="e.g +92xxxxxxxxxx" /></Field>
-                <Field><Label>Employee Role*</Label><Select name="role" value={form.role} onChange={handleChange} required><option value="">Select*</option>{ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}</Select></Field>
+                <Field><Label>Employee Role*</Label><Select name="role" value={form.role} onChange={handleChange} required><option value="">Select*</option>{roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}</Select></Field>
                 <Field><Label>Date of Joining*</Label><Input name="joiningDate" type="date" value={form.joiningDate} onChange={handleChange} /></Field>
                 <Field><Label>Monthly Salary*</Label><RsInputWrapper><RsPrefix>Rs.</RsPrefix><Input name="salary" type="number" min="0" value={form.salary} onChange={handleChange} style={{ paddingLeft: 38 }} /></RsInputWrapper></Field>
               </ModernGrid>

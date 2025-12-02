@@ -197,17 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
 
-        // Redirect based on user role
-        if (userData.role === 'Teacher') {
-          navigate('/teacher', { replace: true });
-          clearNavigationHistory('/teacher');
-        } else if (userData.role === 'Guest') {
-          navigate('/dashboard', { replace: true });
-          clearNavigationHistory('/dashboard');
-        } else {
-          navigate('/welcome', { replace: true });
-          clearNavigationHistory('/welcome');
-        }
+        // Don't redirect here - let Login.tsx or InitialRouteHandler handle redirects based on permissions
+        // This allows permission checks to happen before navigation
         setLoading(false);
         return user;
       }

@@ -37,7 +37,6 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  TEACHER_MENU_CARDS,
   TEACHER_PROFILE_TABS,
   TEACHER_PROFILE_SUMMARY_CARDS,
   STUDENT_MENU_CARDS,
@@ -48,15 +47,6 @@ import {
   PARENT_FEE_SECTIONS,
   PARENT_QUICK_ACTIONS,
   TEACHER_QUICK_ACTIONS,
-  DASHBOARD_CARDS,
-  GUEST_SIDEBAR_MENUS,
-  STUDENT_DASHBOARD_CARDS_GUEST,
-  FEE_DASHBOARD_CARDS_GUEST,
-  ATTENDANCE_DASHBOARD_CARDS_GUEST,
-  EMPLOYEES_DASHBOARD_CARDS_GUEST,
-  FINE_DASHBOARD_CARDS_GUEST,
-  EXAMINATION_DASHBOARD_CARDS_GUEST,
-  TEST_DASHBOARD_CARDS_GUEST,
   getDefaultSettings,
   mergeWithDefaults,
   MenuItemConfig
@@ -198,10 +188,6 @@ const SettingDescriptionText = styled.div<{ $theme: any }>`
   text-overflow: ellipsis;
 `;
 
-const ROLES = ['Principal', 'Admin', 'Teacher', 'Student', 'Parent', 'Accountant', 'Guest'];
-// Event roles exclude admin roles (Principal, Admin, Super Admin) - they see everything
-const EVENT_ROLES = ['Teacher', 'Student', 'Parent', 'Accountant', 'Guest'];
-
 interface RenderSettingsData {
   teacher: Record<string, boolean>;
   student: Record<string, boolean>;
@@ -219,13 +205,13 @@ const RenderSettings: React.FC = () => {
   const [renderSettingsLoading, setRenderSettingsLoading] = useState(true);
   const [renderSettingsSaving, setRenderSettingsSaving] = useState(false);
   const [hasRenderSettingsChanges, setHasRenderSettingsChanges] = useState(false);
-  const [renderSettingsTab, setRenderSettingsTab] = useState(0); // 0 = Teacher, 1 = Student, 2 = Parent, 3 = Guest
+  const [renderSettingsTab, setRenderSettingsTab] = useState(0); // 0 = Teacher, 1 = Student, 2 = Parent
   
   // Convert theme mode string to theme object
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
 
   useEffect(() => {
-    if (user?.school_id) {
+    if (user?.school_id && user?.role === 'Principal') {
       loadRenderSettings();
     }
   }, [user]);
@@ -316,7 +302,17 @@ const RenderSettings: React.FC = () => {
     }
   };
 
-  // Access is controlled by ProtectedRoute with requiredPermission="settings-landing-page"
+  if (!user || user.role !== 'Principal') {
+    return (
+      <ThemeProvider theme={theme}>
+        <Container $theme={theme}>
+          <ContentCard $theme={theme}>
+            <Typography>Access denied. Only Principal can configure render settings.</Typography>
+          </ContentCard>
+        </Container>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -327,69 +323,64 @@ const RenderSettings: React.FC = () => {
             Render Settings
           </HeaderTitle>
           <Box display="flex" gap={1} alignItems="center">
-                <Tooltip title="Reset to defaults">
-                  <span>
-                    <IconButton onClick={handleResetRenderSettings} disabled={renderSettingsSaving}>
-                      <ResetIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSaveRenderSettings}
-                  disabled={renderSettingsSaving || !hasRenderSettingsChanges}
-                >
-                  {renderSettingsSaving ? 'Saving...' : 'Save Render Settings'}
-                </Button>
+            <Tooltip title="Reset to defaults">
+              <span>
+                <IconButton onClick={handleResetRenderSettings} disabled={renderSettingsSaving}>
+                  <ResetIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<SaveIcon />}
+              onClick={handleSaveRenderSettings}
+              disabled={renderSettingsSaving || !hasRenderSettingsChanges}
+            >
+              {renderSettingsSaving ? 'Saving...' : 'Save Render Settings'}
+            </Button>
           </Box>
         </Header>
 
-            {hasRenderSettingsChanges && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                You have unsaved render settings changes. Don't forget to save!
-              </Alert>
-            )}
+        {hasRenderSettingsChanges && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            You have unsaved render settings changes. Don't forget to save!
+          </Alert>
+        )}
 
-            {/* Render Settings Tabs */}
-            <ContentCard $theme={theme}>
-              <Tabs 
-                value={renderSettingsTab} 
-                onChange={(e, v) => setRenderSettingsTab(v)}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{
-                  '& .MuiTab-root': {
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    minHeight: 48,
-                  },
-                }}
-              >
-                <Tab 
-                  icon={<SchoolIcon />} 
-                  iconPosition="start"
-                  label="Teacher" 
-                />
-                <Tab 
-                  icon={<PersonIcon />} 
-                  iconPosition="start"
-                  label="Student" 
-                />
-                <Tab 
-                  icon={<PersonAddIcon />} 
-                  iconPosition="start"
-                  label="Parent" 
-                />
-                <Tab 
-                  icon={<PersonAddIcon />} 
-                  iconPosition="start"
-                  label="Guest" 
-                />
-              </Tabs>
-            </ContentCard>
+        {/* Render Settings Tabs */}
+        <ContentCard $theme={theme}>
+          <Tabs 
+            value={renderSettingsTab} 
+            onChange={(e, v) => setRenderSettingsTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '1rem',
+                minHeight: 48,
+              },
+            }}
+          >
+            <Tab 
+              icon={<SchoolIcon />} 
+              iconPosition="start"
+              label="Teacher" 
+            />
+            <Tab 
+              icon={<PersonIcon />} 
+              iconPosition="start"
+              label="Student" 
+            />
+            <Tab 
+              icon={<PersonAddIcon />} 
+              iconPosition="start"
+              label="Parent" 
+            />
+          </Tabs>
+        </ContentCard>
 
             {renderSettingsLoading ? (
               <ContentCard $theme={theme}>
@@ -402,43 +393,6 @@ const RenderSettings: React.FC = () => {
                 {/* Teacher Tab Content */}
                 {renderSettingsTab === 0 && (
                   <Box>
-                    <SettingsCard $theme={theme}>
-                      <SectionTitleContainer $theme={theme}>
-                        <SchoolIcon />
-                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                          Teacher Menu Cards (Landing Page)
-                        </Typography>
-                      </SectionTitleContainer>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Control which menu cards are visible to teachers on the Landing Page
-                      </Typography>
-                      <SettingsGrid>
-                        {TEACHER_MENU_CARDS.map((card) => (
-                          <SettingItem key={card.key} $theme={theme}>
-                            <SettingHeader>
-                              <Box sx={{ flex: 1 }}>
-                                <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                <SettingDescriptionText $theme={theme}>
-                                  {card.description}
-                                </SettingDescriptionText>
-                              </Box>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={renderSettings.teacher[card.key] !== false}
-                                    onChange={() => handleRenderSettingChange('teacher', card.key)}
-                                    color="primary"
-                                  />
-                                }
-                                label=""
-                                sx={{ ml: 1 }}
-                              />
-                            </SettingHeader>
-                          </SettingItem>
-                        ))}
-                      </SettingsGrid>
-                    </SettingsCard>
-
                     <SettingsCard $theme={theme}>
                       <SectionTitleContainer $theme={theme}>
                         <PersonIcon />
@@ -501,43 +455,6 @@ const RenderSettings: React.FC = () => {
                                   <Switch
                                     checked={renderSettings.teacher[card.key] !== false}
                                     onChange={() => handleRenderSettingChange('teacher', card.key)}
-                                    color="primary"
-                                  />
-                                }
-                                label=""
-                                sx={{ ml: 1 }}
-                              />
-                            </SettingHeader>
-                          </SettingItem>
-                        ))}
-                      </SettingsGrid>
-                    </SettingsCard>
-
-                    <SettingsCard $theme={theme}>
-                      <SectionTitleContainer $theme={theme}>
-                        <EventIcon />
-                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                          Teacher Quick Actions (Landing Page)
-                        </Typography>
-                      </SectionTitleContainer>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Control which quick action cards are visible to teachers on the Landing Page
-                      </Typography>
-                      <SettingsGrid>
-                        {TEACHER_QUICK_ACTIONS.map((action) => (
-                          <SettingItem key={action.key} $theme={theme}>
-                            <SettingHeader>
-                              <Box sx={{ flex: 1 }}>
-                                <SettingLabelText $theme={theme}>{action.label}</SettingLabelText>
-                                <SettingDescriptionText $theme={theme}>
-                                  {action.description}
-                                </SettingDescriptionText>
-                              </Box>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={renderSettings.teacher[action.key] !== false}
-                                    onChange={() => handleRenderSettingChange('teacher', action.key)}
                                     color="primary"
                                   />
                                 }
@@ -818,358 +735,6 @@ const RenderSettings: React.FC = () => {
                         ))}
                       </SettingsGrid>
                     </SettingsCard>
-                  </Box>
-                )}
-
-                {/* Guest Tab Content */}
-                {renderSettingsTab === 3 && (
-                  <Box>
-                    <SettingsCard $theme={theme}>
-                      <SectionTitleContainer $theme={theme}>
-                        <PersonAddIcon />
-                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                          Sidebar Menus (Guest Users)
-                        </Typography>
-                      </SectionTitleContainer>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Select which main sidebar menus are shown to guest users.
-                      </Typography>
-                      <SettingsGrid>
-                        {GUEST_SIDEBAR_MENUS.map((menu) => (
-                          <SettingItem key={menu.key} $theme={theme}>
-                            <SettingHeader>
-                              <Box sx={{ flex: 1 }}>
-                                <SettingLabelText $theme={theme}>{menu.label}</SettingLabelText>
-                                <SettingDescriptionText $theme={theme}>
-                                  {menu.description}
-                                </SettingDescriptionText>
-                              </Box>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={renderSettings.guest[menu.key] !== false}
-                                    onChange={() => handleRenderSettingChange('guest', menu.key)}
-                                    color="primary"
-                                  />
-                                }
-                                label=""
-                                sx={{ ml: 1 }}
-                              />
-                            </SettingHeader>
-                          </SettingItem>
-                        ))}
-                      </SettingsGrid>
-                    </SettingsCard>
-
-                    <SettingsCard $theme={theme}>
-                      <SectionTitleContainer $theme={theme}>
-                        <PersonAddIcon />
-                        <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                          Dashboard Cards (Guest Users)
-                        </Typography>
-                      </SectionTitleContainer>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Control which cards are visible to guest users on the Dashboard page. Guest users can only view data, not modify it.
-                      </Typography>
-                      <SettingsGrid>
-                        {DASHBOARD_CARDS.map((card) => (
-                          <SettingItem key={card.key} $theme={theme}>
-                            <SettingHeader>
-                              <Box sx={{ flex: 1 }}>
-                                <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                <SettingDescriptionText $theme={theme}>
-                                  {card.description}
-                                </SettingDescriptionText>
-                              </Box>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={renderSettings.guest[card.key] !== false}
-                                    onChange={() => handleRenderSettingChange('guest', card.key)}
-                                    color="primary"
-                                  />
-                                }
-                                label=""
-                                sx={{ ml: 1 }}
-                              />
-                            </SettingHeader>
-                          </SettingItem>
-                        ))}
-                      </SettingsGrid>
-                    </SettingsCard>
-
-                    {renderSettings.guest['menu_students'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Student Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Student Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {STUDENT_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
-
-                    {renderSettings.guest['menu_fee_management'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Fee Management Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Fee Management Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {FEE_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
-
-                    {renderSettings.guest['menu_attendance'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Attendance Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Attendance Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {ATTENDANCE_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
-
-                    {renderSettings.guest['menu_employees'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Employees Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Employees Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {EMPLOYEES_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
-
-                    {renderSettings.guest['menu_fines'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Fine Management Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Fine Management Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {FINE_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
-
-                    {renderSettings.guest['menu_examination'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Examination Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Examination Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {EXAMINATION_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
-
-                    {renderSettings.guest['menu_test_record'] !== false && (
-                      <SettingsCard $theme={theme}>
-                        <SectionTitleContainer $theme={theme}>
-                          <PersonIcon />
-                          <Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-                            Test Dashboard Cards (Guest Users)
-                          </Typography>
-                        </SectionTitleContainer>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          Control which cards are visible to guest users on the Test Dashboard.
-                        </Typography>
-                        <SettingsGrid>
-                          {TEST_DASHBOARD_CARDS_GUEST.map((card) => (
-                            <SettingItem key={card.key} $theme={theme}>
-                              <SettingHeader>
-                                <Box sx={{ flex: 1 }}>
-                                  <SettingLabelText $theme={theme}>{card.label}</SettingLabelText>
-                                  <SettingDescriptionText $theme={theme}>
-                                    {card.description}
-                                  </SettingDescriptionText>
-                                </Box>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={renderSettings.guest[card.key] !== false}
-                                      onChange={() => handleRenderSettingChange('guest', card.key)}
-                                      color="primary"
-                                    />
-                                  }
-                                  label=""
-                                  sx={{ ml: 1 }}
-                                />
-                              </SettingHeader>
-                            </SettingItem>
-                          ))}
-                        </SettingsGrid>
-                      </SettingsCard>
-                    )}
                   </Box>
                 )}
               </>

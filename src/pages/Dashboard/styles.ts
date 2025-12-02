@@ -1667,16 +1667,10 @@ export const FeeStatsGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
-  opacity: 0;
-  transform: translateY(20px);
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
-  }
-  
-  &.animate-on-scroll {
-    animation: ${fadeInSlideUp} 0.6s ease-out forwards;
   }
 `;
 
@@ -1729,15 +1723,9 @@ export const CollectionChartsGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 1.5rem;
   margin-bottom: 1.5rem;
-  opacity: 0;
-  transform: translateY(20px);
   
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-  }
-  
-  &.animate-on-scroll {
-    animation: ${fadeInSlideUp} 0.6s ease-out forwards;
   }
 `;
 
@@ -1890,8 +1878,6 @@ export const AdmissionsSummaryGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
-  opacity: 0;
-  transform: translateY(20px);
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
@@ -2140,12 +2126,6 @@ export const HomeworkTableWrapper = styled.div`
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   border: 1px solid ${({ theme }) => theme.BORDER};
   overflow: hidden;
-  opacity: 0;
-  transform: translateY(20px);
-  
-  &.animate-on-scroll {
-    animation: ${fadeInSlideUp} 0.6s ease-out forwards;
-  }
 `;
 
 export const HomeworkTableHeader = styled.div`

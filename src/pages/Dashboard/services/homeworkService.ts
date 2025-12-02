@@ -1,5 +1,4 @@
 import { supabase } from '../../../supabaseClient';
-import { getTabCacheKey, isTabCacheValid, getCachedTabData } from '../utils/cacheUtils';
 
 // Homework service functions will be extracted here
 // fetchHomeworkDiary, etc.
@@ -8,8 +7,7 @@ export const fetchHomeworkDiary = async (
   schoolId: string,
   dashboardDate: string,
   setHomeworkDiaryData: (data: any[]) => void,
-  setHomeworkLoading: (loading: boolean) => void,
-  setCachedTabData: (key: string, data: any, params?: Record<string, any>) => void
+  setHomeworkLoading: (loading: boolean) => void
 ): Promise<void> => {
   if (!schoolId || !dashboardDate) return;
 
@@ -48,15 +46,6 @@ export const fetchHomeworkDiary = async (
     }));
 
     setHomeworkDiaryData(processedData);
-    
-    const cacheKey = getTabCacheKey('homework', { 
-      school_id: schoolId, 
-      dashboardDate 
-    });
-    setCachedTabData(cacheKey, processedData, { 
-      school_id: schoolId, 
-      dashboardDate 
-    });
   } catch (error) {
     console.error('Error fetching homework diary:', error);
     setHomeworkDiaryData([]);

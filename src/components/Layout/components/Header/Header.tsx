@@ -1,5 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getUserPermissions } from '../../../../services/permissionService';
+import { shouldShowMenuItem, pathToPermissionKey } from '../../../../utils/permissionMapping';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { supabase } from '../../../../supabaseClient';
+import { examinationService } from '../../../../services/examinationService';
+import type { Examination } from '../../../../types/examinations';
 import {
   Refresh as RefreshIcon,
   AccountCircle as UserIcon,
@@ -15,6 +21,7 @@ import {
   Work as WorkIcon,
   AccessTime as AccessTimeIcon,
   EventBusy as EventBusyIcon,
+  Event as EventIcon,
   Assignment as AssignmentIcon,
   CalendarMonth as CalendarMonthIcon,
   AttachMoney as AttachMoneyIcon,
@@ -31,6 +38,8 @@ import {
   Business as BusinessIcon,
   BeachAccess as BeachAccessIcon,
   Notifications as NotificationsIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
+  Person as PersonIcon,
   CloudDownload as CloudDownloadIcon,
   EmojiEvents as EmojiEventsIcon,
   Add as AddIcon,
@@ -168,29 +177,83 @@ const MenuWrapper = styled.div`
   z-index: 100002;
 `;
 
-const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number }>`
+const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualColumns?: number }>`
   position: fixed;
   background: ${props => props.theme.CARD};
   border: 1px solid ${props => props.theme.BORDER};
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 3px 6px rgba(0, 0, 0, 0.08);
-  min-width: ${props => props.$columns === 3 ? '800px' : props.$columns === 2 ? '480px' : '320px'};
-  max-width: ${props => props.$columns === 3 ? '1000px' : props.$columns === 2 ? '560px' : '400px'};
   padding: 14px;
   z-index: 100001;
   opacity: ${props => props.$isOpen ? 1 : 0};
   visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
   transform: ${props => props.$isOpen ? 'translateY(0)' : 'translateY(-8px)'};
   transition: all 0.2s ease;
-  display: ${props => props.$columns === 1 ? 'block' : 'grid'};
-  grid-template-columns: ${props => props.$columns && props.$columns > 1 ? `repeat(${props.$columns}, 1fr)` : '1fr'};
+  display: ${props => props.$isOpen ? ((props.$actualColumns || props.$columns || 1) === 1 ? 'block' : 'grid') : 'none'};
+  grid-template-columns: ${props => {
+    const cols = props.$actualColumns || props.$columns || 1;
+    if (cols === 1) return '1fr';
+    if (cols === 2) return 'repeat(2, 1fr)';
+    if (cols === 3) return 'repeat(3, 1fr)';
+    return `repeat(${cols}, 1fr)`;
+  }};
   gap: 16px;
   pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
+  width: fit-content;
+  min-width: ${props => {
+    const cols = props.$actualColumns || props.$columns || 1;
+    if (cols === 1) return '280px';
+    if (cols === 2) return '480px';
+    if (cols === 3) return '720px';
+    return 'auto';
+  }};
+  max-width: ${props => {
+    const cols = props.$actualColumns || props.$columns || 1;
+    if (cols === 1) return '400px';
+    if (cols === 2) return '600px';
+    if (cols === 3) return '1000px';
+    return 'auto';
+  }};
+  
+  @media (max-width: 1400px) {
+    ${props => {
+      const cols = props.$actualColumns || props.$columns || 1;
+      if (cols >= 3) {
+        return `
+          grid-template-columns: repeat(2, 1fr);
+          min-width: 480px;
+          max-width: 600px;
+        `;
+      }
+      return '';
+    }}
+  }
+  
+  @media (max-width: 1024px) {
+    ${props => {
+      const cols = props.$actualColumns || props.$columns || 1;
+      if (cols >= 3) {
+        return `
+          grid-template-columns: repeat(2, 1fr);
+          min-width: 480px;
+          max-width: 600px;
+        `;
+      }
+      if (cols === 2) {
+        return `
+          grid-template-columns: 1fr;
+          min-width: 280px;
+          max-width: 400px;
+        `;
+      }
+      return '';
+    }}
+  }
   
   @media (max-width: 768px) {
     min-width: 90vw;
     max-width: 90vw;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     gap: 12px;
     padding: 12px;
   }
@@ -377,7 +440,7 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 12px 12px;
   background: none;
   border: none;
   color: ${props => props.theme.TEXT_PRIMARY};
@@ -425,7 +488,7 @@ const MobileSubmenuItem = styled.button`
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px 10px 48px;
+  padding: 10px 16px 10px 32px;
   background: none;
   border: none;
   color: ${props => props.theme.TEXT_SECONDARY};
@@ -457,16 +520,23 @@ const MobileSubmenuItem = styled.button`
   .submenu-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
   
   .submenu-title {
     font-weight: 500;
-    margin-bottom: 2px;
+    color: ${props => props.theme.TEXT_PRIMARY};
+    font-size: 0.85rem;
   }
   
   .submenu-description {
-    font-size: 0.75rem;
-    opacity: 0.7;
+    font-size: 0.7rem;
+    color: ${props => props.theme.TEXT_SECONDARY};
+    opacity: 0.85;
+    line-height: 1.3;
+    display: block;
   }
 `;
 
@@ -493,6 +563,46 @@ const HamburgerButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+`;
+
+const ProfileAvatarContainer = styled(HeaderIconCircle)<{ $hasImage: boolean }>`
+  border: ${props => props.$hasImage ? `2.5px solid ${props.theme.BORDER}` : 'none'};
+  box-shadow: ${props => props.$hasImage 
+    ? `0 2px 10px rgba(0, 0, 0, 0.12), 0 0 0 1px ${props.theme.BG}40` 
+    : props.theme.SHADOW};
+  background: ${props => props.$hasImage ? 'transparent' : props.theme.CARD};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: ${props => props.$hasImage 
+      ? `0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 3px ${props.theme.ACCENT}40` 
+      : `0 2px 8px ${props.theme.ACCENT}33`};
+    border-color: ${props => props.$hasImage ? props.theme.ACCENT : 'transparent'};
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 0;
+  }
+  
+  &:hover img {
+    transform: scale(1.08);
+  }
+  
+  svg {
+    position: relative;
+    z-index: 0;
   }
 `;
 
@@ -543,11 +653,20 @@ const Header: React.FC<HeaderProps> = ({
   appVersion,
   instituteProfile,
 }) => {
+  const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: authUser } = useAuth();
   
-  // Check if user is Teacher, Student, or Parent - these roles should only see logo/home button
-  // Note: Parents and Students authenticate via parentInfo/studentInfo, not always via user object
+  // State for published examinations
+  const [publishedExaminations, setPublishedExaminations] = useState<Examination[]>([]);
+
+  // Reset image error when avatar URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUrl, parentInfo?.avatar_url]);
+  
+  // Check if user is Student or Parent - these use localStorage sessions
   // Students and Parents use localStorage sessions, so check localStorage immediately to prevent menu flash
   // Also check props for when they're loaded
   const checkIsRestrictedRole = () => {
@@ -567,15 +686,76 @@ const Header: React.FC<HeaderProps> = ({
       return true;
     }
     
-    // Check user role
-    if (user?.role === 'Teacher' || user?.role === 'Student' || user?.role === 'Parent') {
-      return true;
-    }
-    
+    // If user has no school_id and is not super admin, they might be student/parent
+    // But we check via localStorage primarily
     return false;
   };
   
   const isRestrictedRole = checkIsRestrictedRole();
+  
+  // Load user permissions for all users with role_id
+  const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  
+  useEffect(() => {
+    const loadPermissions = async () => {
+      // Check if user is Super Admin (from super_admins table)
+      if (user?.id && !user?.school_id) {
+        try {
+          const { data: superAdminData } = await supabase
+            .from('super_admins')
+            .select('id')
+            .eq('username', user.username)
+            .maybeSingle();
+          
+          if (superAdminData) {
+            setIsSuperAdmin(true);
+            // Super Admin has all permissions
+            setUserPermissions(new Set(Object.values(pathToPermissionKey)));
+            setPermissionsLoaded(true);
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking super admin:', error);
+        }
+      }
+
+      // Load permissions for all users with role_id from roles table
+      if (user?.id && user?.school_id) {
+        try {
+          const perms = await getUserPermissions(user.id, user.school_id);
+          setUserPermissions(perms);
+          setPermissionsLoaded(true);
+        } catch (error) {
+          console.error('Error loading permissions:', error);
+          setPermissionsLoaded(true);
+        }
+      } else {
+        setPermissionsLoaded(true);
+      }
+    };
+    
+    loadPermissions();
+  }, [user?.id, user?.school_id, user?.username]);
+
+  // Load published examinations
+  useEffect(() => {
+    const loadPublishedExaminations = async () => {
+      const schoolId = authUser?.school_id || user?.school_id;
+      if (!schoolId) return;
+      
+      try {
+        const exams = await examinationService.getExaminations({ status: 'published' }, schoolId);
+        setPublishedExaminations(exams);
+      } catch (error) {
+        console.error('Error loading published examinations:', error);
+        setPublishedExaminations([]);
+      }
+    };
+    
+    loadPublishedExaminations();
+  }, [authUser?.school_id, user?.school_id]);
   
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
   const [employeeMenuOpen, setEmployeeMenuOpen] = useState(false);
@@ -719,6 +899,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BarChartIcon />,
       path: '/attendance/report',
       color: '#10b981'
+    },
+    {
+      title: 'Half Leaves',
+      description: 'Record and manage half-day leaves',
+      icon: <AccessTimeIcon />,
+      path: '/attendance/half-leaves',
+      color: '#ec4899'
     }
   ];
 
@@ -728,22 +915,8 @@ const Header: React.FC<HeaderProps> = ({
       title: 'Student Reports',
       description: 'Generate comprehensive student reports',
       icon: <BarChartIcon />,
-      path: '/reports/students',
+      path: '/reports',
       color: '#3b82f6'
-    },
-    {
-      title: 'Attendance Reports',
-      description: 'View attendance analytics and statistics',
-      icon: <AssessmentIcon />,
-      path: '/reports/attendance',
-      color: '#10b981'
-    },
-    {
-      title: 'Academic Reports',
-      description: 'Generate academic performance reports',
-      icon: <ListAltIcon />,
-      path: '/reports/academic',
-      color: '#f59e0b'
     }
   ];
 
@@ -752,22 +925,8 @@ const Header: React.FC<HeaderProps> = ({
       title: 'Employee Reports',
       description: 'Generate comprehensive employee reports',
       icon: <BarChartIcon />,
-      path: '/reports/employees',
+      path: '/reports/employee-reports',
       color: '#3b82f6'
-    },
-    {
-      title: 'Staff Attendance Reports',
-      description: 'View staff attendance analytics',
-      icon: <AssessmentIcon />,
-      path: '/reports/staff-attendance',
-      color: '#10b981'
-    },
-    {
-      title: 'Financial Reports',
-      description: 'View fee and expense reports',
-      icon: <AttachMoneyIcon />,
-      path: '/reports/financial',
-      color: '#8b5cf6'
     }
   ];
 
@@ -1006,6 +1165,13 @@ const Header: React.FC<HeaderProps> = ({
       color: '#10b981'
     },
     {
+      title: 'Events',
+      description: 'Create and manage school events',
+      icon: <EventIcon />,
+      path: '/events',
+      color: '#8b5cf6'
+    },
+    {
       title: 'Leave Requests',
       description: 'Review and manage leave requests',
       icon: <EventBusyIcon />,
@@ -1014,77 +1180,91 @@ const Header: React.FC<HeaderProps> = ({
     }
   ];
 
-  // Examination menu items
-  const examinationMenuItems = [
-    {
-      title: 'Manage Examinations',
-      description: 'Create and manage examination schedules',
-      icon: <AssessmentIcon />,
-      path: '/examinations',
-      color: '#3b82f6'
-    },
-    {
-      title: 'Marks Entry',
-      description: 'Enter and manage student marks',
-      icon: <ListAltIcon />,
-      path: '/marks-entry',
-      color: '#10b981'
-    },
-    {
-      title: 'Master Sheets',
-      description: 'Generate comprehensive master sheets',
-      icon: <BarChartIcon />,
-      path: '/master-sheets',
-      color: '#f59e0b'
-    },
-    {
-      title: 'DMC Generation',
-      description: 'Generate detailed marks certificates',
-      icon: <CloudDownloadIcon />,
-      path: '/dmc-generation',
-      color: '#8b5cf6'
-    },
-    {
-      title: 'Position Holders',
-      description: 'View student positions and rankings',
-      icon: <EmojiEventsIcon />,
-      path: '/position-holders',
-      color: '#ef4444'
-    },
-    {
-      title: 'Exam Analytics',
-      description: 'Analyze examination performance',
-      icon: <PieChartIcon />,
-      path: '/exam-analytics',
-      color: '#06b6d4'
-    },
-    {
-      title: 'Manage Subjects',
-      description: 'Add, edit, and manage subjects',
-      icon: <SchoolIcon />,
-      path: '/subjects',
-      color: '#84cc16'
-    },
-    {
-      title: 'Examination Configuration',
-      description: 'Configure grade criteria and settings',
-      icon: <SettingsIcon />,
-      path: '/examination-configuration',
-      color: '#6366f1'
+  // Generate description for Marks Entry based on published examinations
+  const getMarksEntryDescription = useMemo(() => {
+    if (publishedExaminations.length === 0) {
+      return 'Enter and manage student marks';
+    } else if (publishedExaminations.length === 1) {
+      return publishedExaminations[0].name;
+    } else {
+      const count = publishedExaminations.length;
+      const countText = count === 2 ? 'Two' : count === 3 ? 'Three' : count === 4 ? 'Four' : count === 5 ? 'Five' : `${count}`;
+      return `${countText} Examinations`;
     }
-  ];
+  }, [publishedExaminations]);
+
+  // Examination menu items
+  const examinationMenuItems = useMemo(() => {
+    const baseItems = [
+      {
+        title: 'Manage Examinations',
+        description: 'Create and manage examination schedules',
+        icon: <AssessmentIcon />,
+        path: '/examinations',
+        color: '#3b82f6'
+      },
+      {
+        title: 'Master Sheets',
+        description: 'Generate comprehensive master sheets',
+        icon: <BarChartIcon />,
+        path: '/master-sheets',
+        color: '#f59e0b'
+      },
+      {
+        title: 'DMC Generation',
+        description: 'Generate detailed marks certificates',
+        icon: <CloudDownloadIcon />,
+        path: '/dmc-generation',
+        color: '#8b5cf6'
+      },
+      {
+        title: 'Position Holders',
+        description: 'View student positions and rankings',
+        icon: <EmojiEventsIcon />,
+        path: '/position-holders',
+        color: '#ef4444'
+      },
+      {
+        title: 'Exam Analytics',
+        description: 'Analyze examination performance',
+        icon: <PieChartIcon />,
+        path: '/exam-analytics',
+        color: '#06b6d4'
+      },
+      {
+        title: 'Manage Subjects',
+        description: 'Add, edit, and manage subjects',
+        icon: <SchoolIcon />,
+        path: '/subjects',
+        color: '#84cc16'
+      },
+      {
+        title: 'Examination Configuration',
+        description: 'Configure grade criteria and settings',
+        icon: <SettingsIcon />,
+        path: '/examination-configuration',
+        color: '#6366f1'
+      }
+    ];
+
+    // Only add Marks Entry if there are published examinations
+    if (publishedExaminations.length > 0) {
+      baseItems.splice(1, 0, {
+        title: 'Marks Entry',
+        description: getMarksEntryDescription,
+        icon: <ListAltIcon />,
+        path: '/marks-entry',
+        color: '#10b981'
+      });
+    }
+
+    return baseItems;
+  }, [publishedExaminations, getMarksEntryDescription]);
 
   // Test Record menu items
   const testRecordMenuItems = [
     {
-      title: 'Test Dashboard',
-      description: 'Overview of test records and management',
-      icon: <QuizIcon />,
-      path: '/test-dashboard',
-      color: '#3b82f6'
-    },
-    {
-      title: 'Test Records',
+      title: 'Test Marks Entry',
       description: 'View and manage test records',
       icon: <QuizIcon />,
       path: '/test-records',
@@ -1165,10 +1345,24 @@ const Header: React.FC<HeaderProps> = ({
       color: '#ef4444'
     },
     {
-      title: 'Landing Page Configuration',
-      description: 'Configure custom landing page widgets',
-      icon: <DashboardIcon />,
-      path: '/settings/landing-page-config',
+      title: 'Role Management',
+      description: 'Configure roles and access permissions',
+      icon: <AdminPanelSettingsIcon />,
+      path: '/settings/role-management',
+      color: '#8b5cf6'
+    },
+    {
+      title: 'User Permissions',
+      description: 'Manage individual user permissions',
+      icon: <PersonIcon />,
+      path: '/settings/user-permissions',
+      color: '#10b981'
+    },
+    {
+      title: 'Render Settings',
+      description: 'Configure render settings users',
+      icon: <SettingsIcon />,
+      path: '/settings/rendersettings',
       color: '#ec4899'
     },
     {
@@ -1186,6 +1380,26 @@ const Header: React.FC<HeaderProps> = ({
       color: '#ec4899'
     }
   ];
+
+  // Helper function to get dashboard path based on permissions
+  const getDashboardPath = useCallback(() => {
+    // Super Admin always has dashboard access
+    if (isSuperAdmin) {
+      return '/dashboard';
+    }
+    
+    if (!user?.id || !user?.school_id || !permissionsLoaded) {
+      return '/user'; // Default to UserDashboard while loading
+    }
+    
+    // Check dashboard permission using role_id from roles table
+    if (userPermissions.has('dashboard')) {
+      return '/dashboard';
+    }
+    
+    // Default to UserDashboard if no dashboard permission
+    return '/user';
+  }, [user?.id, user?.school_id, permissionsLoaded, userPermissions, isSuperAdmin]);
 
   const menuItems = [
     {
@@ -1238,7 +1452,7 @@ const Header: React.FC<HeaderProps> = ({
       hasDropdown: true,
       menuItems: [
         { title: 'Examination', items: examinationMenuItems },
-        { title: 'Test Records', items: testRecordMenuItems },
+        { title: 'Test Management', items: testRecordMenuItems },
         { title: 'Daily Diary', items: diaryMenuItems }
       ],
       columns: 3
@@ -1266,6 +1480,58 @@ const Header: React.FC<HeaderProps> = ({
       columns: 2
     }
   ];
+  
+  // Filter menu items based on permissions for teachers
+  const filterMenuItems = useMemo(() => {
+    if (!permissionsLoaded) return [];
+    
+    const filterItems = (items: any[]): any[] => {
+      return items.filter(item => 
+        shouldShowMenuItem(item.path, user?.role, userPermissions)
+      );
+    };
+    
+    const filterMenuSections = (sections: any[]): any[] => {
+      return sections.map(section => {
+        const filteredItems = filterItems(section.items || []);
+        const filteredExpenseItems = section.expenseItems ? filterItems(section.expenseItems) : undefined;
+        
+        // Only include section if it has visible items
+        if (filteredItems.length === 0 && (!filteredExpenseItems || filteredExpenseItems.length === 0)) {
+          return null;
+        }
+        
+        return {
+          ...section,
+          items: filteredItems,
+          ...(filteredExpenseItems && { expenseItems: filteredExpenseItems })
+        };
+      }).filter((section): section is NonNullable<typeof section> => section !== null);
+    };
+    
+    return menuItems.map(menuItem => {
+      if (!menuItem.hasDropdown) {
+        // Simple menu item - check permission
+        if (!shouldShowMenuItem(menuItem.path, user?.role, userPermissions)) {
+          return null;
+        }
+        return menuItem;
+      }
+      
+      // Menu with dropdown - filter submenu items
+      const filteredSections = filterMenuSections(menuItem.menuItems || []);
+      
+      // Only show menu if it has at least one visible section
+      if (filteredSections.length === 0) {
+        return null;
+      }
+      
+      return {
+        ...menuItem,
+        menuItems: filteredSections
+      };
+    }).filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [permissionsLoaded, user?.role, userPermissions, menuItems, getDashboardPath]);
 
   const toggleMobileMenu = (menuLabel: string) => {
     setMobileOpenMenus(prev => {
@@ -1309,11 +1575,7 @@ const Header: React.FC<HeaderProps> = ({
           </MobileSidebarCloseButton>
         </MobileSidebarHeader>
         <MobileMenuSection>
-          <MobileMenuItem onClick={() => handleMobileMenuItemClick('/dashboard')}>
-            <span className="menu-icon"><DashboardIcon /></span>
-            <span className="menu-label">Dashboard</span>
-          </MobileMenuItem>
-          {menuItems.map((item) => {
+          {filterMenuItems.map((item) => {
             const isOpen = mobileOpenMenus.has(item.label);
             return (
               <React.Fragment key={item.path}>
@@ -1445,7 +1707,13 @@ const Header: React.FC<HeaderProps> = ({
             </HamburgerButton>
           )}
           <AppLogo 
-            onClick={() => navigate(isRestrictedRole ? '/home' : '/dashboard')} 
+            onClick={() => {
+              if (isRestrictedRole) {
+                navigate('/home');
+              } else {
+                navigate(getDashboardPath());
+              }
+            }} 
             title={isRestrictedRole ? 'Go to Home' : 'Go to Dashboard'}
           >
           {instituteProfile?.logo_url ? (
@@ -1454,9 +1722,9 @@ const Header: React.FC<HeaderProps> = ({
             <SchoolIcon />
           )}
         </AppLogo>
-        {!isRestrictedRole && (
+        {!isRestrictedRole && permissionsLoaded && (
         <NavMenu>
-          {menuItems.map((item) => {
+          {filterMenuItems.map((item) => {
             const isStudents = item.label === 'Students';
             const isEmployees = item.label === 'Employees';
             
@@ -1532,6 +1800,7 @@ const Header: React.FC<HeaderProps> = ({
                     ref={menuState?.dropdownRef}
                     $isOpen={menuState?.open || false}
                     $columns={item.columns}
+                    $actualColumns={item.menuItems?.length || 0}
                     onMouseEnter={() => {
                       // Clear any pending close timeout when mouse enters dropdown
                       if (menuLeaveTimeoutRef.current[item.path]) {
@@ -1714,28 +1983,24 @@ const Header: React.FC<HeaderProps> = ({
           <RefreshIcon />
         </HeaderIconCircle>
         <div style={{ position: 'relative' }}>
-          <HeaderIconCircle
+          <ProfileAvatarContainer
             as="button"
             ref={profileIconRef}
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             aria-label="Profile"
+            $hasImage={!!(avatarUrl || parentInfo?.avatar_url) && !imageError}
           >
-            {(avatarUrl || parentInfo?.avatar_url) ? (
+            {(avatarUrl || parentInfo?.avatar_url) && !imageError ? (
               <img
                 src={avatarUrl || parentInfo?.avatar_url || ''}
                 alt="avatar"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  padding: '2px'
-                }}
+                onError={() => setImageError(true)}
+                onLoad={() => setImageError(false)}
               />
             ) : (
               <UserIcon />
             )}
-          </HeaderIconCircle>
+          </ProfileAvatarContainer>
           {profileMenuOpen && (
             <ProfileDropdown
               ref={profileDropdownRef}

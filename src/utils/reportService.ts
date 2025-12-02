@@ -293,14 +293,14 @@ export const reportService = {
         return data;
     },
 
-    // Reports
-    async getReports(filters?: { category_id?: string; status?: string }, schoolId?: number): Promise<Report[]> {
+    // Student Reports
+    async getStudentReports(filters?: { category_id?: string; status?: string; subject_type?: string }, schoolId?: number): Promise<Report[]> {
         let query = supabase
-            .from('reports')
+            .from('student_reports')
             .select(`
                 *,
                 category:report_categories(*),
-                reporter:staff!reports_reported_by_fkey(*),
+                reporter:staff!student_reports_reported_by_fkey(*),
                 student:students(
                     id,
                     name,
@@ -309,10 +309,9 @@ export const reportService = {
                     class:classes(id, name),
                     section:sections(id, name)
                 ),
-                staff:staff!reports_staff_id_fkey(*),
-                updates:reports_updates(
+                updates:student_reports_updates(
                     *,
-                    staff:staff!reports_updates_updated_by_fkey(*)
+                    staff:staff!student_reports_updates_updated_by_fkey(*)
                 )
             `)
             .order('created_at', { ascending: false });
@@ -330,7 +329,62 @@ export const reportService = {
         const { data, error } = await query;
 
         if (error) throw error;
-        return data || [];
+        // Transform to match Report interface
+        return (data || []).map((report: any) => ({
+            ...report,
+            subject_type: 'student' as const,
+            staff_id: undefined
+        }));
+    },
+
+    // Employee Reports
+    async getEmployeeReports(filters?: { category_id?: string; status?: string; subject_type?: string }, schoolId?: number): Promise<Report[]> {
+        let query = supabase
+            .from('employee_reports')
+            .select(`
+                *,
+                category:report_categories(*),
+                reporter:staff!employee_reports_reported_by_fkey(*),
+                staff:staff!employee_reports_staff_id_fkey(*),
+                updates:employee_reports_updates(
+                    *,
+                    staff:staff!employee_reports_updates_updated_by_fkey(*)
+                )
+            `)
+            .order('created_at', { ascending: false });
+
+        if (filters?.category_id) {
+            query = query.eq('category_id', filters.category_id);
+        }
+        if (filters?.status) {
+            query = query.eq('status', filters.status);
+        }
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+        // Transform to match Report interface
+        return (data || []).map((report: any) => ({
+            ...report,
+            subject_type: 'staff' as const,
+            student_id: undefined
+        }));
+    },
+
+    // Legacy method - kept for backward compatibility, but should use getStudentReports or getEmployeeReports
+    async getReports(filters?: { category_id?: string; status?: string; subject_type?: string }, schoolId?: number): Promise<Report[]> {
+        // If subject_type is specified, use the appropriate method
+        if (filters?.subject_type === 'student') {
+            return this.getStudentReports(filters, schoolId);
+        } else if (filters?.subject_type === 'staff') {
+            return this.getEmployeeReports(filters, schoolId);
+        }
+        
+        // Default to student reports for backward compatibility
+        return this.getStudentReports(filters, schoolId);
     },
 
     async getReportById(id: string, schoolId?: number): Promise<Report> {
@@ -424,15 +478,22 @@ export const reportService = {
         return report as Report;
     },
 
-    async createReport(reportData: CreateReportDTO, schoolId?: number): Promise<Report> {
+    async createStudentReport(reportData: CreateReportDTO, schoolId?: number): Promise<Report> {
         // Get the current user from localStorage
         const user = getUser();
         if (!user) throw new Error('No authenticated user found');
         if (!user.staff_id) throw new Error('No staff ID found for current user');
 
+        if (!reportData.student_id) {
+            throw new Error('Student ID is required for student reports');
+        }
+
         const insertData: any = {
-            ...reportData,
+            category_id: reportData.category_id,
+            student_id: reportData.student_id,
             reported_by: user.staff_id,
+            description: reportData.description,
+            severity: reportData.severity,
             status: 'pending'
         };
         
@@ -441,12 +502,12 @@ export const reportService = {
         }
 
         const { data, error } = await supabase
-            .from('reports')
+            .from('student_reports')
             .insert(insertData)
             .select(`
                 *,
                 category:report_categories(*),
-                reporter:staff!reports_reported_by_fkey(*),
+                reporter:staff!student_reports_reported_by_fkey(*),
                 student:students(
                     id,
                     name,
@@ -454,18 +515,74 @@ export const reportService = {
                     picture_url,
                     class:classes(id, name),
                     section:sections(id, name)
-                ),
-                staff:staff!reports_staff_id_fkey(*)
+                )
             `)
             .single();
 
         if (error) throw error;
-        return data;
+        return {
+            ...data,
+            subject_type: 'student' as const,
+            staff_id: undefined
+        };
     },
 
-    async deleteReport(reportId: number, schoolId?: number): Promise<void> {
+    async createEmployeeReport(reportData: CreateReportDTO, schoolId?: number): Promise<Report> {
+        // Get the current user from localStorage
+        const user = getUser();
+        if (!user) throw new Error('No authenticated user found');
+        if (!user.staff_id) throw new Error('No staff ID found for current user');
+
+        if (!reportData.staff_id) {
+            throw new Error('Staff ID is required for employee reports');
+        }
+
+        const insertData: any = {
+            category_id: reportData.category_id,
+            staff_id: reportData.staff_id,
+            reported_by: user.staff_id,
+            description: reportData.description,
+            severity: reportData.severity,
+            status: 'pending'
+        };
+        
+        if (schoolId) {
+            insertData.school_id = schoolId;
+        }
+
+        const { data, error } = await supabase
+            .from('employee_reports')
+            .insert(insertData)
+            .select(`
+                *,
+                category:report_categories(*),
+                reporter:staff!employee_reports_reported_by_fkey(*),
+                staff:staff!employee_reports_staff_id_fkey(*)
+            `)
+            .single();
+
+        if (error) throw error;
+        return {
+            ...data,
+            subject_type: 'staff' as const,
+            student_id: undefined
+        };
+    },
+
+    // Legacy method - kept for backward compatibility
+    async createReport(reportData: CreateReportDTO, schoolId?: number): Promise<Report> {
+        if (reportData.subject_type === 'student') {
+            return this.createStudentReport(reportData, schoolId);
+        } else if (reportData.subject_type === 'staff') {
+            return this.createEmployeeReport(reportData, schoolId);
+        }
+        // Default to student report
+        return this.createStudentReport(reportData, schoolId);
+    },
+
+    async deleteStudentReport(reportId: number, schoolId?: number): Promise<void> {
         let query = supabase
-            .from('reports')
+            .from('student_reports')
             .delete()
             .eq('id', reportId);
             
@@ -478,7 +595,31 @@ export const reportService = {
         if (error) throw error;
     },
 
-    async updateReport(
+    async deleteEmployeeReport(reportId: number, schoolId?: number): Promise<void> {
+        let query = supabase
+            .from('employee_reports')
+            .delete()
+            .eq('id', reportId);
+            
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
+        
+        const { error } = await query;
+
+        if (error) throw error;
+    },
+
+    // Legacy method - kept for backward compatibility
+    async deleteReport(reportId: number, schoolId?: number, subjectType?: 'student' | 'staff'): Promise<void> {
+        if (subjectType === 'staff') {
+            return this.deleteEmployeeReport(reportId, schoolId);
+        }
+        // Default to student report
+        return this.deleteStudentReport(reportId, schoolId);
+    },
+
+    async updateStudentReport(
         reportId: string, 
         updateData: { status?: ReportStatus; update_note?: string },
         schoolId?: number
@@ -489,7 +630,7 @@ export const reportService = {
         if (!user.staff_id) throw new Error('No staff ID found for current user');
 
         let reportQuery = supabase
-            .from('reports')
+            .from('student_reports')
             .select('status')
             .eq('id', reportId);
             
@@ -501,16 +642,117 @@ export const reportService = {
 
         if (!report) throw new Error('Report not found');
 
-        // Start a transaction
-        const { error } = await supabase.rpc('update_report', {
-            p_report_id: reportId,
-            p_new_status: updateData.status || report.status,
-            p_previous_status: report.status,
-            p_update_note: updateData.update_note || '',
-            p_updated_by: user.staff_id
-        });
+        const previousStatus = report.status;
+        const newStatus = updateData.status || report.status;
 
-        if (error) throw error;
+        // Update the report status
+        let updateQuery = supabase
+            .from('student_reports')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', reportId);
+            
+        if (schoolId) {
+            updateQuery = updateQuery.eq('school_id', schoolId);
+        }
+        
+        const { error: updateError } = await updateQuery;
+        if (updateError) throw updateError;
+
+        // Create update record if status changed or update_note provided
+        if ((previousStatus !== newStatus || updateData.update_note) && updateData.update_note) {
+            const updateInsert: any = {
+                report_id: parseInt(reportId),
+                updated_by: user.staff_id,
+                previous_status: previousStatus,
+                new_status: newStatus,
+                update_note: updateData.update_note || ''
+            };
+            
+            if (schoolId) {
+                updateInsert.school_id = schoolId;
+            }
+
+            const { error: insertError } = await supabase
+                .from('student_reports_updates')
+                .insert(updateInsert);
+
+            if (insertError) throw insertError;
+        }
+    },
+
+    async updateEmployeeReport(
+        reportId: string, 
+        updateData: { status?: ReportStatus; update_note?: string },
+        schoolId?: number
+    ): Promise<void> {
+        // Get the current user from localStorage
+        const user = getUser();
+        if (!user) throw new Error('No authenticated user found');
+        if (!user.staff_id) throw new Error('No staff ID found for current user');
+
+        let reportQuery = supabase
+            .from('employee_reports')
+            .select('status')
+            .eq('id', reportId);
+            
+        if (schoolId) {
+            reportQuery = reportQuery.eq('school_id', schoolId);
+        }
+        
+        const { data: report } = await reportQuery.single();
+
+        if (!report) throw new Error('Report not found');
+
+        const previousStatus = report.status;
+        const newStatus = updateData.status || report.status;
+
+        // Update the report status
+        let updateQuery = supabase
+            .from('employee_reports')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', reportId);
+            
+        if (schoolId) {
+            updateQuery = updateQuery.eq('school_id', schoolId);
+        }
+        
+        const { error: updateError } = await updateQuery;
+        if (updateError) throw updateError;
+
+        // Create update record if status changed or update_note provided
+        if ((previousStatus !== newStatus || updateData.update_note) && updateData.update_note) {
+            const updateInsert: any = {
+                report_id: parseInt(reportId),
+                updated_by: user.staff_id,
+                previous_status: previousStatus,
+                new_status: newStatus,
+                update_note: updateData.update_note || ''
+            };
+            
+            if (schoolId) {
+                updateInsert.school_id = schoolId;
+            }
+
+            const { error: insertError } = await supabase
+                .from('employee_reports_updates')
+                .insert(updateInsert);
+
+            if (insertError) throw insertError;
+        }
+    },
+
+    // Legacy method - kept for backward compatibility
+    async updateReport(
+        reportId: string, 
+        updateData: { status?: ReportStatus; update_note?: string },
+        schoolId?: number,
+        subjectType?: 'student' | 'staff'
+    ): Promise<void> {
+        if (subjectType === 'staff') {
+            return this.updateEmployeeReport(reportId, updateData, schoolId);
+        }
+        // Default to student report
+        return this.updateStudentReport(reportId, updateData, schoolId);
     },
 
     // Report Actions
@@ -553,7 +795,7 @@ export const reportService = {
         return data;
     },
 
-    updateReportDetails: async (reportId: string, data: { 
+    updateStudentReportDetails: async (reportId: string, data: { 
         severity: ReportSeverity; 
         description: string; 
         created_at: string 
@@ -561,7 +803,7 @@ export const reportService = {
         // Note: This function only updates severity, description, and created_at.
         // The reported_by field is intentionally NOT updated to preserve the original creator.
         let query = supabase
-            .from('reports')
+            .from('student_reports')
             .update({
                 severity: data.severity,
                 description: data.description,
@@ -582,14 +824,56 @@ export const reportService = {
         return response.data;
     },
 
-    // Update an existing report update's note
-    async updateReportUpdate(
+    updateEmployeeReportDetails: async (reportId: string, data: { 
+        severity: ReportSeverity; 
+        description: string; 
+        created_at: string 
+    }, schoolId?: number) => {
+        // Note: This function only updates severity, description, and created_at.
+        // The reported_by field is intentionally NOT updated to preserve the original creator.
+        let query = supabase
+            .from('employee_reports')
+            .update({
+                severity: data.severity,
+                description: data.description,
+                created_at: data.created_at
+            })
+            .eq('id', reportId);
+            
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
+        
+        const response = await query;
+
+        if (response.error) {
+            throw new Error(response.error.message);
+        }
+
+        return response.data;
+    },
+
+    // Legacy method - kept for backward compatibility
+    async updateReportDetails(reportId: string, data: { 
+        severity: ReportSeverity; 
+        description: string; 
+        created_at: string 
+    }, schoolId?: number, subjectType?: 'student' | 'staff') {
+        if (subjectType === 'staff') {
+            return await reportService.updateEmployeeReportDetails(reportId, data, schoolId);
+        }
+        // Default to student report
+        return await reportService.updateStudentReportDetails(reportId, data, schoolId);
+    },
+
+    // Update an existing student report update's note
+    async updateStudentReportUpdate(
         updateId: string,
         updateNote: string,
         schoolId?: number
     ): Promise<void> {
         let query = supabase
-            .from('reports_updates')
+            .from('student_reports_updates')
             .update({
                 update_note: updateNote
             })
@@ -602,5 +886,41 @@ export const reportService = {
         const { error } = await query;
         
         if (error) throw error;
+    },
+
+    // Update an existing employee report update's note
+    async updateEmployeeReportUpdate(
+        updateId: string,
+        updateNote: string,
+        schoolId?: number
+    ): Promise<void> {
+        let query = supabase
+            .from('employee_reports_updates')
+            .update({
+                update_note: updateNote
+            })
+            .eq('id', updateId);
+            
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
+        
+        const { error } = await query;
+        
+        if (error) throw error;
+    },
+
+    // Legacy method - kept for backward compatibility
+    async updateReportUpdate(
+        updateId: string,
+        updateNote: string,
+        schoolId?: number,
+        subjectType?: 'student' | 'staff'
+    ): Promise<void> {
+        if (subjectType === 'staff') {
+            return this.updateEmployeeReportUpdate(updateId, updateNote, schoolId);
+        }
+        // Default to student report
+        return this.updateStudentReportUpdate(updateId, updateNote, schoolId);
     }
 }; 

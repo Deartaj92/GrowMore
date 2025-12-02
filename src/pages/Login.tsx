@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
 import { pushNotificationService } from '../services/pushNotificationService';
+import { hasPermission } from '../services/permissionService';
 import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person } from '@mui/icons-material';
 
 // Mac-style window controls (copied from Layout.tsx)
@@ -413,21 +414,24 @@ const Login: React.FC = () => {
           });
         }
 
-        // Redirect based on role
-        if (staffUser?.role === 'Teacher') {
-          // Teachers go to landing page
-          navigate('/home', { replace: true });
+        // Redirect based on role and permissions
+        if (staffUser?.role === 'Super Admin') {
+          // Super Admin always goes to welcome page
+          navigate('/welcome', { replace: true });
           return;
-        } else if (staffUser?.role && ['Principal', 'Admin', 'Super Admin'].includes(staffUser.role)) {
-          // Admin roles go to dashboard (InitialRouteHandler will handle this, but we can navigate here too)
-          if (staffUser.role === 'Super Admin') {
-            navigate('/welcome', { replace: true });
-          } else {
+        } else if (staffUser?.id && staffUser?.school_id) {
+          // Check if user has dashboard permission
+          const hasDashboardPermission = await hasPermission(staffUser.id, 'dashboard', staffUser.school_id);
+          if (hasDashboardPermission) {
+            // User has dashboard permission, go to full dashboard
             navigate('/dashboard', { replace: true });
+          } else {
+            // User doesn't have dashboard permission, go to user dashboard
+            navigate('/user', { replace: true });
           }
           return;
         }
-        // For other roles, let InitialRouteHandler handle the redirect
+        // For other cases, let InitialRouteHandler handle the redirect
       } else if (currentMode === 'parent') {
         // Parent authentication: lookup by family id and password
         let familyLookup = null;

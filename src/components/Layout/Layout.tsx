@@ -12,6 +12,7 @@ import { ThemeProvider as CustomThemeProvider, useTheme } from './contexts/Theme
 import { MuteProvider } from './contexts/MuteContext';
 import { PageHeaderProvider, usePageHeader } from './contexts/PageHeaderContext';
 import { ProgressProvider, useProgress } from './contexts/ProgressContext';
+import { hasPermission } from '../../services/permissionService';
 
 // Import types and constants
 import { Theme, StudentInfo, ParentInfo, InstituteProfile } from './types';
@@ -391,54 +392,10 @@ const Layout: React.FC = () => {
       return;
     }
 
-    try {
-      startProgress(true);
-      const studentSession = localStorage.getItem('studentSession');
-      const parentSession = localStorage.getItem('parentSession');
-
-      // For students and parents, use window.location.reload() to ensure proper refresh
-      if (studentSession || parentSession) {
-        completeProgress();
-        window.location.reload();
-        return;
-      }
-
-      // For teachers, use navigation-based refresh
-      if (user && user.role === 'Teacher') {
-        try {
-          const currentPath = location.pathname;
-          const searchParams = new URLSearchParams(location.search);
-          searchParams.set('_refresh', Date.now().toString());
-          navigate(`${currentPath}?${searchParams.toString()}`, { replace: true });
-          setTimeout(() => {
-            navigate(currentPath, { replace: true });
-            completeProgress();
-          }, 100);
-          return;
-        } catch (e) {
-          // Fall through to normal refresh
-        }
-      }
-
-      const currentUser = getUser();
-      if (currentUser && currentUser.role === 'Guest') {
-        const currentPath = location.pathname;
-        const searchParams = new URLSearchParams(location.search);
-        searchParams.set('_refresh', Date.now().toString());
-        navigate(`${currentPath}?${searchParams.toString()}`, { replace: true });
-        setTimeout(() => {
-          navigate(currentPath, { replace: true });
-          completeProgress();
-        }, 100);
-        return;
-      }
-
-      if (window.location.reload) {
-        window.location.reload();
-      } else {
-        window.location.href = window.location.href;
-      }
-    } catch (error) {
+    // Use full page reload for all users to ensure proper app refresh
+    if (window.location.reload) {
+      window.location.reload();
+    } else {
       window.location.href = window.location.href;
     }
   };
@@ -1013,7 +970,23 @@ const Layout: React.FC = () => {
     setSeenByModalOpen(false);
   };
 
-  const canViewSeenByList = !!authUser?.role && ['Super Admin', 'Principal', 'Admin'].includes(authUser.role);
+  const [canViewSeenByList, setCanViewSeenByList] = useState(false);
+  
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (authUser?.id && authUser?.school_id) {
+        // Check if user has permission to view seen_by list (using user-management permission)
+        const hasPerm = await hasPermission(authUser.id, 'settings-user-management', authUser.school_id);
+        setCanViewSeenByList(hasPerm);
+      } else if (authUser?.id && !authUser?.school_id) {
+        // Super Admin (no school_id) can view seen_by list
+        setCanViewSeenByList(true);
+      } else {
+        setCanViewSeenByList(false);
+      }
+    };
+    checkPermission();
+  }, [authUser?.id, authUser?.school_id]);
 
   return (
     <MuiThemeProvider theme={muiTheme}>

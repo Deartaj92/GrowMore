@@ -24,6 +24,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/useToast';
+import { hasPermission } from '../services/permissionService';
 
 import Loader from '../components/Loader';
 interface School {
@@ -111,12 +112,30 @@ const SchoolWelcomeScreen: React.FC = () => {
 
   // Removed auto-navigation splash; navigation is user-initiated only
 
-  const handleProceedToApp = (event?: React.MouseEvent) => {
+  const handleProceedToApp = async (event?: React.MouseEvent) => {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
+    
+    // Check dashboard permission before navigating
+    if (user?.id && user?.school_id) {
+      try {
+        const hasDashboardPermission = await hasPermission(user.id, 'dashboard', user.school_id);
+        if (hasDashboardPermission) {
     navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/user', { replace: true });
+        }
+      } catch (error) {
+        console.error('Error checking dashboard permission:', error);
+        // On error, default to user dashboard
+        navigate('/user', { replace: true });
+      }
+    } else {
+      // Fallback to user dashboard if user info is missing
+      navigate('/user', { replace: true });
+    }
   };
 
   const handleLogout = async () => {

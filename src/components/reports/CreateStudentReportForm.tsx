@@ -29,7 +29,7 @@ import { useToast } from '../../components/useToast';
 import dayjs, { Dayjs } from 'dayjs';
 import { Theme } from '@mui/material/styles';
 
-// Styled components
+// Styled components (same as CreateReportForm)
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     zIndex: 1300,
     '& .MuiDialog-paper': {
@@ -188,7 +188,6 @@ const FormActions = styled(Box)(({ theme }) => ({
     }
 }));
 
-// Update the selectMenuProps configuration
 const selectMenuProps = {
     PaperProps: {
         sx: {
@@ -224,13 +223,6 @@ const selectMenuProps = {
                             ? 'rgba(255, 255, 255, 0.3)'
                             : 'rgba(0, 0, 0, 0.3)'
                     }
-                },
-                // Firefox specific styling
-                '@supports (-moz-appearance: none)': {
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: (theme: Theme) => theme.palette.mode === 'dark'
-                        ? 'rgba(255, 255, 255, 0.2) transparent'
-                        : 'rgba(0, 0, 0, 0.2) transparent'
                 }
             },
             '& .MuiMenuItem-root': {
@@ -273,9 +265,7 @@ const selectMenuProps = {
 
 interface FormData {
     category_id: number;
-    subject_type: 'student' | 'staff';
     student_id?: number;
-    staff_id?: number;
     description: string;
     severity: ReportSeverity;
     created_at: Dayjs;
@@ -283,14 +273,14 @@ interface FormData {
     section_id: number;
 }
 
-interface CreateReportFormProps {
+interface CreateStudentReportFormProps {
     open: boolean;
     onCancel: () => void;
     onSubmit: (data: CreateReportDTO) => Promise<void>;
     initialData?: Report;
 }
 
-export const CreateReportForm: React.FC<CreateReportFormProps> = ({
+export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = ({
     open,
     onCancel,
     onSubmit,
@@ -301,14 +291,12 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     const { user } = useAuth();
     const { showToast } = useToast();
     const [categories, setCategories] = useState<ReportCategory[]>([]);
-    const [selectedType, setSelectedType] = useState<'student' | 'staff'>(initialData?.subject_type || 'student');
     const [loading, setLoading] = useState(false);
     
     // State for dropdowns
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
-    const [staffMembers, setStaffMembers] = useState<any[]>([]);
     const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
     
     // Loading states
@@ -318,9 +306,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     
     const [formData, setFormData] = useState<FormData>({
         category_id: initialData?.category_id || 0,
-        subject_type: initialData?.subject_type || 'student',
         student_id: initialData?.student_id || undefined,
-        staff_id: initialData?.staff_id || undefined,
         description: initialData?.description || '',
         severity: initialData?.severity || 'low',
         created_at: initialData?.created_at ? dayjs(initialData.created_at) : dayjs(),
@@ -330,12 +316,9 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
 
     useEffect(() => {
         if (initialData) {
-            setSelectedType(initialData.subject_type);
             setFormData({
                 category_id: initialData.category_id,
-                subject_type: initialData.subject_type,
                 student_id: initialData.student_id,
-                staff_id: initialData.staff_id,
                 description: initialData.description,
                 severity: initialData.severity,
                 created_at: dayjs(initialData.created_at),
@@ -348,20 +331,17 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     useEffect(() => {
         loadCategories();
         loadClasses();
-        loadStaff();
-    }, [selectedType]);
+    }, []);
 
     useEffect(() => {
         if (formData.class_id) {
-            // Check if selected class has sections
             const selectedClass = classes.find(c => c.id === formData.class_id);
             const hasSections = selectedClass?.has_sections ?? true;
             setSelectedClassHasSections(hasSections);
             
             if (hasSections) {
-            loadSections(formData.class_id);
+                loadSections(formData.class_id);
             } else {
-                // For non-sectioned classes, clear sections and load students directly
                 setSections([]);
                 setFormData(prev => ({ ...prev, section_id: 0 }));
                 loadStudents(formData.class_id, null);
@@ -375,14 +355,12 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
     useEffect(() => {
         if (formData.class_id) {
             if (selectedClassHasSections) {
-                // For sectioned classes, require section_id
                 if (formData.section_id) {
-            loadStudents(formData.class_id, formData.section_id);
+                    loadStudents(formData.class_id, formData.section_id);
                 } else {
                     setStudents([]);
                 }
             } else {
-                // For non-sectioned classes, load students directly
                 loadStudents(formData.class_id, null);
             }
         } else {
@@ -390,16 +368,9 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
         }
     }, [formData.class_id, formData.section_id, selectedClassHasSections]);
 
-    useEffect(() => {
-        if (user?.role === 'Teacher') {
-            setSelectedType('student');
-            setFormData((prev) => ({ ...prev, subject_type: 'student' }));
-        }
-    }, [user?.role]);
-
     const loadCategories = async () => {
         try {
-            const data = await reportService.getCategories(selectedType, user?.school_id);
+            const data = await reportService.getCategories('student', user?.school_id);
             setCategories(data);
         } catch (error) {
             showToast('Failed to load categories', 'error');
@@ -442,44 +413,26 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
         }
     };
 
-    const loadStaff = async () => {
-        try {
-            const data = await reportService.getStaff(user?.school_id);
-            setStaffMembers(data);
-        } catch (error) {
-            showToast('Failed to load staff members', 'error');
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (loading) return; // Prevent multiple submissions
+        if (loading) return;
         
         if (!formData.category_id || !formData.description.trim()) {
             showToast('Please fill in all required fields', 'error');
             return;
         }
         
-        // Validate student selection for student reports
-        if (selectedType === 'student') {
-            if (!formData.class_id) {
-                showToast('Please select a class', 'error');
-                return;
-            }
-            if (selectedClassHasSections && !formData.section_id) {
-                showToast('Please select a section', 'error');
-                return;
-            }
-            if (!formData.student_id) {
-                showToast('Please select a student', 'error');
-                return;
-            }
+        if (!formData.class_id) {
+            showToast('Please select a class', 'error');
+            return;
         }
-        
-        // Validate staff selection for staff reports
-        if (selectedType === 'staff' && !formData.staff_id) {
-            showToast('Please select a staff member', 'error');
+        if (selectedClassHasSections && !formData.section_id) {
+            showToast('Please select a section', 'error');
+            return;
+        }
+        if (!formData.student_id) {
+            showToast('Please select a student', 'error');
             return;
         }
 
@@ -490,9 +443,9 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                 description: formData.description.trim(),
                 severity: formData.severity,
                 created_at: formData.created_at.toISOString(),
-                subject_type: selectedType,
-                student_id: selectedType === 'student' ? formData.student_id : undefined,
-                staff_id: selectedType === 'staff' ? formData.staff_id : undefined
+                subject_type: 'student',
+                student_id: formData.student_id,
+                staff_id: undefined
             };
 
             await onSubmit(reportData);
@@ -504,31 +457,15 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
         }
     };
 
-    const handleTypeChange = (type: 'student' | 'staff') => {
-        setSelectedType(type);
-        setFormData({
-            ...formData,
-            subject_type: type,
-            category_id: 0,
-            student_id: undefined,
-            staff_id: undefined,
-            class_id: 0,
-            section_id: 0
-        });
-        showToast(`Switched to ${type} report`, 'success');
-    };
-
     const handleClose = () => {
         setFormData({
             category_id: 0,
-            subject_type: 'student',
             description: '',
             severity: 'low',
             created_at: dayjs(),
             class_id: 0,
             section_id: 0
         });
-        setSelectedType('student');
         onCancel();
     };
 
@@ -557,7 +494,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
         >
             <DialogHeader>
                 <DialogTitle>
-                    {initialData ? 'Edit Report' : 'Create New Report'}
+                    {initialData ? 'Edit Student Report' : 'Create Student Report'}
                 </DialogTitle>
                 <IconButton onClick={handleClose} size="small">
                     <CloseIcon fontSize="small" />
@@ -566,24 +503,8 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
 
             <StyledDialogContent>
                 <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Report Type</InputLabel>
-                            <Select
-                                value={selectedType}
-                                label="Report Type"
-                                onChange={(e) => handleTypeChange(e.target.value as 'student' | 'staff')}
-                                disabled={user?.role === 'Teacher'}
-                            >
-                                <MenuItem value="student">Student Report</MenuItem>
-                                {user?.role !== 'Teacher' && (
-                                <MenuItem value="staff">Staff Report</MenuItem>
-                                )}
-                            </Select>
-                        </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
+                    {/* Row 1: Category - Expanded */}
+                    <Grid item xs={12}>
                         <FormControl fullWidth size="small">
                             <InputLabel>Category</InputLabel>
                             <Select
@@ -591,6 +512,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                 label="Category"
                                 onChange={(e) => setFormData({ ...formData, category_id: Number(e.target.value) })}
                                 required
+                                MenuProps={selectMenuProps}
                             >
                                 <MenuItem value="">Select Category</MenuItem>
                                 {categories.map((category) => (
@@ -602,194 +524,163 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                         </FormControl>
                     </Grid>
 
-                    {selectedType === 'student' ? (
-                        <>
-                            <Grid item xs={12} sm={selectedClassHasSections ? 6 : 12}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Class</InputLabel>
-                                    <Select
-                                        value={formData.class_id ? formData.class_id.toString() : ''}
-                                        label="Class"
-                                        onChange={(e) => {
-                                            const selectedClassId = Number(e.target.value);
-                                            const selectedClass = classes.find(c => c.id === selectedClassId);
-                                            const hasSections = selectedClass?.has_sections ?? true;
-                                            
-                                            setFormData({ 
-                                            ...formData, 
-                                                class_id: selectedClassId, 
-                                            section_id: 0,
-                                            student_id: undefined
-                                            });
-                                            setSelectedClassHasSections(hasSections);
-                                        }}
-                                        required
-                                        disabled={loadingClasses}
-                                    >
-                                        <MenuItem value="">Select Class</MenuItem>
-                                        {loadingClasses ? (
-                                            <MenuItem disabled>Loading classes...</MenuItem>
-                                        ) : (
-                                            classes.map((cls) => (
-                                                <MenuItem key={cls.id} value={cls.id.toString()}>
-                                                    {cls.name}
-                                                </MenuItem>
-                                            ))
-                                        )}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-
-                            {selectedClassHasSections && (
-                            <Grid item xs={12} sm={6}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Section</InputLabel>
-                                    <Select
-                                        value={formData.section_id ? formData.section_id.toString() : ''}
-                                        label="Section"
-                                        onChange={(e) => setFormData({ 
-                                            ...formData, 
-                                            section_id: Number(e.target.value),
-                                            student_id: undefined
-                                        })}
-                                        required
-                                        disabled={!formData.class_id || loadingSections}
-                                    >
-                                        <MenuItem value="">Select Section</MenuItem>
-                                        {loadingSections ? (
-                                            <MenuItem disabled>Loading sections...</MenuItem>
-                                        ) : (
-                                            sections.map((section) => (
-                                                <MenuItem key={section.id} value={section.id.toString()}>
-                                                    {section.name}
-                                                </MenuItem>
-                                            ))
-                                        )}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            )}
-
-                            <Grid item xs={12}>
-                                <Autocomplete
-                                    options={students}
-                                    loading={loadingStudents}
-                                    disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
-                                    value={students.find(s => s.id === formData.student_id) || null}
-                                    onChange={(_, newValue) => setFormData({ 
+                    {/* Row 2: Class and Section - Both on same row */}
+                    <Grid item xs={12} sm={selectedClassHasSections ? 6 : 12}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Class</InputLabel>
+                            <Select
+                                value={formData.class_id ? formData.class_id.toString() : ''}
+                                label="Class"
+                                onChange={(e) => {
+                                    const selectedClassId = Number(e.target.value);
+                                    const selectedClass = classes.find(c => c.id === selectedClassId);
+                                    const hasSections = selectedClass?.has_sections ?? true;
+                                    
+                                    setFormData({ 
                                         ...formData, 
-                                        student_id: newValue ? newValue.id : undefined 
-                                    })}
-                                    getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
-                                    filterOptions={(options, { inputValue }) => {
-                                        const searchLower = inputValue.toLowerCase();
-                                        return options.filter((s: any) => {
-                                            const nameMatch = s.name.toLowerCase().includes(searchLower);
-                                            const idMatch = matchesStudentSearch(s, inputValue);
-                                            return nameMatch || idMatch.matches;
-                                        });
-                                    }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Student"
-                                            required
-                                            size="small"
-                                            InputProps={{
-                                                ...params.InputProps,
-                                                endAdornment: (
-                                                    <>
-                                                        {loadingStudents ? <Typography variant="body2" sx={{ mr: 2 }}>Loading...</Typography> : null}
-                                                        {params.InputProps.endAdornment}
-                                                    </>
-                                                ),
-                                            }}
-                                        />
-                                    )}
-                                    renderOption={(props, student) => (
-                                        <Box component="li" {...props} key={student.id}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                                                <Avatar 
-                                                    src={student.picture_url || undefined} 
-                                                    sx={{ width: 40, height: 40 }}
-                                                >
-                                                    {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
-                                                </Avatar>
-                                                <Box>
-                                                    <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                                                        {student.name}
-                                                    </Typography>
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                        {student.father_name || 'N/A'}
-                                                    </Typography>
-                                                </Box>
-                                                <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                        ID: {getStudentDisplayId(student)}
-                                                    </Typography>
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                        {student.address || 'No address'}
-                                                    </Typography>
-                                                </Box>
-                                            </Box>
-                                        </Box>
-                                    )}
-                                    PaperComponent={(props) => (
-                                        <Paper
-                                            {...props}
-                                            sx={{
-                                                ...selectMenuProps.PaperProps?.sx,
-                                                maxHeight: 300,
-                                                backgroundColor: theme.palette.mode === 'dark' 
-                                                    ? theme.palette.background.paper
-                                                    : theme.palette.background.paper,
-                                            }}
-                                        />
-                                    )}
-                                />
-                            </Grid>
-                        </>
-                    ) : (
-                        <Grid item xs={12}>
+                                        class_id: selectedClassId, 
+                                        section_id: 0,
+                                        student_id: undefined
+                                    });
+                                    setSelectedClassHasSections(hasSections);
+                                }}
+                                required
+                                disabled={loadingClasses}
+                                MenuProps={selectMenuProps}
+                            >
+                                <MenuItem value="">Select Class</MenuItem>
+                                {loadingClasses ? (
+                                    <MenuItem disabled>Loading classes...</MenuItem>
+                                ) : (
+                                    classes.map((cls) => (
+                                        <MenuItem key={cls.id} value={cls.id.toString()}>
+                                            {cls.name}
+                                        </MenuItem>
+                                    ))
+                                )}
+                            </Select>
+                            {loadingClasses && (
+                                <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '0.75rem' }}>
+                                    Loading classes...
+                                </Typography>
+                            )}
+                        </FormControl>
+                    </Grid>
+
+                    {selectedClassHasSections && (
+                        <Grid item xs={12} sm={6}>
                             <FormControl fullWidth size="small">
-                                <InputLabel>Staff Member</InputLabel>
+                                <InputLabel>Section</InputLabel>
                                 <Select
-                                    value={formData.staff_id ? formData.staff_id.toString() : ''}
-                                    label="Staff Member"
-                                    onChange={(e) => setFormData({ ...formData, staff_id: Number(e.target.value) })}
+                                    value={formData.section_id ? formData.section_id.toString() : ''}
+                                    label="Section"
+                                    onChange={(e) => setFormData({ 
+                                        ...formData, 
+                                        section_id: Number(e.target.value),
+                                        student_id: undefined
+                                    })}
                                     required
+                                    disabled={!formData.class_id || loadingSections}
                                     MenuProps={selectMenuProps}
                                 >
-                                    <MenuItem value="">Select Staff Member</MenuItem>
-                                    {staffMembers.map((staff) => (
-                                        <MenuItem key={staff.id} value={staff.id.toString()}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                                                <Avatar 
-                                                    src={staff.picture_url || undefined} 
-                                                    sx={{ width: 40, height: 40 }}
-                                                >
-                                                    {!staff.picture_url && staff.name && staff.name.charAt(0).toUpperCase()}
-                                                </Avatar>
-                                                <Box>
-                                                    <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                                                        {staff.name}
-                                                    </Typography>
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                        {staff.role || 'N/A'}
-                                                    </Typography>
-                                                </Box>
-                                                <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                        ID: {staff.id}
-                                                    </Typography>
-                                                </Box>
-                                            </Box>
-                                        </MenuItem>
-                                    ))}
+                                    <MenuItem value="">Select Section</MenuItem>
+                                    {loadingSections ? (
+                                        <MenuItem disabled>Loading sections...</MenuItem>
+                                    ) : (
+                                        sections.map((section) => (
+                                            <MenuItem key={section.id} value={section.id.toString()}>
+                                                {section.name}
+                                            </MenuItem>
+                                        ))
+                                    )}
                                 </Select>
+                                {loadingSections && (
+                                    <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '0.75rem' }}>
+                                        Loading sections...
+                                    </Typography>
+                                )}
                             </FormControl>
                         </Grid>
                     )}
+
+                    <Grid item xs={12}>
+                        <Autocomplete
+                            options={students}
+                            loading={loadingStudents}
+                            disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
+                            value={students.find(s => s.id === formData.student_id) || null}
+                            onChange={(_, newValue) => setFormData({ 
+                                ...formData, 
+                                student_id: newValue ? newValue.id : undefined 
+                            })}
+                            getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
+                            filterOptions={(options, { inputValue }) => {
+                                const searchLower = inputValue.toLowerCase();
+                                return options.filter((s: any) => {
+                                    const nameMatch = s.name.toLowerCase().includes(searchLower);
+                                    const idMatch = matchesStudentSearch(s, inputValue);
+                                    return nameMatch || idMatch.matches;
+                                });
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Student"
+                                    required
+                                    size="small"
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        endAdornment: (
+                                            <>
+                                                {loadingStudents ? <Typography variant="body2" sx={{ mr: 2 }}>Loading...</Typography> : null}
+                                                {params.InputProps.endAdornment}
+                                            </>
+                                        ),
+                                    }}
+                                />
+                            )}
+                            renderOption={(props, student) => (
+                                <Box component="li" {...props} key={student.id}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
+                                        <Avatar 
+                                            src={student.picture_url || undefined} 
+                                            sx={{ width: 40, height: 40 }}
+                                        >
+                                            {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
+                                        </Avatar>
+                                        <Box>
+                                            <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                                                {student.name}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                {student.father_name || 'N/A'}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                ID: {getStudentDisplayId(student)}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                {student.address || 'No address'}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            )}
+                            PaperComponent={(props) => (
+                                <Paper
+                                    {...props}
+                                    sx={{
+                                        ...selectMenuProps.PaperProps?.sx,
+                                        maxHeight: 300,
+                                        backgroundColor: theme.palette.mode === 'dark' 
+                                            ? theme.palette.background.paper
+                                            : theme.palette.background.paper,
+                                    }}
+                                />
+                            )}
+                        />
+                    </Grid>
 
                     <Grid item xs={12} sm={6}>
                         <FormControl fullWidth size="small">
@@ -799,6 +690,7 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
                                 label="Severity"
                                 onChange={(e) => setFormData({ ...formData, severity: e.target.value as ReportSeverity })}
                                 required
+                                MenuProps={selectMenuProps}
                             >
                                 <MenuItem value="low">Low</MenuItem>
                                 <MenuItem value="medium">Medium</MenuItem>
@@ -874,4 +766,5 @@ export const CreateReportForm: React.FC<CreateReportFormProps> = ({
             </FormActions>
         </StyledDialog>
     );
-}; 
+};
+

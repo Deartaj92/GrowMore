@@ -7,10 +7,10 @@ import { ToastProvider } from './components/useToast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout, { ProgressProvider } from './components/Layout';
 import UpdateNotification, { UpdateNotificationRef } from './components/UpdateNotification';
+import { ensurePermissionsSynced } from './services/permissionService';
 import Login from './pages/Login';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import Dashboard from './pages/Dashboard';
-import GuestDashboard from './pages/GuestDashboard';
 import WelcomePage from './pages/WelcomePage';
 import ClassesManager from './components/ClassesManager';
 import StudentAdmissionForm from './components/StudentAdmissionForm';
@@ -38,8 +38,12 @@ import UserManagement from './pages/UserManagement';
 import GeneralSettings from './pages/GeneralSettings';
 import UserAnnouncements from './pages/UserAnnouncements';
 import NotificationSettings from './pages/NotificationSettings';
-import LandingPageConfiguration from './pages/LandingPageConfiguration';
+import RenderSettings from './pages/RenderSettings';
+import RoleManagement from './pages/RoleManagement';
+import UserPermissionManagement from './pages/UserPermissionManagement';
 import CustomLandingPage from './pages/CustomLandingPage';
+import UserDashboard from './pages/UserDashboard';
+import Events from './pages/Events';
 import StaffAddForm from './pages/StaffAddForm';
 import { useAuth } from './contexts/AuthContext';
 import HolidayManager from './components/HolidayManager';
@@ -49,6 +53,7 @@ import TeacherSubjectManager from './pages/TeacherSubjectManager';
 import MyTimetable from './pages/MyTimetable';
 import TimeTableManager from './pages/TimeTableManager';
 import { Reports } from './pages/Reports';
+import { EmployeeReports } from './pages/EmployeeReports';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { StudentProfile } from './pages/StudentProfile';
@@ -101,12 +106,10 @@ import FinanceDashboard from './components/FinanceDashboard';
 // Communication Management Components
 import CommunicationDashboard from './components/CommunicationDashboard';
 // Settings Management Components
-import SettingsDashboard from './components/SettingsDashboard';
 // Employee Management Components
 import EmployeesDashboard from './components/EmployeesDashboard';
-import { LoadingProvider, useLoading } from './contexts/LoadingContext';
-import Loader from './components/Loader';
-import RouteChangeLoader from './components/RouteChangeLoader';
+import { LoadingProvider } from './contexts/LoadingContext';
+// import RouteChangeLoader from './components/RouteChangeLoader'; // Disabled - using page-specific loaders instead
 import { ThemeContext, darkTheme, lightTheme } from './contexts/ThemeContext';
 import GlobalBackHandler from './components/GlobalBackHandler';
 import { NavigationProvider } from './contexts/NavigationContext';
@@ -118,34 +121,16 @@ import { isWeb } from './utils/platformDetection';
 const isElectron = Boolean((window as any).electronAPI);
 const AppRouter = isElectron ? HashRouter : BrowserRouter;
 
-const GlobalLoaderOverlay: React.FC = () => {
-  const { loading } = useLoading();
-  const { theme } = useContext(ThemeContext);
-
-  if (!loading) return null;
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: theme === 'dark'
-        ? 'rgba(37, 37, 37, 0.95)' // Dark theme with slight transparency
-        : 'rgba(245, 247, 250, 0.95)', // Light theme with slight transparency
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-      zIndex: 99999, // Very high z-index to ensure it's above everything
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      transition: 'opacity 0.3s ease-in-out',
-    }}>
-      <Loader />
-    </div>
-  );
-};
-
 const App: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const updateNotificationRef = useRef<UpdateNotificationRef>(null);
+
+  // Sync permissions from menu structure on app startup
+  useEffect(() => {
+    ensurePermissionsSynced().catch(err => {
+      console.error('Failed to sync permissions:', err);
+    });
+  }, []);
 
   // Expose update check function globally for manual checks
   useEffect(() => {
@@ -186,16 +171,16 @@ const App: React.FC = () => {
           <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
             <ProgressProvider>
               <LoadingProvider>
-                <NavigationProvider>
-                  <RouteChangeLoader />
-                  <GlobalBackHandler
-                    onExit={() => {
-                      if (window.electronAPI) {
-                        window.electronAPI.minimize();
-                      }
-                    }}
-                  />
-                  <AuthProvider>
+                {/* <RouteChangeLoader /> */} {/* Disabled - using page-specific loaders instead */}
+                <GlobalBackHandler
+                  onExit={() => {
+                    if (window.electronAPI) {
+                      window.electronAPI.minimize();
+                    }
+                  }}
+                />
+                <AuthProvider>
+                  <NavigationProvider>
                     <ToastProvider theme={theme} muted={false}>
                       <Routes>
                         {/* Public Routes */}
@@ -207,7 +192,7 @@ const App: React.FC = () => {
                         <Route
                           path="/welcome"
                           element={
-                            <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher', 'Super Admin']}>
+                            <ProtectedRoute requiredPermission="dashboard">
                               <SchoolWelcomeScreen />
                             </ProtectedRoute>
                           }
@@ -217,7 +202,7 @@ const App: React.FC = () => {
                         <Route
                           path="/dashboard"
                           element={
-                            <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Super Admin', 'Guest']} guestPageKey="dashboard">
+                            <ProtectedRoute requiredPermission="dashboard">
                               <Layout />
                             </ProtectedRoute>
                           }
@@ -225,21 +210,6 @@ const App: React.FC = () => {
                           <Route
                             index
                             element={<Dashboard />}
-                          />
-                        </Route>
-
-                        {/* Guest Dashboard Route - Menu cards for guest users */}
-                        <Route
-                          path="/guest"
-                          element={
-                            <ProtectedRoute allowedRoles={['Guest']}>
-                              <Layout />
-                            </ProtectedRoute>
-                          }
-                        >
-                          <Route
-                            index
-                            element={<GuestDashboard />}
                           />
                         </Route>
 
@@ -256,9 +226,7 @@ const App: React.FC = () => {
                           <Route
                             path="my-profile"
                             element={
-                              <ProtectedRoute
-                                allowedRoles={['Student']}
-                              >
+                              <ProtectedRoute requiredPermission="student-profile">
                                 <StudentProfile isMyProfile={true} />
                               </ProtectedRoute>
                             }
@@ -268,27 +236,22 @@ const App: React.FC = () => {
                             path="student/:id"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest', 'Parent']}
-                                guestPageKey="student_profile"
+                                requiredPermission="student-profile"
                               >
                                 <StudentProfile />
                               </ProtectedRoute>
                             }
                           />
                           <Route
-                            path="teacher"
-                            element={
-                              <ProtectedRoute allowedRoles={['Teacher']}>
-                                <WelcomePage />
-                              </ProtectedRoute>
-                            }
+                            path="user"
+                            element={<UserDashboard />}
                           />
 
                           {/* Teacher Timetable */}
                           <Route
                             path="my-timetable"
                             element={
-                              <ProtectedRoute allowedRoles={['Teacher']}>
+                              <ProtectedRoute requiredPermission="timetable">
                                 <MyTimetable />
                               </ProtectedRoute>
                             }
@@ -299,7 +262,7 @@ const App: React.FC = () => {
                           <Route
                             path="classes/all"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <ClassesManager />
                               </ProtectedRoute>
                             }
@@ -311,8 +274,7 @@ const App: React.FC = () => {
                             path="students/list"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                                guestPageKey="students_list"
+                                requiredPermission="students-list"
                               >
                                 <StudentList />
                               </ProtectedRoute>
@@ -323,8 +285,7 @@ const App: React.FC = () => {
                             path="students/profile/:id"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest', 'Parent']}
-                                guestPageKey="student_profile"
+                                requiredPermission="student-profile"
                               >
                                 <StudentProfile />
                               </ProtectedRoute>
@@ -334,7 +295,7 @@ const App: React.FC = () => {
                           <Route
                             path="students/add"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                              <ProtectedRoute requiredPermission="students-add">
                                 <StudentAdmissionForm />
                               </ProtectedRoute>
                             }
@@ -343,7 +304,7 @@ const App: React.FC = () => {
                           <Route
                             path="bulk-student-admission"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                              <ProtectedRoute requiredPermission="students-bulk-admission">
                                 <BulkStudentAdmission />
                               </ProtectedRoute>
                             }
@@ -352,7 +313,7 @@ const App: React.FC = () => {
                           <Route
                             path="students/status"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                              <ProtectedRoute requiredPermission="students-status">
                                 <StudentStatusManager />
                               </ProtectedRoute>
                             }
@@ -362,8 +323,7 @@ const App: React.FC = () => {
                             path="students/withdrawal-register"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head', 'Guest']}
-                                guestPageKey="students_list"
+                                requiredPermission="withdrawal-register"
                               >
                                 <WithdrawalRegister />
                               </ProtectedRoute>
@@ -373,10 +333,17 @@ const App: React.FC = () => {
                           <Route
                             path="students/general-message"
                             element={
-                              <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Academic Head']}
-                              >
+                              <ProtectedRoute requiredPermission="messages">
                                 <GeneralMessagePage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="events"
+                            element={
+                              <ProtectedRoute requiredPermission="events">
+                                <Events />
                               </ProtectedRoute>
                             }
                           />
@@ -384,7 +351,7 @@ const App: React.FC = () => {
                           <Route
                             path="bulk-promote-demote"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                              <ProtectedRoute requiredPermission="students-bulk-promote">
                                 <BulkPromoteDemote />
                               </ProtectedRoute>
                             }
@@ -393,7 +360,7 @@ const App: React.FC = () => {
                           <Route
                             path="family-management"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Academic Head']}>
+                              <ProtectedRoute requiredPermission="family-management">
                                 <FamilyManagementPage />
                               </ProtectedRoute>
                             }
@@ -403,7 +370,7 @@ const App: React.FC = () => {
                           <Route
                             path="employees"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <EmployeesDashboard />
                               </ProtectedRoute>
                             }
@@ -413,10 +380,7 @@ const App: React.FC = () => {
                           <Route
                             path="employees/list"
                             element={
-                              <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Guest']}
-                                guestPageKey="employees_list"
-                              >
+                              <ProtectedRoute requiredPermission="employees-list">
                                 <EmployeeList />
                               </ProtectedRoute>
                             }
@@ -425,18 +389,27 @@ const App: React.FC = () => {
                           <Route
                             path="employees/add"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="employees-add">
                                 <StaffAddForm />
                               </ProtectedRoute>
                             }
                           />
 
+                          {/* Teacher My Profile - Only accessible to teachers, no ID in URL */}
+                          <Route
+                            path="profile"
+                            element={
+                              <ProtectedRoute requiredPermission="teacher-profile">
+                                <TeacherProfile isMyProfile={true} />
+                              </ProtectedRoute>
+                            }
+                          />
+                          {/* Public Teacher Profile (for viewing other teachers) */}
                           <Route
                             path="employees/profile/:id"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Guest', 'Teacher']}
-                                guestPageKey="employee_profile"
+                                requiredPermission="teacher-profile"
                               >
                                 <TeacherProfile />
                               </ProtectedRoute>
@@ -446,27 +419,19 @@ const App: React.FC = () => {
                           <Route
                             path="/teacher-subjects"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="teacher-subjects">
                                 <TeacherSubjectManager />
                               </ProtectedRoute>
                             }
                           />
 
                           {/* Settings Dashboard */}
-                          <Route
-                            path="settings"
-                            element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
-                                <SettingsDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
 
                           {/* Settings Routes */}
                           <Route
                             path="settings/sessions"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <SessionsManager />
                               </ProtectedRoute>
                             }
@@ -475,8 +440,26 @@ const App: React.FC = () => {
                           <Route
                             path="settings/user-management"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <UserManagement />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/role-management"
+                            element={
+                              <ProtectedRoute requiredPermission="settings-classes">
+                                <RoleManagement />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/user-permissions"
+                            element={
+                              <ProtectedRoute requiredPermission="settings-classes">
+                                <UserPermissionManagement />
                               </ProtectedRoute>
                             }
                           />
@@ -484,7 +467,7 @@ const App: React.FC = () => {
                           <Route
                             path="settings/institute-profile"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <InstituteProfile />
                               </ProtectedRoute>
                             }
@@ -493,7 +476,7 @@ const App: React.FC = () => {
                           <Route
                             path="settings/holidays"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <HolidayManager />
                               </ProtectedRoute>
                             }
@@ -502,7 +485,7 @@ const App: React.FC = () => {
                           <Route
                             path="settings/classes"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <ClassesManager />
                               </ProtectedRoute>
                             }
@@ -511,7 +494,7 @@ const App: React.FC = () => {
                           <Route
                             path="settings/general-settings"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <GeneralSettings />
                               </ProtectedRoute>
                             }
@@ -520,7 +503,7 @@ const App: React.FC = () => {
                           <Route
                             path="settings/user-announcements"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <UserAnnouncements />
                               </ProtectedRoute>
                             }
@@ -529,17 +512,17 @@ const App: React.FC = () => {
                           <Route
                             path="settings/notifications"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <NotificationSettings />
                               </ProtectedRoute>
                             }
                           />
 
                           <Route
-                            path="settings/landing-page-config"
+                            path="settings/rendersettings"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal']}>
-                                <LandingPageConfiguration />
+                              <ProtectedRoute requiredPermission="settings-landing-page">
+                                <RenderSettings />
                               </ProtectedRoute>
                             }
                           />
@@ -547,7 +530,7 @@ const App: React.FC = () => {
                           <Route
                             path="home"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Student', 'Parent', 'Accountant', 'Guest']}>
+                              <ProtectedRoute requiredPermission="dashboard">
                                 <CustomLandingPage />
                               </ProtectedRoute>
                             }
@@ -557,7 +540,7 @@ const App: React.FC = () => {
                           <Route
                             path="finance"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-structure">
                                 <FinanceDashboard />
                               </ProtectedRoute>
                             }
@@ -567,7 +550,7 @@ const App: React.FC = () => {
                           <Route
                             path="fines"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fine-assign">
                                 <FineDashboard />
                               </ProtectedRoute>
                             }
@@ -576,7 +559,7 @@ const App: React.FC = () => {
                           <Route
                             path="fine-dashboard"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-structure">
                                 <FineDashboard />
                               </ProtectedRoute>
                             }
@@ -586,7 +569,7 @@ const App: React.FC = () => {
                           <Route
                             path="fines/assign"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fine-assign">
                                 <FineManager />
                               </ProtectedRoute>
                             }
@@ -595,7 +578,7 @@ const App: React.FC = () => {
                           <Route
                             path="fines/collect"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fine-collect">
                                 <FineCollection />
                               </ProtectedRoute>
                             }
@@ -604,7 +587,7 @@ const App: React.FC = () => {
                           <Route
                             path="fines/remaining"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fine-remaining">
                                 <RemainingFine />
                               </ProtectedRoute>
                             }
@@ -614,8 +597,7 @@ const App: React.FC = () => {
                             path="fines/statistics"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
-                                guestPageKey="fine_statistics"
+                                requiredPermission="fine-statistics"
                               >
                                 <FineStatistics />
                               </ProtectedRoute>
@@ -626,7 +608,7 @@ const App: React.FC = () => {
                           <Route
                             path="fee-management"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-structure">
                                 <FeeManagementDashboard />
                               </ProtectedRoute>
                             }
@@ -636,7 +618,7 @@ const App: React.FC = () => {
                           <Route
                             path="fee-structure-management"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-structure">
                                 <FeeStructureManager />
                               </ProtectedRoute>
                             }
@@ -645,7 +627,7 @@ const App: React.FC = () => {
                           <Route
                             path="load-fee"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="load-fee">
                                 <LoadFeePage />
                               </ProtectedRoute>
                             }
@@ -654,7 +636,7 @@ const App: React.FC = () => {
                           <Route
                             path="fee-collection"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-collection">
                                 <FeeCollection />
                               </ProtectedRoute>
                             }
@@ -663,7 +645,7 @@ const App: React.FC = () => {
                           <Route
                             path="fee-defaulters"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-defaulters">
                                 <FeeDefaultersList />
                               </ProtectedRoute>
                             }
@@ -672,7 +654,7 @@ const App: React.FC = () => {
                           <Route
                             path="fee-audit-logs"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-audit-logs">
                                 <FeeAuditLogsPage />
                               </ProtectedRoute>
                             }
@@ -682,8 +664,7 @@ const App: React.FC = () => {
                             path="fee-analytics"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}
-                                guestPageKey="fee_analytics"
+                                requiredPermission="fee-analytics"
                               >
                                 <FeeAnalyticsPage />
                               </ProtectedRoute>
@@ -693,7 +674,7 @@ const App: React.FC = () => {
                           <Route
                             path="concessions"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-concessions">
                                 <ConcessionsPage />
                               </ProtectedRoute>
                             }
@@ -702,7 +683,7 @@ const App: React.FC = () => {
                           <Route
                             path="fee-settings"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-structure">
                                 <FeeSettings />
                               </ProtectedRoute>
                             }
@@ -711,7 +692,7 @@ const App: React.FC = () => {
                           <Route
                             path="payment-history"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="payment-history">
                                 <PaymentHistoryPage />
                               </ProtectedRoute>
                             }
@@ -720,7 +701,7 @@ const App: React.FC = () => {
                           <Route
                             path="ledger"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="fee-ledger">
                                 <LedgerPage />
                               </ProtectedRoute>
                             }
@@ -730,7 +711,7 @@ const App: React.FC = () => {
                           <Route
                             path="expense-management"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="expense-manager">
                                 <ExpenseDashboard />
                               </ProtectedRoute>
                             }
@@ -740,7 +721,7 @@ const App: React.FC = () => {
                           <Route
                             path="expense-manager"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="expense-manager">
                                 <ExpenseManager />
                               </ProtectedRoute>
                             }
@@ -749,7 +730,8 @@ const App: React.FC = () => {
                           <Route
                             path="expense-analytics"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant', 'Guest']}>
+                              <ProtectedRoute
+                                requiredPermission="expense-analytics">
                                 <ExpenseAnalyticsPage />
                               </ProtectedRoute>
                             }
@@ -759,7 +741,7 @@ const App: React.FC = () => {
                           <Route
                             path="communication"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="messages">
                                 <CommunicationDashboard />
                               </ProtectedRoute>
                             }
@@ -769,7 +751,7 @@ const App: React.FC = () => {
                           <Route
                             path="enquiries"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="enquiry-dashboard">
                                 <EnquiryManagementDashboardPage />
                               </ProtectedRoute>
                             }
@@ -777,7 +759,7 @@ const App: React.FC = () => {
                           <Route
                             path="enquiries/dashboard"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="enquiry-dashboard">
                                 <EnquiryDashboardPage />
                               </ProtectedRoute>
                             }
@@ -785,7 +767,7 @@ const App: React.FC = () => {
                           <Route
                             path="enquiries/list"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="enquiry-list">
                                 <EnquiryListPage />
                               </ProtectedRoute>
                             }
@@ -793,7 +775,7 @@ const App: React.FC = () => {
                           <Route
                             path="enquiries/create"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="enquiry-create">
                                 <EnquiryFormPage />
                               </ProtectedRoute>
                             }
@@ -801,7 +783,7 @@ const App: React.FC = () => {
                           <Route
                             path="enquiries/:id"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="enquiry-list">
                                 <EnquiryDetailPage />
                               </ProtectedRoute>
                             }
@@ -809,7 +791,7 @@ const App: React.FC = () => {
                           <Route
                             path="enquiries/:id/edit"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Accountant']}>
+                              <ProtectedRoute requiredPermission="enquiry-create">
                                 <EnquiryFormPage />
                               </ProtectedRoute>
                             }
@@ -819,11 +801,24 @@ const App: React.FC = () => {
                           <Route
                             path="reports"
                             element={
-                              <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
-                                guestPageKey="reports"
-                              >
+                              <ProtectedRoute requiredPermission="reports-students">
                                 <Reports />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="reports/students"
+                            element={
+                              <ProtectedRoute requiredPermission="reports-students">
+                                <Reports />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="reports/employee-reports"
+                            element={
+                              <ProtectedRoute requiredPermission="reports-employees">
+                                <EmployeeReports />
                               </ProtectedRoute>
                             }
                           />
@@ -833,7 +828,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/mark"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="attendance-mark">
                                 <MarkAttendance />
                               </ProtectedRoute>
                             }
@@ -842,7 +837,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/staff"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="attendance-staff">
                                 <MarkStaffAttendance />
                               </ProtectedRoute>
                             }
@@ -851,7 +846,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/staff-report"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="attendance-staff-report">
                                 <StaffAttendanceReport />
                               </ProtectedRoute>
                             }
@@ -861,8 +856,7 @@ const App: React.FC = () => {
                             path="attendance/report"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Principal', 'Admin', 'Teacher', 'Guest']}
-                                guestPageKey="attendance_reports"
+                                requiredPermission="attendance-report"
                               >
                                 <AttendanceReport />
                               </ProtectedRoute>
@@ -872,7 +866,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/half-leaves"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="half-leaves">
                                 <HalfLeaves />
                               </ProtectedRoute>
                             }
@@ -881,7 +875,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/leave-requests"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="leave-requests">
                                 <LeaveRequestsPage />
                               </ProtectedRoute>
                             }
@@ -890,7 +884,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/complaints-suggestions"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="settings-classes">
                                 <ComplaintsSuggestionsPage />
                               </ProtectedRoute>
                             }
@@ -900,7 +894,7 @@ const App: React.FC = () => {
                           <Route
                             path="subjects"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="subjects">
                                 <SubjectManager />
                               </ProtectedRoute>
                             }
@@ -913,8 +907,7 @@ const App: React.FC = () => {
                             path="examinations"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                                guestPageKey="examination_results"
+                                requiredPermission="examinations"
                               >
                                 <ExaminationManager />
                               </ProtectedRoute>
@@ -925,7 +918,7 @@ const App: React.FC = () => {
                           <Route
                             path="examination-configuration"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="examination-configuration">
                                 <ExaminationConfiguration />
                               </ProtectedRoute>
                             }
@@ -934,7 +927,7 @@ const App: React.FC = () => {
                           <Route
                             path="marks-entry"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="marks-entry">
                                 <MarksEntryManager />
                               </ProtectedRoute>
                             }
@@ -943,7 +936,7 @@ const App: React.FC = () => {
                           <Route
                             path="master-sheets"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="master-sheets">
                                 <MasterSheetManager />
                               </ProtectedRoute>
                             }
@@ -952,7 +945,7 @@ const App: React.FC = () => {
                           <Route
                             path="dmc-generation"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="dmc-generation">
                                 <DetailedMarksCertificate />
                               </ProtectedRoute>
                             }
@@ -961,7 +954,7 @@ const App: React.FC = () => {
                           <Route
                             path="position-holders"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="position-holders">
                                 <PositionHolders />
                               </ProtectedRoute>
                             }
@@ -970,7 +963,7 @@ const App: React.FC = () => {
                           <Route
                             path="exam-analytics"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="exam-analytics">
                                 <ExaminationAnalytics />
                               </ProtectedRoute>
                             }
@@ -981,8 +974,7 @@ const App: React.FC = () => {
                             path="test-records"
                             element={
                               <ProtectedRoute
-                                allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher', 'Guest']}
-                                guestPageKey="test_records"
+                                requiredPermission="test-records"
                               >
                                 <TestRecordManager />
                               </ProtectedRoute>
@@ -991,7 +983,7 @@ const App: React.FC = () => {
                           <Route
                             path="test-record-master-sheet"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="test-master-sheet">
                                 <TestRecordMasterSheet />
                               </ProtectedRoute>
                             }
@@ -999,7 +991,7 @@ const App: React.FC = () => {
                           <Route
                             path="test-analytics"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="test-analytics">
                                 <TestAnalytics />
                               </ProtectedRoute>
                             }
@@ -1009,7 +1001,7 @@ const App: React.FC = () => {
                           <Route
                             path="timetable"
                             element={
-                              <ProtectedRoute allowedRoles={['Principal', 'Admin']}>
+                              <ProtectedRoute requiredPermission="timetable">
                                 <TimeTableManager />
                               </ProtectedRoute>
                             }
@@ -1019,7 +1011,7 @@ const App: React.FC = () => {
                           <Route
                             path="homework-diary"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="homework-diary">
                                 <HomeworkDiaryManager />
                               </ProtectedRoute>
                             }
@@ -1028,7 +1020,7 @@ const App: React.FC = () => {
                           <Route
                             path="diary-analytics"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal', 'Admin', 'Teacher']}>
+                              <ProtectedRoute requiredPermission="diary-analytics">
                                 <DiaryAnalytics />
                               </ProtectedRoute>
                             }
@@ -1038,7 +1030,7 @@ const App: React.FC = () => {
                           <Route
                             path="schools"
                             element={
-                              <ProtectedRoute allowedRoles={['Super Admin', 'Principal']}>
+                              <ProtectedRoute requiredPermission="settings-institute-profile">
                                 <SchoolsManagement />
                               </ProtectedRoute>
                             }
@@ -1049,10 +1041,10 @@ const App: React.FC = () => {
                         </Route>
                       </Routes>
                     </ToastProvider>
-                  </AuthProvider>
-                  {/* Only render UpdateNotification on Electron/Capacitor, not on web */}
-                  {!isWeb() && <UpdateNotification ref={updateNotificationRef} />}
-                </NavigationProvider>
+                    {/* Only render UpdateNotification on Electron/Capacitor, not on web */}
+                    {!isWeb() && <UpdateNotification ref={updateNotificationRef} />}
+                  </NavigationProvider>
+                </AuthProvider>
               </LoadingProvider>
             </ProgressProvider>
           </ThemeProvider>

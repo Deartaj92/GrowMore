@@ -82,7 +82,7 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
   }
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       {homeworkLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
           <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />

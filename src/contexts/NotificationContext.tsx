@@ -282,12 +282,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Update student and parent info when it changes
   useEffect(() => {
     const loadInfo = () => {
-      const studentInfoData = getStudentInfo();
-      const parentInfoData = getParentInfo();
-      setStudentInfo(studentInfoData);
+    const studentInfoData = getStudentInfo();
+    const parentInfoData = getParentInfo();
+    setStudentInfo(studentInfoData);
       // Ensure parentInfo has all required fields (id and school_id)
       if (parentInfoData && parentInfoData.id) {
-        setParentInfo(parentInfoData);
+    setParentInfo(parentInfoData);
       } else {
         setParentInfo(null);
       }
@@ -302,7 +302,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       setStudentInfo(updatedStudentInfo);
       // Ensure parentInfo has all required fields
       if (updatedParentInfo && updatedParentInfo.id) {
-        setParentInfo(updatedParentInfo);
+      setParentInfo(updatedParentInfo);
       } else {
         setParentInfo(null);
       }

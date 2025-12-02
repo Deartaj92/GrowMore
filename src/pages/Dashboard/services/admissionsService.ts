@@ -1,7 +1,6 @@
 import { supabase } from '../../../supabaseClient';
 import { generateDummyAdmissions } from '../utils/dummyData';
 import { USE_DUMMY_DATA } from '../constants';
-import { getTabCacheKey } from '../utils/cacheUtils';
 
 // Admissions service functions will be extracted here
 // fetchAdmissionsData, etc.
@@ -12,8 +11,7 @@ export const fetchAdmissionsData = async (
   toDate: string,
   setAdmissionsData: (data: any) => void,
   setAdmissionsLoading: (loading: boolean) => void,
-  getCachedSession: () => Promise<any>,
-  setCachedTabData: (key: string, data: any, params?: Record<string, any>) => void
+  getCachedSession: () => Promise<any>
 ): Promise<void> => {
   if (!schoolId) {
     setAdmissionsLoading(false);
@@ -109,10 +107,10 @@ export const fetchAdmissionsData = async (
         .order('created_at', { ascending: false })
         .limit(100), // Limit to 100 most recent for faster loading
       supabase
-        .from('fee_plans')
+        .from('fee_heads')
         .select('id, name')
         .eq('school_id', schoolId)
-        .limit(50) // Limit fee plans to 50 for faster loading
+        .limit(50) // Limit fee heads to 50 for faster loading
     ]);
 
     // Process chart data from fetched records
@@ -142,20 +140,76 @@ export const fetchAdmissionsData = async (
       }
     });
 
-    // Fetch withdrawals data (students with status 'withdrawn' or 'inactive')
-    const withdrawalsResult = await supabase
-      .from('students')
-      .select('id, created_at, gender, status')
+    // Fetch withdrawals data from student_status_history table
+    // Try both action='withdraw' and new_status='withdrawn' separately and combine
+    const [withdrawalsByAction, withdrawalsByStatus] = await Promise.all([
+      supabase
+        .from('student_status_history')
+        .select('id, student_id, created_at, action, new_status, reason')
+        .eq('school_id', schoolId)
+        .eq('action', 'withdraw')
+        .gte('created_at', dataStartDate)
+        .lte('created_at', dataEndDate)
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase
+        .from('student_status_history')
+        .select('id, student_id, created_at, action, new_status, reason')
       .eq('school_id', schoolId)
-      .in('status', ['withdrawn', 'inactive'])
+        .eq('new_status', 'withdrawn')
       .gte('created_at', dataStartDate)
+        .lte('created_at', dataEndDate)
       .order('created_at', { ascending: false })
-      .limit(100);
+        .limit(100)
+    ]);
 
-    // Process withdrawals for withdrawals chart
-    (withdrawalsResult.data || []).forEach((student: any) => {
-      if (student.created_at) {
-        const date = new Date(student.created_at);
+    // Combine results and remove duplicates (same record might match both conditions)
+    const allWithdrawals = [
+      ...(withdrawalsByAction.data || []),
+      ...(withdrawalsByStatus.data || [])
+    ];
+    
+    // Remove duplicates by id
+    const uniqueWithdrawals = Array.from(
+      new Map(allWithdrawals.map((record: any) => [record.id, record])).values()
+    );
+
+    // Log for debugging
+    if (withdrawalsByAction.error) {
+      console.error('Error fetching withdrawals by action:', withdrawalsByAction.error);
+    }
+    if (withdrawalsByStatus.error) {
+      console.error('Error fetching withdrawals by status:', withdrawalsByStatus.error);
+    }
+    console.log('Total unique withdrawals found:', uniqueWithdrawals.length);
+
+    // Get unique student IDs from withdrawal records
+    const withdrawalStudentIds = Array.from(
+      new Set(uniqueWithdrawals.map((record: any) => record.student_id))
+    ).filter((id): id is number => id !== null && id !== undefined);
+
+    // Fetch student gender data for withdrawal records
+    let studentGenderMap = new Map<number, string>();
+    if (withdrawalStudentIds.length > 0) {
+      const studentsResult = await supabase
+        .from('students')
+        .select('id, gender')
+        .eq('school_id', schoolId)
+        .in('id', withdrawalStudentIds);
+
+      if (studentsResult.data) {
+        studentsResult.data.forEach((student: any) => {
+          if (student.gender) {
+            studentGenderMap.set(student.id, student.gender);
+          }
+        });
+      }
+    }
+
+    // Process withdrawals for withdrawals chart using history table data
+    uniqueWithdrawals.forEach((historyRecord: any) => {
+      if (historyRecord.created_at) {
+        const date = new Date(historyRecord.created_at);
         const monthKey = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
         
         if (!withdrawalsChartMap.has(monthKey)) {
@@ -163,10 +217,14 @@ export const fetchAdmissionsData = async (
         }
         const monthData = withdrawalsChartMap.get(monthKey)!;
         
-        if (student.gender === 'Male' || student.gender === 'male') {
+        // Get gender from the student gender map
+        const gender = studentGenderMap.get(historyRecord.student_id);
+        if (gender) {
+          if (gender === 'Male' || gender === 'male') {
           monthData.boys++;
-        } else if (student.gender === 'Female' || student.gender === 'female') {
+          } else if (gender === 'Female' || gender === 'female') {
           monthData.girls++;
+          }
         }
       }
     });
@@ -255,13 +313,6 @@ export const fetchAdmissionsData = async (
 
     setAdmissionsData(admissionsData);
     
-    // Cache the data
-    const cacheKey = getTabCacheKey('admissions', { 
-      school_id: schoolId, 
-      fromDate, 
-      toDate 
-    });
-    setCachedTabData(cacheKey, admissionsData, { school_id: schoolId, fromDate, toDate });
   } catch (error) {
     console.error('Error fetching admissions data:', error);
   } finally {
