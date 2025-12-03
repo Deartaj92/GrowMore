@@ -70,6 +70,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/students/general-message': 'messages',
   '/settings/user-announcements': 'announcements',
   '/events': 'events',
+  '/attendance/complaints-suggestions': 'complaints-suggestions',
   '/enquiries/dashboard': 'enquiry-dashboard',
   '/enquiries/list': 'enquiry-list',
   '/enquiries/create': 'enquiry-create',

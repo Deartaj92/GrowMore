@@ -47,6 +47,7 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   ChevronRight as ChevronRightIcon,
+  Feedback as FeedbackIcon,
 } from '@mui/icons-material';
 import styled from 'styled-components';
 import {
@@ -1248,6 +1249,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <EventBusyIcon />,
       path: '/attendance/leave-requests',
       color: '#ef4444'
+    },
+    {
+      title: 'Complaints & Suggestions',
+      description: 'Review and manage student and parent complaints and suggestions',
+      icon: <FeedbackIcon />,
+      path: '/attendance/complaints-suggestions',
+      color: '#f59e0b'
     }
   ];
 

@@ -55,6 +55,7 @@ function getAllMenuItems(): MenuItemType[] {
  */
 function getCategoryFromPath(path: string): string {
   if (path.startsWith('/students')) return 'Students';
+  if (path.startsWith('/attendance/complaints-suggestions')) return 'Communication';
   if (path.startsWith('/attendance')) return 'Attendance';
   if (path.startsWith('/reports')) return 'Reports';
   if (path.startsWith('/employees')) return 'Employees';

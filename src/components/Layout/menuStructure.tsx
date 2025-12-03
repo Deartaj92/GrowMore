@@ -33,6 +33,7 @@ import {
   Add as AddIcon,
   List as ListIcon,
   Event as EventIcon,
+  Feedback as FeedbackIcon,
 } from '@mui/icons-material';
 
 export interface MenuItem {
@@ -402,6 +403,13 @@ export const communicationMenuItems: MenuItem[] = [
     icon: React.createElement(EventBusyIcon),
     path: '/attendance/leave-requests',
     color: '#ef4444'
+  },
+  {
+    title: 'Complaints & Suggestions',
+    description: 'Review and manage student and parent complaints and suggestions',
+    icon: React.createElement(FeedbackIcon),
+    path: '/attendance/complaints-suggestions',
+    color: '#f59e0b'
   }
 ];
 

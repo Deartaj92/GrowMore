@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { activityTrackingService, Notification, NotificationPreferences } from '../services/activityTrackingService';
 import { supabase } from '../supabaseClient';
 import { pushNotificationService } from '../services/pushNotificationService';
+import { Capacitor } from '@capacitor/core';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -646,20 +647,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         filteredAnnouncements = announcements.filter((_, index) => matches[index]);
       } else if (parentInfo) {
         // Parents: Show both student-targeted announcements (if children match) AND parent-targeted announcements
+        // Filter first to reduce async calls
+        const relevantAnnouncements = announcements.filter(a => 
+          a.audience_group === 'parents' || a.audience_group === 'students'
+        );
         const matches = await Promise.all(
-          announcements.map(async (announcement) => {
-            // Check for parent-targeted announcements
-            if (announcement.audience_group === 'parents') {
-              return await matchesAnnouncementAudience(announcement, parentChildren);
-            }
-            // Check for student-targeted announcements (if any of their children match)
-            if (announcement.audience_group === 'students') {
-              return await matchesAnnouncementAudience(announcement, parentChildren);
-            }
-            return false;
+          relevantAnnouncements.map(async (announcement) => {
+            return await matchesAnnouncementAudience(announcement, parentChildren);
           })
         );
-        filteredAnnouncements = announcements.filter((_, index) => matches[index]);
+        filteredAnnouncements = relevantAnnouncements.filter((_, index) => matches[index]);
       } else if (user) {
         // Check if user is Principal/Admin with notification settings access
         const hasNotificationSettingsAccess = user.role === 'Principal' || user.role === 'Admin';
@@ -677,13 +674,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           }
         } else {
           // Teachers or other staff: Only show staff-targeted announcements that match them
+          // Filter first to reduce async calls
+          const staffAnnouncements = announcements.filter(a => a.audience_group === 'staff');
           const matches = await Promise.all(
-            announcements.map(async (announcement) => {
-              if (announcement.audience_group !== 'staff') return false;
+            staffAnnouncements.map(async (announcement) => {
               return await matchesAnnouncementAudience(announcement);
             })
           );
-          filteredAnnouncements = announcements.filter((_, index) => matches[index]);
+          filteredAnnouncements = staffAnnouncements.filter((_, index) => matches[index]);
         }
       }
 
@@ -847,9 +845,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         // Fetch notifications with pagination
         // Load all reports separately (fetched in batches to handle Supabase 1000 row limit)
         // Use user.id (users table ID) for staff, not staff_id, since notifications use recipient_id = user.id
+        // Only fetch first page initially for better performance
         const [notificationsData, allReportsData, announcementNotifications] = await Promise.all([
           activityTrackingService.getUserNotifications(user.id, user.school_id, PAGE_SIZE, 0),
-          activityTrackingService.getAllUserNotifications(user.id, user.school_id, 'report'), // Load all reports in batches
+          activityTrackingService.getUserNotifications(user.id, user.school_id, 50, 0).then(data => 
+            data.filter(n => n.notification_type === 'report')
+          ), // Load only first 50 reports initially
           fetchAnnouncementsAsNotifications(preferencesData)
         ]);
 
@@ -924,8 +925,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           }
         } else if (userId && schoolId) {
           try {
-            // Fetch all notifications from notifications table (works for both staff and students)
-            allNotificationsData = await activityTrackingService.getAllUserNotifications(userId, schoolId);
+            // Fetch only first page of notifications initially for better performance
+            // Load more can fetch additional pages if needed
+            allNotificationsData = await activityTrackingService.getUserNotifications(userId, schoolId, PAGE_SIZE, 0);
 
             // Separate reports from other notifications
             allReportsData = allNotificationsData.filter(n => n.notification_type === 'report');
@@ -1767,33 +1769,70 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id]);
 
   // Robust Push Initialization for push notifications
+  // Always requests permission on each app start if not granted
   useEffect(() => {
-    const checkAndInitPush = () => {
+    const checkAndInitPush = async () => {
       const latestStudentInfo = studentInfo || getStudentInfo();
       const userId = user?.staff_id || latestStudentInfo?.id;
       const schoolId = user?.school_id || latestStudentInfo?.school_id;
       const userType: 'staff' | 'student' = latestStudentInfo?.id ? 'student' : 'staff';
 
       if (userId && schoolId) {
-        pushNotificationService.initCapacitorPush(userId, schoolId, userType);
+        // Initialize Capacitor push (mobile) - always requests permission on each start
+        if (Capacitor.isNativePlatform()) {
+          const permResult = await pushNotificationService.initCapacitorPush(userId, schoolId, userType);
+          
+          // If permission is denied, show helpful message to user on each app start
+          if (permResult && !permResult.granted) {
+            if (permResult.status === 'denied') {
+              // Permission was denied - show message asking user to enable in settings
+              // On Android, we can't show the system dialog again, but we can guide user to settings
+              // This message will be shown on EVERY app start until permission is granted
+              const platform = Capacitor.getPlatform();
+              const message = platform === 'android' 
+                ? 'Notification permission is required. Please enable notifications:\n\nSettings > Apps > Grow More > Notifications > Allow notifications'
+                : 'Notification permission is required. Please enable notifications in your device settings.';
+              
+              // Show alert to user (will be shown on each app start until permission is granted)
+              // Using setTimeout to ensure it shows after app is fully loaded
+              setTimeout(() => {
+                alert(message);
+              }, 1000);
+            } else if (permResult.status === 'prompt') {
+              // Permission is still in prompt state (shouldn't happen after request, but handle it)
+              console.log('[PushNotifications] Permission still in prompt state');
+            }
+          }
+        }
+        
+        // Initialize Electron push (desktop)
         if (window.electronAPI) {
           pushNotificationService.initElectronPush(userId, schoolId, userType);
         }
-        return true; // Successfully initialized
+        return true; // Successfully initialized (or attempted)
       }
       return false;
     };
 
     // Try immediately
-    if (checkAndInitPush()) return;
+    checkAndInitPush().catch(err => {
+      console.error('[PushNotifications] Failed to initialize push notifications:', err);
+    });
 
     // Retry every 2 seconds until successful (max 5 attempts)
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
-      if (checkAndInitPush() || attempts >= 5) {
-        clearInterval(interval);
-      }
+      checkAndInitPush().then(success => {
+        if (success || attempts >= 5) {
+          clearInterval(interval);
+        }
+      }).catch(err => {
+        console.error('[PushNotifications] Retry failed:', err);
+        if (attempts >= 5) {
+          clearInterval(interval);
+        }
+      });
     }, 2000);
 
     return () => clearInterval(interval);

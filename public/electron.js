@@ -3,9 +3,22 @@ const path = require('path');
 const https = require('https');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
+const AutoLaunch = require('auto-launch');
 
 // Set App User Model ID for Windows notifications
 app.setAppUserModelId('com.growmore.app');
+
+// Configure auto-launch for Windows startup
+let autoLauncher;
+if (process.platform === 'win32') {
+  // Get the correct path for auto-launch
+  const appPath = app.getPath('exe');
+  autoLauncher = new AutoLaunch({
+    name: 'Grow More',
+    path: appPath,
+    isHidden: false
+  });
+}
 
 // Initialize electron-push-receiver
 const { setup: setupPushReceiver, START_NOTIFICATION_SERVICE, NOTIFICATION_SERVICE_STARTED, NOTIFICATION_SERVICE_ERROR, NOTIFICATION_RECEIVED, TOKEN_UPDATED } = require('electron-push-receiver');
@@ -87,7 +100,9 @@ function createWindow() {
 
     if (!isQuitting) {
       event.preventDefault();
+      // Hide window and remove from taskbar (truly in tray, not minimized)
       mainWindow.hide();
+      mainWindow.setSkipTaskbar(true);
       return false;
     }
   });
@@ -101,6 +116,11 @@ function createWindow() {
   });
   mainWindow.on('unmaximize', () => {
     mainWindow.webContents.send('window-unmaximized');
+  });
+  
+  // Show in taskbar when window is shown
+  mainWindow.on('show', () => {
+    mainWindow.setSkipTaskbar(false);
   });
 
   // Handle loading errors
@@ -130,6 +150,8 @@ function createTray() {
       label: 'Open Grow More',
       click: () => {
         if (mainWindow) {
+          // Show in taskbar again when restoring
+          mainWindow.setSkipTaskbar(false);
           mainWindow.show();
           mainWindow.focus();
         } else {
@@ -153,6 +175,8 @@ function createTray() {
 
   appTray.on('double-click', () => {
     if (mainWindow) {
+      // Show in taskbar again when restoring
+      mainWindow.setSkipTaskbar(false);
       mainWindow.show();
       mainWindow.focus();
     }
@@ -179,6 +203,19 @@ if (!gotTheLock) {
   app.on('ready', () => {
     createWindow();
     tray = createTray();
+    
+    // Enable auto-launch on Windows
+    if (process.platform === 'win32' && autoLauncher) {
+      autoLauncher.isEnabled().then((isEnabled) => {
+        if (!isEnabled) {
+          autoLauncher.enable().catch((err) => {
+            console.error('Failed to enable auto-launch:', err);
+          });
+        }
+      }).catch((err) => {
+        console.error('Failed to check auto-launch status:', err);
+      });
+    }
   });
 }
 
@@ -230,7 +267,9 @@ ipcMain.on('window-close', () => {
   }
 
   if (mainWindow) {
-    mainWindow.hide(); // Minimize to tray instead of destroy
+    // Hide window and remove from taskbar (truly in tray, not minimized)
+    mainWindow.hide();
+    mainWindow.setSkipTaskbar(true);
   }
 });
 ipcMain.handle('window-is-maximized', () => {

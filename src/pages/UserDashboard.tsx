@@ -989,7 +989,13 @@ const UserDashboard: React.FC = () => {
 
   // Exit dialog state
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const showExitConfirmRef = React.useRef(false);
   const isWeb = checkIsWeb();
+
+  // Sync ref with state
+  useEffect(() => {
+    showExitConfirmRef.current = showExitConfirm;
+  }, [showExitConfirm]);
 
   // Load events and active session on component mount
   useEffect(() => {
@@ -1279,11 +1285,29 @@ const UserDashboard: React.FC = () => {
                   insertData.staff_id = user.staff_id;
                 }
 
-                const { error } = await supabase
+                const { data: leaveRequestData, error } = await supabase
                   .from('leave_requests')
-                  .insert(insertData);
+                  .insert(insertData)
+                  .select()
+                  .single();
 
                 if (error) throw error;
+
+                // Notify admins/staff about the new leave request
+                try {
+                  await createLeaveRequestNotificationForAdmins(
+                    leaveRequestData.id,
+                    user.school_id,
+                    requestedByName,
+                    leaveRequestForm.leaveType,
+                    leaveRequestForm.startDate,
+                    leaveRequestForm.endDate,
+                    isTeacher
+                  );
+                } catch (notificationError) {
+                  // Don't fail submission if notification fails
+                  console.error('Error creating notification for leave request:', notificationError);
+                }
 
                 showToast('Leave request submitted successfully!', 'success');
                 setLeaveRequestModalOpen(false);
@@ -1624,7 +1648,7 @@ const UserDashboard: React.FC = () => {
     );
   }, [suggestionModalOpen, submittingSuggestion, suggestionForm, theme, user, showToast, fullScreen]);
 
-  // Helper function to notify admins/staff when a suggestion is submitted
+  // Helper function to notify users with complaints-suggestions permission when a suggestion is submitted
   const createSuggestionNotificationForAdmins = async (
     suggestionId: number,
     schoolId: number,
@@ -1632,20 +1656,18 @@ const UserDashboard: React.FC = () => {
     subject: string
   ) => {
     try {
-      const { data: adminUsers, error: adminError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('school_id', schoolId)
-        .in('role', ['Principal', 'Admin']);
+      // Import the permission service function
+      const { getUsersWithPermission } = await import('../services/permissionService');
+      
+      // Get all users who have the 'complaints-suggestions' permission
+      const userIds = await getUsersWithPermission('complaints-suggestions', schoolId);
 
-      if (adminError) throw adminError;
-
-      if (!adminUsers || adminUsers.length === 0) {
+      if (userIds.length === 0) {
         return;
       }
 
-      const notifications = adminUsers.map((admin) => ({
-        recipient_id: admin.id,
+      const notifications = userIds.map((userId) => ({
+        recipient_id: userId,
         school_id: schoolId,
         notification_type: 'suggestion',
         title: 'New Suggestion Submitted',
@@ -1661,12 +1683,12 @@ const UserDashboard: React.FC = () => {
 
       if (notifError) throw notifError;
     } catch (error: any) {
-      console.error('Error creating suggestion notifications for admins:', error);
+      console.error('Error creating suggestion notifications:', error);
       throw error;
     }
   };
 
-  // Helper function to notify admins/staff when a complaint is submitted
+  // Helper function to notify users with complaints-suggestions permission when a complaint is submitted
   const createComplaintNotificationForAdmins = async (
     complaintId: number,
     schoolId: number,
@@ -1674,20 +1696,18 @@ const UserDashboard: React.FC = () => {
     subject: string
   ) => {
     try {
-      const { data: adminUsers, error: adminError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('school_id', schoolId)
-        .in('role', ['Principal', 'Admin']);
+      // Import the permission service function
+      const { getUsersWithPermission } = await import('../services/permissionService');
+      
+      // Get all users who have the 'complaints-suggestions' permission
+      const userIds = await getUsersWithPermission('complaints-suggestions', schoolId);
 
-      if (adminError) throw adminError;
-
-      if (!adminUsers || adminUsers.length === 0) {
+      if (userIds.length === 0) {
         return;
       }
 
-      const notifications = adminUsers.map((admin) => ({
-        recipient_id: admin.id,
+      const notifications = userIds.map((userId) => ({
+        recipient_id: userId,
         school_id: schoolId,
         notification_type: 'complaint',
         title: 'New Complaint Submitted',
@@ -1703,7 +1723,53 @@ const UserDashboard: React.FC = () => {
 
       if (notifError) throw notifError;
     } catch (error: any) {
-      console.error('Error creating complaint notifications for admins:', error);
+      console.error('Error creating complaint notifications:', error);
+      throw error;
+    }
+  };
+
+  // Helper function to notify users with leave-requests permission when a leave request is submitted
+  const createLeaveRequestNotificationForAdmins = async (
+    leaveRequestId: number,
+    schoolId: number,
+    requestedByName: string,
+    leaveType: string,
+    startDate: string,
+    endDate: string,
+    isStaffRequest: boolean
+  ) => {
+    try {
+      // Import the permission service function
+      const { getUsersWithPermission } = await import('../services/permissionService');
+      
+      // Get all users who have the 'leave-requests' permission
+      const userIds = await getUsersWithPermission('leave-requests', schoolId);
+
+      if (userIds.length === 0) {
+        return;
+      }
+
+      const leaveTypeLabel = leaveType.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      const dateRange = `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+      const notifications = userIds.map((userId) => ({
+        recipient_id: userId,
+        school_id: schoolId,
+        notification_type: 'leave_request',
+        title: 'New Leave Request Submitted',
+        message: `${requestedByName}${isStaffRequest ? ' (Staff)' : ''} submitted a new ${leaveTypeLabel} leave request from ${dateRange}`,
+        is_read: false,
+        is_important: true,
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) throw notifError;
+    } catch (error: any) {
+      console.error('Error creating leave request notifications:', error);
       throw error;
     }
   };
@@ -1925,7 +1991,13 @@ const UserDashboard: React.FC = () => {
     }
 
     const handleBackPress = () => {
+      // If modal is already showing, don't do anything
+      if (showExitConfirmRef.current) {
+        return;
+      }
+      
       // Show exit confirmation dialog
+      showExitConfirmRef.current = true;
       setShowExitConfirm(true);
     };
 
@@ -1948,10 +2020,39 @@ const UserDashboard: React.FC = () => {
     // Set up listener for Capacitor
     setupCapacitorListener();
 
+    // Add keyboard shortcut for testing back button in browser (Escape key)
+    // This allows testing mobile back button behavior without a physical device
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Press Escape to simulate Android back button (only in web/mobile view)
+      if (event.key === 'Escape' && isWeb && window.innerWidth < 1024) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleBackPress();
+      }
+    };
+
+    // Add keyboard listener for testing
+    if (isWeb) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
     // Handle browser back button (Web/Electron)
     const handlePopState = (event: PopStateEvent) => {
+      // If modal is already showing, just prevent navigation and return
+      if (showExitConfirmRef.current) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        window.history.pushState(null, '', window.location.pathname);
+        return;
+      }
+
+      // Immediately prevent navigation
       event.preventDefault();
       event.stopImmediatePropagation();
+      event.stopPropagation();
+      
+      // Show exit confirmation dialog
       handleBackPress();
 
       // Push the current state back to prevent navigation
@@ -1960,12 +2061,13 @@ const UserDashboard: React.FC = () => {
 
     // Push initial state to trap back button
     window.history.pushState(null, '', window.location.pathname);
-    window.addEventListener('popstate', handlePopState);
+    // Use capture phase to catch event early
+    window.addEventListener('popstate', handlePopState, true);
 
     // Handle beforeunload to prevent accidental exits
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       // Only show exit confirm in Electron/Capacitor
-      if (showExitConfirm) {
+      if (showExitConfirmRef.current) {
         event.preventDefault();
         event.returnValue = '';
       }
@@ -1975,10 +2077,13 @@ const UserDashboard: React.FC = () => {
 
     return () => {
       if (removeCapListener) removeCapListener();
-      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('popstate', handlePopState, true);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (isWeb) {
+        window.removeEventListener('keydown', handleKeyDown);
+      }
     };
-  }, [user?.role, showExitConfirm, isWeb]);
+  }, [user?.role, isWeb]);
 
   return (
     <Container>
@@ -2434,7 +2539,10 @@ const UserDashboard: React.FC = () => {
 
       {/* Exit Confirmation Modal */}
       {showExitConfirm && (
-        <ModalOverlay theme={theme} onClick={() => setShowExitConfirm(false)}>
+        <ModalOverlay theme={theme} onClick={() => {
+          showExitConfirmRef.current = false;
+          setShowExitConfirm(false);
+        }}>
           <ModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
             <div style={{ textAlign: 'center' }}>
               <div style={{
@@ -2462,7 +2570,10 @@ const UserDashboard: React.FC = () => {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <ModalButton
                   theme={theme}
-                  onClick={() => setShowExitConfirm(false)}
+                  onClick={() => {
+                    showExitConfirmRef.current = false;
+                    setShowExitConfirm(false);
+                  }}
                   $color="#6b7280"
                   style={{ flex: 1 }}
                 >
@@ -2471,6 +2582,7 @@ const UserDashboard: React.FC = () => {
                 <ModalButton
                   theme={theme}
                   onClick={() => {
+                    showExitConfirmRef.current = false;
                     setShowExitConfirm(false);
                     handleExit();
                   }}

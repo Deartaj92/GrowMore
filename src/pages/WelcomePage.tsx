@@ -725,6 +725,15 @@ const WelcomePage: React.FC = () => {
 
     // Fallback for non-Capacitor contexts (web/Cordova)
     const handlePopState = (event: PopStateEvent) => {
+      // If modal is already showing, don't do anything
+      if (showExitConfirmRef.current) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        window.history.pushState(null, '', '/user');
+        return;
+      }
+      
       // Immediately prevent navigation
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -736,14 +745,6 @@ const WelcomePage: React.FC = () => {
       // Push state back immediately to prevent navigation
       // Since we reset history on mount, there should be no previous page to go to
       window.history.pushState(null, '', '/user');
-      
-      // Force React Router to stay on current route if it tried to navigate
-      setTimeout(() => {
-        if (window.location.pathname !== '/user') {
-          navigate('/user', { replace: true });
-          window.history.pushState(null, '', '/user');
-        }
-      }, 10);
     };
 
     // Handle beforeunload to prevent accidental exits

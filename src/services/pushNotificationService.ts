@@ -81,22 +81,39 @@ export const pushNotificationService = {
 
   /**
    * Initialize Push Notifications for Capacitor
+   * Always requests permission on each app start if not granted
+   * Returns permission status for UI to handle denied state
    */
-  async initCapacitorPush(userId: number, schoolId: number, userType: 'staff' | 'student') {
-    if (!Capacitor.isNativePlatform()) return;
+  async initCapacitorPush(userId: number, schoolId: number, userType: 'staff' | 'student'): Promise<{ granted: boolean; status: string }> {
+    if (!Capacitor.isNativePlatform()) {
+      return { granted: false, status: 'not_native' };
+    }
 
     try {
       // Always check permission on each app run
       let permStatus = await PushNotifications.checkPermissions();
+      console.log('[PushNotifications] Current permission status:', permStatus);
 
-      // If not granted ("prompt" or "denied"), actively request again
+      // If not granted ("prompt" or "denied"), actively request again on each app start
       if (permStatus.receive !== 'granted') {
+        console.log('[PushNotifications] Permission not granted, requesting permission on app start...');
+        
+        // Always request permission on each app start if not granted
         permStatus = await PushNotifications.requestPermissions();
+        console.log('[PushNotifications] Permission request result:', permStatus);
+
+        // If still not granted after request, return status for UI handling
+        if (permStatus.receive !== 'granted') {
+          console.warn('[PushNotifications] Permission not granted after request:', permStatus);
+          
+          // Return status so UI can show appropriate message
+          // The app will ask again on next startup
+          return { granted: false, status: permStatus.receive || 'denied' };
+        }
       }
 
-      if (permStatus.receive !== 'granted') {
-        return;
-      }
+      // Permission is granted, proceed with registration
+      console.log('[PushNotifications] Permission granted, proceeding with registration...');
 
       // Rehydrate existing token (if any) so it points to current user before requesting a new one
       await this.rehydrateStoredToken(userId, schoolId, userType);
@@ -104,28 +121,39 @@ export const pushNotificationService = {
       // Register
       await PushNotifications.register();
 
+      // Listeners - Remove existing listeners first to avoid duplicates
+      await PushNotifications.removeAllListeners();
+
       // Listeners
       PushNotifications.addListener('registration', (token) => {
-        this.registerDeviceToken(userId, schoolId, token.value, userType);
+        console.log('[PushNotifications] Registration token received:', token.value);
+        this.registerDeviceToken(userId, schoolId, token.value, userType).catch(err => {
+          console.error('[PushNotifications] Failed to register token:', err);
+        });
       });
 
       PushNotifications.addListener('registrationError', (error) => {
-        // Error on registration
+        console.error('[PushNotifications] Registration error:', error);
       });
 
       // Foreground notification
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('[PushNotifications] Notification received in foreground:', notification);
         // The NotificationContext will handle showing the announcement modal
         // No need for alert here
       });
 
       // Action performed (tap)
       PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+        console.log('[PushNotifications] Notification action performed:', notification);
         // Navigate to specific page if needed
       });
 
+      console.log('[PushNotifications] Capacitor push notifications initialized successfully');
+      return { granted: true, status: 'granted' };
     } catch (error) {
-      // Failed to init capacitor push
+      console.error('[PushNotifications] Failed to init capacitor push:', error);
+      return { granted: false, status: 'error' };
     }
   },
 

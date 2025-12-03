@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   Notifications as BellIcon,
@@ -18,6 +19,10 @@ import {
   Group as GroupIcon,
   Assessment as AssessmentIcon,
   Delete as DeleteIcon,
+  Refresh as RefreshIcon,
+  Settings as SettingsIcon,
+  Menu as MenuIcon,
+  DoneAll as DoneAllIcon,
 } from '@mui/icons-material';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Notification } from '../services/activityTrackingService';
@@ -26,6 +31,7 @@ import { ReportDetailsModal } from './reports/ReportDetailsModal';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
+import { hasPermission } from '../services/permissionService';
 
 // Helper to get parent session info
 const getParentInfo = () => {
@@ -33,6 +39,19 @@ const getParentInfo = () => {
     const parentSessionStr = localStorage.getItem('parentSession');
     if (parentSessionStr) {
       return JSON.parse(parentSessionStr);
+    }
+  } catch (error) {
+    // Ignore parse errors
+  }
+  return null;
+};
+
+// Helper to get student session info
+const getStudentInfo = () => {
+  try {
+    const studentSessionStr = localStorage.getItem('studentSession');
+    if (studentSessionStr) {
+      return JSON.parse(studentSessionStr);
     }
   } catch (error) {
     // Ignore parse errors
@@ -184,12 +203,80 @@ const NotificationDropdown = styled(motion.div)`
 `;
 
 const NotificationHeader = styled.div<{ $isRead?: boolean }>`
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid ${props => props.theme.BORDER};
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: ${props => props.theme.ACCENT}10;
+  gap: 12px;
+  
+  @media (max-width: 768px) {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+`;
+
+const NotificationHeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  
+  @media (max-width: 768px) {
+    gap: 6px;
+  }
+`;
+
+const NotificationHeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  
+  @media (max-width: 768px) {
+    gap: 4px;
+  }
+`;
+
+const HeaderActionButton = styled.button`
+  background: none;
+  border: none;
+  color: ${props => props.theme.TEXT_SECONDARY};
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  min-width: 32px;
+  height: 32px;
+  
+  &:hover {
+    background: ${props => props.theme.HOVER_BG};
+    color: ${props => props.theme.ACCENT};
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  svg {
+    font-size: 18px;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 5px;
+    min-width: 28px;
+    height: 28px;
+    
+    svg {
+      font-size: 16px;
+    }
+  }
 `;
 
 const TabContainer = styled.div`
@@ -270,21 +357,30 @@ const NotificationTitle = styled.h3`
   color: ${props => props.theme.TEXT_PRIMARY};
   display: flex;
   align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    gap: 6px;
+  }
 `;
 
-const MarkAllReadButton = styled.button`
-  background: none;
-  border: none;
-  color: ${props => props.theme.ACCENT};
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-
-  &:hover {
-    background: ${props => props.theme.HOVER_BG};
+const UnreadCountBadge = styled.span`
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.4;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+    padding: 2px 5px;
+    min-width: 18px;
   }
 `;
 
@@ -511,7 +607,9 @@ const NotificationBell: React.FC = () => {
 
   const { user } = useAuth();
   const parentInfo = getParentInfo();
+  const studentInfo = getStudentInfo();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const [activeTab, setActiveTab] = useState<'activity' | 'reports'>('activity');
@@ -667,6 +765,124 @@ const NotificationBell: React.FC = () => {
       if (notification.notification_type === 'announcement') {
         openAnnouncement(notification.id);
         setIsOpen(false);
+        return;
+      }
+      
+      // Navigate to leave requests page for leave_request notifications
+      // ONLY navigate for "New Leave Request Submitted" notifications (for reviewers)
+      // DO NOT navigate for "Leave Request Approved/Rejected" (status updates for requesters)
+      if (notification.notification_type === 'leave_request') {
+        const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+        if (!schoolId) {
+          setIsOpen(false);
+          return;
+        }
+
+        // Check if this is a "new request" notification (for reviewers) vs status update (for requesters)
+        const isNewRequestNotification = notification.title?.includes('New Leave Request Submitted') || 
+                                         notification.message?.includes('submitted a new');
+        const isStatusUpdate = notification.title?.includes('Approved') || 
+                              notification.title?.includes('Rejected');
+
+        // Only navigate for "new request" notifications, NOT for status updates
+        if (isNewRequestNotification && !isStatusUpdate) {
+          // Check if user has permission to view leave requests page
+          let hasPagePermission = false;
+          if (user?.id) {
+            hasPagePermission = await hasPermission(user.id, 'leave-requests', schoolId);
+          }
+
+          // Only navigate if user has permission
+          if (hasPagePermission) {
+            setIsOpen(false);
+            navigate('/attendance/leave-requests');
+          } else {
+            // No permission - just mark as read, don't navigate
+            setIsOpen(false);
+          }
+        } else {
+          // Status update notification - just mark as read, don't navigate
+          setIsOpen(false);
+        }
+        return;
+      }
+      
+      // Navigate to complaints/suggestions page
+      // ONLY navigate for "New Complaint Submitted" notifications (for reviewers)
+      // DO NOT navigate for "Complaint Reviewed" (status updates for requesters)
+      if (notification.notification_type === 'complaint') {
+        const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+        if (!schoolId) {
+          setIsOpen(false);
+          return;
+        }
+
+        // Check if this is a "new complaint" notification (for reviewers) vs status update (for requesters)
+        const isNewComplaintNotification = notification.title?.includes('New Complaint Submitted') || 
+                                           notification.message?.includes('submitted a new complaint');
+        const isStatusUpdate = notification.title?.includes('Reviewed') || 
+                              notification.title?.includes('Complaint Reviewed');
+
+        // Only navigate for "new complaint" notifications, NOT for status updates
+        if (isNewComplaintNotification && !isStatusUpdate) {
+          // Check if user has permission to view complaints-suggestions page
+          let hasPagePermission = false;
+          if (user?.id) {
+            hasPagePermission = await hasPermission(user.id, 'complaints-suggestions', schoolId);
+          }
+
+          // Only navigate if user has permission
+          if (hasPagePermission) {
+            setIsOpen(false);
+            navigate('/attendance/complaints-suggestions', { state: { activeTab: 0 } }); // 0 = Complaints tab
+          } else {
+            // No permission - just mark as read, don't navigate
+            setIsOpen(false);
+          }
+        } else {
+          // Status update notification - just mark as read, don't navigate
+          setIsOpen(false);
+        }
+        return;
+      }
+      
+      // Navigate to complaints/suggestions page for suggestions
+      // ONLY navigate for "New Suggestion Submitted" notifications (for reviewers)
+      // DO NOT navigate for "Suggestion Reviewed" (status updates for requesters)
+      if (notification.notification_type === 'suggestion') {
+        const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+        if (!schoolId) {
+          setIsOpen(false);
+          return;
+        }
+
+        // Check if this is a "new suggestion" notification (for reviewers) vs status update (for requesters)
+        const isNewSuggestionNotification = notification.title?.includes('New Suggestion Submitted') || 
+                                            notification.message?.includes('submitted a new suggestion');
+        const isStatusUpdate = notification.title?.includes('Reviewed') || 
+                              notification.title?.includes('Suggestion Reviewed');
+
+        // Only navigate for "new suggestion" notifications, NOT for status updates
+        if (isNewSuggestionNotification && !isStatusUpdate) {
+          // Check if user has permission to view complaints-suggestions page
+          let hasPagePermission = false;
+          if (user?.id) {
+            hasPagePermission = await hasPermission(user.id, 'complaints-suggestions', schoolId);
+          }
+
+          // Only navigate if user has permission
+          if (hasPagePermission) {
+            setIsOpen(false);
+            navigate('/attendance/complaints-suggestions', { state: { activeTab: 1 } }); // 1 = Suggestions tab
+          } else {
+            // No permission - just mark as read, don't navigate
+            setIsOpen(false);
+          }
+        } else {
+          // Status update notification - just mark as read, don't navigate
+          setIsOpen(false);
+        }
+        return;
       }
       
       // If it's a report notification, try to open it first
@@ -1151,50 +1367,39 @@ const NotificationBell: React.FC = () => {
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
             <NotificationHeader>
-              <NotificationTitle>
-                Notifications
-                {activeTab === 'activity' && activityUnreadCount > 0 && (
-                  <span style={{ 
-                    marginLeft: '8px', 
-                    fontSize: '0.85rem', 
-                    fontWeight: 'normal',
-                    color: '#ef4444'
-                  }}>
-                    ({activityUnreadCount} new)
-                  </span>
-                )}
-                {activeTab === 'reports' && reportUnreadCount > 0 && (
-                  <span style={{ 
-                    marginLeft: '8px', 
-                    fontSize: '0.85rem', 
-                    fontWeight: 'normal',
-                    color: '#ef4444'
-                  }}>
-                    ({reportUnreadCount} new)
-                  </span>
-                )}
-              </NotificationTitle>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button
+              <NotificationHeaderLeft>
+                <NotificationTitle>
+                  Notifications
+                  {activeTab === 'activity' && activityUnreadCount > 0 && (
+                    <UnreadCountBadge>
+                      {activityUnreadCount}
+                    </UnreadCountBadge>
+                  )}
+                  {activeTab === 'reports' && reportUnreadCount > 0 && (
+                    <UnreadCountBadge>
+                      {reportUnreadCount}
+                    </UnreadCountBadge>
+                  )}
+                </NotificationTitle>
+              </NotificationHeaderLeft>
+              <NotificationHeaderRight>
+                <HeaderActionButton
                   onClick={refreshNotifications}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#666',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    fontSize: '14px'
-                  }}
                   title="Refresh notifications"
+                  aria-label="Refresh notifications"
                 >
-                  🔄
-                </button>
+                  <RefreshIcon />
+                </HeaderActionButton>
                 {(activeTab === 'activity' ? activityUnreadCount : reportUnreadCount) > 0 && (
-                  <MarkAllReadButton onClick={handleMarkAllRead}>
-                    Mark all read
-                  </MarkAllReadButton>
+                  <HeaderActionButton
+                    onClick={handleMarkAllRead}
+                    title="Mark all as read"
+                    aria-label="Mark all as read"
+                  >
+                    <DoneAllIcon />
+                  </HeaderActionButton>
                 )}
-              </div>
+              </NotificationHeaderRight>
             </NotificationHeader>
 
             <TabContainer>

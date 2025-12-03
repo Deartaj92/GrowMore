@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
@@ -460,8 +461,11 @@ const ComplaintsSuggestionsPage: React.FC = () => {
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth();
   const { showToast } = useToast();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState(0); // 0 = Complaints, 1 = Suggestions
+  // Get activeTab from route state (for navigation from notifications)
+  const initialTab = (location.state as any)?.activeTab ?? 0;
+  const [activeTab, setActiveTab] = useState(initialTab); // 0 = Complaints, 1 = Suggestions
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   // Complaints state
@@ -649,6 +653,13 @@ const ComplaintsSuggestionsPage: React.FC = () => {
   const inReviewSuggestionsCount = useMemo(() => {
     return suggestions.filter(s => s.status === 'in_review').length;
   }, [suggestions]);
+
+  // Update activeTab when route state changes (for navigation from notifications)
+  useEffect(() => {
+    if (location.state && (location.state as any).activeTab !== undefined) {
+      setActiveTab((location.state as any).activeTab);
+    }
+  }, [location.state]);
 
   // Fetch both complaints and suggestions on initial load
   useEffect(() => {

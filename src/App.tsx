@@ -894,7 +894,7 @@ const App: React.FC = () => {
                           <Route
                             path="attendance/complaints-suggestions"
                             element={
-                              <ProtectedRoute requiredPermission="settings-classes">
+                              <ProtectedRoute requiredPermission="complaints-suggestions">
                                 <ComplaintsSuggestionsPage />
                               </ProtectedRoute>
                             }

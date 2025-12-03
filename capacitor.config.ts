@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     LiveUpdates: {
-      appId: 'com.school.management',
+      appId: 'com.growmore.app',
       channel: 'production',
       autoUpdateMethod: 'none', // Let user decide when to update
       strategy: 'zip'

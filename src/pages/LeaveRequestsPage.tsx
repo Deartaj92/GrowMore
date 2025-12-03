@@ -289,12 +289,133 @@ const TableWrapper = styled.div`
   overflow-x: auto;
   overflow-y: auto;
   flex: 1;
+  
+  @media (max-width: 768px) {
+    overflow-x: visible;
+  }
 `;
 
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   min-width: 1200px;
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+// Mobile Card Layout
+const MobileCardContainer = styled.div`
+  display: none;
+  
+  @media (max-width: 768px) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+`;
+
+const MobileCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 8px;
+  padding: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT}40;
+  }
+`;
+
+const MobileCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const MobileCardTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+`;
+
+const MobileCardName = styled.div`
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const MobileCardId = styled.span`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 400;
+  margin-left: 0.25rem;
+`;
+
+const MobileCardStatus = styled.div`
+  flex-shrink: 0;
+`;
+
+const MobileCardInfo = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  font-size: 0.8rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const MobileCardInfoItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1 1 auto;
+  min-width: 0;
+`;
+
+const MobileCardInfoLabel = styled.span`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+  white-space: nowrap;
+`;
+
+const MobileCardInfoValue = styled.span`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const MobileCardReason = styled.div`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  line-height: 1.4;
+  padding-top: 0.375rem;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const MobileCardActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  margin-top: 0.25rem;
 `;
 
 const TableHeader = styled.thead`
@@ -1076,26 +1197,58 @@ const LeaveRequestsPage: React.FC = () => {
         ? `Your leave request - ${leaveType} from ${dateRange} has been ${status}.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`
         : `Your leave request for ${subjectName} (${subjectIdentifier}) - ${leaveType} from ${dateRange} has been ${status}.${reviewNotes ? `\n\nNote: ${reviewNotes}` : ''}`;
       
+      // Determine recipient based on who requested the leave
       if (request.requested_by === 'student') {
-        // For students: Insert notification with student_id as recipient_id
-        recipientId = request.student_id;
+        // For students: requested_by_id is the student_id
+        // Notifications table supports student IDs directly in recipient_id field
+        if (request.requested_by_id) {
+          recipientId = request.requested_by_id;
+        } else {
+          // Fallback: use student_id from the request if requested_by_id is missing
+          recipientId = request.student_id;
+        }
       } else if (request.requested_by === 'parent') {
-        // For parents: Send notification directly to family using family_recipient_id
-        familyRecipientId = request.requested_by_id;
-      } else if (request.requested_by === 'staff' && request.staff_id) {
-        // For staff: Find the user account linked to this staff_id
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id')
-          .eq('staff_id', request.staff_id)
-          .eq('school_id', schoolId)
-          .maybeSingle();
-        
-        if (userData) {
-          recipientId = userData.id;
+        // For parents: requested_by_id is the family_id
+        // Use family_recipient_id to send notification to the family
+        if (request.requested_by_id) {
+          familyRecipientId = request.requested_by_id;
+        } else {
+          // Fallback: try to find family_id from the student
+          if (request.student_id) {
+            const { data: familyMember } = await supabase
+              .from('family_members')
+              .select('family_id')
+              .eq('student_id', request.student_id)
+              .eq('school_id', schoolId)
+              .limit(1)
+              .maybeSingle();
+            
+            if (familyMember?.family_id) {
+              familyRecipientId = familyMember.family_id;
+            }
+          }
+        }
+      } else if (request.requested_by === 'staff') {
+        // For staff/employees: requested_by_id is the staff_id
+        // Need to find the user.id (from users table) linked to this staff_id
+        const staffIdToLookup = request.staff_id || request.requested_by_id;
+        if (staffIdToLookup) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id')
+            .eq('staff_id', staffIdToLookup)
+            .eq('school_id', schoolId)
+            .maybeSingle();
+          
+          if (userData) {
+            recipientId = userData.id;
+          } else {
+            console.warn(`No user account found for staff_id: ${staffIdToLookup}. Staff may not have a user account.`);
+          }
         }
       }
       
+      // Create notification if we have a valid recipient
       if (recipientId || familyRecipientId) {
         const notificationData: any = {
           school_id: schoolId,
@@ -1103,7 +1256,7 @@ const LeaveRequestsPage: React.FC = () => {
           title: title,
           message: message,
           is_read: false,
-          is_important: false,
+          is_important: status === 'rejected', // Rejections are more important
           created_at: new Date().toISOString(),
         };
         
@@ -1119,11 +1272,40 @@ const LeaveRequestsPage: React.FC = () => {
           .insert(notificationData);
         
         if (notifError) {
-          console.error('Error creating notification:', notifError);
+          console.error('Error creating leave request notification:', notifError);
+          console.error('Notification data:', notificationData);
+          console.error('Request details:', {
+            requestedBy: request.requested_by,
+            requestedById: request.requested_by_id,
+            studentId: request.student_id,
+            staffId: request.staff_id
+          });
+        } else {
+          console.log('Leave request notification created successfully:', {
+            recipientId,
+            familyRecipientId,
+            requestedBy: request.requested_by,
+            status,
+            notificationId: notificationData.id
+          });
         }
+      } else {
+        console.warn('No recipient found for leave request notification:', {
+          requestedBy: request.requested_by,
+          requestedById: request.requested_by_id,
+          studentId: request.student_id,
+          staffId: request.staff_id,
+          requestId: request.id
+        });
       }
     } catch (error: any) {
       console.error('Error in createLeaveRequestNotification:', error);
+      console.error('Request details:', {
+        requestedBy: request.requested_by,
+        requestedById: request.requested_by_id,
+        studentId: request.student_id,
+        staffId: request.staff_id
+      });
       // Don't throw - notification failure shouldn't break the review process
     }
   };
@@ -1269,6 +1451,7 @@ const LeaveRequestsPage: React.FC = () => {
       {/* Table */}
       <TableContainer theme={theme}>
         <TableWrapper>
+          {/* Desktop Table */}
           <Table>
             <TableHeader>
               <tr>
@@ -1470,6 +1653,202 @@ const LeaveRequestsPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
+          
+          {/* Mobile Card Layout */}
+          <MobileCardContainer theme={theme}>
+            {paginatedRequests.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: theme.TEXT_SECONDARY, fontSize: '0.9rem' }}>
+                No leave requests found
+              </div>
+            ) : (
+              paginatedRequests.map((request) => (
+                <MobileCard key={request.id} theme={theme}>
+                  <MobileCardHeader theme={theme}>
+                    <MobileCardTitle theme={theme}>
+                      <PersonIcon style={{ fontSize: '0.9rem', color: theme.TEXT_SECONDARY, flexShrink: 0 }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <MobileCardName theme={theme}>
+                          {request.staff_id && request.staff 
+                            ? request.staff.name || 'Unknown Staff'
+                            : request.students?.name || 'Unknown'}
+                          <MobileCardId theme={theme}>
+                            #{request.id}
+                            {request.students?.roll_number && ` • S${user?.school_id}-${getStudentDisplayId({ id: request.students.id, roll_number: request.students.roll_number })}`}
+                          </MobileCardId>
+                        </MobileCardName>
+                      </div>
+                    </MobileCardTitle>
+                    <MobileCardStatus theme={theme}>
+                      <StatusBadge $status={request.status} theme={theme} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+                        {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.75rem' }} />}
+                        {request.status === 'rejected' && <Cancel style={{ fontSize: '0.75rem' }} />}
+                        {request.status === 'pending' && <Pending style={{ fontSize: '0.75rem' }} />}
+                        {request.status === 'cancelled' && <Cancel style={{ fontSize: '0.75rem' }} />}
+                        {request.status}
+                      </StatusBadge>
+                    </MobileCardStatus>
+                  </MobileCardHeader>
+                  
+                  <MobileCardInfo theme={theme}>
+                    <MobileCardInfoItem theme={theme}>
+                      <SchoolIcon style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }} />
+                      <MobileCardInfoLabel theme={theme}>Class:</MobileCardInfoLabel>
+                      <MobileCardInfoValue theme={theme}>
+                        {request.staff_id && request.staff 
+                          ? request.staff.role || 'Staff'
+                          : getStudentClass(request)}
+                      </MobileCardInfoValue>
+                    </MobileCardInfoItem>
+                    
+                    <MobileCardInfoItem theme={theme}>
+                      <MobileCardInfoLabel theme={theme}>Type:</MobileCardInfoLabel>
+                      <MobileCardInfoValue theme={theme}>
+                        <LeaveTypeBadge $type={request.leave_type} theme={theme} style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}>
+                          {getLeaveTypeIcon(request.leave_type)}
+                          {getLeaveTypeLabel(request.leave_type)}
+                        </LeaveTypeBadge>
+                      </MobileCardInfoValue>
+                    </MobileCardInfoItem>
+                    
+                    <MobileCardInfoItem theme={theme}>
+                      <CalendarIcon style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }} />
+                      <MobileCardInfoLabel theme={theme}>Dates:</MobileCardInfoLabel>
+                      <MobileCardInfoValue theme={theme}>
+                        {formatDate(request.start_date)} - {formatDate(request.end_date)}
+                      </MobileCardInfoValue>
+                    </MobileCardInfoItem>
+                    
+                    <MobileCardInfoItem theme={theme}>
+                      <AccessTimeIcon style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }} />
+                      <MobileCardInfoLabel theme={theme}>Days:</MobileCardInfoLabel>
+                      <MobileCardInfoValue theme={theme}>
+                        {calculateDays(request.start_date, request.end_date)}
+                      </MobileCardInfoValue>
+                    </MobileCardInfoItem>
+                    
+                    <MobileCardInfoItem theme={theme}>
+                      <MobileCardInfoLabel theme={theme}>By:</MobileCardInfoLabel>
+                      <MobileCardInfoValue theme={theme}>
+                        {request.requested_by_name || '-'} ({request.requested_by})
+                      </MobileCardInfoValue>
+                    </MobileCardInfoItem>
+                    
+                    <MobileCardInfoItem theme={theme}>
+                      <AccessTimeIcon style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }} />
+                      <MobileCardInfoLabel theme={theme}>On:</MobileCardInfoLabel>
+                      <MobileCardInfoValue theme={theme}>
+                        {formatDate(request.created_at)}
+                      </MobileCardInfoValue>
+                    </MobileCardInfoItem>
+                  </MobileCardInfo>
+                  
+                  <MobileCardReason theme={theme}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.375rem' }}>
+                      <span style={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500, marginTop: '0.1rem', flexShrink: 0 }}>Reason:</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {expandedReasons.has(request.id) ? (
+                          <>
+                            <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>{request.reason}</div>
+                            {request.reason.length > 60 && (
+                              <ExpandButton
+                                theme={theme}
+                                onClick={() => {
+                                  const newExpanded = new Set(expandedReasons);
+                                  newExpanded.delete(request.id);
+                                  setExpandedReasons(newExpanded);
+                                }}
+                                style={{ marginTop: '0.25rem', fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                              >
+                                <ExpandLess style={{ fontSize: '0.7rem' }} />
+                                Less
+                              </ExpandButton>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                              {request.reason.length > 60 ? `${request.reason.substring(0, 60)}...` : request.reason}
+                            </div>
+                            {request.reason.length > 60 && (
+                              <ExpandButton
+                                theme={theme}
+                                onClick={() => {
+                                  const newExpanded = new Set(expandedReasons);
+                                  newExpanded.add(request.id);
+                                  setExpandedReasons(newExpanded);
+                                }}
+                                style={{ marginTop: '0.25rem', fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                              >
+                                <ExpandMore style={{ fontSize: '0.7rem' }} />
+                                More
+                              </ExpandButton>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </MobileCardReason>
+                  
+                  {request.status !== 'pending' && request.reviewer && (
+                    <div style={{ 
+                      fontSize: '0.75rem',
+                      color: theme.TEXT_SECONDARY,
+                      paddingTop: '0.375rem',
+                      borderTop: `1px solid ${theme.BORDER}`
+                    }}>
+                      <span style={{ fontWeight: 500 }}>Reviewed by {request.reviewer.name}</span>
+                      {request.reviewed_at && (
+                        <span style={{ marginLeft: '0.5rem' }}>
+                          • {formatDateTime(request.reviewed_at)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  <MobileCardActions theme={theme}>
+                    {request.status === 'pending' && (
+                      <>
+                        <ActionButton
+                          $variant="approve"
+                          theme={theme}
+                          onClick={() => handleReview(request, 'approve')}
+                          style={{ flex: 1, justifyContent: 'center', fontSize: '0.8rem', padding: '0.45rem' }}
+                        >
+                          <CheckCircle style={{ fontSize: '0.8rem' }} />
+                          Approve
+                        </ActionButton>
+                        <ActionButton
+                          $variant="reject"
+                          theme={theme}
+                          onClick={() => handleReview(request, 'reject')}
+                          style={{ flex: 1, justifyContent: 'center', fontSize: '0.8rem', padding: '0.45rem' }}
+                        >
+                          <Cancel style={{ fontSize: '0.8rem' }} />
+                          Reject
+                        </ActionButton>
+                      </>
+                    )}
+                    {request.status !== 'pending' && (
+                      <ActionButton
+                        $variant="view"
+                        theme={theme}
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setReviewAction(null);
+                          setReviewNotes(request.review_notes || '');
+                          setReviewModalOpen(true);
+                        }}
+                        style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '0.45rem' }}
+                      >
+                        <ViewIcon style={{ fontSize: '0.8rem' }} />
+                        View Details
+                      </ActionButton>
+                    )}
+                  </MobileCardActions>
+                </MobileCard>
+              ))
+            )}
+          </MobileCardContainer>
         </TableWrapper>
         
         {/* Pagination */}
