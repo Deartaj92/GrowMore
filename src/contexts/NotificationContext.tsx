@@ -452,7 +452,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   }, []);
 
   // Helper to check if announcement matches user's audience
-  const matchesAnnouncementAudience = useCallback((announcement: any) => {
+  // For parents, this needs to check if any of their children match
+  const matchesAnnouncementAudience = useCallback(async (announcement: any, parentChildren?: any[]): Promise<boolean> => {
     // Ensure announcement has required fields
     if (!announcement || !announcement.audience_group) return false;
 
@@ -480,6 +481,55 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         default:
           return false;
       }
+    } else if (parentInfo && parentChildren) {
+      // Parent user - Show announcements for students if any of their children match
+      // OR show parent-targeted announcements if they match the parent's family
+      if (announcement.audience_group === 'parents') {
+        // Check if this announcement targets parents
+        switch (announcement.target_scope) {
+          case 'all':
+            // All parents - show to all parent families
+            return true;
+          case 'single':
+          case 'multi': {
+            // Check if this parent's family_id is in the target list
+            const targetFamilyIds = [
+              ...normalizeIdList(announcement.family_id),
+              ...normalizeIdList(announcement.family_ids),
+            ];
+            return targetFamilyIds.includes(parentInfo.id);
+          }
+          default:
+            return false;
+        }
+      } else if (announcement.audience_group === 'students') {
+        // Student-targeted announcements - show if any of their children match
+        switch (announcement.target_scope) {
+          case 'all':
+            return true;
+          case 'single':
+          case 'multi': {
+            const targetIds = [
+              ...normalizeIdList(announcement.student_id),
+              ...normalizeIdList(announcement.student_ids),
+            ];
+            // Check if any of the parent's children are in the target list
+            return parentChildren.some(child => targetIds.includes(child.id));
+          }
+          case 'class': {
+            // Check if any of the parent's children match the class/section criteria
+            return parentChildren.some(child => {
+              const classMatches = !announcement.class_id || announcement.class_id === child.class_id;
+              const sectionMatches = !announcement.section_id || announcement.section_id === child.section_id;
+              return classMatches && sectionMatches;
+            });
+          }
+          default:
+            return false;
+        }
+      }
+      // Reject staff announcements for parents
+      return false;
     } else if (user) {
       // Staff user - ONLY show announcements for staff
       // Explicitly reject any student announcements
@@ -503,9 +553,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           return false;
       }
     }
-    // If neither studentInfo nor user exists, don't show any announcements
+    // If neither studentInfo, parentInfo, nor user exists, don't show any announcements
     return false;
-  }, [studentInfo, user]);
+  }, [studentInfo, parentInfo, user]);
 
   // Fetch announcements and convert them to notifications
   const fetchAnnouncementsAsNotifications = useCallback(async (preferences?: NotificationPreferences | null): Promise<Notification[]> => {
@@ -535,18 +585,81 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // For Principal/Admin: Show ALL announcements (both student and staff targeted) when notify_announcements is enabled
       let filteredAnnouncements: any[] = [];
 
+      // For parents: Fetch their children first
+      let parentChildren: any[] = [];
+      if (parentInfo?.id && schoolId) {
+        try {
+          // Get active session to fetch current class/section info
+          const { data: activeSession } = await supabase
+            .from('sessions')
+            .select('id')
+            .eq('school_id', schoolId)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (activeSession) {
+            // Fetch children (students) linked to this family
+            const { data: familyMembers } = await supabase
+              .from('family_members')
+              .select('student_id')
+              .eq('family_id', parentInfo.id)
+              .eq('school_id', schoolId);
+
+            if (familyMembers && familyMembers.length > 0) {
+              const studentIds = familyMembers.map(fm => fm.student_id);
+              
+              // Fetch student data with current class/section info
+              const { data: students } = await supabase
+                .from('student_class_history')
+                .select(`
+                  student_id,
+                  new_class_id,
+                  new_section_id,
+                  students!inner(id, name, school_id)
+                `)
+                .eq('session_id', activeSession.id)
+                .eq('status', 'active')
+                .in('student_id', studentIds);
+
+              if (students) {
+                parentChildren = students.map(sch => ({
+                  id: sch.student_id,
+                  class_id: sch.new_class_id,
+                  section_id: sch.new_section_id,
+                }));
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching parent children:', error);
+        }
+      }
+
       if (studentInfo) {
         // Students: Only show student-targeted announcements that match them
-        filteredAnnouncements = announcements.filter(announcement => {
-          if (announcement.audience_group !== 'students') return false;
-          return matchesAnnouncementAudience(announcement);
-        });
+        const matches = await Promise.all(
+          announcements.map(async (announcement) => {
+            if (announcement.audience_group !== 'students') return false;
+            return await matchesAnnouncementAudience(announcement);
+          })
+        );
+        filteredAnnouncements = announcements.filter((_, index) => matches[index]);
       } else if (parentInfo) {
-        // Parents: Show student-targeted announcements (same as students, since they're viewing for their children)
-        filteredAnnouncements = announcements.filter(announcement => {
-          if (announcement.audience_group !== 'students') return false;
-          return matchesAnnouncementAudience(announcement);
-        });
+        // Parents: Show both student-targeted announcements (if children match) AND parent-targeted announcements
+        const matches = await Promise.all(
+          announcements.map(async (announcement) => {
+            // Check for parent-targeted announcements
+            if (announcement.audience_group === 'parents') {
+              return await matchesAnnouncementAudience(announcement, parentChildren);
+            }
+            // Check for student-targeted announcements (if any of their children match)
+            if (announcement.audience_group === 'students') {
+              return await matchesAnnouncementAudience(announcement, parentChildren);
+            }
+            return false;
+          })
+        );
+        filteredAnnouncements = announcements.filter((_, index) => matches[index]);
       } else if (user) {
         // Check if user is Principal/Admin with notification settings access
         const hasNotificationSettingsAccess = user.role === 'Principal' || user.role === 'Admin';
@@ -564,10 +677,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           }
         } else {
           // Teachers or other staff: Only show staff-targeted announcements that match them
-          filteredAnnouncements = announcements.filter(announcement => {
-            if (announcement.audience_group !== 'staff') return false;
-            return matchesAnnouncementAudience(announcement);
-          });
+          const matches = await Promise.all(
+            announcements.map(async (announcement) => {
+              if (announcement.audience_group !== 'staff') return false;
+              return await matchesAnnouncementAudience(announcement);
+            })
+          );
+          filteredAnnouncements = announcements.filter((_, index) => matches[index]);
         }
       }
 

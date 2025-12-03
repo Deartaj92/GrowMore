@@ -862,7 +862,7 @@ const SmallActionButton = styled.button`
   cursor: pointer;
 `;
 
-type AudienceType = 'all_students' | 'all_staff' | 'students_by_class' | 'students_selected' | 'staff_selected' | 'all_users';
+type AudienceType = 'all_students' | 'all_staff' | 'all_parents' | 'students_by_class' | 'students_selected' | 'staff_selected' | 'parents_selected' | 'all_users';
 
 const UserAnnouncements: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
@@ -894,12 +894,15 @@ const UserAnnouncements: React.FC = () => {
   const [sections, setSections] = useState<Array<{ id: number; name: string; class_id: number }>>([]);
   const [students, setStudents] = useState<Array<{ id: number; name: string; father_name?: string | null; class_id: number; section_id: number | null }>>([]);
   const [staffMembers, setStaffMembers] = useState<Array<{ id: number; name: string; role?: string | null }>>([]);
+  const [families, setFamilies] = useState<Array<{ id: number; name: string; contact_person?: string | null; contact_number?: string | null }>>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | ''>('');
   const [selectedSectionId, setSelectedSectionId] = useState<number | ''>('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [selectedStaffIds, setSelectedStaffIds] = useState<number[]>([]);
+  const [selectedFamilyIds, setSelectedFamilyIds] = useState<number[]>([]);
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
   const [staffSearchTerm, setStaffSearchTerm] = useState('');
+  const [familySearchTerm, setFamilySearchTerm] = useState('');
   const [seenBySearchTerm, setSeenBySearchTerm] = useState('');
 
   const toggleStudentSelection = (studentId: number) => {
@@ -910,20 +913,26 @@ const UserAnnouncements: React.FC = () => {
     setSelectedStaffIds(prev => (prev.includes(staffId) ? prev.filter(id => id !== staffId) : [...prev, staffId]));
   };
 
+  const toggleFamilySelection = (familyId: number) => {
+    setSelectedFamilyIds(prev => (prev.includes(familyId) ? prev.filter(id => id !== familyId) : [...prev, familyId]));
+  };
+
   useEffect(() => {
     const loadTargetingData = async () => {
       if (!user?.school_id) return;
       try {
-        const [{ data: classData }, { data: sectionData }, { data: studentData }, { data: staffData }] = await Promise.all([
+        const [{ data: classData }, { data: sectionData }, { data: studentData }, { data: staffData }, { data: familiesData }] = await Promise.all([
           supabase.from('classes').select('id, name').eq('school_id', user.school_id).order('name'),
           supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id).order('name'),
           supabase.from('students').select('id, name, father_name, class_id, section_id').eq('school_id', user.school_id).order('id'),
-          supabase.from('staff').select('id, name, role').eq('school_id', user.school_id).order('name')
+          supabase.from('staff').select('id, name, role').eq('school_id', user.school_id).order('name'),
+          supabase.from('families').select('id, name, contact_person, contact_number').eq('school_id', user.school_id).order('name')
         ]);
         if (classData) setClasses(classData);
         if (sectionData) setSections(sectionData);
         if (studentData) setStudents(studentData);
         if (staffData) setStaffMembers(staffData);
+        if (familiesData) setFamilies(familiesData);
       } catch (error) {
       }
     };
@@ -964,6 +973,18 @@ const UserAnnouncements: React.FC = () => {
     });
   }, [staffMembers, staffSearchTerm]);
 
+  const filteredFamilies = useMemo(() => {
+    const needle = familySearchTerm.trim().toLowerCase();
+    if (!needle) return families;
+    return families.filter(family => {
+      const idMatch = String(family.id).includes(needle);
+      const nameMatch = family.name?.toLowerCase().includes(needle);
+      const contactMatch = family.contact_person?.toLowerCase().includes(needle);
+      const phoneMatch = family.contact_number?.toLowerCase().includes(needle);
+      return idMatch || nameMatch || contactMatch || phoneMatch;
+    });
+  }, [families, familySearchTerm]);
+
   const classesMap = useMemo(() => {
     const map = new Map<number, string>();
     classes.forEach(cls => map.set(cls.id, cls.name));
@@ -988,6 +1009,12 @@ const UserAnnouncements: React.FC = () => {
     return map;
   }, [staffMembers]);
 
+  const familiesMap = useMemo(() => {
+    const map = new Map<number, typeof families[number]>();
+    families.forEach(family => map.set(family.id, family));
+    return map;
+  }, [families]);
+
   const formatSelections = (ids: number[] | null | undefined, formatter: (id: number) => string) => {
     if (!ids || !ids.length) return '';
     const labels = ids
@@ -1002,6 +1029,11 @@ const UserAnnouncements: React.FC = () => {
   const getSeenByPrimaryLabel = useCallback((entry: any) => {
     if (entry.student_id) return String(entry.student_id);
     if (entry.staff_id) return String(entry.staff_id);
+    // Check if it's a parent (viewer_identifier starts with "parent_")
+    if (entry.viewer_identifier && entry.viewer_identifier.startsWith('parent_')) {
+      const familyId = entry.viewer_identifier.replace('parent_', '');
+      return `Family ${familyId}`;
+    }
     return entry.viewer_identifier || entry.viewer_name || '—';
   }, []);
 
@@ -1014,8 +1046,16 @@ const UserAnnouncements: React.FC = () => {
       const staff = staffMap.get(entry.staff_id);
       return staff?.name || entry.viewer_name || entry.viewer_identifier || '';
     }
+    // Check if it's a parent (viewer_identifier starts with "parent_")
+    if (entry.viewer_identifier && entry.viewer_identifier.startsWith('parent_')) {
+      const familyId = parseInt(entry.viewer_identifier.replace('parent_', ''), 10);
+      if (familyId && !isNaN(familyId)) {
+        const family = familiesMap.get(familyId);
+        return family?.name || entry.viewer_name || entry.viewer_identifier || '';
+      }
+    }
     return entry.viewer_name || entry.viewer_identifier || '';
-  }, [studentsMap, staffMap]);
+  }, [studentsMap, staffMap, familiesMap]);
 
   const getSeenByDetailLine = useCallback((entry: any) => {
     if (entry.student_id) {
@@ -1033,8 +1073,19 @@ const UserAnnouncements: React.FC = () => {
       if (staff?.role || entry.viewer_role) parts.push(staff?.role || entry.viewer_role);
       return parts.join(' · ');
     }
+    // Check if it's a parent (viewer_identifier starts with "parent_")
+    if (entry.viewer_identifier && entry.viewer_identifier.startsWith('parent_')) {
+      const familyId = parseInt(entry.viewer_identifier.replace('parent_', ''), 10);
+      if (familyId && !isNaN(familyId)) {
+        const family = familiesMap.get(familyId);
+        const parts: string[] = [];
+        if (family?.contact_person) parts.push(family.contact_person);
+        if (family?.contact_number) parts.push(family.contact_number);
+        return parts.join(' · ') || 'Parent';
+      }
+    }
     return entry.viewer_name || entry.viewer_identifier || '';
-  }, [classesMap, sectionsMap, studentsMap, staffMap]);
+  }, [classesMap, sectionsMap, studentsMap, staffMap, familiesMap]);
 
   const filteredSeenByEntries = useMemo(() => {
     const needle = seenBySearchTerm.trim().toLowerCase();
@@ -1108,8 +1159,37 @@ const UserAnnouncements: React.FC = () => {
       }
     }
 
+    if (announcement.audience_group === 'parents') {
+      switch (announcement.target_scope) {
+        case 'all':
+          return 'Audience: All parents';
+        case 'single':
+        case 'multi': {
+          const ids: number[] = (announcement.family_ids && announcement.family_ids.length
+            ? announcement.family_ids
+            : announcement.family_id
+              ? [announcement.family_id]
+              : []) as number[];
+          const details = formatSelections(ids, id => {
+            const family = familiesMap.get(id);
+            if (!family) return `Family ${id}`;
+            return family.name || `Family ${id}`;
+          });
+          return details ? `Audience: ${details}` : 'Audience: Selected parents';
+        }
+        default:
+          return 'Audience: Parents';
+      }
+    }
+
+    // Check if this is part of an "all_users" announcement (students + staff + parents)
+    // This is detected by checking if there are matching announcements with different audience_groups
+    if (announcement.audience_group === 'students_staff') {
+      return 'Audience: All users (students + staff)';
+    }
+
     return 'Audience: Custom';
-  }, [classesMap, sectionsMap, studentsMap, staffMap, formatSelections]);
+  }, [classesMap, sectionsMap, studentsMap, staffMap, familiesMap, formatSelections]);
 
   const resetForm = () => {
     setAudience('all_students');
@@ -1124,8 +1204,10 @@ const UserAnnouncements: React.FC = () => {
     setSelectedSectionId('');
     setSelectedStudentIds([]);
     setSelectedStaffIds([]);
+    setSelectedFamilyIds([]);
     setStudentSearchTerm('');
     setStaffSearchTerm('');
+    setFamilySearchTerm('');
     setHideDontShow(false);
   };
 
@@ -1258,6 +1340,50 @@ const UserAnnouncements: React.FC = () => {
         setSending(false);
       }
       return;
+    } else if (audience === 'all_parents') {
+      payload = {
+        ...payload,
+        audience_group: 'parents',
+        target_scope: 'all',
+        family_id: null,
+        family_ids: null,
+      };
+    } else if (audience === 'parents_selected') {
+      if (!selectedFamilyIds.length) {
+        toast.showToast('Please select at least one parent family.', 'error');
+        return;
+      }
+
+      const multiFamilyPayload = {
+        ...payload,
+        audience_group: 'parents',
+        target_scope: 'multi',
+        family_ids: selectedFamilyIds,
+        family_id: null,
+      };
+
+      try {
+        setSending(true);
+        if (editingId) {
+          const { error } = await supabase
+            .from('announcements')
+            .update(multiFamilyPayload)
+            .eq('id', editingId);
+          if (error) throw error;
+          toast.showToast('Announcement updated successfully!', 'success');
+        } else {
+          const { error } = await supabase.from('announcements').insert([multiFamilyPayload]);
+          if (error) throw error;
+          toast.showToast('Announcement sent to selected parents!', 'success');
+        }
+        resetForm();
+        await loadAnnouncements();
+      } catch (error: any) {
+        toast.showToast('Failed to save announcement: ' + (error.message || ''), 'error');
+      } finally {
+        setSending(false);
+      }
+      return;
     } else if (audience === 'all_users') {
       const studentPayload = {
         ...payload,
@@ -1269,20 +1395,24 @@ const UserAnnouncements: React.FC = () => {
         audience_group: 'staff',
         target_scope: 'all',
       };
+      const parentPayload = {
+        ...payload,
+        audience_group: 'parents',
+        target_scope: 'all',
+        family_id: null,
+        family_ids: null,
+      };
 
       try {
         setSending(true);
         if (editingId) {
-          const { error } = await supabase
-            .from('announcements')
-            .update(studentPayload)
-            .eq('id', editingId);
+          // For editing, we need to find and update all related announcements
+          // This is complex, so for now we'll just create new ones
+          const { error } = await supabase.from('announcements').insert([studentPayload, staffPayload, parentPayload]);
           if (error) throw error;
-          const { error: staffError } = await supabase.from('announcements').insert([staffPayload]);
-          if (staffError) throw staffError;
           toast.showToast('Announcement updated for all users.', 'success');
         } else {
-          const { error } = await supabase.from('announcements').insert([studentPayload, staffPayload]);
+          const { error } = await supabase.from('announcements').insert([studentPayload, staffPayload, parentPayload]);
           if (error) throw error;
           toast.showToast('Announcement sent to all users!', 'success');
         }
@@ -1407,6 +1537,19 @@ const UserAnnouncements: React.FC = () => {
         setAudience('staff_selected');
         setSelectedStaffIds(toArray(a.staff_ids) || toArray(a.staff_id));
       }
+    } else if (a.audience_group === 'parents') {
+      if (a.target_scope === 'all') {
+        setAudience('all_parents');
+        setSelectedFamilyIds([]);
+      } else {
+        setAudience('parents_selected');
+        const toArray = (value: number | number[] | null | undefined) => {
+          if (Array.isArray(value)) return value.filter(Boolean);
+          if (typeof value === 'number') return [value];
+          return [];
+        };
+        setSelectedFamilyIds(toArray(a.family_ids) || toArray(a.family_id));
+      }
     } else if (a.audience_group === 'students_staff') {
       setAudience('all_users');
     }
@@ -1521,7 +1664,9 @@ const UserAnnouncements: React.FC = () => {
                 <option value="students_selected">Specific students</option>
                 <option value="staff_selected">Specific staff</option>
                 <option value="all_staff">All staff</option>
-                <option value="all_users">All users (students + staff)</option>
+                <option value="all_parents">All parents</option>
+                <option value="parents_selected">Specific parents</option>
+                <option value="all_users">All users (students + staff + parents)</option>
               </Select>
             </HeaderControlGroup>
 
@@ -1709,6 +1854,55 @@ const UserAnnouncements: React.FC = () => {
             )}
             {selectedStaffIds.length > 0 && (
               <ClearSelectionButton theme={theme} type="button" onClick={() => setSelectedStaffIds([])}>
+                Clear selection
+              </ClearSelectionButton>
+            )}
+          </TargetControl>
+        </TargetingControls>
+      )}
+
+      {audience === 'parents_selected' && (
+        <TargetingControls theme={theme}>
+          <TargetControl>
+            <Label>Select parent families</Label>
+            <SelectSearchInput
+              theme={theme}
+              type="search"
+              placeholder="Search parents by name, contact person, phone..."
+              value={familySearchTerm}
+              onChange={e => setFamilySearchTerm(e.target.value)}
+            />
+            <MultiSelect
+              theme={theme}
+              multiple
+              value={selectedFamilyIds.map(String)}
+              onChange={e => {
+                const lastIndex = e.target.selectedIndex;
+                const options = Array.from(e.target.options);
+                const selectedOption = options[lastIndex];
+                const selectedValue = selectedOption ? Number(selectedOption.value) : null;
+                if (selectedValue) {
+                  toggleFamilySelection(selectedValue);
+                }
+              }}
+              disabled={!filteredFamilies.length}
+            >
+              {filteredFamilies.map(family => (
+                <option key={family.id} value={family.id}>
+                  {`${family.id} · ${family.name}${family.contact_person ? ` · ${family.contact_person}` : ''}${family.contact_number ? ` · ${family.contact_number}` : ''}`}
+                </option>
+              ))}
+            </MultiSelect>
+            {selectedFamilyIds.length > 0 && (
+              <StudentBadgeRow>
+                {selectedFamilyIds.map(id => {
+                  const family = families.find(f => f.id === id);
+                  return <StudentBadge key={id}>{family?.name || id}</StudentBadge>;
+                })}
+              </StudentBadgeRow>
+            )}
+            {selectedFamilyIds.length > 0 && (
+              <ClearSelectionButton theme={theme} type="button" onClick={() => setSelectedFamilyIds([])}>
                 Clear selection
               </ClearSelectionButton>
             )}

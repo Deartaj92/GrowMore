@@ -2,12 +2,15 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Dashboard as DashboardIcon, Event as EventIcon, CalendarToday as CalendarIcon, AccessTime as AccessTimeIcon, LocationOn as LocationIcon, Person as PersonIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Dashboard as DashboardIcon, Event as EventIcon, CalendarToday as CalendarIcon, AccessTime as AccessTimeIcon, LocationOn as LocationIcon, Person as PersonIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon, ExpandMore, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined, ExitToApp as ExitIcon, School as SchoolIcon } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, IconButton, Typography, useTheme, useMediaQuery, Theme } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, IconButton, Typography, useTheme, useMediaQuery, Theme, Tabs, Tab, Chip } from '@mui/material';
 import { useToast } from '../components/useToast';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { styled as muiStyled } from '@mui/material/styles';
+import { format } from 'date-fns';
+import { App as CapacitorApp } from '@capacitor/app';
+import { isWeb as checkIsWeb } from '../utils/platformDetection';
 
 const Container = styled.div`
   width: 100%;
@@ -341,6 +344,313 @@ const QuickActionTitle = styled.h3`
   }
 `;
 
+// History Section Styled Components
+const LeaveHistoryHeader = styled.div`
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.20)' : 'rgba(99,102,241, 0.08)'};
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(35,42,59,0.35)' : 'rgba(99,102,241, 0.12)'};
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.6rem 0.5rem;
+  }
+`;
+
+const LeaveHistoryTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  
+  @media (max-width: 768px) {
+    font-size: 0.85rem;
+    font-weight: 500;
+    gap: 0.4rem;
+  }
+`;
+
+const LeaveHistoryIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  
+  svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  
+  @media (max-width: 768px) {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    
+    svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+  }
+`;
+
+const LeaveHistoryExpandIcon = styled(ExpandMore) <{ $expanded: boolean }>`
+  transition: transform 0.3s ease;
+  transform: ${props => props.$expanded ? 'rotate(180deg)' : 'rotate(0deg)'};
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const LeaveHistoryContent = styled.div<{ $expanded: boolean }>`
+  max-height: ${props => props.$expanded ? '600px' : '0'};
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: ${props => props.$expanded ? '1rem 1.25rem' : '0 1.25rem'};
+  display: flex;
+  flex-direction: column;
+  
+  @media (max-width: 768px) {
+    max-height: ${props => props.$expanded ? '500px' : '0'};
+    padding: ${props => props.$expanded ? '0.75rem 0.5rem' : '0 0.5rem'};
+  }
+`;
+
+const LeaveRequestList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.ACCENT};
+    border-radius: 4px;
+    
+    &:hover {
+      background: ${({ theme }) => theme.ACCENT};
+      opacity: 0.8;
+    }
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.ACCENT} ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+  
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+    max-height: 350px;
+    padding-right: 0.25rem;
+    
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+  }
+`;
+
+const LeaveRequestItem = styled.div`
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
+`;
+
+const LeaveRequestHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const LeaveRequestInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+`;
+
+const LeaveRequestType = styled.div`
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  text-transform: capitalize;
+`;
+
+const LeaveRequestDates = styled.div`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const LeaveStatusBadge = styled.div<{ $status: string }>`
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  
+  ${({ $status, theme }) => {
+    if ($status === 'approved' || $status === 'reviewed') {
+      return `
+        background: ${theme.BG === '#252525' ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.1)'};
+        color: #22c55e;
+        border: 1px solid ${theme.BG === '#252525' ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.3)'};
+      `;
+    } else if ($status === 'rejected') {
+      return `
+        background: ${theme.BG === '#252525' ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)'};
+        color: #ef4444;
+        border: 1px solid ${theme.BG === '#252525' ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.3)'};
+      `;
+    } else {
+      return `
+        background: ${theme.BG === '#252525' ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.1)'};
+        color: #fbbf24;
+        border: 1px solid ${theme.BG === '#252525' ? 'rgba(251,191,36,0.4)' : 'rgba(251,191,36,0.3)'};
+      `;
+    }
+  }}
+`;
+
+const LeaveRequestReason = styled.div`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.5rem;
+  line-height: 1.5;
+`;
+
+const LeaveRequestMeta = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const CancelButton = styled.button`
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.3)'};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)'};
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)'};
+    border-color: ${({ theme }) => theme.BG === '#252525' ? 'rgba(239,68,68,0.5)' : 'rgba(239,68,68,0.4)'};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 2rem 1rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
+`;
+
+// Exit Dialog Styled Components
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ModalBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 2.2rem 2rem 1.7rem 2rem;
+  min-width: 320px;
+  max-width: 95vw;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  border: 1.5px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  margin-bottom: 1.1rem;
+`;
+
+const ModalButton = styled.button<{ $color?: string }>`
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  background: ${({ $color, theme }) => $color || theme.ACCENT};
+  color: #fff;
+  transition: background 0.18s;
+  &:hover {
+    background: ${({ $color, theme }) => $color ? $color + 'cc' : theme.ACCENT + 'cc'};
+  }
+`;
+
 // Styled Dialog Components (copied from CreateReportForm)
 const StyledDialog = muiStyled(Dialog)(({ theme }) => ({
   zIndex: 1300,
@@ -634,6 +944,52 @@ const UserDashboard: React.FC = () => {
   });
   const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
   const [staffGender, setStaffGender] = useState<string>('');
+
+  // History state
+  const [leaveRequests, setLeaveRequests] = useState<Array<{
+    id: number;
+    staff_id?: number | null;
+    leave_type: string;
+    start_date: string;
+    end_date: string;
+    reason: string;
+    status: string;
+    requested_by: string;
+    requested_by_name: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    review_notes?: string | null;
+    staff?: { name: string, role?: string } | null;
+  }>>([]);
+  const [loadingLeaveRequests, setLoadingLeaveRequests] = useState(false);
+  const [leaveHistoryExpanded, setLeaveHistoryExpanded] = useState(false);
+  const [historyActiveTab, setHistoryActiveTab] = useState(0); // 0 = Leave Requests, 1 = Complaints, 2 = Suggestions
+
+  // Complaints and suggestions history state
+  const [complaintsHistory, setComplaintsHistory] = useState<Array<{
+    id: number;
+    subject: string;
+    complaint_text: string;
+    status: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    review_notes?: string | null;
+  }>>([]);
+  const [suggestionsHistory, setSuggestionsHistory] = useState<Array<{
+    id: number;
+    subject: string;
+    suggestion_text: string;
+    status: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    review_notes?: string | null;
+  }>>([]);
+  const [loadingComplaintsHistory, setLoadingComplaintsHistory] = useState(false);
+  const [loadingSuggestionsHistory, setLoadingSuggestionsHistory] = useState(false);
+
+  // Exit dialog state
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const isWeb = checkIsWeb();
 
   // Load events and active session on component mount
   useEffect(() => {
@@ -1352,6 +1708,278 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  // Handle exit function
+  const handleExit = () => {
+    try {
+      if (CapacitorApp) {
+        CapacitorApp.exitApp();
+      } else if ((window as any).electronAPI) {
+        (window as any).electronAPI.close();
+      } else if (isWeb) {
+        // On web, try to close the tab/window
+        const closed = window.close();
+        // If window.close() didn't work, navigate to about:blank as a fallback
+        setTimeout(() => {
+          if (!document.hidden) {
+            window.location.href = 'about:blank';
+          }
+        }, 100);
+      } else {
+        window.close();
+      }
+    } catch (error) {
+      console.error('Error exiting application:', error);
+    }
+  };
+
+  // Fetch leave requests history
+  const fetchLeaveRequests = async () => {
+    if (!user?.school_id || !activeSessionId) return;
+
+    setLoadingLeaveRequests(true);
+    try {
+      const isTeacher = user?.role === 'Teacher';
+
+      let query = supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('school_id', user.school_id)
+        .eq('session_id', activeSessionId)
+        .order('created_at', { ascending: false });
+
+      if (isTeacher && user?.staff_id) {
+        // For teachers, get their own staff leave requests
+        query = query.eq('staff_id', user.staff_id);
+      } else {
+        setLeaveRequests([]);
+        setLoadingLeaveRequests(false);
+        return;
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Enrich with staff data if staff_id is present
+      if (data && data.length > 0) {
+        const staffIds = data
+          .filter((req: any) => req.staff_id)
+          .map((req: any) => req.staff_id)
+          .filter((id: number, index: number, self: number[]) => self.indexOf(id) === index); // Unique IDs
+
+        if (staffIds.length > 0) {
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('id, name, role')
+            .in('id', staffIds);
+
+          if (staffData) {
+            const staffMap = new Map(staffData.map((s: any) => [s.id, s]));
+            data.forEach((req: any) => {
+              if (req.staff_id && staffMap.has(req.staff_id)) {
+                req.staff = staffMap.get(req.staff_id);
+              }
+            });
+          }
+        }
+      }
+
+      setLeaveRequests(data || []);
+    } catch (error: any) {
+      console.error('Error fetching leave requests:', error);
+    } finally {
+      setLoadingLeaveRequests(false);
+    }
+  };
+
+  // Fetch complaints history
+  const fetchComplaintsHistory = async () => {
+    if (!user?.school_id) return;
+
+    setLoadingComplaintsHistory(true);
+    try {
+      const isTeacher = user?.role === 'Teacher';
+
+      let query = supabase
+        .from('complaints')
+        .select('*')
+        .eq('school_id', user.school_id)
+        .order('created_at', { ascending: false });
+
+      if (isTeacher && user?.staff_id) {
+        query = query.eq('submitted_by', 'staff').eq('submitted_by_id', user.staff_id);
+      } else {
+        setComplaintsHistory([]);
+        return;
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setComplaintsHistory(data || []);
+    } catch (error: any) {
+      console.error('Error fetching complaints history:', error);
+    } finally {
+      setLoadingComplaintsHistory(false);
+    }
+  };
+
+  // Fetch suggestions history
+  const fetchSuggestionsHistory = async () => {
+    if (!user?.school_id) return;
+
+    setLoadingSuggestionsHistory(true);
+    try {
+      const isTeacher = user?.role === 'Teacher';
+
+      let query = supabase
+        .from('suggestions')
+        .select('*')
+        .eq('school_id', user.school_id)
+        .order('created_at', { ascending: false });
+
+      if (isTeacher && user?.staff_id) {
+        query = query.eq('submitted_by', 'staff').eq('submitted_by_id', user.staff_id);
+      } else {
+        setSuggestionsHistory([]);
+        return;
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setSuggestionsHistory(data || []);
+    } catch (error: any) {
+      console.error('Error fetching suggestions history:', error);
+    } finally {
+      setLoadingSuggestionsHistory(false);
+    }
+  };
+
+  // Fetch leave requests when modal closes or component mounts
+  useEffect(() => {
+    if (activeSessionId && user?.role === 'Teacher' && user?.staff_id) {
+      fetchLeaveRequests();
+    }
+  }, [activeSessionId, user?.staff_id]);
+
+  // Refetch when a new request is submitted
+  useEffect(() => {
+    if (!leaveRequestModalOpen && !submittingLeaveRequest) {
+      fetchLeaveRequests();
+    }
+  }, [leaveRequestModalOpen, submittingLeaveRequest]);
+
+  // Fetch complaints and suggestions history when history section is expanded
+  useEffect(() => {
+    if (leaveHistoryExpanded) {
+      if (historyActiveTab === 1) {
+        fetchComplaintsHistory();
+      } else if (historyActiveTab === 2) {
+        fetchSuggestionsHistory();
+      }
+    }
+  }, [leaveHistoryExpanded, historyActiveTab]);
+
+  // Refetch when modals close
+  useEffect(() => {
+    if (!complaintModalOpen && !submittingComplaint) {
+      fetchComplaintsHistory();
+    }
+  }, [complaintModalOpen, submittingComplaint]);
+
+  useEffect(() => {
+    if (!suggestionModalOpen && !submittingSuggestion) {
+      fetchSuggestionsHistory();
+    }
+  }, [suggestionModalOpen, submittingSuggestion]);
+
+  // Handle cancel leave request
+  const handleCancelLeaveRequest = async (requestId: number) => {
+    if (!window.confirm('Are you sure you want to cancel this leave request?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leave_requests')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      showToast('Leave request cancelled successfully!', 'success');
+      fetchLeaveRequests(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error cancelling leave request:', error);
+      showToast('Failed to cancel leave request: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
+  // Mobile back button handling (Capacitor / WebView)
+  useEffect(() => {
+    // Only handle for Teacher role
+    if (user?.role !== 'Teacher') {
+      return;
+    }
+
+    const handleBackPress = () => {
+      // Show exit confirmation dialog
+      setShowExitConfirm(true);
+    };
+
+    let removeCapListener: (() => void) | null = null;
+
+    // Try to set up Capacitor listener
+    const setupCapacitorListener = async () => {
+      try {
+        if (CapacitorApp) {
+          const listener = await CapacitorApp.addListener('backButton', handleBackPress);
+          removeCapListener = () => {
+            listener.remove();
+          };
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+    };
+
+    // Set up listener for Capacitor
+    setupCapacitorListener();
+
+    // Handle browser back button (Web/Electron)
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handleBackPress();
+
+      // Push the current state back to prevent navigation
+      window.history.pushState(null, '', window.location.pathname);
+    };
+
+    // Push initial state to trap back button
+    window.history.pushState(null, '', window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+
+    // Handle beforeunload to prevent accidental exits
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Only show exit confirm in Electron/Capacitor
+      if (showExitConfirm) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      if (removeCapListener) removeCapListener();
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user?.role, showExitConfirm, isWeb]);
+
   return (
     <Container>
       <WelcomeCard>
@@ -1492,12 +2120,370 @@ const UserDashboard: React.FC = () => {
             <QuickActionTitle>Suggestions</QuickActionTitle>
           </QuickActionItem>
         </QuickActionsGrid>
+
+        {/* History Section */}
+        <div style={{ 
+          marginTop: '1.5rem', 
+          borderTop: `1px solid ${theme.BORDER}`, 
+          paddingTop: '1rem' 
+        }}>
+          <LeaveHistoryHeader onClick={() => setLeaveHistoryExpanded(!leaveHistoryExpanded)}>
+            <LeaveHistoryTitle>
+              <LeaveHistoryIcon>
+                <HistoryIcon />
+              </LeaveHistoryIcon>
+              Request History
+            </LeaveHistoryTitle>
+            <LeaveHistoryExpandIcon $expanded={leaveHistoryExpanded} />
+          </LeaveHistoryHeader>
+          <LeaveHistoryContent $expanded={leaveHistoryExpanded}>
+            {leaveHistoryExpanded && (
+              <>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+                  <Tabs
+                    value={historyActiveTab}
+                    onChange={(e, newValue) => setHistoryActiveTab(newValue)}
+                    sx={{
+                      '& .MuiTab-root': {
+                        color: theme.TEXT_SECONDARY,
+                        textTransform: 'none',
+                        fontSize: '0.9rem',
+                        fontWeight: 500,
+                        '&.Mui-selected': {
+                          color: theme.ACCENT,
+                        },
+                      },
+                      '& .MuiTabs-indicator': {
+                        backgroundColor: theme.ACCENT,
+                      },
+                    }}
+                  >
+                    <Tab
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          Leave Requests
+                          {leaveRequests.length > 0 && (
+                            <Chip
+                              label={leaveRequests.length}
+                              size="small"
+                              sx={{
+                                height: '18px',
+                                minWidth: '18px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                background: '#3b82f6',
+                                color: 'white',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+                    <Tab
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          Complaints
+                          {complaintsHistory.length > 0 && (
+                            <Chip
+                              label={complaintsHistory.length}
+                              size="small"
+                              sx={{
+                                height: '18px',
+                                minWidth: '18px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                background: '#ef4444',
+                                color: 'white',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+                    <Tab
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          Suggestions
+                          {suggestionsHistory.length > 0 && (
+                            <Chip
+                              label={suggestionsHistory.length}
+                              size="small"
+                              sx={{
+                                height: '18px',
+                                minWidth: '18px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                background: '#f59e0b',
+                                color: 'white',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+                  </Tabs>
+                </Box>
+
+                {historyActiveTab === 0 && (
+                  <>
+                    {loadingLeaveRequests ? (
+                      <EmptyState>Loading...</EmptyState>
+                    ) : leaveRequests.length === 0 ? (
+                      <EmptyState>No leave requests found</EmptyState>
+                    ) : (
+                      <LeaveRequestList>
+                        {leaveRequests.map((request: any) => {
+                          const staff = request.staff;
+                          const staffName = staff?.name || 'Unknown Staff';
+                          const staffRole = staff?.role || '';
+
+                          return (
+                            <LeaveRequestItem key={request.id}>
+                              {staff && (
+                                <div style={{ 
+                                  fontSize: '0.9rem', 
+                                  color: theme.TEXT_PRIMARY, 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '0.75rem', 
+                                  marginBottom: '0.75rem',
+                                  paddingBottom: '0.75rem',
+                                  borderBottom: `1px solid ${theme.BORDER}`,
+                                  flexWrap: 'wrap'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: theme.TEXT_PRIMARY, fontWeight: 500 }}>
+                                    <PersonIcon style={{ color: theme.ACCENT, fontSize: '1rem' }} />
+                                    {staffName}
+                                  </div>
+                                  {staffRole && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: theme.TEXT_SECONDARY, fontSize: '0.9rem' }}>
+                                      <SchoolIcon style={{ color: theme.ACCENT, fontSize: '1rem' }} />
+                                      {staffRole}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <LeaveRequestHeader>
+                                <LeaveRequestInfo>
+                                  <LeaveRequestType>
+                                    {request.leave_type.replace('_', ' ')}
+                                  </LeaveRequestType>
+                                  <LeaveRequestDates>
+                                    <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                    {format(new Date(request.start_date), 'MMM dd, yyyy')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                                  </LeaveRequestDates>
+                                </LeaveRequestInfo>
+                                <LeaveStatusBadge $status={request.status}>
+                                  {request.status === 'approved' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                  {request.status === 'rejected' && <Cancel style={{ fontSize: '0.9rem' }} />}
+                                  {request.status === 'pending' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                  {request.status}
+                                </LeaveStatusBadge>
+                              </LeaveRequestHeader>
+                              <LeaveRequestReason>
+                                <strong>Reason:</strong> {request.reason}
+                              </LeaveRequestReason>
+                              <LeaveRequestMeta>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                  <span>
+                                    <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                    Requested: {format(new Date(request.created_at), 'MMM dd, yyyy hh:mm a')}
+                                  </span>
+                                  {request.reviewed_at && (
+                                    <span>
+                                      <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                      Reviewed: {format(new Date(request.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                    </span>
+                                  )}
+                                </div>
+                                {request.status === 'pending' && (
+                                  <CancelButton onClick={() => handleCancelLeaveRequest(request.id)}>
+                                    <CancelOutlined style={{ fontSize: '0.9rem' }} />
+                                    Cancel
+                                  </CancelButton>
+                                )}
+                              </LeaveRequestMeta>
+                              {request.review_notes && (
+                                <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                  <strong>Review Notes:</strong> {request.review_notes}
+                                </LeaveRequestReason>
+                              )}
+                            </LeaveRequestItem>
+                          );
+                        })}
+                      </LeaveRequestList>
+                    )}
+                  </>
+                )}
+
+                {historyActiveTab === 1 && (
+                  <>
+                    {loadingComplaintsHistory ? (
+                      <EmptyState>Loading...</EmptyState>
+                    ) : complaintsHistory.length === 0 ? (
+                      <EmptyState>No complaints found</EmptyState>
+                    ) : (
+                      <LeaveRequestList>
+                        {complaintsHistory.map((complaint: any) => (
+                          <LeaveRequestItem key={complaint.id}>
+                            <LeaveRequestHeader>
+                              <LeaveRequestInfo>
+                                <LeaveRequestType>
+                                  {complaint.subject}
+                                </LeaveRequestType>
+                                <LeaveRequestDates>
+                                  <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                  {format(new Date(complaint.created_at), 'MMM dd, yyyy')}
+                                </LeaveRequestDates>
+                              </LeaveRequestInfo>
+                              <LeaveStatusBadge $status={complaint.status}>
+                                {complaint.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                {complaint.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                {complaint.status}
+                              </LeaveStatusBadge>
+                            </LeaveRequestHeader>
+                            <LeaveRequestReason>
+                              <strong>Details:</strong> {complaint.complaint_text}
+                            </LeaveRequestReason>
+                            <LeaveRequestMeta>
+                              <span>
+                                <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                Submitted: {format(new Date(complaint.created_at), 'MMM dd, yyyy hh:mm a')}
+                              </span>
+                              {complaint.reviewed_at && (
+                                <span>
+                                  <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                  Reviewed: {format(new Date(complaint.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                </span>
+                              )}
+                            </LeaveRequestMeta>
+                            {complaint.review_notes && (
+                              <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                <strong>Review Notes:</strong> {complaint.review_notes}
+                              </LeaveRequestReason>
+                            )}
+                          </LeaveRequestItem>
+                        ))}
+                      </LeaveRequestList>
+                    )}
+                  </>
+                )}
+
+                {historyActiveTab === 2 && (
+                  <>
+                    {loadingSuggestionsHistory ? (
+                      <EmptyState>Loading...</EmptyState>
+                    ) : suggestionsHistory.length === 0 ? (
+                      <EmptyState>No suggestions found</EmptyState>
+                    ) : (
+                      <LeaveRequestList>
+                        {suggestionsHistory.map((suggestion: any) => (
+                          <LeaveRequestItem key={suggestion.id}>
+                            <LeaveRequestHeader>
+                              <LeaveRequestInfo>
+                                <LeaveRequestType>
+                                  {suggestion.subject}
+                                </LeaveRequestType>
+                                <LeaveRequestDates>
+                                  <CalendarIcon style={{ fontSize: '0.9rem' }} />
+                                  {format(new Date(suggestion.created_at), 'MMM dd, yyyy')}
+                                </LeaveRequestDates>
+                              </LeaveRequestInfo>
+                              <LeaveStatusBadge $status={suggestion.status}>
+                                {suggestion.status === 'reviewed' && <CheckCircle style={{ fontSize: '0.9rem' }} />}
+                                {suggestion.status === 'in_review' && <Pending style={{ fontSize: '0.9rem' }} />}
+                                {suggestion.status}
+                              </LeaveStatusBadge>
+                            </LeaveRequestHeader>
+                            <LeaveRequestReason>
+                              <strong>Details:</strong> {suggestion.suggestion_text}
+                            </LeaveRequestReason>
+                            <LeaveRequestMeta>
+                              <span>
+                                <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                Submitted: {format(new Date(suggestion.created_at), 'MMM dd, yyyy hh:mm a')}
+                              </span>
+                              {suggestion.reviewed_at && (
+                                <span>
+                                  <AccessTimeIcon style={{ fontSize: '0.85rem', marginRight: '0.25rem' }} />
+                                  Reviewed: {format(new Date(suggestion.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                                </span>
+                              )}
+                            </LeaveRequestMeta>
+                            {suggestion.review_notes && (
+                              <LeaveRequestReason style={{ marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                <strong>Review Notes:</strong> {suggestion.review_notes}
+                              </LeaveRequestReason>
+                            )}
+                          </LeaveRequestItem>
+                        ))}
+                      </LeaveRequestList>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </LeaveHistoryContent>
+        </div>
       </QuickActionsSection>
 
       {/* Modals */}
       {leaveRequestModalJSX}
       {complaintModalJSX}
       {suggestionModalJSX}
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <ModalOverlay theme={theme} onClick={() => setShowExitConfirm(false)}>
+          <ModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                margin: '0 auto 16px',
+                background: theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <ExitIcon style={{ fontSize: '32px', color: '#ef4444' }} />
+              </div>
+              <ModalTitle theme={theme} style={{ textAlign: 'center', marginBottom: '8px' }}>
+                Exit Application
+              </ModalTitle>
+              <p style={{
+                color: theme.BG === '#252525' ? '#9ca3af' : '#6b7280',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                Are you sure you want to exit the application?
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <ModalButton
+                  theme={theme}
+                  onClick={() => setShowExitConfirm(false)}
+                  $color="#6b7280"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </ModalButton>
+                <ModalButton
+                  theme={theme}
+                  onClick={() => {
+                    setShowExitConfirm(false);
+                    handleExit();
+                  }}
+                  $color="#ef4444"
+                  style={{ flex: 1 }}
+                >
+                  Exit
+                </ModalButton>
+              </div>
+            </div>
+          </ModalBox>
+        </ModalOverlay>
+      )}
     </Container>
   );
 };
