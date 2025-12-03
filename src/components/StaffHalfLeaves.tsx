@@ -4,14 +4,11 @@ import { supabase } from '../supabaseClient';
 import { ThemeContext, darkTheme, lightTheme } from './Layout';
 import { useToast } from './useToast';
 import { format, isSunday, parseISO } from 'date-fns';
-import { sortClasses } from '../utils/classUtils';
 import {
   CalendarToday,
-  Class,
-  Groups,
   Save,
   Refresh,
-  School,
+  Work,
   AccessTime,
   Delete
 } from '@mui/icons-material';
@@ -690,7 +687,7 @@ interface Person {
   departure_time?: string | null;
 }
 
-const HalfLeaves: React.FC = () => {
+const StaffHalfLeaves: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const toast = useToast();
@@ -709,12 +706,8 @@ const HalfLeaves: React.FC = () => {
     };
   }, []);
   
-  // This component is now student-only
+  // This component is for staff only
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSection, setSelectedSection] = useState('');
-  const [classes, setClasses] = useState<Array<{ id: string; name: string; has_sections?: boolean }>>([]);
-  const [sections, setSections] = useState<Array<{ id: string; name: string }>>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [loadingPersons, setLoadingPersons] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -724,9 +717,6 @@ const HalfLeaves: React.FC = () => {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const [staffId, setStaffId] = useState<number | null>(null);
-  const [teacherSections, setTeacherSections] = useState<Array<{ id: string; name: string; class_id: string }>>([]);
-  const [teacherClasses, setTeacherClasses] = useState<Array<{ id: string; name: string; has_sections?: boolean }>>([]);
   const lastSundayErrorDate = useRef<string | null>(null);
 
   // Fetch active session
@@ -754,153 +744,7 @@ const HalfLeaves: React.FC = () => {
     fetchSession();
   }, [user]);
 
-  // On mount, fetch staff_id for the logged-in user if teacher
-  useEffect(() => {
-    if (!hasActiveSession) return;
-    const fetchStaffId = async () => {
-      if (!user || user.role !== 'Teacher') return;
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('staff_id')
-          .eq('id', user.id)
-          .single();
-        if (error) throw error;
-        if (data && data.staff_id) {
-          setStaffId(data.staff_id);
-        } else {
-          setStaffId(null);
-          toast.showToast('No staff ID found for your user. Please contact admin.', 'error');
-        }
-      } catch (error) {
-        setStaffId(null);
-        toast.showToast('Failed to fetch staff ID for your user.', 'error');
-      }
-    };
-    fetchStaffId();
-    // eslint-disable-next-line
-  }, [user, hasActiveSession]);
-
-  // Fetch teacher sections using staffId
-  useEffect(() => {
-    const fetchTeacherSections = async () => {
-      if (!user || user.role !== 'Teacher' || !staffId || !user.school_id) return;
-      try {
-        const { data, error } = await supabase
-          .from('sections')
-          .select('id, name, class_id')
-          .eq('teacher_id', staffId)
-          .eq('school_id', user.school_id);
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setTeacherSections(data.map(s => ({ ...s, id: String(s.id), class_id: String(s.class_id) })));
-          // Determine unique classes linked to the teacher
-          const uniqueClassIds = Array.from(new Set(data.map(s => String(s.class_id))));
-          if (uniqueClassIds.length === 1) {
-            const onlyClassId = uniqueClassIds[0];
-            // Auto-select class if not already selected
-            if (!selectedClass) {
-              setSelectedClass(onlyClassId);
-            }
-            // If exactly one section in that class is linked to the teacher, auto-select it
-            const sectionsInOnlyClass = data.filter(s => String(s.class_id) === String(onlyClassId));
-            if (!selectedSection && sectionsInOnlyClass.length === 1) {
-              setSelectedSection(String(sectionsInOnlyClass[0].id));
-            }
-          }
-        } else {
-          setTeacherSections([]);
-          toast.showToast('No section assigned to you. Please contact admin.', 'error');
-        }
-      } catch (error) {
-        toast.showToast('Failed to fetch your assigned sections', 'error');
-      }
-    };
-    fetchTeacherSections();
-    // eslint-disable-next-line
-  }, [user, staffId]);
-
-  // Fetch teacher classes using staffId
-  useEffect(() => {
-    const fetchTeacherClasses = async () => {
-      if (user?.role !== 'Teacher' || teacherSections.length === 0 || !user.school_id) return;
-      const classIds = Array.from(new Set(teacherSections.map(s => s.class_id)));
-      if (classIds.length === 0) return;
-      try {
-        const { data, error } = await supabase
-          .from('classes')
-          .select('id, name, has_sections')
-          .in('id', classIds)
-          .eq('school_id', user.school_id);
-        if (error) throw error;
-        const sortedClasses = sortClasses(data || []);
-        setTeacherClasses(sortedClasses.map(c => ({ ...c, id: String(c.id) })));
-      } catch (error) {
-        setTeacherClasses([]);
-      }
-    };
-    fetchTeacherClasses();
-    // eslint-disable-next-line
-  }, [teacherSections, user]);
-
-  // Fetch classes
-  useEffect(() => {
-    if (!user?.school_id) return;
-    const fetchClasses = async () => {
-      try {
-        let query = supabase
-          .from('classes')
-          .select('id, name, has_sections')
-          .eq('school_id', user.school_id);
-        
-        // For teachers, only show classes they're assigned to
-        if (user.role === 'Teacher' && teacherClasses.length > 0) {
-          const classIds = teacherClasses.map(c => c.id);
-          query = query.in('id', classIds);
-        }
-        
-        const { data, error } = await query;
-        if (!error && data) {
-          const sortedClasses = sortClasses(data);
-          setClasses(sortedClasses);
-        }
-      } catch (error) {
-      }
-    };
-    fetchClasses();
-  }, [user?.school_id, user?.role, teacherClasses]);
-
-  // Fetch sections when class is selected
-  useEffect(() => {
-    if (!selectedClass || !user?.school_id) {
-      setSections([]);
-      return;
-    }
-    const fetchSections = async () => {
-      try {
-        let query = supabase
-          .from('sections')
-          .select('id, name')
-          .eq('class_id', selectedClass)
-          .eq('school_id', user.school_id)
-          .order('name');
-        
-        // For teachers, only show sections they're assigned to
-        if (user.role === 'Teacher' && staffId) {
-          query = query.eq('teacher_id', staffId);
-        }
-        
-        const { data, error } = await query;
-        if (!error && data) {
-          setSections(data);
-        }
-      } catch (error) {
-      }
-    };
-    fetchSections();
-  }, [selectedClass, user?.school_id, user?.role, staffId]);
-
-  // Fetch students
+  // Fetch staff
   const fetchPersons = useCallback(async () => {
     if (!date || !user?.school_id || !sessionId) return;
     
@@ -913,63 +757,31 @@ const HalfLeaves: React.FC = () => {
         return;
       }
 
-      if (!selectedClass) {
-        setPersons([]);
-        setLoadingPersons(false);
-        return;
-      }
-      
-      const classList = user?.role === 'Teacher' ? teacherClasses : classes;
-      const selectedClassObj = classList.find(c => String(c.id) === String(selectedClass)) || classes.find(c => String(c.id) === String(selectedClass));
-      const hasSections = selectedClassObj?.has_sections ?? true;
-      
-      if (hasSections && !selectedSection) {
-        setPersons([]);
-        setLoadingPersons(false);
-        return;
-      }
-
-      // Fetch students
-      let schQuery = supabase
-        .from('student_class_history')
-        .select('student_id')
-        .eq('session_id', sessionId)
-        .eq('new_class_id', selectedClass)
-        .eq('school_id', user.school_id);
-      
-      if (hasSections) {
-        schQuery = schQuery.eq('new_section_id', selectedSection);
-      } else {
-        schQuery = schQuery.is('new_section_id', null);
-      }
-      
-      const { data: schData, error: schError } = await schQuery;
-      if (schError) throw schError;
-
-      if (!schData || schData.length === 0) {
-        setPersons([]);
-        setLoadingPersons(false);
-        return;
-      }
-
-      const studentIds = schData.map(sch => sch.student_id);
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('id, name, father_name, picture_url')
+      // Fetch all staff
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('id, name, role, picture_url')
         .eq('school_id', user.school_id)
-        .eq('status', 'active')
-        .in('id', studentIds);
+        .order('name');
 
-      if (studentsError) throw studentsError;
+      if (staffError) throw staffError;
+
+      if (!staffData || staffData.length === 0) {
+        setPersons([]);
+        setLoadingPersons(false);
+        return;
+      }
+
+      const staffIds = staffData.map(s => s.id);
 
       // Fetch existing half leaves
       const { data: halfLeavesData } = await supabase
         .from('half_leaves')
         .select('person_id, leave_type, remarks, arrival_time, departure_time')
-        .eq('person_type', 'student')
+        .eq('person_type', 'staff')
         .eq('date', date)
         .eq('session_id', sessionId)
-        .in('person_id', studentIds);
+        .in('person_id', staffIds);
 
       const halfLeavesMap = new Map();
       (halfLeavesData || []).forEach((hl: any) => {
@@ -981,13 +793,13 @@ const HalfLeaves: React.FC = () => {
         });
       });
 
-      const formattedPersons = (studentsData || []).map((student: any) => {
-        const hl = halfLeavesMap.get(student.id);
+      const formattedPersons = (staffData || []).map((staff: any) => {
+        const hl = halfLeavesMap.get(staff.id);
         return {
-          id: student.id,
-          name: student.name,
-          father_name: student.father_name,
-          picture_url: student.picture_url,
+          id: staff.id,
+          name: staff.name,
+          role: staff.role,
+          picture_url: staff.picture_url,
           leave_type: hl ? hl.leave_type : null,
           remarks: hl ? hl.remarks : '',
           arrival_time: hl ? hl.arrival_time : null,
@@ -997,36 +809,11 @@ const HalfLeaves: React.FC = () => {
 
       setPersons(formattedPersons);
     } catch (error) {
-      toast.showToast('Failed to fetch students', 'error');
+      toast.showToast('Failed to fetch staff', 'error');
     } finally {
       setLoadingPersons(false);
     }
-  }, [date, selectedClass, selectedSection, sessionId, user?.school_id, classes, teacherClasses, toast]);
-
-  // Ensure selectedSection aligns with selectedClass for teachers
-  useEffect(() => {
-    if (user?.role !== 'Teacher') return;
-    if (!selectedClass) return;
-    if (!selectedSection) return;
-    const isValid = teacherSections.some(
-      (s) => String(s.id) === String(selectedSection) && String(s.class_id) === String(selectedClass)
-    );
-    if (!isValid) {
-      setSelectedSection('');
-    }
-  }, [selectedClass, selectedSection, teacherSections, user?.role]);
-
-  // Auto-select the only available section for the selected class (teacher),
-  // but only when the teacher is linked to exactly one class
-  useEffect(() => {
-    if (user?.role !== 'Teacher') return;
-    if (!selectedClass) return;
-    const uniqueClassIds = Array.from(new Set(teacherSections.map(s => String(s.class_id))));
-    if (uniqueClassIds.length !== 1) return;
-    if (!selectedSection && sections.length === 1) {
-      setSelectedSection(sections[0].id.toString());
-    }
-  }, [sections, selectedClass, selectedSection, user?.role, teacherSections]);
+  }, [date, sessionId, user?.school_id, toast]);
 
   // Check for Sunday when date changes - show error only once per date
   useEffect(() => {
@@ -1047,25 +834,8 @@ const HalfLeaves: React.FC = () => {
     }
   }, [date, toast]);
 
-  // Check for Sunday when class changes - show error if date is Sunday
-  useEffect(() => {
-    if (!date || !selectedClass) return;
-    
-    const isDateSunday = isSunday(parseISO(date));
-    
-    if (isDateSunday && lastSundayErrorDate.current !== date) {
-      lastSundayErrorDate.current = date;
-      toast.showToast('Selected date is a Sunday', 'error');
-      setPersons([]);
-    }
-  }, [selectedClass, date, toast]);
-
   // Auto-fetch when dependencies change
   useEffect(() => {
-    if (!selectedClass || (sections.length > 0 && !selectedSection)) {
-      setPersons([]);
-      return;
-    }
     if (date && sessionId) {
       // Skip if Sunday (error already shown in separate useEffect)
       if (isSunday(parseISO(date))) {
@@ -1074,7 +844,7 @@ const HalfLeaves: React.FC = () => {
       }
       fetchPersons();
     }
-  }, [date, selectedClass, selectedSection, sessionId, fetchPersons, sections.length]);
+  }, [date, sessionId, fetchPersons]);
 
   // Handle leave type change
   const handleLeaveTypeChange = (personId: number, leaveType: 'first_half' | 'second_half' | null) => {
@@ -1088,9 +858,9 @@ const HalfLeaves: React.FC = () => {
           ? { 
               ...p, 
               leave_type: leaveType,
-              // Students only have second_half (half leave)
+              // First half leave = absent in morning, arrives in afternoon (arrival_time)
               // Second half leave = present in morning, leaves at half day (departure_time)
-              arrival_time: null,
+              arrival_time: leaveType === null ? null : (leaveType === 'first_half' ? (p.arrival_time || currentTime) : null),
               departure_time: leaveType === null ? null : (leaveType === 'second_half' ? (p.departure_time || currentTime) : null)
             }
           : p
@@ -1131,21 +901,22 @@ const HalfLeaves: React.FC = () => {
       await supabase
         .from('half_leaves')
         .delete()
-        .eq('person_type', 'student')
+        .eq('person_type', 'staff')
         .eq('date', date)
         .eq('session_id', sessionId)
         .in('person_id', personIds);
 
       // Insert new records
-      // Students only have second_half (half leave) = present in morning, leaves at half day (departure_time)
+      // First half leave = absent in morning, arrives in afternoon (arrival_time)
+      // Second half leave = present in morning, leaves at half day (departure_time)
       const recordsToInsert = personsWithLeaves.map(p => ({
-        person_type: 'student',
+        person_type: 'staff',
         person_id: p.id,
         session_id: sessionId,
         date: date,
         leave_type: p.leave_type,
         remarks: p.remarks || null,
-        arrival_time: null,
+        arrival_time: p.leave_type === 'first_half' ? (p.arrival_time || null) : null,
         departure_time: p.leave_type === 'second_half' ? (p.departure_time || null) : null,
         school_id: user.school_id,
       }));
@@ -1172,26 +943,13 @@ const HalfLeaves: React.FC = () => {
       return;
     }
 
-    // Check if class/section is selected
-    if (!selectedClass) {
-      toast.showToast('Please select class', 'error');
-      return;
-    }
-    const classList = user?.role === 'Teacher' ? teacherClasses : classes;
-    const selectedClassObj = classList.find(c => String(c.id) === String(selectedClass)) || classes.find(c => String(c.id) === String(selectedClass));
-    const hasSections = selectedClassObj?.has_sections ?? true;
-    if (hasSections && !selectedSection) {
-      toast.showToast('Please select section', 'error');
-      return;
-    }
-
     setDeleting(true);
     try {
-      // Delete all half leaves for the selected date, session, and students
+      // Delete all half leaves for the selected date, session, and staff
       let deleteQuery = supabase
         .from('half_leaves')
         .delete()
-        .eq('person_type', 'student')
+        .eq('person_type', 'staff')
         .eq('date', date)
         .eq('session_id', sessionId)
         .eq('school_id', user.school_id);
@@ -1216,21 +974,12 @@ const HalfLeaves: React.FC = () => {
   // Filter persons by search term
   const filteredPersons = persons.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.father_name && p.father_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (p.role && p.role.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-  // Determine if teacher has only one section
-  const teacherHasSingleSection = user?.role === 'Teacher' && teacherSections.length === 1;
-  
-  // Determine if teacher has multiple classes
-  const teacherHasMultipleClasses = user?.role === 'Teacher' && teacherClasses.length > 1;
-  
-  // Determine if selected class has only one section (for teachers)
-  // Only disable if class is selected AND it has exactly one section AND teacher doesn't have multiple classes
-  const selectedClassHasSingleSection = !!(user?.role === 'Teacher' && selectedClass && sections.length === 1 && !teacherHasMultipleClasses);
 
   // Stats
   const totalPersons = filteredPersons.length;
+  const firstHalfCount = filteredPersons.filter(p => p.leave_type === 'first_half').length;
   const secondHalfCount = filteredPersons.filter(p => p.leave_type === 'second_half').length;
 
   if (loadingSession) {
@@ -1248,7 +997,7 @@ const HalfLeaves: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AccessTime style={{ fontSize: 20 }} />
             <span style={{ fontWeight: 700, fontSize: '1.1rem', color: theme.TEXT_PRIMARY }}>
-              Student Half Leaves Management
+              Staff Half Leaves Management
             </span>
           </div>
         </Header>
@@ -1265,7 +1014,7 @@ const HalfLeaves: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!isMobile && (
             <h2 style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: 1, color: theme.ACCENT, margin: 0 }}>
-              Student Half Leaves Management
+              Staff Half Leaves Management
             </h2>
           )}
         </div>
@@ -1279,37 +1028,10 @@ const HalfLeaves: React.FC = () => {
                 onChange={(e) => setDate(e.target.value)}
                 first
               />
-              <SegmentedSelect
-                theme={theme}
-                value={selectedClass}
-                onChange={(e) => {
-                  setSelectedClass(e.target.value);
-                  setSelectedSection('');
-                }}
-                disabled={user?.role === 'Teacher' ? teacherHasSingleSection : false}
-              >
-                <option value="">Class</option>
-                {(user?.role === 'Teacher' ? teacherClasses : classes).map(cls => (
-                  <option key={cls.id} value={cls.id}>{cls.name}</option>
-                ))}
-              </SegmentedSelect>
-              {sections.length > 0 && (
-                <SegmentedSelect
-                  theme={theme}
-                  value={selectedSection}
-                  onChange={(e) => setSelectedSection(e.target.value)}
-                  disabled={!selectedClass ? true : (user?.role === 'Teacher' ? selectedClassHasSingleSection : false)}
-                >
-                  <option value="">Section</option>
-                  {sections.map(sec => (
-                    <option key={sec.id} value={sec.id}>{sec.name}</option>
-                  ))}
-                </SegmentedSelect>
-              )}
               <SegmentedInput
                 theme={theme}
                 type="text"
-                placeholder="Search..."
+                placeholder="Search staff..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 last
@@ -1328,7 +1050,8 @@ const HalfLeaves: React.FC = () => {
               textAlign: 'center'
             }}>
               <span>Total: {totalPersons}</span>
-              <span>| Half Leave: {secondHalfCount}</span>
+              <span>| First Half: {firstHalfCount}</span>
+              <span>| Second Half: {secondHalfCount}</span>
             </div>
           </>
         ) : (
@@ -1339,37 +1062,10 @@ const HalfLeaves: React.FC = () => {
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
-            <SegmentedSelect
-              theme={theme}
-              value={selectedClass}
-              onChange={(e) => {
-                setSelectedClass(e.target.value);
-                setSelectedSection('');
-              }}
-              disabled={user?.role === 'Teacher' && teacherClasses.length === 1}
-            >
-              <option value="">Select Class</option>
-              {(user?.role === 'Teacher' ? teacherClasses : classes).map(cls => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
-              ))}
-            </SegmentedSelect>
-            {sections.length > 0 && (
-              <SegmentedSelect
-                theme={theme}
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                disabled={!selectedClass ? true : (user?.role === 'Teacher' ? selectedClassHasSingleSection : false)}
-              >
-                <option value="">Select Section</option>
-                {sections.map(sec => (
-                  <option key={sec.id} value={sec.id}>{sec.name}</option>
-                ))}
-              </SegmentedSelect>
-            )}
             <SegmentedInput
               theme={theme}
               type="text"
-              placeholder="Search students..."
+              placeholder="Search staff..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               last
@@ -1404,61 +1100,6 @@ const HalfLeaves: React.FC = () => {
             );
           }
 
-          // Show message when no class is selected
-          if (!selectedClass) {
-            return (
-              <div style={{
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                minHeight: '60vh', 
-                width: '100%', 
-                textAlign: 'center', 
-                color: theme.TEXT_SECONDARY, 
-                fontWeight: 600
-              }}>
-                <Class style={{ fontSize: 54, color: theme.ACCENT, marginBottom: 12 }} />
-                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: theme.TEXT_PRIMARY }}>
-                  Select a class to manage half leaves
-                </div>
-                <div style={{ fontSize: '1rem', marginTop: 8, color: theme.TEXT_SECONDARY }}>
-                  Students will appear here once you select a class.
-                </div>
-              </div>
-            );
-          }
-
-          // Show message when class is selected but no section is selected
-          if (selectedClass) {
-            const classList = user?.role === 'Teacher' ? teacherClasses : classes;
-            const selectedClassObj = classList.find(c => String(c.id) === String(selectedClass)) || classes.find(c => String(c.id) === String(selectedClass));
-            const hasSections = selectedClassObj?.has_sections ?? true;
-            
-            if (hasSections && !selectedSection) {
-              return (
-                <div style={{
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  minHeight: '60vh', 
-                  width: '100%', 
-                  textAlign: 'center', 
-                  color: theme.TEXT_SECONDARY, 
-                  fontWeight: 600
-                }}>
-                  <Groups style={{ fontSize: 54, color: theme.ACCENT, marginBottom: 12 }} />
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: theme.TEXT_PRIMARY }}>
-                    Select a section to manage half leaves
-                  </div>
-                  <div style={{ fontSize: '1rem', marginTop: 8, color: theme.TEXT_SECONDARY }}>
-                    Students will appear here once you select a section.
-                  </div>
-                </div>
-              );
-            }
-          }
 
           // Show loading state
           if (loadingPersons) {
@@ -1481,12 +1122,12 @@ const HalfLeaves: React.FC = () => {
                 color: theme.TEXT_SECONDARY, 
                 fontWeight: 600 
               }}>
-                <School style={{ fontSize: 48, marginBottom: 12, opacity: 0.5 }} />
+                <Work style={{ fontSize: 48, marginBottom: 12, opacity: 0.5 }} />
                 <div style={{ fontSize: '1.15rem', fontWeight: 700, color: theme.TEXT_PRIMARY }}>
-                  No students found in selected class/section
+                  No staff found
                 </div>
                 <div style={{ fontSize: '0.95rem', marginTop: 8, color: theme.TEXT_SECONDARY }}>
-                  Please select a different class or section
+                  Please add staff members to manage half leaves
                 </div>
               </div>
             );
@@ -1497,11 +1138,15 @@ const HalfLeaves: React.FC = () => {
             <>
               <StatsBar theme={theme}>
                 <StatItem>
-                  <StatLabel theme={theme}>Total Students</StatLabel>
+                  <StatLabel theme={theme}>Total Staff</StatLabel>
                   <StatValue theme={theme}>{totalPersons}</StatValue>
                 </StatItem>
                 <StatItem>
-                  <StatLabel theme={theme}>Half Leave</StatLabel>
+                  <StatLabel theme={theme}>First Half</StatLabel>
+                  <StatValue theme={theme} style={{ color: '#f59e0b' }}>{firstHalfCount}</StatValue>
+                </StatItem>
+                <StatItem>
+                  <StatLabel theme={theme}>Second Half</StatLabel>
                   <StatValue theme={theme} style={{ color: '#8b5cf6' }}>{secondHalfCount}</StatValue>
                 </StatItem>
               </StatsBar>
@@ -1523,10 +1168,21 @@ const HalfLeaves: React.FC = () => {
                           <MobilePersonInfo theme={theme}>
                             <MobilePersonName theme={theme}>{person.name}</MobilePersonName>
                             <MobilePersonDetails theme={theme}>
-                              {person.father_name}
+                              {person.role}
                             </MobilePersonDetails>
                           </MobilePersonInfo>
                           <MobileLeaveTypeButtons>
+                            <MobileLeaveTypeButton
+                              theme={theme}
+                              $active={person.leave_type === 'first_half'}
+                              $color="#f59e0b"
+                              onClick={() => handleLeaveTypeChange(
+                                person.id,
+                                person.leave_type === 'first_half' ? null : 'first_half'
+                              )}
+                            >
+                              First Half
+                            </MobileLeaveTypeButton>
                             <MobileLeaveTypeButton
                               theme={theme}
                               $active={person.leave_type === 'second_half'}
@@ -1536,12 +1192,23 @@ const HalfLeaves: React.FC = () => {
                                 person.leave_type === 'second_half' ? null : 'second_half'
                               )}
                             >
-                              Half Leave
+                              Second Half
                             </MobileLeaveTypeButton>
                           </MobileLeaveTypeButtons>
                         </MobileCardTopRow>
                         {person.leave_type && (
                           <MobileTimeInputContainer theme={theme}>
+                            {person.leave_type === 'first_half' && (
+                              <MobileTimeInputGroup>
+                                <MobileTimeLabel theme={theme}>Arrival Time:</MobileTimeLabel>
+                                <MobileTimeInput
+                                  theme={theme}
+                                  type="time"
+                                  value={person.arrival_time || ''}
+                                  onChange={(e) => handleTimeChange(person.id, 'arrival_time', e.target.value)}
+                                />
+                              </MobileTimeInputGroup>
+                            )}
                             {person.leave_type === 'second_half' && (
                               <MobileTimeInputGroup>
                                 <MobileTimeLabel theme={theme}>Departure Time:</MobileTimeLabel>
@@ -1572,12 +1239,23 @@ const HalfLeaves: React.FC = () => {
                       <PersonInfo theme={theme}>
                         <PersonName theme={theme}>{person.name}</PersonName>
                         <PersonDetails theme={theme}>
-                          {person.father_name}
+                          {person.role}
                         </PersonDetails>
                       </PersonInfo>
                       <DesktopButtonRow>
                         {person.leave_type && (
                           <DesktopTimeInputGroup>
+                            {person.leave_type === 'first_half' && (
+                              <>
+                                <TimeLabel theme={theme}>Arrival Time:</TimeLabel>
+                                <TimeInput
+                                  theme={theme}
+                                  type="time"
+                                  value={person.arrival_time || ''}
+                                  onChange={(e) => handleTimeChange(person.id, 'arrival_time', e.target.value)}
+                                />
+                              </>
+                            )}
                             {person.leave_type === 'second_half' && (
                               <>
                                 <TimeLabel theme={theme}>Departure Time:</TimeLabel>
@@ -1594,6 +1272,17 @@ const HalfLeaves: React.FC = () => {
                         <LeaveTypeButtons>
                           <LeaveTypeButton
                             theme={theme}
+                            $active={person.leave_type === 'first_half'}
+                            $color="#f59e0b"
+                            onClick={() => handleLeaveTypeChange(
+                              person.id,
+                              person.leave_type === 'first_half' ? null : 'first_half'
+                            )}
+                          >
+                            First Half
+                          </LeaveTypeButton>
+                          <LeaveTypeButton
+                            theme={theme}
                             $active={person.leave_type === 'second_half'}
                             $color="#8b5cf6"
                             onClick={() => handleLeaveTypeChange(
@@ -1601,12 +1290,23 @@ const HalfLeaves: React.FC = () => {
                               person.leave_type === 'second_half' ? null : 'second_half'
                             )}
                           >
-                            Half Leave
+                            Second Half
                           </LeaveTypeButton>
                         </LeaveTypeButtons>
                       </DesktopButtonRow>
                       {person.leave_type && (
                         <TimeInputContainer theme={theme}>
+                          {person.leave_type === 'first_half' && (
+                            <TimeInputGroup>
+                              <TimeLabel theme={theme}>Arrival Time:</TimeLabel>
+                              <TimeInput
+                                theme={theme}
+                                type="time"
+                                value={person.arrival_time || ''}
+                                onChange={(e) => handleTimeChange(person.id, 'arrival_time', e.target.value)}
+                              />
+                            </TimeInputGroup>
+                          )}
                           {person.leave_type === 'second_half' && (
                             <TimeInputGroup>
                               <TimeLabel theme={theme}>Departure Time:</TimeLabel>
@@ -1631,7 +1331,7 @@ const HalfLeaves: React.FC = () => {
       <Footer>
         {!isMobile && (
           <div style={{ fontSize: '0.98rem', color: theme.TEXT_SECONDARY, fontWeight: 600 }}>
-            Total: {totalPersons} | Half Leave: {secondHalfCount}
+            Total: {totalPersons} | First Half: {firstHalfCount} | Second Half: {secondHalfCount}
           </div>
         )}
         <SegmentedGroup
@@ -1661,8 +1361,7 @@ const HalfLeaves: React.FC = () => {
               deleting || 
               !date || 
               !sessionId ||
-              persons.filter(p => p.leave_type !== null).length === 0 ||
-              (!selectedClass || ((user?.role === 'Teacher' ? teacherClasses : classes).find(c => String(c.id) === String(selectedClass))?.has_sections ?? true) && !selectedSection)
+              persons.filter(p => p.leave_type !== null).length === 0
             }
             style={{ 
               color: '#fff', 
@@ -1723,7 +1422,7 @@ const HalfLeaves: React.FC = () => {
           <ConfirmationDialog theme={theme}>
             <DialogTitle theme={theme}>Delete Half Leaves</DialogTitle>
             <DialogContent theme={theme}>
-              Are you sure you want to delete all half leave records for the selected class, section, and the selected date? This action cannot be undone.
+              Are you sure you want to delete all half leave records for the selected date? This action cannot be undone.
             </DialogContent>
             <DialogButtons>
               <DialogButton theme={theme} onClick={() => setShowDeleteConfirm(false)}>
@@ -1740,5 +1439,5 @@ const HalfLeaves: React.FC = () => {
   );
 };
 
-export default HalfLeaves;
+export default StaffHalfLeaves;
 

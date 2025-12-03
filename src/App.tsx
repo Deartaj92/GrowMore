@@ -23,6 +23,7 @@ import MarkStaffAttendance from './components/MarkStaffAttendance';
 import StaffAttendanceReport from './components/StaffAttendanceReport';
 import AttendanceReport from './components/AttendanceReport';
 import HalfLeaves from './components/HalfLeaves';
+import StaffHalfLeaves from './components/StaffHalfLeaves';
 import LeaveRequestsPage from './pages/LeaveRequestsPage';
 import ComplaintsSuggestionsPage from './pages/ComplaintsSuggestionsPage';
 import FineManager from './components/FineManager';
@@ -868,6 +869,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="half-leaves">
                                 <HalfLeaves />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/staff-half-leaves"
+                            element={
+                              <ProtectedRoute requiredPermission="staff-half-leaves">
+                                <StaffHalfLeaves />
                               </ProtectedRoute>
                             }
                           />

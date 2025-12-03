@@ -128,8 +128,8 @@ export const attendanceMenuItems: MenuItem[] = [
     color: '#10b981'
   },
   {
-    title: 'Half Leaves',
-    description: 'Record and manage half-day leaves',
+    title: 'Student Half Leaves',
+    description: 'Record and manage student half-day leaves',
     icon: React.createElement(AccessTimeIcon),
     path: '/attendance/half-leaves',
     color: '#ec4899'
@@ -174,10 +174,10 @@ export const employeeAttendanceMenuItems: MenuItem[] = [
     color: '#8b5cf6'
   },
   {
-    title: 'Half Leaves',
-    description: 'Record and manage half-day leaves',
+    title: 'Staff Half Leaves',
+    description: 'Record and manage staff half-day leaves',
     icon: React.createElement(AccessTimeIcon),
-    path: '/attendance/half-leaves',
+    path: '/attendance/staff-half-leaves',
     color: '#ec4899'
   }
 ];

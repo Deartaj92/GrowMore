@@ -59,6 +59,76 @@ import { StudentInfo, ParentInfo, InstituteProfile } from '../../types';
 import NotificationBell from '../../../NotificationBell';
 import ProfileDropdown from '../ProfileDropdown/ProfileDropdown';
 
+// Mac-style window controls (for Electron)
+const MacWindowControls = styled.div`
+  display: flex;
+  gap: 11px;
+  height: 28px;
+  align-items: center;
+  -webkit-app-region: no-drag;
+  margin-left: 8px;
+  margin-right: -16px;
+  padding-right: 16px;
+  
+  @media (max-width: 700px) {
+    display: none;
+  }
+`;
+
+const MacButton = styled.button<{ color: string }>`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: ${({ color }) => color};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  transition: box-shadow 0.18s, background 0.18s;
+  box-shadow: 0 1px 2px #0002;
+  outline: none;
+  &:hover { filter: brightness(1.1); }
+  &:focus { outline: none; }
+  &:active { filter: brightness(0.95); }
+`;
+
+const MacIcon = styled.span`
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: #222c;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s;
+  ${MacButton}:hover & { opacity: 1; }
+`;
+
+function MacWindowControlsComponent() {
+  const [isMaximized, setIsMaximized] = React.useState(false);
+  React.useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.isMaximized().then(setIsMaximized);
+      window.electronAPI.onMaximize(() => setIsMaximized(true));
+      window.electronAPI.onUnmaximize(() => setIsMaximized(false));
+    }
+  }, []);
+  const handleMinimize = () => { if (window.electronAPI) window.electronAPI.minimize(); };
+  const handleMaximize = () => { if (window.electronAPI) { if (isMaximized) window.electronAPI.unmaximize(); else window.electronAPI.maximize(); } };
+  const handleClose = () => { if (window.electronAPI) window.electronAPI.close(); };
+  return (
+    <MacWindowControls>
+      <MacButton color="#ffbd2e" aria-label="Minimize" title="Minimize" onClick={handleMinimize}><MacIcon>&#8211;</MacIcon></MacButton>
+      <MacButton color="#27c93f" aria-label={isMaximized ? 'Restore' : 'Maximize'} title={isMaximized ? 'Restore' : 'Maximize'} onClick={handleMaximize}><MacIcon>{isMaximized ? <>&#9633;</> : <>&#9723;</>}</MacIcon></MacButton>
+      <MacButton color="#ff5f56" aria-label="Close" title="Close" onClick={handleClose}><MacIcon>&#10005;</MacIcon></MacButton>
+    </MacWindowControls>
+  );
+}
+
 // App Logo
 const AppLogo = styled.div`
   display: flex;
@@ -75,6 +145,7 @@ const AppLogo = styled.div`
   cursor: pointer;
   transition: all 0.2s ease;
   overflow: hidden;
+  -webkit-app-region: no-drag;
   
   &:hover {
     transform: scale(1.05);
@@ -901,8 +972,8 @@ const Header: React.FC<HeaderProps> = ({
       color: '#10b981'
     },
     {
-      title: 'Half Leaves',
-      description: 'Record and manage half-day leaves',
+      title: 'Student Half Leaves',
+      description: 'Record and manage student half-day leaves',
       icon: <AccessTimeIcon />,
       path: '/attendance/half-leaves',
       color: '#ec4899'
@@ -947,10 +1018,10 @@ const Header: React.FC<HeaderProps> = ({
       color: '#8b5cf6'
     },
     {
-      title: 'Half Leaves',
-      description: 'Record and manage half-day leaves',
+      title: 'Staff Half Leaves',
+      description: 'Record and manage staff half-day leaves',
       icon: <AccessTimeIcon />,
-      path: '/attendance/half-leaves',
+      path: '/attendance/staff-half-leaves',
       color: '#ec4899'
     }
   ];
@@ -2021,6 +2092,7 @@ const Header: React.FC<HeaderProps> = ({
             />
           )}
         </div>
+        {!isWeb && <MacWindowControlsComponent />}
       </HeaderActions>
     </HeaderStyled>
     </>
