@@ -10,13 +10,21 @@ app.setAppUserModelId('com.growmore.app');
 
 // Configure auto-launch for Windows startup
 let autoLauncher;
+let shouldStartInTray = false;
 if (process.platform === 'win32') {
   // Get the correct path for auto-launch
   const appPath = app.getPath('exe');
+  
+  // Check if app was launched at Windows startup (auto-launch)
+  // On Windows, when auto-launched with isHidden:true, we need to detect it
+  shouldStartInTray = process.argv.includes('--hidden') || 
+                      process.argv.includes('--startup');
+  
   autoLauncher = new AutoLaunch({
     name: 'Grow More',
     path: appPath,
-    isHidden: false
+    isHidden: true, // Start hidden in tray (only creates tray, no window)
+    args: ['--startup'] // Pass argument to detect auto-launch
   });
 }
 
@@ -76,7 +84,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Handle window close (minimize to tray)
+  // Handle window close (destroy window but keep app running for notifications)
   mainWindow.on('close', (event) => {
     // Check if download is in progress (including paused)
     if (activeDownloads.size > 0) {
@@ -100,9 +108,10 @@ function createWindow() {
 
     if (!isQuitting) {
       event.preventDefault();
-      // Hide window and remove from taskbar (truly in tray, not minimized)
-      mainWindow.hide();
-      mainWindow.setSkipTaskbar(true);
+      // Destroy the window completely (app stays running in tray for notifications)
+      // This ensures a fresh start when reopened
+      mainWindow.destroy();
+      mainWindow = null;
       return false;
     }
   });
@@ -118,10 +127,6 @@ function createWindow() {
     mainWindow.webContents.send('window-unmaximized');
   });
   
-  // Show in taskbar when window is shown
-  mainWindow.on('show', () => {
-    mainWindow.setSkipTaskbar(false);
-  });
 
   // Handle loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
@@ -149,14 +154,13 @@ function createTray() {
     {
       label: 'Open Grow More',
       click: () => {
-        if (mainWindow) {
-          // Show in taskbar again when restoring
-          mainWindow.setSkipTaskbar(false);
-          mainWindow.show();
-          mainWindow.focus();
-        } else {
-          createWindow();
+        // Always create a new window for fresh start
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          // If window exists, destroy it first to ensure fresh start
+          mainWindow.destroy();
+          mainWindow = null;
         }
+        createWindow();
       }
     },
     { type: 'separator' },
@@ -174,12 +178,13 @@ function createTray() {
   appTray.setContextMenu(tray);
 
   appTray.on('double-click', () => {
-    if (mainWindow) {
-      // Show in taskbar again when restoring
-      mainWindow.setSkipTaskbar(false);
-      mainWindow.show();
-      mainWindow.focus();
+    // Always create a new window for fresh start
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      // If window exists, destroy it first to ensure fresh start
+      mainWindow.destroy();
+      mainWindow = null;
     }
+    createWindow();
   });
 
   return appTray;
@@ -192,17 +197,29 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window.
-    if (mainWindow) {
+    // Someone tried to run a second instance
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      // Window exists, show and focus it
       if (mainWindow.isMinimized()) mainWindow.restore();
       if (!mainWindow.isVisible()) mainWindow.show();
       mainWindow.focus();
+    } else {
+      // Window doesn't exist, create a new one
+      createWindow();
     }
   });
 
   app.on('ready', () => {
-    createWindow();
+    // Create tray first (needed for starting in tray)
     tray = createTray();
+    
+    // Only create window if not starting in tray (auto-launch)
+    // When auto-launched with isHidden:true, shouldStartInTray will be true
+    // and we'll skip creating the window, leaving only the tray icon
+    if (!shouldStartInTray) {
+      createWindow();
+    }
+    // If auto-launched (shouldStartInTray = true), app will stay in tray only (no window created)
     
     // Enable auto-launch on Windows
     if (process.platform === 'win32' && autoLauncher) {
@@ -267,9 +284,10 @@ ipcMain.on('window-close', () => {
   }
 
   if (mainWindow) {
-    // Hide window and remove from taskbar (truly in tray, not minimized)
-    mainWindow.hide();
-    mainWindow.setSkipTaskbar(true);
+    // Destroy the window completely (app stays running in tray for notifications)
+    // This ensures a fresh start when reopened
+    mainWindow.destroy();
+    mainWindow = null;
   }
 });
 ipcMain.handle('window-is-maximized', () => {
