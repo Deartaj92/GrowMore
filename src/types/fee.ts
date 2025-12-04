@@ -21,6 +21,8 @@ export interface FeeStructure {
   sessionId: number;
   feeHeadId: number;
   amount: number;
+  months?: number[]; // Array of month numbers (1-12) when fees should be collected
+  firstTime?: boolean; // Whether this fee should be collected on first time enrollment
   createdAt?: string;
   updatedAt?: string;
 }
@@ -105,4 +107,36 @@ export interface StudentFeeConcession {
   concessionAmount: number;
   effectiveFrom?: string;
   expires_on?: string;
+}
+
+export interface FeePlan {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  sessionId: number;
+  effectiveFrom: string;
+  discountType?: string;
+  discountReason?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: number;
+  updatedBy?: number;
+}
+
+export interface FeePlanItem {
+  id: number;
+  feePlanId: number;
+  schoolId: number;
+  feeHeadId: number;
+  actualFee: number;
+  discountAmount: number;
+  discountPercent: number;
+  feeAfterDiscount: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FeePlanWithItems extends FeePlan {
+  items: FeePlanItem[];
 } 

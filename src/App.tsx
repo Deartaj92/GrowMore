@@ -62,6 +62,8 @@ import { TeacherProfile } from './pages/TeacherProfile';
 import SchoolsManagement from './pages/SchoolsManagement';
 import SchoolWelcomeScreen from './pages/SchoolWelcomeScreen';
 import FeeStructureManager from './pages/FeeStructureManager';
+import FeePlans from './pages/FeePlans';
+import FeeIncrements from './pages/FeeIncrements';
 import LoadFeePage from './pages/LoadFeePage';
 import FeeCollection from './pages/FeeCollectionNew';
 import FeeDefaultersList from './pages/FeeDefaultersList';
@@ -621,6 +623,24 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="fee-structure">
                                 <FeeStructureManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-plans"
+                            element={
+                              <ProtectedRoute requiredPermission="fee-plans">
+                                <FeePlans />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-increments"
+                            element={
+                              <ProtectedRoute requiredPermission="fee-increments">
+                                <FeeIncrements />
                               </ProtectedRoute>
                             }
                           />

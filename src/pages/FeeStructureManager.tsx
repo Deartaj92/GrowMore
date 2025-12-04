@@ -462,38 +462,8 @@ const StyledDialogContent = styled.div`
     : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)'};
   min-height: 400px;
   flex: 1;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => theme.palette?.mode === 'dark'
-    ? 'rgba(255, 255, 255, 0.2) transparent'
-    : 'rgba(0, 0, 0, 0.2) transparent'};
-  
-  &::-webkit-scrollbar {
-    width: 6px;
-    background-color: transparent;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
-    margin: 2px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background-color: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
-    border-radius: 3px;
-    border: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? `1px solid ${theme.palette.background.paper}`
-      : `1px solid ${theme.palette.background.paper}`};
-    
-    &:hover {
-      background-color: ${({ theme }) => theme.palette?.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
-    }
-  }
+  min-height: 0;
+  overflow: hidden;
   
   @media (max-width: 768px) {
     flex-direction: column;
@@ -668,6 +638,35 @@ const LeftColumn = styled.div`
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => theme.palette?.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.2) transparent'
+    : 'rgba(0, 0, 0, 0.2) transparent'};
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.2)'
+      : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 3px;
+    
+    &:hover {
+      background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)'};
+    }
+  }
   
   @media (max-width: 768px) {
     gap: 12px;
@@ -678,8 +677,9 @@ const RightColumn = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
+  min-height: 0;
   border-left: 1px solid ${({ theme }) => theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
   padding-left: 24px;
   
@@ -698,9 +698,54 @@ const FeeHeadsTable = styled.div`
     : 'rgba(0, 0, 0, 0.02)'};
   border-radius: 12px;
   border: 1px solid ${({ theme }) => theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  max-height: 300px;
-  overflow-y: auto;
+  
+  /* Custom scrollbar styling for the inner scrollable div */
+  > div {
+    /* Custom scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: ${({ theme }) => theme.palette?.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05)'
+      : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)'};
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: ${({ theme }) => theme.palette?.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(0, 0, 0, 0.05)'};
+      border-radius: 4px;
+      margin: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)'};
+      border-radius: 4px;
+      border: 1px solid ${({ theme }) => theme.palette?.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'rgba(0, 0, 0, 0.1)'};
+      
+      &:hover {
+        background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+          ? 'rgba(255, 255, 255, 0.4)'
+          : 'rgba(0, 0, 0, 0.4)'};
+      }
+      
+      &:active {
+        background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+          ? 'rgba(255, 255, 255, 0.5)'
+          : 'rgba(0, 0, 0, 0.5)'};
+      }
+    }
+  }
 `;
 
 const TableHeader = styled.div`
@@ -714,9 +759,13 @@ const TableHeader = styled.div`
   font-weight: 600;
   font-size: 0.9rem;
   gap: 12px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 `;
 
-const TableRow = styled.div`
+const FeeHeadTableRow = styled.div`
   display: flex;
   align-items: center;
   padding: 12px 16px;
@@ -736,7 +785,7 @@ const TableRow = styled.div`
   }
 `;
 
-const FeeHeadName = styled.div`
+const FeeHeadModalName = styled.div`
   flex: 1;
   font-weight: 500;
   font-size: 0.9rem;
@@ -821,7 +870,7 @@ const DeleteIconButton = styled.button`
 `;
 
 // Add styled component for table row with hover effect
-const TableRowWithHover = styled(TableRow)`
+const TableRowWithHover = styled(FeeHeadTableRow)`
   &:hover .delete-icon {
     opacity: 1;
   }
@@ -1117,6 +1166,243 @@ const MainContent = styled.div`
   }
 `;
 
+// New table layout components
+const TableLayoutContainer = styled.div`
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 16px 0;
+  
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 16px;
+  }
+`;
+
+const FeeSchedulesColumn = styled.div`
+  min-width: 250px;
+  max-width: 300px;
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: ${({ theme }) => theme.SHADOW};
+  border: 2px solid ${({ theme }) => theme.BORDER};
+  height: fit-content;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  
+  @media (max-width: 1024px) {
+    min-width: 100%;
+    max-width: 100%;
+    max-height: 300px;
+  }
+`;
+
+const FeeSchedulesTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ClassCheckboxItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'};
+  }
+`;
+
+const ClassCheckbox = styled.input`
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: ${({ theme }) => theme.ACCENT};
+`;
+
+const ClassCheckboxLabel = styled.label`
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  cursor: pointer;
+  flex: 1;
+`;
+
+const MainTableContainer = styled.div`
+  flex: 1;
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: ${({ theme }) => theme.SHADOW};
+  border: 2px solid ${({ theme }) => theme.BORDER};
+  overflow-x: auto;
+`;
+
+const MainTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+`;
+
+const TableHeaderRow = styled.tr`
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'};
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+`;
+
+const TableHeaderCell = styled.th`
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  white-space: nowrap;
+  
+  &:first-child {
+    width: 40px;
+  }
+  
+  &:nth-child(2) {
+    min-width: 200px;
+  }
+  
+  &:nth-child(3) {
+    min-width: 120px;
+  }
+  
+  &:nth-child(4) {
+    min-width: 400px;
+  }
+`;
+
+const TableRow = styled.tr`
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER}40;
+  transition: background 0.2s;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'};
+  }
+`;
+
+const TableCell = styled.td`
+  padding: 16px;
+  vertical-align: top;
+`;
+
+const FeeHeadCheckbox = styled.input`
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: ${({ theme }) => theme.ACCENT};
+`;
+
+const FeeHeadName = styled.div`
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 4px;
+`;
+
+const FeeHeadDescription = styled.div`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  opacity: 0.8;
+`;
+
+const AmountInput = styled.input`
+  width: 100%;
+  max-width: 120px;
+  padding: 8px 12px;
+  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 8px;
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s;
+  
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}20;
+  }
+  
+  -moz-appearance: textfield;
+  &::-webkit-inner-spin-button, &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+`;
+
+const FrequencyCell = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const OneTimeButton = styled.button<{ active: boolean; disabled?: boolean }>`
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
+  background: ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BG};
+  color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.2s;
+  width: fit-content;
+  opacity: ${({ disabled }) => disabled ? 0.5 : 1};
+  
+  &:hover:not(:disabled) {
+    border-color: ${({ theme }) => theme.ACCENT};
+    background: ${({ active, theme }) => active ? theme.ACCENT : theme.ACCENT}20;
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+  }
+`;
+
+const MonthsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+`;
+
+const MonthButton = styled.button<{ active: boolean; disabled?: boolean }>`
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
+  background: ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BG};
+  color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.2s;
+  min-width: 45px;
+  opacity: ${({ disabled }) => disabled ? 0.5 : 1};
+  
+  &:hover:not(:disabled) {
+    border-color: ${({ theme }) => theme.ACCENT};
+    background: ${({ active, theme }) => active ? theme.ACCENT : theme.ACCENT}20;
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+  }
+`;
+
 const PaginationContainer = styled.div`
   display: flex;
   justify-content: space-between;
@@ -1406,9 +1692,9 @@ const SkeletonLoader = () => (
   </SkeletonContainer>
 );
 
-const FeeStructureManager: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ theme: customTheme }) => {
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
   const schoolId = user?.school_id;
@@ -1421,6 +1707,10 @@ const FeeStructureManager: React.FC = () => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionId, setSessionId] = useState(0);
   const [amounts, setAmounts] = useState<{ [key: string]: string }>({}); // key: `${classId}_${feeHeadId}`
+  const [selectedClasses, setSelectedClasses] = useState<Set<number>>(new Set());
+  const [selectedFeeHeads, setSelectedFeeHeads] = useState<Set<number>>(new Set());
+  const [months, setMonths] = useState<{ [key: string]: number[] }>({}); // key: `${classId}_${feeHeadId}`
+  const [firstTime, setFirstTime] = useState<{ [key: string]: boolean }>({}); // key: `${classId}_${feeHeadId}`
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showFeeHeadModal, setShowFeeHeadModal] = useState(false);
@@ -1434,6 +1724,9 @@ const FeeStructureManager: React.FC = () => {
   const [deleteFeeHead, setDeleteFeeHead] = useState<FeeHead | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [selectedClassesForFeeHead, setSelectedClassesForFeeHead] = useState<Set<number>>(new Set());
+  
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   // Fetch all data
   useEffect(() => {
@@ -1455,19 +1748,22 @@ const FeeStructureManager: React.FC = () => {
         // Load existing structures for the selected session
         if (sessionId) {
           const data = await feeService.getFeeStructures(schoolId, { sessionId });
-          // Map to camelCase, cast as any to avoid TS errors
-          const camelData = (data as any[]).map(s => ({
-            ...s,
-            classId: s.class_id,
-            feeHeadId: s.fee_head_id,
-          }));
-          setStructures(camelData);
-          // Pre-fill amounts
+          setStructures(data);
+          // Pre-fill amounts, months, and firstTime
           const amt: { [key: string]: string } = {};
-          camelData.forEach(s => {
-            amt[`${s.classId}_${s.feeHeadId}`] = String(s.amount);
+          const mths: { [key: string]: number[] } = {};
+          const ft: { [key: string]: boolean } = {};
+          
+          data.forEach(s => {
+            const key = `${s.classId}_${s.feeHeadId}`;
+            amt[key] = String(s.amount);
+            mths[key] = s.months || [];
+            ft[key] = s.firstTime || false;
           });
+          
           setAmounts(amt);
+          setMonths(mths);
+          setFirstTime(ft);
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load data');
@@ -1493,8 +1789,92 @@ const FeeStructureManager: React.FC = () => {
     // eslint-disable-next-line
   }, [sessions]);
 
+  // No longer need auto-select since we show all classes in the table
+
   const handleAmountChange = (classId: number, feeHeadId: number, value: string) => {
     setAmounts(prev => ({ ...prev, [`${classId}_${feeHeadId}`]: value }));
+  };
+
+  const handleClassToggle = (classId: number) => {
+    setSelectedClasses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(classId)) {
+        newSet.delete(classId);
+      } else {
+        newSet.add(classId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleFeeHeadToggle = (feeHeadId: number) => {
+    setSelectedFeeHeads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(feeHeadId)) {
+        newSet.delete(feeHeadId);
+      } else {
+        newSet.add(feeHeadId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleMonthToggle = async (classId: number, feeHeadId: number, month: number) => {
+    if (!schoolId || !sessionId) return;
+    const key = `${classId}_${feeHeadId}`;
+    const current = months[key] || [];
+    const newMonths = current.includes(month)
+      ? current.filter(m => m !== month)
+      : [...current, month].sort((a, b) => a - b);
+    
+    setMonths(prev => ({ ...prev, [key]: newMonths }));
+    
+    // Auto-save
+    try {
+      const amount = amounts[key];
+      if (amount && !isNaN(Number(amount)) && Number(amount) > 0) {
+        await feeService.bulkUpsertFeeStructures(schoolId, sessionId, [{
+          classId,
+          feeHeadId,
+          amount: Number(amount),
+          months: newMonths,
+          firstTime: firstTime[key] || false,
+        }], user?.id);
+      }
+    } catch (err: any) {
+      console.error('Auto-save failed:', err);
+    }
+  };
+
+  const handleFirstTimeToggle = async (classId: number, feeHeadId: number) => {
+    if (!schoolId || !sessionId) return;
+    const key = `${classId}_${feeHeadId}`;
+    const newFirstTime = !firstTime[key];
+    setFirstTime(prev => ({
+      ...prev,
+      [key]: newFirstTime
+    }));
+    
+    // If One Time is selected, clear months
+    if (newFirstTime) {
+      setMonths(prev => ({ ...prev, [key]: [] }));
+    }
+    
+    // Auto-save
+    try {
+      const amount = amounts[key];
+      if (amount && !isNaN(Number(amount)) && Number(amount) > 0) {
+        await feeService.bulkUpsertFeeStructures(schoolId, sessionId, [{
+          classId,
+          feeHeadId,
+          amount: Number(amount),
+          months: newFirstTime ? [] : (months[key] || []),
+          firstTime: newFirstTime,
+        }], user?.id);
+      }
+    } catch (err: any) {
+      console.error('Auto-save failed:', err);
+    }
   };
 
   const handleSaveAll = async () => {
@@ -1502,17 +1882,19 @@ const FeeStructureManager: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
-      // Prepare bulk upsert
+      // Prepare bulk upsert - for all classes and fee heads
       const payload = [];
       for (const c of classes) {
         for (const fh of feeHeads) {
           const key = `${c.id}_${fh.id}`;
           const amount = amounts[key];
-          if (amount && !isNaN(Number(amount))) {
+          if (amount && !isNaN(Number(amount)) && Number(amount) > 0) {
             payload.push({
               classId: c.id,
               feeHeadId: fh.id,
               amount: Number(amount),
+              months: months[key] || [],
+              firstTime: firstTime[key] || false,
             });
           }
         }
@@ -1528,25 +1910,25 @@ const FeeStructureManager: React.FC = () => {
     }
   };
 
-  // Function to populate default amounts for all classes
+  // Function to populate default amounts only for existing fee structures
   const populateDefaultAmounts = () => {
     const newAmounts = { ...amounts };
     let hasChanges = false;
     
-    for (const c of classes) {
-      for (const fh of feeHeads) {
-        const key = `${c.id}_${fh.id}`;
-        const currentAmount = newAmounts[key];
-        const defaultAmount = fh.defaultAmount ? String(fh.defaultAmount) : '0';
-        
-        // Set default amount if:
-        // 1. No amount is set, OR
-        // 2. Current amount is '0' or empty, OR
-        // 3. Current amount is not a valid number
-        if (!currentAmount || currentAmount === '0' || currentAmount === '' || isNaN(Number(currentAmount))) {
-          newAmounts[key] = defaultAmount;
-          hasChanges = true;
-        }
+    // Only populate amounts for classes that already have fee structures
+    for (const s of structures) {
+      const key = `${s.classId}_${s.feeHeadId}`;
+      const currentAmount = newAmounts[key];
+      const feeHead = feeHeads.find(fh => fh.id === s.feeHeadId);
+      const defaultAmount = feeHead?.defaultAmount ? String(feeHead.defaultAmount) : '0';
+      
+      // Set default amount if:
+      // 1. No amount is set, OR
+      // 2. Current amount is '0' or empty, OR
+      // 3. Current amount is not a valid number
+      if (!currentAmount || currentAmount === '0' || currentAmount === '' || isNaN(Number(currentAmount))) {
+        newAmounts[key] = defaultAmount;
+        hasChanges = true;
       }
     }
     
@@ -1578,8 +1960,9 @@ const FeeStructureManager: React.FC = () => {
     setNewFeeHeadName('');
     setNewFeeHeadDesc('');
     setNewFeeHeadAmount('');
-    setNewFeeHeadFrequency('monthly');
     setNewFeeHeadAutoGenerate(false);
+    // Don't pre-select any classes - user must explicitly select
+    setSelectedClassesForFeeHead(new Set());
   };
 
   const handleCloseFeeHeadModal = () => {
@@ -1587,18 +1970,35 @@ const FeeStructureManager: React.FC = () => {
     setNewFeeHeadName('');
     setNewFeeHeadDesc('');
     setNewFeeHeadAmount('');
-    setNewFeeHeadFrequency('monthly');
     setNewFeeHeadAutoGenerate(false);
     setEditFeeHead(null);
+    setSelectedClassesForFeeHead(new Set());
   };
 
-  const handleEditFeeHead = (fh: FeeHead) => {
+  const handleEditFeeHead = async (fh: FeeHead) => {
     setEditFeeHead(fh);
     setNewFeeHeadName(fh.name);
     setNewFeeHeadDesc(fh.description || '');
     setNewFeeHeadAmount(fh.defaultAmount ? String(fh.defaultAmount) : '');
-    setNewFeeHeadFrequency(fh.frequency || 'monthly');
     setNewFeeHeadAutoGenerate(fh.autoGenerate || false);
+    
+    // Load existing classes that have this fee head
+    if (schoolId && sessionId) {
+      try {
+        const existingStructures = await feeService.getFeeStructures(schoolId, { 
+          sessionId,
+          feeHeadId: fh.id 
+        });
+        const existingClassIds = new Set(existingStructures.map(s => s.classId));
+        setSelectedClassesForFeeHead(existingClassIds);
+      } catch (err) {
+        console.error('Failed to load existing classes:', err);
+        setSelectedClassesForFeeHead(new Set());
+      }
+    } else {
+      setSelectedClassesForFeeHead(new Set());
+    }
+    
     setShowFeeHeadModal(true);
   };
 
@@ -1663,8 +2063,17 @@ const FeeStructureManager: React.FC = () => {
 
       // Create a table for each class
       sortedClasses.forEach((cls: any, classIndex: number) => {
+        // Filter fee heads to only show those that have fee structures for this class
+        const feeHeadsForClass = feeHeads.filter(fh => {
+          // Check if a fee structure exists for this class-fee head combination
+          return structures.some(s => s.classId === cls.id && s.feeHeadId === fh.id);
+        });
+        
+        // Skip this class if it has no fee heads
+        if (feeHeadsForClass.length === 0) return;
+        
         // Check if we need a new page
-        const estimatedHeight = (feeHeads.length + 3) * 10; // Rough estimate
+        const estimatedHeight = (feeHeadsForClass.length + 3) * 10; // Rough estimate
         if (currentY + estimatedHeight > pageHeight - 20) {
           doc.addPage();
           currentY = 20;
@@ -1684,58 +2093,78 @@ const FeeStructureManager: React.FC = () => {
         const tableData: any[] = [];
         let classTotal = 0;
 
-        feeHeads.forEach((fh) => {
+        feeHeadsForClass.forEach((fh) => {
           const key = `${cls.id}_${fh.id}`;
           const amount = amounts[key] ? Number(amounts[key]) : 0;
+          const feeMonths = months[key] || [];
+          const isOneTime = firstTime[key] || false;
+          
+          // Format frequency display
+          let frequencyText = '';
+          if (isOneTime) {
+            frequencyText = 'One Time';
+          } else if (feeMonths.length === 0) {
+            frequencyText = 'All months';
+          } else if (feeMonths.length === 12) {
+            frequencyText = 'All months';
+          } else {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            frequencyText = feeMonths.map(m => monthNames[m - 1]).join(', ');
+          }
           
           tableData.push([
             fh.name,
             fh.description || '-',
-            fh.frequency ? (fh.frequency.charAt(0).toUpperCase() + fh.frequency.slice(1)) : 'Monthly',
-            amount > 0 ? `Rs. ${amount.toFixed(0)}` : '-'
+            amount > 0 ? `Rs. ${amount.toFixed(0)}` : '-',
+            frequencyText || '-'
           ]);
           
           classTotal += amount;
         });
 
-        // Add class total row
-        tableData.push([
-          { content: 'Total', colSpan: 3, styles: { fontStyle: 'bold', halign: 'right' } },
-          { content: `Rs. ${classTotal.toFixed(0)}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }
-        ]);
+        // Add class total row only if there are fee heads
+        if (tableData.length > 0) {
+          tableData.push([
+            { content: 'Total', colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: `Rs. ${classTotal.toFixed(0)}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            { content: '', styles: { fillColor: [240, 240, 240] } }
+          ]);
 
-        grandTotal += classTotal;
+          grandTotal += classTotal;
+        }
 
-        // Generate table for this class
-        autoTable(doc, {
-          head: [['Fee Head', 'Description', 'Frequency', 'Amount']],
-          body: tableData,
-          startY: currentY,
-          theme: 'grid',
-          styles: {
-            fontSize: 9,
-            cellPadding: 3,
-            valign: 'middle',
-          },
-          headStyles: {
-            fillColor: [240, 240, 240],
-            textColor: [0, 0, 0],
-            fontStyle: 'bold',
-            halign: 'center',
-          },
-          columnStyles: {
-            0: { halign: 'left', cellWidth: 50 },
-            1: { halign: 'left', cellWidth: 70 },
-            2: { halign: 'center', cellWidth: 30 },
-            3: { halign: 'right', cellWidth: 35, fontStyle: 'bold' },
-          },
-          margin: { left: 10, right: 10 },
-          didDrawPage: (data) => {
-            currentY = data.cursor?.y || currentY;
-          }
-        });
+        // Generate table for this class only if there's data
+        if (tableData.length > 0) {
+          autoTable(doc, {
+            head: [['Fee Head', 'Description', 'Amount', 'Frequency']],
+            body: tableData,
+            startY: currentY,
+            theme: 'grid',
+            styles: {
+              fontSize: 9,
+              cellPadding: 3,
+              valign: 'middle',
+            },
+            headStyles: {
+              fillColor: [240, 240, 240],
+              textColor: [0, 0, 0],
+              fontStyle: 'bold',
+              halign: 'center',
+            },
+            columnStyles: {
+              0: { halign: 'left', cellWidth: 45 },
+              1: { halign: 'left', cellWidth: 60 },
+              2: { halign: 'right', cellWidth: 30, fontStyle: 'bold' },
+              3: { halign: 'left', cellWidth: 50 },
+            },
+            margin: { left: 10, right: 10 },
+            didDrawPage: (data) => {
+              currentY = data.cursor?.y || currentY;
+            }
+          });
 
-        currentY = (doc as any).lastAutoTable.finalY + 8;
+          currentY = (doc as any).lastAutoTable.finalY + 8;
+        }
       });
 
       // Add grand total summary
@@ -1753,11 +2182,19 @@ const FeeStructureManager: React.FC = () => {
       
       currentY += 12;
 
-      // Summary table
+      // Summary table - only include classes that have fee structures
       const summaryData: any[] = [];
       sortedClasses.forEach((cls: any) => {
+        // Filter fee heads to only those that have fee structures for this class
+        const feeHeadsForClass = feeHeads.filter(fh => {
+          return structures.some(s => s.classId === cls.id && s.feeHeadId === fh.id);
+        });
+        
+        // Skip classes with no fee heads
+        if (feeHeadsForClass.length === 0) return;
+        
         let classTotal = 0;
-        feeHeads.forEach((fh) => {
+        feeHeadsForClass.forEach((fh) => {
           const key = `${cls.id}_${fh.id}`;
           const amount = amounts[key] ? Number(amounts[key]) : 0;
           classTotal += amount;
@@ -1819,7 +2256,7 @@ const FeeStructureManager: React.FC = () => {
   };
 
   const handleCreateFeeHead = async () => {
-    if (!schoolId || !newFeeHeadName.trim()) return;
+    if (!schoolId || !newFeeHeadName.trim() || !sessionId) return;
     setFeeHeadLoading(true);
     try {
       if (editFeeHead) {
@@ -1827,28 +2264,138 @@ const FeeStructureManager: React.FC = () => {
           name: newFeeHeadName.trim(),
           description: newFeeHeadDesc.trim() || null,
           defaultAmount: newFeeHeadAmount ? Number(newFeeHeadAmount) : 0,
-          frequency: newFeeHeadFrequency,
           autoGenerate: newFeeHeadAutoGenerate,
         });
+        
+        // Update fee structures for selected classes
+        if (selectedClassesForFeeHead.size > 0 && newFeeHeadAmount) {
+          const amount = Number(newFeeHeadAmount);
+          if (!isNaN(amount) && amount > 0) {
+            // Get existing structures for this fee head
+            const existingStructures = await feeService.getFeeStructures(schoolId, { 
+              sessionId,
+              feeHeadId: editFeeHead.id 
+            });
+            const existingClassIds = new Set(existingStructures.map(s => s.classId));
+            const selectedClassIds = selectedClassesForFeeHead;
+            
+            // Classes to add
+            const classesToAdd = Array.from(selectedClassIds).filter(id => !existingClassIds.has(id));
+            // Classes to remove
+            const classesToRemove = Array.from(existingClassIds).filter(id => !selectedClassIds.has(id));
+            
+            // Add new fee structures
+            if (classesToAdd.length > 0) {
+              const addPayload = classesToAdd.map(classId => ({
+                classId,
+                feeHeadId: editFeeHead.id,
+                amount,
+                months: [],
+                firstTime: false,
+              }));
+              await feeService.bulkUpsertFeeStructures(schoolId, sessionId, addPayload, user?.id);
+            }
+            
+            // Remove fee structures for deselected classes
+            if (classesToRemove.length > 0) {
+              const removePayload = classesToRemove.map(classId => ({
+                classId,
+                feeHeadId: editFeeHead.id,
+                amount: 0, // Set to 0 to effectively remove
+                months: [],
+                firstTime: false,
+              }));
+              // Delete the structures
+              for (const classId of classesToRemove) {
+                const structure = existingStructures.find(s => s.classId === classId);
+                if (structure) {
+                  await feeService.deleteFeeStructure(structure.id, schoolId);
+                }
+              }
+            }
+            
+            // Update amounts for existing classes that are still selected
+            const classesToUpdate = Array.from(selectedClassIds).filter(id => existingClassIds.has(id));
+            if (classesToUpdate.length > 0) {
+              const updatePayload = classesToUpdate.map(classId => {
+                const existing = existingStructures.find(s => s.classId === classId);
+                return {
+                  classId,
+                  feeHeadId: editFeeHead.id,
+                  amount,
+                  months: existing?.months || [],
+                  firstTime: existing?.firstTime || false,
+                };
+              });
+              await feeService.bulkUpsertFeeStructures(schoolId, sessionId, updatePayload, user?.id);
+            }
+          }
+        } else if (selectedClassesForFeeHead.size === 0) {
+          // Remove all fee structures if no classes selected
+          const existingStructures = await feeService.getFeeStructures(schoolId, { 
+            sessionId,
+            feeHeadId: editFeeHead.id 
+          });
+          for (const structure of existingStructures) {
+            await feeService.deleteFeeStructure(structure.id, schoolId);
+          }
+        }
+        
         showToast('Fee head updated!', 'success');
       } else {
-        await feeService.createFeeHead({
+        // Create the fee head
+        const newFeeHead = await feeService.createFeeHead({
           schoolId,
           name: newFeeHeadName.trim(),
           description: newFeeHeadDesc.trim() || null,
           defaultAmount: newFeeHeadAmount ? Number(newFeeHeadAmount) : 0,
-          frequency: newFeeHeadFrequency,
+          frequency: 'monthly', // Default frequency
           autoGenerate: newFeeHeadAutoGenerate,
         }, user?.id);
+        
+        // Create fee structures for selected classes
+        if (selectedClassesForFeeHead.size > 0 && newFeeHeadAmount) {
+          const amount = Number(newFeeHeadAmount);
+          if (!isNaN(amount) && amount > 0) {
+            const payload = Array.from(selectedClassesForFeeHead).map(classId => ({
+              classId,
+              feeHeadId: newFeeHead.id,
+              amount,
+              months: [],
+              firstTime: false,
+            }));
+            
+            await feeService.bulkUpsertFeeStructures(schoolId, sessionId, payload, user?.id);
+          }
+        }
+        
         showToast('Fee head added!', 'success');
       }
+      
+      // Reload data
       const heads = await feeService.getFeeHeads(schoolId);
       setFeeHeads(heads);
       
-      // Immediately populate default amounts for the new/updated fee head
-      setTimeout(() => {
-        populateDefaultAmounts();
-      }, 50);
+      // Reload structures if session is selected
+      if (sessionId) {
+        const data = await feeService.getFeeStructures(schoolId, { sessionId });
+        setStructures(data);
+        // Update amounts, months, and firstTime
+        const amt: { [key: string]: string } = {};
+        const mths: { [key: string]: number[] } = {};
+        const ft: { [key: string]: boolean } = {};
+        
+        data.forEach(s => {
+          const key = `${s.classId}_${s.feeHeadId}`;
+          amt[key] = String(s.amount);
+          mths[key] = s.months || [];
+          ft[key] = s.firstTime || false;
+        });
+        
+        setAmounts(prev => ({ ...prev, ...amt }));
+        setMonths(prev => ({ ...prev, ...mths }));
+        setFirstTime(prev => ({ ...prev, ...ft }));
+      }
       
       // Don't close modal on save - removed handleCloseFeeHeadModal() call
       // Reset form for new entry if not editing
@@ -1856,8 +2403,8 @@ const FeeStructureManager: React.FC = () => {
         setNewFeeHeadName('');
         setNewFeeHeadDesc('');
         setNewFeeHeadAmount('');
-        setNewFeeHeadFrequency('monthly');
         setNewFeeHeadAutoGenerate(false);
+        setSelectedClassesForFeeHead(new Set());
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create fee head');
@@ -1879,13 +2426,12 @@ const FeeStructureManager: React.FC = () => {
   }
 
   return (
-    <ThemeProvider theme={theme}>
     <PageContainer>
         <Header>
           <HeaderRow>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <Title>
-                Fee Structure Manager <span style={{fontWeight:400, fontSize:'1rem', color: theme.palette.mode === 'dark' ? '#b0b8d1' : '#4a4a4a'}}>({classes.length} classes)</span>
+                Fee Structure Manager <span style={{fontWeight:400, fontSize:'1rem', color: muiTheme.palette.mode === 'dark' ? '#b0b8d1' : '#4a4a4a'}}>({classes.length} classes)</span>
               </Title>
               {/* Mobile Buttons - Icon Only */}
               <div style={{ display: window.innerWidth <= 700 ? 'flex' : 'none', gap: '6px' }}>
@@ -1893,7 +2439,7 @@ const FeeStructureManager: React.FC = () => {
                   onClick={handleExportPDF}
                   disabled={exportLoading || classes.length === 0 || feeHeads.length === 0}
                   style={{
-                    background: theme.palette.mode === 'dark' ? '#23242a' : '#f3f4f6',
+                    background: muiTheme.palette.mode === 'dark' ? '#23242a' : '#f3f4f6',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '8px',
@@ -1902,7 +2448,7 @@ const FeeStructureManager: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                    color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
                     fontSize: '0.85rem',
                     fontWeight: 600,
                     width: '36px',
@@ -1917,7 +2463,7 @@ const FeeStructureManager: React.FC = () => {
               <button
                 onClick={() => handleOpenFeeHeadModal()}
                 style={{
-                  background: theme.palette.mode === 'dark' ? '#23242a' : '#f3f4f6',
+                  background: muiTheme.palette.mode === 'dark' ? '#23242a' : '#f3f4f6',
                   border: 'none',
                   borderRadius: '8px',
                   padding: '8px',
@@ -1926,7 +2472,7 @@ const FeeStructureManager: React.FC = () => {
                     display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                  color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
                   fontSize: '0.85rem',
                   fontWeight: 600,
                   width: '36px',
@@ -1963,9 +2509,9 @@ const FeeStructureManager: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    background: theme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
-                    border: `1.5px solid ${theme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
-                    color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                    background: muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
+                    border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                    color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
                     fontWeight: 700,
                     fontSize: '0.85rem',
                     padding: '6px 8px',
@@ -1989,9 +2535,9 @@ const FeeStructureManager: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    background: theme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
-                    border: `1.5px solid ${theme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
-                    color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                    background: muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
+                    border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                    color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
                     fontWeight: 700,
                     fontSize: '0.85rem',
                     padding: '6px 8px'
@@ -2007,76 +2553,153 @@ const FeeStructureManager: React.FC = () => {
           </HeaderRow>
         </Header>
         <MainContent>
-          <ClassesGrid cardCount={classes.length}>
-            {sortClasses(classes).map((c: any) => (
-              <ClassCard key={c.id}>
-                <ClassHeader>
-                  <ClassTitle>{c.name}</ClassTitle>
-                </ClassHeader>
-                <FeeHeadsContainer>
-                {feeHeads.length === 0 ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '2rem 1rem',
-                      textAlign: 'center',
-                      minHeight: 120
-                    }}
-                  >
-                    <AttachMoney 
-                      style={{ 
-                        fontSize: 48, 
-                        color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-                        marginBottom: '1rem'
-                      }} 
-                    />
-                    <div
-                      style={{
-                        color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
-                        fontWeight: 500,
-                        fontSize: '0.95rem',
-                        marginBottom: '0.5rem'
-                      }}
-                    >
-                      No fee head added
-                    </div>
-                    <div
-                      style={{
-                        color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      Add fee heads to set up fee structure
-                    </div>
-                  </div>
-                ) : (
-                  feeHeads.map((fh, idx) => (
-                    <FeeBlock key={fh.id} style={{ marginLeft: '1rem', marginRight: '1rem', ...(idx === 0 ? { marginTop: '1rem' } : {}), ...(idx === feeHeads.length - 1 ? { marginBottom: '1rem' } : {}) }}>
-                      <FeeIcon>
-                        {fh.name.toLowerCase().includes('admission') ? <School fontSize="small" /> :
-                         fh.name.toLowerCase().includes('transport') ? <Commute fontSize="small" /> :
-                         <AttachMoney fontSize="small" />}
-                      </FeeIcon>
-                      <FeeDetails>
-                        <FeeLabel>{fh.name}</FeeLabel>
-                        {fh.description && <FeeDesc>{fh.description}</FeeDesc>}
-                      </FeeDetails>
-                      <PillInput
-                        type="number"
-                        value={amounts[`${c.id}_${fh.id}`] ?? '0'}
-                        onChange={e => handleAmountChange(c.id, fh.id, e.target.value)}
-                        min={0}
-                      />
-                    </FeeBlock>
-                  ))
-                )}
-                </FeeHeadsContainer>
-              </ClassCard>
-            ))}
-          </ClassesGrid>
+          {feeHeads.length === 0 ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4rem 2rem',
+                textAlign: 'center',
+                minHeight: 400
+              }}
+            >
+              <AttachMoney 
+                style={{ 
+                  fontSize: 64, 
+                  color: muiTheme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                  marginBottom: '1.5rem'
+                }} 
+              />
+              <div
+                style={{
+                  color: muiTheme.palette.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                  fontWeight: 600,
+                  fontSize: '1.1rem',
+                  marginBottom: '0.5rem'
+                }}
+              >
+                No fee heads added
+              </div>
+              <div
+                style={{
+                  color: muiTheme.palette.mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Add fee heads to set up fee structure
+              </div>
+            </div>
+          ) : (
+            <MainTableContainer>
+              <MainTable>
+                <thead>
+                  <TableHeaderRow>
+                    <TableHeaderCell style={{ position: 'sticky', left: 0, zIndex: 10, background: customTheme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)', minWidth: '150px' }}>Class</TableHeaderCell>
+                    <TableHeaderCell style={{ minWidth: '200px' }}>Fee Head</TableHeaderCell>
+                    <TableHeaderCell style={{ minWidth: '120px' }}>Amount</TableHeaderCell>
+                    <TableHeaderCell style={{ minWidth: '400px' }}>Frequency</TableHeaderCell>
+                  </TableHeaderRow>
+                </thead>
+                <tbody>
+                  {sortClasses(classes).map((c: any, classIndex: number) => {
+                    // Filter fee heads to only show those that have fee structures for this class
+                    const feeHeadsForClass = feeHeads.filter(fh => {
+                      const key = `${c.id}_${fh.id}`;
+                      // Check if a fee structure exists for this class-fee head combination
+                      return structures.some(s => s.classId === c.id && s.feeHeadId === fh.id);
+                    });
+                    
+                    if (feeHeadsForClass.length === 0) return null;
+                    
+                    return feeHeadsForClass.map((fh, feeHeadIndex: number) => {
+                      const key = `${c.id}_${fh.id}`;
+                      const currentMonths = months[key] || [];
+                      const isFirstTime = firstTime[key] || false;
+                      const isFirstFeeHead = feeHeadIndex === 0;
+                      const isLastFeeHead = feeHeadIndex === feeHeadsForClass.length - 1;
+                      const isLastClass = classIndex === classes.length - 1;
+                      
+                      return (
+                        <TableRow 
+                          key={`${c.id}_${fh.id}`}
+                          style={{
+                            borderBottom: isLastFeeHead && !isLastClass 
+                              ? `2px solid ${customTheme.BG === '#252525' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+                              : undefined
+                          }}
+                        >
+                          {isFirstFeeHead && (
+                            <TableCell 
+                              rowSpan={feeHeadsForClass.length}
+                              style={{ 
+                                position: 'sticky', 
+                                left: 0, 
+                                zIndex: 9, 
+                                background: customTheme.CARD, 
+                                fontWeight: 600, 
+                                fontSize: '0.95rem',
+                                verticalAlign: 'top',
+                                paddingTop: '20px'
+                              }}
+                            >
+                              {c.name}
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <FeeHeadName>{fh.name}</FeeHeadName>
+                            {fh.description && (
+                              <FeeHeadDescription>{fh.description}</FeeHeadDescription>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <AmountInput
+                              type="number"
+                              value={amounts[key] ?? '0'}
+                              onChange={e => {
+                                const value = e.target.value;
+                                setAmounts(prev => ({ ...prev, [key]: value }));
+                              }}
+                              min={0}
+                              placeholder="0"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FrequencyCell>
+                              <OneTimeButton
+                                active={isFirstTime}
+                                disabled={false}
+                                onClick={() => handleFirstTimeToggle(c.id, fh.id)}
+                              >
+                                One Time
+                              </OneTimeButton>
+                              <MonthsContainer>
+                                {MONTHS.map((monthName, index) => {
+                                  const monthNum = index + 1;
+                                  const isActive = currentMonths.includes(monthNum);
+                                  return (
+                                    <MonthButton
+                                      key={monthNum}
+                                      active={isActive}
+                                      disabled={isFirstTime}
+                                      onClick={() => handleMonthToggle(c.id, fh.id, monthNum)}
+                                    >
+                                      {monthName}
+                                    </MonthButton>
+                                  );
+                                })}
+                              </MonthsContainer>
+                            </FrequencyCell>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
+                  })}
+                </tbody>
+              </MainTable>
+            </MainTableContainer>
+          )}
         </MainContent>
       <StyledDialog open={showFeeHeadModal}>
         <DialogPaper onClick={e => e.stopPropagation()}>
@@ -2091,7 +2714,7 @@ const FeeStructureManager: React.FC = () => {
         <StyledDialogContent>
           <LeftColumn>
               <div style={{ marginBottom: '0.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.1rem', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.1rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
                   Fee Head Name
                 </label>
                 <Input
@@ -2104,7 +2727,7 @@ const FeeStructureManager: React.FC = () => {
                 />
               </div>
               <div style={{ marginBottom: '0.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.1rem', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.1rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
                   Description (optional)
                 </label>
                 <TextArea
@@ -2115,7 +2738,7 @@ const FeeStructureManager: React.FC = () => {
                 />
               </div>
               <div style={{ marginBottom: '0.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.1rem', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.1rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
                   Default Amount
                 </label>
                 <Input
@@ -2126,23 +2749,9 @@ const FeeStructureManager: React.FC = () => {
                   min={0}
                   step={0.01}
                 />
-                <div style={{ fontSize: '0.8rem', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', marginTop: '0.1rem' }}>
+                <div style={{ fontSize: '0.8rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', marginTop: '0.1rem' }}>
                   Default amount for this fee head
                 </div>
-              </div>
-              <div style={{ marginBottom: '0.25rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.1rem', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
-                  Frequency
-                </label>
-              <Select
-                value={newFeeHeadFrequency}
-                onChange={(e) => setNewFeeHeadFrequency(e.target.value)}
-              >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="annually">Annually</option>
-                  <option value="one-time">One Time</option>
-              </Select>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.1rem' }}>
                 <input
@@ -2151,59 +2760,220 @@ const FeeStructureManager: React.FC = () => {
                 onChange={(e) => setNewFeeHeadAutoGenerate(e.target.checked)}
                   style={{ margin: 0 }}
               />
-                <label style={{ color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
+                <label style={{ color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
                   Auto Generate Invoices
                 </label>
               </div>
+              <div style={{ marginTop: '1rem', marginBottom: '0.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <label style={{ color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
+                      Apply to Classes
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedClassesForFeeHead.size === classes.length) {
+                          setSelectedClassesForFeeHead(new Set());
+                        } else {
+                          setSelectedClassesForFeeHead(new Set(classes.map(c => c.id)));
+                        }
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'}`,
+                        borderRadius: '6px',
+                        padding: '4px 12px',
+                        fontSize: '0.75rem',
+                        color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      {selectedClassesForFeeHead.size === classes.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+                  <div style={{ 
+                    maxHeight: '200px', 
+                    overflowY: 'auto', 
+                    border: `1px solid ${muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`, 
+                    borderRadius: '8px',
+                    padding: '8px',
+                    background: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'
+                  }}>
+                    {sortClasses(classes).map((c: any) => (
+                      <div key={c.id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onClick={() => {
+                        setSelectedClassesForFeeHead(prev => {
+                          const newSet = new Set(prev);
+                          if (newSet.has(c.id)) {
+                            newSet.delete(c.id);
+                          } else {
+                            newSet.add(c.id);
+                          }
+                          return newSet;
+                        });
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedClassesForFeeHead.has(c.id)}
+                          onChange={() => {
+                            setSelectedClassesForFeeHead(prev => {
+                              const newSet = new Set(prev);
+                              if (newSet.has(c.id)) {
+                                newSet.delete(c.id);
+                              } else {
+                                newSet.add(c.id);
+                              }
+                              return newSet;
+                            });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ margin: 0, cursor: 'pointer' }}
+                        />
+                        <label style={{ 
+                          cursor: 'pointer', 
+                          fontSize: '0.9rem',
+                          color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+                          flex: 1
+                        }}>
+                          {c.name}
+                        </label>
+                      </div>
+                    ))}
+                    {classes.length === 0 && (
+                      <div style={{ 
+                        padding: '1rem', 
+                        textAlign: 'center', 
+                        color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                        fontSize: '0.85rem'
+                      }}>
+                        No classes available
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', marginTop: '0.5rem' }}>
+                    {selectedClassesForFeeHead.size > 0 
+                      ? `Selected ${selectedClassesForFeeHead.size} class${selectedClassesForFeeHead.size > 1 ? 'es' : ''}. Fee structures will be created automatically.`
+                      : 'No classes selected. Fee head will be created but you can add fee structures manually later.'}
+                  </div>
+                </div>
           </LeftColumn>
           <RightColumn>
-              <div style={{ fontWeight: 600, marginBottom: '1rem', fontSize: '1.1rem' }}>
-              Existing Fee Heads
+              <div style={{ 
+                fontWeight: 600, 
+                fontSize: '1.1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0
+              }}>
+                <span>Existing Fee Heads</span>
+                {feeHeads.length > 0 && (
+                  <span style={{ 
+                    fontSize: '0.85rem', 
+                    fontWeight: 500,
+                    color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'
+                  }}>
+                    {feeHeads.length} {feeHeads.length === 1 ? 'fee head' : 'fee heads'}
+                  </span>
+                )}
               </div>
             <FeeHeadsTable>
               <TableHeader>
-                <FeeHeadName>Name</FeeHeadName>
-                <FeeHeadAmount>Default</FeeHeadAmount>
-                <FeeHeadFrequency>Frequency</FeeHeadFrequency>
+                <FeeHeadModalName>Name</FeeHeadModalName>
+                <FeeHeadAmount>Default Amount</FeeHeadAmount>
+                <div style={{ minWidth: '24px' }}></div>
               </TableHeader>
-              {feeHeads.slice(0, 5).map((fh) => (
-                <TableRowWithHover key={fh.id} onClick={() => handleEditFeeHead(fh)}>
-                  <FeeHeadNameContainer>
-                    <FeeHeadName>{fh.name}</FeeHeadName>
-                    {fh.autoGenerate && (
-                      <AutoGenerateText>Auto Generate</AutoGenerateText>
-                    )}
-                  </FeeHeadNameContainer>
-                  <FeeHeadAmount>
-                    {fh.defaultAmount ? `Rs. ${fh.defaultAmount.toFixed(2)}` : '-'}
-                  </FeeHeadAmount>
-                  <FeeHeadFrequency>
-                    {fh.frequency === 'monthly' ? 'Monthly' :
-                     fh.frequency === 'quarterly' ? 'Quarterly' :
-                     fh.frequency === 'annually' ? 'Annually' :
-                     fh.frequency === 'one-time' ? 'One Time' : 'Monthly'}
-                  </FeeHeadFrequency>
-                  <DeleteIconButton
-                    onClick={(e) => handleDeleteFeeHeadFromTable(e, fh)}
-                    className="delete-icon"
-                  >
-                      <DeleteIcon style={{ fontSize: '0.9rem' }} />
-                  </DeleteIconButton>
-                </TableRowWithHover>
-              ))}
-              {feeHeads.length === 0 && (
-                  <div style={{ padding: '1.5rem', textAlign: 'center' }}>
-                    <div style={{ color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', fontSize: '0.9rem' }}>
-                    No fee heads added yet
+              <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                {feeHeads.length === 0 ? (
+                  <div style={{ 
+                    padding: '2rem 1.5rem', 
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '200px'
+                  }}>
+                    <div style={{ 
+                      fontSize: '2.5rem',
+                      marginBottom: '0.5rem',
+                      opacity: 0.3
+                    }}>📋</div>
+                    <div style={{ 
+                      color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', 
+                      fontSize: '0.9rem',
+                      fontWeight: 500
+                    }}>
+                      No fee heads added yet
+                    </div>
+                    <div style={{ 
+                      color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)', 
+                      fontSize: '0.8rem',
+                      marginTop: '0.25rem'
+                    }}>
+                      Create your first fee head to get started
                     </div>
                   </div>
-              )}
+                ) : (
+                  feeHeads.map((fh) => (
+                    <TableRowWithHover key={fh.id} onClick={() => handleEditFeeHead(fh)}>
+                      <FeeHeadNameContainer>
+                        <FeeHeadModalName>{fh.name}</FeeHeadModalName>
+                        {fh.description && (
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                            marginTop: '2px',
+                            lineHeight: '1.3',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
+                          }}>
+                            {fh.description}
+                          </div>
+                        )}
+                        {fh.autoGenerate && (
+                          <AutoGenerateText style={{ marginTop: '4px' }}>Auto Generate</AutoGenerateText>
+                        )}
+                      </FeeHeadNameContainer>
+                      <FeeHeadAmount>
+                        {fh.defaultAmount ? `Rs. ${fh.defaultAmount.toFixed(2)}` : '-'}
+                      </FeeHeadAmount>
+                      <DeleteIconButton
+                        onClick={(e) => handleDeleteFeeHeadFromTable(e, fh)}
+                        className="delete-icon"
+                      >
+                        <DeleteIcon style={{ fontSize: '0.9rem' }} />
+                      </DeleteIconButton>
+                    </TableRowWithHover>
+                  ))
+                )}
+              </div>
             </FeeHeadsTable>
-            {feeHeads.length > 5 && (
-                <div style={{ textAlign: 'center', fontSize: '0.8rem', color: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', marginTop: '0.5rem' }}>
-                Showing 5 of {feeHeads.length} fee heads
-                </div>
-            )}
           </RightColumn>
         </StyledDialogContent>
         <FormActions>
@@ -2259,9 +3029,9 @@ const FeeStructureManager: React.FC = () => {
         </PaginationInfo>
         <PaginationControls>
           <Button onClick={handleSaveAll} variant="primary" style={{
-            background: theme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
-            border: `1.5px solid ${theme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
-            color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+            background: muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
+            border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+            color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
             fontWeight: 700,
             fontSize: '0.85rem',
             padding: '6px 12px',
@@ -2273,6 +3043,31 @@ const FeeStructureManager: React.FC = () => {
         </PaginationControls>
       </PaginationContainer>
     </PageContainer>
+  );
+};
+
+const FeeStructureManager: React.FC = () => {
+  const muiTheme = useTheme();
+  const baseTheme = muiTheme.palette.mode === 'dark' ? darkTheme : lightTheme;
+  
+  // Merge custom theme with MUI theme for styled-components compatibility
+  const customTheme = {
+    ...baseTheme,
+    palette: {
+      mode: muiTheme.palette.mode,
+      primary: { main: baseTheme.ACCENT },
+      error: { main: '#ef4444' },
+      success: { main: '#10b981' },
+      background: {
+        paper: baseTheme.CARD,
+        default: baseTheme.BG,
+      },
+    },
+  };
+  
+  return (
+    <ThemeProvider theme={customTheme}>
+      <FeeStructureManagerContent theme={customTheme} />
     </ThemeProvider>
   );
 };

@@ -48,6 +48,7 @@ import {
   Close as CloseIcon,
   ChevronRight as ChevronRightIcon,
   Feedback as FeedbackIcon,
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import styled from 'styled-components';
 import {
@@ -1067,6 +1068,20 @@ const Header: React.FC<HeaderProps> = ({
       icon: <AccountBalanceIcon />,
       path: '/fee-structure-management',
       color: '#10b981'
+    },
+    {
+      title: 'Fee Plans',
+      description: 'Create and manage individual student fee plans',
+      icon: <DescriptionIcon />,
+      path: '/fee-plans',
+      color: '#06b6d4'
+    },
+    {
+      title: 'Fee Increments',
+      description: 'Apply increments to fee plans and structures',
+      icon: <TrendingUpIcon />,
+      path: '/fee-increments',
+      color: '#f97316'
     },
     {
       title: 'Load Fee',

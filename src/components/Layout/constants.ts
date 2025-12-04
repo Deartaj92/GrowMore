@@ -158,6 +158,8 @@ export const customHeaderTexts: Record<string, string> = {
   '/fines/statistics': 'Fine Statistics',
   '/fee-management': 'Fee Dashboard',
   '/fee-structure-management': 'Fee Structure',
+  '/fee-plans': 'Fee Plans',
+  '/fee-increments': 'Fee Increments',
   '/load-fee': 'Load Fee',
   '/timetable': 'Timetable',
   '/homework-diary': 'Daily Diary',

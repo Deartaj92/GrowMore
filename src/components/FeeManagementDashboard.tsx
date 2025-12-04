@@ -14,6 +14,8 @@ import {
   Loyalty as LoyaltyIcon,
   Settings as SettingsIcon,
   Receipt as ReceiptIcon,
+  Description as DescriptionIcon,
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchRenderSettings, RenderSettings } from '../services/renderSettingsService';
@@ -337,6 +339,20 @@ const feeManagementItems = [
     color: '#10b981' // Green
   },
   {
+    title: 'Fee Plans',
+    description: 'Create and manage individual student fee plans with custom amounts, discounts, arrears, and payment schedules',
+    icon: <DescriptionIcon />,
+    path: '/fee-plans',
+    color: '#06b6d4' // Cyan
+  },
+  {
+    title: 'Fee Increments',
+    description: 'Apply percentage or fixed amount increments to fee plans and structures for new fee generations',
+    icon: <TrendingUpIcon />,
+    path: '/fee-increments',
+    color: '#f97316' // Orange
+  },
+  {
     title: 'Load Fee',
     description: 'Import and load fee data, bulk fee assignments, and automated fee processing with validation',
     icon: <CloudUploadIcon />,
@@ -427,6 +443,8 @@ const FeeManagementDashboard: React.FC = () => {
   const getKeyForTitle = (title: string): string | null => {
     switch (title) {
       case 'Fee Structure': return 'fee_dash_structure';
+      case 'Fee Plans': return 'fee_dash_plans';
+      case 'Fee Increments': return 'fee_dash_increments';
       case 'Load Fee': return 'fee_dash_load_fee';
       case 'Fee Collection': return 'fee_dash_collection';
       case 'Fee Defaulters': return 'fee_dash_defaulters';

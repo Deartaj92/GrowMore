@@ -99,6 +99,7 @@ INSERT INTO permissions (key, name, description, category, path) VALUES
 
 -- Fee Collection permissions
 ('fee-structure', 'Fee Structure', 'Create and manage fee structures', 'Fee Collection', '/fee-structure-management'),
+('fee-plans', 'Fee Plans', 'Create and manage individual student fee plans', 'Fee Collection', '/fee-plans'),
 ('load-fee', 'Load Fee', 'Import and load fee data', 'Fee Collection', '/load-fee'),
 ('fee-collection', 'Fee Collection', 'Enhanced fee collection interface', 'Fee Collection', '/fee-collection'),
 ('fee-defaulters', 'Fee Defaulters', 'View students with outstanding fees', 'Fee Collection', '/fee-defaulters'),

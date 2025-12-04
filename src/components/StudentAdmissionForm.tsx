@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { ThemeProvider, keyframes, createGlobalStyle } from 'styled-components';
-import { AccountCircle, Add as AddIcon, Refresh as RefreshIcon, Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material';
+import { AccountCircle, Add as AddIcon, Refresh as RefreshIcon, Close as CloseIcon, Save as SaveIcon, Description as DescriptionIcon } from '@mui/icons-material';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
@@ -30,6 +30,10 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoSessionsFound from './NoSessionsFound';
 import NoClassesFound from './NoClassesFound';
 import NoSectionsFound from './NoSectionsFound';
+import { CreateFeePlanModal } from '../pages/FeePlans/components/CreateFeePlanModal';
+import { FeeHead } from '../types/fee';
+import { StudentInfo } from '../pages/FeePlans/types';
+import { feeService } from '../services/feeService';
 
 import Loader from '../components/Loader';
 // --- Modern Compact Form Layout ---
@@ -1378,6 +1382,10 @@ const StudentAdmissionForm: React.FC = () => {
     timestamp: Date;
   } | null>(null);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
+  const [showFeePlanModal, setShowFeePlanModal] = useState(false);
+  const [feeHeads, setFeeHeads] = useState<FeeHead[]>([]);
+  const [newStudentForFeePlan, setNewStudentForFeePlan] = useState<StudentInfo | null>(null);
+  const [saveAndCreateFeePlan, setSaveAndCreateFeePlan] = useState(false);
 
   // Helper function to generate next available student ID (school-specific)
   const generateNextStudentId = async (): Promise<number> => {
@@ -1630,6 +1638,20 @@ const StudentAdmissionForm: React.FC = () => {
     });
   }, [user?.school_id]);
 
+  // Fetch fee heads on mount
+  useEffect(() => {
+    const fetchFeeHeads = async () => {
+      if (!user?.school_id) return;
+      try {
+        const heads = await feeService.getFeeHeads(user.school_id);
+        setFeeHeads(heads);
+      } catch (error) {
+        console.error('Error fetching fee heads:', error);
+      }
+    };
+    fetchFeeHeads();
+  }, [user?.school_id]);
+
   // Fetch sections when class changes
   useEffect(() => {
     if (!form.class || !user?.school_id) { 
@@ -1844,6 +1866,12 @@ const StudentAdmissionForm: React.FC = () => {
     setShowConfirm(true);
   };
 
+  const handleSaveAndCreateFeePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaveAndCreateFeePlan(true);
+    handleSubmit(e);
+  };
+
   // Helper function to get default password
   const getDefaultPassword = async (type: 'student' | 'staff' | 'family'): Promise<string> => {
     if (!user?.school_id) return 'aa';
@@ -1870,6 +1898,7 @@ const StudentAdmissionForm: React.FC = () => {
       return;
     }
 
+    const shouldOpenFeePlan = saveAndCreateFeePlan;
     setShowConfirm(false);
     setSubmitting(true);
 
@@ -2027,7 +2056,26 @@ const StudentAdmissionForm: React.FC = () => {
       
       const displayId = newStudent.roll_number || newStudent.id;
       showToast(`Student added successfully with Roll Number: ${displayId}!`, 'success');
-      handleReset();
+      
+      // If "Save and Create Fee Plan" was clicked, prepare student info and open modal
+      if (shouldOpenFeePlan) {
+        const studentInfo: StudentInfo = {
+          id: newStudent.id,
+          name: form.name,
+          fatherName: form.fatherName,
+          rollNumber: newStudent.roll_number || null,
+          dateOfAdmission: form.admissionDate,
+          className: selectedClass?.name || 'Unknown',
+          sectionName: selectedSection?.name || (selectedClassHasSections ? 'Unknown' : 'No Section'),
+          classId: Number(form.class),
+          sectionId: selectedClassHasSections ? Number(form.section) : undefined
+        };
+        setNewStudentForFeePlan(studentInfo);
+        setShowFeePlanModal(true);
+        setSaveAndCreateFeePlan(false);
+      } else {
+        handleReset();
+      }
     } catch (err: any) {
       showToast('Error: ' + (err.message || 'Unknown error'), 'error');
     } finally {
@@ -2147,6 +2195,10 @@ const StudentAdmissionForm: React.FC = () => {
                 <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="submit" form="admission-form" first>
                   <SaveIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
                   <span className="seg-btn-text">Save</span>
+                </SegmentedButton>
+                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
+                  <DescriptionIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
+                  <span className="seg-btn-text">Save & Fee Plan</span>
                 </SegmentedButton>
                 <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleReset}>
                   <RefreshIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
@@ -2638,6 +2690,25 @@ const StudentAdmissionForm: React.FC = () => {
           </MainCard>
         </MainContent>
       </PageContainer>
+      {activeSession && (
+        <CreateFeePlanModal
+          isOpen={showFeePlanModal}
+          onClose={() => {
+            setShowFeePlanModal(false);
+            setNewStudentForFeePlan(null);
+            handleReset();
+          }}
+          onSuccess={() => {
+            setShowFeePlanModal(false);
+            setNewStudentForFeePlan(null);
+            handleReset();
+          }}
+          schoolId={user?.school_id || 0}
+          sessionId={activeSession.id}
+          feeHeads={feeHeads}
+          initialStudent={newStudentForFeePlan}
+        />
+      )}
     </ThemeProvider>
   );
 };

@@ -7,7 +7,10 @@ import {
   FeeInvoiceItem,
   FeePayment,
   FeeAuditLog,
-  StudentFeeConcession
+  StudentFeeConcession,
+  FeePlan,
+  FeePlanItem,
+  FeePlanWithItems
 } from '../types/fee';
 
 // Helper function to set current user for audit logging
@@ -54,7 +57,7 @@ export const feeService = {
   },
 
   // Fee Structures
-  async getFeeStructures(schoolId: number, filters: Partial<{ classId: number; sectionId: number; sessionId: number }> = {}): Promise<FeeStructure[]> {
+  async getFeeStructures(schoolId: number, filters: Partial<{ classId: number; sectionId: number; sessionId: number; feeHeadId: number }> = {}): Promise<FeeStructure[]> {
     let query = supabase
       .from('fee_structures')
       .select('*')
@@ -62,9 +65,24 @@ export const feeService = {
     if (filters.classId) query = query.eq('class_id', filters.classId);
     if (filters.sectionId) query = query.eq('section_id', filters.sectionId);
     if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
+    if (filters.feeHeadId) query = query.eq('fee_head_id', filters.feeHeadId);
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    
+    // Convert snake_case to camelCase
+    return (data || []).map(item => ({
+      id: item.id,
+      schoolId: item.school_id,
+      classId: item.class_id,
+      sectionId: item.section_id,
+      sessionId: item.session_id,
+      feeHeadId: item.fee_head_id,
+      amount: item.amount,
+      months: item.months || [],
+      firstTime: item.first_time || false,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
   },
 
   // Student Fee Plans
@@ -306,7 +324,7 @@ export const feeService = {
   },
 
   // Bulk upsert fee structures
-  async bulkUpsertFeeStructures(schoolId: number, sessionId: number, items: { classId: number; feeHeadId: number; amount: number }[], userId?: number): Promise<void> {
+  async bulkUpsertFeeStructures(schoolId: number, sessionId: number, items: { classId: number; feeHeadId: number; amount: number; months?: number[]; firstTime?: boolean }[], userId?: number): Promise<void> {
     if (!items.length) return;
     
     // Set user context for audit logging
@@ -318,6 +336,8 @@ export const feeService = {
       section_id: null,
       fee_head_id: item.feeHeadId,
       amount: item.amount,
+      months: item.months || [],
+      first_time: item.firstTime || false,
     }));
     const { error } = await supabase
       .from('fee_structures')
@@ -1235,5 +1255,743 @@ export const feeService = {
     year: number
   ): Promise<number> {
     return this.deleteFeeHeadsForStudents(schoolId, [studentId], feeHeadIds, sessionId, month, year);
+  },
+
+  // Fee Plans
+  async getFeePlan(schoolId: number, studentId: number, sessionId: number): Promise<FeePlanWithItems | null> {
+    const { data: planData, error: planError } = await supabase
+      .from('fee_plans')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (planError) {
+      // PGRST116 = not found, which is fine
+      // 406 = not acceptable (usually means no rows when using .single())
+      if (planError.code === 'PGRST116' || planError.code === 'PGRST406') return null;
+      throw planError;
+    }
+
+    if (!planData) return null;
+
+    // Fetch fee plan items
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('fee_plan_items')
+      .select('*')
+      .eq('fee_plan_id', planData.id)
+      .eq('school_id', schoolId);
+
+    if (itemsError) throw itemsError;
+
+    // Convert to camelCase
+    const plan: FeePlan = {
+      id: planData.id,
+      schoolId: planData.school_id,
+      studentId: planData.student_id,
+      sessionId: planData.session_id,
+      effectiveFrom: planData.effective_from,
+      discountType: planData.discount_type,
+      discountReason: planData.discount_reason,
+      notes: planData.notes,
+      createdAt: planData.created_at,
+      updatedAt: planData.updated_at,
+      createdBy: planData.created_by,
+      updatedBy: planData.updated_by,
+    };
+
+    const items: FeePlanItem[] = (itemsData || []).map(item => ({
+      id: item.id,
+      feePlanId: item.fee_plan_id,
+      schoolId: item.school_id,
+      feeHeadId: item.fee_head_id,
+      actualFee: Number(item.actual_fee) || 0,
+      discountAmount: Number(item.discount_amount) || 0,
+      discountPercent: Number(item.discount_percent) || 0,
+      feeAfterDiscount: Number(item.fee_after_discount) || 0,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return { ...plan, items };
+  },
+
+  async createOrUpdateFeePlan(
+    schoolId: number,
+    studentId: number,
+    sessionId: number,
+    planData: {
+      effectiveFrom: string;
+      discountType?: string;
+      discountReason?: string;
+      notes?: string;
+      items: Omit<FeePlanItem, 'id' | 'feePlanId' | 'schoolId' | 'createdAt' | 'updatedAt'>[];
+    },
+    userId?: number
+  ): Promise<FeePlanWithItems> {
+    // Set user context for audit logging
+    if (userId) await setAuditUser(userId);
+
+    // Check if fee plan exists
+    const existing = await this.getFeePlan(schoolId, studentId, sessionId);
+
+    let feePlanId: number;
+
+    if (existing) {
+      // Update existing plan
+      const { data: updatedPlan, error: updateError } = await supabase
+        .from('fee_plans')
+        .update({
+          effective_from: planData.effectiveFrom,
+          discount_type: planData.discountType || null,
+          discount_reason: planData.discountReason || null,
+          notes: planData.notes || null,
+          updated_by: userId || null,
+        })
+        .eq('id', existing.id)
+        .eq('school_id', schoolId)
+        .select('id')
+        .single();
+
+      if (updateError) throw updateError;
+      feePlanId = updatedPlan.id;
+
+      // Delete existing items
+      const { error: deleteError } = await supabase
+        .from('fee_plan_items')
+        .delete()
+        .eq('fee_plan_id', feePlanId)
+        .eq('school_id', schoolId);
+
+      if (deleteError) throw deleteError;
+    } else {
+      // Create new plan
+      const { data: newPlan, error: createError } = await supabase
+        .from('fee_plans')
+        .insert({
+          school_id: schoolId,
+          student_id: studentId,
+          session_id: sessionId,
+          effective_from: planData.effectiveFrom,
+          discount_type: planData.discountType || null,
+          discount_reason: planData.discountReason || null,
+          notes: planData.notes || null,
+          created_by: userId || null,
+        })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      feePlanId = newPlan.id;
+    }
+
+    // Insert fee plan items
+    if (planData.items.length > 0) {
+      const itemsToInsert = planData.items.map(item => ({
+        fee_plan_id: feePlanId,
+        school_id: schoolId,
+        fee_head_id: item.feeHeadId,
+        arrears: 0, // Legacy field, kept for backward compatibility
+        actual_fee: item.actualFee || 0,
+        discount_amount: item.discountAmount || 0,
+        discount_percent: item.discountPercent || 0,
+        fee_after_discount: item.feeAfterDiscount || 0,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('fee_plan_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+    }
+
+    // Return the complete fee plan
+    const result = await this.getFeePlan(schoolId, studentId, sessionId);
+    if (!result) throw new Error('Failed to retrieve created fee plan');
+    return result;
+  },
+
+  async deleteFeePlan(schoolId: number, studentId: number, sessionId: number): Promise<void> {
+    const { error } = await supabase
+      .from('fee_plans')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId)
+      .eq('session_id', sessionId);
+
+    if (error) throw error;
+  },
+
+  async getAllFeePlans(schoolId: number, studentId?: number, sessionId?: number): Promise<FeePlanWithItems[]> {
+    let query = supabase
+      .from('fee_plans')
+      .select('*')
+      .eq('school_id', schoolId);
+
+    if (studentId) {
+      query = query.eq('student_id', studentId);
+    }
+
+    if (sessionId) {
+      query = query.eq('session_id', sessionId);
+    }
+
+    const { data: plansData, error: plansError } = await query.order('created_at', { ascending: false });
+
+    if (plansError) throw plansError;
+    if (!plansData || plansData.length === 0) return [];
+
+    // Fetch all fee plan items for all plans
+    const planIds = plansData.map(p => p.id);
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('fee_plan_items')
+      .select('*')
+      .in('fee_plan_id', planIds)
+      .eq('school_id', schoolId);
+
+    if (itemsError) throw itemsError;
+
+    // Group items by fee_plan_id
+    const itemsByPlanId = new Map<number, any[]>();
+    (itemsData || []).forEach(item => {
+      const items = itemsByPlanId.get(item.fee_plan_id) || [];
+      items.push(item);
+      itemsByPlanId.set(item.fee_plan_id, items);
+    });
+
+    // Convert to FeePlanWithItems
+    return plansData.map(planData => {
+      const plan: FeePlan = {
+        id: planData.id,
+        schoolId: planData.school_id,
+        studentId: planData.student_id,
+        sessionId: planData.session_id,
+        effectiveFrom: planData.effective_from,
+        discountType: planData.discount_type,
+        discountReason: planData.discount_reason,
+        notes: planData.notes,
+        createdAt: planData.created_at,
+        updatedAt: planData.updated_at,
+        createdBy: planData.created_by,
+        updatedBy: planData.updated_by,
+      };
+
+      const items: FeePlanItem[] = (itemsByPlanId.get(planData.id) || []).map(item => ({
+        id: item.id,
+        feePlanId: item.fee_plan_id,
+        schoolId: item.school_id,
+        feeHeadId: item.fee_head_id,
+        actualFee: Number(item.actual_fee) || 0,
+        discountAmount: Number(item.discount_amount) || 0,
+        discountPercent: Number(item.discount_percent) || 0,
+        feeAfterDiscount: Number(item.fee_after_discount) || 0,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      }));
+
+      return { ...plan, items };
+    });
+  },
+
+  // Fee Increments - Apply increment to fee plans (does NOT affect existing invoices)
+  async applyIncrementToFeePlans(
+    schoolId: number,
+    sessionId: number,
+    incrementType: 'percentage' | 'fixed',
+    incrementValue: number,
+    options: {
+      studentIds?: number[];
+      feeHeadIds?: number[];
+      preserveDiscountAmount?: boolean; // If true, keep discount amount constant; if false, keep discount percent constant
+    } = {},
+    userId?: number,
+    saveHistory: boolean = true
+  ): Promise<{ updatedCount: number; affectedStudents: number; historyId?: number }> {
+    // Set user context for audit logging
+    if (userId) await setAuditUser(userId);
+
+    // Fetch all fee plans for the session
+    const feePlans = await this.getAllFeePlans(schoolId, undefined, sessionId);
+    
+    // Filter by studentIds if provided
+    let plansToUpdate = feePlans;
+    if (options.studentIds && options.studentIds.length > 0) {
+      plansToUpdate = feePlans.filter(p => options.studentIds!.includes(p.studentId));
+    }
+    
+    let updatedCount = 0;
+    const affectedStudents = new Set<number>();
+    const snapshotBefore: any[] = [];
+    
+    for (const plan of plansToUpdate) {
+      const itemsToUpdate = plan.items.filter(item => {
+        // Filter by feeHeadIds if provided
+        if (options.feeHeadIds && options.feeHeadIds.length > 0) {
+          return options.feeHeadIds.includes(item.feeHeadId);
+        }
+        return true;
+      });
+      
+      if (itemsToUpdate.length === 0) continue;
+      
+      // Calculate new amounts for each item
+      for (const item of itemsToUpdate) {
+        // Save snapshot before update
+        if (saveHistory) {
+          snapshotBefore.push({
+            fee_plan_item_id: item.id,
+            actual_fee: item.actualFee,
+            discount_amount: item.discountAmount,
+            discount_percent: item.discountPercent,
+            fee_after_discount: item.feeAfterDiscount,
+          });
+        }
+        
+        let newActualFee: number;
+        
+        if (incrementType === 'percentage') {
+          newActualFee = item.actualFee * (1 + incrementValue / 100);
+        } else {
+          newActualFee = item.actualFee + incrementValue;
+        }
+        
+        // Ensure positive amount
+        if (newActualFee < 0) newActualFee = 0;
+        
+        // Handle discount preservation
+        let newDiscountAmount: number;
+        let newDiscountPercent: number;
+        let newFeeAfterDiscount: number;
+        
+        if (options.preserveDiscountAmount) {
+          // Keep discount amount constant, recalculate percent
+          newDiscountAmount = item.discountAmount;
+          newDiscountPercent = newActualFee > 0 ? (newDiscountAmount / newActualFee) * 100 : 0;
+          newFeeAfterDiscount = newActualFee - newDiscountAmount;
+        } else {
+          // Keep discount percent constant, recalculate discount amount
+          newDiscountPercent = item.discountPercent;
+          newDiscountAmount = (newActualFee * newDiscountPercent) / 100;
+          newFeeAfterDiscount = newActualFee - newDiscountAmount;
+        }
+        
+        // Ensure feeAfterDiscount is not negative
+        if (newFeeAfterDiscount < 0) {
+          newFeeAfterDiscount = 0;
+          newDiscountAmount = newActualFee;
+          newDiscountPercent = newActualFee > 0 ? 100 : 0;
+        }
+        
+        // Round to 2 decimal places
+        newActualFee = Math.round(newActualFee * 100) / 100;
+        newDiscountAmount = Math.round(newDiscountAmount * 100) / 100;
+        newDiscountPercent = Math.round(newDiscountPercent * 100) / 100;
+        newFeeAfterDiscount = Math.round(newFeeAfterDiscount * 100) / 100;
+        
+        // Update item in database
+        const { error } = await supabase
+          .from('fee_plan_items')
+          .update({
+            actual_fee: newActualFee,
+            discount_amount: newDiscountAmount,
+            discount_percent: newDiscountPercent,
+            fee_after_discount: newFeeAfterDiscount,
+          })
+          .eq('id', item.id)
+          .eq('school_id', schoolId);
+        
+        if (error) throw error;
+        updatedCount++;
+        affectedStudents.add(plan.studentId);
+      }
+    }
+    
+    // Save history if requested
+    let historyId: number | undefined;
+    if (saveHistory && updatedCount > 0) {
+      const { data: historyData, error: historyError } = await supabase
+        .from('fee_increment_history')
+        .insert({
+          school_id: schoolId,
+          session_id: sessionId,
+          increment_type: incrementType,
+          increment_value: incrementValue,
+          target_type: 'fee_plans',
+          filter_options: {
+            studentIds: options.studentIds,
+            feeHeadIds: options.feeHeadIds,
+            preserveDiscountAmount: options.preserveDiscountAmount,
+          },
+          items_updated: updatedCount,
+          affected_students: affectedStudents.size,
+          snapshot_before: snapshotBefore,
+          created_by: userId || null,
+        })
+        .select('id')
+        .single();
+      
+      if (historyError) {
+        console.error('Error saving increment history:', historyError);
+        // Don't throw - history is not critical for the operation
+      } else {
+        historyId = historyData?.id;
+      }
+    }
+    
+    return { updatedCount, affectedStudents: affectedStudents.size, historyId };
+  },
+
+  // Fee Increments - Apply increment to fee structures (does NOT affect existing invoices)
+  async applyIncrementToFeeStructures(
+    schoolId: number,
+    sessionId: number,
+    incrementType: 'percentage' | 'fixed',
+    incrementValue: number,
+    options: {
+      classIds?: number[];
+      feeHeadIds?: number[];
+    } = {},
+    userId?: number,
+    saveHistory: boolean = true
+  ): Promise<{ updatedCount: number; historyId?: number }> {
+    // Set user context for audit logging
+    if (userId) await setAuditUser(userId);
+
+    let query = supabase
+      .from('fee_structures')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('session_id', sessionId);
+    
+    if (options.classIds && options.classIds.length > 0) {
+      query = query.in('class_id', options.classIds);
+    }
+    
+    if (options.feeHeadIds && options.feeHeadIds.length > 0) {
+      query = query.in('fee_head_id', options.feeHeadIds);
+    }
+    
+    const { data: structures, error } = await query;
+    if (error) throw error;
+    
+    if (!structures || structures.length === 0) {
+      return { updatedCount: 0 };
+    }
+    
+    // Save snapshot before update
+    const snapshotBefore: any[] = [];
+    if (saveHistory) {
+      structures.forEach(struct => {
+        snapshotBefore.push({
+          fee_structure_id: struct.id,
+          amount: struct.amount,
+        });
+      });
+    }
+    
+    // Calculate new amounts and update
+    let updatedCount = 0;
+    for (const struct of structures) {
+      let newAmount: number;
+      if (incrementType === 'percentage') {
+        newAmount = Number(struct.amount) * (1 + incrementValue / 100);
+      } else {
+        newAmount = Number(struct.amount) + incrementValue;
+      }
+      
+      // Ensure positive amount
+      if (newAmount < 0) newAmount = 0;
+      
+      // Round to 2 decimal places
+      newAmount = Math.round(newAmount * 100) / 100;
+      
+      const { error: updateError } = await supabase
+        .from('fee_structures')
+        .update({ amount: newAmount })
+        .eq('id', struct.id)
+        .eq('school_id', schoolId);
+      
+      if (updateError) throw updateError;
+      updatedCount++;
+    }
+    
+    // Save history if requested
+    let historyId: number | undefined;
+    if (saveHistory && updatedCount > 0) {
+      const { data: historyData, error: historyError } = await supabase
+        .from('fee_increment_history')
+        .insert({
+          school_id: schoolId,
+          session_id: sessionId,
+          increment_type: incrementType,
+          increment_value: incrementValue,
+          target_type: 'fee_structures',
+          filter_options: {
+            classIds: options.classIds,
+            feeHeadIds: options.feeHeadIds,
+          },
+          items_updated: updatedCount,
+          snapshot_before: snapshotBefore,
+          created_by: userId || null,
+        })
+        .select('id')
+        .single();
+      
+      if (historyError) {
+        console.error('Error saving increment history:', historyError);
+        // Don't throw - history is not critical for the operation
+      } else {
+        historyId = historyData?.id;
+      }
+    }
+    
+    return { updatedCount, historyId };
+  },
+
+  // Fee Increment History - Get all increment history records
+  async getIncrementHistory(
+    schoolId: number,
+    sessionId?: number
+  ): Promise<any[]> {
+    let query = supabase
+      .from('fee_increment_history')
+      .select(`
+        *,
+        created_by_user:users!fee_increment_history_created_by_fkey(id, name, email),
+        session:sessions(id, name, is_active)
+      `)
+      .eq('school_id', schoolId)
+      .order('created_at', { ascending: false });
+    
+    if (sessionId) {
+      query = query.eq('session_id', sessionId);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      schoolId: item.school_id,
+      sessionId: item.session_id,
+      session: item.session,
+      incrementType: item.increment_type,
+      incrementValue: Number(item.increment_value),
+      targetType: item.target_type,
+      filterOptions: item.filter_options || {},
+      itemsUpdated: item.items_updated,
+      affectedStudents: item.affected_students,
+      status: item.status,
+      snapshotBefore: item.snapshot_before,
+      createdBy: item.created_by,
+      createdByUser: item.created_by_user,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      parentIncrementId: item.parent_increment_id,
+      remarks: item.remarks,
+    }));
+  },
+
+  // Fee Increment History - Check if invoices exist after increment
+  async hasInvoicesAfterIncrement(
+    historyId: number,
+    schoolId: number
+  ): Promise<{ hasInvoices: boolean; invoiceCount?: number }> {
+    // Get the history record
+    const { data: history, error: fetchError } = await supabase
+      .from('fee_increment_history')
+      .select('created_at, session_id')
+      .eq('id', historyId)
+      .eq('school_id', schoolId)
+      .single();
+    
+    if (fetchError || !history) {
+      return { hasInvoices: false };
+    }
+    
+    // Check if any invoices were created after this increment for the same session
+    const { count, error: invoicesError } = await supabase
+      .from('fee_invoices')
+      .select('*', { count: 'exact', head: true })
+      .eq('school_id', schoolId)
+      .eq('session_id', history.session_id)
+      .gt('created_at', history.created_at);
+    
+    if (invoicesError) {
+      console.error('Error checking invoices:', invoicesError);
+      // If we can't check, assume invoices exist to be safe
+      return { hasInvoices: true };
+    }
+    
+    const invoiceCount = count || 0;
+    return { hasInvoices: invoiceCount > 0, invoiceCount };
+  },
+
+  // Fee Increment History - Reverse an increment
+  async reverseIncrement(
+    historyId: number,
+    schoolId: number,
+    userId?: number
+  ): Promise<void> {
+    // Set user context for audit logging
+    if (userId) await setAuditUser(userId);
+
+    // Get the history record
+    const { data: history, error: fetchError } = await supabase
+      .from('fee_increment_history')
+      .select('*')
+      .eq('id', historyId)
+      .eq('school_id', schoolId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    if (!history) throw new Error('Increment history not found');
+    if (history.status === 'reversed') throw new Error('This increment has already been reversed');
+    
+    const snapshot = history.snapshot_before;
+    if (!snapshot || !Array.isArray(snapshot)) {
+      throw new Error('Invalid snapshot data for reversal');
+    }
+    
+    // Reverse based on target type
+    if (history.target_type === 'fee_plans' || history.target_type === 'both') {
+      // Restore fee plan items
+      for (const item of snapshot) {
+        if (item.fee_plan_item_id) {
+          const { error } = await supabase
+            .from('fee_plan_items')
+            .update({
+              actual_fee: item.actual_fee,
+              discount_amount: item.discount_amount,
+              discount_percent: item.discount_percent,
+              fee_after_discount: item.fee_after_discount,
+            })
+            .eq('id', item.fee_plan_item_id)
+            .eq('school_id', schoolId);
+          
+          if (error) throw error;
+        }
+      }
+    }
+    
+    if (history.target_type === 'fee_structures' || history.target_type === 'both') {
+      // Restore fee structures
+      for (const item of snapshot) {
+        if (item.fee_structure_id) {
+          const { error } = await supabase
+            .from('fee_structures')
+            .update({ amount: item.amount })
+            .eq('id', item.fee_structure_id)
+            .eq('school_id', schoolId);
+          
+          if (error) throw error;
+        }
+      }
+    }
+    
+    // Mark history as reversed
+    const { error: updateError } = await supabase
+      .from('fee_increment_history')
+      .update({ 
+        status: 'reversed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', historyId)
+      .eq('school_id', schoolId);
+    
+    if (updateError) throw updateError;
+  },
+
+  // Fee Increment History - Edit an increment (creates a new increment with parent reference)
+  async editIncrement(
+    historyId: number,
+    schoolId: number,
+    sessionId: number,
+    newIncrementType: 'percentage' | 'fixed',
+    newIncrementValue: number,
+    newOptions: {
+      studentIds?: number[];
+      classIds?: number[];
+      feeHeadIds?: number[];
+      preserveDiscountAmount?: boolean;
+    } = {},
+    userId?: number
+  ): Promise<{ updatedCount: number; affectedStudents?: number; historyId: number }> {
+    // First reverse the old increment
+    await this.reverseIncrement(historyId, schoolId, userId);
+    
+    // Then apply the new increment
+    let updatedCount = 0;
+    let affectedStudents: number | undefined;
+    let newHistoryId: number | undefined;
+    
+    if (newOptions.studentIds || !newOptions.classIds) {
+      // Apply to fee plans
+      const result = await this.applyIncrementToFeePlans(
+        schoolId,
+        sessionId,
+        newIncrementType,
+        newIncrementValue,
+        {
+          studentIds: newOptions.studentIds,
+          feeHeadIds: newOptions.feeHeadIds,
+          preserveDiscountAmount: newOptions.preserveDiscountAmount,
+        },
+        userId,
+        false // Don't save history yet, we'll do it manually with parent reference
+      );
+      updatedCount += result.updatedCount;
+      affectedStudents = result.affectedStudents;
+    }
+    
+    if (newOptions.classIds || (!newOptions.studentIds && !newOptions.classIds)) {
+      // Apply to fee structures
+      const result = await this.applyIncrementToFeeStructures(
+        schoolId,
+        sessionId,
+        newIncrementType,
+        newIncrementValue,
+        {
+          classIds: newOptions.classIds,
+          feeHeadIds: newOptions.feeHeadIds,
+        },
+        userId,
+        false // Don't save history yet
+      );
+      updatedCount += result.updatedCount;
+    }
+    
+    // Determine target type
+    let targetType: 'fee_plans' | 'fee_structures' | 'both' = 'both';
+    if (newOptions.studentIds && !newOptions.classIds) {
+      targetType = 'fee_plans';
+    } else if (newOptions.classIds && !newOptions.studentIds) {
+      targetType = 'fee_structures';
+    }
+    
+    // Save history with parent reference
+    const { data: historyData, error: historyError } = await supabase
+      .from('fee_increment_history')
+      .insert({
+        school_id: schoolId,
+        session_id: sessionId,
+        increment_type: newIncrementType,
+        increment_value: newIncrementValue,
+        target_type: targetType,
+        filter_options: newOptions,
+        items_updated: updatedCount,
+        affected_students: affectedStudents,
+        parent_increment_id: historyId,
+        status: 'active',
+        created_by: userId || null,
+      })
+      .select('id')
+      .single();
+    
+    if (historyError) throw historyError;
+    newHistoryId = historyData?.id;
+    
+    return { updatedCount, affectedStudents, historyId: newHistoryId! };
   },
 }; 

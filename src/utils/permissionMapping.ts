@@ -45,6 +45,8 @@ export const pathToPermissionKey: Record<string, string> = {
   
   // Fee Collection
   '/fee-structure-management': 'fee-structure',
+  '/fee-plans': 'fee-plans',
+  '/fee-increments': 'fee-increments',
   '/load-fee': 'load-fee',
   '/fee-collection': 'fee-collection',
   '/fee-defaulters': 'fee-defaulters',

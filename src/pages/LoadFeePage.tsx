@@ -12,6 +12,7 @@ import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { feeService } from '../services/feeService';
+import { FeePlanWithItems } from '../types/fee';
 import { alpha } from '@mui/material/styles';
 import Autocomplete from '@mui/material/Autocomplete';
 import Avatar from '@mui/material/Avatar';
@@ -1202,6 +1203,9 @@ export default function LoadFeePage() {
   // State for expanded student rows to show concessions
   const [expandedStudents, setExpandedStudents] = useState<Set<number>>(new Set());
 
+  // State for fee plans - Map<`${studentId}_${sessionId}`, FeePlanWithItems>
+  const [feePlans, setFeePlans] = useState<Map<string, FeePlanWithItems>>(new Map());
+
   // Helper function to check if a class has sections
   const getClassHasSections = (classId: any) => {
     const classObj = classes.find(c => String(c.id) === String(classId));
@@ -1507,6 +1511,104 @@ export default function LoadFeePage() {
     })();
   }, [schoolId, selectedSession]);
 
+  // Fetch fee plans for the session immediately when session is selected (bulk tab)
+  useEffect(() => {
+    // Only fetch for bulk tab (tab === 0)
+    if (tab !== 0) return;
+
+    const fetchFeePlans = async () => {
+      if (!schoolId || !selectedSession) {
+        setFeePlans(new Map());
+        return;
+      }
+
+      try {
+        // Fetch all fee plans for the session at once (much faster than individual calls)
+        const allPlans = await feeService.getAllFeePlans(schoolId, undefined, Number(selectedSession));
+        
+        // Convert to Map for quick lookup
+        const plansMap = new Map<string, FeePlanWithItems>();
+        allPlans.forEach(plan => {
+          plansMap.set(`${plan.studentId}_${plan.sessionId}`, plan);
+        });
+
+        setFeePlans(plansMap);
+      } catch (error) {
+        console.error('Error fetching fee plans:', error);
+        setFeePlans(new Map());
+      }
+    };
+
+    fetchFeePlans();
+  }, [schoolId, selectedSession, tab]);
+
+  // Fetch fee plan for single student when student or session changes (single tab)
+  useEffect(() => {
+    // Only fetch for single tab (tab === 1)
+    if (tab !== 1) return;
+
+    const fetchFeePlan = async () => {
+      if (!schoolId || !singleStudent || !singleSession) {
+        setFeePlans(new Map());
+        return;
+      }
+
+      try {
+        // Use getAllFeePlans for consistency and better performance
+        const allPlans = await feeService.getAllFeePlans(schoolId, singleStudent.id, Number(singleSession));
+        
+        const plansMap = new Map<string, FeePlanWithItems>();
+        if (allPlans.length > 0) {
+          const plan = allPlans[0]; // Should only be one plan for a single student
+          plansMap.set(`${singleStudent.id}_${singleSession}`, plan);
+        }
+        setFeePlans(plansMap);
+      } catch (error) {
+        console.error('Error fetching fee plan:', error);
+        setFeePlans(new Map());
+      }
+    };
+
+    fetchFeePlan();
+  }, [schoolId, singleStudent?.id, singleSession, tab]);
+
+  // Fetch fee plans for family students when family or session changes (family tab)
+  useEffect(() => {
+    // Only fetch for family tab (tab === 2)
+    if (tab !== 2) return;
+
+    const fetchFamilyFeePlans = async () => {
+      if (!schoolId || !selectedFamily || !familySession) {
+        setFeePlans(new Map());
+        return;
+      }
+
+      try {
+        // Fetch all fee plans for the session at once (much faster)
+        const allPlans = await feeService.getAllFeePlans(schoolId, undefined, Number(familySession));
+        
+        const studentIds = selectedFamily.family_members
+          ?.map((member: any) => member.student?.id)
+          .filter(Boolean) || [];
+
+        // Filter to only include plans for students in the selected family
+        const plansMap = new Map<string, FeePlanWithItems>();
+        allPlans.forEach(plan => {
+          if (studentIds.includes(plan.studentId)) {
+            plansMap.set(`${plan.studentId}_${plan.sessionId}`, plan);
+          }
+        });
+
+        setFeePlans(plansMap);
+      } catch (error) {
+        console.error('Error fetching family fee plans:', error);
+        setFeePlans(new Map());
+      }
+    };
+
+    fetchFamilyFeePlans();
+  }, [schoolId, selectedFamily, familySession, tab]);
+
   // Also load fee structures for all sessions initially to have fallback data
   useEffect(() => {
     if (!schoolId) return;
@@ -1525,32 +1627,19 @@ export default function LoadFeePage() {
     // When preview or selectedFeeHeads changes, initialize amountGrid
     if (!preview.length || !selectedFeeHeads.length) return;
     const newGrid: { [studentId: number]: { [feeHeadId: number]: string } } = {};
-    const newConcessionInfo: { [key: string]: { applied: boolean, amount: number } } = {};
     
     preview.forEach(stu => {
       newGrid[stu.id] = {};
       selectedFeeHeads.forEach(fhId => {
-        const key = `${stu.id}-${fhId}`;
-        if (existingFeeInvoiceAmountsMap.has(key)) {
-          // Use existing amount if available
-          newGrid[stu.id][fhId] = String(existingFeeInvoiceAmountsMap.get(key));
-        } else {
-          // Calculate new amount with concessions
-          const defaultAmount = parseFloat(getDefaultAmount(fhId, Number(stu.class_id)));
-          const concessionAmount = getConcessionAmount(stu.id, fhId, selectedSession, selectedMonth, selectedYear);
-          const finalAmount = Math.max(0, defaultAmount - concessionAmount);
-          newGrid[stu.id][fhId] = String(finalAmount);
-          newConcessionInfo[key] = { 
-            applied: concessionAmount > 0,
-            amount: concessionAmount
-          };
-        }
+        // Use calculateFinalAmount which checks fee plans first, then defaults
+        const finalAmount = calculateFinalAmount(stu.id, fhId, Number(stu.class_id), selectedSession, selectedMonth, selectedYear);
+        // Always use the calculated amount (from fee plans or defaults) to ensure fee plan amounts are used
+        newGrid[stu.id][fhId] = finalAmount;
       });
     });
     
     setAmountGrid(newGrid);
-    setConcessionInfo(newConcessionInfo);
-  }, [preview, selectedFeeHeads, feeStructures, feeHeads, concessions, selectedSession, selectedMonth, selectedYear, existingFeeInvoiceAmountsMap]);
+  }, [preview, selectedFeeHeads, feeStructures, feeHeads, selectedSession, existingFeeInvoiceAmountsMap, feePlans]);
 
   // Update useEffect for single student view
   useEffect(() => {
@@ -1559,50 +1648,30 @@ export default function LoadFeePage() {
       const classId = Number(singleStudent.class_id);
       
       const newGridForStudent: { [feeHeadId: number]: string } = {};
-      const newConcessionInfo: { [key: string]: { applied: boolean, amount: number } } = {};
       
       singleStudentSelectedFeeHeads.forEach(fhId => {
         const key = `${studentId}-${fhId}`;
-        const defaultAmount = parseFloat(getDefaultAmount(fhId, classId));
-        const concessionAmount = getConcessionAmount(studentId, fhId, singleSession, singleMonth, singleYear);
-        
         if (existingFeeInvoiceAmountsMap.has(key)) {
           // Use existing amount if available
           newGridForStudent[fhId] = String(existingFeeInvoiceAmountsMap.get(key));
-          // Keep the concession status even for existing fee heads
-          newConcessionInfo[key] = {
-            applied: concessionAmount > 0,
-            amount: concessionAmount
-          };
         } else {
-          // Calculate new amount with concessions
-          const finalAmount = Math.max(0, defaultAmount - concessionAmount);
-          newGridForStudent[fhId] = String(finalAmount);
-          newConcessionInfo[key] = {
-            applied: concessionAmount > 0,
-            amount: concessionAmount
-          };
+          // Use calculateFinalAmount which checks fee plans first, then defaults
+          newGridForStudent[fhId] = calculateFinalAmount(studentId, fhId, classId, singleSession, singleMonth, singleYear);
         }
       });
 
-      // Batch state updates together
       setAmountGrid(prev => ({
         ...prev,
         [studentId]: newGridForStudent,
       }));
-      setConcessionInfo(prev => ({
-        ...prev,
-        ...newConcessionInfo
-      }));
     }
-  }, [singleStudentSelectedFeeHeads, singleStudent, tab, concessions, singleSession, singleMonth, singleYear, existingFeeInvoiceAmountsMap]);
+  }, [singleStudentSelectedFeeHeads, singleStudent, tab, singleSession, existingFeeInvoiceAmountsMap, feePlans]);
 
   // Update family view useEffect
   useEffect(() => {
     if (!selectedFamily) return;
 
     const newGrid: { [studentId: number]: { [feeHeadId: number]: string } } = {};
-    const newConcessionInfo: { [key: string]: { applied: boolean, amount: number } } = {};
     
     selectedFamily.family_members?.forEach((member: any) => {
       const stu = member.student;
@@ -1612,33 +1681,19 @@ export default function LoadFeePage() {
         const fh = feeHeads.find(h => h.id === fhId);
         if (fh) {
           const key = `${stu.id}-${fhId}`;
-          const defaultAmount = parseFloat(getDefaultAmount(fhId, Number(stu.class_id)));
-          const concessionAmount = getConcessionAmount(stu.id, fhId, familySession, familyMonth, familyYear);
-          
           if (existingFeeInvoiceAmountsMap.has(key)) {
             // Use existing amount if available
             newGrid[stu.id][fhId] = String(existingFeeInvoiceAmountsMap.get(key));
-            newConcessionInfo[key] = { applied: false, amount: 0 };
           } else {
-            // Calculate new amount with concessions
-            const finalAmount = Math.max(0, defaultAmount - concessionAmount);
-            newGrid[stu.id][fhId] = String(finalAmount);
-            newConcessionInfo[key] = {
-              applied: concessionAmount > 0,
-              amount: concessionAmount
-            };
+            // Use calculateFinalAmount which checks fee plans first, then defaults
+            newGrid[stu.id][fhId] = calculateFinalAmount(stu.id, fhId, Number(stu.class_id), familySession, familyMonth, familyYear);
           }
         }
       });
     });
     
-    // Batch state updates together
     setFamilyAmountGrid(newGrid);
-    setConcessionInfo(prev => ({
-      ...prev,
-      ...newConcessionInfo
-    }));
-  }, [selectedFamily, familyTabSelectedFeeHeads, feeStructures, feeHeads, concessions, familySession, familyMonth, familyYear, existingFeeInvoiceAmountsMap]);
+  }, [selectedFamily, familyTabSelectedFeeHeads, feeStructures, feeHeads, familySession, existingFeeInvoiceAmountsMap, feePlans]);
 
   // Get default amount for a fee head and class
   const getDefaultAmount = (feeHeadId: number, classId: number): string => {
@@ -1732,12 +1787,22 @@ export default function LoadFeePage() {
       return String(existingFeeInvoiceAmountsMap.get(key));
     }
 
-    // If no existing record, calculate the amount with concessions
-    const defaultAmount = parseFloat(getDefaultAmount(feeHeadId, classId));
-    const concessionAmount = getConcessionAmount(studentId, feeHeadId, session, month, year);
-    const finalAmount = Math.max(0, defaultAmount - concessionAmount);
+    // Second, check if there's a fee plan for this student and session
+    if (session) {
+      const planKey = `${studentId}_${session}`;
+      const feePlan = feePlans.get(planKey);
+      if (feePlan) {
+        // Find the fee plan item for this fee head
+        const planItem = feePlan.items.find(item => item.feeHeadId === feeHeadId);
+        if (planItem) {
+          // Use feeAfterDiscount from fee plan (amount after applying discounts)
+          return String(planItem.feeAfterDiscount);
+        }
+      }
+    }
 
-    return String(finalAmount);
+    // If no fee plan, fall back to default amount from fee structures
+    return getDefaultAmount(feeHeadId, classId);
   };
 
   // Get available fee heads based on current selection
@@ -1750,34 +1815,23 @@ export default function LoadFeePage() {
       return feeHeads;
   };
 
-  // Reset amounts to default values (with concessions applied)
+  // Reset amounts to default values (from fee plans or fee structures)
   const resetToDefaults = () => {
     const newGrid: { [studentId: number]: { [feeHeadId: number]: string } } = {};
-    const newConcessionInfo: { [key: string]: { applied: boolean, amount: number } } = {};
     
     preview.forEach(stu => {
       newGrid[stu.id] = {};
-        selectedFeeHeads.forEach(fhId => {
+      selectedFeeHeads.forEach(fhId => {
         const key = `${stu.id}-${fhId}`;
         if (existingFeeInvoiceAmountsMap.has(key)) {
           // Use existing amount if available
           newGrid[stu.id][fhId] = String(existingFeeInvoiceAmountsMap.get(key));
-          newConcessionInfo[key] = { applied: false, amount: 0 };
         } else {
-          // Calculate new amount with concessions
-          const defaultAmount = parseFloat(getDefaultAmount(fhId, Number(stu.class_id)));
-          const concessionAmount = getConcessionAmount(stu.id, fhId, selectedSession, selectedMonth, selectedYear);
-          const finalAmount = Math.max(0, defaultAmount - concessionAmount);
-          newGrid[stu.id][fhId] = String(finalAmount);
-          setConcessionInfo(prev => ({
-            ...prev,
-            [key]: {
-              applied: concessionAmount > 0,
-              amount: concessionAmount
-            }
-          }));
-      }
-    });
+          // Use calculateFinalAmount which checks fee plans first, then defaults
+          const finalAmount = calculateFinalAmount(stu.id, fhId, Number(stu.class_id), selectedSession, selectedMonth, selectedYear);
+          newGrid[stu.id][fhId] = finalAmount;
+        }
+      });
     });
     
     setAmountGrid(newGrid);
@@ -1913,7 +1967,7 @@ export default function LoadFeePage() {
 
   // Auto-preview when class, section, session, or fee heads change
   useEffect(() => {
-    if (!selectedClass || selectedFeeHeads.length === 0 || !selectedSession) {
+    if (!selectedClass || selectedFeeHeads.length === 0 || !selectedSession || !schoolId) {
       setPreview([]);
       setSelectedStudents([]);
       return;
@@ -1924,12 +1978,19 @@ export default function LoadFeePage() {
     // Fetch students from student_class_history for the active session
     const fetchStudentsForSession = async () => {
       try {
-        const { data: schData, error: schError } = await supabase
-          .from('student_class_history')
-          .select('student_id')
-          .eq('session_id', selectedSession)
-          .eq('new_class_id', selectedClass)
-          .eq('school_id', schoolId);
+        // Fetch students and fee plans in parallel for better performance
+        const [schResult, feePlansResult] = await Promise.all([
+          supabase
+            .from('student_class_history')
+            .select('student_id')
+            .eq('session_id', selectedSession)
+            .eq('new_class_id', selectedClass)
+            .eq('school_id', schoolId),
+          // Fetch fee plans for the session in parallel
+          feeService.getAllFeePlans(schoolId, undefined, Number(selectedSession)).catch(() => [])
+        ]);
+
+        const { data: schData, error: schError } = schResult;
 
         if (schError) {
           throw schError;
@@ -1941,6 +2002,13 @@ export default function LoadFeePage() {
           setLoading(false);
           return;
         }
+
+        // Update fee plans immediately
+        const plansMap = new Map<string, FeePlanWithItems>();
+        feePlansResult.forEach(plan => {
+          plansMap.set(`${plan.studentId}_${plan.sessionId}`, plan);
+        });
+        setFeePlans(plansMap);
 
         // Get student IDs from student_class_history
         const studentIds = schData.map(sch => sch.student_id);
@@ -2233,14 +2301,15 @@ export default function LoadFeePage() {
     preview.forEach(stu => {
       newGrid[stu.id] = {};
       selectedFeeHeads.forEach(fhId => {
-        // Use default amount from fee structure or fee head and apply concession
+        // Use calculateFinalAmount which checks fee plans first, then defaults
         const finalAmount = calculateFinalAmount(stu.id, fhId, Number(stu.class_id), selectedSession, selectedMonth, selectedYear);
-        newGrid[stu.id][fhId] = amountGrid[stu.id]?.[fhId] ?? finalAmount;
+        // Always use the calculated amount (from fee plans or defaults) to ensure fee plan amounts are used
+        newGrid[stu.id][fhId] = finalAmount;
       });
     });
     setAmountGrid(newGrid);
     // eslint-disable-next-line
-  }, [preview, selectedFeeHeads, feeStructures, feeHeads, concessions, selectedSession, selectedMonth, selectedYear]);
+  }, [preview, selectedFeeHeads, feeStructures, feeHeads, selectedSession, feePlans]);
 
   // Update amount grid when student selection changes
   useEffect(() => {
@@ -2252,13 +2321,14 @@ export default function LoadFeePage() {
         newGrid[studentId] = {};
         selectedFeeHeads.forEach(fhId => {
           const finalAmount = calculateFinalAmount(studentId, fhId, Number(student.class_id), selectedSession, selectedMonth, selectedYear);
-          newGrid[studentId][fhId] = amountGrid[studentId]?.[fhId] ?? finalAmount;
+          // Always use the calculated amount (from fee plans or defaults) to ensure fee plan amounts are used
+          newGrid[studentId][fhId] = finalAmount;
         });
       }
     });
     setAmountGrid(newGrid);
     // eslint-disable-next-line
-  }, [selectedStudents, selectedFeeHeads, feeStructures, feeHeads, concessions, selectedSession, selectedMonth, selectedYear]);
+  }, [selectedStudents, selectedFeeHeads, feeStructures, feeHeads, selectedSession, feePlans]);
 
   // Update amount grid for single student view
   useEffect(() => {
@@ -2283,30 +2353,26 @@ export default function LoadFeePage() {
     }
   }, [singleStudentSelectedFeeHeads, singleStudent, tab, concessions, singleSession, singleMonth, singleYear, existingFeeInvoiceAmountsMap]);
 
-  // Add a separate useEffect to refresh single student amount grid when concessions are loaded
+  // Refresh single student amount grid when fee plans are loaded
   useEffect(() => {
     if (tab === 1 && singleStudent && singleStudentSelectedFeeHeads.length > 0) {
       const studentId = singleStudent.id;
       const classId = Number(singleStudent.class_id);
-      // Only refresh if we have concessions data or if concessions map is empty (meaning no concessions exist)
-      const hasConcessionsData = concessions.size > 0 || concessions.has(studentId);
-      if (hasConcessionsData) {
-        const newGridForStudent: { [feeHeadId: number]: string } = {};
-        singleStudentSelectedFeeHeads.forEach(fhId => {
-          const key = `${studentId}-${fhId}`;
-          if (existingFeeInvoiceAmountsMap.has(key)) {
-            newGridForStudent[fhId] = String(existingFeeInvoiceAmountsMap.get(key));
-          } else {
-            newGridForStudent[fhId] = calculateFinalAmount(studentId, fhId, classId, singleSession, singleMonth, singleYear);
-          }
-        });
-        setAmountGrid(prev => ({
-          ...prev,
-          [studentId]: newGridForStudent,
-        }));
-      }
+      const newGridForStudent: { [feeHeadId: number]: string } = {};
+      singleStudentSelectedFeeHeads.forEach(fhId => {
+        const key = `${studentId}-${fhId}`;
+        if (existingFeeInvoiceAmountsMap.has(key)) {
+          newGridForStudent[fhId] = String(existingFeeInvoiceAmountsMap.get(key));
+        } else {
+          newGridForStudent[fhId] = calculateFinalAmount(studentId, fhId, classId, singleSession, singleMonth, singleYear);
+        }
+      });
+      setAmountGrid(prev => ({
+        ...prev,
+        [studentId]: newGridForStudent,
+      }));
     }
-  }, [concessions, singleStudent, singleStudentSelectedFeeHeads, singleSession, singleMonth, singleYear, existingFeeInvoiceAmountsMap]);
+  }, [feePlans, singleStudent, singleStudentSelectedFeeHeads, singleSession, existingFeeInvoiceAmountsMap]);
 
   // Add this effect after singleStudent is set
   useEffect(() => {

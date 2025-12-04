@@ -34,6 +34,7 @@ import {
   List as ListIcon,
   Event as EventIcon,
   Feedback as FeedbackIcon,
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 
 export interface MenuItem {
@@ -223,6 +224,20 @@ export const feeMenuItems1: MenuItem[] = [
     icon: React.createElement(AccountBalanceIcon),
     path: '/fee-structure-management',
     color: '#10b981'
+  },
+  {
+    title: 'Fee Plans',
+    description: 'Create and manage individual student fee plans',
+    icon: React.createElement(DescriptionIcon),
+    path: '/fee-plans',
+    color: '#06b6d4'
+  },
+  {
+    title: 'Fee Increments',
+    description: 'Apply increments to fee plans and structures',
+    icon: React.createElement(TrendingUpIcon),
+    path: '/fee-increments',
+    color: '#f97316'
   },
   {
     title: 'Load Fee',
