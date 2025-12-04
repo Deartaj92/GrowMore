@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
 import { matchesStudentSearch, getStudentDisplayId } from '../utils/studentUtils';
-import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth, AttachMoney, School, Commute, FamilyRestroom, Loyalty, Delete, Edit, Close as CloseIcon, CheckCircleOutline, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth, AttachMoney, School, Commute, FamilyRestroom, Loyalty, Delete, Edit, Close as CloseIcon, CheckCircleOutline } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { feeService } from '../services/feeService';
@@ -32,7 +32,7 @@ const pulseKeyframes = keyframes({
   '100%': { opacity: 0.4 }
 });
 
-// ===== STYLED COMPONENTS (Matching ConcessionsPage Style) =====
+// ===== COMPACT & SPACE-EFFICIENT STYLED COMPONENTS =====
 
 const PageContainer = styled.div`
   width: 100%;
@@ -42,13 +42,12 @@ const PageContainer = styled.div`
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
   overflow: hidden;
   
   @media (max-width: 768px) {
     padding: 0.375rem;
-    gap: 0.2rem;
-    height: calc(100vh - 44px);
+    gap: 0.375rem;
   }
 `;
 
@@ -56,47 +55,35 @@ const Header = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  border-radius: 8px;
   border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(0, 0, 0, 0.06)'};
   box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
-  margin-bottom: 0.25rem;
+    ? '0 1px 4px rgba(0, 0, 0, 0.15)'
+    : '0 1px 4px rgba(0, 0, 0, 0.05)'};
+  flex-shrink: 0;
   
   @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 0.5rem;
     padding: 0.5rem;
-    margin-bottom: 0.2rem;
   }
 `;
 
 const HeaderTitle = styled.h1`
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: ${({ theme }) => theme.ACCENT};
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  letter-spacing: -0.01em;
   
   @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: space-between;
+    font-size: 1rem;
+    gap: 0.375rem;
   }
 `;
 
@@ -104,26 +91,25 @@ const MainContent = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-height: 0;
   overflow: hidden;
   
   @media (max-width: 768px) {
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 `;
 
-const GlassCard = styled.div`
+const ContentCard = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  border-radius: 8px;
   border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(0, 0, 0, 0.06)'};
   box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.25rem;
+    ? '0 1px 4px rgba(0, 0, 0, 0.15)'
+    : '0 1px 4px rgba(0, 0, 0, 0.05)'};
+  padding: 0.75rem;
   overflow: hidden;
   transition: all 0.2s ease;
   flex: 1;
@@ -133,7 +119,6 @@ const GlassCard = styled.div`
   
   @media (max-width: 768px) {
     padding: 0.5rem;
-    margin-bottom: 0.2rem;
   }
 `;
 const PillButton = muiStyled(Button)(({ theme }) => {
@@ -194,24 +179,24 @@ const FeeHeadPill = muiStyled(Box)<FeeHeadPillProps>(({ theme, $selected }) => {
   return {
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(0.75),
-  padding: '5px 10px',
-  borderRadius: 8,
+  gap: theme.spacing(0.5),
+  padding: '4px 8px',
+  borderRadius: 6,
     background: $selected
       ? (isDarkMode
-        ? 'rgba(74,108,247,0.18)'
-        : 'rgba(74,108,247,0.10)')
+        ? 'rgba(74,108,247,0.15)'
+        : 'rgba(74,108,247,0.08)')
       : (isDarkMode
-        ? 'rgba(255,255,255,0.04)'
+        ? 'rgba(255,255,255,0.03)'
         : 'rgba(0,0,0,0.02)'),
     color: $selected ? primaryColor : textColor,
   fontWeight: 500,
-  fontSize: '0.9rem',
+  fontSize: '0.75rem',
   cursor: 'pointer',
   boxShadow: 'none',
     border: $selected
-      ? `1.5px solid ${primaryColor}`
-    : '1px solid rgba(74,108,247,0.08)',
+      ? `1px solid ${primaryColor}`
+    : '1px solid rgba(74,108,247,0.06)',
   transition: 'all 0.15s',
   userSelect: 'none',
   position: 'relative',
@@ -219,11 +204,11 @@ const FeeHeadPill = muiStyled(Box)<FeeHeadPillProps>(({ theme, $selected }) => {
   '&:hover, &:focus': {
       background: $selected
         ? (isDarkMode
-          ? 'rgba(74,108,247,0.24)'
-          : 'rgba(74,108,247,0.14)')
+          ? 'rgba(74,108,247,0.2)'
+          : 'rgba(74,108,247,0.12)')
         : (isDarkMode
-          ? 'rgba(74,108,247,0.10)'
-          : 'rgba(74,108,247,0.06)'),
+          ? 'rgba(74,108,247,0.08)'
+          : 'rgba(74,108,247,0.05)'),
       borderColor: primaryColor,
   },
   };
@@ -232,29 +217,29 @@ const FeeHeadIcon = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 20,
-  height: 20,
-  borderRadius: 5,
+  width: 16,
+  height: 16,
+  borderRadius: 4,
   background: 'rgba(74,108,247,0.08)',
   color: theme.palette.primary.main,
-  fontSize: 16,
+  fontSize: 12,
   flexShrink: 0,
 }));
 const FeeHeadName = muiStyled(Typography)(({ theme }) => ({
-  fontWeight: 600,
-  fontSize: '0.9rem',
+  fontWeight: 500,
+  fontSize: '0.75rem',
   color: 'inherit',
-  lineHeight: 1.1,
+  lineHeight: 1.2,
 }));
 const FeeHeadDesc = muiStyled(Typography)(({ theme }) => ({
-  fontSize: '0.85rem',
+  fontSize: '0.7rem',
   color: theme.palette.text.secondary,
   fontWeight: 400,
   opacity: 0.7,
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  maxWidth: 120,
+  maxWidth: 100,
   marginLeft: theme.spacing(0.5),
 }));
 const FeeHeadSelectorBar = muiStyled(Box)(({ theme }) => ({
@@ -297,49 +282,51 @@ const FeeHeadSelectorActions = muiStyled(Box)(({ theme }) => ({
   marginLeft: 'auto',
 }));
 
-const GlassSidebar = styled.div`
+const Sidebar = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  border-radius: 8px;
   border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(0, 0, 0, 0.06)'};
   box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
-  padding: 0.75rem 1rem;
+    ? '0 1px 4px rgba(0, 0, 0, 0.15)'
+    : '0 1px 4px rgba(0, 0, 0, 0.05)'};
+  padding: 0.75rem;
   min-width: 0;
   position: sticky;
   top: 0.5rem;
   align-self: flex-start;
-  max-height: calc(100vh - 220px);
-  overflow-y: auto;
+  height: calc(100vh - 120px);
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
   overflow-x: hidden;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
   
   /* Scrollbar styling */
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 4px;
   }
   
   &::-webkit-scrollbar-track {
     background: transparent;
-    border-radius: 4px;
+    border-radius: 2px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
-    border-radius: 4px;
+    background: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'};
+    border-radius: 2px;
     transition: background 0.2s;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+    background: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
   }
   
-  /* Firefox scrollbar */
   scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'} transparent;
+  scrollbar-color: ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'} transparent;
   
   @media (max-width: 768px) {
     position: static;
@@ -350,24 +337,36 @@ const GlassSidebar = styled.div`
 `;
 
 const SectionHeader = styled.div`
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: ${({ theme }) => theme.ACCENT};
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin-bottom: 0.5rem;
-  margin-top: 0.25rem;
-  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  
+  &::before {
+    content: '';
+    width: 2px;
+    height: 14px;
+    background: ${({ theme }) => theme.ACCENT};
+    border-radius: 1px;
+  }
 `;
 
-const GlassMainCard = styled.div`
+const MainCard = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  border-radius: 8px;
   border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(0, 0, 0, 0.06)'};
   box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
-  padding: 0.75rem 1rem;
+    ? '0 1px 4px rgba(0, 0, 0, 0.15)'
+    : '0 1px 4px rgba(0, 0, 0, 0.05)'};
+  padding: 0.75rem;
   width: 100%;
   height: 100%;
   display: flex;
@@ -424,101 +423,91 @@ const PaginationControls = muiStyled(Box)(({ theme }) => ({
   }
 }));
 
-// Enhanced Tab Components - Keep MUI styled for MUI components
+// Compact Tab Components
 const StyledTabs = muiStyled(Tabs)(({ theme }) => ({
+  minHeight: 36,
   '& .MuiTabs-indicator': {
-    height: 3,
-    borderRadius: 2,
+    height: 2,
+    borderRadius: 1,
     background: 'linear-gradient(90deg, #4a6cf7 0%, #3b82f6 100%)',
   },
   '& .MuiTabs-flexContainer': {
-    gap: 2,
-    padding: '0 4px',
-    [theme.breakpoints.up('md')]: {
-      gap: 4,
-      padding: '0 8px',
-    },
+    gap: 0,
+    padding: '0 2px',
   },
 }));
 
-const StyledTab = muiStyled(Tab)(({ theme }) => ({
-  minHeight: 36,
-  padding: '4px 8px',
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  textTransform: 'none',
-  borderRadius: 6,
-  margin: '0 1px',
-  transition: 'all 0.2s ease',
-  '& .MuiTab-iconWrapper': {
-    marginBottom: 1,
-    fontSize: '0.9rem',
-  },
-  [theme.breakpoints.up('md')]: {
-    minHeight: 44,
-    padding: '8px 16px',
-    fontSize: '0.9rem',
-    borderRadius: 8,
+const StyledTab = muiStyled(Tab)(({ theme }) => {
+  const isDarkMode = theme.palette.mode === 'dark';
+  return {
+    minHeight: 36,
+    padding: '6px 12px',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    textTransform: 'none',
+    borderRadius: 6,
     margin: '0 2px',
-    '& .MuiTab-iconWrapper': {
-      marginBottom: 2,
-      fontSize: '1.1rem',
+    transition: 'all 0.2s ease',
+    color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+    '&.Mui-selected': {
+      color: theme.palette.primary.main,
+      background: isDarkMode ? 'rgba(74, 108, 247, 0.1)' : 'rgba(74, 108, 247, 0.08)',
     },
-  },
-}));
+    '& .MuiTab-iconWrapper': {
+      marginBottom: 0,
+      marginRight: 6,
+      fontSize: '0.875rem',
+    },
+    '&:hover': {
+      background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+    },
+    [theme.breakpoints.down('sm')]: {
+      minHeight: 32,
+      padding: '4px 10px',
+      fontSize: '0.7rem',
+      '& .MuiTab-iconWrapper': {
+        marginRight: 4,
+        fontSize: '0.8125rem',
+      },
+    },
+  };
+});
 
-// Scrollable Student List Container
+// Compact Scrollable Student List Container
 const ScrollableStudentList = muiStyled(Box)(({ theme }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
   flex: 1,
   minHeight: 0,
-  overflowY: 'auto', // force scrollbar visibility
+  overflowY: 'auto',
   overflowX: 'hidden',
-  paddingRight: '8px', // make room so cards don't sit under the scrollbar
+  paddingRight: '4px',
   marginRight: 0,
-  scrollbarGutter: 'stable', // reserve space for scrollbar (FF/modern)
-  scrollbarWidth: 'auto', // Firefox - make it more visible
-    scrollbarColor: `${isDarkMode ? '#4a6cf7 #2a2a2a' : '#3b82f6 #e5e7eb'}`, // Firefox thumb track - more visible
-  msOverflowStyle: 'scrollbar', // legacy Edge/IE - always show
+  scrollbarGutter: 'stable',
+  scrollbarWidth: 'thin',
+    scrollbarColor: `${isDarkMode ? 'rgba(74,108,247,0.3) transparent' : 'rgba(74,108,247,0.3) transparent'}`,
+  msOverflowStyle: 'scrollbar',
   '&::-webkit-scrollbar': {
-    width: '12px', // Increased width for better visibility
+    width: '6px',
   },
   '&::-webkit-scrollbar-track': {
-      background: isDarkMode ? 'rgba(42, 42, 42, 0.95)' : '#e5e7eb',
-    borderRadius: '6px',
-    margin: '2px 0',
-    border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+      background: 'transparent',
+    borderRadius: '3px',
   },
   '&::-webkit-scrollbar-thumb': {
       background: isDarkMode
-      ? 'linear-gradient(180deg, #5a7cf8 0%, #4a6cf7 100%)'
-      : 'linear-gradient(180deg, #4a6cf7 0%, #3b82f6 100%)',
-    borderRadius: '6px',
-      border: isDarkMode
-      ? '2px solid rgba(255, 255, 255, 0.15)'
-      : '2px solid rgba(255, 255, 255, 0.8)',
-      boxShadow: isDarkMode
-      ? 'inset 0 0 0 1px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.3)'
-      : 'inset 0 0 0 1px rgba(255,255,255,0.8), 0 2px 6px rgba(0,0,0,0.15)',
+      ? 'rgba(74,108,247,0.3)'
+      : 'rgba(74,108,247,0.3)',
+    borderRadius: '3px',
     transition: 'all 0.2s ease',
-    minHeight: '40px', // Ensure minimum thumb size
   },
   '&::-webkit-scrollbar-thumb:hover': {
       background: isDarkMode
-      ? 'linear-gradient(180deg, #6b8cff 0%, #5a7cf8 100%)'
-      : 'linear-gradient(180deg, #5a7cf8 0%, #4b92f7 100%)',
-      boxShadow: isDarkMode
-      ? 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.4)'
-      : 'inset 0 0 0 1px rgba(255,255,255,0.9), 0 4px 10px rgba(0,0,0,0.2)',
-  },
-  '&::-webkit-scrollbar-thumb:active': {
-      background: isDarkMode
-      ? 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)'
-      : 'linear-gradient(180deg, #3a5ce6 0%, #2a82e6 100%)',
+      ? 'rgba(74,108,247,0.5)'
+      : 'rgba(74,108,247,0.5)',
   },
   '&::-webkit-scrollbar-corner': {
-    background: isDarkMode ? 'rgba(42, 42, 42, 0.95)' : '#e5e7eb',
+    background: 'transparent',
   }
   };
 });
@@ -530,19 +519,23 @@ const StudentListFooter = styled.div`
   align-items: center;
   padding: 12px 16px;
   background: ${({ theme }) => isDark(theme)
-    ? 'rgba(40, 48, 80, 0.1)'
-    : 'rgba(255, 255, 255, 0.8)'};
+    ? 'rgba(40, 48, 80, 0.12)'
+    : 'rgba(0, 0, 0, 0.02)'};
   border-top: 1px solid ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(0, 0, 0, 0.1)'};
-  border-radius: 0 0 12px 12px;
-  margin-top: 8px;
-  gap: 12px;
+    ? 'rgba(255, 255, 255, 0.06)'
+    : 'rgba(0, 0, 0, 0.06)'};
+  border-radius: 0 0 8px 8px;
+  margin-top: auto;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 52px;
+  box-sizing: border-box;
   
   @media (max-width: 768px) {
     flex-direction: column;
-    gap: 6px;
-    padding: 8px 10px;
+    gap: 8px;
+    padding: 10px;
+    min-height: auto;
   }
 `;
 
@@ -551,15 +544,15 @@ const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $dis
   return {
   background: 'linear-gradient(45deg, #4a6cf7, #3b82f6)',
     color: '#ffffff',
-    borderRadius: 8,
-  padding: '8px 24px',
-    minWidth: 120,
+    borderRadius: 6,
+  padding: '6px 12px',
+    minWidth: 0,
   fontWeight: 600,
-  fontSize: '0.9rem',
+  fontSize: '0.75rem',
   textTransform: 'none',
     boxShadow: isDarkMode
-    ? '0 4px 16px rgba(74, 108, 247, 0.2)'
-    : '0 4px 16px rgba(74, 108, 247, 0.15)',
+    ? '0 2px 8px rgba(74, 108, 247, 0.15)'
+    : '0 2px 8px rgba(74, 108, 247, 0.12)',
   transition: 'all 0.2s ease',
     '&, & *': {
       color: '#ffffff',
@@ -570,8 +563,8 @@ const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $dis
   '&:hover': {
     transform: 'translateY(-1px)',
       boxShadow: isDarkMode
-      ? '0 6px 20px rgba(74, 108, 247, 0.25)'
-      : '0 6px 20px rgba(74, 108, 247, 0.2)',
+      ? '0 4px 12px rgba(74, 108, 247, 0.2)'
+      : '0 4px 12px rgba(74, 108, 247, 0.15)',
       background: 'linear-gradient(45deg, #5a7cf8, #4b92f7)',
       color: '#ffffff',
       '&, & *': {
@@ -583,8 +576,8 @@ const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $dis
   },
   '&:disabled': {
       background: isDarkMode
-        ? 'rgba(255, 255, 255, 0.1)'
-        : 'rgba(0, 0, 0, 0.1)',
+        ? 'rgba(255, 255, 255, 0.08)'
+        : 'rgba(0, 0, 0, 0.08)',
       color: isDarkMode
         ? 'rgba(255, 255, 255, 0.3)'
         : 'rgba(0, 0, 0, 0.3)',
@@ -601,13 +594,6 @@ const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $dis
           : 'rgba(0, 0, 0, 0.3)',
       },
   },
-    [theme.breakpoints.down('md')]: {
-    width: '100%',
-    minWidth: 0,
-    padding: '10px 12px',
-    fontSize: '0.88rem',
-      borderRadius: 10,
-    },
   };
 });
 
@@ -659,33 +645,33 @@ const ProgressBar = muiStyled(LinearProgress)<{ $customTheme?: any }>(({ theme, 
 
 // Editable grid cell
 const EditableCell = styled.input<{ $muiTheme?: any }>`
-  width: 80px;
+  width: 70px;
   border: none;
   outline: none;
-  border-radius: 8px;
+  border-radius: 4px;
   background: ${({ $muiTheme }) => {
     const isDarkMode = $muiTheme?.palette?.mode === 'dark';
-    return isDarkMode ? 'rgba(74,108,247,0.10)' : 'rgba(74,108,247,0.07)';
+    return isDarkMode ? 'rgba(74,108,247,0.08)' : 'rgba(74,108,247,0.05)';
   }};
   color: ${({ $muiTheme }) => {
     const isDarkMode = $muiTheme?.palette?.mode === 'dark';
     return $muiTheme?.palette?.text?.primary || (isDarkMode ? '#ffffff' : '#000000');
   }};
   font-weight: 500;
-  font-size: 1rem;
-  padding: 6px 10px;
+  font-size: 0.75rem;
+  padding: 4px 6px;
   text-align: center;
-  box-shadow: 0 1px 4px 0 rgba(74,108,247,0.07);
-  transition: box-shadow 0.18s;
+  box-shadow: 0 1px 2px 0 rgba(74,108,247,0.05);
+  transition: box-shadow 0.15s;
   
   &:focus {
     box-shadow: ${({ $muiTheme }) => {
       const primaryColor = $muiTheme?.palette?.primary?.main || '#4a6cf7';
-      return `0 0 0 2px ${primaryColor}33`;
+      return `0 0 0 1.5px ${primaryColor}33`;
     }};
     background: ${({ $muiTheme }) => {
       const isDarkMode = $muiTheme?.palette?.mode === 'dark';
-      return isDarkMode ? 'rgba(74,108,247,0.18)' : 'rgba(74,108,247,0.13)';
+      return isDarkMode ? 'rgba(74,108,247,0.15)' : 'rgba(74,108,247,0.1)';
     }};
   }
   
@@ -739,19 +725,18 @@ const NumericInput = styled('input')(({ theme }) => {
   const primaryColor = theme?.palette?.primary?.main || '#4a6cf7';
   const textColor = theme?.palette?.text?.primary || (isDarkMode ? '#ffffff' : '#000000');
   return {
-  width: 80,
-  height: 32,
-  fontSize: '1rem',
-  padding: '6px 8px',
-  borderRadius: 8,
+  width: 70,
+  height: 24,
+  fontSize: '0.75rem',
+  padding: '3px 6px',
+  borderRadius: 4,
   textAlign: 'center',
-    background: isDarkMode ? 'rgba(74,108,247,0.10)' : 'rgba(74,108,247,0.07)',
-    border: `1.5px solid ${isDarkMode ? 'rgba(74,108,247,0.2)' : 'rgba(74,108,247,0.15)'}`,
+    background: isDarkMode ? 'rgba(74,108,247,0.08)' : 'rgba(74,108,247,0.05)',
+    border: `1px solid ${isDarkMode ? 'rgba(74,108,247,0.15)' : 'rgba(74,108,247,0.12)'}`,
     color: textColor,
   outline: 'none',
-  transition: 'border 0.18s, box-shadow 0.18s',
+  transition: 'border 0.15s, box-shadow 0.15s',
   fontWeight: 600,
-  // Hide spinner buttons for number input
   '&[type=number]': {
     MozAppearance: 'textfield',
   },
@@ -761,7 +746,7 @@ const NumericInput = styled('input')(({ theme }) => {
   },
   '&:focus': {
       borderColor: primaryColor,
-      boxShadow: `0 0 0 2px ${alpha(primaryColor, 0.2)}`,
+      boxShadow: `0 0 0 1.5px ${alpha(primaryColor, 0.15)}`,
   },
   };
 });
@@ -1201,7 +1186,6 @@ export default function LoadFeePage() {
   const [concessionInfo, setConcessionInfo] = useState<{ [key: string]: { applied: boolean, amount: number } }>({});
   
   // State for expanded student rows to show concessions
-  const [expandedStudents, setExpandedStudents] = useState<Set<number>>(new Set());
 
   // State for fee plans - Map<`${studentId}_${sessionId}`, FeePlanWithItems>
   const [feePlans, setFeePlans] = useState<Map<string, FeePlanWithItems>>(new Map());
@@ -2902,37 +2886,26 @@ export default function LoadFeePage() {
     setLoading(false);
   };
 
-  // Update renderAmount function to show concession details
+  // Update renderAmount function to show concession details - Compact
   const renderAmount = (studentId: number, feeHeadId: number, amount: string) => {
     const key = `${studentId}-${feeHeadId}`;
     const concession = concessionInfo[key];
-    const defaultAmount = getDefaultAmount(feeHeadId, Number(preview.find(s => s.id === studentId)?.class_id));
     
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
-        <NumericInput
-          value={amount}
-          onChange={e => {
-            const val = e.target.value;
-            setAmountGrid(prev => ({
-              ...prev,
-              [studentId]: { ...prev[studentId], [feeHeadId]: val.replace(/[^\d.]/g, '') },
-            }));
-          }}
-          style={{
-            color: existingFeeInvoiceAmountsMap.has(key) ? '#2e7d32' : 'inherit',
-            fontWeight: existingFeeInvoiceAmountsMap.has(key) ? 600 : 'normal'
-          }}
-        />
-        {concession?.applied && (
-          <ConcessionIndicator>
-            <Loyalty fontSize="small" />
-            <Typography variant="caption">
-              Concession: {formatAmount(concession.amount)}
-            </Typography>
-          </ConcessionIndicator>
-        )}
-      </Box>
+      <NumericInput
+        value={amount}
+        onChange={e => {
+          const val = e.target.value;
+          setAmountGrid(prev => ({
+            ...prev,
+            [studentId]: { ...prev[studentId], [feeHeadId]: val.replace(/[^\d.]/g, '') },
+          }));
+        }}
+        style={{
+          color: existingFeeInvoiceAmountsMap.has(key) ? '#2e7d32' : 'inherit',
+          fontWeight: existingFeeInvoiceAmountsMap.has(key) ? 600 : 'normal'
+        }}
+      />
     );
   };
 
@@ -2968,454 +2941,422 @@ export default function LoadFeePage() {
     <PageContainer theme={theme}>
         <Header theme={theme}>
           <HeaderTitle theme={theme}>
-            <AttachMoney style={{ fontSize: 28, color: theme.ACCENT }} />
+            <AttachMoney style={{ fontSize: 20, color: theme.ACCENT }} />
             Load Fee to Students
           </HeaderTitle>
         </Header>
       <MainContent theme={theme}>
-      <GlassCard theme={theme}>
-        <StyledTabs value={tab} onChange={(_, v) => setTab(v)} variant={isMobile ? 'fullWidth' : 'standard'}>
-          <StyledTab icon={<Group />} label={isMobile ? "Bulk" : "Bulk"} />
-          <StyledTab icon={<Person />} label={isMobile ? "Single" : "Single Student"} />
-          <StyledTab icon={<FamilyRestroom />} label="Family" />
-        </StyledTabs>
+      <ContentCard theme={theme}>
+        <Box sx={{ borderBottom: `1px solid ${muiTheme.palette.divider}`, mb: 1, pb: 0.5 }}>
+          <StyledTabs value={tab} onChange={(_, v) => setTab(v)} variant={isMobile ? 'fullWidth' : 'standard'}>
+            <StyledTab icon={<Group />} label={isMobile ? "Bulk" : "Bulk"} />
+            <StyledTab icon={<Person />} label={isMobile ? "Single" : "Single"} />
+            <StyledTab icon={<FamilyRestroom />} label="Family" />
+          </StyledTabs>
+        </Box>
         {tab === 0 && (
-          <Box mt={2} sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-            <Box display={{ xs: 'block', md: 'flex' }} gap={2} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              {/* Left: Sticky Glassy Sidebar */}
-              <Box sx={{ flex: { xs: 'unset', md: '1 1 30%' }, minWidth: { md: 240 }, maxWidth: { md: 320 }, mb: { xs: 1.5, md: 0 } }}>
-                <GlassSidebar theme={theme}>
-                  <SectionHeader theme={theme} style={{ flexShrink: 0 }}>Filters</SectionHeader>
-                <Box display="flex" flexDirection="column" gap={1.5} mb={2} sx={{ flexShrink: 0 }}>
-                  <Box display="flex" gap={1.5}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5 }}>
+            <Box display={{ xs: 'block', md: 'flex' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              {/* Left: Sticky Sidebar */}
+              <Box sx={{ flex: { xs: 'unset', md: '0 0 240px' }, minWidth: { md: 240 }, maxWidth: { md: 280 }, mb: { xs: 0.5, md: 0 } }}>
+                <Sidebar theme={theme}>
+                  <Box sx={{ flexShrink: 0 }}>
+                    <SectionHeader theme={theme}>Filters</SectionHeader>
+                    <Box display="flex" flexDirection="column" gap={0.75} mb={1} sx={{ flexShrink: 0 }}>
+                      <Box display="flex" gap={0.75}>
                     <FormControl size="small" sx={{ flex: 1 }}>
-                      <InputLabel>Class</InputLabel>
-                      <Select value={selectedClass} label="Class" onChange={e => setSelectedClass(e.target.value)}>
-                        <MenuItem value="">Select</MenuItem>
+                      <InputLabel sx={{ fontSize: '0.75rem' }}>Class</InputLabel>
+                      <Select 
+                        value={selectedClass} 
+                        label="Class" 
+                        onChange={e => setSelectedClass(e.target.value)}
+                        sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                      >
+                        <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
                         {classes.map((c: any) => (
-                          <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                          <MenuItem key={c.id} value={c.id} sx={{ fontSize: '0.75rem' }}>{c.name}</MenuItem>
                         ))}
                       </Select>
                     </FormControl>
                     {selectedClass && getClassHasSections(selectedClass) && (
                       <FormControl size="small" sx={{ flex: 1 }}>
-                        <InputLabel>Section</InputLabel>
+                        <InputLabel sx={{ fontSize: '0.75rem' }}>Section</InputLabel>
                         <Select 
                           value={selectedSection} 
                           label="Section" 
                           onChange={e => setSelectedSection(e.target.value)}
+                          sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
                         >
-                          <MenuItem value="">Select</MenuItem>
+                          <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
                           {sections.filter(s => s.class_id === selectedClass).map((s: any) => (
-                            <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                            <MenuItem key={s.id} value={s.id} sx={{ fontSize: '0.75rem' }}>{s.name}</MenuItem>
                           ))}
                         </Select>
                       </FormControl>
                     )}
+                      </Box>
+                      <Box display="flex" gap={0.75}>
+                        <FormControl size="small" sx={{ flex: 1 }}>
+                          <InputLabel sx={{ fontSize: '0.75rem' }}>Session</InputLabel>
+                          <Select 
+                            value={selectedSession} 
+                            label="Session" 
+                            onChange={e => setSelectedSession(e.target.value)}
+                            sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                          >
+                            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
+                            {sessions.map((s: any) => (
+                              <MenuItem key={s.id} value={s.id} sx={{ fontSize: '0.75rem' }}>{s.name}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                      <Box display="flex" gap={0.75}>
+                        <FormControl size="small" sx={{ flex: 1 }}>
+                          <InputLabel sx={{ fontSize: '0.75rem' }}>Month</InputLabel>
+                          <Select 
+                            value={selectedMonth} 
+                            label="Month" 
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                          >
+                            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
+                            {months.map(m => (
+                              <MenuItem key={m} value={m} sx={{ fontSize: '0.75rem' }}>{m}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" sx={{ flex: 1 }}>
+                          <InputLabel sx={{ fontSize: '0.75rem' }}>Year</InputLabel>
+                          <Select 
+                            value={selectedYear} 
+                            label="Year" 
+                            onChange={e => setSelectedYear(e.target.value)}
+                            sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                          >
+                            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
+                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                              <MenuItem key={year} value={String(year)} sx={{ fontSize: '0.75rem' }}>{year}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    </Box>
                   </Box>
-                  <Box display="flex" gap={1.5}>
-                    <FormControl size="small" sx={{ flex: 1 }}>
-                      <InputLabel>Session</InputLabel>
-                      <Select value={selectedSession} label="Session" onChange={e => setSelectedSession(e.target.value)}>
-                        <MenuItem value="">Select</MenuItem>
-                        {sessions.map((s: any) => (
-                          <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                  <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <SectionHeader theme={theme}>Fee Heads</SectionHeader>
+                    <Box sx={{ 
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: 'auto',
+                      pr: 0.5,
+                      scrollbarGutter: 'stable',
+                      scrollbarWidth: 'auto',
+                      scrollbarColor: muiTheme.palette.mode === 'dark' 
+                        ? 'rgba(74, 108, 247, 0.6) rgba(255, 255, 255, 0.1)' 
+                        : 'rgba(74, 108, 247, 0.6) rgba(0, 0, 0, 0.1)',
+                      '&::-webkit-scrollbar': { 
+                        width: '10px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(0, 0, 0, 0.1)',
+                        borderRadius: '5px',
+                        margin: '2px 0',
+                        border: muiTheme.palette.mode === 'dark'
+                          ? '1px solid rgba(255, 255, 255, 0.05)'
+                          : '1px solid rgba(0, 0, 0, 0.05)',
+                      },
+                      '&::-webkit-scrollbar-thumb': { 
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(74, 108, 247, 0.7)' 
+                          : 'rgba(74, 108, 247, 0.7)',
+                        borderRadius: '5px',
+                        border: muiTheme.palette.mode === 'dark'
+                          ? '2px solid rgba(255, 255, 255, 0.15)'
+                          : '2px solid rgba(255, 255, 255, 0.9)',
+                        minHeight: '30px',
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(74, 108, 247, 0.9)' 
+                          : 'rgba(74, 108, 247, 0.9)',
+                      },
+                      '&::-webkit-scrollbar-thumb:active': {
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(74, 108, 247, 1)' 
+                          : 'rgba(74, 108, 247, 1)',
+                      }
+                    }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                        {getAvailableFeeHeads(Number(selectedClass), Number(selectedSection)).map((fh: any) => (
+                          <FeeHeadPill
+                            key={fh.id}
+                            $selected={selectedFeeHeads.includes(fh.id)}
+                            onClick={() => {
+                              const newSelection = selectedFeeHeads.includes(fh.id)
+                                ? selectedFeeHeads.filter(id => id !== fh.id)
+                                : [...selectedFeeHeads, fh.id];
+                              setSelectedFeeHeads(newSelection);
+                            }}
+                            sx={{ 
+                              width: '100%', 
+                              justifyContent: 'space-between', 
+                              minHeight: 32,
+                              padding: '6px 8px',
+                              borderRadius: 4
+                            }}
+                          >
+                            <Box display="flex" alignItems="center" gap={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                              <FeeHeadIcon sx={{ width: 18, height: 18, fontSize: '0.8125rem' }}>
+                                {fh.name.toLowerCase().includes('admission') ? <School fontSize="small" /> :
+                                  fh.name.toLowerCase().includes('transport') ? <Commute fontSize="small" /> :
+                                  <AttachMoney fontSize="small" />}
+                              </FeeHeadIcon>
+                              <FeeHeadName sx={{ 
+                                fontSize: '0.7rem', 
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {fh.name}
+                              </FeeHeadName>
+                            </Box>
+                            <Box sx={{ 
+                              fontSize: '0.7rem', 
+                              fontWeight: 700, 
+                              color: 'primary.main',
+                              flexShrink: 0,
+                              ml: 1
+                            }}>
+                              Rs. {feeStructuresLoading ? '...' : getDefaultAmount(fh.id, Number(selectedClass))}
+                            </Box>
+                          </FeeHeadPill>
                         ))}
-                      </Select>
-                    </FormControl>
+                      </Box>
+                    </Box>
                   </Box>
-                  <Box display="flex" gap={1.5}>
-                    <FormControl size="small" sx={{ flex: 1 }}>
-                      <InputLabel>Month</InputLabel>
-                      <Select value={selectedMonth} label="Month" onChange={e => setSelectedMonth(e.target.value)}>
-                        <MenuItem value="">Select</MenuItem>
-                        {months.map(m => (
-                          <MenuItem key={m} value={m}>{m}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ flex: 1 }}>
-                      <InputLabel>Year</InputLabel>
-                      <Select value={selectedYear} label="Year" onChange={e => setSelectedYear(e.target.value)}>
-                        <MenuItem value="">Select</MenuItem>
-                        {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
-                          <MenuItem key={year} value={String(year)}>{year}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Box>
-                </Box>
-                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <SectionHeader theme={theme} style={{ flexShrink: 0 }}>Fee Heads</SectionHeader>
-                  <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%', flex: 1, minHeight: 0 }}>
-                    <FeeHeadSelectorBar sx={{ width: '100%', flex: 1 }}>
-                    {getAvailableFeeHeads(Number(selectedClass), Number(selectedSection)).map((fh: any) => (
-                      <FeeHeadPill
-                        key={fh.id}
-                        $selected={selectedFeeHeads.includes(fh.id)}
-                        onClick={() => {
-                          const newSelection = selectedFeeHeads.includes(fh.id)
-                            ? selectedFeeHeads.filter(id => id !== fh.id)
-                            : [...selectedFeeHeads, fh.id];
-                          setSelectedFeeHeads(newSelection);
-                        }}
-                        sx={{ width: '100%', justifyContent: 'space-between', minHeight: 44 }}
-                      >
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <FeeHeadIcon>
-                            {fh.name.toLowerCase().includes('admission') ? <School fontSize="small" /> :
-                              fh.name.toLowerCase().includes('transport') ? <Commute fontSize="small" /> :
-                              <AttachMoney fontSize="small" />}
-                          </FeeHeadIcon>
-                          <FeeHeadName>{fh.name}</FeeHeadName>
-                        </Box>
-                        <Box sx={{ fontSize: '0.95rem', fontWeight: 600, color: 'primary.main' }}>
-                          Rs. {feeStructuresLoading ? '...' : getDefaultAmount(fh.id, Number(selectedClass))}
-                        </Box>
-                      </FeeHeadPill>
-                    ))}
-                  </FeeHeadSelectorBar>
-                  <FeeHeadSelectorActions>
-                    <Button 
-                      size="small" 
-                      variant="text" 
-                      onClick={() => {
-                        const availableHeads = getAvailableFeeHeads(Number(selectedClass), Number(selectedSection));
-                        setSelectedFeeHeads(availableHeads.map(fh => fh.id));
-                      }}
-                      disabled={selectedFeeHeads.length === getAvailableFeeHeads(Number(selectedClass), Number(selectedSection)).length}
-                    >
-                      Select All
-                    </Button>
-                    <Button size="small" variant="text" onClick={() => setSelectedFeeHeads([])} disabled={selectedFeeHeads.length === 0}>
-                      Clear All
-                    </Button>
-                  </FeeHeadSelectorActions>
-                </GlassSelectorContainer>
-                </Box>
-              </GlassSidebar>
+                </Sidebar>
               </Box>
-              {/* Right: Main Glassy Card for Students/Results */}
-              <Box sx={{ flex: { xs: 'unset', md: '2 1 70%' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                <GlassMainCard theme={theme}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ flexShrink: 0 }}>
-                    <SectionHeader theme={theme}>Students</SectionHeader>
+              {/* Right: Main Card for Students/Results */}
+              <Box sx={{ flex: { xs: 'unset', md: '1 1 0' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <MainCard theme={theme}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ flexShrink: 0, mb: 1.5, pb: 1, borderBottom: `1px solid ${muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}` }}>
+                  <SectionHeader theme={theme}>Students</SectionHeader>
                   {preview.length > 0 && selectedFeeHeads.length > 0 && (
                     <Box display="flex" alignItems="center" gap={1}>
-                        <Box display="flex" gap={1}>
-                          <Button 
-                            size="small" 
-                            variant="text" 
-                            onClick={selectAllStudents}
-                            disabled={selectedStudents.length === preview.length}
-                          >
-                            Select All
-                          </Button>
-                          <Button 
-                            size="small" 
-                            variant="text" 
-                            onClick={deselectAllStudents}
-                            disabled={selectedStudents.length === 0}
-                          >
-                            Deselect All
-                          </Button>
-                        </Box>
-                      </Box>
+                      <Button 
+                        size="medium" 
+                        variant="outlined"
+                        onClick={selectAllStudents}
+                        disabled={selectedStudents.length === preview.length}
+                        sx={{ 
+                          textTransform: 'none', 
+                          fontSize: '0.8125rem', 
+                          py: 1, 
+                          px: 2,
+                          minHeight: 36,
+                          fontWeight: 600,
+                          borderWidth: '2px',
+                          boxShadow: muiTheme.palette.mode === 'dark' 
+                            ? '0 2px 4px rgba(0, 0, 0, 0.2)' 
+                            : '0 1px 3px rgba(0, 0, 0, 0.1)',
+                          '&:hover': {
+                            borderWidth: '2px',
+                            boxShadow: muiTheme.palette.mode === 'dark' 
+                              ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
+                              : '0 2px 6px rgba(0, 0, 0, 0.15)',
+                            transform: 'translateY(-1px)'
+                          },
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        Select All
+                      </Button>
+                      <Button 
+                        size="medium" 
+                        variant="outlined"
+                        onClick={deselectAllStudents}
+                        disabled={selectedStudents.length === 0}
+                        sx={{ 
+                          textTransform: 'none', 
+                          fontSize: '0.8125rem', 
+                          py: 1, 
+                          px: 2,
+                          minHeight: 36,
+                          fontWeight: 600,
+                          borderWidth: '2px',
+                          boxShadow: muiTheme.palette.mode === 'dark' 
+                            ? '0 2px 4px rgba(0, 0, 0, 0.2)' 
+                            : '0 1px 3px rgba(0, 0, 0, 0.1)',
+                          '&:hover': {
+                            borderWidth: '2px',
+                            boxShadow: muiTheme.palette.mode === 'dark' 
+                              ? '0 4px 8px rgba(0, 0, 0, 0.3)' 
+                              : '0 2px 6px rgba(0, 0, 0, 0.15)',
+                            transform: 'translateY(-1px)'
+                          },
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        Deselect All
+                      </Button>
+                    </Box>
                   )}
                 </Box>
-                <Box mt={1} mb={1.5} sx={{ flexShrink: 0 }}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
-                {loading ? <Box display="flex" justifyContent="center" py={4} sx={{ flexShrink: 0 }}><CircularProgress /></Box> : (
+                {loading ? <Box display="flex" justifyContent="center" py={2} sx={{ flexShrink: 0 }}><CircularProgress size={20} /></Box> : (
                   preview.length > 0 && selectedFeeHeads.length > 0 ? (
-                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', mt: 2 }}>
+                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', mt: 0.5 }}>
                       {/* Scrollable Student List */}
                       <ScrollableStudentList sx={{ flex: 1, minHeight: 0 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%', boxSizing: 'border-box' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', boxSizing: 'border-box' }}>
                         {preview.map((stu, idx) => {
                           const isSelected = selectedStudents.includes(stu.id);
-                          const isExpanded = expandedStudents.has(stu.id);
-                          const studentConcessions = concessions.get(stu.id) || [];
                           return (
                             <Box
                               key={stu.id}
                               sx={{
-                                background: muiTheme.palette.mode === 'dark' ? 'rgba(40,48,80,0.08)' : 'rgba(255,255,255,0.95)',
-                                borderRadius: 6,
-                                boxShadow: muiTheme.palette.mode === 'dark' 
-                                  ? '0 2px 8px 0 #0003' 
-                                  : '0 2px 8px 0 #4a6cf70a',
-                                border: `1.5px solid ${isSelected ? muiTheme.palette.primary.main : (muiTheme.palette.mode === 'dark' ? '#2a2a2a' : '#e5e7eb')}`,
-                                padding: { xs: '8px 10px', sm: '0.4rem 0.6rem' },
-                                gap: { xs: '8px', sm: '0.6rem' },
-                                fontSize: '0.9rem',
+                                background: muiTheme.palette.mode === 'dark' 
+                                  ? isSelected 
+                                    ? 'rgba(74, 108, 247, 0.1)' 
+                                    : 'rgba(40, 48, 80, 0.08)' 
+                                  : isSelected 
+                                    ? 'rgba(74, 108, 247, 0.06)' 
+                                    : 'rgba(255, 255, 255, 0.95)',
+                                borderRadius: 3,
+                                boxShadow: 'none',
+                                border: `1px solid ${isSelected ? muiTheme.palette.primary.main : (muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')}`,
+                                padding: '6px 8px',
+                                gap: '6px',
+                                fontSize: '0.75rem',
                                 width: '100%',
-                                minWidth: 300,
                                 transition: 'all 0.15s ease',
                                 overflow: 'hidden',
                                 '&:hover': {
-                                  boxShadow: muiTheme.palette.mode === 'dark'
-                                    ? '0 4px 16px 0 #0005' 
-                                    : '0 4px 16px 0 #4a6cf70c',
+                                  borderColor: muiTheme.palette.primary.main,
+                                  background: muiTheme.palette.mode === 'dark'
+                                    ? isSelected ? 'rgba(74, 108, 247, 0.15)' : 'rgba(74, 108, 247, 0.08)'
+                                    : isSelected ? 'rgba(74, 108, 247, 0.1)' : 'rgba(74, 108, 247, 0.05)',
                                 }
                               }}
                             >
-                              {/* Main Row */}
+                              {/* Main Row - Compact Layout */}
                               <Box
                                 sx={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  flexDirection: { xs: 'column', sm: 'row' },
-                                  gap: { xs: '8px', sm: '0.6rem' },
-                                  cursor: 'pointer',
+                                  gap: '6px',
+                                  width: '100%',
                                 }}
                               >
-                                {/* Student Column - Id - Name - Father in one line */}
-                                <Box 
-                                  sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.6rem',
-                                    flex: 1,
-                                    minWidth: 0,
-                                width: '100%',
-                                  }}
-                                  onClick={(e) => {
+                                {/* S.No */}
+                                <Box sx={{ 
+                                  width: '1.5em', 
+                                  minWidth: '1.5em', 
+                                  textAlign: 'center', 
+                                  fontSize: '0.7rem', 
+                                  color: 'text.secondary', 
+                                  fontWeight: 600 
+                                }}>
+                                  {idx + 1}
+                                </Box>
+                                
+                                {/* Selection Checkbox */}
+                                <Checkbox
+                                  checked={isSelected}
+                                  onChange={(e) => {
                                     e.stopPropagation();
-                                    const newExpanded = new Set(expandedStudents);
-                                    if (isExpanded) {
-                                      newExpanded.delete(stu.id);
-                                    } else {
-                                      newExpanded.add(stu.id);
-                                    }
-                                    setExpandedStudents(newExpanded);
+                                    handleStudentSelection(stu.id, !isSelected);
                                   }}
-                                >
-                                  {/* Expand/Collapse Icon */}
-                                  <IconButton
-                                    size="small"
-                                    sx={{ 
-                                      padding: '4px',
-                                      color: 'text.secondary',
-                                      '&:hover': { backgroundColor: alpha(muiTheme.palette.primary.main, 0.1) }
-                                    }}
-                                  >
-                                    {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                                  </IconButton>
-                                  
-                              {/* S.No */}
-                              <Box sx={{ 
-                                width: '1.8em', 
-                                minWidth: '1.8em', 
-                                textAlign: 'center', 
-                                fontSize: '0.85rem', 
-                                color: 'text.secondary', 
-                                fontWeight: 600 
-                              }}>
-                                {idx + 1}
-                              </Box>
-                                  
-                              {/* Avatar */}
-                              <Avatar
-                                sx={{
-                                  width: 24,
-                                  height: 24,
-                                  fontSize: '0.85rem',
-                                  fontWeight: 600,
-                                      background: muiTheme.palette.primary.main,
-                                  color: '#fff',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {stu.name.charAt(0)}
-                              </Avatar>
-                                  
-                                  {/* Student Info - Id - Name - Father in one line */}
-                              <Box sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                flex: 1,
-                                minWidth: 0,
-                              }}>
-                                <Typography sx={{
-                                  fontWeight: 700,
-                                  fontSize: '0.9rem',
-                                  color: 'text.primary',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  width: '100%',
-                                  lineHeight: 1.2,
+                                  onClick={(e) => e.stopPropagation()}
+                                  size="small"
+                                  sx={{ 
+                                    padding: '2px',
+                                    '& .MuiSvgIcon-root': { fontSize: '1rem' }
+                                  }}
+                                />
+                                
+                                {/* Student Info - Compact */}
+                                <Box sx={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  flex: 1,
+                                  minWidth: 0,
+                                  gap: '2px',
                                 }}>
-                                      <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{getStudentDisplayId(stu)}</Box> - {stu.name}{stu.father_name ? (
-                                        <> - <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{stu.father_name}</Box></>
-                                  ) : ''}
-                                </Typography>
-                                <Typography sx={{
-                                  fontSize: '0.8rem',
-                                  color: 'text.secondary',
-                                  fontWeight: 500,
-                                  marginTop: '0.1rem',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  width: '100%',
-                                  lineHeight: 1.2,
-                                }}>
-                                  {formatClassSectionDisplay(stu.class_id, stu.section_id)}
-                                </Typography>
-                              </Box>
-                                  
-                                  {/* Selection Checkbox */}
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      handleStudentSelection(stu.id, !isSelected);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    size="small"
-                                    sx={{ 
-                                      padding: '4px',
-                                      '&:hover': { backgroundColor: alpha(muiTheme.palette.primary.main, 0.1) }
-                                    }}
-                                  />
-                              </Box>
-                              
-                              {/* Divider for mobile view */}
-                              <Divider sx={{ width: '100%', display: { xs: 'block', sm: 'none' }, my: 1 }} />
+                                  <Typography sx={{
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem',
+                                    color: 'text.primary',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    width: '100%',
+                                    lineHeight: 1.2,
+                                  }}>
+                                    <Box component="span" sx={{ opacity: 0.6, fontWeight: 500, fontSize: '0.7rem' }}>{getStudentDisplayId(stu)}</Box> - {stu.name}{stu.father_name ? (
+                                      <> - <Box component="span" sx={{ opacity: 0.6, fontWeight: 500, fontSize: '0.7rem' }}>{stu.father_name}</Box></>
+                                    ) : ''}
+                                  </Typography>
+                                  <Typography sx={{
+                                    fontSize: '0.7rem',
+                                    color: 'text.secondary',
+                                    fontWeight: 400,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    width: '100%',
+                                    lineHeight: 1.2,
+                                  }}>
+                                    {formatClassSectionDisplay(stu.class_id, stu.section_id)}
+                                  </Typography>
+                                </Box>
 
-                              {/* Fee Amounts */}
+                                {/* Fee Amounts - Inline Compact */}
                                 <Box 
                                   sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1rem',
-                                marginLeft: { sm: 'auto' },
-                                alignItems: 'flex-end',
-                                minWidth: { sm: '300px' },
-                                maxWidth: { sm: '400px' },
-                                flex: { sm: 1 },
-                                width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    flexWrap: 'wrap',
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                {selectedFeeHeads.map(fhId => {
-                                  const feeHead = feeHeads.find(fh => fh.id === fhId);
-                                  return (
-                                    <Box key={fhId} sx={{
-                                      display: 'flex',
-                                      alignItems: 'flex-start',
-                                      gap: '1rem',
-                                      width: '100%',
-                                    }}>
-                                      <Typography sx={{
-                                        fontSize: '0.95rem',
-                                        color: 'text.primary',
-                                        fontWeight: 600,
-                                        flex: 1,
-                                        textAlign: 'right',
-                                        marginTop: '8px',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
+                                  {selectedFeeHeads.map(fhId => {
+                                    const feeHead = feeHeads.find(fh => fh.id === fhId);
+                                    return (
+                                      <Box key={fhId} sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
                                       }}>
-                                        {feeHead?.name}:
-                                      </Typography>
-                                      <Box sx={{ minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                        {renderAmount(stu.id, fhId, amountGrid[stu.id]?.[fhId] ?? '')}
+                                        <Typography sx={{
+                                          fontSize: '0.7rem',
+                                          color: 'text.secondary',
+                                          fontWeight: 500,
+                                          whiteSpace: 'nowrap',
+                                        }}>
+                                          {feeHead?.name}:
+                                        </Typography>
+                                        <Box sx={{ minWidth: '70px' }}>
+                                          {renderAmount(stu.id, fhId, amountGrid[stu.id]?.[fhId] ?? '')}
+                                        </Box>
                                       </Box>
-                                    </Box>
-                                  );
-                                })}
-                              </Box>
-                              </Box>
-                              
-                              {/* Collapsible Concessions Section */}
-                              {isExpanded && (
-                                <Box
-                                  sx={{
-                                    mt: 1.5,
-                                    pt: 1.5,
-                                    borderTop: `1px solid ${alpha(muiTheme.palette.divider, 0.1)}`,
-                                    animation: 'slideDown 0.3s ease-out',
-                                    '@keyframes slideDown': {
-                                      '0%': {
-                                        opacity: 0,
-                                        maxHeight: 0,
-                                        transform: 'translateY(-10px)'
-                                      },
-                                      '100%': {
-                                        opacity: 1,
-                                        maxHeight: '500px',
-                                        transform: 'translateY(0)'
-                                      }
-                                    }
-                                  }}
-                                >
-                                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'primary.main' }}>
-                                    Concessions Granted
-                                  </Typography>
-                                  {studentConcessions.length > 0 ? (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                      {studentConcessions.map((concession: any, cIdx: number) => {
-                                        const feeHead = feeHeads.find(fh => fh.id === concession.feeHeadId);
-                                        const isExpired = concession.expires_on ? new Date(concession.expires_on) < new Date() : false;
-                                        return (
-                                          <Box
-                                            key={cIdx}
-                                            sx={{
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'space-between',
-                                              p: 1.5,
-                                              borderRadius: 2,
-                                              background: muiTheme.palette.mode === 'dark'
-                                                ? 'rgba(74,108,247,0.1)'
-                                                : 'rgba(74,108,247,0.05)',
-                                              border: `1px solid ${alpha(muiTheme.palette.primary.main, 0.2)}`,
-                                            }}
-                                          >
-                                            <Box sx={{ flex: 1 }}>
-                                              <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.5 }}>
-                                                {feeHead?.name || `Fee Head ${concession.feeHeadId}`}
-                                              </Typography>
-                                              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                  Amount: <strong style={{ color: muiTheme.palette.primary.main }}>Rs. {concession.concessionAmount}</strong>
-                                                </Typography>
-                                                {concession.effectiveFrom && (
-                                                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                    Effective From: {new Date(concession.effectiveFrom).toLocaleDateString()}
-                                                  </Typography>
-                                                )}
-                                                {concession.expires_on && (
-                                                  <Typography variant="caption" sx={{ color: isExpired ? 'error.main' : 'text.secondary' }}>
-                                                    Expires: {new Date(concession.expires_on).toLocaleDateString()}
-                                                    {isExpired && ' (Expired)'}
-                                                  </Typography>
-                                                )}
-                                              </Box>
-                                            </Box>
-                                            <Loyalty sx={{ color: isExpired ? 'text.disabled' : 'success.main', fontSize: '1.5rem' }} />
-                                          </Box>
-                                        );
-                                      })}
-                                    </Box>
-                                  ) : (
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', py: 2 }}>
-                                      No concessions granted to this student.
-                                    </Typography>
-                                  )}
+                                    );
+                                  })}
                                 </Box>
-                              )}
+                              </Box>
                             </Box>
                           );
                         })}
                       </Box>
                       {existingFeeInvoiceItemsMap.size > 0 && (
-                        <Box sx={{ mt: 2, p: 1.5, backgroundColor: alpha(muiTheme.palette.info.main, 0.1), borderRadius: 2 }}>
-                          <Typography variant="caption" sx={{ color: 'info.dark', fontWeight: 'bold' }}>
-                            Note: Some fee heads already have existing records and will be updated. Others will be created. Use "Delete Selected Fee Heads" to remove specific fee heads.
+                        <Box sx={{ mt: 1, p: 0.75, backgroundColor: alpha(muiTheme.palette.info.main, 0.08), borderRadius: 4 }}>
+                          <Typography variant="caption" sx={{ color: 'info.dark', fontWeight: 500, fontSize: '0.7rem' }}>
+                            Note: Some records exist and will be updated
                           </Typography>
                         </Box>
                       )}
@@ -3423,49 +3364,53 @@ export default function LoadFeePage() {
                       
                       {/* Footer with Generate Button */}
                       <StudentListFooter theme={theme}>
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Typography variant="body2" sx={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
-                            {selectedStudents.length} of {preview.length} students selected
-                          </Typography>
-                        </Box>
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
+                          {selectedStudents.length} of {preview.length} selected
+                        </Typography>
                         <Box
                           display="flex"
                           sx={{
-                            width: '100%',
-                            flexDirection: { xs: 'column', md: 'row' },
-                            justifyContent: { xs: 'stretch', md: 'flex-end' },
-                            alignItems: { xs: 'stretch', md: 'center' },
-                            gap: { xs: 1, md: 2 }
+                            gap: 0.5,
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
                           }}
                         >
                           <GenerateButton 
-                          onClick={handleBulkUpsert} 
-                          disabled={loading || selectedStudents.length === 0 || !selectedMonth || !selectedYear} 
-                          startIcon={<AddIcon />} 
-                        >
-                          {existingFeeInvoiceItemsMap.size > 0 ? `Generate & Update Fee (${selectedStudents.length})` : `Generate Fee (${selectedStudents.length})`}
+                            onClick={handleBulkUpsert} 
+                            disabled={loading || selectedStudents.length === 0 || !selectedMonth || !selectedYear} 
+                            startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                            sx={{
+                              fontSize: '0.75rem',
+                              padding: '6px 12px',
+                              minHeight: 28,
+                              '& .MuiButton-startIcon': { marginRight: 0.5 },
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {existingFeeInvoiceItemsMap.size > 0 ? `Update (${selectedStudents.length})` : `Generate (${selectedStudents.length})`}
                           </GenerateButton>
-                        {existingFeeInvoiceItemsMap.size > 0 && (
-                          <Button 
-                            onClick={handleBulkDelete} 
-                            disabled={loading || selectedStudents.length === 0 || !selectedSession || !selectedMonth || !selectedYear} 
-                            variant="outlined" 
-                            color="error"
+                          {existingFeeInvoiceItemsMap.size > 0 && (
+                            <Button 
+                              onClick={handleBulkDelete} 
+                              disabled={loading || selectedStudents.length === 0 || !selectedSession || !selectedMonth || !selectedYear} 
+                              variant="outlined" 
+                              color="error"
                               sx={{ 
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 textTransform: 'none',
                                 fontWeight: 600,
-                                fontSize: '0.9rem',
-                                width: { xs: '100%', sm: 'auto' },
-                                padding: { xs: '10px 12px', sm: undefined }
+                                fontSize: '0.75rem',
+                                padding: '6px 12px',
+                                minHeight: 28,
+                                whiteSpace: 'nowrap',
                               }}
-                            size="small"
-                            startIcon={<Delete />}
-                          >
-                            Delete Selected Fee Heads
-                          </Button>
-                        )}
-                      </Box>
+                              size="small"
+                              startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </Box>
                       </StudentListFooter>
                     </Box>
                   ) : (
@@ -3474,16 +3419,17 @@ export default function LoadFeePage() {
                     </Box>
                   )
                 )}
-              </GlassMainCard>
+              </MainCard>
               </Box>
             </Box>
           </Box>
         )}
         {tab === 1 && (
           !singleStudent ? (
-            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={8}>
-              <Typography variant="h6" color="text.secondary" mb={2} sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                Search for a student to begin.
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={10}>
+              <Person sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" mb={3} sx={{ fontSize: { xs: '1rem', md: '1.25rem' }, fontWeight: 500 }}>
+                Search for a student to begin
               </Typography>
               <Autocomplete
                 options={students}
@@ -3560,24 +3506,16 @@ export default function LoadFeePage() {
               />
             </Box>
           ) : (
-          <Box mt={2}>
-              <Box mt={2} display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={{ xs: 2, md: 3 }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5 }}>
+              <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {/* Column 1: Filters */}
                 <Box sx={{
-                    flex: { xs: 'unset', md: '1 1 30%' },
-                    minWidth: { xs: '100%', md: 280 },
-                    maxWidth: { xs: '100%', md: 350 },
-                  mb: { xs: 2, md: 0 }
+                    flex: { xs: 'unset', md: '0 0 240px' },
+                    minWidth: { xs: '100%', md: 240 },
+                    maxWidth: { xs: '100%', md: 280 },
+                    mb: { xs: 0.5, md: 0 }
                 }}>
-                  <GlassCard theme={theme} style={{
-                    padding: '0.75rem 1rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    alignItems: 'stretch',
-                    maxHeight: 'calc(100vh - 220px)',
-                    overflow: 'auto'
-                  }}>
+                  <Sidebar theme={theme}>
                   <Autocomplete
                     options={students}
                     loading={studentsLoading}
@@ -3653,39 +3591,97 @@ export default function LoadFeePage() {
                     sx={{ mb: 1, minWidth: { xs: '100%', md: 180 } }}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
-                  <FormControl size="small" sx={{ mb: 1 }}>
-                    <InputLabel>Session</InputLabel>
-                    <Select value={singleSession} label="Session" onChange={e => setSingleSession(e.target.value)}>
-                      <MenuItem value="">Select</MenuItem>
+                  <FormControl size="small" sx={{ mb: 0.75 }}>
+                    <InputLabel sx={{ fontSize: '0.75rem' }}>Session</InputLabel>
+                    <Select 
+                      value={singleSession} 
+                      label="Session" 
+                      onChange={e => setSingleSession(e.target.value)}
+                      sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                    >
+                      <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
                       {sessions.map((s: any) => (
-                        <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                        <MenuItem key={s.id} value={s.id} sx={{ fontSize: '0.75rem' }}>{s.name}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                  <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={1} mb={1}>
+                  <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={0.75} mb={0.75}>
                     <FormControl size="small" sx={{ flex: 1, minWidth: { xs: '100%', sm: 'auto' } }}>
-                      <InputLabel>Month</InputLabel>
-                      <Select value={singleMonth} label="Month" onChange={e => setSingleMonth(e.target.value)}>
-                        <MenuItem value="">Select</MenuItem>
+                      <InputLabel sx={{ fontSize: '0.75rem' }}>Month</InputLabel>
+                      <Select 
+                        value={singleMonth} 
+                        label="Month" 
+                        onChange={e => setSingleMonth(e.target.value)}
+                        sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                      >
+                        <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
                         {months.map(m => (
-                          <MenuItem key={m} value={m}>{m}</MenuItem>
+                          <MenuItem key={m} value={m} sx={{ fontSize: '0.75rem' }}>{m}</MenuItem>
                         ))}
                       </Select>
                     </FormControl>
                     <FormControl size="small" sx={{ flex: 1, minWidth: { xs: '100%', sm: 'auto' } }}>
-                      <InputLabel>Year</InputLabel>
-                      <Select value={singleYear} label="Year" onChange={e => setSingleYear(e.target.value)}>
-                        <MenuItem value="">Select</MenuItem>
+                      <InputLabel sx={{ fontSize: '0.75rem' }}>Year</InputLabel>
+                      <Select 
+                        value={singleYear} 
+                        label="Year" 
+                        onChange={e => setSingleYear(e.target.value)}
+                        sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.75 } }}
+                      >
+                        <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Select</MenuItem>
                         {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
-                          <MenuItem key={year} value={String(year)}>{year}</MenuItem>
+                          <MenuItem key={year} value={String(year)} sx={{ fontSize: '0.75rem' }}>{year}</MenuItem>
                         ))}
                       </Select>
                     </FormControl>
                   </Box>
                   <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <SectionHeader style={{ flexShrink: 0 }}>Fee Heads</SectionHeader>
-                    <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%', flex: 1, minHeight: 0 }}>
-                      <FeeHeadSelectorBar sx={{ width: '100%', flex: 1 }}>
+                    <SectionHeader theme={theme}>Fee Heads</SectionHeader>
+                    <Box sx={{ 
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: 'auto',
+                      pr: 0.5,
+                      scrollbarGutter: 'stable',
+                      scrollbarWidth: 'auto',
+                      scrollbarColor: muiTheme.palette.mode === 'dark' 
+                        ? 'rgba(74, 108, 247, 0.6) rgba(255, 255, 255, 0.1)' 
+                        : 'rgba(74, 108, 247, 0.6) rgba(0, 0, 0, 0.1)',
+                      '&::-webkit-scrollbar': { 
+                        width: '10px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(0, 0, 0, 0.1)',
+                        borderRadius: '5px',
+                        margin: '2px 0',
+                        border: muiTheme.palette.mode === 'dark'
+                          ? '1px solid rgba(255, 255, 255, 0.05)'
+                          : '1px solid rgba(0, 0, 0, 0.05)',
+                      },
+                      '&::-webkit-scrollbar-thumb': { 
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(74, 108, 247, 0.7)' 
+                          : 'rgba(74, 108, 247, 0.7)',
+                        borderRadius: '5px',
+                        border: muiTheme.palette.mode === 'dark'
+                          ? '2px solid rgba(255, 255, 255, 0.15)'
+                          : '2px solid rgba(255, 255, 255, 0.9)',
+                        minHeight: '30px',
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(74, 108, 247, 0.9)' 
+                          : 'rgba(74, 108, 247, 0.9)',
+                      },
+                      '&::-webkit-scrollbar-thumb:active': {
+                        background: muiTheme.palette.mode === 'dark' 
+                          ? 'rgba(74, 108, 247, 1)' 
+                          : 'rgba(74, 108, 247, 1)',
+                      }
+                    }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                       {getAvailableFeeHeads(singleStudent ? Number(singleStudent.class_id) : undefined, singleStudent ? Number(singleStudent.section_id) : undefined).map((fh: any) => (
                         <FeeHeadPill
                           key={fh.id}
@@ -3699,67 +3695,49 @@ export default function LoadFeePage() {
                           sx={{ 
                             width: '100%', 
                             justifyContent: 'space-between', 
-                            minHeight: { xs: 48, md: 44 },
-                            padding: { xs: '8px 12px', md: '6px 10px' },
-                            fontSize: { xs: '0.9rem', md: '0.85rem' }
+                            minHeight: 32,
+                            padding: '6px 8px',
+                            borderRadius: 4
                           }}
                         >
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <FeeHeadIcon>
+                          <Box display="flex" alignItems="center" gap={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                            <FeeHeadIcon sx={{ width: 18, height: 18, fontSize: '0.8125rem' }}>
                               {fh.name.toLowerCase().includes('admission') ? <School fontSize="small" /> :
                                 fh.name.toLowerCase().includes('transport') ? <Commute fontSize="small" /> :
                                 <AttachMoney fontSize="small" />}
                             </FeeHeadIcon>
-                            <FeeHeadName>{fh.name}</FeeHeadName>
+                            <FeeHeadName sx={{ 
+                              fontSize: '0.7rem', 
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {fh.name}
+                            </FeeHeadName>
                           </Box>
                           <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'flex-end',
-                            gap: '2px'
+                            fontSize: '0.7rem', 
+                            fontWeight: 700, 
+                            color: 'primary.main',
+                            flexShrink: 0,
+                            ml: 1
                           }}>
-                            <Box sx={{ fontSize: '0.95rem', fontWeight: 600, color: 'primary.main' }}>
-                              Rs. {calculateFinalAmount(singleStudent.id, fh.id, Number(singleStudent.class_id), singleSession, singleMonth, singleYear)}
-                            </Box>
-                            {getConcessionStatus(singleStudent.id, fh.id, singleSession, singleMonth, singleYear).hasConcession && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Loyalty sx={{ color: 'success.main', fontSize: '0.75rem' }} />
-                                <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600, fontSize: '0.7rem' }}>
-                                  Rs. {getConcessionStatus(singleStudent.id, fh.id, singleSession, singleMonth, singleYear).amount} off
-                                </Typography>
-                              </Box>
-                            )}
+                            Rs. {calculateFinalAmount(singleStudent.id, fh.id, Number(singleStudent.class_id), singleSession, singleMonth, singleYear)}
                           </Box>
                         </FeeHeadPill>
                       ))}
-                    </FeeHeadSelectorBar>
-                    <FeeHeadSelectorActions>
-                      <Button 
-                        size="small" 
-                        variant="text" 
-                        onClick={() => {
-                          const availableHeads = getAvailableFeeHeads(singleStudent ? Number(singleStudent.class_id) : undefined, singleStudent ? Number(singleStudent.section_id) : undefined);
-                          setSingleStudentSelectedFeeHeads(availableHeads.map(fh => fh.id));
-                        }}
-                        disabled={!singleStudent || singleStudentSelectedFeeHeads.length === getAvailableFeeHeads(singleStudent ? Number(singleStudent.class_id) : undefined, singleStudent ? Number(singleStudent.section_id) : undefined).length}
-                      >
-                        Select All
-                      </Button>
-                      <Button size="small" variant="text" onClick={() => setSingleStudentSelectedFeeHeads([])} disabled={singleStudentSelectedFeeHeads.length === 0}>
-                        Clear All
-                      </Button>
-                    </FeeHeadSelectorActions>
-                  </GlassSelectorContainer>
+                      </Box>
+                    </Box>
                   </Box>
-                </GlassCard>
+                </Sidebar>
                 </Box>
                 
                 {/* Column 2: Student List with Footer */}
-                <Box sx={{ flex: { xs: 'unset', md: '1 1 70%' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                  <GlassMainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <Box sx={{ flexShrink: 0 }}>
+                <Box sx={{ flex: { xs: 'unset', md: '1 1 0' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <MainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <Box sx={{ flexShrink: 0, mb: 1 }}>
                     <SectionHeader theme={theme}>Selected Fee Heads</SectionHeader>
-                  <Box mt={1} mb={1.5}><Divider sx={{ opacity: 0.12, borderBottomWidth: 1 }} /></Box>
                   </Box>
                   
                   {/* Scrollable Fee Heads List */}
@@ -3893,50 +3871,72 @@ export default function LoadFeePage() {
                   {singleStudent && singleStudentSelectedFeeHeads.length > 0 && (
                     <Box sx={{ flexShrink: 0, mt: 'auto' }}>
                       <StudentListFooter theme={theme}>
-                      <GenerateButton 
-                        onClick={handleSingleUpsert} 
-                        disabled={loading || !singleSession || !singleMonth || !singleYear}
-                        startIcon={<AddIcon />}
-                      >
-                        {existingFeeInvoiceItemsMap.size > 0 ? 'Generate & Update Fee' : 'Generate Fee'}
-                      </GenerateButton>
-                      {existingFeeInvoiceItemsMap.size > 0 && (
-                        <Button 
-                          onClick={handleSingleDelete} 
-                          disabled={loading || !singleSession || !singleMonth || !singleYear} 
-                          variant="outlined" 
-                          color="error"
-                          startIcon={<Delete />}
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
+                          Ready to generate
+                        </Typography>
+                        <Box
+                          display="flex"
+                          sx={{
+                            gap: 0.5,
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                          }}
                         >
-                          Delete Selected Fee Heads
-                        </Button>
-                      )}
-                    </StudentListFooter>
+                          <GenerateButton 
+                            onClick={handleSingleUpsert} 
+                            disabled={loading || !singleSession || !singleMonth || !singleYear}
+                            startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                            sx={{
+                              fontSize: '0.75rem',
+                              padding: '6px 12px',
+                              minHeight: 28,
+                              '& .MuiButton-startIcon': { marginRight: 0.5 },
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {existingFeeInvoiceItemsMap.size > 0 ? 'Update Fee' : 'Generate Fee'}
+                          </GenerateButton>
+                          {existingFeeInvoiceItemsMap.size > 0 && (
+                            <Button 
+                              onClick={handleSingleDelete} 
+                              disabled={loading || !singleSession || !singleMonth || !singleYear} 
+                              variant="outlined" 
+                              color="error"
+                              sx={{ 
+                                borderRadius: '6px',
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                padding: '6px 12px',
+                                minHeight: 28,
+                                whiteSpace: 'nowrap',
+                              }}
+                              size="small"
+                              startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </Box>
+                      </StudentListFooter>
                     </Box>
                   )}
-                </GlassMainCard>
+                </MainCard>
                 </Box>
               </Box>
             </Box>
           )
         )}
         {tab === 2 && (
-          <Box mt={2}>
-            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={{ xs: 2, md: 3 }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5 }}>
+            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* --- Column 1: Filters --- */}
               <Box sx={{ 
-                flex: { xs: 'unset', md: '1 1 28%' }, 
-                minWidth: { xs: '100%', md: 220 }, 
-                maxWidth: { xs: '100%', md: 320 }
+                flex: { xs: 'unset', md: '0 0 240px' }, 
+                minWidth: { xs: '100%', md: 240 }, 
+                maxWidth: { xs: '100%', md: 280 }
               }}>
-                <GlassCard theme={theme} style={{ 
-                  padding: '0.75rem 1rem',
-                display: 'flex', 
-                flexDirection: 'column', 
-                  gap: '1rem',
-                  maxHeight: 'calc(100vh - 220px)',
-                  overflow: 'auto'
-              }}>
+                <Sidebar theme={theme}>
                 <Autocomplete
                   options={families}
                   getOptionLabel={(option) => option.name || `Family #${option.id}`}
@@ -3992,45 +3992,92 @@ export default function LoadFeePage() {
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <SectionHeader style={{ flexShrink: 0 }}>Fee Heads</SectionHeader>
-                  <GlassSelectorContainer sx={{ boxShadow: 'none', border: 'none', background: 'transparent', p: 0, m: 0, width: '100%', flex: 1, minHeight: 0 }}>
-                     <FeeHeadSelectorBar sx={{ width: '100%', flex: 1 }}>
-                    {getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => (
-                      <FeeHeadPill
-                        key={fh.id}
-                        $selected={familyTabSelectedFeeHeads.includes(fh.id)}
-                        onClick={() => {
-                          const newSelection = familyTabSelectedFeeHeads.includes(fh.id)
-                            ? familyTabSelectedFeeHeads.filter(id => id !== fh.id)
-                            : [...familyTabSelectedFeeHeads, fh.id];
-                          setFamilyTabSelectedFeeHeads(newSelection);
-                        }}
-                        sx={{ 
-                          width: '100%', 
-                          justifyContent: 'space-between', 
-                          minHeight: { xs: 48, md: 44 },
-                          padding: { xs: '8px 12px', md: '6px 10px' },
-                          fontSize: { xs: '0.9rem', md: '0.85rem' }
-                        }}
-                      >
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <FeeHeadIcon>
-                            {fh.name.toLowerCase().includes('admission') ? <School fontSize="small" /> :
-                             fh.name.toLowerCase().includes('transport') ? <Commute fontSize="small" /> :
-                             <AttachMoney fontSize="small" />}
-                          </FeeHeadIcon>
-                          <FeeHeadName>{fh.name}</FeeHeadName>
-                        </Box>
-                      </FeeHeadPill>
-                    ))}
-                   </FeeHeadSelectorBar>
-                   <FeeHeadSelectorActions>
-                     <Button size="small" variant="text" onClick={() => setFamilyTabSelectedFeeHeads(getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => fh.id))}>Select All</Button>
-                     <Button size="small" variant="text" onClick={() => setFamilyTabSelectedFeeHeads([])}>Clear All</Button>
-                   </FeeHeadSelectorActions>
-                </GlassSelectorContainer>
+                  <SectionHeader theme={theme}>Fee Heads</SectionHeader>
+                  <Box sx={{ 
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    pr: 0.5,
+                    scrollbarGutter: 'stable',
+                    scrollbarWidth: 'auto',
+                    scrollbarColor: muiTheme.palette.mode === 'dark' 
+                      ? 'rgba(74, 108, 247, 0.6) rgba(255, 255, 255, 0.1)' 
+                      : 'rgba(74, 108, 247, 0.6) rgba(0, 0, 0, 0.1)',
+                    '&::-webkit-scrollbar': { 
+                      width: '10px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: muiTheme.palette.mode === 'dark' 
+                        ? 'rgba(255, 255, 255, 0.1)' 
+                        : 'rgba(0, 0, 0, 0.1)',
+                      borderRadius: '5px',
+                      margin: '2px 0',
+                      border: muiTheme.palette.mode === 'dark'
+                        ? '1px solid rgba(255, 255, 255, 0.05)'
+                        : '1px solid rgba(0, 0, 0, 0.05)',
+                    },
+                    '&::-webkit-scrollbar-thumb': { 
+                      background: muiTheme.palette.mode === 'dark' 
+                        ? 'rgba(74, 108, 247, 0.7)' 
+                        : 'rgba(74, 108, 247, 0.7)',
+                      borderRadius: '5px',
+                      border: muiTheme.palette.mode === 'dark'
+                        ? '2px solid rgba(255, 255, 255, 0.15)'
+                        : '2px solid rgba(255, 255, 255, 0.9)',
+                      minHeight: '30px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: muiTheme.palette.mode === 'dark' 
+                        ? 'rgba(74, 108, 247, 0.9)' 
+                        : 'rgba(74, 108, 247, 0.9)',
+                    },
+                    '&::-webkit-scrollbar-thumb:active': {
+                      background: muiTheme.palette.mode === 'dark' 
+                        ? 'rgba(74, 108, 247, 1)' 
+                        : 'rgba(74, 108, 247, 1)',
+                    }
+                  }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                      {getAvailableFeeHeadsForFamily(selectedFamily).map((fh: any) => (
+                        <FeeHeadPill
+                          key={fh.id}
+                          $selected={familyTabSelectedFeeHeads.includes(fh.id)}
+                          onClick={() => {
+                            const newSelection = familyTabSelectedFeeHeads.includes(fh.id)
+                              ? familyTabSelectedFeeHeads.filter(id => id !== fh.id)
+                              : [...familyTabSelectedFeeHeads, fh.id];
+                            setFamilyTabSelectedFeeHeads(newSelection);
+                          }}
+                          sx={{ 
+                            width: '100%', 
+                            justifyContent: 'space-between', 
+                            minHeight: 32,
+                            padding: '6px 8px',
+                            borderRadius: 4
+                          }}
+                        >
+                          <Box display="flex" alignItems="center" gap={0.75} sx={{ flex: 1, minWidth: 0 }}>
+                            <FeeHeadIcon sx={{ width: 18, height: 18, fontSize: '0.8125rem' }}>
+                              {fh.name.toLowerCase().includes('admission') ? <School fontSize="small" /> :
+                               fh.name.toLowerCase().includes('transport') ? <Commute fontSize="small" /> :
+                               <AttachMoney fontSize="small" />}
+                            </FeeHeadIcon>
+                            <FeeHeadName sx={{ 
+                              fontSize: '0.7rem', 
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {fh.name}
+                            </FeeHeadName>
+                          </Box>
+                        </FeeHeadPill>
+                      ))}
+                    </Box>
+                  </Box>
                 </Box>
-              </GlassCard>
+              </Sidebar>
               </Box>
 
               {/* --- Column 2 & 3 --- */}
@@ -4038,23 +4085,22 @@ export default function LoadFeePage() {
                 <>
                   {/* --- Column 2: Linked Students --- */}
                   <Box sx={{ 
-                    flex: { xs: 'unset', md: '1 1 22%' }, 
-                    minWidth: { xs: '100%', md: 220 }, 
-                    maxWidth: { xs: '100%', md: 320 },
+                    flex: { xs: 'unset', md: '0 0 200px' }, 
+                    minWidth: { xs: '100%', md: 200 }, 
+                    maxWidth: { xs: '100%', md: 240 },
                     display: 'flex',
                     flexDirection: 'column',
                     minHeight: 0
                   }}>
-                    <GlassCard theme={theme} style={{ 
-                      padding: '0.75rem 1rem',
+                    <Sidebar theme={theme} style={{ 
                       flex: 1,
                       minHeight: 0,
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden'
                   }}>
-                    <Box sx={{ flexShrink: 0 }}>
-                      <SectionHeader theme={theme} style={{ textAlign: 'center' }}>Linked Students</SectionHeader>
+                    <Box sx={{ flexShrink: 0, mb: 0.5 }}>
+                      <SectionHeader theme={theme}>Linked Students</SectionHeader>
                     {/* Student Selection Controls */}
                       <Box display="flex" flexDirection={{ xs: 'row', md: 'column' }} gap={1} mb={2} mt={1} alignItems={{ xs: 'center', md: 'stretch' }}>
                       <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'center' }} sx={{ 
@@ -4063,29 +4109,41 @@ export default function LoadFeePage() {
                       }}>
                         {selectedFamilyStudents.length} of {selectedFamily.family_members?.filter((member: any) => member.student).length || 0} selected
                       </Typography>
-                      <Box display="flex" gap={1} justifyContent={{ xs: 'flex-end', md: 'center' }}>
+                      <Box display="flex" gap={0.75} justifyContent={{ xs: 'flex-end', md: 'center' }}>
                         <Button 
                           size="small" 
-                          variant="text" 
+                          variant="outlined" 
                           onClick={selectAllFamilyStudents}
                           disabled={selectedFamilyStudents.length === (selectedFamily.family_members?.filter((member: any) => member.student).length || 0)}
                           sx={{ 
-                            fontSize: { xs: '0.75rem', md: '0.875rem' },
-                            minWidth: { xs: 'auto', md: 'auto' },
-                            px: { xs: 1, md: 2 }
+                            fontSize: '0.75rem',
+                            py: 0.75,
+                            px: 1.5,
+                            minHeight: 32,
+                            fontWeight: 500,
+                            borderWidth: '1.5px',
+                            '&:hover': {
+                              borderWidth: '1.5px'
+                            }
                           }}
                         >
                           Select All
                         </Button>
                         <Button 
                           size="small" 
-                          variant="text" 
+                          variant="outlined" 
                           onClick={deselectAllFamilyStudents}
                           disabled={selectedFamilyStudents.length === 0}
                           sx={{ 
-                            fontSize: { xs: '0.75rem', md: '0.875rem' },
-                            minWidth: { xs: 'auto', md: 'auto' },
-                            px: { xs: 1, md: 2 }
+                            fontSize: '0.75rem',
+                            py: 0.75,
+                            px: 1.5,
+                            minHeight: 32,
+                            fontWeight: 500,
+                            borderWidth: '1.5px',
+                            '&:hover': {
+                              borderWidth: '1.5px'
+                            }
                           }}
                         >
                           Deselect All
@@ -4163,13 +4221,13 @@ export default function LoadFeePage() {
                       })}
                     </Box>
                     </ScrollableStudentList>
-                  </GlassCard>
+                  </Sidebar>
                   </Box>
                   
                   {/* --- Column 3: Fee Table --- */}
-                  <Box sx={{ flex: { xs: 'unset', md: '1 1 50%' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <GlassMainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                     <Box sx={{ flexShrink: 0 }}>
+                  <Box sx={{ flex: { xs: 'unset', md: '1 1 0' }, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <MainCard theme={theme} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                     <Box sx={{ flexShrink: 0, mb: 1 }}>
                        <SectionHeader theme={theme}>Fee Details</SectionHeader>
                      </Box>
                      {familyTabSelectedFeeHeads.length > 0 && selectedFamilyStudents.length > 0 ? (
@@ -4333,58 +4391,69 @@ export default function LoadFeePage() {
                           </Typography>
                         </Box>
                      )}
-                     <Box 
-                       display="flex" 
-                       flexDirection={{ xs: 'column', sm: 'row' }}
-                       justifyContent={{ xs: 'center', sm: 'flex-end' }}
-                       gap={{ xs: 2, sm: 2 }}
-                       mt={4}
-                       width="100%"
-                       sx={{ flexShrink: 0 }}
-                     >
-                       <PillButton 
-                         disabled={!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0} 
-                         onClick={handleFamilyGenerate}
+                     <StudentListFooter theme={theme}>
+                       <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
+                         {selectedFamilyStudents.length} student{selectedFamilyStudents.length !== 1 ? 's' : ''} selected
+                       </Typography>
+                       <Box
+                         display="flex"
                          sx={{
-                           width: { xs: '100%', sm: 'auto' },
-                           minWidth: { xs: '100%', sm: 'auto' },
-                           fontSize: { xs: '0.9rem', md: '1rem' },
-                           px: { xs: 3, md: 4 },
-                           py: { xs: 1, md: 1.2 }
+                           gap: 0.5,
+                           alignItems: 'center',
+                           flexWrap: 'wrap',
                          }}
                        >
-                         {existingFeeInvoiceItemsMap.size > 0 ? `Generate & Update Fee for ${selectedFamilyStudents.length} Student${selectedFamilyStudents.length !== 1 ? 's' : ''}` : `Generate Fee for ${selectedFamilyStudents.length} Student${selectedFamilyStudents.length !== 1 ? 's' : ''}`}
-                       </PillButton>
-                       {existingFeeInvoiceItemsMap.size > 0 && (
-                         <Button 
-                           onClick={handleFamilyDelete} 
-                           disabled={loading || !selectedFamily || selectedFamilyStudents.length === 0 || !familySession || !familyMonth || !familyYear} 
-                           sx={{ 
-                             width: { xs: '100%', sm: 'auto' },
-                             minWidth: { xs: '100%', sm: 'auto' },
-                             fontSize: { xs: '0.9rem', md: '1rem' }
-                           }} 
-                           variant="outlined" 
-                           color="error"
-                           startIcon={<Delete />}
+                         <GenerateButton 
+                           disabled={!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0} 
+                           onClick={handleFamilyGenerate}
+                           startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                           sx={{
+                             fontSize: '0.75rem',
+                             padding: '6px 12px',
+                             minHeight: 28,
+                             '& .MuiButton-startIcon': { marginRight: 0.5 },
+                             whiteSpace: 'nowrap',
+                           }}
                          >
-                           Delete Selected Fee Heads
-                         </Button>
-                       )}
-                     </Box>
-                  </GlassMainCard>
+                           {existingFeeInvoiceItemsMap.size > 0 ? `Update (${selectedFamilyStudents.length})` : `Generate (${selectedFamilyStudents.length})`}
+                         </GenerateButton>
+                         {existingFeeInvoiceItemsMap.size > 0 && (
+                           <Button 
+                             onClick={handleFamilyDelete} 
+                             disabled={loading || !selectedFamily || selectedFamilyStudents.length === 0 || !familySession || !familyMonth || !familyYear} 
+                             sx={{ 
+                               borderRadius: '6px',
+                               textTransform: 'none',
+                               fontWeight: 600,
+                               fontSize: '0.75rem',
+                               padding: '6px 12px',
+                               minHeight: 28,
+                               whiteSpace: 'nowrap',
+                             }} 
+                             variant="outlined" 
+                             color="error"
+                             size="small"
+                             startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                           >
+                             Delete
+                           </Button>
+                        )}
+                       </Box>
+                     </StudentListFooter>
+                  </MainCard>
               </Box>
                 </>
               )}
             </Box>
             {!selectedFamily && (
-              <Box display="flex" alignItems="center" justifyContent="center" minHeight={300}>
-                <Typography color="text.secondary">Select a family to begin.</Typography>
+              <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight={400}>
+                <FamilyRestroom sx={{ fontSize: 64, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
+                <Typography color="text.secondary" sx={{ fontSize: '1.125rem', fontWeight: 500 }}>Select a family to begin</Typography>
               </Box>
             )}
           </Box>
         )}
-      </GlassCard>
+      </ContentCard>
       </MainContent>
     </PageContainer>
 

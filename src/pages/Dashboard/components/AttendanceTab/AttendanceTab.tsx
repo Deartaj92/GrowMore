@@ -226,6 +226,9 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   const navigate = useNavigate();
   const toast = useToast();
   const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
+  
+  // Calculate total number of students
+  const totalStudents = attendanceDataForDate.length;
 
   return (
     <div>
@@ -240,12 +243,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
           </AttendanceStatTopRow>
           <AttendanceStatRow>
             <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : presentToday}
+              {attendanceStatsLoading ? <DottedLoader /> : (
+                <>
+                  {presentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
+                </>
+              )}
             </AttendanceStatValue>
             <AttendanceStatRightInfo>
-              <AttendanceStatStatus status={getStatus(presentPercent, true)}>
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (presentPercent >= 80 ? 'Excellent' : presentPercent >= 50 ? 'Good' : 'Needs Attention')}
-              </AttendanceStatStatus>
               <AttendanceStatPercentage color="#22c55e">
                 {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${presentPercent}%`}
               </AttendanceStatPercentage>
@@ -262,12 +266,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
           </AttendanceStatTopRow>
           <AttendanceStatRow>
             <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : absentToday}
+              {attendanceStatsLoading ? <DottedLoader /> : (
+                <>
+                  {absentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
+                </>
+              )}
             </AttendanceStatValue>
             <AttendanceStatRightInfo>
-              <AttendanceStatStatus status={getStatus(absentPercent, false)}>
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (absentPercent <= 10 ? 'Low' : absentPercent <= 30 ? 'Moderate' : 'High')}
-              </AttendanceStatStatus>
               <AttendanceStatPercentage color="#ef4444">
                 {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${absentPercent}%`}
               </AttendanceStatPercentage>
@@ -284,12 +289,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
           </AttendanceStatTopRow>
           <AttendanceStatRow>
             <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : leaveToday}
+              {attendanceStatsLoading ? <DottedLoader /> : (
+                <>
+                  {leaveToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
+                </>
+              )}
             </AttendanceStatValue>
             <AttendanceStatRightInfo>
-              <AttendanceStatStatus status={getStatus(leavePercent, false)}>
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (leavePercent <= 10 ? 'Low' : leavePercent <= 30 ? 'Moderate' : 'High')}
-              </AttendanceStatStatus>
               <AttendanceStatPercentage color="#3b82f6">
                 {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${leavePercent}%`}
               </AttendanceStatPercentage>
@@ -306,12 +312,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
           </AttendanceStatTopRow>
           <AttendanceStatRow>
             <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : lateToday}
+              {attendanceStatsLoading ? <DottedLoader /> : (
+                <>
+                  {lateToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
+                </>
+              )}
             </AttendanceStatValue>
             <AttendanceStatRightInfo>
-              <AttendanceStatStatus status={getStatus(latePercent, false)}>
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (latePercent <= 10 ? 'Low' : latePercent <= 30 ? 'Moderate' : 'High')}
-              </AttendanceStatStatus>
               <AttendanceStatPercentage color="#f59e0b">
                 {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${latePercent}%`}
               </AttendanceStatPercentage>
@@ -328,12 +335,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
           </AttendanceStatTopRow>
           <AttendanceStatRow>
             <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : halfLeaveCount}
+              {attendanceStatsLoading ? <DottedLoader /> : (
+                <>
+                  {halfLeaveCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
+                </>
+              )}
             </AttendanceStatValue>
             <AttendanceStatRightInfo>
-              <AttendanceStatStatus status={getStatus(halfLeavePercent, false)}>
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : (halfLeavePercent <= 10 ? 'Low' : halfLeavePercent <= 30 ? 'Moderate' : 'High')}
-              </AttendanceStatStatus>
               <AttendanceStatPercentage color="#8b5cf6">
                 {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${halfLeavePercent}%`}
               </AttendanceStatPercentage>
@@ -367,6 +375,14 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
                     </linearGradient>
+                    <linearGradient id="colorAttendanceRise" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="colorAttendanceFall" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.05} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -397,8 +413,19 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       fontSize: '12px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}
-                    formatter={(value: any) => [`${value}%`, 'Attendance Rate']}
-                    labelFormatter={(label) => `Date: ${label}`}
+                    formatter={(value: any, name: string, props: any) => {
+                      const data = props.payload;
+                      const change = data?.change;
+                      const changeText = change !== undefined && change !== 0 
+                        ? ` (${change > 0 ? '+' : ''}${change}%)` 
+                        : '';
+                      return [`${value}%${changeText}`, 'Attendance Rate'];
+                    }}
+                    labelFormatter={(label, payload) => {
+                      const data = payload && payload[0]?.payload;
+                      const dayOfWeek = data?.dayOfWeek || '';
+                      return dayOfWeek ? `${dayOfWeek}, ${label}` : `Date: ${label}`;
+                    }}
                   />
                   <Area
                     type="monotone"
@@ -406,8 +433,38 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                     stroke="#3b82f6"
                     strokeWidth={2}
                     fill="url(#colorAttendance)"
-                    dot={{ fill: '#3b82f6', r: 3 }}
-                    activeDot={{ r: 5, fill: '#22c55e' }}
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      if (!payload || cx === undefined || cy === undefined) return <g />;
+                      const isIncrease = payload.isIncrease;
+                      const fillColor = isIncrease === true ? '#22c55e' : isIncrease === false ? '#ef4444' : '#3b82f6';
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={4}
+                          fill={fillColor}
+                          stroke={isDark ? '#1e293b' : '#ffffff'}
+                          strokeWidth={1.5}
+                        />
+                      );
+                    }}
+                    activeDot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      if (!payload || cx === undefined || cy === undefined) return <g />;
+                      const isIncrease = payload.isIncrease;
+                      const fillColor = isIncrease === true ? '#22c55e' : isIncrease === false ? '#ef4444' : '#3b82f6';
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill={fillColor}
+                          stroke={isDark ? '#1e293b' : '#ffffff'}
+                          strokeWidth={2}
+                        />
+                      );
+                    }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

@@ -584,15 +584,16 @@ const Dashboard: React.FC = () => {
         }
 
         const selectedDate = new Date(dashboardDate);
-        const trendData: Array<{ day: string; rate: number }> = [];
+        const trendData: Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; change?: number; isIncrease?: boolean | null }> = [];
         let totalRate = 0;
 
         const selectedDateStr = selectedDate.toISOString().slice(0, 10);
         const endDate = new Date(selectedDate);
         endDate.setHours(23, 59, 59, 999);
-        // Only look back 14 days to find 7 working days (to account for weekends/holidays)
+        // Look back enough days to find 30 working days (excluding Sundays and holidays)
+        // Estimate ~42 calendar days needed to get 30 working days (accounting for weekends)
         const startDate = new Date(selectedDate);
-        startDate.setDate(startDate.getDate() - 14);
+        startDate.setDate(startDate.getDate() - 42);
         startDate.setHours(0, 0, 0, 0);
 
         const startDateStr = startDate.toISOString().slice(0, 10);
@@ -624,51 +625,57 @@ const Dashboard: React.FC = () => {
         const selectedDayOfWeek = selectedDate.getDay();
         const isSelectedDateWorkingDay = selectedDayOfWeek !== 0 && !holidayDates.has(selectedDateStr);
 
-        const workingDays: Array<{ date: Date; dateStr: string; dayName: string }> = [];
+        // Build array of 30 working days (excluding Sundays and holidays) from selected date going backwards
+        const days: Array<{ date: Date; dateStr: string; dayName: string; dayOfWeek: string }> = [];
+        
+        // Get day names for tooltip
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        // Start from selected date and go back enough days to find 30 working days
         let daysBack = 0;
         let workingDaysCount = 0;
-
+        const maxDaysToCheck = 60; // Look back up to 60 days to find 30 working days
+        
+        // First, add the selected date if it's a working day
         if (isSelectedDateWorkingDay) {
           const dayName = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`;
-          workingDays.push({
+          days.push({
             date: new Date(selectedDate),
             dateStr: selectedDateStr,
-            dayName
+            dayName,
+            dayOfWeek: dayNames[selectedDayOfWeek]
           });
           workingDaysCount++;
           daysBack = 1;
         } else {
           daysBack = 1;
         }
-
-        // Only fetch 7 working days (one week) from selected date
-        while (workingDaysCount < 7 && daysBack < 30) {
+        
+        // Continue looking back to find 30 working days total
+        while (workingDaysCount < 30 && daysBack < maxDaysToCheck) {
           const date = new Date(selectedDate);
           date.setDate(date.getDate() - daysBack);
           const dateStr = date.toISOString().slice(0, 10);
           const dayOfWeek = date.getDay();
-
+          
+          // Only include if it's not Sunday and not a holiday
           if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr >= startDateStr) {
             const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
-            workingDays.push({ date, dateStr, dayName });
+            days.push({
+              date,
+              dateStr,
+              dayName,
+              dayOfWeek: dayNames[dayOfWeek]
+            });
             workingDaysCount++;
           }
           daysBack++;
         }
 
-        workingDays.sort((a, b) => {
-          if (a.dateStr === selectedDateStr) return 1;
-          if (b.dateStr === selectedDateStr) return -1;
-          return a.dateStr.localeCompare(b.dateStr);
-        });
+        // Sort days chronologically (oldest first)
+        days.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
 
-        const selectedDateIndex = workingDays.findIndex(wd => wd.dateStr === selectedDateStr);
-        if (selectedDateIndex >= 0 && selectedDateIndex !== workingDays.length - 1) {
-          const selectedDateItem = workingDays.splice(selectedDateIndex, 1)[0];
-          workingDays.push(selectedDateItem);
-        }
-
-        if (workingDays.length === 0) {
+        if (days.length === 0) {
           setAttendanceTrendData([]);
           setTodayAttendanceRate(0);
           setWeekAvgAttendanceRate(0);
@@ -676,36 +683,46 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        const workingDaysDateStrs = new Set(workingDays.map(wd => wd.dateStr));
-        const minDate = workingDays[0].dateStr;
-        const maxDate = workingDays[workingDays.length - 1].dateStr;
+        const daysDateStrs = new Set(days.map(d => d.dateStr));
+        const minDate = days[0].dateStr;
+        const maxDate = days[days.length - 1].dateStr;
 
-        const { data: allAttendanceData, error: attendanceError } = await supabase
-          .from('attendance_records')
-          .select('date, status')
-          .gte('date', minDate)
-          .lte('date', maxDate)
-          .eq('session_id', sessionData.id)
-          .eq('school_id', user.school_id);
+        // Use fetchAllRows to get ALL attendance records in the range (handles pagination)
+        const allAttendanceData = await fetchAllRows(async (from, to) => {
+          const result = await supabase
+            .from('attendance_records')
+            .select('date, status')
+            .gte('date', minDate)
+            .lte('date', maxDate)
+            .eq('session_id', sessionData.id)
+            .eq('school_id', user.school_id)
+            .range(from, to);
+          return { data: result.data, error: result.error };
+        });
         
-        if (attendanceError) {
-          console.error('Error fetching attendance trend:', attendanceError);
+        if (!allAttendanceData) {
+          console.error('Error fetching attendance trend: Failed to fetch data');
           setAttendanceChartsLoading(false);
           return;
         }
 
         const attendanceByDate = new Map<string, { total: number; present: number }>();
 
-        workingDays.forEach(({ dateStr }) => {
+        days.forEach(({ dateStr }) => {
           attendanceByDate.set(dateStr, { total: 0, present: 0 });
         });
 
+        // Process ALL attendance data
         if (allAttendanceData && allAttendanceData.length > 0) {
           allAttendanceData.forEach((record: any) => {
+            // Ensure date is in YYYY-MM-DD format
             let dateStr = record.date;
             if (dateStr && typeof dateStr === 'string') {
+              // If date includes time, extract just the date part
               dateStr = dateStr.split('T')[0];
-              if (workingDaysDateStrs.has(dateStr)) {
+
+              // Only process if it's in our date range
+              if (daysDateStrs.has(dateStr)) {
                 const stats = attendanceByDate.get(dateStr);
                 if (stats) {
                   stats.total++;
@@ -718,7 +735,7 @@ const Dashboard: React.FC = () => {
           });
         }
 
-        if (isSelectedDateWorkingDay && workingDaysDateStrs.has(selectedDateStr)) {
+        if (isSelectedDateWorkingDay && daysDateStrs.has(selectedDateStr)) {
           const selectedDatePresent = attendanceDataForDate.filter(a =>
             a.status === 'present' || a.status === 'late'
           ).length;
@@ -730,14 +747,24 @@ const Dashboard: React.FC = () => {
           });
         }
 
-        workingDays.forEach(({ dateStr, dayName }) => {
+        days.forEach(({ dateStr, dayName, dayOfWeek }) => {
           const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
           const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-          trendData.push({ day: dayName, rate });
+          trendData.push({ day: dayName, rate, dayOfWeek, dateStr });
           totalRate += rate;
         });
 
-        setAttendanceTrendData(trendData);
+        // Calculate trend (increase/decrease) for each data point
+        const trendDataWithChange = trendData.map((item, index) => {
+          if (index === 0) {
+            return { ...item, change: 0, isIncrease: null };
+          }
+          const prevRate = trendData[index - 1].rate;
+          const change = item.rate - prevRate;
+          return { ...item, change, isIncrease: change > 0 };
+        });
+
+        setAttendanceTrendData(trendDataWithChange);
 
         let todayRate = 0;
         if (isSelectedDateWorkingDay) {
