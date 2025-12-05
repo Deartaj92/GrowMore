@@ -226,7 +226,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   const navigate = useNavigate();
   const toast = useToast();
   const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
-  
+
   // Calculate total number of students
   const totalStudents = attendanceDataForDate.length;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Button,
@@ -292,6 +292,10 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
     const { showToast } = useToast();
     const [categories, setCategories] = useState<ReportCategory[]>([]);
     const [loading, setLoading] = useState(false);
+    const scrollPositionRef = useRef<number>(0);
+    const isScrollingRef = useRef<boolean>(false);
+    const touchStartRef = useRef<{ y: number; time: number } | null>(null);
+    const listboxRef = useRef<HTMLUListElement | null>(null);
     
     // State for dropdowns
     const [classes, setClasses] = useState<any[]>([]);
@@ -367,6 +371,53 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
             setStudents([]);
         }
     }, [formData.class_id, formData.section_id, selectedClassHasSections]);
+
+    // Restore scroll position when listbox is available
+    useEffect(() => {
+        if (listboxRef.current && scrollPositionRef.current > 0) {
+            // Use requestAnimationFrame to ensure DOM is ready
+            requestAnimationFrame(() => {
+                if (listboxRef.current && scrollPositionRef.current > 0) {
+                    listboxRef.current.scrollTop = scrollPositionRef.current;
+                }
+            });
+        }
+    }, [students, open]);
+
+    // Use MutationObserver to restore scroll position when DOM changes
+    useEffect(() => {
+        if (!listboxRef.current || !open) return;
+
+        let restoreTimeout: NodeJS.Timeout;
+        
+        const observer = new MutationObserver(() => {
+            if (listboxRef.current && scrollPositionRef.current > 0) {
+                // Clear any pending restore
+                clearTimeout(restoreTimeout);
+                // Restore scroll position after a short delay to ensure DOM is stable
+                restoreTimeout = setTimeout(() => {
+                    if (listboxRef.current && scrollPositionRef.current > 0) {
+                        const currentScroll = listboxRef.current.scrollTop;
+                        // Only restore if scroll position was reset (close to 0) or significantly different
+                        if (currentScroll < 10 || Math.abs(currentScroll - scrollPositionRef.current) > 50) {
+                            listboxRef.current.scrollTop = scrollPositionRef.current;
+                        }
+                    }
+                }, 50);
+            }
+        });
+
+        observer.observe(listboxRef.current, {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
+
+        return () => {
+            clearTimeout(restoreTimeout);
+            observer.disconnect();
+        };
+    }, [open]);
 
     const loadCategories = async () => {
         try {
@@ -609,18 +660,56 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
                             loading={loadingStudents}
                             disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
                             value={students.find(s => s.id === formData.student_id) || null}
+                            onOpen={() => {
+                                // Restore scroll position when dropdown opens
+                                if (listboxRef.current && scrollPositionRef.current > 0) {
+                                    requestAnimationFrame(() => {
+                                        if (listboxRef.current) {
+                                            listboxRef.current.scrollTop = scrollPositionRef.current;
+                                        }
+                                    });
+                                }
+                            }}
+                            onClose={() => {
+                                // Save scroll position when dropdown closes
+                                if (listboxRef.current) {
+                                    scrollPositionRef.current = listboxRef.current.scrollTop;
+                                }
+                            }}
                             onChange={(_, newValue) => setFormData({ 
                                 ...formData, 
                                 student_id: newValue ? newValue.id : undefined 
                             })}
                             getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
                             filterOptions={(options, { inputValue }) => {
+                                // Save scroll position before filtering
+                                if (listboxRef.current) {
+                                    scrollPositionRef.current = listboxRef.current.scrollTop;
+                                }
+                                
                                 const searchLower = inputValue.toLowerCase();
-                                return options.filter((s: any) => {
+                                const filtered = options.filter((s: any) => {
                                     const nameMatch = s.name.toLowerCase().includes(searchLower);
                                     const idMatch = matchesStudentSearch(s, inputValue);
                                     return nameMatch || idMatch.matches;
                                 });
+                                
+                                // Restore scroll position after filtering (if no input, maintain position)
+                                if (listboxRef.current && !inputValue && scrollPositionRef.current > 0) {
+                                    requestAnimationFrame(() => {
+                                        if (listboxRef.current) {
+                                            listboxRef.current.scrollTop = scrollPositionRef.current;
+                                        }
+                                    });
+                                }
+                                
+                                return filtered;
+                            }}
+                            onInputChange={(_, value, reason) => {
+                                // Save scroll position when input changes
+                                if (listboxRef.current && reason !== 'reset') {
+                                    scrollPositionRef.current = listboxRef.current.scrollTop;
+                                }
                             }}
                             renderInput={(params) => (
                                 <TextField
@@ -639,34 +728,158 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
                                     }}
                                 />
                             )}
-                            renderOption={(props, student) => (
-                                <Box component="li" {...props} key={student.id}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                                        <Avatar 
-                                            src={student.picture_url || undefined} 
-                                            sx={{ width: 40, height: 40 }}
-                                        >
-                                            {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
-                                        </Avatar>
-                                        <Box>
-                                            <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                                                {student.name}
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                {student.father_name || 'N/A'}
-                                            </Typography>
-                                        </Box>
-                                        <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
-                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                ID: {getStudentDisplayId(student)}
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                                {student.address || 'No address'}
-                                            </Typography>
+                            renderOption={(props, student) => {
+                                const { onClick, ...otherProps } = props;
+                                
+                                return (
+                                    <Box 
+                                        component="li" 
+                                        {...otherProps}
+                                        key={student.id}
+                                        onTouchStart={(e) => {
+                                            touchStartRef.current = {
+                                                y: e.touches[0].clientY,
+                                                time: Date.now()
+                                            };
+                                            isScrollingRef.current = false;
+                                        }}
+                                        onTouchMove={(e) => {
+                                            if (touchStartRef.current) {
+                                                const touchY = e.touches[0].clientY;
+                                                const deltaY = Math.abs(touchY - touchStartRef.current.y);
+                                                if (deltaY > 10) {
+                                                    isScrollingRef.current = true;
+                                                }
+                                            }
+                                        }}
+                                        onTouchEnd={() => {
+                                            // Reset touch start after a delay to allow click to check
+                                            setTimeout(() => {
+                                                touchStartRef.current = null;
+                                            }, 50);
+                                        }}
+                                        onClick={(e) => {
+                                            // Only trigger selection if it wasn't a scroll gesture
+                                            if (!isScrollingRef.current) {
+                                                onClick?.(e);
+                                            }
+                                            // Reset after a short delay
+                                            setTimeout(() => {
+                                                isScrollingRef.current = false;
+                                            }, 150);
+                                        }}
+                                        sx={{
+                                            touchAction: 'pan-y',
+                                            cursor: 'pointer',
+                                            WebkitTapHighlightColor: 'transparent',
+                                            '-webkit-touch-callout': 'none'
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
+                                            <Avatar 
+                                                src={student.picture_url || undefined} 
+                                                sx={{ width: 40, height: 40 }}
+                                            >
+                                                {!student.picture_url && student.name && student.name.charAt(0).toUpperCase()}
+                                            </Avatar>
+                                            <Box>
+                                                <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                                                    {student.name}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                    {student.father_name || 'N/A'}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                    ID: {getStudentDisplayId(student)}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                                    {student.address || 'No address'}
+                                                </Typography>
+                                            </Box>
                                         </Box>
                                     </Box>
-                                </Box>
+                                );
+                            }}
+                            ListboxComponent={React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
+                                (props, ref) => {
+                                    const listboxRefInternal = React.useRef<HTMLUListElement | null>(null);
+                                    
+                                    const setRef = React.useCallback((node: HTMLUListElement | null) => {
+                                        listboxRefInternal.current = node;
+                                        listboxRef.current = node;
+                                        
+                                        if (typeof ref === 'function') {
+                                            ref(node);
+                                        } else if (ref) {
+                                            (ref as React.MutableRefObject<HTMLUListElement | null>).current = node;
+                                        }
+                                        
+                                        // Restore scroll position when listbox is mounted
+                                        if (node && scrollPositionRef.current > 0) {
+                                            requestAnimationFrame(() => {
+                                                if (node && scrollPositionRef.current > 0) {
+                                                    node.scrollTop = scrollPositionRef.current;
+                                                }
+                                            });
+                                        }
+                                    }, [ref]);
+                                    
+                                    React.useEffect(() => {
+                                        const listbox = listboxRefInternal.current;
+                                        if (!listbox) return;
+                                        
+                                        const restoreScroll = () => {
+                                            if (listbox && scrollPositionRef.current > 0) {
+                                                const currentScroll = listbox.scrollTop;
+                                                // Only restore if scroll was reset (close to 0) or significantly different
+                                                if ((currentScroll < 10 && scrollPositionRef.current > 10) || 
+                                                    Math.abs(currentScroll - scrollPositionRef.current) > 50) {
+                                                    listbox.scrollTop = scrollPositionRef.current;
+                                                }
+                                            }
+                                        };
+                                        
+                                        const observer = new MutationObserver(() => {
+                                            restoreScroll();
+                                        });
+                                        
+                                        observer.observe(listbox, {
+                                            childList: true,
+                                            subtree: true
+                                        });
+                                        
+                                        // Also restore on next frame after mount
+                                        requestAnimationFrame(restoreScroll);
+                                        
+                                        return () => observer.disconnect();
+                                    }, []);
+                                    
+                                    return (
+                                        <ul
+                                            {...props}
+                                            ref={setRef}
+                                            style={{
+                                                ...props.style,
+                                                maxHeight: 300,
+                                                overflowY: 'auto',
+                                                touchAction: 'pan-y',
+                                                WebkitOverflowScrolling: 'touch',
+                                                scrollBehavior: 'auto',
+                                                position: 'relative',
+                                                overscrollBehavior: 'contain'
+                                            }}
+                                            onScroll={(e) => {
+                                                const target = e.currentTarget;
+                                                scrollPositionRef.current = target.scrollTop;
+                                                props.onScroll?.(e);
+                                            }}
+                                        />
+                                    );
+                                }
                             )}
+                            disableListWrap
                             PaperComponent={(props) => (
                                 <Paper
                                     {...props}
@@ -676,6 +889,29 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
                                         backgroundColor: theme.palette.mode === 'dark' 
                                             ? theme.palette.background.paper
                                             : theme.palette.background.paper,
+                                        touchAction: 'pan-y',
+                                        '& .MuiAutocomplete-listbox': {
+                                            touchAction: 'pan-y',
+                                            WebkitOverflowScrolling: 'touch',
+                                            overscrollBehavior: 'contain',
+                                            '&::-webkit-scrollbar': {
+                                                width: '8px'
+                                            },
+                                            '&::-webkit-scrollbar-track': {
+                                                background: 'transparent'
+                                            },
+                                            '&::-webkit-scrollbar-thumb': {
+                                                backgroundColor: theme.palette.mode === 'dark'
+                                                    ? 'rgba(255, 255, 255, 0.2)'
+                                                    : 'rgba(0, 0, 0, 0.2)',
+                                                borderRadius: '4px',
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.mode === 'dark'
+                                                        ? 'rgba(255, 255, 255, 0.3)'
+                                                        : 'rgba(0, 0, 0, 0.3)'
+                                                }
+                                            }
+                                        }
                                     }}
                                 />
                             )}

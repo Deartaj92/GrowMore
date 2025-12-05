@@ -4170,9 +4170,12 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               test_count: data.count
             }));
 
+            // Calculate totalTests by summing test_count from each subject (same as test record tab)
+            const totalTests = subjectSummaries.reduce((sum, subject) => sum + subject.test_count, 0);
+
             setTestSummaryData({
               totalSubjects: subjectMap.size,
-              totalTests: testResultsData.length,
+              totalTests: totalTests,
               totalObtainedMarks: totalObtained,
               totalMaxMarks: totalMax,
               totalPercentage: totalMax > 0 ? (totalObtained / totalMax) * 100 : 0,
@@ -5431,19 +5434,30 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                 transform: 'translateY(-1px)',
                               }
                             }}>
-                              <Typography variant="caption" sx={{
-                                color: 'text.primary',
-                                fontSize: '0.6rem',
-                                fontWeight: 600,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                flex: 1,
-                                minWidth: 0,
-                                mr: 1
-                              }}>
-                                {subject.subject_name} ({subject.test_count})
-                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, mr: 1 }}>
+                                <Typography variant="caption" sx={{
+                                  color: 'text.primary',
+                                  fontSize: '0.6rem',
+                                  fontWeight: 600,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flex: 1,
+                                  minWidth: 0
+                                }}>
+                                  {subject.subject_name}
+                                </Typography>
+                                <Typography component="span" sx={{
+                                  color: 'text.secondary',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  fontFamily: 'monospace',
+                                  ml: 0.5,
+                                  flexShrink: 0
+                                }}>
+                                  ({subject.test_count})
+                                </Typography>
+                              </Box>
                               <Typography variant="caption" sx={{
                                 color: 'info.main',
                                 fontSize: '0.6rem',
@@ -5658,19 +5672,30 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                   transform: 'translateY(-1px)',
                                 }
                               }}>
-                                <Typography variant="caption" sx={{
-                                  color: 'text.primary',
-                                  fontSize: '0.6rem',
-                                  fontWeight: 600,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  flex: 1,
-                                  minWidth: 0,
-                                  mr: 1
-                                }}>
-                                  {subject.subject_name} ({subject.test_count})
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, mr: 1 }}>
+                                  <Typography variant="caption" sx={{
+                                    color: 'text.primary',
+                                    fontSize: '0.6rem',
+                                    fontWeight: 600,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    flex: 1,
+                                    minWidth: 0
+                                  }}>
+                                    {subject.subject_name}
+                                  </Typography>
+                                  <Typography component="span" sx={{
+                                    color: 'text.secondary',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    fontFamily: 'monospace',
+                                    ml: 0.5,
+                                    flexShrink: 0
+                                  }}>
+                                    ({subject.test_count})
+                                  </Typography>
+                                </Box>
                                 <Typography variant="caption" sx={{
                                   color: 'info.main',
                                   fontSize: '0.6rem',

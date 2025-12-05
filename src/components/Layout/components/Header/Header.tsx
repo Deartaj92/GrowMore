@@ -445,7 +445,7 @@ const MobileSidebarBackdrop = styled.div<{ $isOpen: boolean }>`
   }
 `;
 
-const MobileSidebar = styled.div<{ $isOpen: boolean }>`
+const MobileSidebar = styled.div<{ $isOpen: boolean; $transform?: number }>`
   position: fixed;
   top: 0;
   left: 0;
@@ -454,10 +454,16 @@ const MobileSidebar = styled.div<{ $isOpen: boolean }>`
   height: 100vh;
   background: ${props => props.theme.CARD};
   z-index: 9999;
-  transform: translateX(${props => props.$isOpen ? '0' : '-100%'});
-  transition: transform 0.3s ease;
+  transform: translateX(${props => {
+    if (props.$transform !== undefined) {
+      return `${props.$transform}px`;
+    }
+    return props.$isOpen ? '0' : '-100%';
+  }});
+  transition: ${props => props.$transform !== undefined ? 'none' : 'transform 0.3s ease'};
   overflow-y: auto;
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
+  touch-action: pan-y;
   
   @media (min-width: 701px) {
     display: none;
@@ -857,6 +863,99 @@ const Header: React.FC<HeaderProps> = ({
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Swipe gesture state
+  const swipeStateRef = useRef<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    isSwiping: boolean;
+    sidebarWidth: number;
+  } | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const [sidebarTransform, setSidebarTransform] = useState<number | undefined>(undefined);
+  
+  // Swipe handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+    
+    // Check if starting from left edge (within 20px) when sidebar is closed
+    if (!mobileSidebarOpen && startX <= 20) {
+      swipeStateRef.current = {
+        startX,
+        startY,
+        currentX: startX,
+        isSwiping: true,
+        sidebarWidth: sidebarRef.current?.offsetWidth || 320
+      };
+      setSidebarTransform(-swipeStateRef.current.sidebarWidth);
+    } else if (mobileSidebarOpen && sidebarRef.current) {
+      // Allow swiping to close when sidebar is open
+      swipeStateRef.current = {
+        startX,
+        startY,
+        currentX: startX,
+        isSwiping: true,
+        sidebarWidth: sidebarRef.current.offsetWidth
+      };
+    }
+  }, [mobileSidebarOpen]);
+  
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!swipeStateRef.current?.isSwiping) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - swipeStateRef.current.startX;
+    const deltaY = Math.abs(touch.clientY - swipeStateRef.current.startY);
+    
+    // Only process horizontal swipes (more horizontal than vertical)
+    if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 5) {
+      e.preventDefault();
+      
+      if (!mobileSidebarOpen) {
+        // Opening: start from -width, move towards 0
+        const newTransform = Math.min(0, -swipeStateRef.current.sidebarWidth + deltaX);
+        setSidebarTransform(newTransform);
+      } else {
+        // Closing: start from 0, move towards -width
+        const newTransform = Math.max(-swipeStateRef.current.sidebarWidth, deltaX);
+        setSidebarTransform(newTransform);
+      }
+      
+      swipeStateRef.current.currentX = touch.clientX;
+    }
+  }, [mobileSidebarOpen]);
+  
+  const handleTouchEnd = useCallback(() => {
+    if (!swipeStateRef.current?.isSwiping) return;
+    
+    const { sidebarWidth } = swipeStateRef.current;
+    const currentTransform = sidebarTransform ?? (mobileSidebarOpen ? 0 : -sidebarWidth);
+    const threshold = sidebarWidth * 0.3; // 30% of sidebar width
+    
+    if (!mobileSidebarOpen) {
+      // Opening: if swiped more than threshold, open; otherwise close
+      if (currentTransform > -threshold) {
+        setMobileSidebarOpen(true);
+        setSidebarTransform(undefined);
+      } else {
+        setSidebarTransform(undefined);
+      }
+    } else {
+      // Closing: if swiped more than threshold, close; otherwise open
+      if (currentTransform < -threshold) {
+        setMobileSidebarOpen(false);
+        setMobileOpenMenus(new Set());
+        setSidebarTransform(undefined);
+      } else {
+        setSidebarTransform(undefined);
+      }
+    }
+    
+    swipeStateRef.current = null;
+  }, [mobileSidebarOpen, sidebarTransform]);
 
   // Update dropdown positions
   const updateDropdownPositions = () => {
@@ -1656,7 +1755,14 @@ const Header: React.FC<HeaderProps> = ({
               setMobileOpenMenus(new Set());
             }}
           />
-          <MobileSidebar $isOpen={mobileSidebarOpen}>
+          <MobileSidebar 
+            ref={sidebarRef}
+            $isOpen={mobileSidebarOpen}
+            $transform={sidebarTransform}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
         <MobileSidebarHeader>
           <MobileSidebarTitle>Menu</MobileSidebarTitle>
           <MobileSidebarCloseButton

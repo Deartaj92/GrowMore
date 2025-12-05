@@ -186,10 +186,15 @@ function createBackgroundWindow() {
 
   // Create a minimal hidden window for push notifications
   backgroundWindow = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 1, // Minimal size
+    height: 1, // Minimal size
+    x: -2000, // Position off-screen
+    y: -2000, // Position off-screen
     show: false, // Never show this window
     skipTaskbar: true, // Don't show in taskbar
+    visible: false, // Explicitly set invisible
+    focusable: false, // Cannot be focused
+    opacity: 0, // Completely transparent
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -201,12 +206,26 @@ function createBackgroundWindow() {
     frame: false
   });
 
-  // Load minimal content (or empty page)
+  // Immediately hide it (in case it tries to show)
+  backgroundWindow.hide();
+  
+  // Set opacity to 0 to ensure it's invisible
+  backgroundWindow.setOpacity(0);
+  
+  // Ensure it's not visible
+  backgroundWindow.setVisibleOnAllWorkspaces(false);
+
+  // Load minimal content (or empty page) after a small delay to prevent flash
   const startUrl = isDev
     ? 'http://localhost:3000'
     : `file://${path.join(__dirname, 'index.html')}`;
   
-  backgroundWindow.loadURL(startUrl);
+  // Small delay to ensure window is fully hidden before loading
+  setTimeout(() => {
+    if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+      backgroundWindow.loadURL(startUrl);
+    }
+  }, 100);
 
   // Initialize push receiver on background window
   setupPushReceiver(backgroundWindow.webContents);
@@ -220,6 +239,13 @@ function createBackgroundWindow() {
     }
   });
 
+  // Prevent window from showing
+  backgroundWindow.on('show', () => {
+    if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+      backgroundWindow.hide();
+    }
+  });
+
   backgroundWindow.once('ready-to-show', () => {
     // Ensure it stays hidden
     if (backgroundWindow && !backgroundWindow.isDestroyed()) {
@@ -227,7 +253,15 @@ function createBackgroundWindow() {
     }
   });
 
-  console.log('Background window created for push notifications');
+  // Prevent window from being focused
+  backgroundWindow.on('focus', () => {
+    if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+      backgroundWindow.blur();
+      backgroundWindow.hide();
+    }
+  });
+
+  console.log('Background window created for push notifications (hidden)');
 }
 
 // Create Tray Icon
