@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Button,
@@ -292,12 +292,9 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
     const { showToast } = useToast();
     const [categories, setCategories] = useState<ReportCategory[]>([]);
     const [loading, setLoading] = useState(false);
-    const scrollPositionRef = useRef<number>(0);
-    const isScrollingRef = useRef<boolean>(false);
-    const touchStartRef = useRef<{ y: number; time: number } | null>(null);
-    const listboxRef = useRef<HTMLUListElement | null>(null);
-    const isUserScrollingRef = useRef<boolean>(false);
-    const scrollRestoreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollPositionRef = React.useRef<number>(0);
+    const isScrollingRef = React.useRef<boolean>(false);
+    const touchStartRef = React.useRef<{ y: number; time: number } | null>(null);
     
     // State for dropdowns
     const [classes, setClasses] = useState<any[]>([]);
@@ -373,53 +370,6 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
             setStudents([]);
         }
     }, [formData.class_id, formData.section_id, selectedClassHasSections]);
-
-    // Restore scroll position when listbox is available
-    useEffect(() => {
-        if (listboxRef.current && scrollPositionRef.current > 0) {
-            // Use requestAnimationFrame to ensure DOM is ready
-            requestAnimationFrame(() => {
-                if (listboxRef.current && scrollPositionRef.current > 0) {
-                    listboxRef.current.scrollTop = scrollPositionRef.current;
-                }
-            });
-        }
-    }, [students, open]);
-
-    // Use MutationObserver to restore scroll position when DOM changes
-    useEffect(() => {
-        if (!listboxRef.current || !open) return;
-
-        let restoreTimeout: NodeJS.Timeout;
-        
-        const observer = new MutationObserver(() => {
-            if (listboxRef.current && scrollPositionRef.current > 0) {
-                // Clear any pending restore
-                clearTimeout(restoreTimeout);
-                // Restore scroll position after a short delay to ensure DOM is stable
-                restoreTimeout = setTimeout(() => {
-                    if (listboxRef.current && scrollPositionRef.current > 0) {
-                        const currentScroll = listboxRef.current.scrollTop;
-                        // Only restore if scroll position was reset (close to 0) or significantly different
-                        if (currentScroll < 10 || Math.abs(currentScroll - scrollPositionRef.current) > 50) {
-                            listboxRef.current.scrollTop = scrollPositionRef.current;
-                        }
-                    }
-                }, 50);
-            }
-        });
-
-        observer.observe(listboxRef.current, {
-            childList: true,
-            subtree: true,
-            attributes: true
-        });
-
-        return () => {
-            clearTimeout(restoreTimeout);
-            observer.disconnect();
-        };
-    }, [open]);
 
     const loadCategories = async () => {
         try {
@@ -662,56 +612,18 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
                             loading={loadingStudents}
                             disabled={!formData.class_id || (selectedClassHasSections && !formData.section_id) || loadingStudents}
                             value={students.find(s => s.id === formData.student_id) || null}
-                            onOpen={() => {
-                                // Restore scroll position when dropdown opens
-                                if (listboxRef.current && scrollPositionRef.current > 0) {
-                                    requestAnimationFrame(() => {
-                                        if (listboxRef.current) {
-                                            listboxRef.current.scrollTop = scrollPositionRef.current;
-                                        }
-                                    });
-                                }
-                            }}
-                            onClose={() => {
-                                // Save scroll position when dropdown closes
-                                if (listboxRef.current) {
-                                    scrollPositionRef.current = listboxRef.current.scrollTop;
-                                }
-                            }}
                             onChange={(_, newValue) => setFormData({ 
                                 ...formData, 
                                 student_id: newValue ? newValue.id : undefined 
                             })}
                             getOptionLabel={(option: any) => `${option.name} (${getStudentDisplayId(option)})`}
                             filterOptions={(options, { inputValue }) => {
-                                // Save scroll position before filtering
-                                if (listboxRef.current) {
-                                    scrollPositionRef.current = listboxRef.current.scrollTop;
-                                }
-                                
                                 const searchLower = inputValue.toLowerCase();
-                                const filtered = options.filter((s: any) => {
+                                return options.filter((s: any) => {
                                     const nameMatch = s.name.toLowerCase().includes(searchLower);
                                     const idMatch = matchesStudentSearch(s, inputValue);
                                     return nameMatch || idMatch.matches;
                                 });
-                                
-                                // Restore scroll position after filtering (if no input, maintain position)
-                                if (listboxRef.current && !inputValue && scrollPositionRef.current > 0) {
-                                    requestAnimationFrame(() => {
-                                        if (listboxRef.current) {
-                                            listboxRef.current.scrollTop = scrollPositionRef.current;
-                                        }
-                                    });
-                                }
-                                
-                                return filtered;
-                            }}
-                            onInputChange={(_, value, reason) => {
-                                // Save scroll position when input changes
-                                if (listboxRef.current && reason !== 'reset') {
-                                    scrollPositionRef.current = listboxRef.current.scrollTop;
-                                }
                             }}
                             renderInput={(params) => (
                                 <TextField
@@ -804,128 +716,22 @@ export const CreateStudentReportForm: React.FC<CreateStudentReportFormProps> = (
                                     </Box>
                                 );
                             }}
-                            ListboxComponent={React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
-                                (props, ref) => {
-                                    const listboxRefInternal = React.useRef<HTMLUListElement | null>(null);
-                                    const lastScrollTopRef = React.useRef<number>(0);
-                                    const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-                                    
-                                    const setRef = React.useCallback((node: HTMLUListElement | null) => {
-                                        listboxRefInternal.current = node;
-                                        listboxRef.current = node;
-                                        
-                                        if (typeof ref === 'function') {
-                                            ref(node);
-                                        } else if (ref) {
-                                            (ref as React.MutableRefObject<HTMLUListElement | null>).current = node;
-                                        }
-                                        
-                                        // Only restore scroll position when listbox is first mounted (not during active scrolling)
-                                        if (node && scrollPositionRef.current > 0 && !isUserScrollingRef.current) {
-                                            // Small delay to ensure DOM is ready
-                                            setTimeout(() => {
-                                                if (node && scrollPositionRef.current > 0 && !isUserScrollingRef.current) {
-                                                    node.scrollTop = scrollPositionRef.current;
-                                                }
-                                            }, 10);
-                                        }
-                                    }, [ref]);
-                                    
-                                    React.useEffect(() => {
-                                        const listbox = listboxRefInternal.current;
-                                        if (!listbox) return;
-                                        
-                                        // Only restore scroll if it was reset by the component (not by user)
-                                        const checkAndRestoreScroll = () => {
-                                            if (!listbox || isUserScrollingRef.current) return;
-                                            
-                                            const currentScroll = listbox.scrollTop;
-                                            const savedScroll = scrollPositionRef.current;
-                                            
-                                            // Only restore if scroll was unexpectedly reset to near 0 when we had a saved position
-                                            if (savedScroll > 50 && currentScroll < 10) {
-                                                // User is not scrolling, so this is likely a component reset
-                                                listbox.scrollTop = savedScroll;
-                                            }
-                                        };
-                                        
-                                        // Use a debounced observer to avoid interfering with smooth scrolling
-                                        const observer = new MutationObserver(() => {
-                                            // Clear any pending restore
-                                            if (scrollRestoreTimeoutRef.current) {
-                                                clearTimeout(scrollRestoreTimeoutRef.current);
-                                            }
-                                            
-                                            // Only restore after user has stopped scrolling for a bit
-                                            scrollRestoreTimeoutRef.current = setTimeout(() => {
-                                                if (!isUserScrollingRef.current) {
-                                                    checkAndRestoreScroll();
-                                                }
-                                            }, 100);
-                                        });
-                                        
-                                        observer.observe(listbox, {
-                                            childList: true,
-                                            subtree: true
-                                        });
-                                        
-                                        return () => {
-                                            if (scrollRestoreTimeoutRef.current) {
-                                                clearTimeout(scrollRestoreTimeoutRef.current);
-                                            }
-                                            observer.disconnect();
-                                        };
-                                    }, []);
-                                    
-                                    return (
-                                        <ul
-                                            {...props}
-                                            ref={setRef}
-                                            style={{
-                                                ...props.style,
-                                                maxHeight: 300,
-                                                overflowY: 'auto',
-                                                touchAction: 'pan-y',
-                                                WebkitOverflowScrolling: 'touch',
-                                                scrollBehavior: 'auto',
-                                                position: 'relative',
-                                                overscrollBehavior: 'contain'
-                                            }}
-                                            onScroll={(e) => {
-                                                const target = e.currentTarget;
-                                                const currentScroll = target.scrollTop;
-                                                
-                                                // Detect if user is actively scrolling
-                                                const scrollDelta = Math.abs(currentScroll - lastScrollTopRef.current);
-                                                if (scrollDelta > 1) {
-                                                    isUserScrollingRef.current = true;
-                                                    
-                                                    // Clear the flag after scrolling stops
-                                                    if (scrollTimeoutRef.current) {
-                                                        clearTimeout(scrollTimeoutRef.current);
-                                                    }
-                                                    scrollTimeoutRef.current = setTimeout(() => {
-                                                        isUserScrollingRef.current = false;
-                                                    }, 150);
-                                                }
-                                                
-                                                lastScrollTopRef.current = currentScroll;
-                                                scrollPositionRef.current = currentScroll;
-                                                props.onScroll?.(e);
-                                            }}
-                                            onTouchStart={() => {
-                                                isUserScrollingRef.current = true;
-                                            }}
-                                            onTouchEnd={() => {
-                                                // Keep flag true briefly, then clear
-                                                setTimeout(() => {
-                                                    isUserScrollingRef.current = false;
-                                                }, 200);
-                                            }}
-                                        />
-                                    );
+                            ListboxProps={{
+                                style: {
+                                    maxHeight: 300,
+                                    overflowY: 'auto',
+                                    touchAction: 'pan-y',
+                                    WebkitOverflowScrolling: 'touch',
+                                    scrollBehavior: 'auto',
+                                    position: 'relative',
+                                    overscrollBehavior: 'contain'
+                                },
+                                onScroll: (e) => {
+                                    // Maintain scroll position
+                                    const target = e.currentTarget;
+                                    scrollPositionRef.current = target.scrollTop;
                                 }
-                            )}
+                            }}
                             disableListWrap
                             PaperComponent={(props) => (
                                 <Paper
