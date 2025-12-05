@@ -8,24 +8,40 @@ const AutoLaunch = require('auto-launch');
 // Set App User Model ID for Windows notifications
 app.setAppUserModelId('com.growmore.app');
 
+// Prevent default Electron window creation
+// This ensures no window is shown until we explicitly create one
+if (process.platform === 'darwin') {
+  app.dock.hide(); // macOS only
+}
+
+// Check for auto-launch arguments EARLY (before app.ready)
+// This must be checked immediately to prevent any default window creation
+let shouldStartInTray = false;
+
+// Check for startup arguments
+if (process.argv.includes('--hidden') || 
+    process.argv.includes('--startup') ||
+    process.argv.includes('--minimized')) {
+  shouldStartInTray = true;
+}
+
+// If no explicit launch argument and auto-launch might be active,
+// we'll check at ready time
+
 // Configure auto-launch for Windows startup
 let autoLauncher;
-let shouldStartInTray = false;
 if (process.platform === 'win32') {
   // Get the correct path for auto-launch
   const appPath = app.getPath('exe');
   
-  // Check if app was launched at Windows startup (auto-launch)
-  // On Windows, when auto-launched with isHidden:true, we need to detect it
-  shouldStartInTray = process.argv.includes('--hidden') || 
-                      process.argv.includes('--startup');
-  
   autoLauncher = new AutoLaunch({
     name: 'Grow More',
     path: appPath,
-    isHidden: true, // Start hidden in tray (only creates tray, no window)
-    args: ['--startup'] // Pass argument to detect auto-launch
+    isHidden: true // Start hidden in tray (only creates tray, no window)
   });
+  
+  // Note: We'll check auto-launch status at ready time
+  // The auto-launch library with isHidden:true should prevent window
 }
 
 // Initialize electron-push-receiver
@@ -33,6 +49,7 @@ const { setup: setupPushReceiver, START_NOTIFICATION_SERVICE, NOTIFICATION_SERVI
 
 // Main window reference
 let mainWindow;
+let backgroundWindow = null; // Hidden window for push notifications
 let tray = null;
 let isQuitting = false;
 
@@ -60,14 +77,23 @@ function createWindow() {
     },
     icon: getResourcePath('assets/New Icon Fixed.ico'),
     frame: false,
-    titleBarStyle: 'hidden'
+    titleBarStyle: 'hidden',
+    show: false // Don't show window until ready to prevent flash
   });
 
   // Initialize push receiver for this window
+  // Note: Background window also has push receiver for notifications when this window is closed
   setupPushReceiver(mainWindow.webContents);
 
   // Maximize the window on startup
   mainWindow.maximize();
+  
+  // Show window after it's ready
+  mainWindow.once('ready-to-show', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  });
 
   // Disable the default menu bar
   Menu.setApplicationMenu(null);
@@ -108,7 +134,14 @@ function createWindow() {
 
     if (!isQuitting) {
       event.preventDefault();
-      // Destroy the window completely (app stays running in tray for notifications)
+      
+      // Ensure background window exists for push notifications
+      if (!backgroundWindow || backgroundWindow.isDestroyed()) {
+        createBackgroundWindow();
+      }
+      
+      // Destroy the main window completely (app stays running in tray for notifications)
+      // Background window remains alive for push notifications
       // This ensures a fresh start when reopened
       mainWindow.destroy();
       mainWindow = null;
@@ -134,6 +167,67 @@ function createWindow() {
       mainWindow.loadURL(`file://${path.join(__dirname, 'index.html')}`);
     }
   });
+}
+
+// Create a hidden background window for push notifications
+function createBackgroundWindow() {
+  // Don't create if already exists
+  if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+    return;
+  }
+
+  const getResourcePath = (relativePath) => {
+    if (isDev) {
+      return path.join(__dirname, '..', relativePath);
+    } else {
+      return path.join(process.resourcesPath, relativePath);
+    }
+  };
+
+  // Create a minimal hidden window for push notifications
+  backgroundWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    show: false, // Never show this window
+    skipTaskbar: true, // Don't show in taskbar
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: true,
+      preload: path.join(__dirname, 'preload.js'),
+      enableRemoteModule: true
+    },
+    icon: getResourcePath('assets/New Icon Fixed.ico'),
+    frame: false
+  });
+
+  // Load minimal content (or empty page)
+  const startUrl = isDev
+    ? 'http://localhost:3000'
+    : `file://${path.join(__dirname, 'index.html')}`;
+  
+  backgroundWindow.loadURL(startUrl);
+
+  // Initialize push receiver on background window
+  setupPushReceiver(backgroundWindow.webContents);
+
+  // Prevent window from being shown or focused
+  backgroundWindow.on('close', (event) => {
+    // Prevent closing - keep it alive for notifications
+    if (!isQuitting) {
+      event.preventDefault();
+      backgroundWindow.hide();
+    }
+  });
+
+  backgroundWindow.once('ready-to-show', () => {
+    // Ensure it stays hidden
+    if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+      backgroundWindow.hide();
+    }
+  });
+
+  console.log('Background window created for push notifications');
 }
 
 // Create Tray Icon
@@ -209,29 +303,87 @@ if (!gotTheLock) {
     }
   });
 
-  app.on('ready', () => {
-    // Create tray first (needed for starting in tray)
+  app.on('ready', async () => {
+    // Create background window first for push notifications
+    // This window stays alive even when main window is closed
+    createBackgroundWindow();
+    
+    // Create tray (always needed for notifications)
     tray = createTray();
     
-    // Only create window if not starting in tray (auto-launch)
-    // When auto-launched with isHidden:true, shouldStartInTray will be true
-    // and we'll skip creating the window, leaving only the tray icon
-    if (!shouldStartInTray) {
-      createWindow();
-    }
-    // If auto-launched (shouldStartInTray = true), app will stay in tray only (no window created)
+    // Check if app was opened at login using Electron's built-in method
+    const loginItemSettings = app.getLoginItemSettings();
+    const wasOpenedAtLogin = loginItemSettings.openAtLogin && loginItemSettings.wasOpenedAtLogin;
     
-    // Enable auto-launch on Windows
+    // Check auto-launch status
+    let finalShouldStartInTray = shouldStartInTray || wasOpenedAtLogin;
+    
     if (process.platform === 'win32' && autoLauncher) {
-      autoLauncher.isEnabled().then((isEnabled) => {
-        if (!isEnabled) {
-          autoLauncher.enable().catch((err) => {
-            console.error('Failed to enable auto-launch:', err);
+      try {
+        const isEnabled = await autoLauncher.isEnabled();
+        autoLaunchEnabled = isEnabled;
+        
+        // Also use Electron's built-in login item settings
+        if (isEnabled) {
+          app.setLoginItemSettings({
+            openAtLogin: true,
+            openAsHidden: true, // Start hidden in tray
+            name: 'Grow More'
           });
         }
-      }).catch((err) => {
-        console.error('Failed to check auto-launch status:', err);
-      });
+        
+        if (!isEnabled) {
+          // Enable auto-launch if not already enabled
+          await autoLauncher.enable();
+          autoLaunchEnabled = true;
+          console.log('Auto-launch has been enabled');
+          
+          // Also set Electron's built-in settings
+          app.setLoginItemSettings({
+            openAtLogin: true,
+            openAsHidden: true,
+            name: 'Grow More'
+          });
+        }
+        
+        // If auto-launched and not explicitly showing window, start in tray
+        if ((wasOpenedAtLogin || autoLaunchEnabled) && !process.argv.includes('--show-window')) {
+          finalShouldStartInTray = true;
+          console.log('Auto-launched - starting in tray mode');
+        }
+      } catch (err) {
+        console.error('Failed to check/enable auto-launch:', err);
+      }
+    }
+    
+    // Debug: Log startup information
+    console.log('=== App Startup Debug ===');
+    console.log('Process args:', process.argv);
+    console.log('shouldStartInTray:', shouldStartInTray);
+    console.log('wasOpenedAtLogin:', wasOpenedAtLogin);
+    console.log('finalShouldStartInTray:', finalShouldStartInTray);
+    console.log('autoLaunchEnabled:', autoLaunchEnabled);
+    console.log('loginItemSettings:', loginItemSettings);
+    console.log('isDev:', isDev);
+    console.log('========================');
+    
+    // Only create window if NOT starting in tray
+    if (!finalShouldStartInTray) {
+      console.log('Creating window (normal/user startup)');
+      createWindow();
+    } else {
+      console.log('App started in tray mode - NO WINDOW CREATED');
+      // Ensure no main window exists at all
+      // But background window should exist for push notifications
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.destroy();
+      }
+      mainWindow = null;
+      
+      // Ensure background window exists for push notifications
+      if (!backgroundWindow || backgroundWindow.isDestroyed()) {
+        createBackgroundWindow();
+      }
     }
   });
 }
@@ -244,13 +396,24 @@ app.on('window-all-closed', () => {
       // The close handler will show the warning dialog
       return;
     }
-    // Do not quit, keep running in tray
+    // Do not quit, keep running in tray (background window keeps running for notifications)
     // app.quit(); 
   }
 });
 
+// Handle app quit - destroy background window too
+app.on('before-quit', () => {
+  isQuitting = true;
+  // Destroy background window when quitting
+  if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+    backgroundWindow.destroy();
+    backgroundWindow = null;
+  }
+});
+
 app.on('activate', () => {
-  if (mainWindow === null) {
+  // Only create window if not in tray mode
+  if (mainWindow === null && !shouldStartInTray) {
     createWindow();
   }
 });
