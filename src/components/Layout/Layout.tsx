@@ -46,7 +46,6 @@ import ExitConfirmModal from './components/Modals/ExitConfirmModal';
 import NetworkModal from './components/Modals/NetworkModal';
 import AnnouncementModal from './components/Modals/AnnouncementModal';
 import SeenByModal from './components/Modals/SeenByModal';
-import PullToRefresh from '../PullToRefresh';
 
 // Import external dependencies
 import { useToast } from '../useToast';
@@ -997,11 +996,7 @@ const Layout: React.FC = () => {
         <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
         <AppContainer>
           <LayoutWrapper>
-            <PullToRefresh
-              onRefresh={handleRefresh}
-              disabled={isDownloadActive || !isOnline}
-            >
-              <MainArea $isTeacher={true}>
+            <MainArea $isTeacher={true}>
               <Header
                 user={user}
                 studentInfo={studentInfo}
@@ -1051,7 +1046,6 @@ const Layout: React.FC = () => {
                 </AnimatePresence>
               </ContentArea>
             </MainArea>
-            </PullToRefresh>
           </LayoutWrapper>
         </AppContainer>
 
