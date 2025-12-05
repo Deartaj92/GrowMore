@@ -1996,6 +1996,9 @@ const UserDashboard: React.FC = () => {
         return;
       }
       
+      // Push a history state when modal opens to trap back button
+      window.history.pushState({ modalOpen: true }, '', window.location.pathname);
+      
       // Show exit confirmation dialog
       showExitConfirmRef.current = true;
       setShowExitConfirm(true);
@@ -2038,25 +2041,15 @@ const UserDashboard: React.FC = () => {
 
     // Handle browser back button (Web/Electron)
     const handlePopState = (event: PopStateEvent) => {
-      // If modal is already showing, just prevent navigation and return
+      // If modal is already showing, push state back immediately to prevent navigation
       if (showExitConfirmRef.current) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        window.history.pushState(null, '', window.location.pathname);
+        // Push state back synchronously - this is critical for mobile
+        window.history.pushState({ modalOpen: true }, '', window.location.pathname);
         return;
       }
 
-      // Immediately prevent navigation
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      event.stopPropagation();
-      
-      // Show exit confirmation dialog
+      // Show exit confirmation dialog (this will push a new state)
       handleBackPress();
-
-      // Push the current state back to prevent navigation
-      window.history.pushState(null, '', window.location.pathname);
     };
 
     // Push initial state to trap back button
@@ -2066,19 +2059,31 @@ const UserDashboard: React.FC = () => {
 
     // Handle beforeunload to prevent accidental exits
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Only show exit confirm in Electron/Capacitor
+      // Prevent navigation if modal is open
       if (showExitConfirmRef.current) {
         event.preventDefault();
         event.returnValue = '';
+        // Also push state back as backup
+        window.history.pushState({ modalOpen: true }, '', window.location.pathname);
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Also listen to hashchange as backup for mobile browsers
+    const handleHashChange = () => {
+      if (showExitConfirmRef.current) {
+        window.history.pushState({ modalOpen: true }, '', window.location.pathname);
+      }
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
 
     return () => {
       if (removeCapListener) removeCapListener();
       window.removeEventListener('popstate', handlePopState, true);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('hashchange', handleHashChange);
       if (isWeb) {
         window.removeEventListener('keydown', handleKeyDown);
       }
@@ -2542,6 +2547,8 @@ const UserDashboard: React.FC = () => {
         <ModalOverlay theme={theme} onClick={() => {
           showExitConfirmRef.current = false;
           setShowExitConfirm(false);
+          // Replace history state when modal closes (remove modal state without navigating)
+          window.history.replaceState(null, '', window.location.pathname);
         }}>
           <ModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
             <div style={{ textAlign: 'center' }}>
@@ -2573,6 +2580,8 @@ const UserDashboard: React.FC = () => {
                   onClick={() => {
                     showExitConfirmRef.current = false;
                     setShowExitConfirm(false);
+                    // Replace history state when modal closes (remove modal state without navigating)
+                    window.history.replaceState(null, '', window.location.pathname);
                   }}
                   $color="#6b7280"
                   style={{ flex: 1 }}
@@ -2584,6 +2593,8 @@ const UserDashboard: React.FC = () => {
                   onClick={() => {
                     showExitConfirmRef.current = false;
                     setShowExitConfirm(false);
+                    // Replace history state when modal closes (remove modal state without navigating)
+                    window.history.replaceState(null, '', window.location.pathname);
                     handleExit();
                   }}
                   $color="#ef4444"
