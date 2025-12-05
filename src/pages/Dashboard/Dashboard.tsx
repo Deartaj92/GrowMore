@@ -54,12 +54,16 @@ import {
 import { fetchAdmissionsData as fetchAdmissionsDataService } from './services/admissionsService';
 import { fetchHomeworkDiary as fetchHomeworkDiaryService } from './services/homeworkService';
 import { fetchAbsentees as fetchAbsenteesService } from './services/attendanceService';
+import { fetchEmployeeAbsentees } from './services/employeeAttendanceService';
+import { fetchAccountsData, AccountsData } from './services/accountsService';
 import TabNavigation from './components/shared/TabNavigation';
 import DeleteModal from './components/shared/DeleteModal';
 import AttendanceTab from './components/AttendanceTab/AttendanceTab';
 import FeeTab from './components/FeeTab/FeeTab';
 import AdmissionsTab from './components/AdmissionsTab/AdmissionsTab';
 import HomeworkTab from './components/HomeworkTab/HomeworkTab';
+import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAttendanceTab';
+import AccountsTab from './components/AccountsTab/AccountsTab';
 
 // TypeScript declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -88,6 +92,7 @@ const Dashboard: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
   const [loadingStudents, setLoadingStudents] = useState(true);
@@ -123,6 +128,14 @@ const Dashboard: React.FC = () => {
     setAdmissionsDateTo(range.to);
   }, [dashboardDate, calculateAdmissionsDateRange]);
 
+  // Accounts date range state
+  const [accountsDateFrom, setAccountsDateFrom] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 11); // 12 months ago
+    return date.toISOString().slice(0, 10);
+  });
+  const [accountsDateTo, setAccountsDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+
   // Tab state
   const [activeTab, setActiveTab] = useState<DashboardTab>('attendance');
   const prevActiveTabRef = useRef<DashboardTab | null>(null);
@@ -141,6 +154,11 @@ const Dashboard: React.FC = () => {
       setAdmissionsLoading(true);
     } else if (newTab === 'homework') {
       setHomeworkLoading(true);
+    } else if (newTab === 'employeeAttendance') {
+      setEmployeeAttendanceStatsLoading(true);
+      setEmployeeAttendanceChartsLoading(true);
+    } else if (newTab === 'accounts') {
+      setAccountsLoading(true);
     }
     
     setActiveTab(newTab);
@@ -178,6 +196,29 @@ const Dashboard: React.FC = () => {
   const [exportAbsentLoading, setExportAbsentLoading] = useState(false);
   const [exportPresentLoading, setExportPresentLoading] = useState(false);
   const [isAbsenteesExpanded, setIsAbsenteesExpanded] = useExpandedState('dashboard_absentees_expanded');
+
+  // Employee attendance state
+  const [employeeAbsentees, setEmployeeAbsentees] = useState<any[]>([]);
+  const [staffDetails, setStaffDetails] = useState<Record<string, any>>({});
+  const [employeeAttendanceDataForDate, setEmployeeAttendanceDataForDate] = useState<any[]>([]);
+  const [employeeAttendanceStatsLoading, setEmployeeAttendanceStatsLoading] = useState(false);
+  const [employeeAttendanceTrendData, setEmployeeAttendanceTrendData] = useState<Array<{ day: string; rate: number }>>([]);
+  const [employeeAttendanceChartsLoading, setEmployeeAttendanceChartsLoading] = useState(false);
+  const [employeeTodayAttendanceRate, setEmployeeTodayAttendanceRate] = useState(0);
+  const [employeeWeekAvgAttendanceRate, setEmployeeWeekAvgAttendanceRate] = useState(0);
+  const [employeeAbsentDate, setEmployeeAbsentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [isEmployeeAbsenteesExpanded, setIsEmployeeAbsenteesExpanded] = useExpandedState('dashboard_employee_absentees_expanded');
+  const [exportEmployeeAbsentLoading, setExportEmployeeAbsentLoading] = useState(false);
+  const [exportEmployeePresentLoading, setExportEmployeePresentLoading] = useState(false);
+
+  // Accounts state
+  const [accountsData, setAccountsData] = useState<AccountsData>({
+    summary: { income: 0, expenses: 0, profitLoss: 0, cash: 0 },
+    cashAccounts: [],
+    incomeVsExpenses: { income: 0, expenses: 0 },
+    monthlyData: []
+  });
+  const [accountsLoading, setAccountsLoading] = useState(false);
 
   // Fee state
   const [feeSummary, setFeeSummary] = useState<FeeSummary>({
@@ -372,6 +413,11 @@ const Dashboard: React.FC = () => {
       setClasses(dummyClasses);
       setSections(dummySections);
       setAttendanceToday(dummyAttendance);
+      setStaff(Array.from({ length: 50 }, (_, i) => ({
+        id: i + 1,
+        name: `Staff ${i + 1}`,
+        role: ['Teacher', 'Principal', 'Admin'][i % 3],
+      })));
       setLoadingStudents(false);
       setAllDataLoaded(true);
       setInitialLoad(false);
@@ -449,7 +495,7 @@ const Dashboard: React.FC = () => {
     setProgress(60);
 
     const limitedStudentIds = studentIds.slice(0, 5000);
-    const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: attendanceData }] = await Promise.all([
+    const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: attendanceData }, { data: staffData }] = await Promise.all([
       supabase.from('students')
         .select('id, name, father_name, gender, status, class_id, section_id')
         .eq('school_id', user.school_id)
@@ -462,6 +508,9 @@ const Dashboard: React.FC = () => {
         .eq('date', today)
         .eq('session_id', sessionDataResult.id)
         .eq('school_id', user.school_id),
+      supabase.from('staff')
+        .select('id, name, role')
+        .eq('school_id', user.school_id),
     ]);
 
     setProgress(80);
@@ -470,6 +519,7 @@ const Dashboard: React.FC = () => {
     setClasses(classesData || []);
     setSections(sectionsData || []);
     setAttendanceToday(attendanceData || []);
+    setStaff(staffData || []);
 
     setProgress(90);
     setLoadingStudents(false);
@@ -1196,6 +1246,185 @@ const Dashboard: React.FC = () => {
     });
   }, [activeTab, dashboardDate, user?.school_id]);
 
+  // Fetch employee absentees
+  useEffect(() => {
+    if (activeTab !== 'employeeAttendance') return;
+    if (!employeeAbsentDate || !user?.school_id) return;
+    fetchEmployeeAbsentees(
+      String(user.school_id),
+      employeeAbsentDate,
+      sessionData?.id || '',
+      staff,
+      setEmployeeAbsentees,
+      setStaffDetails,
+      getCachedSession
+    );
+  }, [activeTab, employeeAbsentDate, user?.school_id, sessionData?.id, getCachedSession]);
+
+  // Fetch employee attendance for date
+  useEffect(() => {
+    if (activeTab !== 'employeeAttendance') return;
+    
+    const fetchEmployeeAttendanceForDate = async () => {
+      if (!user?.school_id || !dashboardDate) return;
+
+      setEmployeeAttendanceStatsLoading(true);
+      try {
+        if (USE_DUMMY_DATA) {
+          const dummyStaffIds = staff.length > 0 
+            ? staff.map(s => s.id)
+            : Array.from({ length: 50 }, (_, i) => i + 1);
+          const dummyAttendance = dummyStaffIds.map((staffId, i) => ({
+            id: i + 1,
+            staff_id: staffId,
+            status: ['present', 'absent', 'leave', 'late', 'half_day'][i % 5],
+            date: dashboardDate,
+            session_id: sessionData?.id || 1,
+          }));
+          setEmployeeAttendanceDataForDate(dummyAttendance);
+          setEmployeeAttendanceStatsLoading(false);
+          return;
+        }
+
+        const sessionDataResult = await getCachedSession();
+        if (!sessionDataResult?.id) {
+          setEmployeeAttendanceDataForDate([]);
+          setEmployeeAttendanceStatsLoading(false);
+          return;
+        }
+
+        const { data: attendanceData } = await supabase
+          .from('staff_attendance_records')
+          .select('staff_id, status, date')
+          .eq('date', dashboardDate)
+          .eq('session_id', sessionDataResult.id)
+          .eq('school_id', user.school_id);
+
+        setEmployeeAttendanceDataForDate(attendanceData || []);
+      } catch (error) {
+        console.error('Error fetching employee attendance:', error);
+        setEmployeeAttendanceDataForDate([]);
+      } finally {
+        setEmployeeAttendanceStatsLoading(false);
+      }
+    };
+    fetchEmployeeAttendanceForDate();
+  }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, getCachedSession]);
+
+  // Calculate employee attendance stats
+  const employeePresentToday = employeeAttendanceDataForDate.filter(a => a.status === 'present').length;
+  const employeeAbsentToday = employeeAttendanceDataForDate.filter(a => a.status === 'absent').length;
+  const employeeLeaveToday = employeeAttendanceDataForDate.filter(a => a.status === 'leave').length;
+  const employeeLateToday = employeeAttendanceDataForDate.filter(a => a.status === 'late').length;
+  const employeeHalfDayCount = employeeAttendanceDataForDate.filter(a => a.status === 'half_day').length;
+  const employeeTotalMarked = employeeAttendanceDataForDate.length;
+  const employeePresentPercent = employeeTotalMarked ? Math.round((employeePresentToday / employeeTotalMarked) * 1000) / 10 : 0;
+  const employeeAbsentPercent = employeeTotalMarked ? Math.round((employeeAbsentToday / employeeTotalMarked) * 1000) / 10 : 0;
+  const employeeLeavePercent = employeeTotalMarked ? Math.round((employeeLeaveToday / employeeTotalMarked) * 1000) / 10 : 0;
+  const employeeLatePercent = employeeTotalMarked ? Math.round((employeeLateToday / employeeTotalMarked) * 1000) / 10 : 0;
+  const employeeHalfDayPercent = employeeTotalMarked ? Math.round((employeeHalfDayCount / employeeTotalMarked) * 1000) / 10 : 0;
+
+  // Fetch employee attendance trend (simplified)
+  useEffect(() => {
+    const fetchEmployeeAttendanceTrend = async () => {
+      if (!user?.school_id || !sessionData?.id || !dashboardDate || activeTab !== 'employeeAttendance') return;
+
+      setEmployeeAttendanceChartsLoading(true);
+      try {
+        if (USE_DUMMY_DATA) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const trendData = Array.from({ length: 30 }, (_, i) => ({
+            day: `${i + 1}/${12}`,
+            rate: Math.floor(Math.random() * 30) + 70
+          }));
+          setEmployeeAttendanceTrendData(trendData);
+          setEmployeeTodayAttendanceRate(85);
+          setEmployeeWeekAvgAttendanceRate(82);
+          setEmployeeAttendanceChartsLoading(false);
+          return;
+        }
+
+        // Simplified trend - fetch all data at once instead of 30 sequential calls
+        const selectedDate = new Date(dashboardDate);
+        const startDate = new Date(selectedDate);
+        startDate.setDate(startDate.getDate() - 29);
+        const startDateStr = startDate.toISOString().slice(0, 10);
+        const endDateStr = selectedDate.toISOString().slice(0, 10);
+
+        const { data: allAttendanceData } = await supabase
+          .from('staff_attendance_records')
+          .select('date, status')
+          .gte('date', startDateStr)
+          .lte('date', endDateStr)
+          .eq('session_id', sessionData.id)
+          .eq('school_id', user.school_id)
+          .order('date', { ascending: true });
+
+        // Group by date
+        const attendanceByDate = new Map<string, { total: number; present: number }>();
+        
+        if (allAttendanceData && allAttendanceData.length > 0) {
+          allAttendanceData.forEach((record: any) => {
+            const dateStr = record.date?.split('T')[0] || record.date;
+            if (!attendanceByDate.has(dateStr)) {
+              attendanceByDate.set(dateStr, { total: 0, present: 0 });
+            }
+            const stats = attendanceByDate.get(dateStr)!;
+            stats.total++;
+            if (record.status === 'present' || record.status === 'late' || record.status === 'half_day') {
+              stats.present++;
+            }
+          });
+        }
+
+        // Build trend data array
+        const trendData: Array<{ day: string; rate: number }> = [];
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date(selectedDate);
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toISOString().slice(0, 10);
+          
+          const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
+          const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+          
+          trendData.push({
+            day: `${date.getDate()}/${date.getMonth() + 1}`,
+            rate
+          });
+        }
+
+        setEmployeeAttendanceTrendData(trendData);
+        setEmployeeTodayAttendanceRate(trendData[trendData.length - 1]?.rate || 0);
+        const avg = trendData.length > 0 
+          ? Math.round(trendData.reduce((sum, d) => sum + d.rate, 0) / trendData.length)
+          : 0;
+        setEmployeeWeekAvgAttendanceRate(avg);
+      } catch (error) {
+        console.error('Error fetching employee attendance trend:', error);
+      } finally {
+        setEmployeeAttendanceChartsLoading(false);
+      }
+    };
+    fetchEmployeeAttendanceTrend();
+  }, [dashboardDate, user?.school_id, sessionData?.id, activeTab]);
+
+  // Fetch accounts data
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      if (!user?.school_id || !accountsDateFrom || !accountsDateTo || activeTab !== 'accounts') return;
+      
+      await fetchAccountsData(
+        String(user.school_id),
+        accountsDateFrom,
+        accountsDateTo,
+        setAccountsData,
+        setAccountsLoading,
+        getCachedSession
+      );
+    };
+    fetchAccounts();
+  }, [accountsDateFrom, accountsDateTo, user?.school_id, activeTab]);
+
   // Reset loading states when switching tabs
   useEffect(() => {
     if (prevActiveTabRef.current !== null && prevActiveTabRef.current !== activeTab) {
@@ -1209,6 +1438,21 @@ const Dashboard: React.FC = () => {
         setAdmissionsLoading(true);
       } else if (activeTab === 'homework') {
         setHomeworkLoading(true);
+      } else if (activeTab === 'employeeAttendance') {
+        setEmployeeAttendanceStatsLoading(true);
+        setEmployeeAttendanceChartsLoading(true);
+      } else if (activeTab === 'accounts') {
+        setAccountsLoading(true);
+      } else {
+        // Reset employee attendance loading states when switching away
+        if (prevActiveTabRef.current === 'employeeAttendance') {
+          setEmployeeAttendanceStatsLoading(false);
+          setEmployeeAttendanceChartsLoading(false);
+        }
+        // Reset accounts loading states when switching away
+        if (prevActiveTabRef.current === 'accounts') {
+          setAccountsLoading(false);
+        }
       }
     }
     prevActiveTabRef.current = activeTab;
@@ -1828,6 +2072,505 @@ const Dashboard: React.FC = () => {
     }
   }, [attendanceDataForDate, user?.school_id, dashboardDate, schoolName, toast, savePdf, getCachedSession]);
 
+  // Export absent employees PDF
+  const exportEmployeeAbsenteesPDF = useCallback(async () => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    setExportEmployeeAbsentLoading(true);
+    try {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobileDevice) {
+        toast.showToast('Generating PDF for mobile... Please wait.', 'success');
+      }
+
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (sessionError && !isNoSessionError(sessionError)) {
+        toast.showToast('Failed to fetch active session', 'error');
+        setExportEmployeeAbsentLoading(false);
+        return;
+      }
+
+      if (!sessionData?.id) {
+        toast.showToast('No active session found', 'error');
+        setExportEmployeeAbsentLoading(false);
+        return;
+      }
+
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from('staff_attendance_records')
+        .select(`
+          id,
+          staff_id,
+          status,
+          remarks,
+          date
+        `)
+        .eq('date', employeeAbsentDate)
+        .eq('session_id', sessionData.id)
+        .eq('school_id', user.school_id)
+        .or('status.eq.absent,status.eq.leave');
+
+      if (attendanceError || !attendanceData || attendanceData.length === 0) {
+        toast.showToast('No absent employees to export.', 'error');
+        setExportEmployeeAbsentLoading(false);
+        return;
+      }
+
+      const staffIds = attendanceData
+        .map(record => record.staff_id)
+        .filter((id, index, self) => id && self.indexOf(id) === index);
+
+      if (staffIds.length === 0) {
+        toast.showToast('No absent employees to export.', 'error');
+        setExportEmployeeAbsentLoading(false);
+        return;
+      }
+
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select(`
+          id,
+          name,
+          role,
+          mobile
+        `)
+        .in('id', staffIds)
+        .eq('school_id', user.school_id);
+
+      if (!staffData) {
+        toast.showToast('Failed to fetch absent employees details.', 'error');
+        setExportEmployeeAbsentLoading(false);
+        return;
+      }
+
+      const monthStart = format(startOfMonth(parseISO(employeeAbsentDate)), 'yyyy-MM-dd');
+      const monthEnd = format(endOfMonth(parseISO(employeeAbsentDate)), 'yyyy-MM-dd');
+
+      const { data: monthlyAttendance } = await supabase
+        .from('staff_attendance_records')
+        .select('staff_id, status, date')
+        .in('staff_id', staffIds)
+        .gte('date', monthStart)
+        .lte('date', monthEnd)
+        .eq('school_id', user.school_id);
+
+      const absentEmployees = staffData.map(employee => {
+        const attendanceRecord = attendanceData.find(record => record.staff_id === employee.id);
+        const employeeMonthlyAttendance = monthlyAttendance?.filter(a => a.staff_id === employee.id) || [];
+        const totalDays = employeeMonthlyAttendance.length;
+        const absentDays = employeeMonthlyAttendance.filter(a => a.status === 'absent' || a.status === 'leave').length;
+        const attendancePercentage = totalDays > 0 ? ((totalDays - absentDays) / totalDays * 100).toFixed(1) : '100.0';
+
+        return {
+          id: employee.id,
+          name: employee.name || '',
+          role: employee.role || '',
+          mobile: employee.mobile || '',
+          status: attendanceRecord?.status || 'absent',
+          monthly_absences: absentDays,
+          attendance_percentage: attendancePercentage
+        };
+      }).sort((a, b) => {
+        const roleComparison = (a.role || '').localeCompare(b.role || '');
+        if (roleComparison !== 0) return roleComparison;
+        return a.name.localeCompare(b.name);
+      });
+
+      const { data: completeAttendanceData } = await supabase
+        .from('staff_attendance_records')
+        .select('staff_id, status, date')
+        .eq('date', employeeAbsentDate)
+        .eq('session_id', sessionData.id)
+        .eq('school_id', user.school_id);
+
+      const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
+      const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
+      const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
+      const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
+      const halfDayCount = completeAttendanceData?.filter(a => a.status === 'half_day').length || 0;
+      const totalCount = completeAttendanceData?.length || 0;
+      const attPercent = totalCount ? (((presentCount + lateCount + halfDayCount) / totalCount) * 100).toFixed(1) : '0.0';
+
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('Absent Employees Report', 15, 18);
+      doc.setFontSize(11);
+      const [yyyy, mm, dd] = employeeAbsentDate.split('-');
+      const formattedDate = `${dd}-${mm}-${yyyy}`;
+      doc.text(`Date: ${formattedDate}`, 15, 26);
+      doc.setFontSize(10);
+      doc.setTextColor(99, 102, 241);
+      doc.text(`Total: ${totalCount}`, 120, 18);
+      doc.setTextColor(34, 197, 94);
+      doc.text(`Present: ${presentCount + lateCount + halfDayCount}`, 120, 24);
+      doc.setTextColor(239, 68, 68);
+      doc.text(`Absent: ${absentCount}`, 170, 18);
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Leave: ${leaveCount}`, 170, 24);
+      doc.setTextColor(234, 179, 8);
+      doc.text(`Late: ${lateCount}`, 120, 30);
+      doc.setTextColor(139, 92, 246);
+      doc.text(`Half Day: ${halfDayCount}`, 170, 30);
+      let perColor: [number, number, number] = [34, 197, 94];
+      const perVal = parseFloat(attPercent);
+      if (perVal < 75) perColor = [239, 68, 68];
+      else if (perVal < 85) perColor = [234, 179, 8];
+      doc.setTextColor(...perColor);
+      doc.text(`Per%: ${attPercent}%`, 120, 36);
+      doc.setTextColor(0, 0, 0);
+
+      autoTable(doc, {
+        startY: 42,
+        head: [['SNo', 'ID', 'Name', 'Role', 'Mobile', 'Status', 'M.A', 'Att%']],
+        body: absentEmployees.map((employee, idx) => [
+          idx + 1,
+          `E${employee.id}`,
+          employee.name,
+          employee.role,
+          employee.mobile,
+          employee.status === 'absent' ? 'Absent' : 'Leave',
+          employee.monthly_absences,
+          `${employee.attendance_percentage}%`
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: [99, 102, 241],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2,
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2,
+          halign: 'center',
+          textColor: [60, 60, 60],
+          minCellHeight: 6,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        alternateRowStyles: { fillColor: [232, 240, 254] },
+        margin: { top: 42, left: 10, right: 10 },
+        columnStyles: {
+          0: { cellWidth: 14, halign: 'center' },
+          1: { cellWidth: 14, halign: 'center' },
+          2: { cellWidth: 32, halign: 'left' },
+          3: { cellWidth: 28, halign: 'left' },
+        },
+        didParseCell: function (data) {
+          if (data.column.index === 5) {
+            if (data.cell.raw === 'Absent') data.cell.styles.textColor = [239, 68, 68];
+            if (data.cell.raw === 'Leave') data.cell.styles.textColor = [37, 99, 235];
+          }
+          if (data.column.index === 7) {
+            const percent = parseInt(String(data.cell.raw || '').replace('%', ''));
+            if (percent < 75) data.cell.styles.textColor = [239, 68, 68];
+            else if (percent < 85) data.cell.styles.textColor = [234, 179, 8];
+            else data.cell.styles.textColor = [34, 197, 94];
+          }
+        },
+      });
+
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        10,
+        doc.internal.pageSize.height - 10
+      );
+
+      const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
+      const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
+      
+      if (isCapacitor) {
+        const pdfBlob = doc.output('blob');
+        await savePdf(pdfBlob, `Absent Employees (${formattedDate}).pdf`, true);
+      } else if (isElectron) {
+        let electron;
+        try {
+          electron = (window as any).electron || (window as any).require && (window as any).require('electron');
+        } catch (e) { electron = null; }
+        if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
+          const path = electron.remote.require('path');
+          const documentsPath = electron.remote.app.getPath('documents');
+          const defaultFilePath = path.join(documentsPath, `Absent Employees (${formattedDate}).pdf`);
+          const { filePath } = await electron.remote.dialog.showSaveDialog({
+            title: 'Save Absent Employees Report',
+            defaultPath: defaultFilePath,
+            filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+          });
+          if (filePath) {
+            const pdfBuffer = doc.output('arraybuffer');
+            const fs = electron.remote.require('fs');
+            fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
+            alert(`PDF saved successfully to: ${filePath}`);
+          }
+        } else {
+          const formatDateForFileName = (date: Date) => {
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          };
+          const fileName = `Absent Employees (${formatDateForFileName(new Date())}).pdf`;
+          doc.save(fileName);
+          toast.showToast('Absent employees PDF generated successfully', 'success');
+        }
+      } else {
+        const formatDateForFileName = (date: Date) => {
+          const day = date.getDate().toString().padStart(2, '0');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const month = months[date.getMonth()];
+          const year = date.getFullYear();
+          return `${day}-${month}-${year}`;
+        };
+        const fileName = `Absent Employees (${formatDateForFileName(new Date())}).pdf`;
+        doc.save(fileName);
+        toast.showToast('Absent employees PDF generated successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error exporting absent employees PDF:', error);
+      toast.showToast('Failed to export absent employees PDF', 'error');
+    } finally {
+      setExportEmployeeAbsentLoading(false);
+    }
+  }, [employeeAbsentees, user?.school_id, employeeAbsentDate, schoolName, toast, savePdf, getCachedSession]);
+
+  // Export present employees PDF
+  const exportPresentEmployeesPDF = useCallback(async () => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    setExportEmployeePresentLoading(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (sessionError && !isNoSessionError(sessionError)) {
+        toast.showToast('Failed to fetch active session', 'error');
+        setExportEmployeePresentLoading(false);
+        return;
+      }
+
+      if (!sessionData?.id) {
+        toast.showToast('No active session found', 'error');
+        setExportEmployeePresentLoading(false);
+        return;
+      }
+
+      const presentRecords = employeeAttendanceDataForDate.filter(a => 
+        a.status === 'present' || a.status === 'late' || a.status === 'half_day'
+      );
+      if (presentRecords.length === 0) {
+        toast.showToast('No present employees to export.', 'error');
+        setExportEmployeePresentLoading(false);
+        return;
+      }
+
+      const staffIds = presentRecords
+        .map(record => record.staff_id)
+        .filter((id, index, self) => id && self.indexOf(id) === index);
+
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select(`
+          id,
+          name,
+          role,
+          mobile
+        `)
+        .in('id', staffIds)
+        .eq('school_id', user.school_id);
+
+      if (!staffData) {
+        toast.showToast('Failed to fetch present employees details.', 'error');
+        setExportEmployeePresentLoading(false);
+        return;
+      }
+
+      const presentEmployees = staffData.map(employee => {
+        const attendanceRecord = presentRecords.find(record => record.staff_id === employee.id);
+        return {
+          id: employee.id,
+          name: employee.name || '',
+          role: employee.role || '',
+          mobile: employee.mobile || '',
+          status: attendanceRecord?.status || 'present'
+        };
+      }).sort((a, b) => {
+        const roleComparison = (a.role || '').localeCompare(b.role || '');
+        if (roleComparison !== 0) return roleComparison;
+        return a.name.localeCompare(b.name);
+      });
+
+      const { data: completeAttendanceData } = await supabase
+        .from('staff_attendance_records')
+        .select('staff_id, status, date')
+        .eq('date', dashboardDate)
+        .eq('session_id', sessionData.id)
+        .eq('school_id', user.school_id);
+
+      const presentCount = completeAttendanceData?.filter(a => 
+        a.status === 'present' || a.status === 'late' || a.status === 'half_day'
+      ).length || 0;
+      const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
+      const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
+      const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
+      const halfDayCount = completeAttendanceData?.filter(a => a.status === 'half_day').length || 0;
+      const totalCount = completeAttendanceData?.length || 0;
+      const attPercent = totalCount ? (((presentCount) / totalCount) * 100).toFixed(1) : '0.0';
+
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('Present Employees Report', 15, 18);
+      doc.setFontSize(11);
+      const [yyyy, mm, dd] = dashboardDate.split('-');
+      const formattedDate = `${dd}-${mm}-${yyyy}`;
+      doc.text(`Date: ${formattedDate}`, 15, 26);
+      doc.setFontSize(10);
+      doc.setTextColor(99, 102, 241);
+      doc.text(`Total: ${totalCount}`, 120, 18);
+      doc.setTextColor(34, 197, 94);
+      doc.text(`Present: ${presentCount}`, 120, 24);
+      doc.setTextColor(239, 68, 68);
+      doc.text(`Absent: ${absentCount}`, 170, 18);
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Leave: ${leaveCount}`, 170, 24);
+      doc.setTextColor(234, 179, 8);
+      doc.text(`Late: ${lateCount}`, 120, 30);
+      doc.setTextColor(139, 92, 246);
+      doc.text(`Half Day: ${halfDayCount}`, 170, 30);
+      let perColor: [number, number, number] = [34, 197, 94];
+      const perVal = parseFloat(attPercent);
+      if (perVal < 75) perColor = [239, 68, 68];
+      else if (perVal < 85) perColor = [234, 179, 8];
+      doc.setTextColor(...perColor);
+      doc.text(`Per%: ${attPercent}%`, 120, 36);
+      doc.setTextColor(0, 0, 0);
+
+      autoTable(doc, {
+        startY: 42,
+        head: [['SNo', 'ID', 'Name', 'Role', 'Mobile', 'Status']],
+        body: presentEmployees.map((employee, idx) => [
+          idx + 1,
+          `E${employee.id}`,
+          employee.name,
+          employee.role,
+          employee.mobile,
+          employee.status === 'late' ? 'Late' : 
+          employee.status === 'half_day' ? 'Half Day' : 'Present'
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: [34, 197, 94],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2,
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2,
+          halign: 'center',
+          textColor: [60, 60, 60],
+          minCellHeight: 6,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        alternateRowStyles: { fillColor: [240, 253, 244] },
+        margin: { top: 42, left: 10, right: 10 },
+        columnStyles: {
+          0: { cellWidth: 14, halign: 'center' },
+          1: { cellWidth: 14, halign: 'center' },
+          2: { cellWidth: 32, halign: 'left' },
+          3: { cellWidth: 28, halign: 'left' },
+        },
+      });
+
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        10,
+        doc.internal.pageSize.height - 10
+      );
+
+      const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
+      const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
+      
+      if (isCapacitor) {
+        const pdfBlob = doc.output('blob');
+        await savePdf(pdfBlob, `Present Employees (${formattedDate}).pdf`, true);
+      } else if (isElectron) {
+        let electron;
+        try {
+          electron = (window as any).electron || (window as any).require && (window as any).require('electron');
+        } catch (e) { electron = null; }
+        if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
+          const path = electron.remote.require('path');
+          const documentsPath = electron.remote.app.getPath('documents');
+          const defaultFilePath = path.join(documentsPath, `Present Employees (${formattedDate}).pdf`);
+          const { filePath } = await electron.remote.dialog.showSaveDialog({
+            title: 'Save Present Employees Report',
+            defaultPath: defaultFilePath,
+            filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+          });
+          if (filePath) {
+            const pdfBuffer = doc.output('arraybuffer');
+            const fs = electron.remote.require('fs');
+            fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
+            alert(`PDF saved successfully to: ${filePath}`);
+          }
+        } else {
+          const formatDateForFileName = (date: Date) => {
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          };
+          const fileName = `Present Employees (${formatDateForFileName(new Date())}).pdf`;
+          doc.save(fileName);
+          toast.showToast('Present employees PDF generated successfully', 'success');
+        }
+      } else {
+        const formatDateForFileName = (date: Date) => {
+          const day = date.getDate().toString().padStart(2, '0');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const month = months[date.getMonth()];
+          const year = date.getFullYear();
+          return `${day}-${month}-${year}`;
+        };
+        const fileName = `Present Employees (${formatDateForFileName(new Date())}).pdf`;
+        doc.save(fileName);
+        toast.showToast('Present employees PDF generated successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error exporting present employees PDF:', error);
+      toast.showToast('Failed to export present employees PDF', 'error');
+    } finally {
+      setExportEmployeePresentLoading(false);
+    }
+  }, [employeeAttendanceDataForDate, user?.school_id, dashboardDate, schoolName, toast, savePdf, getCachedSession]);
+
   // ==========================================
   // DELETE FINE HANDLERS
   // ==========================================
@@ -2048,6 +2791,66 @@ const Dashboard: React.FC = () => {
           homeworkLoading={homeworkLoading}
           homeworkDiaryData={homeworkDiaryData}
           dashboardDate={dashboardDate}
+        />
+      )}
+
+      {activeTab === 'employeeAttendance' && (
+        <EmployeeAttendanceTab
+          presentToday={employeePresentToday}
+          absentToday={employeeAbsentToday}
+          leaveToday={employeeLeaveToday}
+          lateToday={employeeLateToday}
+          halfDayCount={employeeHalfDayCount}
+          presentPercent={employeePresentPercent}
+          absentPercent={employeeAbsentPercent}
+          leavePercent={employeeLeavePercent}
+          latePercent={employeeLatePercent}
+          halfDayPercent={employeeHalfDayPercent}
+          attendanceStatsLoading={employeeAttendanceStatsLoading}
+          attendanceChartsLoading={employeeAttendanceChartsLoading}
+          attendanceTrendData={employeeAttendanceTrendData}
+          todayAttendanceRate={employeeTodayAttendanceRate}
+          weekAvgAttendanceRate={employeeWeekAvgAttendanceRate}
+          absentDate={employeeAbsentDate}
+          setAbsentDate={setEmployeeAbsentDate}
+          isAbsenteesExpanded={isEmployeeAbsenteesExpanded}
+          setIsAbsenteesExpanded={setIsEmployeeAbsenteesExpanded}
+          absentees={employeeAbsentees}
+          staffDetails={staffDetails}
+          attendanceDataForDate={employeeAttendanceDataForDate}
+          exportAbsentLoading={exportEmployeeAbsentLoading}
+          exportPresentLoading={exportEmployeePresentLoading}
+          exportAbsenteesPDF={exportEmployeeAbsenteesPDF}
+          exportPresentEmployeesPDF={exportPresentEmployeesPDF}
+          showExportDropdown={showExportDropdown}
+          setShowExportDropdown={setShowExportDropdown}
+          exportDropdownRef={exportDropdownRef}
+          dropdownIdx={dropdownIdx}
+          setDropdownIdx={setDropdownIdx}
+          dropdownPos={dropdownPos}
+          setDropdownPos={setDropdownPos}
+          dropdownDirection={dropdownDirection}
+          setDropdownDirection={setDropdownDirection}
+          dropdownRef={dropdownRef}
+          hoveredAvatar={hoveredAvatar}
+          setHoveredAvatar={setHoveredAvatar}
+          setAbsentees={setEmployeeAbsentees}
+          setAttendanceDataForDate={setEmployeeAttendanceDataForDate}
+          user={user}
+          schoolName={schoolName}
+          showAbsentees={true}
+          isMobile={isMobile}
+        />
+      )}
+
+      {activeTab === 'accounts' && (
+        <AccountsTab
+          accountsData={accountsData}
+          accountsLoading={accountsLoading}
+          accountsDateFrom={accountsDateFrom}
+          setAccountsDateFrom={setAccountsDateFrom}
+          accountsDateTo={accountsDateTo}
+          setAccountsDateTo={setAccountsDateTo}
         />
       )}
 

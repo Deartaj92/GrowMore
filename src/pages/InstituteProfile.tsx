@@ -11,48 +11,87 @@ import { useLoading } from '../contexts/LoadingContext';
 import Loader from '../components/Loader';
 
 const PageContainer = styled.div`
-  width: 100vw;
-  min-height: 100vh;
+  width: 100%;
+  min-height: calc(100vh - 80px);
   background: ${props => props.theme.BG};
-  padding: 0;
+  padding: 20px 16px;
+  
+  @media (max-width: 768px) {
+    padding: 16px 12px;
+  }
 `;
 
 const MainContent = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
   width: 100%;
-  min-height: 100vh;
-  padding: 3.5rem 0 3.5rem 0;
+`;
+
+const PageHeader = styled.div`
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid ${props => props.theme.BORDER};
+`;
+
+const PageTitle = styled.h1`
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: ${props => props.theme.TEXT_PRIMARY};
+  margin: 0 0 6px 0;
+  letter-spacing: -0.3px;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  box-sizing: border-box;
+  align-items: center;
+  gap: 10px;
+  
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
+`;
+
+const PageSubtitle = styled.p`
+  font-size: 0.9rem;
+  color: ${props => props.theme.TEXT_SECONDARY};
+  margin: 0;
+  line-height: 1.5;
 `;
 
 const Card = styled.div`
   background: ${props => props.theme.CARD};
-  border-radius: 18px;
-  box-shadow: ${props => props.theme.SHADOW};
-  padding: 2.5rem 2rem;
-  border: 1.5px solid ${props => props.theme.BORDER};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 32px;
+  border: 1px solid ${props => props.theme.BORDER};
   width: 100%;
-  max-width: 950px;
-  min-height: 420px;
-  margin: 0 1.5rem;
+  
+  @media (max-width: 768px) {
+    padding: 24px 20px;
+    border-radius: 12px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 20px 16px;
+  }
 `;
 
 const CardGrid = styled.div`
   display: grid;
-  grid-template-columns: 200px 1fr 1fr;
-  gap: 2rem 2rem;
+  grid-template-columns: 240px 1fr;
+  gap: 32px;
   width: 100%;
-  min-height: 320px;
   position: relative;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 200px 1fr;
+    gap: 28px;
+  }
+  
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
-    align-items: center;
+    gap: 32px;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 24px;
   }
 `;
 
@@ -60,27 +99,28 @@ const AvatarCol = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100%;
+  justify-content: flex-start;
   min-width: 0;
+  
   @media (max-width: 900px) {
-    grid-column: 1 / -1;
-    margin-bottom: 1.5rem;
-  }
-  @media (max-width: 600px) {
-    margin-bottom: 0.5rem;
+    width: 100%;
+    align-items: center;
   }
 `;
 
 const FieldsCol = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
   min-width: 0;
+  
   @media (max-width: 900px) {
-    align-items: center;
-    width: 100%;
-    gap: 1.2rem;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  @media (max-width: 480px) {
+    gap: 18px;
   }
 `;
 
@@ -88,22 +128,38 @@ const LogoBlock = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 1.5rem;
+  width: 100%;
+  padding: 20px;
+  background: ${props => props.theme.FIELD_BG};
+  border-radius: 12px;
+  border: 1px solid ${props => props.theme.BORDER};
+  
+  @media (max-width: 900px) {
+    max-width: 300px;
+    margin: 0 auto;
+  }
 `;
 
 const LogoCircle = styled.div`
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: ${props => props.theme.ICON_BG};
-  border: 3px solid ${props => props.theme.ACCENT};
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  background: ${props => props.theme.ICON_BG || props.theme.FIELD_BG};
+  border: 2px solid ${props => props.theme.BORDER};
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  
   @media (max-width: 600px) {
+    width: 140px;
+    height: 140px;
+  }
+  
+  @media (max-width: 480px) {
     width: 120px;
     height: 120px;
   }
@@ -112,9 +168,11 @@ const LogoCircle = styled.div`
 const LogoButtonsContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  align-items: center;
+  gap: 10px;
+  align-items: stretch;
   justify-content: center;
+  width: 100%;
+  max-width: 180px;
 `;
 
 const LogoImg = styled.img`
@@ -126,64 +184,73 @@ const LogoImg = styled.img`
 const LogoUploadLabel = styled.label`
   background: ${props => props.theme.ACCENT};
   color: white;
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  border: 1px solid ${props => props.theme.BORDER};
-  opacity: 0.9;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  width: 100%;
+  gap: 8px;
   justify-content: center;
+  box-shadow: 0 2px 8px ${props => props.theme.ACCENT}33;
   
   &:hover { 
-    opacity: 1;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px ${props => props.theme.ACCENT}44;
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const RemoveLogoLink = styled.button`
-  background: ${props => props.theme.CANCEL_BG};
+  background: ${props => props.theme.FIELD_BG};
   border: 1px solid ${props => props.theme.BORDER};
-  color: ${props => props.theme.CANCEL_COLOR};
-  font-size: 0.9rem;
-  font-weight: 500;
+  color: ${props => props.theme.TEXT_PRIMARY};
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 8px;
   transition: all 0.2s ease;
-  opacity: 0.85;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  width: 100%;
+  gap: 8px;
   justify-content: center;
   
   &:hover { 
-    opacity: 1;
-    background: ${props => props.theme === darkTheme ? '#3a3a3a' : '#e5e5e5'};
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+      ? props.theme.BORDER 
+      : '#f3f4f6'};
+    border-color: ${props => props.theme.TEXT_SECONDARY};
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const FieldGroup = styled.div`
   width: 100%;
-  margin-bottom: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  
   @media (max-width: 900px) {
-    width: 100%;
-    max-width: 400px;
+    grid-column: 1 / -1;
   }
 `;
 
 const Label = styled.label`
   display: block;
-  margin-bottom: 0.4rem;
   color: ${props => props.theme.TEXT_SECONDARY};
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.2px;
 `;
 
 const Value = styled.div`
@@ -195,13 +262,30 @@ const Value = styled.div`
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.7rem;
-  border: 1px solid ${props => props.theme.FIELD_BORDER};
+  padding: 12px 14px;
+  border: 1px solid ${props => props.theme.BORDER};
   border-radius: 8px;
   background: ${props => props.theme.FIELD_BG};
   color: ${props => props.theme.TEXT_PRIMARY};
-  font-size: 1rem;
-  margin-bottom: 0.1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.ACCENT};
+    box-shadow: 0 0 0 3px ${props => props.theme.ACCENT}15;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &::placeholder {
+    color: ${props => props.theme.TEXT_SECONDARY};
+    opacity: 0.6;
+  }
 
   &:-webkit-autofill,
   &:-webkit-autofill:hover,
@@ -215,13 +299,33 @@ const Input = styled.input`
 
 const Textarea = styled.textarea`
   width: 100%;
-  padding: 0.7rem;
-  border: 1px solid ${props => props.theme.FIELD_BORDER};
+  padding: 12px 14px;
+  border: 1px solid ${props => props.theme.BORDER};
   border-radius: 8px;
   background: ${props => props.theme.FIELD_BG};
   color: ${props => props.theme.TEXT_PRIMARY};
-  font-size: 1rem;
-  min-height: 60px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.ACCENT};
+    box-shadow: 0 0 0 3px ${props => props.theme.ACCENT}15;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &::placeholder {
+    color: ${props => props.theme.TEXT_SECONDARY};
+    opacity: 0.6;
+  }
 
   &:-webkit-autofill,
   &:-webkit-autofill:hover,
@@ -233,46 +337,41 @@ const Textarea = styled.textarea`
   }
 `;
 
-const FloatingButton = styled.button`
-  position: absolute;
-  right: 32px;
-  bottom: 32px;
-  z-index: 10;
+const ActionButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 500;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  border: 1px solid ${props => props.theme.BORDER};
+  border: none;
   background: ${props => props.theme.ACCENT};
   color: white;
-  opacity: 0.9;
-  box-shadow: ${props => props.theme.SHADOW};
+  box-shadow: 0 4px 12px ${props => props.theme.ACCENT}33;
   transition: all 0.2s ease;
+  margin-top: 24px;
+  width: 100%;
+  justify-content: center;
   
-  &:hover { 
-    opacity: 1;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  &:hover:not(:disabled) { 
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px ${props => props.theme.ACCENT}44;
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
   }
   
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
   }
-
+  
   @media (max-width: 900px) {
-    position: static;
-    width: 100%;
-    margin: 1.5rem 0 0 0;
-    justify-content: center;
-    font-size: 0.95rem;
-    padding: 0.6rem 1.2rem;
-    display: flex;
-    align-items: center;
+    margin-top: 20px;
   }
 `;
 
@@ -284,6 +383,19 @@ const ButtonContent = styled.div`
 
 const HiddenFileInput = styled.input`
   display: none;
+`;
+
+const DataSourceIndicator = styled.div`
+  font-size: 0.75rem;
+  color: ${props => props.theme.TEXT_SECONDARY};
+  opacity: 0.7;
+  margin-top: 12px;
+  text-align: center;
+  font-style: italic;
+  padding: 8px;
+  background: ${props => props.theme.FIELD_BG};
+  border-radius: 6px;
+  border: 1px solid ${props => props.theme.BORDER};
 `;
 
 const dummyProfile = {
@@ -307,7 +419,6 @@ const InstituteProfile: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const { user } = useAuth();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
   const { theme } = useContext(ThemeContext);
   const { setLoading, loading } = useLoading();
 
@@ -325,9 +436,6 @@ const InstituteProfile: React.FC = () => {
         }
       });
     }
-    const handleResize = () => setIsMobile(window.innerWidth <= 900);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, [user?.school_id]);
 
   const fetchProfile = async () => {
@@ -585,6 +693,14 @@ const InstituteProfile: React.FC = () => {
   return (
     <PageContainer>
       <MainContent>
+        <PageHeader>
+          <PageTitle>
+            🏫 Institute Profile
+          </PageTitle>
+          <PageSubtitle>
+            Manage your institute information, logo, and contact details
+          </PageSubtitle>
+        </PageHeader>
         <Card>
           <CardGrid>
             <AvatarCol>
@@ -595,7 +711,7 @@ const InstituteProfile: React.FC = () => {
                       <LogoImg src={logoPreview || form.logo_url} alt="Logo" />
                     </>
                   ) : (
-                    <span style={{ fontSize: '2.5rem', color: theme === 'dark' ? '#b0b8d1' : '#b0b8d1', fontWeight: 700 }}>No Logo</span>
+                    <span style={{ fontSize: '1.5rem', color: 'inherit', opacity: 0.4, fontWeight: 600 }}>No Logo</span>
                   )}
                 </LogoCircle>
                 <LogoButtonsContainer>
@@ -614,189 +730,119 @@ const InstituteProfile: React.FC = () => {
                 {/* Data source indicator */}
                 {dataSource !== 'none' && (
                   <div style={{ 
-                    fontSize: '0.8rem', 
-                    color: theme === 'dark' ? '#888' : '#666',
-                    marginTop: '0.5rem',
+                    fontSize: '0.75rem', 
+                    color: 'inherit',
+                    opacity: 0.6,
+                    marginTop: '12px',
                     textAlign: 'center',
-                    fontStyle: 'italic'
+                    fontStyle: 'italic',
+                    padding: '8px',
+                    background: 'inherit',
+                    borderRadius: '6px'
                   }}>
-                    Data loaded from {dataSource === 'institute' ? 'Institute Profile' : 'School Database'}
+                    Data from {dataSource === 'institute' ? 'Institute Profile' : 'School Database'}
                   </div>
                 )}
               </LogoBlock>
             </AvatarCol>
-            {isMobile ? (
-              <FieldsCol>
-                <FieldGroup>
-                  <Label>Name</Label>
-                  <Input 
-                    name="name" 
-                    value={form.name || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    required 
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <Label>Short Name</Label>
-                  <Input 
-                    name="short_name" 
-                    value={form.short_name || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    placeholder="e.g., YIN, ABC School"
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <Label>Tagline</Label>
-                  <Input 
-                    name="tagline" 
-                    value={form.tagline || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <Label>Phone</Label>
-                  <Input 
-                    name="phone" 
-                    value={form.phone || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    required 
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <Label>Country</Label>
-                  <Input 
-                    name="country" 
-                    value={form.country || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    required 
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <Label>Website</Label>
-                  <Input 
-                    name="website" 
-                    value={form.website || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <Label>Address</Label>
-                  <Textarea 
-                    name="address" 
-                    value={form.address || ''} 
-                    onChange={handleInputChange} 
-                    onKeyPress={handleKeyPress}
-                    disabled={loading} 
-                  />
-                </FieldGroup>
-              </FieldsCol>
-            ) : (
-              <>
-                <FieldsCol>
-                  <FieldGroup>
-                    <Label>Name</Label>
-                    <Input 
-                      name="name" 
-                      value={form.name || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      required 
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <Label>Short Name</Label>
-                    <Input 
-                      name="short_name" 
-                      value={form.short_name || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      placeholder="e.g., YIN, ABC School"
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <Label>Tagline</Label>
-                    <Input 
-                      name="tagline" 
-                      value={form.tagline || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <Label>Phone</Label>
-                    <Input 
-                      name="phone" 
-                      value={form.phone || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      required 
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                </FieldsCol>
-                <FieldsCol>
-                  <FieldGroup>
-                    <Label>Country</Label>
-                    <Input 
-                      name="country" 
-                      value={form.country || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      required 
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <Label>Website</Label>
-                    <Input 
-                      name="website" 
-                      value={form.website || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <Label>Address</Label>
-                    <Textarea 
-                      name="address" 
-                      value={form.address || ''} 
-                      onChange={handleInputChange} 
-                      onKeyPress={handleKeyPress}
-                      disabled={loading} 
-                    />
-                  </FieldGroup>
-                </FieldsCol>
-              </>
-            )}
-            <FloatingButton type="button" onClick={handleSave} disabled={loading}>
-              <ButtonContent>
-                {loading ? (
-                  <>
-                    <CircularProgress size={16} color="inherit" />
-                    {profileId ? 'Updating...' : 'Saving...'}
-                  </>
-                ) : (
-                  profileId ? 'Update' : 'Save'
-                )}
-              </ButtonContent>
-            </FloatingButton>
+            <FieldsCol>
+              <FieldGroup>
+                <Label>Institute Name *</Label>
+                <Input 
+                  name="name" 
+                  value={form.name || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter institute name"
+                  required 
+                  disabled={loading} 
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <Label>Short Name</Label>
+                <Input 
+                  name="short_name" 
+                  value={form.short_name || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="e.g., YIN, ABC"
+                  disabled={loading} 
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <Label>Tagline</Label>
+                <Input 
+                  name="tagline" 
+                  value={form.tagline || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter tagline"
+                  disabled={loading} 
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <Label>Phone Number *</Label>
+                <Input 
+                  name="phone" 
+                  value={form.phone || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter phone number"
+                  required 
+                  disabled={loading} 
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <Label>Country *</Label>
+                <Input 
+                  name="country" 
+                  value={form.country || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter country"
+                  required 
+                  disabled={loading} 
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <Label>Website</Label>
+                <Input 
+                  name="website" 
+                  value={form.website || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="https://example.com"
+                  disabled={loading} 
+                />
+              </FieldGroup>
+              <FieldGroup style={{ gridColumn: '1 / -1' }}>
+                <Label>Address</Label>
+                <Textarea 
+                  name="address" 
+                  value={form.address || ''} 
+                  onChange={handleInputChange} 
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter full address"
+                  disabled={loading} 
+                />
+              </FieldGroup>
+            </FieldsCol>
           </CardGrid>
+          <ActionButton type="button" onClick={handleSave} disabled={loading}>
+            <ButtonContent>
+              {loading ? (
+                <>
+                  <CircularProgress size={16} color="inherit" />
+                  {profileId ? 'Updating...' : 'Saving...'}
+                </>
+              ) : (
+                <>
+                  <SaveIcon style={{ fontSize: 18 }} />
+                  {profileId ? 'Update Profile' : 'Save Profile'}
+                </>
+              )}
+            </ButtonContent>
+          </ActionButton>
         </Card>
       </MainContent>
     </PageContainer>

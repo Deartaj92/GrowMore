@@ -130,9 +130,9 @@ const CardBlock = styled.div`
   }
 `;
 
-const LargeAvatarCircle = styled.div`
-  width: 96px;
-  height: 96px;
+const CompactAvatarCircle = styled.div`
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: ${({ theme }) => theme.FIELD_BG};
   border: 2px solid ${({ theme }) => theme.ACCENT_INPUT};
@@ -145,6 +145,7 @@ const LargeAvatarCircle = styled.div`
   margin: 0 auto;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+  flex-shrink: 0;
 
   &:hover {
     transform: scale(1.04);
@@ -152,24 +153,15 @@ const LargeAvatarCircle = styled.div`
     border-color: ${({ theme }) => theme.ACCENT_INPUT};
   }
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      rgba(0, 0, 0, 0.2) 60%,
-      rgba(0, 0, 0, 0.3) 100%
-    );
-    opacity: 0;
-    transition: opacity 0.3s ease;
+  @media (max-width: 900px) {
+    width: 56px;
+    height: 56px;
   }
+`;
 
-  &:hover::before {
-    opacity: 1;
-  }
-
+const LargeAvatarCircle = styled(CompactAvatarCircle)`
+  width: 96px;
+  height: 96px;
   @media (max-width: 900px) {
     width: 72px;
     height: 72px;
@@ -185,6 +177,15 @@ const AvatarIcon = styled(AccountCircle)`
   color: ${({ theme }) => theme.ACCENT_INPUT}66;
   transition: color 0.3s ease;
   ${LargeAvatarCircle}:hover & {
+    color: ${({ theme }) => theme.ACCENT_INPUT};
+  }
+`;
+
+const CompactAvatarIcon = styled(AccountCircle)`
+  font-size: 1.8rem !important;
+  color: ${({ theme }) => theme.ACCENT_INPUT}66;
+  transition: color 0.3s ease;
+  ${CompactAvatarCircle}:hover & {
     color: ${({ theme }) => theme.ACCENT_INPUT};
   }
 `;
@@ -370,10 +371,22 @@ const ThreeDBackground = styled.div`
 `;
 
 const SectionContainer = styled.div`
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   position: relative;
   z-index: 1;
-  @media (max-width: 700px) {
+  @media (max-width: 900px) {
+    margin-bottom: 12px;
+    padding: 0;
+  }
+`;
+
+const CompactSectionContainer = styled.div`
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  @media (max-width: 900px) {
     margin-bottom: 12px;
     padding: 0;
   }
@@ -381,24 +394,40 @@ const SectionContainer = styled.div`
 
 const ModernGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 24px 16px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 12px;
   width: 100%;
   flex: 1;
   min-height: 0;
-  padding: 0 24px;
+  padding: 0;
   box-sizing: border-box;
-  @media (max-width: 1200px) {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr 1fr;
-  }
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 0;
-    width: 100%;
+    gap: 10px;
+  }
+`;
+
+const CompactGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+`;
+
+const TwoColumnSectionLayout = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 12px;
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 `;
 
@@ -409,12 +438,12 @@ const Field = muiStyled(FormControl)(({ theme }) => ({
       ? 'rgba(255, 255, 255, 0.03)'
       : '#fff',
     backdropFilter: 'blur(8px)',
-    borderRadius: '8px',
+    borderRadius: '6px',
     border: theme.palette.mode === 'dark'
       ? '1px solid rgba(255, 255, 255, 0.05)'
       : '1px solid rgba(0, 0, 0, 0.15)',
     transition: 'all 0.2s ease',
-    height: '48px',
+    height: '38px',
 
     '&:hover, &.Mui-focused': {
       background: theme.palette.mode === 'dark'
@@ -429,8 +458,8 @@ const Field = muiStyled(FormControl)(({ theme }) => ({
     },
 
     '& .MuiSelect-select, & .MuiInputBase-input': {
-      padding: '12px 14px',
-      fontSize: '0.95rem',
+      padding: '8px 12px',
+      fontSize: '0.875rem',
       color: theme.palette.mode === 'dark' 
         ? '#fff' 
         : 'rgba(0, 0, 0, 0.87)',
@@ -621,31 +650,58 @@ const getToday = () => {
 
 const FormBlocks = styled.div`
   display: flex;
-  flex-direction: row;
-  gap: 32px;
+  flex-direction: column;
+  gap: 0;
   width: 100%;
   height: 100%;
   background: transparent;
-  @media (max-width: 900px) {
-    flex-direction: column;
-    gap: 18px;
-  }
 `;
 
 const FieldsCard = styled.div`
-  background: ${({ theme }) => theme.BG};
-  border-radius: 18px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  padding: 32px 24px;
+  background: transparent;
+  padding: 0;
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
+  gap: 24px;
   min-width: 0;
   z-index: 1;
+`;
+
+const SectionCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   @media (max-width: 900px) {
-    width: 100%;
-    padding: 18px 8px;
-    border-radius: 12px;
+    padding: 16px;
+    border-radius: 10px;
+  }
+`;
+
+const SectionTitle = styled.div`
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const FieldsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 `;
 
@@ -1212,16 +1268,16 @@ const Header = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 16px 0 18px 0;
+  margin: 12px 0 12px 0;
   position: sticky;
   top: 0;
   z-index: 10;
   background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 4px 16px #0002;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 16px;
-  padding: 12px 24px 10px 24px;
-  min-height: 36px;
+  box-shadow: 0 2px 8px #0002;
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 12px;
+  padding: 10px 16px 8px 16px;
+  min-height: 32px;
   h2 {
     font-size: 1.05rem;
     font-weight: 800;
@@ -1239,11 +1295,11 @@ const Header = styled.div`
 
 const MainCard = styled.div`
   background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 4px 16px #0002;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 18px;
+  box-shadow: 0 2px 8px #0002;
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1262,34 +1318,27 @@ const FooterCard = styled.div`
 const MainContent = styled.div`
   flex: 1 1 auto;
   min-height: 0;
-  max-height: none;
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y proximity;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  @media (max-width: 700px) {
-    max-height: none;
-    scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
-  }
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
   &::-webkit-scrollbar-track {
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
     background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
-    border-radius: 4px;
+    border-radius: 3px;
     transition: background 0.2s;
   }
   &::-webkit-scrollbar-thumb:hover {
     background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  @media (max-width: 900px) {
+    max-height: none;
   }
 `;
 
@@ -2407,22 +2456,41 @@ const StudentAdmissionForm: React.FC = () => {
                       <span className="student-class">- {lastInsertedStudent.className}({lastInsertedStudent.sectionName})</span>
                     </LastInsertedFeed>
                   )}
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>①</span> Student Information
-              </div>
-              <ModernGrid>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="name"
-                    label="Name*"
-                    value={form.name}
-                    onChange={handleInputChange}
-                    inputRef={nameRef}
-                    variant="outlined"
-                  />
-            </Field>
+            {/* Student Information Section */}
+            <SectionCard>
+              <SectionTitle>
+                <span>1</span>
+                Student Information
+              </SectionTitle>
+              <FieldsGrid>
+                <Field style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <TextField
+                      fullWidth
+                      name="name"
+                      label="Name*"
+                      value={form.name}
+                      onChange={handleInputChange}
+                      inputRef={nameRef}
+                      variant="outlined"
+                      size="small"
+                    />
+                  </div>
+                  <CompactAvatarCircle onClick={handleAvatarClick}>
+                    {image ? <AvatarImg src={image} alt="Preview" /> : <CompactAvatarIcon />}
+                    {image && (
+                      <RemoveButton type="button" onClick={handleRemoveImage} style={{ width: '20px', height: '20px', fontSize: '14px', bottom: '4px' }}>
+                        ×
+                      </RemoveButton>
+                    )}
+                    <HiddenFileInput
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImage}
+                    />
+                  </CompactAvatarCircle>
+                </Field>
                 <Field>
                   <InputLabel id="class-label">Class*</InputLabel>
                   <Select
@@ -2431,6 +2499,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.class}
                     onChange={handleSelectChange}
                     label="Class*"
+                    size="small"
                   >
                     <MenuItem value="">Select Class</MenuItem>
                     {loadingClasses ? (
@@ -2452,6 +2521,7 @@ const StudentAdmissionForm: React.FC = () => {
                       onChange={handleSelectChange}
                       label="Section*"
                       disabled={!form.class}
+                      size="small"
                     >
                       <MenuItem value="">Select Section</MenuItem>
                       {loadingSections ? (
@@ -2464,37 +2534,6 @@ const StudentAdmissionForm: React.FC = () => {
                     </Select>
                   </Field>
                 )}
-                      <Field
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gridRow: '1 / span 2',
-                          gridColumn: 4,
-                          ...(window.innerWidth <= 700 ? {
-                            gridColumn: '1 / -1',
-                            gridRow: '1',
-                            marginBottom: 8,
-                          } : {})
-                        }}
-                      >
-                        <LargeAvatarCircle onClick={handleAvatarClick}>
-                          {image ? <AvatarImg src={image} alt="Preview" /> : <AvatarIcon />}
-                          {image ? (
-                            <RemoveButton type="button" onClick={handleRemoveImage}>
-                              ×
-                            </RemoveButton>
-                          ) : (
-                            <UploadHint>Select picture</UploadHint>
-                          )}
-                          <HiddenFileInput
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImage}
-                          />
-                        </LargeAvatarCircle>
-                </Field>
                 <Field>
                   <TextField
                     fullWidth
@@ -2504,53 +2543,12 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.admissionDate}
                     onChange={handleInputChange}
                     InputLabelProps={{ shrink: true }}
+                    size="small"
                   />
                 </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="discountInFee"
-                    label="Discount in Fee"
-                    type="number"
-                    value={form.discountInFee}
-                    onChange={handleInputChange}
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="phone" 
-                    label="Mobile No. for SMS/WhatsApp"
-                    value={form.phone} 
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '');
-                      setForm(prev => ({ ...prev, phone: value }));
-                    }}
-                    inputProps={{
-                      maxLength: 11,
-                      minLength: 10,
-                      pattern: '[0-9]*'
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <FormLabel component="legend">Notification Channel</FormLabel>
-                  <RadioGroup
-                    row
-                    value={form.notificationChannel}
-                    onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
-                    name="notificationChannel"
-                  >
-                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
-                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
-                  </RadioGroup>
-                </Field>
-                <Field style={{ gridColumn: '1 / -1' }}>
-                  <InputLabel id="family-label" style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
-                    <FamilyRestroom style={{ fontSize: '1.2rem', verticalAlign: 'middle', marginRight: '8px' }} />
+                <Field style={{ gridColumn: 'span 3' }}>
+                  <InputLabel id="family-label" style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '8px', color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FamilyRestroom style={{ fontSize: '1.1rem' }} />
                     Family*
                   </InputLabel>
                   <Select
@@ -2562,11 +2560,12 @@ const StudentAdmissionForm: React.FC = () => {
                     fullWidth
                     required
                     error={invalidField === 'family'}
+                    size="small"
                     sx={{
                       '& .MuiSelect-select': {
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px'
+                        gap: '6px'
                       }
                     }}
                   >
@@ -2579,7 +2578,7 @@ const StudentAdmissionForm: React.FC = () => {
                       families.map(family => (
                         <MenuItem key={family.id} value={String(family.id)}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            <FamilyRestroom sx={{ fontSize: '1.1rem', opacity: 0.7 }} />
+                            <FamilyRestroom sx={{ fontSize: '1rem', opacity: 0.7 }} />
                             <Box sx={{ flex: 1 }}>
                               <Box component="span" sx={{ fontWeight: 600, color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
                                 F{family.id}
@@ -2587,7 +2586,7 @@ const StudentAdmissionForm: React.FC = () => {
                               {' - '}
                               <Box component="span">{family.name}</Box>
                               {family.contact_number && (
-                                <Box component="span" sx={{ fontSize: '0.85rem', opacity: 0.7, ml: 1 }}>
+                                <Box component="span" sx={{ fontSize: '0.8rem', opacity: 0.7, ml: 1 }}>
                                   ({family.contact_number})
                                 </Box>
                               )}
@@ -2604,13 +2603,61 @@ const StudentAdmissionForm: React.FC = () => {
                     </MenuItem>
                   </Select>
                 </Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>②</span> Other Information
-              </div>
-              <ModernGrid>
+                <Field>
+                  <TextField
+                    fullWidth
+                    name="discountInFee"
+                    label="Discount in Fee"
+                    type="number"
+                    value={form.discountInFee}
+                    onChange={handleInputChange}
+                    size="small"
+                    InputProps={{
+                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
+                    }}
+                  />
+                </Field>
+                <Field>
+                  <TextField
+                    fullWidth
+                    name="phone" 
+                    label="Mobile No. for SMS/WhatsApp"
+                    value={form.phone} 
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '');
+                      setForm(prev => ({ ...prev, phone: value }));
+                    }}
+                    size="small"
+                    inputProps={{
+                      maxLength: 11,
+                      minLength: 10,
+                      pattern: '[0-9]*'
+                    }}
+                  />
+                </Field>
+                <Field style={{ gridColumn: 'span 3' }}>
+                  <FormLabel component="legend" style={{ fontSize: '0.875rem', marginBottom: '8px' }}>Notification Channel</FormLabel>
+                  <RadioGroup
+                    row
+                    value={form.notificationChannel}
+                    onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
+                    name="notificationChannel"
+                    sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+                  >
+                    <FormControlLabel value="whatsapp" control={<Radio size="small" />} label="WhatsApp" />
+                    <FormControlLabel value="sms" control={<Radio size="small" />} label="SMS" />
+                  </RadioGroup>
+                </Field>
+              </FieldsGrid>
+            </SectionCard>
+
+            {/* Personal Details Section */}
+            <SectionCard>
+              <SectionTitle>
+                <span>2</span>
+                Personal Details
+              </SectionTitle>
+              <FieldsGrid>
                 <Field>
                   <TextField
                     fullWidth
@@ -2620,6 +2667,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.dob}
                     onChange={handleInputChange}
                     InputLabelProps={{ shrink: true }}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2629,6 +2677,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Student Birth Form ID / NIC"
                     value={form.studentId}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2639,6 +2688,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.gender}
                     onChange={handleSelectChange}
                     label="Gender"
+                    size="small"
                   >
                     <MenuItem value="Male">Male</MenuItem>
                     <MenuItem value="Female">Female</MenuItem>
@@ -2652,6 +2702,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Cast"
                     value={form.cast}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2661,6 +2712,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Orphan Student"
                     value={form.orphan}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2670,6 +2722,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="OSC Number"
                     value={form.osc} 
                     onChange={handleInputChange}
+                    size="small"
                   />
             </Field>
                 <Field>
@@ -2679,6 +2732,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Identification Mark"
                     value={form.idMark}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2689,6 +2743,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.bloodGroup || ''}
                     onChange={handleSelectChange}
                     label="Blood Group"
+                    size="small"
                   >
                     <MenuItem value="">Select</MenuItem>
                     {BLOOD_GROUPS.map(bg => (
@@ -2703,6 +2758,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Previous School"
                     value={form.previousSchool}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2712,6 +2768,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Previous ID / Board Roll No"
                     value={form.previousId}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2722,6 +2779,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.religion}
                     onChange={handleSelectChange}
                     label="Religion"
+                    size="small"
                   >
                     {RELIGIONS.map(r => (
                       <MenuItem key={r} value={r}>{r}</MenuItem>
@@ -2736,6 +2794,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.nationality}
                     onChange={handleSelectChange}
                     label="Nationality"
+                    size="small"
                   >
                     {NATIONALITIES.map(n => (
                       <MenuItem key={n} value={n}>{n}</MenuItem>
@@ -2751,6 +2810,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.totalSiblings}
                     onChange={handleInputChange}
                     inputProps={{ min: 0 }}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2760,33 +2820,43 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Disease If Any?"
                     value={form.disease}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="additionalNote"
-                    label="Additional Note"
-                    value={form.additionalNote}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field style={{ gridColumn: '1 / -1' }}>
+                <Field style={{ gridColumn: 'span 3' }}>
                   <TextField
                     fullWidth
                     name="address"
                     label="Address"
                     value={form.address}
                     onChange={handleInputChange}
+                    size="small"
+                    multiline
+                    rows={3}
                   />
                 </Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>③</span> Father/Guardian Information
-              </div>
-              <ModernGrid>
+                <Field style={{ gridColumn: 'span 3' }}>
+                  <TextField
+                    fullWidth
+                    name="additionalNote"
+                    label="Additional Note"
+                    value={form.additionalNote}
+                    onChange={handleInputChange}
+                    size="small"
+                    multiline
+                    rows={3}
+                  />
+                </Field>
+              </FieldsGrid>
+            </SectionCard>
+
+            {/* Father/Guardian Information Section */}
+            <SectionCard>
+              <SectionTitle>
+                <span>3</span>
+                Father/Guardian Information
+              </SectionTitle>
+              <FieldsGrid>
                 <Field>
                   <TextField
                     fullWidth
@@ -2795,6 +2865,7 @@ const StudentAdmissionForm: React.FC = () => {
                     value={form.fatherName}
                     onChange={handleInputChange}
                     inputRef={fatherRef}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2804,6 +2875,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Father National ID"
                     value={form.fatherNationalId}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2813,6 +2885,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Education"
                     value={form.fatherEducation}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2822,6 +2895,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Mobile No"
                     value={form.fatherMobile}
                     onChange={handleInputChange}
+                    size="small"
                     inputProps={{
                       pattern: '[0-9]*',
                       inputMode: 'numeric'
@@ -2835,6 +2909,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Occupation"
                     value={form.fatherOccupation}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2845,18 +2920,22 @@ const StudentAdmissionForm: React.FC = () => {
                     type="number"
                     value={form.fatherIncome}
                     onChange={handleInputChange}
+                    size="small"
                     InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
+                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
                     }}
                   />
                   </Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>④</span> Mother Information
-              </div>
-              <ModernGrid>
+              </FieldsGrid>
+            </SectionCard>
+
+            {/* Mother Information Section */}
+            <SectionCard>
+              <SectionTitle>
+                <span>4</span>
+                Mother Information
+              </SectionTitle>
+              <FieldsGrid>
                 <Field>
                   <TextField
                     fullWidth
@@ -2864,6 +2943,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Mother Name"
                     value={form.motherName}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2873,6 +2953,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Mother National ID"
                     value={form.motherNationalId}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2882,6 +2963,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Education"
                     value={form.motherEducation}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2891,6 +2973,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Mobile No"
                     value={form.motherMobile}
                     onChange={handleInputChange}
+                    size="small"
                     inputProps={{
                       pattern: '[0-9]*',
                       inputMode: 'numeric'
@@ -2904,6 +2987,7 @@ const StudentAdmissionForm: React.FC = () => {
                     label="Occupation"
                     value={form.motherOccupation}
                     onChange={handleInputChange}
+                    size="small"
                   />
                 </Field>
                 <Field>
@@ -2914,13 +2998,14 @@ const StudentAdmissionForm: React.FC = () => {
                     type="number"
                     value={form.motherIncome}
                     onChange={handleInputChange}
+                    size="small"
                     InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
+                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
                     }}
                   />
             </Field>
-              </ModernGrid>
-            </SectionContainer>
+              </FieldsGrid>
+            </SectionCard>
           </FieldsCard>
         </FormBlocks>
       </ModernForm>

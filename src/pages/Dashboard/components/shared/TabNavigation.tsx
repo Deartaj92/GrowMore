@@ -47,6 +47,18 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
         >
           Homework Diary
         </TabButton>
+        <TabButton
+          active={activeTab === 'employeeAttendance'}
+          onClick={() => setActiveTab('employeeAttendance')}
+        >
+          Employee Attendance
+        </TabButton>
+        <TabButton
+          active={activeTab === 'accounts'}
+          onClick={() => setActiveTab('accounts')}
+        >
+          Accounts
+        </TabButton>
       </TabsWrapper>
       <DashboardDateInput
         type="date"

@@ -565,6 +565,94 @@ const TabPanel = styled.div`
   margin-top: 24px;
 `;
 
+// Pagination styled components
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  padding: 20px 0;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  flex-wrap: wrap;
+  gap: 16px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+`;
+
+const PaginationInfo = styled.div`
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+`;
+
+const PaginationControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    justify-content: center;
+    width: 100%;
+  }
+`;
+
+const PaginationButton = styled.button<{ $active?: boolean }>`
+  padding: 8px 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 6px;
+  background: ${({ theme, $active }) => 
+    $active ? theme.ACCENT : theme.FIELD_BG};
+  color: ${({ theme, $active }) => 
+    $active ? '#fff' : theme.TEXT_PRIMARY};
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover:not(:disabled) {
+    background: ${({ theme, $active }) => 
+      $active ? theme.ACCENT : theme.ACCENT + '15'};
+    border-color: ${({ theme }) => theme.ACCENT};
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+`;
+
+const PageInput = styled.input`
+  width: 50px;
+  padding: 6px 8px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 6px;
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}15;
+  }
+`;
+
 // Skeleton Loading Components
 const SkeletonCard = styled.div`
   background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : theme.CARD};
@@ -729,6 +817,12 @@ const UserManagement: React.FC = () => {
   const [studentPassword, setStudentPassword] = useState<string>('');
   const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Pagination state
+  const [staffPage, setStaffPage] = useState(1);
+  const [parentsPage, setParentsPage] = useState(1);
+  const [studentsPage, setStudentsPage] = useState(1);
+  const itemsPerPage = 12; // 12 cards per page (4 rows × 3 columns on desktop)
 
   useEffect(() => {
     const checkActiveSession = async () => {
@@ -1230,6 +1324,22 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  // Helper function to check if user is online (within last 5 minutes)
+  const isCurrentlyOnline = (lastOnline: string | null | undefined, isOnlineFlag?: boolean): boolean => {
+    if (isOnlineFlag === false) return false; // Explicitly offline
+    if (!lastOnline) return false;
+    const now = new Date();
+    const lastOnlineDate = new Date(lastOnline);
+    return (now.getTime() - lastOnlineDate.getTime() < 5 * 60 * 1000); // 5 minutes
+  };
+
+  // Helper function to get last online timestamp for sorting
+  const getLastOnlineTimestamp = (lastOnline: string | null | undefined): number => {
+    if (!lastOnline) return 0; // Never online
+    return new Date(lastOnline).getTime();
+  };
+
+  // Filter and sort users by online status
   const filteredUsers = users.filter(user => {
     if (!searchTerm) return true;
     const staffInfo = getStaffInfo(user.staff_id);
@@ -1237,23 +1347,98 @@ const UserManagement: React.FC = () => {
     // For Guest users, use the user's name directly; otherwise use staff name
     const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
     return displayName.toLowerCase().includes(searchLower);
+  }).sort((a, b) => {
+    const aOnline = isCurrentlyOnline(a.last_online, a.is_online);
+    const bOnline = isCurrentlyOnline(b.last_online, b.is_online);
+    
+    // Online users first
+    if (aOnline && !bOnline) return -1;
+    if (!aOnline && bOnline) return 1;
+    
+    // Both online or both offline - sort by last_online timestamp (most recent first)
+    const aTimestamp = getLastOnlineTimestamp(a.last_online);
+    const bTimestamp = getLastOnlineTimestamp(b.last_online);
+    return bTimestamp - aTimestamp; // Most recent first
   });
 
+  // Filter and sort parents by online status
   const filteredParents = parents.filter(parent => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
     return parent.name.toLowerCase().includes(searchLower);
+  }).sort((a, b) => {
+    const aOnline = isCurrentlyOnline(a.last_online, a.is_online);
+    const bOnline = isCurrentlyOnline(b.last_online, b.is_online);
+    
+    // Online users first
+    if (aOnline && !bOnline) return -1;
+    if (!aOnline && bOnline) return 1;
+    
+    // Both online or both offline - sort by last_online timestamp (most recent first)
+    const aTimestamp = getLastOnlineTimestamp(a.last_online);
+    const bTimestamp = getLastOnlineTimestamp(b.last_online);
+    return bTimestamp - aTimestamp; // Most recent first
   });
 
+  // Filter and sort students by online status
   const filteredStudents = students.filter(student => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
     return student.name.toLowerCase().includes(searchLower);
+  }).sort((a, b) => {
+    const aOnline = isCurrentlyOnline(a.last_online, a.is_online);
+    const bOnline = isCurrentlyOnline(b.last_online, b.is_online);
+    
+    // Online users first
+    if (aOnline && !bOnline) return -1;
+    if (!aOnline && bOnline) return 1;
+    
+    // Both online or both offline - sort by last_online timestamp (most recent first)
+    const aTimestamp = getLastOnlineTimestamp(a.last_online);
+    const bTimestamp = getLastOnlineTimestamp(b.last_online);
+    return bTimestamp - aTimestamp; // Most recent first
   });
+
+  // Pagination calculations
+  const totalStaffPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const totalParentsPages = Math.ceil(filteredParents.length / itemsPerPage);
+  const totalStudentsPages = Math.ceil(filteredStudents.length / itemsPerPage);
+
+  // Paginated data
+  const paginatedUsers = filteredUsers.slice(
+    (staffPage - 1) * itemsPerPage,
+    staffPage * itemsPerPage
+  );
+
+  const paginatedParents = filteredParents.slice(
+    (parentsPage - 1) * itemsPerPage,
+    parentsPage * itemsPerPage
+  );
+
+  const paginatedStudents = filteredStudents.slice(
+    (studentsPage - 1) * itemsPerPage,
+    studentsPage * itemsPerPage
+  );
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    if (activeTab === 0) setStaffPage(1);
+    if (activeTab === 1) setParentsPage(1);
+    if (activeTab === 2) setStudentsPage(1);
+  }, [searchTerm, activeTab]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [staffPage, parentsPage, studentsPage]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
     setSearchTerm('');
+    // Reset pagination when switching tabs
+    setStaffPage(1);
+    setParentsPage(1);
+    setStudentsPage(1);
   };
 
   const handleViewStudentPassword = async (student: Student) => {
@@ -1392,7 +1577,7 @@ const UserManagement: React.FC = () => {
                 <Add style={{ fontSize: 48, marginBottom: 8 }} />
                 <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
               </AddUserCard>
-              {filteredUsers.map(user => {
+              {paginatedUsers.map(user => {
                 const staffInfo = getStaffInfo(user.staff_id);
                 // For Guest users, use the user's name directly instead of staff name
                 const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
@@ -1464,6 +1649,69 @@ const UserManagement: React.FC = () => {
             </>
           )}
         </UserGrid>
+        {filteredUsers.length > itemsPerPage && (
+          <PaginationContainer>
+            <PaginationInfo>
+              Showing {Math.min((staffPage - 1) * itemsPerPage + 1, filteredUsers.length)} to {Math.min(staffPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+            </PaginationInfo>
+            <PaginationControls>
+              <PaginationButton
+                onClick={() => setStaffPage(1)}
+                disabled={staffPage === 1}
+                title="First page"
+              >
+                ««
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => setStaffPage(prev => Math.max(1, prev - 1))}
+                disabled={staffPage === 1}
+                title="Previous page"
+              >
+                ‹
+              </PaginationButton>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
+                <PageInput
+                  type="number"
+                  min={1}
+                  max={totalStaffPages}
+                  value={staffPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= totalStaffPages) {
+                      setStaffPage(page);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (isNaN(page) || page < 1) {
+                      setStaffPage(1);
+                    } else if (page > totalStaffPages) {
+                      setStaffPage(totalStaffPages);
+                    }
+                  }}
+                />
+                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalStaffPages}</span>
+              </div>
+              
+              <PaginationButton
+                onClick={() => setStaffPage(prev => Math.min(totalStaffPages, prev + 1))}
+                disabled={staffPage === totalStaffPages}
+                title="Next page"
+              >
+                ›
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => setStaffPage(totalStaffPages)}
+                disabled={staffPage === totalStaffPages}
+                title="Last page"
+              >
+                »»
+              </PaginationButton>
+            </PaginationControls>
+          </PaginationContainer>
+        )}
       </>
     );
   };
@@ -1483,7 +1731,7 @@ const UserManagement: React.FC = () => {
           ) : filteredParents.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No parents found</div>
           ) : (
-            filteredParents.map(parent => {
+            paginatedParents.map(parent => {
               // Use is_online flag if explicitly set to false, otherwise calculate from timestamp
               const isOnline = parent.is_online === false
                 ? false
@@ -1547,6 +1795,69 @@ const UserManagement: React.FC = () => {
             })
           )}
         </UserGrid>
+        {filteredParents.length > itemsPerPage && (
+          <PaginationContainer>
+            <PaginationInfo>
+              Showing {Math.min((parentsPage - 1) * itemsPerPage + 1, filteredParents.length)} to {Math.min(parentsPage * itemsPerPage, filteredParents.length)} of {filteredParents.length} parents
+            </PaginationInfo>
+            <PaginationControls>
+              <PaginationButton
+                onClick={() => setParentsPage(1)}
+                disabled={parentsPage === 1}
+                title="First page"
+              >
+                ««
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => setParentsPage(prev => Math.max(1, prev - 1))}
+                disabled={parentsPage === 1}
+                title="Previous page"
+              >
+                ‹
+              </PaginationButton>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
+                <PageInput
+                  type="number"
+                  min={1}
+                  max={totalParentsPages}
+                  value={parentsPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= totalParentsPages) {
+                      setParentsPage(page);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (isNaN(page) || page < 1) {
+                      setParentsPage(1);
+                    } else if (page > totalParentsPages) {
+                      setParentsPage(totalParentsPages);
+                    }
+                  }}
+                />
+                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalParentsPages}</span>
+              </div>
+              
+              <PaginationButton
+                onClick={() => setParentsPage(prev => Math.min(totalParentsPages, prev + 1))}
+                disabled={parentsPage === totalParentsPages}
+                title="Next page"
+              >
+                ›
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => setParentsPage(totalParentsPages)}
+                disabled={parentsPage === totalParentsPages}
+                title="Last page"
+              >
+                »»
+              </PaginationButton>
+            </PaginationControls>
+          </PaginationContainer>
+        )}
       </>
     );
   };
@@ -1566,7 +1877,7 @@ const UserManagement: React.FC = () => {
           ) : filteredStudents.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No students found</div>
           ) : (
-            filteredStudents.map(student => {
+            paginatedStudents.map(student => {
               // Use is_online flag if explicitly set to false, otherwise calculate from timestamp
               const isOnline = student.is_online === false
                 ? false
@@ -1637,6 +1948,69 @@ const UserManagement: React.FC = () => {
             })
           )}
         </UserGrid>
+        {filteredStudents.length > itemsPerPage && (
+          <PaginationContainer>
+            <PaginationInfo>
+              Showing {Math.min((studentsPage - 1) * itemsPerPage + 1, filteredStudents.length)} to {Math.min(studentsPage * itemsPerPage, filteredStudents.length)} of {filteredStudents.length} students
+            </PaginationInfo>
+            <PaginationControls>
+              <PaginationButton
+                onClick={() => setStudentsPage(1)}
+                disabled={studentsPage === 1}
+                title="First page"
+              >
+                ««
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => setStudentsPage(prev => Math.max(1, prev - 1))}
+                disabled={studentsPage === 1}
+                title="Previous page"
+              >
+                ‹
+              </PaginationButton>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
+                <PageInput
+                  type="number"
+                  min={1}
+                  max={totalStudentsPages}
+                  value={studentsPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= totalStudentsPages) {
+                      setStudentsPage(page);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (isNaN(page) || page < 1) {
+                      setStudentsPage(1);
+                    } else if (page > totalStudentsPages) {
+                      setStudentsPage(totalStudentsPages);
+                    }
+                  }}
+                />
+                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalStudentsPages}</span>
+              </div>
+              
+              <PaginationButton
+                onClick={() => setStudentsPage(prev => Math.min(totalStudentsPages, prev + 1))}
+                disabled={studentsPage === totalStudentsPages}
+                title="Next page"
+              >
+                ›
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => setStudentsPage(totalStudentsPages)}
+                disabled={studentsPage === totalStudentsPages}
+                title="Last page"
+              >
+                »»
+              </PaginationButton>
+            </PaginationControls>
+          </PaginationContainer>
+        )}
       </>
     );
   };

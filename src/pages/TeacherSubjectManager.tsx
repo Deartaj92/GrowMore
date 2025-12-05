@@ -112,7 +112,7 @@ const SearchInput = styled(TextField)`
     &.Mui-focused {
       background: ${({ theme }) => theme.CARD};
       box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}15;
-    }
+  }
     
     fieldset {
       border-color: ${({ theme }) => theme.BORDER};
@@ -180,7 +180,7 @@ const StatCard = styled.div`
     
     svg {
       font-size: 1.25rem !important;
-    }
+  }
   }
   
   .content {

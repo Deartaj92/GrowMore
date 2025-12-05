@@ -16,33 +16,67 @@ import NoTeachersFound from '../components/NoTeachersFound';
 import Loader from '../components/Loader';
 
 const Container = styled.div`
-  padding: 20px;
-  max-width: 1550px;
+  padding: 20px 16px;
+  max-width: 1600px;
   margin: 0 auto;
+  min-height: calc(100vh - 80px);
 
   @media (max-width: 768px) {
-    padding: 10px;
+    padding: 16px 12px;
   }
 `;
-const PageHeaderCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 16px;
-  padding: 0.7rem 1.5rem;
+
+const PageHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+`;
+
+const HeaderLeft = styled.div`
+  flex: 1;
+`;
+
+const PageHeaderText = styled.h1`
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0 0 4px 0;
+  letter-spacing: -0.3px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  margin-bottom: 16px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 2.5px solid ${({ theme }) => theme.BORDER};
+  gap: 10px;
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
 `;
-const PageHeaderText = styled.h2`
-  font-size: 1.35rem;
-  font-weight: 800;
+
+const SessionBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: ${({ theme }) => theme.ACCENT}15;
   color: ${({ theme }) => theme.ACCENT};
-  text-align: center;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 8px;
+`;
+
+const Subtitle = styled.p`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin: 0;
-  letter-spacing: 0.5px;
+  line-height: 1.4;
 `;
 
 // Timetable grid styles (to be refined for reference image)
@@ -170,104 +204,179 @@ interface ClassAssignment {
 
 const Dropdown = styled.div`
   position: fixed;
-  z-index: 1000; /* Ensure dropdown is on top */
-  min-width: 180px;
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 280px;
   background: ${({ theme }) => theme.CARD};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  box-shadow: 0 4px 24px #0003;
-  padding: 0.3rem 0;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 6px 0;
   display: flex;
   flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.FIELD_BG};
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BORDER};
+    border-radius: 3px;
+    
+    &:hover {
+      background: ${({ theme }) => theme.TEXT_SECONDARY};
+    }
+  }
 `;
+
 const DropdownOption = styled.button`
   background: none;
   border: none;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-weight: 600;
-  font-size: 1rem;
-  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 10px 14px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
-  &:hover {
-    background: ${({ theme }) => theme.ACCENT + '22'};
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  
+  &:hover:not(:disabled) {
+    background: ${({ theme }) => theme.ACCENT + '10'};
+    color: ${({ theme }) => theme.ACCENT};
   }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const DropdownDivider = styled.div`
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  margin: 6px 8px;
 `;
 
 const TableWrapper = styled.div`
   width: 100%;
   overflow-x: auto;
   background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid ${({ theme }) => theme.BORDER};
   position: relative;
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.FIELD_BG};
+    border-radius: 0 0 12px 12px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BORDER};
+    border-radius: 4px;
+    
+    &:hover {
+      background: ${({ theme }) => theme.TEXT_SECONDARY};
+    }
+  }
 `;
-const BreakOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  color: #fff;
-  font-weight: 800;
-  font-size: 1.1rem;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  background: ${({ theme }) => theme.ACCENT + '44'};
-`;
+
 const TimetableTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 1100px;
+  min-width: 950px;
+  font-size: 0.875rem;
+  
+  @media (max-width: 1200px) {
+    min-width: 850px;
+    font-size: 0.8rem;
+  }
 `;
 const Th = styled.th<{ breakCol?: boolean; classCol?: boolean }>`
-  padding: 0.5rem 0.2rem;
+  padding: 10px 6px;
   text-align: center;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  color: ${({ theme, classCol }) => classCol ? theme.TEXT_PRIMARY : theme.TEXT_SECONDARY};
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 0.8rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
   background: ${({ theme, breakCol, classCol }) =>
-    breakCol ? theme.ACCENT + '44' : classCol ? theme.ACCENT + '33' : theme.CARD};
+    breakCol ? theme.ACCENT + '20' : 
+    classCol ? theme.ACCENT + '15' : 
+    theme.FIELD_BG};
   ${({ breakCol }) => breakCol && `border-bottom: none !important;`}
-  min-width: ${({ breakCol }) => (breakCol ? '60px' : '120px')};
-  width: ${({ breakCol }) => (breakCol ? '5%' : '10%')};
+  min-width: ${({ breakCol }) => (breakCol ? '45px' : '100px')};
+  width: ${({ breakCol }) => (breakCol ? '4%' : 'auto')};
   vertical-align: middle;
   writing-mode: ${({ breakCol }) => (breakCol ? 'vertical-rl' : 'horizontal-tb')};
   text-orientation: ${({ breakCol }) => (breakCol ? 'mixed' : 'initial')};
+  white-space: nowrap;
+  
+  @media (max-width: 1200px) {
+    padding: 8px 4px;
+    font-size: 0.75rem;
+    min-width: ${({ breakCol }) => (breakCol ? '40px' : '90px')};
+  }
 `;
-const Td = styled.td<{ breakCol?: boolean; classCol?: boolean }>`
-  padding: 0.4rem 0.2rem;
+
+const Td = styled.td<{ breakCol?: boolean; classCol?: boolean; hasContent?: boolean }>`
+  padding: 8px 6px;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   border: 1px solid ${({ theme }) => theme.BORDER};
   text-align: center;
-  background: ${({ theme, breakCol, classCol }) =>
-    breakCol ? theme.ACCENT + '44' : classCol ? theme.ACCENT + '33' : theme.CARD};
-  min-width: ${({ breakCol }) => (breakCol ? '60px' : '120px')};
-  width: ${({ breakCol }) => (breakCol ? '5%' : '10%')};
+  background: ${({ theme, breakCol, classCol, hasContent }) =>
+    breakCol ? theme.ACCENT + '20' : 
+    classCol ? theme.ACCENT + '15' : 
+    hasContent ? theme.CARD : theme.CARD};
+  min-width: ${({ breakCol }) => (breakCol ? '45px' : '100px')};
+  width: ${({ breakCol }) => (breakCol ? '4%' : 'auto')};
   vertical-align: middle;
   ${({ breakCol }) => breakCol && `border-top: none;`}
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: ${({ theme, breakCol, classCol, hasContent }) => 
+      breakCol || classCol ? 'inherit' : 
+      hasContent ? theme.ACCENT + '08' : theme.FIELD_BG};
+  }
+  
+  @media (max-width: 1200px) {
+    padding: 6px 4px;
+    min-width: ${({ breakCol }) => (breakCol ? '40px' : '90px')};
+  }
 `;
 
 const ThemedSelect = styled.select`
-  padding: 0.5rem 1.2rem;
+  padding: 8px 14px;
   border-radius: 8px;
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.FIELD_BG || theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.CARD};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   outline: none;
-  margin-right: 16px;
-  transition: border 0.18s, box-shadow 0.18s;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT};
+  }
+  
   &:focus {
     border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}33;
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}15;
   }
 `;
 const ThemedOption = styled.option`
@@ -289,15 +398,21 @@ const sortClassesLocal = (classes: Class[]): Class[] => {
 
 const ActionButtonsContainer = styled(Box)`
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  flex-wrap: wrap;
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 10px;
+    padding: 12px;
     
     & > button {
       width: 100%;
@@ -316,18 +431,48 @@ const ActionButtonsContainer = styled(Box)`
   }
 `;
 
+const BreakControl = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    white-space: nowrap;
+  }
+`;
+
+const ActionButtonsGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-direction: column;
+    
+    & > button {
+      width: 100%;
+    }
+  }
+`;
+
 const BreakColumn = styled(Td)`
-  background: ${({ theme }) => theme.ACCENT + '44'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => theme.ACCENT + '20'};
+  color: ${({ theme }) => theme.ACCENT};
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 0.875rem;
   writing-mode: vertical-rl;
   text-orientation: mixed;
   text-align: center;
   vertical-align: middle;
-  padding: 8px;
+  padding: 12px 8px;
   white-space: nowrap;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  border-right: 2px solid ${({ theme }) => theme.BORDER};
 `;
 
 const NoAssignmentsContainer = styled.div`
@@ -411,27 +556,6 @@ const TimeTableManager: React.FC = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [teacherSlipsLoading, setTeacherSlipsLoading] = useState(false);
 
-  // Check if user has school_id
-  if (!user?.school_id) {
-    return (
-      <Container>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          padding: '2rem', 
-          gap: 16,
-          color: '#888',
-          fontSize: '1.1rem',
-          fontWeight: 600
-        }}>
-          <Info style={{ fontSize: '1.5rem' }} />
-          No school context found. Please contact your administrator.
-        </div>
-      </Container>
-    );
-  }
-
   // Fetch active session on mount
   useEffect(() => {
     const fetchSession = async () => {
@@ -440,7 +564,7 @@ const TimeTableManager: React.FC = () => {
           .from('sessions')
           .select('id, name')
           .eq('is_active', true)
-          .eq('school_id', user.school_id)
+          .eq('school_id', user?.school_id || '')
           .single();
         if (data) {
           setSessionId(data.id);
@@ -452,8 +576,10 @@ const TimeTableManager: React.FC = () => {
         toast.showToast('No active session found. Timetable saving is disabled.', 'warning');
       }
     };
-    fetchSession();
-  }, [toast, user.school_id]);
+    if (user?.school_id) {
+      fetchSession();
+    }
+  }, [toast, user?.school_id]);
 
   // Helper functions for getting names
   const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
@@ -487,11 +613,11 @@ const TimeTableManager: React.FC = () => {
       setLoading(true);
       try {
         const [cls, subs, tchs, tcs, secs] = await Promise.all([
-          supabase.from('classes').select('id, name').eq('school_id', user.school_id).order('name'),
-          supabase.from('subjects').select('id, name').eq('school_id', user.school_id),
-          supabase.from('staff').select('id, name, role, gender').eq('role', 'Teacher').eq('school_id', user.school_id).order('name'),
-          supabase.from('teacher_class_subjects').select('id, teacher_id, class_subject_id, class_subjects (class_id, subject_id)').eq('school_id', user.school_id),
-          supabase.from('sections').select('id, class_id, teacher_id').eq('school_id', user.school_id),
+          supabase.from('classes').select('id, name').eq('school_id', user?.school_id || '').order('name'),
+          supabase.from('subjects').select('id, name').eq('school_id', user?.school_id || ''),
+          supabase.from('staff').select('id, name, role, gender').eq('role', 'Teacher').eq('school_id', user?.school_id || '').order('name'),
+          supabase.from('teacher_class_subjects').select('id, teacher_id, class_subject_id, class_subjects (class_id, subject_id)').eq('school_id', user?.school_id || ''),
+          supabase.from('sections').select('id, class_id, teacher_id').eq('school_id', user?.school_id || ''),
         ]);
         setClasses(cls.data || []);
         setSubjects(subs.data || []);
@@ -519,8 +645,13 @@ const TimeTableManager: React.FC = () => {
         setAllDataLoaded(true);
       }
     };
-    fetchAll();
-  }, [user.school_id]);
+    if (user?.school_id) {
+      fetchAll();
+    } else {
+      setLoading(false);
+      setAllDataLoaded(true);
+    }
+  }, [user?.school_id]);
 
   useEffect(() => {
     if (editingCell && selectRefs.current[editingCell]) {
@@ -642,6 +773,11 @@ const TimeTableManager: React.FC = () => {
       toast.showToast('No active session found. Cannot save timetable.', 'error');
       return;
     }
+    if (!user?.school_id) {
+      toast.showToast('User school information not found. Cannot save timetable.', 'error');
+      return;
+    }
+    const schoolId = user.school_id; // Store in const so TypeScript knows it's defined
     setLoading(true);
     const timetableDataToSave: Array<{ class_id: number; period_index: number; subject_id: number; teacher_id: number; session_id: number; break_index: number; school_id: number; day_of_week: number }> = [];
 
@@ -663,7 +799,7 @@ const TimeTableManager: React.FC = () => {
           teacher_id: teacherId,
           session_id: sessionId,
           break_index: breakIdx,
-          school_id: user.school_id!,
+          school_id: schoolId,
           day_of_week: 1 // Default to Monday since this appears to be a daily timetable
         });
       });
@@ -682,7 +818,7 @@ const TimeTableManager: React.FC = () => {
           .from('timetable')
           .select('*')
           .eq('session_id', sessionId)
-          .eq('school_id', user.school_id)
+          .eq('school_id', schoolId)
           .eq('day_of_week', dayOfWeek)
           .in('class_id', uniqueClassIds);
         
@@ -694,7 +830,7 @@ const TimeTableManager: React.FC = () => {
           .from('timetable')
           .delete()
           .eq('session_id', sessionId)
-          .eq('school_id', user.school_id)
+          .eq('school_id', schoolId)
           .eq('day_of_week', dayOfWeek)
           .in('class_id', uniqueClassIds);
         
@@ -718,7 +854,7 @@ const TimeTableManager: React.FC = () => {
           .from('timetable')
           .select('*')
           .eq('session_id', sessionId)
-          .eq('school_id', user.school_id)
+          .eq('school_id', schoolId)
           .eq('day_of_week', 1)
           .in('class_id', uniqueClassIds);
         
@@ -738,14 +874,15 @@ const TimeTableManager: React.FC = () => {
   // Load Timetable
   useEffect(() => {
     const loadTimetable = async () => {
-      if (!sessionId) return;
+      if (!sessionId || !user?.school_id) return;
+      const schoolId = user.school_id; // Extract to const for type narrowing
       setLoading(true);
       try {
         const { data, error } = await supabase
           .from('timetable')
           .select('class_id, period_index, subject_id, teacher_id, break_index, day_of_week')
           .eq('session_id', sessionId)
-          .eq('school_id', user.school_id)
+          .eq('school_id', schoolId)
           .eq('day_of_week', 1); // Only load Monday's timetable
 
         if (error) throw error;
@@ -780,7 +917,7 @@ const TimeTableManager: React.FC = () => {
       }
     };
     loadTimetable();
-  }, [sessionId, user.school_id, toast]); // Dependency on sessionId, school_id, and toast
+  }, [sessionId, user?.school_id, toast]); // Dependency on sessionId, school_id, and toast
 
   // Helper function to get free teachers for a period
   const getFreeTeachers = (periodIndex: number): string[] => {
@@ -1649,6 +1786,27 @@ const TimeTableManager: React.FC = () => {
     }
   };
 
+  // Check if user has school_id (after all hooks)
+  if (!user?.school_id) {
+    return (
+      <Container>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: '2rem', 
+          gap: 16,
+          color: '#888',
+          fontSize: '1.1rem',
+          fontWeight: 600
+        }}>
+          <Info style={{ fontSize: '1.5rem' }} />
+          No school context found. Please contact your administrator.
+        </div>
+      </Container>
+    );
+  }
+
   // Show loading animation while all data is being fetched and checked
   if (loading || !allDataLoaded) {
     return <Loader />;
@@ -1666,9 +1824,15 @@ const TimeTableManager: React.FC = () => {
   if (!hasAssignments) {
     return (
       <Container>
-        <PageHeaderCard>
-          <PageHeaderText>Timetable for {sessionName}</PageHeaderText>
-        </PageHeaderCard>
+        <PageHeader>
+          <HeaderLeft>
+            <PageHeaderText>
+              📅 Timetable
+              {sessionName && <SessionBadge>{sessionName}</SessionBadge>}
+            </PageHeaderText>
+            <Subtitle>Manage weekly schedule and assignments for all classes</Subtitle>
+          </HeaderLeft>
+        </PageHeader>
         <NoAssignmentsContainer>
           <NoAssignmentsIcon>📚</NoAssignmentsIcon>
           <NoAssignmentsTitle>No Subjects Assigned to Teachers</NoAssignmentsTitle>
@@ -1686,9 +1850,15 @@ const TimeTableManager: React.FC = () => {
 
   return (
     <Container>
-      <PageHeaderCard>
-        <PageHeaderText>Timetable for {sessionName}</PageHeaderText>
-      </PageHeaderCard>
+      <PageHeader>
+        <HeaderLeft>
+          <PageHeaderText>
+            📅 Timetable
+            {sessionName && <SessionBadge>{sessionName}</SessionBadge>}
+          </PageHeaderText>
+          <Subtitle>Manage weekly schedule and assignments for all classes</Subtitle>
+        </HeaderLeft>
+      </PageHeader>
       {loading ? <div>Loading...</div> : (
         <TableWrapper>
           <TimetableTable>
@@ -1699,14 +1869,14 @@ const TimeTableManager: React.FC = () => {
                   if (idx === breakIdx + 1) {
                     return <Th breakCol key="break"></Th>;
                   } else {
-                    const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
-                    const period = periods[periodIdx];
-                    return (
-                      <Th key={period.num}>
-                        <div>{period.num}</div>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 500 }}>{period.time}</div>
-                      </Th>
-                    );
+                      const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
+                      const period = periods[periodIdx];
+                      return (
+                        <Th key={period.num}>
+                          <div style={{ fontWeight: 700, marginBottom: '2px' }}>P{period.num}</div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>{period.time}</div>
+                        </Th>
+                      );
                   }
                 })}
               </tr>
@@ -1719,7 +1889,7 @@ const TimeTableManager: React.FC = () => {
                 return [
                   ...filteredClasses.map((cls, rowIdx) => (
                     <tr key={cls.id}>
-                      <Td classCol>{cls.name}</Td>
+                      <Td classCol style={{ fontWeight: 600, fontSize: '0.85rem' }}>{cls.name}</Td>
                       {Array.from({ length: 8 + 1 }).map((_, idx) => {
                         if (idx === breakIdx + 1) {
                           if (rowIdx === 0) {
@@ -1728,7 +1898,7 @@ const TimeTableManager: React.FC = () => {
                                 key="break"
                                 rowSpan={filteredClasses.length + 1} // +1 for free teachers row
                               >
-                                Break<br />11:00-11:15
+                                BREAK<br />11:00-11:15
                               </BreakColumn>
                             );
                           }
@@ -1750,22 +1920,36 @@ const TimeTableManager: React.FC = () => {
                           display = (
                             <>
                               {Object.entries(teacherGroups).map(([teacherId, subjects], idx) => (
-                                <div key={teacherId} style={{ marginBottom: idx < Object.keys(teacherGroups).length - 1 ? '8px' : 0 }}>
-                                  <b>{subjects.sort().join(' / ')}</b>
-                                  <br />
-                                  <span style={{ fontSize: '0.97em', color: '#4a6cf7' }}>
+                                <div key={teacherId} style={{ 
+                                  marginBottom: idx < Object.keys(teacherGroups).length - 1 ? '6px' : 0,
+                                  lineHeight: '1.3'
+                                }}>
+                                  <div style={{ 
+                                    fontWeight: 600, 
+                                    fontSize: '0.8rem',
+                                    color: 'inherit',
+                                    marginBottom: '2px'
+                                  }}>
+                                    {subjects.sort().join(' / ')}
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: '0.75rem', 
+                                    color: 'inherit',
+                                    opacity: 0.7
+                                  }}>
                                     {getTeacherName(Number(teacherId))}
-                                  </span>
+                                  </div>
                                 </div>
                               ))}
                             </>
                           );
                         } else {
-                          display = <span style={{ color: '#888' }}>Select...</span>;
+                          display = <span style={{ color: 'inherit', opacity: 0.4, fontSize: '0.8rem' }}>Click to assign</span>;
                         }
                         return (
                           <Td
                             key={idx}
+                            hasContent={selected.length > 0}
                             style={{ cursor: 'pointer', position: 'relative' }}
                             onClick={e => {
                               if (dropdown?.cellKey !== cellKey) {
@@ -1774,7 +1958,10 @@ const TimeTableManager: React.FC = () => {
                               }
                             }}
                           >
-                            <div className="cell-content">
+                            <div className="cell-content" style={{ 
+                            padding: selected.length > 0 ? '4px 2px' : '2px',
+                            lineHeight: '1.4'
+                          }}>
                               {display}
                             </div>
                             {dropdown?.cellKey === cellKey && dropdown.rect &&
@@ -1830,7 +2017,7 @@ const TimeTableManager: React.FC = () => {
                                         >
                                           Deselect
                                         </DropdownOption>
-                                        <div style={{ borderTop: '1px solid #eee', margin: '4px 0 2px 0' }} />
+                                        <DropdownDivider />
                                       </>}
                                       {options.length === 0 ? (
                                         <DropdownOption disabled>No options</DropdownOption>
@@ -1882,7 +2069,7 @@ const TimeTableManager: React.FC = () => {
                   )),
                   // Free teachers row
                   <tr key="free-teachers">
-                    <Td classCol style={{ fontWeight: 'bold' }}>Free Teachers</Td>
+                    <Td classCol style={{ fontWeight: 700, fontSize: '0.8rem', opacity: 0.8 }}>Free Teachers</Td>
                     {Array.from({ length: 8 + 1 }).map((_, idx) => {
                       if (idx === breakIdx + 1) {
                         return null; // Skip break column as it's already spanned
@@ -1890,8 +2077,8 @@ const TimeTableManager: React.FC = () => {
                       const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
                       const freeTeachers = getFreeTeachers(periodIdx);
                       return (
-                        <Td key={idx} style={{ fontSize: '0.9rem', color: '#666' }}>
-                          {freeTeachers.join(', ')}
+                        <Td key={idx} style={{ fontSize: '0.8rem', opacity: 0.7, fontStyle: 'italic' }}>
+                          {freeTeachers.length > 0 ? freeTeachers.join(', ') : '-'}
                         </Td>
                       );
                     })}
@@ -1903,55 +2090,59 @@ const TimeTableManager: React.FC = () => {
         </TableWrapper>
       )}
       <ActionButtonsContainer>
-        <label htmlFor="break-select" style={{ fontWeight: 600, marginRight: 8 }}>Break after:</label>
-        <ThemedSelect
-          id="break-select"
-          value={breakIdx}
-          onChange={e => setBreakIdx(Number(e.target.value))}
-        >
-          {periods.slice(0, periods.length - 1).map((p, idx) => (
-            <ThemedOption key={p.num} value={idx}>{idx + 1}</ThemedOption>
-          ))}
-        </ThemedSelect>
-        <Button variant="contained" color="primary" onClick={handleSaveTimetable} disabled={loading || !sessionId}>
-          {loading ? 'Saving...' : 'Save Timetable'}
-        </Button>
-        <Button variant="contained" color="secondary" onClick={handleExportPDF} disabled={loading || exportLoading || !sessionId}>
-          {exportLoading ? (
-            <>
-              <div style={{ 
-                width: 16, 
-                height: 16, 
-                border: '2px solid #e0e7ff', 
-                borderTop: '2px solid #4a6cf7', 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite',
-                marginRight: '8px'
-              }} />
-              Exporting...
-            </>
-          ) : (
-            'Export PDF'
-          )}
-        </Button>
-        <Button variant="contained" color="info" onClick={handleExportTeacherSlips} disabled={loading || teacherSlipsLoading || !sessionId}>
-          {teacherSlipsLoading ? (
-            <>
-              <div style={{ 
-                width: 16, 
-                height: 16, 
-                border: '2px solid #e0e7ff', 
-                borderTop: '2px solid #4a6cf7', 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite',
-                marginRight: '8px'
-              }} />
-              Exporting...
-            </>
-          ) : (
-            'Export Teacher Slips'
-          )}
-        </Button>
+        <BreakControl>
+          <label htmlFor="break-select">Break after period:</label>
+          <ThemedSelect
+            id="break-select"
+            value={breakIdx}
+            onChange={e => setBreakIdx(Number(e.target.value))}
+          >
+            {periods.slice(0, periods.length - 1).map((p, idx) => (
+              <ThemedOption key={p.num} value={idx}>{idx + 1}</ThemedOption>
+            ))}
+          </ThemedSelect>
+        </BreakControl>
+        <ActionButtonsGroup>
+          <Button variant="contained" color="primary" onClick={handleSaveTimetable} disabled={loading || !sessionId}>
+            {loading ? 'Saving...' : 'Save Timetable'}
+          </Button>
+          <Button variant="contained" color="secondary" onClick={handleExportPDF} disabled={loading || exportLoading || !sessionId}>
+            {exportLoading ? (
+              <>
+                <div style={{ 
+                  width: 16, 
+                  height: 16, 
+                  border: '2px solid #e0e7ff', 
+                  borderTop: '2px solid #4a6cf7', 
+                  borderRadius: '50%', 
+                  animation: 'spin 1s linear infinite',
+                  marginRight: '8px'
+                }} />
+                Exporting...
+              </>
+            ) : (
+              'Export PDF'
+            )}
+          </Button>
+          <Button variant="contained" color="info" onClick={handleExportTeacherSlips} disabled={loading || teacherSlipsLoading || !sessionId}>
+            {teacherSlipsLoading ? (
+              <>
+                <div style={{ 
+                  width: 16, 
+                  height: 16, 
+                  border: '2px solid #e0e7ff', 
+                  borderTop: '2px solid #4a6cf7', 
+                  borderRadius: '50%', 
+                  animation: 'spin 1s linear infinite',
+                  marginRight: '8px'
+                }} />
+                Exporting...
+              </>
+            ) : (
+              'Export Teacher Slips'
+            )}
+          </Button>
+        </ActionButtonsGroup>
       </ActionButtonsContainer>
       <style>{`
         @keyframes spin {
