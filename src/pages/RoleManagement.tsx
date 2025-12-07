@@ -13,6 +13,7 @@ import {
   Dashboard as DashboardIcon,
   Person as PersonIcon,
   Work as WorkIcon,
+  WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
@@ -535,7 +536,7 @@ const RoleManagement: React.FC = () => {
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [showAddRole, setShowAddRole] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [openMenus, setOpenMenus] = useState<Set<string>>(new Set([...menuStructure.map(m => m.label), 'Other Pages']));
+  const [openMenus, setOpenMenus] = useState<Set<string>>(new Set([...menuStructure.map(m => m.label), 'Standalone Pages/Features']));
 
   // Create a map of permission keys to permission IDs
   const permissionKeyToId = useMemo(() => {
@@ -545,6 +546,17 @@ const RoleManagement: React.FC = () => {
     });
     return map;
   }, [permissions]);
+
+  // Get WhatsApp notification permission
+  const whatsappPermissionId = useMemo(() => {
+    return permissionKeyToId.get('attendance.send_whatsapp_notifications') || null;
+  }, [permissionKeyToId]);
+
+  // Check if WhatsApp permission is checked
+  const isWhatsAppPermissionChecked = (): boolean => {
+    if (!whatsappPermissionId) return false;
+    return rolePermissions.has(whatsappPermissionId);
+  };
 
   // Find permission ID for a menu item path
   const getPermissionIdForPath = (path: string): number | null => {
@@ -707,14 +719,14 @@ const RoleManagement: React.FC = () => {
     return items;
   };
 
-  // Get all permission IDs for menu items (including standalone pages)
+  // Get all permission IDs for menu items (including standalone pages and features)
   const getAllMenuPermissionIds = (): number[] => {
     const items = getAllMenuItems();
     const menuPermissionIds = items
       .map(item => getPermissionIdForPath(item.path))
       .filter((id): id is number => id !== null);
     
-    // Also include standalone pages (Other Pages section)
+    // Also include standalone pages (Standalone Pages/Features section)
     const standalonePages = [
       '/dashboard',
       '/students/profile/:id',
@@ -724,8 +736,14 @@ const RoleManagement: React.FC = () => {
       .map(path => getPermissionIdForPath(path))
       .filter((id): id is number => id !== null);
     
+    // Also include WhatsApp notification permission
+    const featurePermissionIds: number[] = [];
+    if (whatsappPermissionId) {
+      featurePermissionIds.push(whatsappPermissionId);
+    }
+    
     // Combine and return unique IDs
-    return Array.from(new Set([...menuPermissionIds, ...standalonePermissionIds]));
+    return Array.from(new Set([...menuPermissionIds, ...standalonePermissionIds, ...featurePermissionIds]));
   };
 
   const handleSelectAll = () => {
@@ -1121,16 +1139,17 @@ const RoleManagement: React.FC = () => {
               </EmptyState>
             )}
 
-            {/* Standalone Pages Section */}
+            {/* Standalone Pages/Features Section */}
             <MenuSectionWrapper>
               <MenuSectionHeader
-                $isOpen={openMenus.has('Other Pages')}
-                onClick={() => toggleMenu('Other Pages')}
+                $isOpen={openMenus.has('Standalone Pages/Features')}
+                onClick={() => toggleMenu('Standalone Pages/Features')}
               >
                 <PersonIcon />
-                <span>Other Pages</span>
+                <span>Standalone Pages/Features</span>
               </MenuSectionHeader>
-              <MenuDropdown $isOpen={openMenus.has('Other Pages')} $columns={1}>
+              <MenuDropdown $isOpen={openMenus.has('Standalone Pages/Features')} $columns={2}>
+                {/* Pages Column */}
                 <DropdownColumn>
                   <div style={{
                     display: 'flex',
@@ -1138,15 +1157,15 @@ const RoleManagement: React.FC = () => {
                     alignItems: 'center',
                     marginBottom: '8px'
                   }}>
-                    <ColumnTitle>Standalone Pages</ColumnTitle>
+                    <ColumnTitle>Pages</ColumnTitle>
                     <Button
                       $variant="secondary"
                       onClick={(e) => {
                         e.stopPropagation();
                         const standalonePages = [
-                          { title: 'Dashboard', path: '/dashboard', color: '#6366f1', icon: React.createElement(DashboardIcon) },
-                          { title: 'Student Profile', path: '/students/profile/:id', color: '#3b82f6', icon: React.createElement(PersonIcon) },
-                          { title: 'Teacher Profile', path: '/profile', color: '#8b5cf6', icon: React.createElement(WorkIcon) }
+                          { path: '/dashboard' },
+                          { path: '/students/profile/:id' },
+                          { path: '/profile' }
                         ];
                         const allSelected = standalonePages.every(page => {
                           const permissionId = getPermissionIdForPath(page.path);
@@ -1236,6 +1255,72 @@ const RoleManagement: React.FC = () => {
                       </DropdownMenuItem>
                     );
                   })}
+                </DropdownColumn>
+                
+                {/* Features Column */}
+                <DropdownColumn>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px'
+                  }}>
+                    <ColumnTitle>Features</ColumnTitle>
+                    {whatsappPermissionId && (
+                      <Button
+                        $variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const isChecked = isWhatsAppPermissionChecked();
+                          const newPermissions = new Set(rolePermissions);
+                          if (isChecked) {
+                            newPermissions.delete(whatsappPermissionId);
+                          } else {
+                            newPermissions.add(whatsappPermissionId);
+                          }
+                          setRolePermissions(newPermissions);
+                        }}
+                        style={{ 
+                          fontSize: '0.7rem', 
+                          padding: '0.25rem 0.5rem',
+                          minWidth: 'auto'
+                        }}
+                      >
+                        {isWhatsAppPermissionChecked() ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    )}
+                  </div>
+                  {/* WhatsApp Notification Permission */}
+                  {whatsappPermissionId && (
+                    <DropdownMenuItem
+                      $color="#25d366"
+                      $checked={isWhatsAppPermissionChecked()}
+                      htmlFor="whatsapp-notification-permission"
+                    >
+                      <input
+                        type="checkbox"
+                        id="whatsapp-notification-permission"
+                        checked={isWhatsAppPermissionChecked()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handlePermissionToggle(whatsappPermissionId);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      />
+                      <div className="checkbox-indicator">
+                        {isWhatsAppPermissionChecked() ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                      </div>
+                      <div className="menu-icon">
+                        <WhatsAppIcon />
+                      </div>
+                      <div className="menu-content">
+                        <div className="menu-title">Send WhatsApp Notifications</div>
+                        <div className="menu-description">Allow sending WhatsApp and SMS notifications when marking attendance</div>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownColumn>
               </MenuDropdown>
             </MenuSectionWrapper>

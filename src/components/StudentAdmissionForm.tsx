@@ -62,6 +62,7 @@ const ModernForm = styled.form`
   box-sizing: border-box;
   position: relative;
   overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 const StickyHeader = styled.div`
@@ -388,6 +389,7 @@ const ModernGrid = styled.div`
   min-height: 0;
   padding: 0 24px;
   box-sizing: border-box;
+  overflow-x: hidden;
   @media (max-width: 1200px) {
     grid-template-columns: 1fr 1fr 1fr;
   }
@@ -626,6 +628,8 @@ const FormBlocks = styled.div`
   width: 100%;
   height: 100%;
   background: transparent;
+  overflow-x: hidden;
+  box-sizing: border-box;
   @media (max-width: 900px) {
     flex-direction: column;
     gap: 18px;
@@ -642,6 +646,8 @@ const FieldsCard = styled.div`
   flex-direction: column;
   min-width: 0;
   z-index: 1;
+  overflow-x: hidden;
+  box-sizing: border-box;
   @media (max-width: 900px) {
     width: 100%;
     padding: 18px 8px;
@@ -1133,6 +1139,8 @@ const SegmentedGroup = styled.div`
     /* Keep desktop look, just a bit smaller */
     border-radius: 9px;
     box-shadow: 1px 1px 3px #2222;
+    width: 100%;
+    flex: 1;
   }
 `;
 
@@ -1154,6 +1162,8 @@ const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
   align-items: center;
   gap: 0.35em;
   border-radius: 0;
+  flex: 1;
+  justify-content: center;
   ${({ first }) => first && `
     border-top-left-radius: 11px;
     border-bottom-left-radius: 11px;
@@ -1181,9 +1191,46 @@ const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
     line-height: ${SEGMENTED_HEIGHT_MOBILE};
     font-size: 0.93em;
     padding: 0 0.85em;
+    flex: 1;
     & svg {
       font-size: 13px;
     }
+  }
+`;
+
+const StandaloneFeePlanButton = styled.button`
+  font-family: inherit;
+  font-size: 0.93em;
+  font-weight: 400;
+  height: ${SEGMENTED_HEIGHT_MOBILE};
+  line-height: ${SEGMENTED_HEIGHT_MOBILE};
+  box-shadow: 1px 1px 3px #2222;
+  border: none;
+  outline: none;
+  transition: background 0.2s;
+  appearance: none;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
+  color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : theme.TEXT_PRIMARY};
+  padding: 0 0.85em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  border-radius: 9px;
+  cursor: pointer;
+  margin: 0;
+  width: 100%;
+  &:hover, &:focus {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#353535' : '#e5e7eb'};
+    opacity: 0.92;
+  }
+  & svg {
+    font-size: 13px;
+    vertical-align: middle;
+    display: inline-block;
+  }
+  @media (min-width: 701px) {
+    display: none;
   }
 `;
 
@@ -1222,6 +1269,9 @@ const Header = styled.div`
   border-radius: 16px;
   padding: 12px 24px 10px 24px;
   min-height: 36px;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
   h2 {
     font-size: 1.05rem;
     font-weight: 800;
@@ -1247,6 +1297,8 @@ const MainCard = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  box-sizing: border-box;
 `;
 
 const FooterCard = styled.div`
@@ -1264,6 +1316,7 @@ const MainContent = styled.div`
   min-height: 0;
   max-height: none;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 0 32px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -1409,6 +1462,7 @@ const StudentAdmissionForm: React.FC = () => {
   const [familyAvatarFile, setFamilyAvatarFile] = useState<File | null>(null);
   const [familyAvatarPreview, setFamilyAvatarPreview] = useState<string | null>(null);
   const [creatingFamily, setCreatingFamily] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
 
   // Helper function to generate next available student ID (school-specific)
   const generateNextStudentId = async (): Promise<number> => {
@@ -1719,6 +1773,13 @@ const StudentAdmissionForm: React.FC = () => {
     fetchFamilies();
   }, [user?.school_id]);
 
+  // Mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 700);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Focus name field when component is ready (after all loading and checks)
   useEffect(() => {
     if (!loading && activeSession && hasClasses && hasSections) {
@@ -1938,7 +1999,7 @@ const StudentAdmissionForm: React.FC = () => {
         avatar_url = publicUrl;
       }
       setProgress(70);
-      const defaultPassword = await getDefaultPassword('family');
+      const defaultPassword = generateRandomPassword();
       const { data: newFamily, error } = await supabase
         .from('families')
         .insert([{ 
@@ -2033,24 +2094,13 @@ const StudentAdmissionForm: React.FC = () => {
     handleSubmit(e);
   };
 
-  // Helper function to get default password
-  const getDefaultPassword = async (type: 'student' | 'staff' | 'family'): Promise<string> => {
-    if (!user?.school_id) return 'aa';
-    
-    try {
-      const { data, error } = await supabase
-        .from('default_passwords')
-        .select(`${type}_password`)
-        .eq('school_id', user.school_id)
-        .single();
-      
-      if (error || !data) return 'aa';
-      
-      const passwordKey = `${type}_password` as keyof typeof data;
-      return (data[passwordKey] as string) || 'aa';
-    } catch (error) {
-      return 'aa';
-    }
+  // Helper function to generate random 5-digit password
+  const generateRandomPassword = (): string => {
+    // Generate a random 5-digit number (10000 to 99999)
+    const min = 10000;
+    const max = 99999;
+    const randomPassword = Math.floor(Math.random() * (max - min + 1)) + min;
+    return String(randomPassword);
   };
 
   const handleConfirm = async () => {
@@ -2153,7 +2203,7 @@ const StudentAdmissionForm: React.FC = () => {
             session_id: session.id,
             school_id: user.school_id,
             status: 'active',
-            password: await getDefaultPassword('student')
+            password: generateRandomPassword()
       };
 
       // Debug: Log the data being sent to database
@@ -2371,16 +2421,18 @@ const StudentAdmissionForm: React.FC = () => {
                 Student Admission Form
               </h2>
             )}
-            <div style={{ flex: 1, display: 'flex', justifyContent: window.innerWidth > 700 ? 'flex-end' : 'center' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: isMobile ? 'center' : (window.innerWidth > 700 ? 'flex-end' : 'center'), gap: isMobile ? 8 : 0 }}>
               <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
                 <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="submit" form="admission-form" first>
                   <SaveIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
                   <span className="seg-btn-text">Save</span>
                 </SegmentedButton>
-                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
-                  <DescriptionIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
-                  <span className="seg-btn-text">Save & Fee Plan</span>
-                </SegmentedButton>
+                {!isMobile && (
+                  <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
+                    <DescriptionIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
+                    <span className="seg-btn-text">Save & Fee Plan</span>
+                  </SegmentedButton>
+                )}
                 <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleReset}>
                   <RefreshIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
                   <span className="seg-btn-text">Reset</span>
@@ -2390,6 +2442,12 @@ const StudentAdmissionForm: React.FC = () => {
                   <span className="seg-btn-text">Cancel</span>
                 </SegmentedButton>
               </SegmentedGroup>
+              {isMobile && (
+                <StandaloneFeePlanButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
+                  <DescriptionIcon style={{ fontSize: 13, marginRight: 4, marginBottom: -2 }} />
+                  <span className="seg-btn-text">Save & Fee Plan</span>
+                </StandaloneFeePlanButton>
+              )}
             </div>
           </div>
         </Header>

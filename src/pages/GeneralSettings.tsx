@@ -48,8 +48,7 @@ import {
   Assignment,
   Assessment,
   EventBusy,
-  Timer,
-  Lock as LockIcon
+  Timer
 } from '@mui/icons-material';
 
 const Container = styled.div<{ $theme: any }>`
@@ -214,12 +213,6 @@ const GeneralSettings: React.FC = () => {
   const [teacherSettings, setTeacherSettings] = useState<Map<number, TeacherScoreSettings>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-  const [defaultPasswords, setDefaultPasswords] = useState({
-    student_password: 'aa',
-    staff_password: 'aa',
-    family_password: 'aa'
-  });
-  const [hasPasswordChanges, setHasPasswordChanges] = useState(false);
   
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
 
@@ -282,39 +275,6 @@ const GeneralSettings: React.FC = () => {
       });
 
       setTeacherSettings(settingsMap);
-
-      // Fetch default passwords
-      const { data: passwordData, error: passwordError } = await supabase
-        .from('default_passwords')
-        .select('student_password, staff_password, family_password')
-        .eq('school_id', user.school_id)
-        .single();
-
-      if (passwordError && passwordError.code !== 'PGRST116') {
-        // If no record exists, create one with defaults
-        const { error: insertError } = await supabase
-          .from('default_passwords')
-          .insert({
-            school_id: user.school_id,
-            student_password: 'aa',
-            staff_password: 'aa',
-            family_password: 'aa'
-          });
-        
-        if (!insertError) {
-          setDefaultPasswords({
-            student_password: 'aa',
-            staff_password: 'aa',
-            family_password: 'aa'
-          });
-        }
-      } else if (passwordData) {
-        setDefaultPasswords({
-          student_password: passwordData.student_password || 'aa',
-          staff_password: passwordData.staff_password || 'aa',
-          family_password: passwordData.family_password || 'aa'
-        });
-      }
     } catch (error: any) {
       toast.showToast('Failed to load settings: ' + error.message, 'error');
     } finally {
@@ -364,21 +324,6 @@ const GeneralSettings: React.FC = () => {
 
         if (error) throw error;
         setHasChanges(false);
-      } else if (activeTab === 1) {
-        // Save default passwords
-        const { error } = await supabase
-          .from('default_passwords')
-          .upsert({
-            school_id: user.school_id,
-            student_password: defaultPasswords.student_password,
-            staff_password: defaultPasswords.staff_password,
-            family_password: defaultPasswords.family_password
-          }, {
-            onConflict: 'school_id',
-          });
-
-        if (error) throw error;
-        setHasPasswordChanges(false);
       }
 
       toast.showToast('Settings saved successfully!', 'success');
@@ -433,7 +378,6 @@ const GeneralSettings: React.FC = () => {
 
         <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
           <Tab label="Teachers Score Deduction" />
-          <Tab label="Default Passwords" />
         </Tabs>
 
         {activeTab === 0 && (
@@ -589,95 +533,6 @@ const GeneralSettings: React.FC = () => {
                 startIcon={<SaveIcon />}
                 onClick={handleSave}
                 disabled={!hasChanges || saving}
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </ActionsContainer>
-          </SettingsCard>
-        )}
-
-        {activeTab === 1 && (
-          <SettingsCard $theme={theme}>
-            <SectionTitleContainer $theme={theme}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                <LockIcon />
-                <Typography variant="h6" component="div">
-                  Default Passwords
-                </Typography>
-              </Box>
-            </SectionTitleContainer>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Configure default passwords for new students, staff users, and families. These passwords will be automatically assigned when new entities are created.
-            </Typography>
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Student Default Password
-                </Typography>
-                <TextField
-                  fullWidth
-                  type="text"
-                  value={defaultPasswords.student_password}
-                  onChange={(e) => {
-                    setDefaultPasswords(prev => ({ ...prev, student_password: e.target.value }));
-                    setHasPasswordChanges(true);
-                  }}
-                  placeholder="Enter default password for students"
-                  variant="outlined"
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  Used when creating new students in Student Admission Form and Bulk Student Admission
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Staff Default Password
-                </Typography>
-                <TextField
-                  fullWidth
-                  type="text"
-                  value={defaultPasswords.staff_password}
-                  onChange={(e) => {
-                    setDefaultPasswords(prev => ({ ...prev, staff_password: e.target.value }));
-                    setHasPasswordChanges(true);
-                  }}
-                  placeholder="Enter default password for staff users"
-                  variant="outlined"
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  Used when creating new user accounts in User Management
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Family Default Password
-                </Typography>
-                <TextField
-                  fullWidth
-                  type="text"
-                  value={defaultPasswords.family_password}
-                  onChange={(e) => {
-                    setDefaultPasswords(prev => ({ ...prev, family_password: e.target.value }));
-                    setHasPasswordChanges(true);
-                  }}
-                  placeholder="Enter default password for families"
-                  variant="outlined"
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  Used when creating new families in Family Management
-                </Typography>
-              </Box>
-            </Box>
-
-            <ActionsContainer $theme={theme}>
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={handleSave}
-                disabled={!hasPasswordChanges || saving}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>

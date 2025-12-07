@@ -126,28 +126,8 @@ export const TabsWrapper = styled.div`
   display: flex;
   gap: 0.25rem;
   flex: 1;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
-  
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#e5e7eb'};
-    border-radius: 2px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: #6366f1cc;
-    border-radius: 2px;
-    
-    &:hover {
-      background: #6366f1;
-    }
-  }
   
   @media (max-width: 768px) {
     width: 100%;

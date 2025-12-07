@@ -13,16 +13,65 @@ export const GlobalStyles = createGlobalStyle`
     font-display: swap;
   }
 
-  /* Hide scrollbar for Chrome, Safari and Opera */
+  /* Auto-hide scrollbars - show on hover or scroll for Chrome, Safari and Opera */
   ::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
+    width: 8px;
+    height: 8px;
   }
   
-  /* Hide scrollbar for IE, Edge and Firefox */
-  body, * {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+  }
+  
+  /* Show scrollbar on hover */
+  *:hover::-webkit-scrollbar-thumb {
+    background: ${({ theme }: any) => theme.TEXT_SECONDARY || 'rgba(0, 0, 0, 0.2)'};
+  }
+  
+  *:hover::-webkit-scrollbar-track {
+    background: ${({ theme }: any) => theme.BG || '#f3f4f6'};
+  }
+  
+  /* Show scrollbar when scrolling */
+  .scrolling::-webkit-scrollbar-thumb,
+  .scrolling *::-webkit-scrollbar-thumb {
+    background: ${({ theme }: any) => theme.TEXT_SECONDARY || 'rgba(0, 0, 0, 0.2)'};
+  }
+  
+  .scrolling::-webkit-scrollbar-track,
+  .scrolling *::-webkit-scrollbar-track {
+    background: ${({ theme }: any) => theme.BG || '#f3f4f6'};
+  }
+  
+  /* Show scrollbar thumb on hover when visible */
+  *:hover::-webkit-scrollbar-thumb:hover,
+  .scrolling::-webkit-scrollbar-thumb:hover,
+  .scrolling *::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }: any) => theme.TEXT || 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  /* Auto-hide scrollbars for Firefox - show on hover */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
+  }
+  
+  *:hover {
+    scrollbar-color: ${({ theme }: any) => `${theme.TEXT_SECONDARY || 'rgba(0, 0, 0, 0.2)'} ${theme.BG || '#f3f4f6'}`};
+  }
+  
+  .scrolling,
+  .scrolling * {
+    scrollbar-color: ${({ theme }: any) => `${theme.TEXT_SECONDARY || 'rgba(0, 0, 0, 0.2)'} ${theme.BG || '#f3f4f6'}`};
   }
   
   html {
@@ -30,11 +79,24 @@ export const GlobalStyles = createGlobalStyle`
     -webkit-text-size-adjust: 100%; /* Prevent iOS font size adjustment */
     -moz-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
   }
   
   html, body {
-    overflow-x: hidden;
+    overflow-x: auto;
+    overflow-y: auto;
     max-width: 100vw;
+  }
+  
+  body {
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+  
+  #root {
+    overflow-x: auto;
+    overflow-y: auto;
   }
   
   /* Mobile touch optimizations */

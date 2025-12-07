@@ -862,6 +862,41 @@ const SmallActionButton = styled.button`
   cursor: pointer;
 `;
 
+const VariablesBar = styled.div`
+  padding: 0.5rem 1.5rem;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)' : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-top: ${({ theme }) => theme.BG === '#252525' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)'};
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.5rem;
+`;
+
+const VariableTag = styled.button`
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)'};
+  border: ${({ theme }) => theme.BG === '#252525' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'};
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: monospace;
+  cursor: pointer;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT};
+    color: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : `${theme.ACCENT}10`};
+  }
+`;
+
+const VariablesLabel = styled.span`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-right: auto;
+`;
+
 type AudienceType = 'all_students' | 'all_staff' | 'all_parents' | 'students_by_class' | 'students_selected' | 'staff_selected' | 'parents_selected' | 'all_users';
 
 const UserAnnouncements: React.FC = () => {
@@ -1617,6 +1652,17 @@ const UserAnnouncements: React.FC = () => {
     return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
   };
 
+  const insertVariable = (variable: string) => {
+    // Get the active TinyMCE editor instance
+    const editor = (window as any).tinymce?.activeEditor;
+    if (editor) {
+      editor.insertContent(variable);
+    } else {
+      // Fallback: if no active editor, insert into message field
+      setMessage(prev => prev + variable);
+    }
+  };
+
   const filteredAnnouncements = announcements.filter(a => {
     if (!searchTerm.trim()) return true;
     const needle = searchTerm.trim().toLowerCase();
@@ -1934,6 +1980,14 @@ const UserAnnouncements: React.FC = () => {
                 onEditorChange={content => setMessage(content)}
               />
             </EditorWrapper>
+            <VariablesBar theme={theme}>
+              <VariablesLabel theme={theme}>Variables:</VariablesLabel>
+              <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
+              <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
+              <VariableTag theme={theme} onClick={() => insertVariable('{roll_number}')}>Roll Number</VariableTag>
+              <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
+              <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
+            </VariablesBar>
           </FormGroup>
 
           <FormGroup>

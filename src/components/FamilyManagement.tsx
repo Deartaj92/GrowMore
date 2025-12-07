@@ -1145,23 +1145,12 @@ const FamilyManagement: React.FC = () => {
   const [loadingFamilies, setLoadingFamilies] = useState(true);
 
   // Helper function to get default password
-  const getDefaultPassword = async (type: 'student' | 'staff' | 'family'): Promise<string> => {
-    if (!user?.school_id) return 'aa';
-    
-    try {
-      const { data, error } = await supabase
-        .from('default_passwords')
-        .select(`${type}_password`)
-        .eq('school_id', user.school_id)
-        .single();
-      
-      if (error || !data) return 'aa';
-      
-      const passwordKey = `${type}_password` as keyof typeof data;
-      return (data[passwordKey] as string) || 'aa';
-    } catch (error) {
-      return 'aa';
-    }
+  const generateRandomPassword = (): string => {
+    // Generate a random 5-digit number (10000 to 99999)
+    const min = 10000;
+    const max = 99999;
+    const randomPassword = Math.floor(Math.random() * (max - min + 1)) + min;
+    return String(randomPassword);
   };
 
   useEffect(() => {
@@ -1355,8 +1344,8 @@ const FamilyManagement: React.FC = () => {
         avatar_url = publicUrl;
       }
       setProgress(70);
-      // Get default password for families
-      const defaultPassword = await getDefaultPassword('family');
+      // Generate random 5-digit password for families
+      const defaultPassword = generateRandomPassword();
       const { error } = await supabase
         .from('families')
         .insert([{ ...form, avatar_url, password: defaultPassword, school_id: user?.school_id }]);

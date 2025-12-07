@@ -31,6 +31,7 @@ import { useTheme } from 'styled-components';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { whatsappSemiAutoService, AttendanceNotificationData } from '../services/whatsappSemiAuto';
 import WhatsAppBulkSender from './WhatsAppBulkSender';
+import { hasPermission } from '../services/permissionService';
 
 import Loader from '../components/Loader';
 // Move bounceAnimation to the top, before any styled components use it
@@ -902,6 +903,142 @@ const Overlay = styled.div`
   z-index: 3999;
 `;
 
+const StatusListDialog = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: ${({ theme }: { theme: any }) => theme.CARD};
+  border-radius: 12px;
+  box-shadow: 0 8px 32px #0004;
+  z-index: 4001;
+  min-width: 320px;
+  max-width: 500px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
+  overflow: hidden;
+`;
+
+const StatusListTitle = styled.h3`
+  margin: 0;
+  padding: 0.5rem 1rem;
+  color: ${({ theme }: { theme: any }) => theme.TEXT_PRIMARY};
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  background: ${({ theme }: { theme: any }) => theme.CARD};
+  border-bottom: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  line-height: 1.2;
+  min-height: 2.5rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+`;
+
+const StatusListCloseButton = styled.button`
+  background: transparent;
+  border: none;
+  color: ${({ theme }: { theme: any }) => theme.TEXT_SECONDARY};
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-size: 1.2rem;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  
+  &:hover {
+    background: ${({ theme }: { theme: any }) => theme.FIELD_BG};
+    color: ${({ theme }: { theme: any }) => theme.TEXT_PRIMARY};
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
+const StatusListContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  
+  /* Visible scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }: { theme: any }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }: { theme: any }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }: { theme: any }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }: { theme: any }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'} ${({ theme }: { theme: any }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+`;
+
+const StatusListItem = styled.div`
+  padding: 0.35rem 0.5rem;
+  color: ${({ theme }: { theme: any }) => theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  border-bottom: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
+  line-height: 1.3;
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const StatusListFooter = styled.div`
+  padding: 0.5rem 1rem;
+  background: ${({ theme }: { theme: any }) => theme.CARD};
+  border-top: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  min-height: 2.5rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+`;
+
+const ClickableSummaryItem = styled.span`
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 2px 6px;
+  border-radius: 4px;
+  &:hover {
+    background: ${({ theme }: { theme: any }) => theme.ACCENT}22;
+    color: ${({ theme }: { theme: any }) => theme.ACCENT};
+  }
+`;
+
 // Add skeleton loading components
 const SkeletonControlsBar = styled.div`
   display: flex;
@@ -1277,6 +1414,9 @@ const MarkAttendance: React.FC = () => {
   const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [showStatusList, setShowStatusList] = useState(false);
+  const [selectedStatusType, setSelectedStatusType] = useState<'present' | 'absent' | 'leave' | 'late' | null>(null);
+  const [hasWhatsAppPermission, setHasWhatsAppPermission] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1312,6 +1452,24 @@ const MarkAttendance: React.FC = () => {
   useEffect(() => {
     didSetDefaultStatus.current = false;
   }, [selectedClass, selectedSection, date]);
+
+  // Check WhatsApp notification permission
+  useEffect(() => {
+    const checkWhatsAppPermission = async () => {
+      if (!user?.id || !user?.school_id) {
+        setHasWhatsAppPermission(false);
+        return;
+      }
+      try {
+        const hasPerm = await hasPermission(user.id, 'attendance.send_whatsapp_notifications', user.school_id);
+        setHasWhatsAppPermission(hasPerm);
+      } catch (error) {
+        console.error('Error checking WhatsApp permission:', error);
+        setHasWhatsAppPermission(false);
+      }
+    };
+    checkWhatsAppPermission();
+  }, [user?.id, user?.school_id]);
 
   // Main data loading effect with progress bar
   useEffect(() => {
@@ -2359,13 +2517,50 @@ const MarkAttendance: React.FC = () => {
               color: theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY,
               fontWeight: 600,
               marginTop: 8,
-              textAlign: 'center'
+              textAlign: 'center',
+              flexWrap: 'wrap'
             }}>
               <span>Total: {totalStudents}</span>
-              <span>| Present: {presentCount}</span>
-              <span>| Absent: {absentCount}</span>
-              <span>| Leave: {leaveCount}</span>
-              <span>| Late: {students.filter(s => s.status === 'late').length}</span>
+              <span>|</span>
+              <ClickableSummaryItem 
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                onClick={() => {
+                  setSelectedStatusType('present');
+                  setShowStatusList(true);
+                }}
+              >
+                Present: {presentCount}
+              </ClickableSummaryItem>
+              <span>|</span>
+              <ClickableSummaryItem 
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                onClick={() => {
+                  setSelectedStatusType('absent');
+                  setShowStatusList(true);
+                }}
+              >
+                Absent: {absentCount}
+              </ClickableSummaryItem>
+              <span>|</span>
+              <ClickableSummaryItem 
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                onClick={() => {
+                  setSelectedStatusType('leave');
+                  setShowStatusList(true);
+                }}
+              >
+                Leave: {leaveCount}
+              </ClickableSummaryItem>
+              <span>|</span>
+              <ClickableSummaryItem 
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                onClick={() => {
+                  setSelectedStatusType('late');
+                  setShowStatusList(true);
+                }}
+              >
+                Late: {students.filter(s => s.status === 'late').length}
+              </ClickableSummaryItem>
             </div>
           </>
         ) : (
@@ -2695,7 +2890,7 @@ const MarkAttendance: React.FC = () => {
       </MainContent>
       
       {/* WhatsApp Notification Toggle */}
-      {students.length > 0 && (
+      {students.length > 0 && hasWhatsAppPermission && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -2754,8 +2949,48 @@ const MarkAttendance: React.FC = () => {
       
       <Footer>
         {!isMobile && (
-          <div style={{ fontSize: '0.98rem', color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), fontWeight: 600 }}>
-            Total: {totalStudents} | Present: {presentCount} | Absent: {absentCount} | Leave: {leaveCount} | Late: {students.filter(s => s.status === 'late').length}
+          <div style={{ fontSize: '0.98rem', color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span>Total: {totalStudents}</span>
+            <span>|</span>
+            <ClickableSummaryItem 
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              onClick={() => {
+                setSelectedStatusType('present');
+                setShowStatusList(true);
+              }}
+            >
+              Present: {presentCount}
+            </ClickableSummaryItem>
+            <span>|</span>
+            <ClickableSummaryItem 
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              onClick={() => {
+                setSelectedStatusType('absent');
+                setShowStatusList(true);
+              }}
+            >
+              Absent: {absentCount}
+            </ClickableSummaryItem>
+            <span>|</span>
+            <ClickableSummaryItem 
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              onClick={() => {
+                setSelectedStatusType('leave');
+                setShowStatusList(true);
+              }}
+            >
+              Leave: {leaveCount}
+            </ClickableSummaryItem>
+            <span>|</span>
+            <ClickableSummaryItem 
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              onClick={() => {
+                setSelectedStatusType('late');
+                setShowStatusList(true);
+              }}
+            >
+              Late: {students.filter(s => s.status === 'late').length}
+            </ClickableSummaryItem>
           </div>
         )}
         <SegmentedGroup
@@ -2903,6 +3138,68 @@ const MarkAttendance: React.FC = () => {
             setWhatsappNotificationData([]);
           }}
         />
+      )}
+      
+      {/* Status List Modal */}
+      {showStatusList && selectedStatusType && (
+        <>
+          <Overlay onClick={() => {
+            setShowStatusList(false);
+            setSelectedStatusType(null);
+          }} />
+          <StatusListDialog theme={theme === 'dark' ? darkTheme : lightTheme}>
+            <StatusListTitle theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1 }}>
+                {selectedStatusType === 'present' && <CheckCircle style={{ color: '#16a34a', fontSize: '1rem', display: 'flex', alignItems: 'center' }} />}
+                {selectedStatusType === 'absent' && <Cancel style={{ color: '#dc2626', fontSize: '1rem', display: 'flex', alignItems: 'center' }} />}
+                {selectedStatusType === 'leave' && <Info style={{ color: '#4a6cf7', fontSize: '1rem', display: 'flex', alignItems: 'center' }} />}
+                {selectedStatusType === 'late' && <HourglassEmpty style={{ color: '#f59e42', fontSize: '1rem', display: 'flex', alignItems: 'center' }} />}
+                <span style={{ display: 'flex', alignItems: 'center', lineHeight: '1.2' }}>
+                  {selectedStatusType.charAt(0).toUpperCase() + selectedStatusType.slice(1)} Students
+                  ({students.filter(s => s.status === selectedStatusType).length})
+                </span>
+              </div>
+              <StatusListCloseButton
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                onClick={() => {
+                  setShowStatusList(false);
+                  setSelectedStatusType(null);
+                }}
+                title="Close"
+              >
+                ×
+              </StatusListCloseButton>
+            </StatusListTitle>
+            <StatusListContent theme={theme === 'dark' ? darkTheme : lightTheme}>
+              {students
+                .filter(s => s.status === selectedStatusType)
+                .length > 0 ? (
+                students
+                  .filter(s => s.status === selectedStatusType)
+                  .map((student) => {
+                    // Find the actual serial number from the filtered students list (matches what's shown in main list)
+                    // If student is not in filtered (due to search), use their position in students array
+                    const filteredIndex = filtered.findIndex(s => s.id === student.id);
+                    const serialNumber = filteredIndex >= 0 ? filteredIndex + 1 : students.findIndex(s => s.id === student.id) + 1;
+                    return (
+                      <StatusListItem key={student.id} theme={theme === 'dark' ? darkTheme : lightTheme}>
+                        {serialNumber}. {student.name}{student.father_name ? ` - ` : ''}
+                        {student.father_name && (
+                          <span style={{ color: theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY }}>
+                            {student.father_name}
+                          </span>
+                        )}
+                      </StatusListItem>
+                    );
+                  })
+              ) : (
+                <StatusListItem theme={theme === 'dark' ? darkTheme : lightTheme} style={{ color: theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY }}>
+                  No {selectedStatusType} students
+                </StatusListItem>
+              )}
+            </StatusListContent>
+          </StatusListDialog>
+        </>
       )}
     </>
   );

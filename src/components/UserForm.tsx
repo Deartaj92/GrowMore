@@ -220,23 +220,18 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
     }
   }, [user, roles]);
 
-  const fetchDefaultPassword = async () => {
-    if (!currentUser?.school_id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('default_passwords')
-        .select('staff_password')
-        .eq('school_id', currentUser.school_id)
-        .single();
-      
-      if (!error && data) {
-        setForm(prev => ({ ...prev, password: data.staff_password || 'aa' }));
-      }
-    } catch (error) {
-      // Use default 'aa' if fetch fails
-      setForm(prev => ({ ...prev, password: 'aa' }));
-    }
+  const generateRandomPassword = (): string => {
+    // Generate a random 5-digit number (10000 to 99999)
+    const min = 10000;
+    const max = 99999;
+    const randomPassword = Math.floor(Math.random() * (max - min + 1)) + min;
+    return String(randomPassword);
+  };
+
+  const fetchDefaultPassword = () => {
+    // Generate random 5-digit password for new staff users
+    const randomPassword = generateRandomPassword();
+    setForm(prev => ({ ...prev, password: randomPassword }));
   };
 
   useEffect(() => {

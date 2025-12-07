@@ -146,6 +146,35 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Scroll detection for auto-hide scrollbars
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      // Add scrolling class to body and html
+      document.body.classList.add('scrolling');
+      document.documentElement.classList.add('scrolling');
+      
+      // Clear existing timeout
+      clearTimeout(scrollTimeout);
+      
+      // Remove scrolling class after scrolling stops (1 second delay)
+      scrollTimeout = setTimeout(() => {
+        document.body.classList.remove('scrolling');
+        document.documentElement.classList.remove('scrolling');
+      }, 1000);
+    };
+
+    // Listen to scroll events on window and document
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
+
   // Electron window state
   useEffect(() => {
     if (window.electronAPI) {

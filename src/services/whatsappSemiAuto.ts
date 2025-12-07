@@ -4,6 +4,7 @@ export interface AttendanceNotificationData {
   student_id: number;
   student_name: string;
   father_name?: string;
+  roll_number?: string;
   class_name: string;
   section_name?: string;
   date: string;
@@ -12,6 +13,7 @@ export interface AttendanceNotificationData {
   student_phone: string; // Changed from parent_phone to student_phone
   family_id?: number;
   school_short_name?: string;
+  school_website?: string;
   notification_channel?: 'whatsapp' | 'sms'; // Added notification channel
 }
 

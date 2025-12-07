@@ -662,6 +662,7 @@ const GeneralMessagePage: React.FC = () => {
     const [sending, setSending] = useState(false);
     const [notificationData, setNotificationData] = useState<AttendanceNotificationData[]>([]);
     const [schoolName, setSchoolName] = useState('');
+    const [schoolWebsite, setSchoolWebsite] = useState('');
     const [history, setHistory] = useState<any[]>([]);
     const [refreshHistory, setRefreshHistory] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
@@ -868,12 +869,13 @@ const GeneralMessagePage: React.FC = () => {
         try {
             const { data } = await supabase
                 .from('institute_profile')
-                .select('name, short_name')
+                .select('name, short_name, website')
                 .eq('school_id', user.school_id)
                 .single();
 
             if (data) {
                 setSchoolName(data.short_name || data.name);
+                setSchoolWebsite(data.website || '');
             }
         } catch (error) {
         }
@@ -1020,7 +1022,9 @@ const GeneralMessagePage: React.FC = () => {
                 status: 'General',
                 student_phone: s.phone,
                 school_short_name: schoolName,
-                notification_channel: (s.notification_channel as 'whatsapp' | 'sms') || 'whatsapp'
+                school_website: schoolWebsite,
+                notification_channel: (s.notification_channel as 'whatsapp' | 'sms') || 'whatsapp',
+                roll_number: s.roll_number || ''
             }));
 
         if (formattedData.length === 0) {
@@ -1189,8 +1193,10 @@ const GeneralMessagePage: React.FC = () => {
                                 <VariablesLabel theme={theme}>Variables:</VariablesLabel>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{roll_number}')}>Roll Number</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{school_website}')}>School Website</VariableTag>
                             </VariablesBar>
                         </MessageInputCard>
                         <SendButtonCard theme={theme}>

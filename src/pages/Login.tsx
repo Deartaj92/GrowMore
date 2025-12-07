@@ -104,6 +104,17 @@ const Container = styled.div`
   align-items: center;
   justify-content: center;
   background: ${({ theme }) => theme.BG};
+  padding: 1rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem 0.5rem;
+    align-items: center;
+  }
+
+  @media (max-width: 480px) {
+    padding: 1rem 0.75rem;
+    align-items: center;
+  }
 `;
 const TopRightControls = styled.div`
   position: fixed;
@@ -149,6 +160,22 @@ const LoginCard = styled.form`
   width: 100%;
   max-width: 410px;
   align-items: stretch;
+
+  @media (max-width: 768px) {
+    padding: 1.8rem 1.5rem 1.5rem 1.5rem;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    max-width: calc(100% - 2rem);
+    width: calc(100% - 2rem);
+  }
+
+  @media (max-width: 480px) {
+    padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+    max-width: calc(100% - 1.5rem);
+    width: calc(100% - 1.5rem);
+  }
 `;
 const Logo = styled.div`
   display: flex;
