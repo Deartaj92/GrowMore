@@ -651,9 +651,10 @@ const GeneralMessagePage: React.FC = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
 
-    const [targetType, setTargetType] = useState<'all' | 'class' | 'student'>('all');
+    const [targetType, setTargetType] = useState<'all' | 'class' | 'staff'>('all');
     const [classes, setClasses] = useState<any[]>([]);
     const [selectedClass, setSelectedClass] = useState<string>('');
+    const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(false);
     const [sections, setSections] = useState<any[]>([]);
     const [selectedSection, setSelectedSection] = useState<string>('');
     const [students, setStudents] = useState<any[]>([]);
@@ -745,7 +746,7 @@ const GeneralMessagePage: React.FC = () => {
                     // Fetch full student details (excluding withdrawn)
                     const { data: studentsData } = await supabase
                         .from('students')
-                        .select('id, name, father_name, phone, notification_channel, roll_number')
+                        .select('id, name, father_name, phone, notification_channel, roll_number, password')
                         .eq('school_id', user.school_id)
                         .neq('status', 'withdrawn')
                         .in('id', studentIds);
@@ -779,7 +780,7 @@ const GeneralMessagePage: React.FC = () => {
                         section_name: sectionName
                     }));
 
-                } else if (targetType === 'all' || targetType === 'student') {
+                } else if (targetType === 'all') {
                     // Fetch all students from student_class_history for the active session
                     const { data: schData } = await supabase
                         .from('student_class_history')
@@ -825,7 +826,7 @@ const GeneralMessagePage: React.FC = () => {
                     // Fetch full student details (excluding withdrawn)
                     const { data: studentsData } = await supabase
                         .from('students')
-                        .select('id, name, father_name, phone, notification_channel, roll_number')
+                        .select('id, name, father_name, phone, notification_channel, roll_number, password')
                         .eq('school_id', user.school_id)
                         .neq('status', 'withdrawn')
                         .in('id', studentIds);
@@ -841,6 +842,32 @@ const GeneralMessagePage: React.FC = () => {
                         ...s,
                         ...latestRecords.get(s.id)
                     }));
+                } else if (targetType === 'staff') {
+                    // Fetch all staff members
+                    const { data: staffData } = await supabase
+                        .from('staff')
+                        .select('id, name, mobile, notification_channel')
+                        .eq('school_id', user.school_id)
+                        .not('mobile', 'is', null);
+
+                    if (!staffData) {
+                        setStudents([]);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Map staff to student-like structure for compatibility
+                    targetStudents = staffData.map((s: any) => ({
+                        id: s.id,
+                        name: s.name,
+                        phone: s.mobile,
+                        notification_channel: s.notification_channel || 'whatsapp',
+                        class_name: 'Staff',
+                        section_name: null,
+                        father_name: null,
+                        roll_number: '',
+                        password: ''
+                    }));
                 }
 
                 setStudents(targetStudents);
@@ -852,17 +879,27 @@ const GeneralMessagePage: React.FC = () => {
         };
 
         fetchTargetStudents();
-    }, [targetType, selectedClass, selectedSection, user?.school_id]);
+    }, [targetType, selectedClass, selectedSection, user?.school_id, classes]);
 
-    // Fetch sections when class changes
+    // Fetch sections when class changes and update has_sections state
     useEffect(() => {
         if (targetType === 'class' && selectedClass && user?.school_id) {
-            fetchSections(selectedClass);
+            const selectedClassData = classes.find(c => c.id === parseInt(selectedClass));
+            const hasSections = selectedClassData?.has_sections ?? true;
+            setSelectedClassHasSections(hasSections);
+            
+            if (hasSections) {
+                fetchSections(selectedClass);
+            } else {
+                setSections([]);
+                setSelectedSection('');
+            }
         } else {
             setSections([]);
             setSelectedSection('');
+            setSelectedClassHasSections(false);
         }
-    }, [targetType, selectedClass, user?.school_id]);
+    }, [targetType, selectedClass, user?.school_id, classes]);
 
     const fetchSchoolProfile = async () => {
         if (!user?.school_id) return;
@@ -886,7 +923,7 @@ const GeneralMessagePage: React.FC = () => {
         try {
             const { data } = await supabase
                 .from('classes')
-                .select('id, name')
+                .select('id, name, has_sections')
                 .eq('school_id', user.school_id)
                 .order('name');
 
@@ -1004,7 +1041,7 @@ const GeneralMessagePage: React.FC = () => {
         }
 
         if (selectedStudentIds.size === 0) {
-            showToast('No students selected to send message to', 'error');
+            showToast(`No ${targetType === 'staff' ? 'staff' : 'students'} selected to send message to`, 'error');
             return;
         }
 
@@ -1024,11 +1061,12 @@ const GeneralMessagePage: React.FC = () => {
                 school_short_name: schoolName,
                 school_website: schoolWebsite,
                 notification_channel: (s.notification_channel as 'whatsapp' | 'sms') || 'whatsapp',
-                roll_number: s.roll_number || ''
+                roll_number: s.roll_number || '',
+                password: s.password || ''
             }));
 
         if (formattedData.length === 0) {
-            showToast('No students with phone numbers found in selection', 'error');
+            showToast(`No ${targetType === 'staff' ? 'staff' : 'students'} with phone numbers found in selection`, 'error');
             return;
         }
 
@@ -1090,7 +1128,7 @@ const GeneralMessagePage: React.FC = () => {
                             >
                                 <option value="all">All Students</option>
                                 <option value="class">Class Wise</option>
-                                <option value="student">Single Student</option>
+                                <option value="staff">All Staff</option>
                             </StyledSelect>
                         </FormGroup>
 
@@ -1109,7 +1147,7 @@ const GeneralMessagePage: React.FC = () => {
                                         ))}
                                     </StyledSelect>
                                 </FormGroup>
-                                {selectedClass && (
+                                {selectedClass && selectedClassHasSections && (
                                     <FormGroup>
                                         <Label>Select Section</Label>
                                         <StyledSelect
@@ -1133,7 +1171,7 @@ const GeneralMessagePage: React.FC = () => {
                             <SearchIcon style={{ fontSize: 20, color: theme.TEXT_SECONDARY }} />
                             <SearchInput
                                 theme={theme}
-                                placeholder="Search students..."
+                                placeholder={targetType === 'staff' ? 'Search staff...' : 'Search students...'}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -1142,7 +1180,7 @@ const GeneralMessagePage: React.FC = () => {
 
                     <StudentListCard theme={theme}>
                         <StudentListHeader theme={theme}>
-                            <span>Students ({selectedStudentIds.size}/{filteredStudents.length})</span>
+                            <span>{targetType === 'staff' ? 'Staff' : 'Students'} ({selectedStudentIds.size}/{filteredStudents.length})</span>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <ActionButton theme={theme} onClick={handleSelectAll}>
                                     All
@@ -1173,7 +1211,7 @@ const GeneralMessagePage: React.FC = () => {
                                 ))
                             ) : (
                                 <LoadingText theme={theme}>
-                                    No students found
+                                    {targetType === 'staff' ? 'No staff found' : 'No students found'}
                                 </LoadingText>
                             )}
                         </StudentListContent>
@@ -1194,6 +1232,7 @@ const GeneralMessagePage: React.FC = () => {
                                 <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{roll_number}')}>Roll Number</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{password}')}>Password</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
                                 <VariableTag theme={theme} onClick={() => insertVariable('{school_website}')}>School Website</VariableTag>

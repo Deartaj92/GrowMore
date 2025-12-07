@@ -5,6 +5,7 @@ export interface AttendanceNotificationData {
   student_name: string;
   father_name?: string;
   roll_number?: string;
+  password?: string;
   class_name: string;
   section_name?: string;
   date: string;

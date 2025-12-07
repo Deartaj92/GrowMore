@@ -136,6 +136,7 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
         .replace('{student_name}', data.student_name)
         .replace('{father_name}', data.father_name || '')
         .replace('{roll_number}', data.roll_number || '')
+        .replace('{password}', data.password || '')
         .replace('{class_name}', data.class_name)
         .replace('{school_name}', schoolName)
         .replace('{school_website}', data.school_website || '');
