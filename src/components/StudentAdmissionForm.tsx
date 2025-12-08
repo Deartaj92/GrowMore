@@ -2428,10 +2428,10 @@ const StudentAdmissionForm: React.FC = () => {
                   <span className="seg-btn-text">Save</span>
                 </SegmentedButton>
                 {!isMobile && (
-                  <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
-                    <DescriptionIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
-                    <span className="seg-btn-text">Save & Fee Plan</span>
-                  </SegmentedButton>
+                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
+                  <DescriptionIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
+                  <span className="seg-btn-text">Save & Fee Plan</span>
+                </SegmentedButton>
                 )}
                 <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleReset}>
                   <RefreshIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />

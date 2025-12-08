@@ -134,10 +134,13 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
     if (mode === 'general' && defaultMessage) {
       return defaultMessage
         .replace('{student_name}', data.student_name)
+        .replace('{staff_name}', data.student_name) // Staff name uses same field
         .replace('{father_name}', data.father_name || '')
         .replace('{roll_number}', data.roll_number || '')
         .replace('{password}', data.password || '')
         .replace('{class_name}', data.class_name)
+        .replace('{role}', data.role || '')
+        .replace('{mobile}', data.mobile || data.student_phone || '')
         .replace('{school_name}', schoolName)
         .replace('{school_website}', data.school_website || '');
     }

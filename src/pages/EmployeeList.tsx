@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
@@ -603,7 +603,11 @@ const EmployeeList: React.FC = () => {
                     <span>{employee.role || 'N/A'}</span>
                     {employee.mobile && (
                       <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <PhoneIcon style={{ fontSize: '0.9rem' }} />
+                        {employee.notification_channel === 'sms' ? (
+                          <SmsIcon style={{ fontSize: '0.9rem', opacity: 0.8 }} titleAccess="SMS" />
+                        ) : (
+                          <WhatsAppIcon style={{ fontSize: '0.9rem', color: '#25d366' }} titleAccess="WhatsApp" />
+                        )}
                         {employee.mobile}
                       </span>
                     )}

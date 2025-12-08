@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import imageCompression from 'browser-image-compression';
 import NoSessionsFound from '../components/NoSessionsFound';
+import { Radio, RadioGroup, FormControlLabel, FormLabel } from '@mui/material';
 
 const ModernForm = styled.form`
   background: ${({ theme }) => theme.CARD};
@@ -373,6 +374,7 @@ const StaffAddForm: React.FC = () => {
     email: '',
     dob: '2000-01-01',
     address: '',
+    notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
   });
   const [image, setImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -409,6 +411,7 @@ const StaffAddForm: React.FC = () => {
             email: data.email || '',
             dob: data.dob || '2000-01-01',
             address: data.address || '',
+            notificationChannel: (data.notification_channel as 'whatsapp' | 'sms') || 'whatsapp',
           });
           setImage(data.picture_url || null);
         }
@@ -513,6 +516,7 @@ const StaffAddForm: React.FC = () => {
       email: '',
       dob: '2000-01-01',
       address: '',
+      notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
     });
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -559,6 +563,7 @@ const StaffAddForm: React.FC = () => {
         email: form.email.trim() || null,
         dob: form.dob || null,
         address: form.address.trim() || null,
+        notification_channel: form.notificationChannel || 'whatsapp',
         school_id: user.school_id
       };
 
@@ -637,6 +642,18 @@ const StaffAddForm: React.FC = () => {
               <ModernGrid>
                 <Field><Label>Employee Name*</Label><Input name="name" value={form.name} onChange={handleChange} required /></Field>
                 <Field><Label>Mobile No for SMS/WhatsApp*</Label><Input name="mobile" value={form.mobile} onChange={handleChange} placeholder="e.g +92xxxxxxxxxx" /></Field>
+                <Field>
+                  <FormLabel component="legend" style={{ fontSize: '0.92rem', color: themeObj.TEXT_SECONDARY, fontWeight: 500, marginBottom: '4px' }}>Notification Channel</FormLabel>
+                  <RadioGroup
+                    row
+                    value={form.notificationChannel}
+                    onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
+                    name="notificationChannel"
+                  >
+                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
+                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
+                  </RadioGroup>
+                </Field>
                 <Field><Label>Employee Role*</Label><Select name="role" value={form.role} onChange={handleChange} required><option value="">Select*</option>{roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}</Select></Field>
                 <Field><Label>Date of Joining*</Label><Input name="joiningDate" type="date" value={form.joiningDate} onChange={handleChange} /></Field>
                 <Field><Label>Monthly Salary*</Label><RsInputWrapper><RsPrefix>Rs.</RsPrefix><Input name="salary" type="number" min="0" value={form.salary} onChange={handleChange} style={{ paddingLeft: 38 }} /></RsInputWrapper></Field>

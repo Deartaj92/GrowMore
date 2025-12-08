@@ -16,6 +16,8 @@ export interface AttendanceNotificationData {
   school_short_name?: string;
   school_website?: string;
   notification_channel?: 'whatsapp' | 'sms'; // Added notification channel
+  role?: string; // Staff role
+  mobile?: string; // Staff mobile (alternative to student_phone)
 }
 
 export interface WhatsAppNotification {

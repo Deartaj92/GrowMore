@@ -16,6 +16,14 @@ html, body, #root {
   min-width: 100vw;
 }
 
+/* Use dynamic viewport height on mobile to account for browser UI */
+@media (max-width: 700px) {
+  html, body, #root {
+    min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
+    height: 100dvh;
+  }
+}
+
 body {
   font-size: 16px; /* Ensure consistent base font-size */
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;

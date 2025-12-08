@@ -10,6 +10,10 @@ export const AppContainer = styled.div`
   overflow: hidden;
   position: relative;
   background: ${props => props.theme.BG};
+  
+  @media (max-width: 700px) {
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  }
 `;
 
 export const LayoutWrapper = styled.div`
@@ -20,6 +24,10 @@ export const LayoutWrapper = styled.div`
   font-family: ${FONT};
   color: ${props => props.theme.TEXT_PRIMARY};
   background: ${props => props.theme.BG};
+  
+  @media (max-width: 700px) {
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  }
 `;
 
 export const MainArea = styled.div<{ $isTeacher?: boolean }>`
@@ -33,7 +41,7 @@ export const MainArea = styled.div<{ $isTeacher?: boolean }>`
   @media (max-width: 700px) {
     margin-left: 0;
     margin-top: 44px;
-    height: calc(100vh - 44px);
+    height: calc(100dvh - 44px); /* Dynamic viewport height for mobile browsers */
   }
 `;
 

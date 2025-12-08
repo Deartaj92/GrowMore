@@ -19,12 +19,16 @@ const Container = styled.div`
   margin: 0 auto;
   padding: 1rem;
   box-sizing: border-box;
-  min-height: 100vh;
+  min-height: 92vh;
   background: ${({ theme }) => theme.BG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  
+  @media (max-width: 700px) {
+    min-height: calc(100dvh - 44px); /* Dynamic viewport height minus header for mobile */
+  }
 `;
 
 const Header = styled.div`
@@ -57,6 +61,21 @@ const HeaderTitle = styled.h2`
   text-shadow: ${({ theme }) => isDark(theme)
         ? '0 2px 4px rgba(0, 0, 0, 0.5)'
         : 'none'};
+`;
+
+const StudentListFooter = styled.div`
+  padding: 0.5rem 1rem;
+  border-top: ${({ theme }) => isDark(theme)
+        ? '1px solid rgba(255, 255, 255, 0.05)'
+        : '1px solid rgba(0, 0, 0, 0.05)'};
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  background: ${({ theme }) => isDark(theme)
+        ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+        : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  backdrop-filter: blur(8px);
+  opacity: 0.7;
+  flex-shrink: 0;
 `;
 
 const MainGrid = styled.div`
@@ -330,9 +349,9 @@ const SendButton = styled.button`
 `;
 
 const HistorySection = styled(Card)`
-  height: 300px;
-  max-height: 300px;
-  min-height: 250px;
+  height: 260px;
+  max-height: 240px;
+  min-height: 240px;
   overflow: hidden;
   padding: 0;
   display: flex;
@@ -340,14 +359,14 @@ const HistorySection = styled(Card)`
 `;
 
 const HistoryHeader = styled.div`
-  padding: 1rem 1.5rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: ${({ theme }) => isDark(theme)
         ? '1px solid rgba(255, 255, 255, 0.05)'
         : '1px solid rgba(0, 0, 0, 0.05)'};
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
   background: ${({ theme }) => isDark(theme)
         ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
@@ -355,16 +374,16 @@ const HistoryHeader = styled.div`
   
   @media (max-width: 700px) {
     flex-wrap: wrap;
-    padding: 0.75rem 1rem;
+    padding: 0.4rem 0.5rem;
   }
 `;
 
 const HistoryTitle = styled.h3`
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.75rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   font-weight: 700;
 `;
 
@@ -774,11 +793,14 @@ const GeneralMessagePage: React.FC = () => {
                         sectionName = sectionData?.name;
                     }
 
-                    targetStudents = studentsData.map((s: any) => ({
-                        ...s,
-                        class_name: classData?.name,
-                        section_name: sectionName
-                    }));
+                    // Filter out students without phone numbers and map to student structure
+                    targetStudents = studentsData
+                        .filter((s: any) => s.phone != null && s.phone !== '' && s.phone.trim() !== '')
+                        .map((s: any) => ({
+                            ...s,
+                            class_name: classData?.name,
+                            section_name: sectionName
+                        }));
 
                 } else if (targetType === 'all') {
                     // Fetch all students from student_class_history for the active session
@@ -837,42 +859,72 @@ const GeneralMessagePage: React.FC = () => {
                         return;
                     }
 
-                    // Combine student data with class info
-                    targetStudents = studentsData.map((s: any) => ({
-                        ...s,
-                        ...latestRecords.get(s.id)
-                    }));
+                    // Filter out students without phone numbers and combine with class info
+                    targetStudents = studentsData
+                        .filter((s: any) => s.phone != null && s.phone !== '' && s.phone.trim() !== '')
+                        .map((s: any) => ({
+                            ...s,
+                            ...latestRecords.get(s.id)
+                        }));
                 } else if (targetType === 'staff') {
-                    // Fetch all staff members
-                    const { data: staffData } = await supabase
-                        .from('staff')
-                        .select('id, name, mobile, notification_channel')
-                        .eq('school_id', user.school_id)
-                        .not('mobile', 'is', null);
+                    // Fetch all staff members (handle pagination for large datasets)
+                    const BATCH_SIZE = 1000;
+                    const allStaff: any[] = [];
+                    let from = 0;
+                    let hasMore = true;
 
-                    if (!staffData) {
+                    while (hasMore) {
+                        const { data: staffData, error: staffError } = await supabase
+                            .from('staff')
+                            .select('id, name, mobile, notification_channel, role')
+                            .eq('school_id', user.school_id)
+                            .order('name', { ascending: true })
+                            .range(from, from + BATCH_SIZE - 1);
+
+                        if (staffError) {
+                            console.error('Error fetching staff:', staffError);
+                            showToast(`Error fetching staff: ${staffError.message}`, 'error');
+                            break;
+                        }
+
+                        if (staffData && staffData.length > 0) {
+                            allStaff.push(...staffData);
+                            from += BATCH_SIZE;
+                            hasMore = staffData.length === BATCH_SIZE;
+                        } else {
+                            hasMore = false;
+                        }
+                    }
+
+                    if (allStaff.length === 0) {
                         setStudents([]);
                         setLoading(false);
                         return;
                     }
 
-                    // Map staff to student-like structure for compatibility
-                    targetStudents = staffData.map((s: any) => ({
-                        id: s.id,
-                        name: s.name,
-                        phone: s.mobile,
-                        notification_channel: s.notification_channel || 'whatsapp',
-                        class_name: 'Staff',
-                        section_name: null,
-                        father_name: null,
-                        roll_number: '',
-                        password: ''
-                    }));
+                    // Filter out staff without mobile numbers and map to student-like structure
+                    targetStudents = allStaff
+                        .filter((s: any) => s.mobile != null && s.mobile !== '' && s.mobile.trim() !== '')
+                        .map((s: any) => ({
+                            id: s.id,
+                            name: s.name,
+                            phone: s.mobile,
+                            notification_channel: (s.notification_channel as 'whatsapp' | 'sms') || 'whatsapp',
+                            class_name: 'Staff',
+                            section_name: null,
+                            father_name: null,
+                            roll_number: '',
+                            password: '',
+                            role: s.role || ''
+                        }));
                 }
 
                 setStudents(targetStudents);
                 setSelectedStudentIds(new Set(targetStudents.map(s => s.id)));
-            } catch (error) {
+            } catch (error: any) {
+                console.error('Error in fetchTargetStudents:', error);
+                showToast(`Error loading ${targetType === 'staff' ? 'staff' : 'students'}: ${error?.message || 'Unknown error'}`, 'error');
+                setStudents([]);
             } finally {
                 setLoading(false);
             }
@@ -1062,7 +1114,9 @@ const GeneralMessagePage: React.FC = () => {
                 school_website: schoolWebsite,
                 notification_channel: (s.notification_channel as 'whatsapp' | 'sms') || 'whatsapp',
                 roll_number: s.roll_number || '',
-                password: s.password || ''
+                password: s.password || '',
+                role: s.role || '',
+                mobile: s.phone || ''
             }));
 
         if (formattedData.length === 0) {
@@ -1215,6 +1269,9 @@ const GeneralMessagePage: React.FC = () => {
                                 </LoadingText>
                             )}
                         </StudentListContent>
+                        <StudentListFooter theme={theme}>
+                            * Only {targetType === 'staff' ? 'staff' : 'students'} with mobile numbers shall be listed
+                        </StudentListFooter>
                     </StudentListCard>
                 </LeftSidebar>
 
@@ -1229,13 +1286,26 @@ const GeneralMessagePage: React.FC = () => {
                             />
                             <VariablesBar theme={theme}>
                                 <VariablesLabel theme={theme}>Variables:</VariablesLabel>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{roll_number}')}>Roll Number</VariableTag>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{password}')}>Password</VariableTag>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
-                                <VariableTag theme={theme} onClick={() => insertVariable('{school_website}')}>School Website</VariableTag>
+                                {targetType === 'staff' ? (
+                                    <>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{staff_name}')}>Staff Name</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{role}')}>Role</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{mobile}')}>Mobile</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{password}')}>Password</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{school_website}')}>School Website</VariableTag>
+                                    </>
+                                ) : (
+                                    <>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{roll_number}')}>Roll Number</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{password}')}>Password</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
+                                        <VariableTag theme={theme} onClick={() => insertVariable('{school_website}')}>School Website</VariableTag>
+                                    </>
+                                )}
                             </VariablesBar>
                         </MessageInputCard>
                         <SendButtonCard theme={theme}>
@@ -1248,7 +1318,7 @@ const GeneralMessagePage: React.FC = () => {
 
                     <HistorySection theme={theme}>
                         <HistoryHeader theme={theme}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                                 <HistoryTitle theme={theme}>Message History</HistoryTitle>
                                 <StyledSelect
                                     theme={theme}
@@ -1256,9 +1326,9 @@ const GeneralMessagePage: React.FC = () => {
                                     onChange={(e) => setSelectedCategory(e.target.value)}
                                     style={{ 
                                         width: 'auto', 
-                                        minWidth: '120px',
-                                        padding: '6px 10px',
-                                        fontSize: '0.85rem'
+                                        minWidth: '100px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.75rem'
                                     }}
                                 >
                                     <option value="All">All Categories</option>
@@ -1268,8 +1338,8 @@ const GeneralMessagePage: React.FC = () => {
                                     <option value="Report">Report</option>
                                 </StyledSelect>
                             </div>
-                            <IconButton theme={theme} onClick={() => setRefreshHistory(prev => prev + 1)}>
-                                <RefreshIcon />
+                            <IconButton theme={theme} onClick={() => setRefreshHistory(prev => prev + 1)} style={{ padding: '4px' }}>
+                                <RefreshIcon style={{ fontSize: '16px' }} />
                             </IconButton>
                         </HistoryHeader>
                         <HistoryList theme={theme}>
