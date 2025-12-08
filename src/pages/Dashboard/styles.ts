@@ -72,13 +72,16 @@ const resetAnimation = keyframes`
 // ==========================================
 export const DashboardContainer = styled.div`
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0; /* Critical for flex children */
   background: ${({ theme }) => theme.BG};
   padding: 1rem;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
   
   @media (max-width: 1024px) {
     padding: 0.75rem;

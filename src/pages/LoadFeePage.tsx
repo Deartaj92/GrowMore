@@ -36,7 +36,7 @@ const pulseKeyframes = keyframes({
 
 const PageContainer = styled.div`
   width: 100%;
-  height: calc(100vh - 44px);
+  height: 100%;
   background: ${({ theme }) => theme.BG};
   padding: 0.5rem;
   box-sizing: border-box;
@@ -44,6 +44,7 @@ const PageContainer = styled.div`
   flex-direction: column;
   gap: 0.5rem;
   overflow: hidden;
+  min-height: 0; /* Critical for flex children */
   
   @media (max-width: 768px) {
     padding: 0.375rem;

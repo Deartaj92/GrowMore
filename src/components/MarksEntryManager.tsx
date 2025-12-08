@@ -71,14 +71,14 @@ declare global {
 // Styled components matching SubjectManager.tsx exactly
 const PageContainer = styled.div`
   width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0 12px 6px 12px;
   box-sizing: border-box;
   background: ${({ theme }) => theme.palette?.mode === 'dark' ? '#252525' : '#f5f7fa'};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 92vh;
-  min-height: 0;
+  min-height: 0; /* Critical for flex children */
   overflow: hidden;
   display: flex;
   flex-direction: column;

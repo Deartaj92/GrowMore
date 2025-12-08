@@ -4,8 +4,7 @@ html, body, #root {
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow: hidden; /* Prevent body scroll - let containers handle it */
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   will-change: scroll-position;
@@ -14,6 +13,8 @@ html, body, #root {
   perspective: 1000px;
   min-height: 100vh;
   min-width: 100vw;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Use dynamic viewport height on mobile to account for browser UI */

@@ -15,20 +15,17 @@ const isDark = (themeObj: any) => themeObj.BG === '#252525';
 
 const Container = styled.div`
   width: 100%;
+  height: 100%;
   max-width: 1600px;
   margin: 0 auto;
   padding: 1rem;
   box-sizing: border-box;
-  min-height: 92vh;
+  min-height: 0; /* Critical for flex children */
   background: ${({ theme }) => theme.BG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  
-  @media (max-width: 700px) {
-    min-height: calc(100dvh - 44px); /* Dynamic viewport height minus header for mobile */
-  }
 `;
 
 const Header = styled.div`

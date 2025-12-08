@@ -10,6 +10,8 @@ export const AppContainer = styled.div`
   overflow: hidden;
   position: relative;
   background: ${props => props.theme.BG};
+  display: flex;
+  flex-direction: column;
   
   @media (max-width: 700px) {
     height: 100dvh; /* Dynamic viewport height for mobile browsers */
@@ -17,40 +19,42 @@ export const AppContainer = styled.div`
 `;
 
 export const LayoutWrapper = styled.div`
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: row;
   font-family: ${FONT};
   color: ${props => props.theme.TEXT_PRIMARY};
   background: ${props => props.theme.BG};
-  
-  @media (max-width: 700px) {
-    height: 100dvh; /* Dynamic viewport height for mobile browsers */
-  }
+  flex: 1;
+  min-height: 0; /* Critical for flex children */
 `;
 
 export const MainArea = styled.div<{ $isTeacher?: boolean }>`
   position: relative;
   margin-left: ${props => props.$isTeacher ? '0' : '54px'};
   margin-top: 44px;
-  height: calc(100vh - 44px);
-  overflow-y: auto;
-  background: ${props => props.theme.BG};
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Critical for flex children */
+  overflow: hidden;
+  background: ${props => props.theme.BG};
+  
   @media (max-width: 700px) {
     margin-left: 0;
     margin-top: 44px;
-    height: calc(100dvh - 44px); /* Dynamic viewport height for mobile browsers */
   }
 `;
 
 export const ContentArea = styled.main`
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0; /* Critical for flex children - allows scrolling */
+  overflow-y: auto;
+  overflow-x: hidden;
   background: ${props => props.theme.BG};
   padding: 0;
-  min-height: 0;
 `;
 
 export const Overlay = styled.div<{ open: boolean }>`

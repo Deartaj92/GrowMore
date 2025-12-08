@@ -66,16 +66,16 @@ const spinAnimation = `
 // Styled Components
 const PageContainer = styled.div`
   width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0 12px 6px 12px;
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  min-height: 0;
+  min-height: 0; /* Critical for flex children */
   display: flex;
   flex-direction: column;
-  height: 93vh;
 `;
 const Header = styled.div`
   flex: 0 0 auto;
