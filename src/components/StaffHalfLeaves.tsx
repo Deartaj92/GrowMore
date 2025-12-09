@@ -48,7 +48,7 @@ const PageContainer = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  height: 93vh;
+  height: 100%;
 `;
 
 const Header = styled.div`

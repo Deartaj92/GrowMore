@@ -13,7 +13,7 @@ import Loader from '../components/Loader';
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
-  height: 92vh;
+  height: 100%;
   overflow: hidden;
   background: ${({ theme }) => theme.BG};
 `;

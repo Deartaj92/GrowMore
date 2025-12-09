@@ -29,7 +29,8 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  min-height: 92vh;
+  height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 `;
@@ -95,7 +96,7 @@ const MainContent = styled.div`
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
 `;
 
 const StatsGrid = styled.div`

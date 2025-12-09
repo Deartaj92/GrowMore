@@ -1639,11 +1639,15 @@ const Header: React.FC<HeaderProps> = ({
     });
   };
 
-  const handleMobileMenuItemClick = (path: string) => {
-    navigate(path);
+  const handleMobileMenuItemClick = useCallback((path: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setMobileSidebarOpen(false);
     setMobileOpenMenus(new Set());
-  };
+    navigate(path, { replace: false });
+  }, [navigate]);
 
   return (
     <>
@@ -1720,7 +1724,7 @@ const Header: React.FC<HeaderProps> = ({
                             {section.items && section.items.map((menuItem: any, idx: number) => (
                               <MobileSubmenuItem
                                 key={idx}
-                                onClick={() => handleMobileMenuItemClick(menuItem.path)}
+                                onClick={(e) => handleMobileMenuItemClick(menuItem.path, e)}
                                 style={{ '--color': menuItem.color } as React.CSSProperties}
                               >
                                 <div 
@@ -1919,9 +1923,11 @@ const Header: React.FC<HeaderProps> = ({
                                 <DropdownMenuItem
                                   key={idx}
                                   $color={menuItem.color}
-                                  onClick={() => {
-                                    navigate(menuItem.path);
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     menuState?.setOpen(false);
+                                    navigate(menuItem.path, { replace: false });
                                   }}
                                 >
                                   <div className="menu-icon">{menuItem.icon}</div>
@@ -1936,9 +1942,11 @@ const Header: React.FC<HeaderProps> = ({
                                 <DropdownMenuItem
                                   key={idx}
                                   $color={menuItem.color}
-                                  onClick={() => {
-                                    navigate(menuItem.path);
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     menuState?.setOpen(false);
+                                    navigate(menuItem.path, { replace: false });
                                   }}
                                 >
                                   <div className="menu-icon">{menuItem.icon}</div>
@@ -2048,7 +2056,13 @@ const Header: React.FC<HeaderProps> = ({
               <NavMenuItem
                 key={item.path}
                 $isDashboard={false}
-                onClick={() => !item.hasDropdown && navigate(item.path)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!item.hasDropdown) {
+                    navigate(item.path, { replace: false });
+                  }
+                }}
                 aria-label={item.label}
               >
                 {item.icon}

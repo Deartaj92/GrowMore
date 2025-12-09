@@ -15,7 +15,7 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 93vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;

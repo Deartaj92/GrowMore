@@ -1052,9 +1052,9 @@ const Layout: React.FC = () => {
                 instituteProfile={instituteProfile}
               />
               <ContentArea>
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="wait" initial={false}>
                   <motion.div
-                    key={location.pathname}
+                    key={location.pathname + location.search}
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
