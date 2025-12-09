@@ -1008,31 +1008,6 @@ const PerPageLabel = styled.span`
   }
 `;
 
-const PerPageSelect = styled.select`
-  padding: 7px 18px;
-  border-radius: 10px;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-weight: 700;
-  font-size: 1.08em;
-  outline: none;
-  min-width: 70px;
-  box-shadow: 0 2px 8px #6366f122;
-  transition: border 0.18s, box-shadow 0.18s;
-  &:focus {
-    border: 1.5px solid ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 4px 16px #6366f144;
-  }
-  @media (max-width: 600px) {
-    width: 100%;
-    min-width: 0;
-    font-size: 1em;
-    padding: 10px 10px;
-    margin-bottom: 8px;
-  }
-`;
-
 // Move constants outside component to avoid recreation
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -1349,6 +1324,47 @@ const SegmentedBase = css`
   color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
 `;
 
+const PerPageSelect = styled.select`
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 4px 24px 4px 8px;
+  border-radius: 8px;
+  border: 1.5px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#ffffff'};
+  color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: ${({ theme }) => theme.BG === '#252525'
+    ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
+    : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+  
+  &:hover, &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => theme.BG === '#252525' ? '#333' : '#f8f9fa'};
+  }
+  
+  & option {
+    background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#ffffff'};
+    color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
+    padding: 8px;
+  }
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+    padding: 4px 20px 4px 6px;
+    background-size: 12px;
+    background-position: right 6px center;
+  }
+`;
+
 const SegmentedInput = styled.input`
   ${SegmentedBase}
   padding: 0 0.84em;
@@ -1369,8 +1385,10 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
   padding: 0 1.12em;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35em;
   border-radius: 0;
+  box-sizing: border-box;
   ${({ first }) => first && `
     border-top-left-radius: 11px;
     border-bottom-left-radius: 11px;
@@ -1384,9 +1402,11 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
   color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
   border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
   font-weight: ${({ active }) => active ? 700 : 400};
-  &:hover, &:focus {
+  text-align: center;
+  &:hover:not(:disabled), &:focus:not(:disabled) {
     background: ${({ theme }) => theme.BG === '#252525' ? '#353535' : '#e5e7eb'};
     opacity: 0.92;
+    border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
   }
   & svg {
     font-size: 15px;
@@ -1783,7 +1803,7 @@ const StudentList: React.FC = () => {
   const [classFilter, setClassFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(100);
+  const [perPage, setPerPage] = useState(10);
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = search.trim()
     ? filtered // show all filtered students if searching
@@ -2917,6 +2937,13 @@ const StudentList: React.FC = () => {
     scrollToTop();
   }, []);
 
+  const handlePerPageChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPerPage = parseInt(e.target.value, 10);
+    setPerPage(newPerPage);
+    setPage(1); // Reset to first page when per page changes
+    scrollToTop();
+  }, []);
+
   // Add these calculations near the pagination logic
   const from = (page - 1) * perPage + 1;
   const to = (page - 1) * perPage + paginated.length;
@@ -2934,20 +2961,36 @@ const StudentList: React.FC = () => {
         return (
           <div style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'center' : 'center',
-            justifyContent: isMobile ? 'center' : 'space-between',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             width: '100%',
             gap: isMobile ? '0.5rem' : '1rem',
-            flexWrap: isMobile ? 'nowrap' : 'wrap'
+            flexWrap: 'wrap'
           }}>
-            <PaginationInfo theme={themeObj} style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', fontSize: isMobile ? '0.9rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {isMobile
-                ? `${currentFrom} to ${currentTo} of ${currentTotal}`
-                : `Showing ${currentFrom} to ${currentTo} of ${currentTotal} students`
-              }
-            </PaginationInfo>
-            <PaginationControls theme={themeObj} style={{ flex: 'none', marginLeft: isMobile ? '0' : 'auto', width: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.75rem', flex: 1, minWidth: 0 }}>
+              <PerPageSelect
+                theme={themeObj}
+                value={perPage}
+                onChange={handlePerPageChange}
+                style={{
+                  minWidth: isMobile ? '55px' : '65px',
+                  maxWidth: isMobile ? '65px' : '75px'
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </PerPageSelect>
+              <PaginationInfo theme={themeObj} style={{ textAlign: 'left', fontSize: isMobile ? '0.9rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                {isMobile
+                  ? `${currentFrom} to ${currentTo} of ${currentTotal}`
+                  : `Showing ${currentFrom} to ${currentTo} of ${currentTotal} students`
+                }
+              </PaginationInfo>
+            </div>
+            <PaginationControls theme={themeObj} style={{ flex: 'none', width: 'auto' }}>
               <SegmentedGroup theme={themeObj}>
                 <SegmentedButton
                   theme={themeObj}
@@ -3010,7 +3053,7 @@ const StudentList: React.FC = () => {
     } else {
       setFooterContent(null);
     }
-  }, [filtered.length, page, perPage, paginated.length, totalPages, isMobile, theme, setFooterContent, handlePageChange]);
+  }, [filtered.length, page, perPage, paginated.length, totalPages, isMobile, theme, setFooterContent, handlePageChange, handlePerPageChange]);
 
   // Show loading animation until students are fully loaded
   if (loading || !hasFetchedStudents) {

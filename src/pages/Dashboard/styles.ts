@@ -73,35 +73,29 @@ const resetAnimation = keyframes`
 export const DashboardContainer = styled.div`
   width: 100%;
   height: 100%;
-  min-height: 0; /* Critical for flex children */
+  min-height: 100%;
   background: ${({ theme }) => theme.BG};
-  padding: 1rem;
+  padding: 0.5rem;
+  padding-bottom: 0.25rem; /* Match gap between cards */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.25rem;
   overflow-y: auto;
   overflow-x: hidden;
-  
-  @media (max-width: 1024px) {
-    padding: 0.75rem;
-    gap: 0.75rem;
-  }
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  position: relative;
   
   @media (max-width: 768px) {
-    padding: 0.5rem;
-    gap: 0.5rem;
-  }
-  
-  @media (max-width: 480px) {
     padding: 0.375rem;
-    gap: 0.5rem;
+    padding-bottom: 0.2rem; /* Match gap between cards on mobile */
+    gap: 0.2rem;
   }
 `;
 
 export const TabContainer = styled.div`
   position: sticky;
-  top: 0;
+  top: -0.5rem;
   z-index: 100;
   display: flex;
   justify-content: space-between;
@@ -112,16 +106,27 @@ export const TabContainer = styled.div`
     ? '1px solid rgba(255, 255, 255, 0.1)'
     : '1px solid rgba(0, 0, 0, 0.1)'};
   padding: 0.4rem 0;
-  margin-bottom: 1.5rem;
+  margin-top: -0.5rem;
+  margin-bottom: 0.25rem;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem 0;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    top: -0.375rem;
+    margin-top: -0.375rem;
+    margin-bottom: 0.2rem;
+    margin-left: -0.375rem;
+    margin-right: -0.375rem;
+    padding-left: 0.375rem;
+    padding-right: 0.375rem;
   }
 `;
 
@@ -129,8 +134,37 @@ export const TabsWrapper = styled.div`
   display: flex;
   gap: 0.25rem;
   flex: 1;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
+  
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.2)'
+      : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 2px;
+    
+    &:hover {
+      background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)'};
+    }
+  }
   
   @media (max-width: 768px) {
     width: 100%;
@@ -250,25 +284,17 @@ export const DashboardGrid = styled.div`
 export const TwoColumnGrid = styled.div<{ $columns: number }>`
   display: grid;
   grid-template-columns: ${({ $columns }) => ($columns === 2 ? '1fr 1fr' : '1fr')};
-  gap: 1rem;
+  gap: 0.5rem;
   align-items: flex-start;
   width: 100%;
-  
-  @media (max-width: 1200px) {
-    gap: 0.75rem;
-  }
+  margin-bottom: 0.25rem;
   
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-    gap: 1rem;
   }
   
   @media (max-width: 768px) {
-    gap: 0.75rem;
-  }
-  
-  @media (max-width: 480px) {
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 `;
 
@@ -293,14 +319,10 @@ export const RightColumn = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  
-  @media (max-width: 1024px) {
-    gap: 0.75rem;
-  }
+  gap: 0.25rem;
   
   @media (max-width: 768px) {
-    gap: 0.5rem;
+    gap: 0.2rem;
   }
 `;
 
@@ -572,33 +594,39 @@ export const SubLabel = styled.span<{ color: string }>`
 // ==========================================
 export const AttendanceStatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 `;
 
 export const AttendanceStatCard = styled.div<{ accentColor: string; $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
-  padding: 1.2rem;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 12px;
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  padding: 1rem;
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
   border-left: 4px solid ${({ accentColor }) => accentColor};
   transition: all 0.2s ease;
   
   @media (max-width: 768px) {
-    padding: 0.875rem;
-    border-radius: 10px;
+    padding: 0.75rem;
+    gap: 0.375rem;
   }
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    box-shadow: ${({ theme }) => theme.BG === '#252525'
+      ? '0 8px 40px rgba(0, 0, 0, 0.4)'
+      : '0 8px 40px rgba(0, 0, 0, 0.15)'};
   }
 `;
 
@@ -708,8 +736,8 @@ export const AttendanceStatStatus = styled.div<{ status: string }>`
 export const AttendanceChartsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
   
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
@@ -718,17 +746,28 @@ export const AttendanceChartsGrid = styled.div`
 
 export const AttendanceChartCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
+  border-radius: 12px;
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   padding: 1.5rem;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 export const AttendanceChartHeader = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
 `;
 
 export const AttendanceChartSummary = styled.div`
@@ -736,9 +775,11 @@ export const AttendanceChartSummary = styled.div`
   justify-content: center;
   align-items: center;
   gap: 1.5rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
   flex-wrap: wrap;
 `;
 
@@ -764,11 +805,19 @@ export const AttendanceChartSummaryValue = styled.div<{ color?: string }>`
 
 export const ConsecutiveAbsentCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
+  border-radius: 12px;
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   padding: 1.5rem;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  margin-bottom: 1.5rem;
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 export const ConsecutiveAbsentHeader = styled.div`
@@ -980,10 +1029,14 @@ export const ConsecutiveAbsentDaysContainer = styled.div`
 
 export const AbsentsTableWrapper = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  margin-bottom: 0.25rem;
   overflow: hidden;
 `;
 

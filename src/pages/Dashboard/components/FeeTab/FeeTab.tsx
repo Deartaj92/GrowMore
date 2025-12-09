@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from 'styled-components';
+import styled from 'styled-components';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import DottedLoader from '../shared/DottedLoader';
 import {
@@ -14,23 +15,12 @@ import {
   AreaChart
 } from 'recharts';
 import {
-  FeeStatsGrid,
-  FeeStatCard,
-  FeeStatLabel,
-  FeeStatValue,
-  CollectionChartsGrid,
-  CollectionChartCard,
-  CollectionChartTitle,
-  FeeCollectionDetailsCard,
-  FeeCollectionDetailsTitle,
   FeeCollectionTable,
   FeeCollectionTableHeader,
   FeeCollectionTableHeaderCell,
   FeeCollectionTableBody,
   FeeCollectionTableRow,
   FeeCollectionTableCell,
-  DefaultersCard,
-  DefaultersTitle,
   DefaultersTable,
   DefaultersTableHeader,
   DefaultersTableHeaderCell,
@@ -41,6 +31,116 @@ import {
 } from '../../styles';
 import { formatCurrency } from '../../utils/dashboardUtils';
 import { FeeSummary, FeeCollectionDetails } from '../../types';
+
+// Helper function to check if theme is dark
+const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+
+// ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.375rem;
+  }
+`;
+
+const StatCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    gap: 0.375rem;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+  }
+`;
+
+const StatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ContentCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const CardTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-align: center;
+`;
+
+const Container = styled.div`
+  display: contents;
+`;
 
 interface FeeTabProps {
   feeSummary: FeeSummary;
@@ -69,47 +169,47 @@ const FeeTab: React.FC<FeeTabProps> = ({
   const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
 
   return (
-    <div style={{ width: '100%' }}>
+    <Container>
       {/* Fee Summary Section */}
-      <FeeStatsGrid>
-        <FeeStatCard>
-          <FeeStatLabel>Total Invoiced</FeeStatLabel>
-          <FeeStatValue>
+      <StatsGrid theme={theme}>
+        <StatCard theme={theme}>
+          <StatLabel theme={theme}>Total Invoiced</StatLabel>
+          <StatValue theme={theme}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalInvoiced || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
-        <FeeStatCard>
-          <FeeStatLabel>Total Collected</FeeStatLabel>
-          <FeeStatValue style={{ color: '#22c55e' }}>
+          </StatValue>
+        </StatCard>
+        <StatCard theme={theme}>
+          <StatLabel theme={theme}>Total Collected</StatLabel>
+          <StatValue theme={theme} style={{ color: '#22c55e' }}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalCollected || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
-        <FeeStatCard>
-          <FeeStatLabel>Outstanding</FeeStatLabel>
-          <FeeStatValue style={{ color: '#ef4444' }}>
+          </StatValue>
+        </StatCard>
+        <StatCard theme={theme}>
+          <StatLabel theme={theme}>Outstanding</StatLabel>
+          <StatValue theme={theme} style={{ color: '#ef4444' }}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalOutstanding || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
-        <FeeStatCard>
-          <FeeStatLabel>Collection Rate</FeeStatLabel>
-          <FeeStatValue style={{ color: '#6366f1' }}>
+          </StatValue>
+        </StatCard>
+        <StatCard theme={theme}>
+          <StatLabel theme={theme}>Collection Rate</StatLabel>
+          <StatValue theme={theme} style={{ color: '#6366f1' }}>
             {feeSummaryLoading ? <DottedLoader /> : `${(feeSummary?.collectionRate || 0).toFixed(1)}%`}
-          </FeeStatValue>
-        </FeeStatCard>
-      </FeeStatsGrid>
+          </StatValue>
+        </StatCard>
+      </StatsGrid>
 
       {/* Collection Charts Section */}
-      <CollectionChartsGrid>
-        <CollectionChartCard>
-          <CollectionChartTitle>Daily Collection (Last 7 Days)</CollectionChartTitle>
+      <ContentGrid theme={theme}>
+        <ContentCard theme={theme}>
+          <CardTitle theme={theme}>Daily Collection (Last 7 Days)</CardTitle>
           {collectionChartsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
             </div>
           ) : (!dailyCollectionData || dailyCollectionData.length === 0) ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: isDark ? '#888' : '#666' }}>
-              No data available
-            </div>
+            <EmptyState theme={theme}>
+              <div style={{ fontSize: '0.9rem' }}>No data available</div>
+            </EmptyState>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={dailyCollectionData}>
@@ -151,18 +251,18 @@ const FeeTab: React.FC<FeeTabProps> = ({
               </BarChart>
             </ResponsiveContainer>
           )}
-        </CollectionChartCard>
+        </ContentCard>
 
-        <CollectionChartCard>
-          <CollectionChartTitle>Monthly Collection (Last 12 Months)</CollectionChartTitle>
+        <ContentCard theme={theme}>
+          <CardTitle theme={theme}>Monthly Collection (Last 12 Months)</CardTitle>
           {collectionChartsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
             </div>
           ) : (!monthlyCollectionData || monthlyCollectionData.length === 0) ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: isDark ? '#888' : '#666' }}>
-              No data available
-            </div>
+            <EmptyState theme={theme}>
+              <div style={{ fontSize: '0.9rem' }}>No data available</div>
+            </EmptyState>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={monthlyCollectionData}>
@@ -216,12 +316,12 @@ const FeeTab: React.FC<FeeTabProps> = ({
               </AreaChart>
             </ResponsiveContainer>
           )}
-        </CollectionChartCard>
-      </CollectionChartsGrid>
+        </ContentCard>
+      </ContentGrid>
 
       {/* Fee Collection Details Table */}
-      <FeeCollectionDetailsCard>
-        <FeeCollectionDetailsTitle>Fee collection details</FeeCollectionDetailsTitle>
+      <ContentCard theme={theme}>
+        <CardTitle theme={theme}>Fee collection details</CardTitle>
         {feeCollectionDetailsLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
             <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
@@ -371,13 +471,13 @@ const FeeTab: React.FC<FeeTabProps> = ({
             </FeeCollectionTableBody>
           </FeeCollectionTable>
         )}
-      </FeeCollectionDetailsCard>
+      </ContentCard>
 
       {/* Defaulters Card */}
-      <DefaultersCard>
-        <DefaultersTitle>
-          <span className="underlined">Defaulters</span> (Last 6 Months Data)
-        </DefaultersTitle>
+      <ContentCard theme={theme}>
+        <CardTitle theme={theme}>
+          Defaulters (Last 6 Months Data)
+        </CardTitle>
         {defaultersLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
             <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
@@ -411,8 +511,8 @@ const FeeTab: React.FC<FeeTabProps> = ({
             </DefaultersTableBody>
           </DefaultersTable>
         )}
-      </DefaultersCard>
-    </div>
+      </ContentCard>
+    </Container>
   );
 };
 

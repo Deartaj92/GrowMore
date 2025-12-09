@@ -68,8 +68,13 @@ const Header = styled.div`
   background: ${({ theme }) => theme.BG};
   box-shadow: 0 1px 6px #0001;
   border-radius: 10px;
-  padding: 4px 8px 2px 8px;
-  min-height: 36px;
+  padding: 10px 12px;
+  min-height: auto;
+  
+  @media (max-width: 700px) {
+    padding: 8px 10px;
+    gap: 6px;
+  }
 `;
 
 const MainContent = styled.div`
@@ -1094,7 +1099,7 @@ const HalfLeaves: React.FC = () => {
   };
 
   // Save half leaves
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!date || !user?.school_id || !sessionId) {
       toast.showToast('Please select date and ensure session is active', 'error');
       return;
@@ -1147,10 +1152,10 @@ const HalfLeaves: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [date, user?.school_id, sessionId, persons, fetchPersons, toast]);
 
   // Delete half leaves
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!date || !user?.school_id || !sessionId) {
       toast.showToast('Please select date and ensure session is active', 'error');
       return;
@@ -1195,7 +1200,7 @@ const HalfLeaves: React.FC = () => {
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
-  };
+  }, [date, user?.school_id, sessionId, selectedClass, selectedSection, user?.role, teacherClasses, classes, fetchPersons, toast]);
 
   // Filter persons by search term
   const filteredPersons = persons.filter(p =>
@@ -1217,8 +1222,26 @@ const HalfLeaves: React.FC = () => {
   const totalPersons = filteredPersons.length;
   const secondHalfCount = filteredPersons.filter(p => p.leave_type === 'second_half').length;
 
+  // Memoized handlers for footer
+  const handleRefresh = useCallback(() => {
+    setSearchTerm('');
+    fetchPersons();
+  }, [fetchPersons]);
+
+  const handleDeleteClick = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
+
   // Set global footer content
   useEffect(() => {
+    const canDelete = persons.length > 0 && 
+      !deleting && 
+      date && 
+      sessionId &&
+      persons.filter(p => p.leave_type !== null).length > 0 &&
+      selectedClass && 
+      ((user?.role === 'Teacher' ? teacherClasses : classes).find(c => String(c.id) === String(selectedClass))?.has_sections ?? true ? selectedSection : true);
+
     const FooterContent = React.memo(() => {
       return (
         <div style={{
@@ -1244,10 +1267,7 @@ const HalfLeaves: React.FC = () => {
             <SegmentedButton
               theme={theme}
               first
-              onClick={() => {
-                setSearchTerm('');
-                fetchPersons();
-              }}
+              onClick={handleRefresh}
               disabled={loadingPersons}
             >
               <Refresh style={{ fontSize: 18 }} />
@@ -1255,21 +1275,14 @@ const HalfLeaves: React.FC = () => {
             </SegmentedButton>
             <SegmentedButton
               theme={theme}
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={
-                persons.length === 0 || 
-                deleting || 
-                !date || 
-                !sessionId ||
-                persons.filter(p => p.leave_type !== null).length === 0 ||
-                (!selectedClass || ((user?.role === 'Teacher' ? teacherClasses : classes).find(c => String(c.id) === String(selectedClass))?.has_sections ?? true) && !selectedSection)
-              }
+              onClick={handleDeleteClick}
+              disabled={!canDelete}
               style={{ 
                 color: '#fff', 
                 background: '#dc2626', 
                 borderColor: '#dc2626', 
                 fontWeight: 700,
-                opacity: (deleting || persons.length === 0 || persons.filter(p => p.leave_type !== null).length === 0 || !date || !sessionId) ? 0.6 : 0.93
+                opacity: canDelete ? 0.93 : 0.6
               }}
             >
               {deleting ? (
@@ -1326,7 +1339,7 @@ const HalfLeaves: React.FC = () => {
     return () => {
       setFooterContent(null);
     };
-  }, [totalPersons, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, selectedClass, selectedSection, persons, user, teacherClasses, classes, handleSave, fetchPersons, setShowDeleteConfirm]);
+  }, [totalPersons, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, selectedClass, selectedSection, persons, user?.role, teacherClasses, classes, handleSave, handleRefresh, handleDeleteClick]);
 
   if (loadingSession) {
     return (

@@ -46,16 +46,23 @@ const isDark = (themeObj: any) => themeObj.BG === '#252525';
 
 const PageContainer = styled.div`
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   background: ${({ theme }) => theme.BG};
   padding: 0.5rem;
+  padding-bottom: 2rem; /* Extra padding at bottom to prevent clipping */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  position: relative;
   
   @media (max-width: 768px) {
     padding: 0.375rem;
+    padding-bottom: 2rem;
     gap: 0.2rem;
   }
 `;

@@ -49,6 +49,13 @@ const PageContainer = styled.div`
   @media (max-width: 768px) {
     padding: 0.375rem;
     gap: 0.2rem;
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 2rem;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
   }
 `;
 

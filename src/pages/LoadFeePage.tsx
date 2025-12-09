@@ -50,6 +50,10 @@ const PageContainer = styled.div`
   @media (max-width: 768px) {
     padding: 0.375rem;
     gap: 0.375rem;
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 `;
 
@@ -101,6 +105,10 @@ const MainContent = styled.div`
   
   @media (max-width: 768px) {
     gap: 0.375rem;
+    flex: none;
+    overflow-y: visible;
+    overflow-x: visible;
+    min-height: auto;
   }
 `;
 
@@ -123,6 +131,9 @@ const ContentCard = styled.div`
   
   @media (max-width: 768px) {
     padding: 0.5rem;
+    overflow: visible;
+    flex: none;
+    min-height: auto;
   }
 `;
 const PillButton = muiStyled(Button)(({ theme }) => {
@@ -2658,18 +2669,18 @@ export default function LoadFeePage() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: isMobile ? '10px' : '12px 16px',
-              gap: '8px',
+              padding: isMobile ? '4px 6px' : '6px 12px',
+              gap: isMobile ? '4px' : '6px',
               flexDirection: isMobile ? 'column' : 'row',
             }}
           >
-            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? '0.65rem' : '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
               {selectedStudents.length} of {preview.length} selected
             </Typography>
             <Box
               display="flex"
               sx={{
-                gap: 0.5,
+                gap: isMobile ? 0.25 : 0.5,
                 alignItems: 'center',
                 flexWrap: 'wrap',
               }}
@@ -2677,11 +2688,11 @@ export default function LoadFeePage() {
               <GenerateButton 
                 onClick={handleBulkUpsert} 
                 disabled={loading || selectedStudents.length === 0 || !selectedMonth || !selectedYear} 
-                startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                startIcon={<AddIcon sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }} />}
                 sx={{
-                  fontSize: '0.75rem',
-                  padding: '6px 12px',
-                  minHeight: 28,
+                  fontSize: isMobile ? '0.7rem' : '0.75rem',
+                  padding: isMobile ? '3px 6px' : '4px 10px',
+                  minHeight: isMobile ? 24 : 26,
                   '& .MuiButton-startIcon': { marginRight: 0.5 },
                   whiteSpace: 'nowrap',
                 }}
@@ -2698,13 +2709,13 @@ export default function LoadFeePage() {
                     borderRadius: '6px',
                     textTransform: 'none',
                     fontWeight: 600,
-                    fontSize: '0.75rem',
-                    padding: '6px 12px',
-                    minHeight: 28,
+                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    padding: isMobile ? '3px 6px' : '4px 10px',
+                    minHeight: isMobile ? 24 : 26,
                     whiteSpace: 'nowrap',
                   }}
                   size="small"
-                  startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                  startIcon={<Delete sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }} />}
                 >
                   Delete
                 </Button>
@@ -2723,18 +2734,18 @@ export default function LoadFeePage() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: isMobile ? '10px' : '12px 16px',
-              gap: '8px',
+              padding: isMobile ? '4px 6px' : '6px 12px',
+              gap: isMobile ? '4px' : '6px',
               flexDirection: isMobile ? 'column' : 'row',
             }}
           >
-            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? '0.65rem' : '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
               Ready to generate
             </Typography>
             <Box
               display="flex"
               sx={{
-                gap: 0.5,
+                gap: isMobile ? 0.25 : 0.5,
                 alignItems: 'center',
                 flexWrap: 'wrap',
               }}
@@ -2742,11 +2753,11 @@ export default function LoadFeePage() {
               <GenerateButton 
                 onClick={handleSingleUpsert} 
                 disabled={loading || !singleSession || !singleMonth || !singleYear}
-                startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                startIcon={<AddIcon sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }} />}
                 sx={{
-                  fontSize: '0.75rem',
-                  padding: '6px 12px',
-                  minHeight: 28,
+                  fontSize: isMobile ? '0.7rem' : '0.75rem',
+                  padding: isMobile ? '3px 6px' : '4px 10px',
+                  minHeight: isMobile ? 24 : 26,
                   '& .MuiButton-startIcon': { marginRight: 0.5 },
                   whiteSpace: 'nowrap',
                 }}
@@ -2763,13 +2774,13 @@ export default function LoadFeePage() {
                     borderRadius: '6px',
                     textTransform: 'none',
                     fontWeight: 600,
-                    fontSize: '0.75rem',
-                    padding: '6px 12px',
-                    minHeight: 28,
+                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    padding: isMobile ? '3px 6px' : '4px 10px',
+                    minHeight: isMobile ? 24 : 26,
                     whiteSpace: 'nowrap',
                   }}
                   size="small"
-                  startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                  startIcon={<Delete sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }} />}
                 >
                   Delete
                 </Button>
@@ -2788,18 +2799,18 @@ export default function LoadFeePage() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: isMobile ? '10px' : '12px 16px',
-              gap: '8px',
+              padding: isMobile ? '4px 6px' : '6px 12px',
+              gap: isMobile ? '4px' : '6px',
               flexDirection: isMobile ? 'column' : 'row',
             }}
           >
-            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? '0.65rem' : '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
               {selectedFamilyStudents.length} student{selectedFamilyStudents.length !== 1 ? 's' : ''} selected
             </Typography>
             <Box
               display="flex"
               sx={{
-                gap: 0.5,
+                gap: isMobile ? 0.25 : 0.5,
                 alignItems: 'center',
                 flexWrap: 'wrap',
               }}
@@ -2807,11 +2818,11 @@ export default function LoadFeePage() {
               <GenerateButton 
                 disabled={!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0} 
                 onClick={handleFamilyGenerate}
-                startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                startIcon={<AddIcon sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }} />}
                 sx={{
-                  fontSize: '0.75rem',
-                  padding: '6px 12px',
-                  minHeight: 28,
+                  fontSize: isMobile ? '0.7rem' : '0.75rem',
+                  padding: isMobile ? '3px 6px' : '4px 10px',
+                  minHeight: isMobile ? 24 : 26,
                   '& .MuiButton-startIcon': { marginRight: 0.5 },
                   whiteSpace: 'nowrap',
                 }}
@@ -2826,15 +2837,15 @@ export default function LoadFeePage() {
                     borderRadius: '6px',
                     textTransform: 'none',
                     fontWeight: 600,
-                    fontSize: '0.75rem',
-                    padding: '6px 12px',
-                    minHeight: 28,
+                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    padding: isMobile ? '3px 6px' : '4px 10px',
+                    minHeight: isMobile ? 24 : 26,
                     whiteSpace: 'nowrap',
                   }} 
                   variant="outlined" 
                   color="error"
                   size="small"
-                  startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                  startIcon={<Delete sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }} />}
                 >
                   Delete
                 </Button>
@@ -3170,8 +3181,12 @@ export default function LoadFeePage() {
           </StyledTabs>
         </Box>
         {tab === 0 && (
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5 }}>
-            <Box display={{ xs: 'block', md: 'flex' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5, 
+            '@media (max-width: 768px)': { overflow: 'visible', flex: 'none', minHeight: 'auto' }
+          }}>
+            <Box display={{ xs: 'block', md: 'flex' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden',
+              '@media (max-width: 768px)': { overflow: 'visible', flex: 'none', minHeight: 'auto' }
+            }}>
               {/* Left: Sticky Sidebar */}
               <Box sx={{ flex: { xs: 'unset', md: '0 0 240px' }, minWidth: { md: 240 }, maxWidth: { md: 280 }, mb: { xs: 0.5, md: 0 } }}>
                 <Sidebar theme={theme}>
@@ -3670,8 +3685,12 @@ export default function LoadFeePage() {
               />
             </Box>
           ) : (
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5 }}>
-              <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5,
+            '@media (max-width: 768px)': { overflow: 'visible', flex: 'none', minHeight: 'auto' }
+          }}>
+              <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden',
+                '@media (max-width: 768px)': { overflow: 'visible', flex: 'none', minHeight: 'auto' }
+              }}>
                 {/* Column 1: Filters */}
                 <Box sx={{
                     flex: { xs: 'unset', md: '0 0 240px' },
@@ -4037,8 +4056,12 @@ export default function LoadFeePage() {
           )
         )}
         {tab === 2 && (
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5 }}>
-            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', gap: 0.5,
+            '@media (max-width: 768px)': { overflow: 'visible', flex: 'none', minHeight: 'auto' }
+          }}>
+            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={0.5} sx={{ flex: 1, minHeight: 0, overflow: 'hidden',
+              '@media (max-width: 768px)': { overflow: 'visible', flex: 'none', minHeight: 'auto' }
+            }}>
               {/* --- Column 1: Filters --- */}
               <Box sx={{ 
                 flex: { xs: 'unset', md: '0 0 240px' }, 

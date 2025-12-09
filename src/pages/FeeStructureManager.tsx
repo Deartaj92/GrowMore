@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import styled, { css } from 'styled-components';
-import { useTheme, useMediaQuery } from '@mui/material';
+import { useTheme, useMediaQuery, Box } from '@mui/material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { ThemeProvider } from 'styled-components';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon, AttachMoney, School, Commute, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, Info as InfoIcon, Warning as WarningIcon } from '@mui/icons-material';
@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useLoading } from '../contexts/LoadingContext';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import NoSessionsFound from '../components/NoSessionsFound';
 import NoClassesFound from '../components/NoClassesFound';
 import { sortClasses } from '../utils/classUtils';
@@ -1699,6 +1700,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
   const { setLoading, loading } = useLoading();
   const schoolId = user?.school_id;
   const { showToast } = useToast();
+  const { setFooterContent } = usePageFooter();
 
   // State
   const [structures, setStructures] = useState<FeeStructure[]>([]);
@@ -1877,7 +1879,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     }
   };
 
-  const handleSaveAll = async () => {
+  const handleSaveAll = useCallback(async () => {
     if (!schoolId || !sessionId) return;
     setSaving(true);
     setError(null);
@@ -1908,7 +1910,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     } finally {
       setSaving(false);
     }
-  };
+  }, [schoolId, sessionId, classes, feeHeads, amounts, months, firstTime, user?.id, showToast]);
 
   // Function to populate default amounts only for existing fee structures
   const populateDefaultAmounts = () => {
@@ -2413,6 +2415,65 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
       setFeeHeadLoading(false);
     }
   };
+
+  // Set global footer content (must be before conditional returns)
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: isMobile ? '4px 6px' : '6px 12px',
+            gap: isMobile ? '4px' : '8px',
+            flexDirection: 'row',
+            flexWrap: 'nowrap',
+          }}
+        >
+          <div style={{
+            color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+            fontSize: isMobile ? '0.7rem' : '0.8rem',
+            fontWeight: 500,
+          }}>
+            Total Classes: {classes.length}
+          </div>
+          <button
+            onClick={handleSaveAll}
+            disabled={saving || !schoolId || !sessionId}
+            style={{
+              background: saving 
+                ? (muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6')
+                : (muiTheme.palette.mode === 'dark' ? '#4a6cf7' : '#4a6cf7'),
+              border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+              color: saving 
+                ? (muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444')
+                : '#fff',
+              fontWeight: 700,
+              fontSize: isMobile ? '0.7rem' : '0.8rem',
+              padding: isMobile ? '3px 6px' : '4px 10px',
+              borderRadius: '6px',
+              minWidth: isMobile ? '65px' : '90px',
+              cursor: saving || !schoolId || !sessionId ? 'not-allowed' : 'pointer',
+              opacity: saving || !schoolId || !sessionId ? 0.6 : 1,
+              transition: 'all 0.2s',
+            }}
+          >
+            {saving ? 'Saving...' : 'Save All'}
+          </button>
+        </Box>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+    
+    return () => {
+      setFooterContent(null);
+    };
+  }, [classes.length, saving, schoolId, sessionId, isMobile, muiTheme.palette.mode, handleSaveAll, setFooterContent]);
 
   if (loading) return <Loader />;
 
@@ -3022,26 +3083,6 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
         </FormActions>
         </DialogPaper>
       </StyledDialog>
-
-      <PaginationContainer>
-        <PaginationInfo>
-          Total Classes: {classes.length}
-        </PaginationInfo>
-        <PaginationControls>
-          <Button onClick={handleSaveAll} variant="primary" style={{
-            background: muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
-            border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
-            color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            minWidth: '100px'
-          }}>
-            {saving ? 'Saving...' : 'Save All'}
-          </Button>
-        </PaginationControls>
-      </PaginationContainer>
     </PageContainer>
   );
 };

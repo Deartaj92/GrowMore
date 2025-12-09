@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { supabase } from '../supabaseClient';
@@ -14,6 +14,9 @@ import {
 import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { useActivityTracking } from '../hooks/useActivityTracking';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { useTheme } from '../components/Layout/contexts/ThemeContext';
+import { darkTheme, lightTheme } from '../components/Layout';
 import { 
   Info, 
   Search, 
@@ -35,30 +38,84 @@ import NoTeachersFound from '../components/NoTeachersFound';
 // ============================================
 
 const Container = styled.div`
-  padding: 20px 16px;
-  max-width: 1600px;
-  margin: 0 auto;
-  min-height: calc(100vh - 80px);
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 12px 6px 12px;
+  box-sizing: border-box;
+  background: ${({ theme }) => theme.BG};
+  max-width: 100vw;
+  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
+  min-height: 0; /* Critical for flex children */
+  display: flex;
+  flex-direction: column;
   
   @media (max-width: 768px) {
-    padding: 16px 12px;
+    padding: 0 10px 6px 10px;
   }
 `;
 
 const PageHeader = styled.div`
-  margin-bottom: 20px;
+  flex-shrink: 0; /* Don't shrink */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: ${({ theme }) => theme.BG};
+  padding: 0.5rem 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  
+  @media (max-width: 768px) {
+    padding: 0.4rem 0;
+    margin-bottom: 10px;
+  }
+`;
+
+const MainContent = styled.div`
+  flex: 1; /* Fill remaining space */
+  min-height: 0; /* Critical - allows flex child to shrink below content size */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 0 8px 0;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  @media (max-width: 768px) {
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
 `;
 
 const HeaderTop = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
-  gap: 16px;
+  margin-bottom: 10px;
+  gap: 12px;
   
   @media (max-width: 768px) {
-  flex-direction: column;
-    gap: 12px;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 `;
 
@@ -67,30 +124,30 @@ const TitleSection = styled.div`
 `;
 
 const MainTitle = styled.h1`
-  font-size: 1.5rem;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 4px 0;
-  letter-spacing: -0.3px;
+  margin: 0 0 2px 0;
+  letter-spacing: -0.2px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   
   @media (max-width: 768px) {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
   }
 `;
 
 const Subtitle = styled.p`
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
 `;
 
 const SearchWrapper = styled.div`
-  min-width: 280px;
-  max-width: 360px;
+  min-width: 240px;
+  max-width: 320px;
   width: 100%;
   
   @media (max-width: 768px) {
@@ -101,22 +158,22 @@ const SearchWrapper = styled.div`
 
 const SearchInput = styled(TextField)`
   .MuiOutlinedInput-root {
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+    background: ${({ theme }) => theme.CARD};
+    border-radius: 8px;
     transition: all 0.2s ease;
     
-  &:hover {
+    &:hover {
       background: ${({ theme }) => theme.FIELD_BG};
     }
     
     &.Mui-focused {
       background: ${({ theme }) => theme.CARD};
-      box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}15;
-  }
+      box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}15;
+    }
     
     fieldset {
       border-color: ${({ theme }) => theme.BORDER};
-      border-width: 2px;
+      border-width: 1.5px;
     }
     
     &:hover fieldset {
@@ -129,8 +186,8 @@ const SearchInput = styled(TextField)`
   }
   
   input {
-    padding: 10px 14px;
-    font-size: 0.875rem;
+    padding: 8px 12px;
+    font-size: 0.8rem;
   }
 `;
 
@@ -140,47 +197,45 @@ const SearchInput = styled(TextField)`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 0;
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 6px;
   }
 `;
 
 const StatCard = styled.div`
   background: ${({ theme }) => theme.CARD};
   border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 8px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  transition: all 0.3s ease;
+  gap: 8px;
+  transition: all 0.2s ease;
   cursor: default;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     border-color: ${({ theme }) => theme.ACCENT};
   }
   
   .icon-wrapper {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: ${({ theme }) => theme.ACCENT}15;
     color: ${({ theme }) => theme.ACCENT};
     flex-shrink: 0;
     
     svg {
-      font-size: 1.25rem !important;
-  }
+      font-size: 1rem !important;
+    }
   }
   
   .content {
@@ -189,17 +244,17 @@ const StatCard = styled.div`
   }
   
   .label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: ${({ theme }) => theme.TEXT_SECONDARY};
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
   }
   
   .value {
-    font-size: 1.4rem;
-    font-weight: 800;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: ${({ theme }) => theme.TEXT_PRIMARY};
     line-height: 1.2;
   }
@@ -765,6 +820,8 @@ const TeacherSubjectManager = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { logSubjectAssignmentActivity } = useActivityTracking();
+  const { setFooterContent } = usePageFooter();
+  const { theme } = useTheme();
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
@@ -884,6 +941,40 @@ const TeacherSubjectManager = () => {
       teacher.name.toLowerCase().includes(query)
     );
   }, [teachers, searchQuery]);
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const assignedCount = teacherClassSubjects.length === 0 
+      ? 0 
+      : (() => {
+          const uniqueIds: string[] = [];
+          teacherClassSubjects.forEach(tcs => {
+            const teacherId = tcs.teacher_id.toString();
+            if (!uniqueIds.includes(teacherId)) {
+              uniqueIds.push(teacherId);
+            }
+          });
+          return uniqueIds.length;
+        })();
+    
+    const classesCount = classSubjects.length === 0
+      ? 0
+      : (() => {
+          const uniqueClasses: string[] = [];
+          classSubjects.forEach(cs => {
+            if (!uniqueClasses.includes(cs.classes.name)) {
+              uniqueClasses.push(cs.classes.name);
+            }
+          });
+          return uniqueClasses.length;
+        })();
+
+    return {
+      totalTeachers: teachers.length,
+      assigned: assignedCount,
+      classes: classesCount
+    };
+  }, [teachers.length, teacherClassSubjects, classSubjects]);
 
   const getTeacherAssignmentsGrouped = (teacherId: number) => {
     const assignments = teacherClassSubjects.filter(ts => 
@@ -1119,6 +1210,80 @@ const TeacherSubjectManager = () => {
   const sortedClassObjects = sortClasses(classObjects);
   const sortedClassNames = sortedClassObjects.map(cls => cls.name);
 
+  // Set footer content with stats
+  useEffect(() => {
+    const themeObj = theme === 'dark' ? darkTheme : lightTheme;
+    const isMobile = window.innerWidth <= 700;
+
+    const FooterContent = React.memo(() => (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: 'center', 
+        justifyContent: isMobile ? 'center' : 'space-between', 
+        width: '100%',
+        gap: isMobile ? '6px' : '12px',
+        flexWrap: 'wrap'
+      }}>
+        <div style={{ 
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? '8px' : '16px',
+          flexWrap: 'wrap',
+          justifyContent: isMobile ? 'center' : 'flex-start'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            fontSize: isMobile ? '0.75rem' : '0.85rem',
+            color: themeObj.TEXT_SECONDARY,
+            fontWeight: 500
+          }}>
+            <Person style={{ fontSize: isMobile ? '1rem' : '1.1rem' }} />
+            <span style={{ fontWeight: 600, color: themeObj.TEXT_PRIMARY }}>{stats.totalTeachers}</span>
+            <span>Teachers</span>
+          </div>
+          <span style={{ color: themeObj.BORDER }}>|</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            fontSize: isMobile ? '0.75rem' : '0.85rem',
+            color: themeObj.TEXT_SECONDARY,
+            fontWeight: 500
+          }}>
+            <Assignment style={{ fontSize: isMobile ? '1rem' : '1.1rem' }} />
+            <span style={{ fontWeight: 600, color: themeObj.TEXT_PRIMARY }}>{stats.assigned}</span>
+            <span>Assigned</span>
+          </div>
+          <span style={{ color: themeObj.BORDER }}>|</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            fontSize: isMobile ? '0.75rem' : '0.85rem',
+            color: themeObj.TEXT_SECONDARY,
+            fontWeight: 500
+          }}>
+            <School style={{ fontSize: isMobile ? '1rem' : '1.1rem' }} />
+            <span style={{ fontWeight: 600, color: themeObj.TEXT_PRIMARY }}>{stats.classes}</span>
+            <span>Classes</span>
+          </div>
+        </div>
+      </div>
+    ));
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [stats.totalTeachers, stats.assigned, stats.classes, theme, setFooterContent]);
+
   if (!user?.school_id) {
     return (
       <Container>
@@ -1126,14 +1291,20 @@ const TeacherSubjectManager = () => {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          padding: '2rem', 
-          gap: 16,
-          color: '#888',
-          fontSize: '1.1rem',
-          fontWeight: 600
+          padding: '2rem',
+          minHeight: '100%'
         }}>
-          <Info style={{ fontSize: '1.5rem' }} />
-          No school context found. Please contact your administrator.
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '16px',
+            color: '#888',
+            fontSize: '1.1rem',
+            fontWeight: 600
+          }}>
+            <Info style={{ fontSize: '1.5rem' }} />
+            No school context found. Please contact your administrator.
+          </div>
         </div>
       </Container>
     );
@@ -1146,34 +1317,42 @@ const TeacherSubjectManager = () => {
   if (classSubjects.length === 0) {
     return (
       <Container>
-                <div style={{ 
-          textAlign: 'center',
-          padding: '60px 20px',
-          color: '#888'
+        <div style={{ 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          minHeight: '100%'
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '16px', opacity: 0.5 }}>📚</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'inherit', marginBottom: '8px' }}>
-            No Subjects Assigned to Classes
-                </div>
-          <div style={{ fontSize: '0.95rem', maxWidth: '400px', margin: '0 auto 24px', lineHeight: '1.6' }}>
-            You need to assign subjects to classes first before you can assign them to teachers.
-                    </div>
-          <button
-            onClick={() => navigate('/subjects')}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '10px',
-              border: 'none',
-              background: '#4a6cf7',
-              color: 'white',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '0.95rem'
-            }}
-          >
-            Go to Subject Assignment
-          </button>
-                    </div>
+          <div style={{ 
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: '#888'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '16px', opacity: 0.5 }}>📚</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'inherit', marginBottom: '8px' }}>
+              No Subjects Assigned to Classes
+            </div>
+            <div style={{ fontSize: '0.95rem', maxWidth: '400px', margin: '0 auto 24px', lineHeight: '1.6' }}>
+              You need to assign subjects to classes first before you can assign them to teachers.
+            </div>
+            <button
+              onClick={() => navigate('/subjects')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '10px',
+                border: 'none',
+                background: '#4a6cf7',
+                color: 'white',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.95rem'
+              }}
+            >
+              Go to Subject Assignment
+            </button>
+          </div>
+        </div>
       </Container>
     );
   }
@@ -1207,62 +1386,10 @@ const TeacherSubjectManager = () => {
             />
           </SearchWrapper>
         </HeaderTop>
-        
-        <StatsGrid>
-          <StatCard>
-            <div className="icon-wrapper">
-              <Person style={{ fontSize: '1.5rem' }} />
-                                </div>
-            <div className="content">
-              <div className="label">Total Teachers</div>
-              <div className="value">{teachers.length}</div>
-                                </div>
-          </StatCard>
-          <StatCard>
-            <div className="icon-wrapper">
-              <Assignment style={{ fontSize: '1.5rem' }} />
-                </div>
-            <div className="content">
-              <div className="label">Assigned</div>
-              <div className="value">
-                {(() => {
-                  if (teacherClassSubjects.length === 0) return 0;
-                  const uniqueIds: string[] = [];
-                  teacherClassSubjects.forEach(tcs => {
-                    const teacherId = tcs.teacher_id.toString();
-                    if (!uniqueIds.includes(teacherId)) {
-                      uniqueIds.push(teacherId);
-                    }
-                  });
-                  return uniqueIds.length;
-                })()}
-                                  </div>
-                              </div>
-          </StatCard>
-          <StatCard>
-            <div className="icon-wrapper">
-              <School style={{ fontSize: '1.5rem' }} />
-                </div>
-            <div className="content">
-              <div className="label">Classes</div>
-              <div className="value">
-                {(() => {
-                  if (classSubjects.length === 0) return 0;
-                  const uniqueClasses: string[] = [];
-                  classSubjects.forEach(cs => {
-                    if (!uniqueClasses.includes(cs.classes.name)) {
-                      uniqueClasses.push(cs.classes.name);
-                    }
-                  });
-                  return uniqueClasses.length;
-                })()}
-                                  </div>
-                              </div>
-          </StatCard>
-        </StatsGrid>
       </PageHeader>
 
-      <TeachersGrid>
+      <MainContent>
+        <TeachersGrid>
         {filteredTeachers.map(teacher => {
           const assignments = getTeacherAssignmentsGrouped(teacher.id);
           const assignmentCount = Object.keys(assignments).length;
@@ -1340,7 +1467,8 @@ const TeacherSubjectManager = () => {
             </TeacherCard>
           );
         })}
-      </TeachersGrid>
+        </TeachersGrid>
+      </MainContent>
 
       {/* Assignment Modal */}
       {assignModalOpen && ReactDOM.createPortal(

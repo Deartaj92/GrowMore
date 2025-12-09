@@ -1066,7 +1066,7 @@ const Layout: React.FC = () => {
                       minHeight: 0 
                     }}
                   >
-                    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                       {isOnline ? (
                         <Outlet />
                       ) : (

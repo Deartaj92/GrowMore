@@ -17,11 +17,18 @@ const Container = styled.div`
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
-  min-height: 100vh;
+  padding-bottom: 3rem; /* Extra padding at bottom to prevent clipping */
+  height: 100%;
+  min-height: 100%;
   background: ${({ theme }) => theme.BG};
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  position: relative;
   
   @media (max-width: 768px) {
     padding: 1rem;
+    padding-bottom: 3rem;
   }
 `;
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useTheme } from 'styled-components';
+import styled from 'styled-components';
 import DottedLoader from '../shared/DottedLoader';
 import {
   CheckCircle,
@@ -27,35 +28,12 @@ import {
 import { supabase } from '../../../../supabaseClient';
 import { useToast } from '../../../../components/useToast';
 import {
-  AttendanceStatsGrid,
-  AttendanceStatCard,
-  AttendanceStatTopRow,
-  AttendanceStatIcon,
-  AttendanceStatTitle,
-  AttendanceStatRow,
-  AttendanceStatValue,
-  AttendanceStatRightInfo,
-  AttendanceStatPercentage,
-  AttendanceChartsGrid,
-  AttendanceChartCard,
-  AttendanceChartHeader,
-  AttendanceChartSummary,
-  AttendanceChartSummaryItem,
-  AttendanceChartSummaryLabel,
-  AttendanceChartSummaryValue,
-  TwoColumnGrid,
-  RightColumn,
-  AbsentsTableWrapper,
-  AbsentsTableHeader,
-  AbsentsHeaderTitleRow,
-  AbsentsHeaderTitle,
   AbsentsControls,
   DateInput,
   ExportButton,
   ExportDropdown,
   ExportDropdownItem,
   ExpandIcon,
-  AbsentsCollapsibleContent,
   AbsenteesGrid,
   CompactAnimatedAbsenteeCard,
   StudentAvatar,
@@ -76,6 +54,158 @@ import {
   AbsenteesStatsRow
 } from '../../styles';
 import { EMPLOYEE_STATUS_OPTIONS, DELETE_OPTION } from '../../constants';
+
+// Helper function to check if theme is dark
+const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+
+// ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.375rem;
+  }
+`;
+
+const StatCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    gap: 0.375rem;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+  }
+`;
+
+const StatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const StatChange = styled.div<{ $positive?: boolean }>`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ $positive }) => $positive ? '#22c55e' : '#ef4444'};
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ContentCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const CardTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-align: center;
+`;
+
+const ChartSummary = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  flex-wrap: wrap;
+`;
+
+const ChartSummaryItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const ChartSummaryLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ChartSummaryValue = styled.div<{ color?: string }>`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ color, theme }) => color || theme.TEXT_PRIMARY};
+`;
+
+const Container = styled.div`
+  display: contents;
+`;
 
 interface EmployeeAttendanceTabProps {
   // Attendance stats
@@ -209,140 +339,110 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
   };
 
   return (
-    <div>
+    <Container>
       {/* Attendance Stats Cards */}
-      <AttendanceStatsGrid>
-        <AttendanceStatCard accentColor="#22c55e">
-          <AttendanceStatTopRow>
-            <AttendanceStatIcon color="#22c55e">
-              <CheckCircle />
-            </AttendanceStatIcon>
-            <AttendanceStatTitle>Present</AttendanceStatTitle>
-          </AttendanceStatTopRow>
-          <AttendanceStatRow>
-            <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : (
-                <>
-                  {presentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
-                </>
-              )}
-            </AttendanceStatValue>
-            <AttendanceStatRightInfo>
-              <AttendanceStatPercentage color="#22c55e">
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${presentPercent}%`}
-              </AttendanceStatPercentage>
-            </AttendanceStatRightInfo>
-          </AttendanceStatRow>
-        </AttendanceStatCard>
+      <StatsGrid theme={theme}>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Present</StatLabel>
+            <CheckCircle style={{ fontSize: '1.25rem', color: '#22c55e' }} />
+          </div>
+          <StatValue theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader /> : (
+              <>
+                {presentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+              </>
+            )}
+          </StatValue>
+          <StatChange $positive={true} theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${presentPercent}%`}
+          </StatChange>
+        </StatCard>
 
-        <AttendanceStatCard accentColor="#ef4444">
-          <AttendanceStatTopRow>
-            <AttendanceStatIcon color="#ef4444">
-              <Cancel />
-            </AttendanceStatIcon>
-            <AttendanceStatTitle>Absent</AttendanceStatTitle>
-          </AttendanceStatTopRow>
-          <AttendanceStatRow>
-            <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : (
-                <>
-                  {absentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
-                </>
-              )}
-            </AttendanceStatValue>
-            <AttendanceStatRightInfo>
-              <AttendanceStatPercentage color="#ef4444">
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${absentPercent}%`}
-              </AttendanceStatPercentage>
-            </AttendanceStatRightInfo>
-          </AttendanceStatRow>
-        </AttendanceStatCard>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Absent</StatLabel>
+            <Cancel style={{ fontSize: '1.25rem', color: '#ef4444' }} />
+          </div>
+          <StatValue theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader /> : (
+              <>
+                {absentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+              </>
+            )}
+          </StatValue>
+          <StatChange $positive={false} theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${absentPercent}%`}
+          </StatChange>
+        </StatCard>
 
-        <AttendanceStatCard accentColor="#3b82f6">
-          <AttendanceStatTopRow>
-            <AttendanceStatIcon color="#3b82f6">
-              <CalendarMonth />
-            </AttendanceStatIcon>
-            <AttendanceStatTitle>Leave</AttendanceStatTitle>
-          </AttendanceStatTopRow>
-          <AttendanceStatRow>
-            <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : (
-                <>
-                  {leaveToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
-                </>
-              )}
-            </AttendanceStatValue>
-            <AttendanceStatRightInfo>
-              <AttendanceStatPercentage color="#3b82f6">
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${leavePercent}%`}
-              </AttendanceStatPercentage>
-            </AttendanceStatRightInfo>
-          </AttendanceStatRow>
-        </AttendanceStatCard>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Leave</StatLabel>
+            <CalendarMonth style={{ fontSize: '1.25rem', color: '#3b82f6' }} />
+          </div>
+          <StatValue theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader /> : (
+              <>
+                {leaveToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+              </>
+            )}
+          </StatValue>
+          <StatChange $positive={true} theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${leavePercent}%`}
+          </StatChange>
+        </StatCard>
 
-        <AttendanceStatCard accentColor="#f59e0b">
-          <AttendanceStatTopRow>
-            <AttendanceStatIcon color="#f59e0b">
-              <AccessTime />
-            </AttendanceStatIcon>
-            <AttendanceStatTitle>Late</AttendanceStatTitle>
-          </AttendanceStatTopRow>
-          <AttendanceStatRow>
-            <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : (
-                <>
-                  {lateToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
-                </>
-              )}
-            </AttendanceStatValue>
-            <AttendanceStatRightInfo>
-              <AttendanceStatPercentage color="#f59e0b">
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${latePercent}%`}
-              </AttendanceStatPercentage>
-            </AttendanceStatRightInfo>
-          </AttendanceStatRow>
-        </AttendanceStatCard>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Late</StatLabel>
+            <AccessTime style={{ fontSize: '1.25rem', color: '#f59e0b' }} />
+          </div>
+          <StatValue theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader /> : (
+              <>
+                {lateToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+              </>
+            )}
+          </StatValue>
+          <StatChange $positive={true} theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${latePercent}%`}
+          </StatChange>
+        </StatCard>
 
-        <AttendanceStatCard accentColor="#8b5cf6">
-          <AttendanceStatTopRow>
-            <AttendanceStatIcon color="#8b5cf6">
-              <HourglassEmpty />
-            </AttendanceStatIcon>
-            <AttendanceStatTitle>Half Day</AttendanceStatTitle>
-          </AttendanceStatTopRow>
-          <AttendanceStatRow>
-            <AttendanceStatValue>
-              {attendanceStatsLoading ? <DottedLoader /> : (
-                <>
-                  {halfDayCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
-                </>
-              )}
-            </AttendanceStatValue>
-            <AttendanceStatRightInfo>
-              <AttendanceStatPercentage color="#8b5cf6">
-                {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${halfDayPercent}%`}
-              </AttendanceStatPercentage>
-            </AttendanceStatRightInfo>
-          </AttendanceStatRow>
-        </AttendanceStatCard>
-      </AttendanceStatsGrid>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Half Day</StatLabel>
+            <HourglassEmpty style={{ fontSize: '1.25rem', color: '#8b5cf6' }} />
+          </div>
+          <StatValue theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader /> : (
+              <>
+                {halfDayCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+              </>
+            )}
+          </StatValue>
+          <StatChange $positive={true} theme={theme}>
+            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${halfDayPercent}%`}
+          </StatChange>
+        </StatCard>
+      </StatsGrid>
 
       {/* Attendance Trend Chart */}
-      <AttendanceChartsGrid>
-        <AttendanceChartCard>
-          <AttendanceChartHeader>
+      <ContentGrid theme={theme}>
+        <ContentCard theme={theme} style={{ padding: '1rem' }}>
+          <CardTitle theme={theme} style={{ marginBottom: '0.75rem' }}>
             <CheckCircle style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
             Attendance Trend
-          </AttendanceChartHeader>
+          </CardTitle>
           {attendanceChartsLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px' }}>
+            <EmptyState theme={theme}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </div>
+            </EmptyState>
           ) : attendanceTrendData.length === 0 ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '250px', color: isDark ? '#9ca3af' : '#6b7280' }}>
-              No attendance data available
-            </div>
+            <EmptyState theme={theme}>
+              <div style={{ fontSize: '0.9rem' }}>No attendance data available</div>
+            </EmptyState>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -393,33 +493,31 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                   />
                 </AreaChart>
               </ResponsiveContainer>
-              <AttendanceChartSummary>
-                <AttendanceChartSummaryItem>
-                  <AttendanceChartSummaryLabel>Today</AttendanceChartSummaryLabel>
-                  <AttendanceChartSummaryValue>{todayAttendanceRate}%</AttendanceChartSummaryValue>
-                </AttendanceChartSummaryItem>
-                <AttendanceChartSummaryItem>
-                  <AttendanceChartSummaryLabel>Week Avg</AttendanceChartSummaryLabel>
-                  <AttendanceChartSummaryValue>{weekAvgAttendanceRate}%</AttendanceChartSummaryValue>
-                </AttendanceChartSummaryItem>
-              </AttendanceChartSummary>
+              <ChartSummary theme={theme}>
+                <ChartSummaryItem>
+                  <ChartSummaryLabel theme={theme}>Today</ChartSummaryLabel>
+                  <ChartSummaryValue theme={theme}>{todayAttendanceRate}%</ChartSummaryValue>
+                </ChartSummaryItem>
+                <ChartSummaryItem>
+                  <ChartSummaryLabel theme={theme}>Week Avg</ChartSummaryLabel>
+                  <ChartSummaryValue theme={theme}>{weekAvgAttendanceRate}%</ChartSummaryValue>
+                </ChartSummaryItem>
+              </ChartSummary>
             </>
           )}
-        </AttendanceChartCard>
-      </AttendanceChartsGrid>
+        </ContentCard>
+      </ContentGrid>
 
       {/* Absentees Section */}
       {showAbsentees && (
-        <TwoColumnGrid $columns={1}>
-          <RightColumn>
-            <AbsentsTableWrapper>
-              <AbsentsTableHeader>
-                <AbsentsHeaderTitleRow>
-                  <AbsentsHeaderTitle>
-                    <Cancel style={{ color: '#ef4444', fontSize: '1.1rem', marginRight: '0.5rem' }} />
-                    Absent Employees
-                  </AbsentsHeaderTitle>
-                  <AbsentsControls isExpanded={isAbsenteesExpanded}>
+        <ContentCard theme={theme}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
+            <CardTitle theme={theme} style={{ margin: 0 }}>
+              <Cancel style={{ color: '#ef4444', fontSize: '1.1rem' }} />
+              Absent Employees
+            </CardTitle>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <AbsentsControls isExpanded={isAbsenteesExpanded} style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
                     <DateInput
                       type="date"
                       value={absentDate}
@@ -467,19 +565,14 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                       $expanded={isAbsenteesExpanded}
                     />
                   </AbsentsControls>
-                </AbsentsHeaderTitleRow>
-                </AbsentsTableHeader>
-                <AbsentsCollapsibleContent $expanded={isAbsenteesExpanded}>
-                  {absentees.length === 0 ? (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '2rem',
-                      color: isDark ? '#9ca3af' : '#6b7280',
-                      fontSize: '0.875rem'
-                    }}>
-                      No absent employees found for this date
-                    </div>
-                  ) : (
+              </div>
+            </div>
+            <div style={{ display: isAbsenteesExpanded ? 'block' : 'none' }}>
+              {absentees.length === 0 ? (
+                <EmptyState theme={theme}>
+                  No absent employees found for this date
+                </EmptyState>
+              ) : (
                     <>
                       {/* Mobile Card View */}
                       {isMobile && (
@@ -692,12 +785,10 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                       </AbsenteesStatsRow>
                     </>
                   )}
-                </AbsentsCollapsibleContent>
-              </AbsentsTableWrapper>
-            </RightColumn>
-          </TwoColumnGrid>
+            </div>
+        </ContentCard>
         )}
-    </div>
+    </Container>
   );
 };
 

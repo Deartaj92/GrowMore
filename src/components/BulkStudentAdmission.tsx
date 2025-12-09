@@ -511,14 +511,20 @@ const BulkStudentAdmission: React.FC = () => {
   const [hasSections, setHasSections] = useState(true);
   const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null);
   const lastRowRef = useRef<HTMLDivElement>(null);
+  const studentsRef = useRef<StudentData[]>([]);
   
   const toastId = useRef(0);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    studentsRef.current = students;
+  }, [students]);
 
-  const showToast = (msg: string, type: 'error' | 'success' | 'warning' = 'success') => {
+  const showToast = useCallback((msg: string, type: 'error' | 'success' | 'warning' = 'success') => {
     const id = toastId.current++;
     setToasts(prev => [...prev, {msg, type, id}]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2200);
-  };
+  }, []);
 
   // Initialize with 10 default student rows
   useEffect(() => {
@@ -691,14 +697,14 @@ const BulkStudentAdmission: React.FC = () => {
     ));
   };
 
-  // Helper function to get default password
-  const generateRandomPassword = (): string => {
+  // Helper function to get default password - memoized to prevent handleSubmit recreation
+  const generateRandomPassword = useCallback((): string => {
     // Generate a random 5-digit number (10000 to 99999)
     const min = 10000;
     const max = 99999;
     const randomPassword = Math.floor(Math.random() * (max - min + 1)) + min;
     return String(randomPassword);
-  };
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!user?.school_id) {
@@ -716,13 +722,16 @@ const BulkStudentAdmission: React.FC = () => {
       return;
     }
 
-    if (students.length === 0) {
+    // Get current students from ref (avoids dependency on students array)
+    const currentStudents = studentsRef.current;
+    
+    if (currentStudents.length === 0) {
       showToast('Please add at least one student!', 'error');
       return;
     }
 
     // Filter out students without required fields (Name and Father only)
-    const validStudents = students.filter(student => 
+    const validStudents = currentStudents.filter(student => 
       student.name.trim() && student.fatherName.trim()
     );
 
@@ -732,8 +741,8 @@ const BulkStudentAdmission: React.FC = () => {
     }
 
     // Show warning if some students are incomplete but still allow submission
-    if (validStudents.length !== students.length) {
-      const incompleteCount = students.length - validStudents.length;
+    if (validStudents.length !== currentStudents.length) {
+      const incompleteCount = currentStudents.length - validStudents.length;
       showToast(`Warning: ${incompleteCount} students are missing Name or Father fields. Only complete students will be saved.`, 'warning');
     }
 
@@ -864,7 +873,7 @@ const BulkStudentAdmission: React.FC = () => {
       setSubmitting(false);
       completeProgress();
     }
-  }, [user?.school_id, formData.class, formData.section, selectedClassHasSections, students, showToast, setSubmitting, startProgress, setProgress, completeProgress, generateRandomPassword]);
+  }, [user?.school_id, formData.class, formData.section, selectedClassHasSections, students.length, showToast, startProgress, setProgress, completeProgress, generateRandomPassword]);
 
   const handleCancel = useCallback(() => {
     navigate(-1);

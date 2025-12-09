@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from 'styled-components';
+import styled from 'styled-components';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import DottedLoader from '../shared/DottedLoader';
 import {
@@ -23,17 +24,120 @@ import {
   Legend
 } from 'recharts';
 import {
-  FeeStatsGrid,
-  FeeStatCard,
-  FeeStatLabel,
-  FeeStatValue,
-  CollectionChartsGrid,
-  CollectionChartCard,
-  CollectionChartTitle,
   DashboardDateInput
 } from '../../styles';
 import { formatCurrency } from '../../utils/dashboardUtils';
 import { AccountsData } from '../../services/accountsService';
+
+// Helper function to check if theme is dark
+const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+
+// ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.375rem;
+  }
+`;
+
+const StatCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    gap: 0.375rem;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+  }
+`;
+
+const StatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ContentCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const CardTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-align: center;
+`;
+
+const Container = styled.div`
+  display: contents;
+`;
 
 interface AccountsTabProps {
   accountsData: AccountsData;
@@ -68,12 +172,12 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
   const expensesPercent = totalForDonut > 0 ? ((incomeVsExpenses.expenses / totalForDonut) * 100).toFixed(1) : '0';
 
   return (
-    <div style={{ width: '100%' }}>
+    <Container>
       {/* Date Range Selector */}
       <div style={{
         display: 'flex',
         gap: '1rem',
-        marginBottom: '1.5rem',
+        marginBottom: '0.25rem',
         alignItems: 'center',
         flexWrap: 'wrap',
         justifyContent: 'flex-end'
@@ -100,61 +204,61 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
       </div>
 
       {/* Summary Cards */}
-      <FeeStatsGrid>
-        <FeeStatCard>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <TrendingUpIcon style={{ color: '#22c55e', fontSize: '1.5rem' }} />
-            <FeeStatLabel>Income</FeeStatLabel>
+      <StatsGrid theme={theme}>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Income</StatLabel>
+            <TrendingUpIcon style={{ fontSize: '1.25rem', color: '#22c55e' }} />
           </div>
-          <FeeStatValue style={{ color: '#22c55e' }}>
+          <StatValue theme={theme} style={{ color: '#22c55e' }}>
             {accountsLoading ? <DottedLoader /> : formatCurrency(summary?.income || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
+          </StatValue>
+        </StatCard>
 
-        <FeeStatCard>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <TrendingDownIcon style={{ color: '#eab308', fontSize: '1.5rem' }} />
-            <FeeStatLabel>Expenses</FeeStatLabel>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Expenses</StatLabel>
+            <TrendingDownIcon style={{ fontSize: '1.25rem', color: '#eab308' }} />
           </div>
-          <FeeStatValue style={{ color: '#eab308' }}>
+          <StatValue theme={theme} style={{ color: '#eab308' }}>
             {accountsLoading ? <DottedLoader /> : formatCurrency(summary?.expenses || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
+          </StatValue>
+        </StatCard>
 
-        <FeeStatCard>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <ShowChartIcon style={{ color: '#ec4899', fontSize: '1.5rem' }} />
-            <FeeStatLabel>Profit/Loss</FeeStatLabel>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Profit/Loss</StatLabel>
+            <ShowChartIcon style={{ fontSize: '1.25rem', color: '#ec4899' }} />
           </div>
-          <FeeStatValue style={{ color: summary?.profitLoss >= 0 ? '#22c55e' : '#ef4444' }}>
+          <StatValue theme={theme} style={{ color: summary?.profitLoss >= 0 ? '#22c55e' : '#ef4444' }}>
             {accountsLoading ? <DottedLoader /> : formatCurrency(summary?.profitLoss || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
+          </StatValue>
+        </StatCard>
 
-        <FeeStatCard>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <TrendingUpIcon style={{ color: '#22c55e', fontSize: '1.5rem' }} />
-            <FeeStatLabel>Cash</FeeStatLabel>
+        <StatCard theme={theme}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+            <StatLabel theme={theme}>Cash</StatLabel>
+            <TrendingUpIcon style={{ fontSize: '1.25rem', color: summary?.cash >= 0 ? '#22c55e' : '#ef4444' }} />
           </div>
-          <FeeStatValue style={{ color: summary?.cash >= 0 ? '#22c55e' : '#ef4444' }}>
+          <StatValue theme={theme} style={{ color: summary?.cash >= 0 ? '#22c55e' : '#ef4444' }}>
             {accountsLoading ? <DottedLoader /> : formatCurrency(summary?.cash || 0)}
-          </FeeStatValue>
-        </FeeStatCard>
-      </FeeStatsGrid>
+          </StatValue>
+        </StatCard>
+      </StatsGrid>
 
       {/* Charts Section */}
-      <CollectionChartsGrid>
+      <ContentGrid theme={theme}>
         {/* Cash Accounts Bar Chart */}
-        <CollectionChartCard>
-          <CollectionChartTitle>Cash Accounts Ending Balance</CollectionChartTitle>
+        <ContentCard theme={theme}>
+          <CardTitle theme={theme}>Cash Accounts Ending Balance</CardTitle>
           {accountsLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+            <EmptyState theme={theme}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </div>
+            </EmptyState>
           ) : (!cashAccounts || cashAccounts.length === 0) ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: isDark ? '#888' : '#666' }}>
+            <EmptyState theme={theme}>
               No cash account data available
-            </div>
+            </EmptyState>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={cashAccounts} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
@@ -211,19 +315,19 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
               </BarChart>
             </ResponsiveContainer>
           )}
-        </CollectionChartCard>
+        </ContentCard>
 
         {/* Income vs Expenses Donut Chart */}
-        <CollectionChartCard>
-          <CollectionChartTitle>Income vs Expenses</CollectionChartTitle>
+        <ContentCard theme={theme}>
+          <CardTitle theme={theme}>Income vs Expenses</CardTitle>
           {accountsLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+            <EmptyState theme={theme}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </div>
+            </EmptyState>
           ) : totalForDonut === 0 ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: isDark ? '#888' : '#666' }}>
+            <EmptyState theme={theme}>
               No financial data available
-            </div>
+            </EmptyState>
           ) : (
             <div style={{ position: 'relative' }}>
               <ResponsiveContainer width="100%" height={300}>
@@ -285,20 +389,20 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
               </div>
             </div>
           )}
-        </CollectionChartCard>
-      </CollectionChartsGrid>
+        </ContentCard>
+      </ContentGrid>
 
       {/* Monthly Income & Expenses Chart */}
-      <CollectionChartCard style={{ marginTop: '1.5rem' }}>
-        <CollectionChartTitle>Income & Expenses</CollectionChartTitle>
+      <ContentCard theme={theme}>
+        <CardTitle theme={theme}>Income & Expenses</CardTitle>
         {accountsLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <EmptyState theme={theme}>
             <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-          </div>
+          </EmptyState>
         ) : (!monthlyData || monthlyData.length === 0) ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px', color: isDark ? '#888' : '#666' }}>
+          <EmptyState theme={theme}>
             No monthly data available
-          </div>
+          </EmptyState>
         ) : (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
@@ -345,8 +449,8 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
             </BarChart>
           </ResponsiveContainer>
         )}
-      </CollectionChartCard>
-    </div>
+      </ContentCard>
+    </Container>
   );
 };
 

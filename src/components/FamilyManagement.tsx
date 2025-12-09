@@ -30,20 +30,67 @@ import imageCompression from 'browser-image-compression';
 import Loader from '../components/Loader';
 const PageContainer = styled.div`
   width: 100%;
-  padding: 1rem 1rem 2rem 1rem;
+  height: 100%;
+  margin: 0;
+  padding: 0 12px 6px 12px;
+  box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
-  min-height: 100vh;
+  max-width: 100vw;
+  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
+  min-height: 0; /* Critical for flex children */
+  display: flex;
+  flex-direction: column;
   
   @media (max-width: 700px) {
-    padding: 0.75rem 0.75rem 1.5rem 0.75rem;
+    padding: 0 10px 6px 10px;
   }
 `;
 
 const PageHeader = styled.div`
+  flex-shrink: 0; /* Don't shrink */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 0.75rem 0;
+  margin: 6px 0 4px 0;
+  padding: 0.5rem 0;
+  
+  @media (max-width: 700px) {
+    margin: 4px 0 4px 0;
+  }
+`;
+
+const MainContent = styled.div`
+  flex: 1; /* Fill remaining space */
+  min-height: 0; /* Critical - allows flex child to shrink below content size */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem 0 8px 0;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  @media (max-width: 700px) {
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.75rem 0 8px 0;
+  }
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+  }
 `;
 
 const PageTitle = styled.h1`
@@ -82,7 +129,6 @@ const FamilyCard = styled.div<{ $accent: string }>`
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%;
   border-top: 3px solid ${({ $accent }) => $accent};
   
   &:hover {
@@ -964,8 +1010,10 @@ const AvatarUploadBox = muiStyled(Box)(({ theme }: { theme: MuiTheme }) => ({
 
 // --- FamilyManagement Skeleton Loader Styled Components (matching StudentList) ---
 const FamilyManagementSkeletonContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   width: 100%;
-  height: 100%;
   padding: clamp(8px, 2vw, 24px);
   box-sizing: border-box;
   @media (max-width: 900px) {
@@ -1640,7 +1688,8 @@ const FamilyManagement: React.FC = () => {
                 </Button>
               </HeaderActions>
             </PageHeader>
-            <FamiliesGrid>
+            <MainContent>
+              <FamiliesGrid>
               {families.map(family => (
                 <FamilyCard key={family.id} $accent={stringToColor(family.name)}>
                   {family.contact_number && (
@@ -1959,7 +2008,8 @@ const FamilyManagement: React.FC = () => {
                   </CardActions>
                 </FamilyCard>
               ))}
-            </FamiliesGrid>
+              </FamiliesGrid>
+            </MainContent>
           </>
         )}
 

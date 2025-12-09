@@ -27,7 +27,13 @@ const PageContainer = styled.div`
   padding: 24px;
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
+  padding-bottom: 2rem; /* Extra padding at bottom to prevent clipping */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  position: relative;
 `;
 
 const Header = styled.div`

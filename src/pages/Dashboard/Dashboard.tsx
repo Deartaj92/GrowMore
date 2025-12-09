@@ -1335,13 +1335,25 @@ const Dashboard: React.FC = () => {
       try {
         if (USE_DUMMY_DATA) {
           await new Promise(resolve => setTimeout(resolve, 100));
-          const trendData = Array.from({ length: 30 }, (_, i) => ({
-            day: `${i + 1}/${12}`,
-            rate: Math.floor(Math.random() * 30) + 70
-          }));
+          // Generate dummy data excluding Sundays
+          const trendData: Array<{ day: string; rate: number }> = [];
+          const selectedDate = new Date(dashboardDate);
+          for (let i = 29; i >= 0; i--) {
+            const date = new Date(selectedDate);
+            date.setDate(date.getDate() - i);
+            // Skip Sundays (day of week === 0)
+            if (date.getDay() === 0) continue;
+            trendData.push({
+              day: `${date.getDate()}/${date.getMonth() + 1}`,
+              rate: Math.floor(Math.random() * 30) + 70
+            });
+          }
           setEmployeeAttendanceTrendData(trendData);
           setEmployeeTodayAttendanceRate(85);
-          setEmployeeWeekAvgAttendanceRate(82);
+          const avg = trendData.length > 0 
+            ? Math.round(trendData.reduce((sum, d) => sum + d.rate, 0) / trendData.length)
+            : 0;
+          setEmployeeWeekAvgAttendanceRate(avg);
           setEmployeeAttendanceChartsLoading(false);
           return;
         }
@@ -1379,12 +1391,41 @@ const Dashboard: React.FC = () => {
           });
         }
 
-        // Build trend data array
+        // Fetch holidays for the date range
+        const { data: holidaysData } = await supabase
+          .from('holidays')
+          .select('start_date, end_date')
+          .eq('school_id', user.school_id)
+          .eq('session_id', sessionData.id)
+          .lte('start_date', endDateStr)
+          .gte('end_date', startDateStr);
+
+        // Create a set of holiday dates for quick lookup
+        const holidayDates = new Set<string>();
+        if (holidaysData) {
+          holidaysData.forEach((holiday: any) => {
+            const start = new Date(holiday.start_date);
+            const end = new Date(holiday.end_date);
+            const current = new Date(start);
+            while (current <= end) {
+              holidayDates.add(current.toISOString().slice(0, 10));
+              current.setDate(current.getDate() + 1);
+            }
+          });
+        }
+
+        // Build trend data array, excluding Sundays and holidays
         const trendData: Array<{ day: string; rate: number }> = [];
         for (let i = 29; i >= 0; i--) {
           const date = new Date(selectedDate);
           date.setDate(date.getDate() - i);
           const dateStr = date.toISOString().slice(0, 10);
+          
+          // Skip Sundays (day of week === 0) and holidays
+          const dayOfWeek = date.getDay();
+          if (dayOfWeek === 0 || holidayDates.has(dateStr)) {
+            continue;
+          }
           
           const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
           const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;

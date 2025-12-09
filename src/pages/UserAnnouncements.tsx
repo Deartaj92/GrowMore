@@ -28,14 +28,21 @@ const Container = styled.div`
   max-width: 100%;
   margin: 0;
   padding: 0.75rem 2rem 1.5rem 2rem;
+  padding-bottom: 3rem; /* Extra padding at bottom to prevent clipping */
   box-sizing: border-box;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  position: relative;
 
   @media (max-width: 768px) {
     padding: 0.75rem 1rem;
+    padding-bottom: 3rem;
   }
 `;
 

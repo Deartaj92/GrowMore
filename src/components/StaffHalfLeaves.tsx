@@ -864,7 +864,7 @@ const StaffHalfLeaves: React.FC = () => {
   };
 
   // Save half leaves
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!date || !user?.school_id || !sessionId) {
       toast.showToast('Please select date and ensure session is active', 'error');
       return;
@@ -918,10 +918,10 @@ const StaffHalfLeaves: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [date, user?.school_id, sessionId, persons, fetchPersons, toast]);
 
   // Delete half leaves
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!date || !user?.school_id || !sessionId) {
       toast.showToast('Please select date and ensure session is active', 'error');
       return;
@@ -953,7 +953,7 @@ const StaffHalfLeaves: React.FC = () => {
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
-  };
+  }, [date, user?.school_id, sessionId, fetchPersons, toast]);
 
   // Filter persons by search term
   const filteredPersons = persons.filter(p =>
@@ -1074,7 +1074,7 @@ const StaffHalfLeaves: React.FC = () => {
     return () => {
       setFooterContent(null);
     };
-  }, [totalPersons, firstHalfCount, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, persons, handleSave, fetchPersons, setShowDeleteConfirm]);
+  }, [totalPersons, firstHalfCount, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, persons, handleSave, fetchPersons]);
 
   if (loadingSession) {
     return (

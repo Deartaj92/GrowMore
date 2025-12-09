@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from 'styled-components';
+import styled from 'styled-components';
 import {
   QuestionAnswer,
   School,
@@ -24,19 +25,142 @@ import {
   LabelList
 } from 'recharts';
 import {
-  AdmissionsSummaryGrid,
-  AdmissionsSummaryCard,
-  SummaryCardHeader,
-  SummaryCardTitle,
-  SummaryCardIcon,
-  SummaryCardValue,
-  SummaryCardSubtext,
-  AdmissionsChartsGrid,
-  AdmissionsChartCard,
-  AdmissionsChartTitle,
   DashboardDateInput
 } from '../../styles';
 import { getCurrentMonthRange } from '../../utils/dashboardUtils';
+
+// Helper function to check if theme is dark
+const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+
+// ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.375rem;
+  }
+`;
+
+const StatCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    gap: 0.375rem;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+  }
+`;
+
+const StatValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.ACCENT};
+  
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const StatChange = styled.div<{ $positive?: boolean }>`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ $positive }) => $positive ? '#22c55e' : '#ef4444'};
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ContentCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const CardTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-align: center;
+`;
+
+const Container = styled.div`
+  display: contents;
+`;
+
+const DateRangeContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+  }
+`;
 
 interface AdmissionsTabProps {
   admissionsDateFrom: string;
@@ -71,16 +195,9 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
   const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
 
   return (
-    <div style={{ width: '100%' }}>
+    <Container>
       {/* Date Range Selector for Admissions */}
-      <div style={{
-        display: 'flex',
-        gap: '1rem',
-        marginBottom: '1.5rem',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-end'
-      }}>
+      <DateRangeContainer>
         <DashboardDateInput
           type="date"
           value={admissionsDateFrom}
@@ -100,81 +217,73 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
           }}
           title="To Date"
         />
-      </div>
+      </DateRangeContainer>
 
       {admissionsLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+        <EmptyState theme={theme}>
           <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-        </div>
+        </EmptyState>
       ) : (
         <>
           {/* Summary Cards */}
-          <AdmissionsSummaryGrid>
-            <AdmissionsSummaryCard>
-              <SummaryCardHeader>
-                <SummaryCardTitle>Inquiries</SummaryCardTitle>
-                <SummaryCardIcon color="#3b82f6">
-                  <QuestionAnswer />
-                </SummaryCardIcon>
-              </SummaryCardHeader>
-              <SummaryCardValue>
+          <StatsGrid theme={theme}>
+            <StatCard theme={theme}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+                <StatLabel theme={theme}>Inquiries</StatLabel>
+                <QuestionAnswer style={{ fontSize: '1.25rem', color: '#3b82f6' }} />
+              </div>
+              <StatValue theme={theme}>
                 {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalInquiries || 0)}
-              </SummaryCardValue>
-              <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.inquiriesThisMonth || 0}`}
-              </SummaryCardSubtext>
-            </AdmissionsSummaryCard>
+              </StatValue>
+              <StatChange $positive={true} theme={theme}>
+                Selected Range: {admissionsLoading ? <DottedLoader size={0.7} /> : (admissionsData?.inquiriesThisMonth || 0)}
+              </StatChange>
+            </StatCard>
 
-            <AdmissionsSummaryCard>
-              <SummaryCardHeader>
-                <SummaryCardTitle>Students</SummaryCardTitle>
-                <SummaryCardIcon color="#22c55e">
-                  <School />
-                </SummaryCardIcon>
-              </SummaryCardHeader>
-              <SummaryCardValue>
+            <StatCard theme={theme}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+                <StatLabel theme={theme}>Students</StatLabel>
+                <School style={{ fontSize: '1.25rem', color: '#22c55e' }} />
+              </div>
+              <StatValue theme={theme}>
                 {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalStudents || 0)}
-              </SummaryCardValue>
-              <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.studentsThisMonth || 0}`}
-              </SummaryCardSubtext>
-            </AdmissionsSummaryCard>
+              </StatValue>
+              <StatChange $positive={true} theme={theme}>
+                Selected Range: {admissionsLoading ? <DottedLoader size={0.7} /> : (admissionsData?.studentsThisMonth || 0)}
+              </StatChange>
+            </StatCard>
 
-            <AdmissionsSummaryCard>
-              <SummaryCardHeader>
-                <SummaryCardTitle>Families</SummaryCardTitle>
-                <SummaryCardIcon color="#f59e0b">
-                  <Group />
-                </SummaryCardIcon>
-              </SummaryCardHeader>
-              <SummaryCardValue>
+            <StatCard theme={theme}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+                <StatLabel theme={theme}>Families</StatLabel>
+                <Group style={{ fontSize: '1.25rem', color: '#f59e0b' }} />
+              </div>
+              <StatValue theme={theme}>
                 {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalFamilies || 0)}
-              </SummaryCardValue>
-              <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.familiesThisMonth || 0}`}
-              </SummaryCardSubtext>
-            </AdmissionsSummaryCard>
+              </StatValue>
+              <StatChange $positive={true} theme={theme}>
+                Selected Range: {admissionsLoading ? <DottedLoader size={0.7} /> : (admissionsData?.familiesThisMonth || 0)}
+              </StatChange>
+            </StatCard>
 
-            <AdmissionsSummaryCard>
-              <SummaryCardHeader>
-                <SummaryCardTitle>Fee Plans</SummaryCardTitle>
-                <SummaryCardIcon color="#ef4444">
-                  <AttachMoney />
-                </SummaryCardIcon>
-              </SummaryCardHeader>
-              <SummaryCardValue>
+            <StatCard theme={theme}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+                <StatLabel theme={theme}>Fee Plans</StatLabel>
+                <AttachMoney style={{ fontSize: '1.25rem', color: '#ef4444' }} />
+              </div>
+              <StatValue theme={theme}>
                 {admissionsLoading ? <DottedLoader /> : (admissionsData?.totalFeePlans || 0)}
-              </SummaryCardValue>
-              <SummaryCardSubtext>
-                {admissionsLoading ? <DottedLoader size={0.7} /> : `Selected Range: ${admissionsData?.feePlansThisMonth || 0}`}
-              </SummaryCardSubtext>
-            </AdmissionsSummaryCard>
-          </AdmissionsSummaryGrid>
+              </StatValue>
+              <StatChange $positive={true} theme={theme}>
+                Selected Range: {admissionsLoading ? <DottedLoader size={0.7} /> : (admissionsData?.feePlansThisMonth || 0)}
+              </StatChange>
+            </StatCard>
+          </StatsGrid>
 
           {/* Charts */}
-          <AdmissionsChartsGrid>
-            <AdmissionsChartCard>
-              <AdmissionsChartTitle>Admissions</AdmissionsChartTitle>
+          <ContentGrid theme={theme}>
+            <ContentCard theme={theme}>
+              <CardTitle theme={theme}>Admissions</CardTitle>
               <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={admissionsChartData}
@@ -212,10 +321,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       />
                     </BarChart>
                   </ResponsiveContainer>
-            </AdmissionsChartCard>
+            </ContentCard>
 
-            <AdmissionsChartCard>
-              <AdmissionsChartTitle>Withdrawals</AdmissionsChartTitle>
+            <ContentCard theme={theme}>
+              <CardTitle theme={theme}>Withdrawals</CardTitle>
               <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={withdrawalsChartData}
@@ -253,10 +362,10 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       />
                     </BarChart>
                   </ResponsiveContainer>
-            </AdmissionsChartCard>
+            </ContentCard>
 
-            <AdmissionsChartCard>
-              <AdmissionsChartTitle>Gender</AdmissionsChartTitle>
+            <ContentCard theme={theme}>
+              <CardTitle theme={theme}>Gender</CardTitle>
               <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
@@ -283,15 +392,15 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       />
                     </PieChart>
                   </ResponsiveContainer>
-            </AdmissionsChartCard>
-          </AdmissionsChartsGrid>
+            </ContentCard>
+          </ContentGrid>
 
           {/* Additional Cards: Grade Distribution, Latest Admissions, Today's Birthdays */}
-          <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
+          <ContentGrid theme={theme}>
             {/* Class Wise Strength Card */}
             {classStrengths && classStrengths.length > 0 && (
-              <AdmissionsChartCard style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-              <AdmissionsChartTitle style={{ marginBottom: '1rem' }}>Class Wise Strength</AdmissionsChartTitle>
+              <ContentCard theme={theme} style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+              <CardTitle theme={theme} style={{ marginBottom: '1rem' }}>Class Wise Strength</CardTitle>
                 <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -329,12 +438,12 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                     </BarChart>
                   </ResponsiveContainer>
               </div>
-            </AdmissionsChartCard>
+            </ContentCard>
             )}
 
             {/* Latest Admissions Card */}
-            <AdmissionsChartCard style={{ minHeight: '400px' }}>
-              <AdmissionsChartTitle>Latest Admissions</AdmissionsChartTitle>
+            <ContentCard theme={theme} style={{ minHeight: '400px' }}>
+              <CardTitle theme={theme}>Latest Admissions</CardTitle>
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -451,13 +560,13 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   })
                 )}
               </div>
-            </AdmissionsChartCard>
-          </AdmissionsChartsGrid>
+            </ContentCard>
+          </ContentGrid>
 
           {/* Today's Birthdays Card */}
           {(todaysBirthdays && todaysBirthdays.length > 0) || (admissionsData?.todaysBirthdaysCount > 0) ? (
-          <AdmissionsChartsGrid style={{ marginTop: '1.5rem' }}>
-            <AdmissionsChartCard style={{
+          <ContentGrid theme={theme}>
+            <ContentCard theme={theme} style={{
               minHeight: '200px',
               background: 'linear-gradient(135deg, #ec4899 0%, #ef4444 100%)',
               color: '#fff',
@@ -479,9 +588,9 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 }}>
                   🎂
                 </div>
-                <AdmissionsChartTitle style={{ color: '#fff', marginBottom: '0.5rem' }}>
+                <CardTitle theme={theme} style={{ color: '#fff', marginBottom: '0.5rem' }}>
                   Today's Birthdays
-                </AdmissionsChartTitle>
+                </CardTitle>
                 <div style={{
                   fontSize: '1rem',
                   marginBottom: '1rem',
@@ -538,12 +647,12 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                   </div>
                 )}
               </div>
-            </AdmissionsChartCard>
-          </AdmissionsChartsGrid>
+            </ContentCard>
+          </ContentGrid>
           ) : null}
         </>
       )}
-    </div>
+    </Container>
   );
 };
 

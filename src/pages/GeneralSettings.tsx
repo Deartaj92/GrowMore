@@ -56,11 +56,18 @@ const Container = styled.div<{ $theme: any }>`
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
+  height: 100%;
+  min-height: 100%;
   background: ${({ $theme }) => $theme?.BG || '#ffffff'};
-  min-height: 100vh;
+  padding-bottom: 2rem; /* Extra padding at bottom to prevent clipping */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  position: relative;
   
   @media (max-width: 768px) {
     padding: 1rem;
+    padding-bottom: 2rem;
   }
 `;
 

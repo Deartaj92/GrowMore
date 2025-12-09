@@ -825,10 +825,10 @@ const GeneralMessagePage: React.FC = () => {
                     targetStudents = studentsData
                         .filter((s: any) => s.phone != null && s.phone !== '' && s.phone.trim() !== '')
                         .map((s: any) => ({
-                            ...s,
-                            class_name: classData?.name,
-                            section_name: sectionName
-                        }));
+                        ...s,
+                        class_name: classData?.name,
+                        section_name: sectionName
+                    }));
 
                 } else if (targetType === 'all') {
                     // Fetch all students from student_class_history for the active session
@@ -891,9 +891,9 @@ const GeneralMessagePage: React.FC = () => {
                     targetStudents = studentsData
                         .filter((s: any) => s.phone != null && s.phone !== '' && s.phone.trim() !== '')
                         .map((s: any) => ({
-                            ...s,
-                            ...latestRecords.get(s.id)
-                        }));
+                        ...s,
+                        ...latestRecords.get(s.id)
+                    }));
                 } else if (targetType === 'staff') {
                     // Fetch all staff members (handle pagination for large datasets)
                     const BATCH_SIZE = 1000;
@@ -969,11 +969,11 @@ const GeneralMessagePage: React.FC = () => {
             setSelectedClassHasSections(hasSections);
             
             if (hasSections) {
-                fetchSections(selectedClass);
-            } else {
-                setSections([]);
-                setSelectedSection('');
-            }
+            fetchSections(selectedClass);
+        } else {
+            setSections([]);
+            setSelectedSection('');
+        }
         } else {
             setSections([]);
             setSelectedSection('');
@@ -1359,12 +1359,12 @@ const GeneralMessagePage: React.FC = () => {
                                     </>
                                 ) : (
                                     <>
-                                        <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
-                                        <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{student_name}')}>Student Name</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{father_name}')}>Father Name</VariableTag>
                                         <VariableTag theme={theme} onClick={() => insertVariable('{roll_number}')}>Roll Number</VariableTag>
                                         <VariableTag theme={theme} onClick={() => insertVariable('{password}')}>Password</VariableTag>
-                                        <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
-                                        <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{class_name}')}>Class</VariableTag>
+                                <VariableTag theme={theme} onClick={() => insertVariable('{school_name}')}>School</VariableTag>
                                         <VariableTag theme={theme} onClick={() => insertVariable('{school_website}')}>School Website</VariableTag>
                                     </>
                                 )}

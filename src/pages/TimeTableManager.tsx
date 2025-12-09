@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
 import styled from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
-import { Box, Button, useMediaQuery } from '@mui/material';
+import { Box, Button, useMediaQuery, Tooltip } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
 import { useToast } from '../contexts/ToastContext';
@@ -10,7 +10,7 @@ import jsPDF from 'jspdf';
 import autoTable, { CellHookData } from 'jspdf-autotable';
 import { UserOptions, Styles } from 'jspdf-autotable';
 import { useAuth } from '../contexts/AuthContext';
-import { Info, PersonAdd } from '@mui/icons-material';
+import { Info, PersonAdd, Save, PictureAsPdf, Description } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import NoTeachersFound from '../components/NoTeachersFound';
 import Loader from '../components/Loader';
@@ -280,11 +280,13 @@ const DropdownDivider = styled.div`
 const TableWrapper = styled.div`
   width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   background: ${({ theme }) => theme.CARD};
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid ${({ theme }) => theme.BORDER};
   position: relative;
+  -webkit-overflow-scrolling: touch;
   
   /* Custom scrollbar */
   &::-webkit-scrollbar {
@@ -304,6 +306,18 @@ const TableWrapper = styled.div`
       background: ${({ theme }) => theme.TEXT_SECONDARY};
     }
   }
+  
+  @media (max-width: 768px) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    
+    /* Enhanced mobile scrollbar */
+    &::-webkit-scrollbar {
+      height: 6px;
+    }
+  }
 `;
 
 const TimetableTable = styled.table`
@@ -315,6 +329,11 @@ const TimetableTable = styled.table`
   @media (max-width: 1200px) {
     min-width: 850px;
     font-size: 0.8rem;
+  }
+  
+  @media (max-width: 768px) {
+    min-width: 900px;
+    font-size: 0.75rem;
   }
 `;
 const Th = styled.th<{ breakCol?: boolean; classCol?: boolean }>`
@@ -418,6 +437,15 @@ const BreakControl = styled.div`
     font-size: 0.875rem;
     color: ${({ theme }) => theme.TEXT_SECONDARY};
     white-space: nowrap;
+    
+    @media (max-width: 768px) {
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    gap: 4px;
   }
 `;
 
@@ -428,12 +456,10 @@ const ActionButtonsGroup = styled.div`
   flex-wrap: wrap;
   
   @media (max-width: 768px) {
-    width: 100%;
-    flex-direction: column;
-    
-    & > button {
-      width: 100%;
-    }
+    gap: 6px;
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 `;
 
@@ -749,7 +775,7 @@ const TimeTableManager: React.FC = () => {
   }, [dropdown]);
 
   // Handle Save Timetable
-  const handleSaveTimetable = async () => {
+  const handleSaveTimetable = useCallback(async () => {
     if (!sessionId) {
       toast.showToast('No active session found. Cannot save timetable.', 'error');
       return;
@@ -850,7 +876,7 @@ const TimeTableManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId, user?.school_id, cellSelections, breakIdx, toast]);
 
   // Load Timetable
   useEffect(() => {
@@ -921,7 +947,7 @@ const TimeTableManager: React.FC = () => {
   };
 
   // Handle Export PDF
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
     if (!sessionId) {
       toast.showToast('Ensure a session is active to export the timetable.', 'warning');
       return;
@@ -1424,7 +1450,7 @@ const TimeTableManager: React.FC = () => {
       setExportLoading(false);
       setLoading(false);
     }
-  };
+  }, [sessionId, sessionName, breakIdx, cellSelections, classes, classAssignments, teachers, subjects, toast]);
 
   // Helper function to get teacher's schedule
   const getTeacherSchedule = (teacherId: number, classes: Class[]) => {
@@ -1463,7 +1489,7 @@ const TimeTableManager: React.FC = () => {
       }));
   };
 
-  const handleExportTeacherSlips = async () => {
+  const handleExportTeacherSlips = useCallback(async () => {
     if (!sessionId) {
       toast.showToast('Ensure a session is active to export teacher slips.', 'warning');
       return;
@@ -1765,7 +1791,179 @@ const TimeTableManager: React.FC = () => {
       setTeacherSlipsLoading(false);
       setLoading(false);
     }
-  };
+  }, [sessionId, breakIdx, cellSelections, classes, classAssignments, teachers, subjects, sections, toast]);
+
+  // Set global footer content (must be before conditional returns)
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: isMobile ? '6px 8px' : '12px 16px',
+            gap: isMobile ? '6px' : '12px',
+            flexDirection: isMobile ? 'row' : 'row',
+            flexWrap: isMobile ? 'nowrap' : 'wrap',
+          }}
+        >
+          <BreakControl theme={theme}>
+            <label htmlFor="break-select" style={{ display: isMobile ? 'none' : 'block' }}>
+              Break after period:
+            </label>
+            <label htmlFor="break-select" style={{ display: isMobile ? 'block' : 'none', fontSize: '0.65rem' }}>
+              Break:
+            </label>
+            <ThemedSelect
+              theme={theme}
+              id="break-select"
+              value={breakIdx}
+              onChange={e => setBreakIdx(Number(e.target.value))}
+              style={{
+                padding: isMobile ? '4px 8px' : '8px 14px',
+                fontSize: isMobile ? '0.7rem' : '0.875rem',
+                minWidth: isMobile ? '50px' : 'auto',
+              }}
+            >
+              {periods.slice(0, periods.length - 1).map((p, idx) => (
+                <ThemedOption key={p.num} theme={theme} value={idx}>{idx + 1}</ThemedOption>
+              ))}
+            </ThemedSelect>
+          </BreakControl>
+          <ActionButtonsGroup theme={theme}>
+            <Tooltip title="Save Timetable" arrow placement="top">
+              <span>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handleSaveTimetable} 
+                  disabled={loading || !sessionId}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    minWidth: isMobile ? 'auto' : 'auto',
+                    padding: isMobile ? '4px 8px' : '6px 16px',
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    '& .MuiButton-startIcon': {
+                      margin: isMobile ? '0' : '0 8px 0 0',
+                    }
+                  }}
+                  startIcon={isMobile ? <Save style={{ fontSize: '14px' }} /> : undefined}
+                >
+                  {isMobile ? (loading ? '...' : '') : (loading ? 'Saving...' : 'Save Timetable')}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Export PDF" arrow placement="top">
+              <span>
+                <Button 
+                  variant="contained" 
+                  color="secondary" 
+                  onClick={handleExportPDF} 
+                  disabled={loading || exportLoading || !sessionId}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    minWidth: isMobile ? 'auto' : 'auto',
+                    padding: isMobile ? '4px 8px' : '6px 16px',
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    '& .MuiButton-startIcon': {
+                      margin: isMobile ? '0' : '0 8px 0 0',
+                    }
+                  }}
+                  startIcon={isMobile ? <PictureAsPdf style={{ fontSize: '14px' }} /> : undefined}
+                >
+                  {exportLoading ? (
+                    isMobile ? (
+                      <div style={{ 
+                        width: 12, 
+                        height: 12, 
+                        border: '2px solid #e0e7ff', 
+                        borderTop: '2px solid #4a6cf7', 
+                        borderRadius: '50%', 
+                        animation: 'spin 1s linear infinite',
+                      }} />
+                    ) : (
+                      <>
+                        <div style={{ 
+                          width: 16, 
+                          height: 16, 
+                          border: '2px solid #e0e7ff', 
+                          borderTop: '2px solid #4a6cf7', 
+                          borderRadius: '50%', 
+                          animation: 'spin 1s linear infinite',
+                          marginRight: '8px'
+                        }} />
+                        Exporting...
+                      </>
+                    )
+                  ) : (
+                    isMobile ? '' : 'Export PDF'
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Export Teacher Slips" arrow placement="top">
+              <span>
+                <Button 
+                  variant="contained" 
+                  color="info" 
+                  onClick={handleExportTeacherSlips} 
+                  disabled={loading || teacherSlipsLoading || !sessionId}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    minWidth: isMobile ? 'auto' : 'auto',
+                    padding: isMobile ? '4px 8px' : '6px 16px',
+                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                    '& .MuiButton-startIcon': {
+                      margin: isMobile ? '0' : '0 8px 0 0',
+                    }
+                  }}
+                  startIcon={isMobile ? <Description style={{ fontSize: '14px' }} /> : undefined}
+                >
+                  {teacherSlipsLoading ? (
+                    isMobile ? (
+                      <div style={{ 
+                        width: 12, 
+                        height: 12, 
+                        border: '2px solid #e0e7ff', 
+                        borderTop: '2px solid #4a6cf7', 
+                        borderRadius: '50%', 
+                        animation: 'spin 1s linear infinite',
+                      }} />
+                    ) : (
+                      <>
+                        <div style={{ 
+                          width: 16, 
+                          height: 16, 
+                          border: '2px solid #e0e7ff', 
+                          borderTop: '2px solid #4a6cf7', 
+                          borderRadius: '50%', 
+                          animation: 'spin 1s linear infinite',
+                          marginRight: '8px'
+                        }} />
+                        Exporting...
+                      </>
+                    )
+                  ) : (
+                    isMobile ? '' : 'Export Teacher Slips'
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
+          </ActionButtonsGroup>
+        </Box>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+    
+    return () => {
+      setFooterContent(null);
+    };
+  }, [breakIdx, loading, exportLoading, teacherSlipsLoading, sessionId, isMobile, theme, handleSaveTimetable, handleExportPDF, handleExportTeacherSlips, setFooterContent]);
 
   // Check if user has school_id (after all hooks)
   if (!user?.school_id) {
@@ -1828,89 +2026,6 @@ const TimeTableManager: React.FC = () => {
       </Container>
     );
   }
-
-  // Set global footer content
-  useEffect(() => {
-    const FooterContent = React.memo(() => {
-      return (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: isMobile ? '10px' : '12px 16px',
-            gap: isMobile ? '10px' : '12px',
-            flexDirection: isMobile ? 'column' : 'row',
-            flexWrap: 'wrap',
-          }}
-        >
-          <BreakControl theme={theme}>
-            <label htmlFor="break-select">Break after period:</label>
-            <ThemedSelect
-              theme={theme}
-              id="break-select"
-              value={breakIdx}
-              onChange={e => setBreakIdx(Number(e.target.value))}
-            >
-              {periods.slice(0, periods.length - 1).map((p, idx) => (
-                <ThemedOption key={p.num} theme={theme} value={idx}>{idx + 1}</ThemedOption>
-              ))}
-            </ThemedSelect>
-          </BreakControl>
-          <ActionButtonsGroup theme={theme}>
-            <Button variant="contained" color="primary" onClick={handleSaveTimetable} disabled={loading || !sessionId}>
-              {loading ? 'Saving...' : 'Save Timetable'}
-            </Button>
-            <Button variant="contained" color="secondary" onClick={handleExportPDF} disabled={loading || exportLoading || !sessionId}>
-              {exportLoading ? (
-                <>
-                  <div style={{ 
-                    width: 16, 
-                    height: 16, 
-                    border: '2px solid #e0e7ff', 
-                    borderTop: '2px solid #4a6cf7', 
-                    borderRadius: '50%', 
-                    animation: 'spin 1s linear infinite',
-                    marginRight: '8px'
-                  }} />
-                  Exporting...
-                </>
-              ) : (
-                'Export PDF'
-              )}
-            </Button>
-            <Button variant="contained" color="info" onClick={handleExportTeacherSlips} disabled={loading || teacherSlipsLoading || !sessionId}>
-              {teacherSlipsLoading ? (
-                <>
-                  <div style={{ 
-                    width: 16, 
-                    height: 16, 
-                    border: '2px solid #e0e7ff', 
-                    borderTop: '2px solid #4a6cf7', 
-                    borderRadius: '50%', 
-                    animation: 'spin 1s linear infinite',
-                    marginRight: '8px'
-                  }} />
-                  Exporting...
-                </>
-              ) : (
-                'Export Teacher Slips'
-              )}
-            </Button>
-          </ActionButtonsGroup>
-        </Box>
-      );
-    });
-
-    setFooterContent({
-      visible: true,
-      content: <FooterContent />
-    });
-    
-    return () => {
-      setFooterContent(null);
-    };
-  }, [breakIdx, loading, exportLoading, teacherSlipsLoading, sessionId, isMobile, theme, handleSaveTimetable, handleExportPDF, handleExportTeacherSlips]);
 
   return (
     <Container>
