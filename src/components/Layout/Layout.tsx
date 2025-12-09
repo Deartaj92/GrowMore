@@ -11,6 +11,7 @@ import { WifiOff as WifiOffIcon } from '@mui/icons-material';
 import { ThemeProvider as CustomThemeProvider, useTheme } from './contexts/ThemeContext';
 import { MuteProvider } from './contexts/MuteContext';
 import { PageHeaderProvider, usePageHeader } from './contexts/PageHeaderContext';
+import { PageFooterProvider } from './contexts/PageFooterContext';
 import { ProgressProvider, useProgress } from './contexts/ProgressContext';
 import { hasPermission } from '../../services/permissionService';
 
@@ -41,6 +42,7 @@ import AnnouncementHandler from '../AnnouncementHandler';
 import AboutUsModal from '../AboutUsModal';
 import PresenceManager from '../PresenceManager';
 import Header from './components/Header/Header';
+import GlobalFooter from './components/GlobalFooter/GlobalFooter';
 import ChangePasswordModal from './components/Modals/ChangePasswordModal';
 import ExitConfirmModal from './components/Modals/ExitConfirmModal';
 import NetworkModal from './components/Modals/NetworkModal';
@@ -1057,20 +1059,29 @@ const Layout: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.25, ease: 'easeInOut' }}
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      height: '100%',
+                      minHeight: 0 
+                    }}
                   >
-                    {isOnline ? (
-                      <Outlet />
-                    ) : (
-                      <OfflineContainer>
-                        <WifiOffIcon style={{ fontSize: 64, color: '#ff6b6b' }} />
-                        <h1>You are offline</h1>
-                        <p>Please check your internet connection.</p>
-                        <p>Last check: {lastChecked.toLocaleTimeString()}</p>
-                        <ActionButton onClick={handleRetry} disabled={isCheckingConnection}>
-                          {isCheckingConnection ? 'Retrying...' : 'Retry Now'}
-                        </ActionButton>
-                      </OfflineContainer>
-                    )}
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                      {isOnline ? (
+                        <Outlet />
+                      ) : (
+                        <OfflineContainer>
+                          <WifiOffIcon style={{ fontSize: 64, color: '#ff6b6b' }} />
+                          <h1>You are offline</h1>
+                          <p>Please check your internet connection.</p>
+                          <p>Last check: {lastChecked.toLocaleTimeString()}</p>
+                          <ActionButton onClick={handleRetry} disabled={isCheckingConnection}>
+                            {isCheckingConnection ? 'Retrying...' : 'Retry Now'}
+                          </ActionButton>
+                        </OfflineContainer>
+                      )}
+                    </div>
+                    <GlobalFooter />
                   </motion.div>
                 </AnimatePresence>
               </ContentArea>
@@ -1144,14 +1155,16 @@ const Layout: React.FC = () => {
 const LayoutWithProviders: React.FC = () => {
   return (
     <PageHeaderProvider>
-      <CustomThemeProvider>
-        <MuteProvider>
-          <NotificationProvider>
-            <PresenceManager />
-            <Layout />
-          </NotificationProvider>
-        </MuteProvider>
-      </CustomThemeProvider>
+      <PageFooterProvider>
+        <CustomThemeProvider>
+          <MuteProvider>
+            <NotificationProvider>
+              <PresenceManager />
+              <Layout />
+            </NotificationProvider>
+          </MuteProvider>
+        </CustomThemeProvider>
+      </PageFooterProvider>
     </PageHeaderProvider>
   );
 };

@@ -1243,9 +1243,8 @@ const PageContainer = styled.div`
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
   min-height: 0; /* Critical for flex children */
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   transform: translateZ(0);
@@ -1253,7 +1252,7 @@ const PageContainer = styled.div`
 `;
 
 const Header = styled.div`
-  flex: 0 0 auto;
+  flex-shrink: 0; /* Don't shrink */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1312,9 +1311,8 @@ const FooterCard = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
+  flex: 1; /* Fill remaining space */
+  min-height: 0; /* Critical - allows flex child to shrink below content size */
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 0 32px 0;
@@ -1326,7 +1324,6 @@ const MainContent = styled.div`
   backface-visibility: hidden;
   perspective: 1000px;
   @media (max-width: 700px) {
-    max-height: none;
     scroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
   }

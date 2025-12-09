@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLoading } from '../../contexts/LoadingContext';
 import { useProgress } from '../../components/Layout';
 import { PageHeaderContext } from '../../components/Layout';
+import { usePageFooter } from '../../components/Layout/contexts/PageFooterContext';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import NoStudentsFound from '../../components/NoStudentsFound';
 import NoSessionsFound from '../../components/NoSessionsFound';
@@ -82,6 +83,7 @@ const Dashboard: React.FC = () => {
   const { setLoading, loading } = useLoading();
   const { startProgress, completeProgress, setProgress } = useProgress();
   const { setPageHeader } = React.useContext(PageHeaderContext);
+  const { setFooterContent } = usePageFooter();
   const theme = useTheme();
   const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
   const savePdf = useCapacitorPdfSave();
@@ -1510,6 +1512,19 @@ const Dashboard: React.FC = () => {
     };
     fetchSchoolName();
   }, [user?.school_id]);
+
+  // Set footer content
+  useEffect(() => {
+    setFooterContent({
+      visible: true,
+      content: 'Copyrights 2025'
+    });
+
+    // Cleanup on unmount
+    return () => {
+      setFooterContent(null);
+    };
+  }, [setFooterContent]);
 
   // Cleanup
   useEffect(() => {

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import styled from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
-import { Box, Button } from '@mui/material';
+import { Box, Button, useMediaQuery } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
 import { useToast } from '../contexts/ToastContext';
@@ -14,16 +14,28 @@ import { Info, PersonAdd } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import NoTeachersFound from '../components/NoTeachersFound';
 import Loader from '../components/Loader';
+import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 const Container = styled.div`
   padding: 20px 16px;
   max-width: 1600px;
   margin: 0 auto;
-  min-height: calc(100vh - 80px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   @media (max-width: 768px) {
     padding: 16px 12px;
   }
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 8px;
 `;
 
 const PageHeader = styled.div`
@@ -396,41 +408,6 @@ const sortClassesLocal = (classes: Class[]): Class[] => {
   return sortClasses(classes);
 };
 
-const ActionButtonsContainer = styled(Box)`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-  padding: 16px;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 12px;
-    
-    & > button {
-      width: 100%;
-    }
-    
-    & > select {
-      width: 100%;
-      margin-right: 0 !important;
-    }
-
-    & > label {
-      width: 100%;
-      text-align: center;
-      margin: 0 !important;
-    }
-  }
-`;
-
 const BreakControl = styled.div`
   display: flex;
   align-items: center;
@@ -533,6 +510,10 @@ const TimeTableManager: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const { theme: themeMode } = useContext(ThemeContext);
+  const theme = themeMode === 'dark' ? darkTheme : lightTheme;
+  const { setFooterContent } = usePageFooter();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   // Data state
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -1848,6 +1829,89 @@ const TimeTableManager: React.FC = () => {
     );
   }
 
+  // Set global footer content
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: isMobile ? '10px' : '12px 16px',
+            gap: isMobile ? '10px' : '12px',
+            flexDirection: isMobile ? 'column' : 'row',
+            flexWrap: 'wrap',
+          }}
+        >
+          <BreakControl theme={theme}>
+            <label htmlFor="break-select">Break after period:</label>
+            <ThemedSelect
+              theme={theme}
+              id="break-select"
+              value={breakIdx}
+              onChange={e => setBreakIdx(Number(e.target.value))}
+            >
+              {periods.slice(0, periods.length - 1).map((p, idx) => (
+                <ThemedOption key={p.num} theme={theme} value={idx}>{idx + 1}</ThemedOption>
+              ))}
+            </ThemedSelect>
+          </BreakControl>
+          <ActionButtonsGroup theme={theme}>
+            <Button variant="contained" color="primary" onClick={handleSaveTimetable} disabled={loading || !sessionId}>
+              {loading ? 'Saving...' : 'Save Timetable'}
+            </Button>
+            <Button variant="contained" color="secondary" onClick={handleExportPDF} disabled={loading || exportLoading || !sessionId}>
+              {exportLoading ? (
+                <>
+                  <div style={{ 
+                    width: 16, 
+                    height: 16, 
+                    border: '2px solid #e0e7ff', 
+                    borderTop: '2px solid #4a6cf7', 
+                    borderRadius: '50%', 
+                    animation: 'spin 1s linear infinite',
+                    marginRight: '8px'
+                  }} />
+                  Exporting...
+                </>
+              ) : (
+                'Export PDF'
+              )}
+            </Button>
+            <Button variant="contained" color="info" onClick={handleExportTeacherSlips} disabled={loading || teacherSlipsLoading || !sessionId}>
+              {teacherSlipsLoading ? (
+                <>
+                  <div style={{ 
+                    width: 16, 
+                    height: 16, 
+                    border: '2px solid #e0e7ff', 
+                    borderTop: '2px solid #4a6cf7', 
+                    borderRadius: '50%', 
+                    animation: 'spin 1s linear infinite',
+                    marginRight: '8px'
+                  }} />
+                  Exporting...
+                </>
+              ) : (
+                'Export Teacher Slips'
+              )}
+            </Button>
+          </ActionButtonsGroup>
+        </Box>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+    
+    return () => {
+      setFooterContent(null);
+    };
+  }, [breakIdx, loading, exportLoading, teacherSlipsLoading, sessionId, isMobile, theme, handleSaveTimetable, handleExportPDF, handleExportTeacherSlips]);
+
   return (
     <Container>
       <PageHeader>
@@ -1859,8 +1923,9 @@ const TimeTableManager: React.FC = () => {
           <Subtitle>Manage weekly schedule and assignments for all classes</Subtitle>
         </HeaderLeft>
       </PageHeader>
-      {loading ? <div>Loading...</div> : (
-        <TableWrapper>
+      <MainContent>
+        {loading ? <div>Loading...</div> : (
+          <TableWrapper>
           <TimetableTable>
             <thead>
               <tr>
@@ -2088,62 +2153,8 @@ const TimeTableManager: React.FC = () => {
             </tbody>
           </TimetableTable>
         </TableWrapper>
-      )}
-      <ActionButtonsContainer>
-        <BreakControl>
-          <label htmlFor="break-select">Break after period:</label>
-          <ThemedSelect
-            id="break-select"
-            value={breakIdx}
-            onChange={e => setBreakIdx(Number(e.target.value))}
-          >
-            {periods.slice(0, periods.length - 1).map((p, idx) => (
-              <ThemedOption key={p.num} value={idx}>{idx + 1}</ThemedOption>
-            ))}
-          </ThemedSelect>
-        </BreakControl>
-        <ActionButtonsGroup>
-          <Button variant="contained" color="primary" onClick={handleSaveTimetable} disabled={loading || !sessionId}>
-            {loading ? 'Saving...' : 'Save Timetable'}
-          </Button>
-          <Button variant="contained" color="secondary" onClick={handleExportPDF} disabled={loading || exportLoading || !sessionId}>
-            {exportLoading ? (
-              <>
-                <div style={{ 
-                  width: 16, 
-                  height: 16, 
-                  border: '2px solid #e0e7ff', 
-                  borderTop: '2px solid #4a6cf7', 
-                  borderRadius: '50%', 
-                  animation: 'spin 1s linear infinite',
-                  marginRight: '8px'
-                }} />
-                Exporting...
-              </>
-            ) : (
-              'Export PDF'
-            )}
-          </Button>
-          <Button variant="contained" color="info" onClick={handleExportTeacherSlips} disabled={loading || teacherSlipsLoading || !sessionId}>
-            {teacherSlipsLoading ? (
-              <>
-                <div style={{ 
-                  width: 16, 
-                  height: 16, 
-                  border: '2px solid #e0e7ff', 
-                  borderTop: '2px solid #4a6cf7', 
-                  borderRadius: '50%', 
-                  animation: 'spin 1s linear infinite',
-                  marginRight: '8px'
-                }} />
-                Exporting...
-              </>
-            ) : (
-              'Export Teacher Slips'
-            )}
-          </Button>
-        </ActionButtonsGroup>
-      </ActionButtonsContainer>
+        )}
+      </MainContent>
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }

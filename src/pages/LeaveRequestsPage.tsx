@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
@@ -53,13 +54,14 @@ const isDark = (themeObj: any) => themeObj.BG === '#252525';
 
 const PageContainer = styled.div`
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
   background: ${({ theme }) => theme.BG};
   padding: 0.5rem;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  overflow: hidden;
   
   @media (max-width: 768px) {
     padding: 0.375rem;
@@ -289,6 +291,7 @@ const TableWrapper = styled.div`
   overflow-x: auto;
   overflow-y: auto;
   flex: 1;
+  padding-bottom: 8px;
   
   @media (max-width: 768px) {
     overflow-x: visible;
@@ -803,6 +806,18 @@ const LeaveRequestsPage: React.FC = () => {
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { setFooterContent } = usePageFooter();
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -1037,6 +1052,91 @@ const LeaveRequestsPage: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedClass, selectedSection, selectedStatus, dateFrom, dateTo]);
+  
+  // Set footer content for global footer
+  useEffect(() => {
+    if (filteredRequests.length > 0) {
+      const FooterContentComponent = React.memo(() => {
+        const from = ((currentPage - 1) * itemsPerPage) + 1;
+        const to = Math.min(currentPage * itemsPerPage, filteredRequests.length);
+        const total = filteredRequests.length;
+        
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'center' : 'center',
+            justifyContent: isMobile ? 'center' : 'space-between',
+            width: '100%',
+            gap: isMobile ? '0.5rem' : '1rem',
+            flexWrap: isMobile ? 'nowrap' : 'wrap'
+          }}>
+            <PaginationInfo theme={theme} style={{ fontSize: isMobile ? '0.85rem' : '0.9rem' }}>
+              Showing {from} to {to} of {total} requests
+            </PaginationInfo>
+            <PaginationControls>
+              <PaginationButton
+                theme={theme}
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                First
+              </PaginationButton>
+              <PaginationButton
+                theme={theme}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </PaginationButton>
+              <span style={{ color: theme.TEXT_SECONDARY, fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+                Page{' '}
+                <PageInput
+                  type="number"
+                  min="1"
+                  max={totalPages}
+                  value={currentPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= totalPages) {
+                      setCurrentPage(page);
+                    }
+                  }}
+                  theme={theme}
+                />
+                {' '}of {totalPages}
+              </span>
+              <PaginationButton
+                theme={theme}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </PaginationButton>
+              <PaginationButton
+                theme={theme}
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Last
+              </PaginationButton>
+            </PaginationControls>
+          </div>
+        );
+      });
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+
+      return () => {
+        setFooterContent(null);
+      };
+    } else {
+      setFooterContent(null);
+    }
+  }, [filteredRequests.length, currentPage, totalPages, itemsPerPage, isMobile, theme, setFooterContent]);
   
   // Summary statistics
   const summaryStats = useMemo(() => {
@@ -1850,62 +1950,6 @@ const LeaveRequestsPage: React.FC = () => {
             )}
           </MobileCardContainer>
         </TableWrapper>
-        
-        {/* Pagination */}
-        {filteredRequests.length > 0 && (
-          <PaginationContainer theme={theme}>
-            <PaginationInfo theme={theme}>
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredRequests.length)} of {filteredRequests.length} requests
-            </PaginationInfo>
-            <PaginationControls>
-              <PaginationButton
-                theme={theme}
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
-                First
-              </PaginationButton>
-              <PaginationButton
-                theme={theme}
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </PaginationButton>
-              <span style={{ color: theme.TEXT_SECONDARY, fontSize: '0.9rem' }}>
-                Page{' '}
-                <PageInput
-                  type="number"
-                  min="1"
-                  max={totalPages}
-                  value={currentPage}
-                  onChange={(e) => {
-                    const page = parseInt(e.target.value);
-                    if (page >= 1 && page <= totalPages) {
-                      setCurrentPage(page);
-                    }
-                  }}
-                  theme={theme}
-                />
-                {' '}of {totalPages}
-              </span>
-              <PaginationButton
-                theme={theme}
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </PaginationButton>
-              <PaginationButton
-                theme={theme}
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                Last
-              </PaginationButton>
-            </PaginationControls>
-          </PaginationContainer>
-        )}
       </TableContainer>
       
       {/* Review Modal */}

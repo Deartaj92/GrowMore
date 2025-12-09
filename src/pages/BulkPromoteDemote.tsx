@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
@@ -9,6 +9,7 @@ import { darkTheme, lightTheme, useProgress } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 import Loader from '../components/Loader';
 // Reuse styled components from StudentStatusManager or redefine as needed
@@ -16,27 +17,29 @@ import Loader from '../components/Loader';
 
 const Container = styled.div`
   width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 1rem 2rem;
-  @media (max-width: 1200px) {
-    padding: 1rem 1.5rem;
-  }
-  @media (max-width: 768px) {
-    padding: 0.5rem 0.75rem;
-  }
+  height: 100%;
+  margin: 0;
+  padding: 0 12px 6px 12px;
+  box-sizing: border-box;
+  background: ${({ theme }) => theme.BG};
+  max-width: 100vw;
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const PageHeader = styled.div`
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin: 6px 0 4px 0;
+  padding: 4px 8px 2px 8px;
   border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
   @media (max-width: 768px) {
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
+    margin: 6px 0 4px 0;
+    padding: 4px 8px 2px 8px;
   }
 `;
 
@@ -71,11 +74,29 @@ const HeaderIcon = styled.div`
 `;
 
 const MainContent = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 0 8px 0;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 4px;
+  }
   @media (max-width: 768px) {
     gap: 1rem;
+    scroll-behavior: auto;
   }
 `;
 
@@ -1023,6 +1044,7 @@ const BulkPromoteDemote: React.FC = () => {
   const toast = useToast();
   const { setLoading, loading } = useLoading();
   const { startProgress, setProgress, completeProgress } = useProgress();
+  const { setFooterContent } = usePageFooter();
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [sourceClass, setSourceClass] = useState('');
@@ -1040,6 +1062,9 @@ const BulkPromoteDemote: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [targetClassStudentsCount, setTargetClassStudentsCount] = useState(0);
   const [activeSession, setActiveSession] = useState<{ id: string; name: string } | null>(null);
+
+  // Detect mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -1495,7 +1520,7 @@ const BulkPromoteDemote: React.FC = () => {
   };
 
   // Check if target class has existing students
-  const checkTargetClassStudents = async () => {
+  const checkTargetClassStudents = useCallback(async () => {
     if (!targetClass) return 0;
     
     try {
@@ -1543,7 +1568,7 @@ const BulkPromoteDemote: React.FC = () => {
     } catch (error) {
       return 0;
     }
-  };
+  }, [targetClass, targetSection, classes, activeSession, user?.school_id]);
 
   const handleConfirm = async () => {
     // Check if source class has sections
@@ -1628,7 +1653,7 @@ const BulkPromoteDemote: React.FC = () => {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setSourceClass('');
     setSourceSection('');
     setTargetClass('');
@@ -1636,9 +1661,9 @@ const BulkPromoteDemote: React.FC = () => {
     setSourceStudents([]);
     setTargetStudents([]);
     setSelectedStudents(new Set());
-  };
+  }, []);
 
-  const handleConfirmClick = async () => {
+  const handleConfirmClick = useCallback(async () => {
     // Check if source class has sections
     const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
     const sourceHasSections = sourceClassObj?.has_sections ?? true;
@@ -1665,16 +1690,124 @@ const BulkPromoteDemote: React.FC = () => {
     const existingStudentsCount = await checkTargetClassStudents();
     setTargetClassStudentsCount(existingStudentsCount);
     setShowConfirmModal(true);
-  };
+  }, [sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, classes, toast, checkTargetClassStudents]);
 
   const handleConfirmModalConfirm = async () => {
     setShowConfirmModal(false);
     await handleConfirm();
   };
 
+  // Set global footer content - MUST be before early returns
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
+      const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
+      const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
+      const isDisabled = processing || !sourceClass || !targetClass || selectedStudents.size === 0 || 
+        (sourceClassObj?.has_sections !== false && !sourceSection) ||
+        (targetClassObj?.has_sections !== false && !targetSection);
+
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'center' : 'center',
+          justifyContent: isMobile ? 'center' : 'space-between',
+          width: '100%',
+          gap: isMobile ? '0.5rem' : '1rem',
+          flexWrap: isMobile ? 'nowrap' : 'wrap'
+        }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <ActionButton 
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancel();
+              }} 
+              disabled={processing}
+              style={{
+                padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.5rem',
+                borderRadius: isMobile ? '6px' : '8px',
+                border: '1px solid',
+                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                fontWeight: 600,
+                cursor: processing ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                minWidth: isMobile ? '100px' : '120px',
+                justifyContent: 'center',
+                background: 'transparent',
+                color: '#6b7280',
+                borderColor: '#d1d5db',
+                opacity: processing ? 0.5 : 1
+              }}
+            >
+              Cancel
+            </ActionButton>
+            <ActionButton 
+              variant="primary" 
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmClick();
+              }} 
+              disabled={isDisabled}
+              style={{
+                padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.5rem',
+                borderRadius: isMobile ? '6px' : '8px',
+                border: '1px solid',
+                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                fontWeight: 600,
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                minWidth: isMobile ? '100px' : '120px',
+                justifyContent: 'center',
+                background: '#3b82f6',
+                color: 'white',
+                borderColor: '#3b82f6',
+                opacity: isDisabled ? 0.5 : 1
+              }}
+            >
+              {processing ? 'Processing...' : `${action === 'promote' ? 'Promote' : 'Demote'} ${selectedStudents.size} Students`}
+            </ActionButton>
+          </div>
+          
+          {selectedStudents.size > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: isMobile ? '0.375rem 0.75rem' : '0.5rem 1rem',
+              borderRadius: isMobile ? '6px' : '8px',
+              fontSize: isMobile ? '0.8rem' : '0.875rem',
+              fontWeight: 500,
+              background: '#dcfce7',
+              color: '#166534',
+              border: '1px solid #bbf7d0'
+            }}>
+              {selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected for {action}
+            </div>
+          )}
+        </div>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [processing, sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, action, classes, isMobile, theme, setFooterContent, handleCancel, handleConfirmClick]);
+
   if (loading) {
     return (
-      <Container style={{ paddingTop: '80px' }}>
+      <Container>
         <PageSkeleton />
       </Container>
     );
@@ -1944,35 +2077,6 @@ const BulkPromoteDemote: React.FC = () => {
         </TableContainer>
           </StudentsCard>
         </StudentsGrid>
-
-        <ActionsPanel>
-          <ActionButtons>
-            <ActionButton onClick={(e) => {
-              e.preventDefault();
-              handleCancel();
-            }} disabled={processing}>
-              Cancel
-        </ActionButton>
-            <ActionButton 
-              variant="primary" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleConfirmClick();
-              }} 
-              disabled={processing || !sourceClass || !targetClass || selectedStudents.size === 0 || 
-                (classes.find(c => String(c.id) === String(sourceClass))?.has_sections !== false && !sourceSection) ||
-                (classes.find(c => String(c.id) === String(targetClass))?.has_sections !== false && !targetSection)}
-            >
-              {processing ? 'Processing...' : `${action === 'promote' ? 'Promote' : 'Demote'} ${selectedStudents.size} Students`}
-            </ActionButton>
-          </ActionButtons>
-          
-          {selectedStudents.size > 0 && (
-            <StatusIndicator type="success">
-              {selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected for {action}
-            </StatusIndicator>
-          )}
-        </ActionsPanel>
       </MainContent>
 
       {/* Confirmation Modal */}

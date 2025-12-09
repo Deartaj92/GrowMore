@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -78,6 +78,7 @@ import {
 import { examinationConfigurationService } from '../services/examinationConfigurationService';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useToast } from '../components/useToast';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -88,7 +89,7 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 93vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -135,7 +136,7 @@ const MainContent = styled.div`
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
   
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -397,6 +398,8 @@ const ExaminationConfiguration: React.FC = () => {
   const { theme } = React.useContext(ThemeContext);
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { setFooterContent } = usePageFooter();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
   
   // Check if user has school_id
   if (!user?.school_id) {
@@ -522,11 +525,7 @@ const ExaminationConfiguration: React.FC = () => {
     signature_text_color: '#6b7280'
   };
 
-  useEffect(() => {
-    loadConfiguration();
-  }, []);
-
-  const loadConfiguration = async () => {
+  const loadConfiguration = useCallback(async () => {
     try {
       setLoading(true);
       // Get current school ID from user context
@@ -558,9 +557,13 @@ const ExaminationConfiguration: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.school_id, showToast]);
 
-  const saveConfiguration = async () => {
+  useEffect(() => {
+    loadConfiguration();
+  }, [loadConfiguration]);
+
+  const saveConfiguration = useCallback(async () => {
     try {
       setSaving(true);
       if (!config) return;
@@ -583,7 +586,90 @@ const ExaminationConfiguration: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [config, showToast]);
+
+  const handleResetToDefaults = useCallback(async () => {
+    try {
+      // Reset to defaults by creating a new default configuration
+      const schoolId = user?.school_id;
+      if (!schoolId) {
+        showToast('No school ID available', 'error');
+        return;
+      }
+      const defaultConfig: ExaminationConfig = {
+        school_id: schoolId,
+        grade_configurations: defaultGrades,
+        dmc_configuration: defaultDMCConfig,
+        dmc_color_configuration: defaultDMCColorConfig
+      };
+      await examinationConfigurationService.upsertExaminationConfiguration(defaultConfig);
+      await loadConfiguration();
+      showToast('Configuration reset to defaults successfully', 'success');
+    } catch (error) {
+      showToast('Failed to reset configuration', 'error');
+    }
+  }, [user?.school_id, showToast, loadConfiguration]);
+
+  const handleReload = useCallback(async () => {
+    try {
+      await loadConfiguration();
+      showToast('Configuration reloaded successfully', 'success');
+    } catch (error) {
+      showToast('Failed to reload configuration', 'error');
+    }
+  }, [showToast, loadConfiguration]);
+
+  // Set global footer content - MUST be before early returns
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      const themeObj = theme === 'dark' ? darkTheme : lightTheme;
+      
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: isMobile ? 'center' : 'flex-end',
+            gap: '12px',
+            width: '100%',
+            flexWrap: 'wrap',
+            padding: isMobile ? '10px' : '0'
+          }}
+        >
+          <ActionButton
+            theme={themeObj}
+            variant="secondary"
+            onClick={handleResetToDefaults}
+          >
+            Reset to Defaults
+          </ActionButton>
+          <ActionButton
+            theme={themeObj}
+            variant="secondary"
+            onClick={handleReload}
+          >
+            Reload
+          </ActionButton>
+          <ActionButton
+            theme={themeObj}
+            variant="primary"
+            onClick={saveConfiguration}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Configuration'}
+          </ActionButton>
+        </Box>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [saving, isMobile, theme, setFooterContent, handleResetToDefaults, handleReload, saveConfiguration]);
 
   const handleGradeChange = (index: number, field: keyof GradeConfiguration, value: any) => {
     if (!config) return;
@@ -787,58 +873,6 @@ const ExaminationConfiguration: React.FC = () => {
           </TabContent>
         </TabContainer>
       </MainContent>
-
-      <Footer theme={theme === 'dark' ? darkTheme : lightTheme}>
-        <ActionButton
-          theme={theme === 'dark' ? darkTheme : lightTheme}
-          variant="secondary"
-          onClick={async () => {
-            try {
-              // Reset to defaults by creating a new default configuration
-              const schoolId = user?.school_id;
-              if (!schoolId) {
-                showToast('No school ID available', 'error');
-                return;
-              }
-              const defaultConfig: ExaminationConfig = {
-                school_id: schoolId,
-                grade_configurations: defaultGrades,
-                dmc_configuration: defaultDMCConfig,
-                dmc_color_configuration: defaultDMCColorConfig
-              };
-              await examinationConfigurationService.upsertExaminationConfiguration(defaultConfig);
-              await loadConfiguration();
-              showToast('Configuration reset to defaults successfully', 'success');
-            } catch (error) {
-              showToast('Failed to reset configuration', 'error');
-            }
-          }}
-        >
-          Reset to Defaults
-        </ActionButton>
-        <ActionButton
-          theme={theme === 'dark' ? darkTheme : lightTheme}
-          variant="secondary"
-          onClick={async () => {
-            try {
-              await loadConfiguration();
-              showToast('Configuration reloaded successfully', 'success');
-            } catch (error) {
-              showToast('Failed to reload configuration', 'error');
-            }
-          }}
-        >
-          Reload
-        </ActionButton>
-        <ActionButton
-          theme={theme === 'dark' ? darkTheme : lightTheme}
-          variant="primary"
-          onClick={saveConfiguration}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : 'Save Configuration'}
-        </ActionButton>
-      </Footer>
 
       {/* Grade Dialog */}
       <Dialog open={gradeDialog.open} onClose={() => setGradeDialog({ open: false, grade: null })} maxWidth="sm" fullWidth>

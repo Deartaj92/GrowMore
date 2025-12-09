@@ -22,6 +22,8 @@ import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -35,7 +37,8 @@ const PageContainer = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  height: 93vh;
+  height: 100%;
+  overflow: hidden;
 `;
 
 const Header = styled.div`
@@ -336,11 +339,11 @@ const MobileRow = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
@@ -348,11 +351,6 @@ const MainContent = styled.div`
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
-  
-  /* Mobile enhancements - add bottom padding for fixed footer */
-  @media (max-width: 480px) {
-    padding-bottom: 60px;
-  }
   
   @media (max-width: 700px) {
     scroll-behavior: auto;
@@ -540,40 +538,7 @@ const ErrorContainer = styled.div`
   text-align: center;
 `;
 
-const Footer = styled.div`
-  position: sticky;
-  bottom: 0;
-  background: ${({ theme }) => theme.CARD};
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 4px 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  margin-top: 4px;
-  
-  /* Mobile enhancements */
-  @media (max-width: 768px) {
-    padding: 6px 12px;
-    flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-    border-top: 1px solid ${({ theme }) => theme.BORDER};
-  }
-  
-  @media (max-width: 480px) {
-    padding: 8px 10px;
-    gap: 8px;
-    border-radius: 8px 8px 0 0;
-    margin: 0;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-  }
-`;
-
+// Footer Components (kept for use in global footer)
 const SummaryStats = styled.div`
   display: flex;
   align-items: center;
@@ -1125,6 +1090,18 @@ const FeeDefaultersList: React.FC = () => {
   const { setLoading, loading } = useLoading();
   const { startProgress, setProgress, completeProgress } = useProgress();
   const navigate = useNavigate();
+  const { setFooterContent } = usePageFooter();
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // State variables
   const [search, setSearch] = useState('');
@@ -2829,6 +2806,49 @@ const FeeDefaultersList: React.FC = () => {
     };
   }, [filteredDefaulters]);
 
+  // Set footer content for global footer
+  useEffect(() => {
+    if (filteredDefaulters.length > 0) {
+      const FooterContentComponent = React.memo(() => {
+        const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
+        
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'center' : 'center',
+            justifyContent: isMobile ? 'center' : 'space-between',
+            width: '100%',
+            gap: isMobile ? '0.5rem' : '1rem',
+            flexWrap: isMobile ? 'nowrap' : 'wrap'
+          }}>
+            <SummaryStats theme={themeObj}>
+              <StatItem theme={themeObj}>
+                <StatValue $type="total" theme={themeObj}>{summary.totalDefaulters}</StatValue>
+                <StatLabel theme={themeObj}>Total Defaulters</StatLabel>
+              </StatItem>
+              <StatItem theme={themeObj}>
+                <StatValue $type="average" theme={themeObj}>Rs. {formatCurrency(summary.totalOutstanding)}</StatValue>
+                <StatLabel theme={themeObj}>Total Outstanding</StatLabel>
+              </StatItem>
+            </SummaryStats>
+          </div>
+        );
+      });
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+
+      return () => {
+        setFooterContent(null);
+      };
+    } else {
+      setFooterContent(null);
+    }
+  }, [filteredDefaulters, summary, isMobile, theme, setFooterContent]);
+
   // Handle refresh
   const handleRefresh = async () => {
     setLoadingData(true);
@@ -3168,19 +3188,6 @@ const FeeDefaultersList: React.FC = () => {
         </TableWrapper>
         </TableArea>
       </MainContent>
-      
-      <Footer>
-        <SummaryStats>
-          <StatItem>
-            <StatValue $type="total">{summary.totalDefaulters}</StatValue>
-            <StatLabel>Total Defaulters</StatLabel>
-          </StatItem>
-          <StatItem>
-            <StatValue $type="average">Rs. {formatCurrency(summary.totalOutstanding)}</StatValue>
-            <StatLabel>Total Outstanding</StatLabel>
-          </StatItem>
-        </SummaryStats>
-      </Footer>
 
       {/* Right-side Panel */}
       <PanelOverlay $isOpen={isPanelOpen} onClick={handleClosePanel}>

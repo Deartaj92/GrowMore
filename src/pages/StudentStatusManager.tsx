@@ -23,13 +23,14 @@ import { CircularProgress } from '@mui/material';
 import { darkTheme, lightTheme, useProgress } from '../components/Layout';
 import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 import Loader from '../components/Loader';
 // Styled components
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
-  height: 92vh;
+  height: 100%;
   width: 100%;
   max-width: 100%;
   position: relative;
@@ -42,7 +43,7 @@ const ContentArea = styled.div`
   width: 100%;
   overflow-y: auto;
   padding: 16px;
-  padding-bottom: 52px;
+  padding-bottom: 8px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1747,6 +1748,7 @@ const StudentStatusManager: React.FC = () => {
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
   const { startProgress, setProgress, completeProgress } = useProgress();
+  const { setFooterContent } = usePageFooter();
 
   // Detect mobile early for initial state setup
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
@@ -1822,7 +1824,7 @@ const StudentStatusManager: React.FC = () => {
   const to = (page - 1) * perPage + paginated.length;
   const total = filteredStudents.length;
 
-  // Memoized callback handlers for better performance
+  // Memoized callback handlers for better performance - MUST be before useEffect that uses them
   const scrollToTop = useCallback(() => {
     if (contentAreaRef.current) {
       contentAreaRef.current.scrollTo({ top: 0, behavior: isMobile ? 'auto' : 'smooth' });
@@ -1833,6 +1835,96 @@ const StudentStatusManager: React.FC = () => {
     setPage(newPage);
     scrollToTop();
   }, [scrollToTop]);
+
+  // Set global footer content - MUST be before early returns
+  useEffect(() => {
+    if (filteredStudents.length > 0) {
+      const FooterContentComponent = React.memo(() => {
+        const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
+        const currentFrom = (page - 1) * perPage + 1;
+        const currentTo = (page - 1) * perPage + paginated.length;
+        const currentTotal = filteredStudents.length;
+        
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'center' : 'center',
+            justifyContent: isMobile ? 'center' : 'space-between',
+            width: '100%',
+            gap: isMobile ? '0.5rem' : '1rem',
+            flexWrap: isMobile ? 'nowrap' : 'wrap'
+          }}>
+            <PaginationInfo theme={themeObj} style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', fontSize: isMobile ? '0.9rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isMobile
+                ? `${currentFrom} to ${currentTo} of ${currentTotal}`
+                : `Showing ${currentFrom} to ${currentTo} of ${currentTotal} students`
+              }
+            </PaginationInfo>
+            <PaginationControls theme={themeObj} style={{ flex: 'none', marginLeft: isMobile ? '0' : 'auto', width: 'auto' }}>
+              <SegmentedGroup theme={themeObj}>
+                <SegmentedButton
+                  theme={themeObj}
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  first
+                  style={{ minWidth: 32 }}
+                >
+                  ‹
+                </SegmentedButton>
+                {page > 1 && (
+                  <SegmentedButton
+                    theme={themeObj}
+                    onClick={() => handlePageChange(page - 1)}
+                    style={{ minWidth: 32 }}
+                  >
+                    {page - 1}
+                  </SegmentedButton>
+                )}
+                <SegmentedButton
+                  theme={themeObj}
+                  active
+                  disabled
+                  style={{ minWidth: 32 }}
+                >
+                  {page}
+                </SegmentedButton>
+                {page < totalPages && (
+                  <SegmentedButton
+                    theme={themeObj}
+                    onClick={() => handlePageChange(page + 1)}
+                    style={{ minWidth: 32 }}
+                  >
+                    {page + 1}
+                  </SegmentedButton>
+                )}
+                <SegmentedButton
+                  theme={themeObj}
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  last
+                  style={{ minWidth: 32 }}
+                >
+                  ›
+                </SegmentedButton>
+              </SegmentedGroup>
+            </PaginationControls>
+          </div>
+        );
+      });
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+
+      return () => {
+        setFooterContent(null);
+      };
+    } else {
+      setFooterContent(null);
+    }
+  }, [filteredStudents.length, page, perPage, paginated.length, totalPages, isMobile, theme, setFooterContent, handlePageChange]);
 
   const handleClassFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setClassFilter(e.target.value);
@@ -2914,58 +3006,6 @@ const StudentStatusManager: React.FC = () => {
           </StudentGrid>
         )}
       </ContentArea>
-
-      <PaginationContainer>
-        <PaginationInfo style={{ flex: 1, textAlign: 'left', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {window.innerWidth <= 700
-            ? `${from} to ${to} of ${total}`
-            : `Showing ${from} to ${to} of ${total} students`
-          }
-        </PaginationInfo>
-        <PaginationControls style={{ flex: 'none', marginLeft: 'auto', width: 'auto' }}>
-          <SegmentedGroup>
-            <SegmentedButton
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-              first
-              style={{ minWidth: 32 }}
-            >
-              ‹
-            </SegmentedButton>
-            {page > 1 && (
-              <SegmentedButton
-                onClick={() => handlePageChange(page - 1)}
-                style={{ minWidth: 32 }}
-              >
-                {page - 1}
-              </SegmentedButton>
-            )}
-            <SegmentedButton
-              active
-              disabled
-              style={{ minWidth: 32 }}
-            >
-              {page}
-            </SegmentedButton>
-            {page < totalPages && (
-              <SegmentedButton
-                onClick={() => handlePageChange(page + 1)}
-                style={{ minWidth: 32 }}
-              >
-                {page + 1}
-              </SegmentedButton>
-            )}
-            <SegmentedButton
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages}
-              last
-              style={{ minWidth: 32 }}
-            >
-              ›
-            </SegmentedButton>
-          </SegmentedGroup>
-        </PaginationControls>
-      </PaginationContainer>
 
       {showModal && selectedStudent && (
         <ModalOverlay>

@@ -23,6 +23,7 @@ import { useToast } from './useToast';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { useTheme } from '@mui/material';
 import { ThemeProvider } from 'styled-components';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import { examinationService } from '../services/examinationService';
 import { Examination, ExamResult, ExamSubject, BulkMarksEntryDTO } from '../types/examinations';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -283,11 +284,11 @@ const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  padding: 0 0 60px 0;
+  padding: 0 0 8px 0;
   /* Super smooth scrolling optimizations */
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -1053,6 +1054,18 @@ const MarksEntryManager: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logExaminationMarksActivity } = useActivityTracking();
+  const { setFooterContent } = usePageFooter();
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // State for form fields
   const [classes, setClasses] = useState<Class[]>([]);
@@ -2034,6 +2047,115 @@ const MarksEntryManager: React.FC = () => {
     }
   }, [selectedSubject]);
 
+  // Set footer content for global footer
+  useEffect(() => {
+    const shouldShowFooter = hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedExam && selectedSubject && students.length > 0;
+    
+    if (shouldShowFooter) {
+      const FooterContentComponent = React.memo(() => {
+        const isDark = theme.palette.mode === 'dark';
+        
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'center' : 'center',
+            justifyContent: isMobile ? 'center' : 'flex-end',
+            width: '100%',
+            gap: isMobile ? '6px' : '8px',
+            flexWrap: isMobile ? 'nowrap' : 'wrap'
+          }}>
+            <FooterButton
+              variant="secondary"
+              onClick={handleAbsentButton}
+              onMouseDown={(e) => e.preventDefault()}
+              style={{ 
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: '1px solid #f59e0b',
+                fontWeight: 'bold',
+                fontSize: isMobile ? '0.85rem' : '0.9rem',
+                padding: isMobile ? '6px 10px' : '6px 12px'
+              }}
+            >
+              A
+            </FooterButton>
+            <FooterButtonGroup>
+              <FooterButton
+                variant="secondary"
+                onClick={() => {
+                  setMarksData({});
+                  setSelectedStudents(new Set());
+                }}
+                style={{ minWidth: isMobile ? '50px' : '60px', fontSize: isMobile ? '0.75rem' : '0.8rem' }}
+              >
+                Reset
+              </FooterButton>
+              <FooterButton
+                variant="secondary"
+                onClick={handleDeleteMarks}
+                disabled={deleting || selectedStudents.size === 0}
+                style={{ 
+                  opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
+                  cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  border: '1px solid #ef4444',
+                  fontSize: isMobile ? '0.75rem' : '0.8rem'
+                }}
+              >
+                {deleting ? (
+                  <>
+                    <Spinner />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <DeleteIcon style={{ fontSize: isMobile ? 10 : 12 }} />
+                    Delete
+                  </>
+                )}
+              </FooterButton>
+              <FooterButton
+                variant="primary"
+                onClick={handleSaveMarks}
+                disabled={saving || selectedStudents.size === 0}
+                style={{ 
+                  opacity: (saving || selectedStudents.size === 0) ? 0.7 : 1,
+                  cursor: (saving || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                  fontSize: isMobile ? '0.75rem' : '0.8rem'
+                }}
+              >
+                {saving ? (
+                  <>
+                    <Spinner />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <SaveIcon style={{ fontSize: isMobile ? 10 : 12 }} />
+                    Save
+                  </>
+                )}
+              </FooterButton>
+            </FooterButtonGroup>
+          </div>
+        );
+      });
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+
+      return () => {
+        setFooterContent(null);
+      };
+    } else {
+      setFooterContent(null);
+    }
+  }, [hasActiveSession, selectedClass, selectedSection, selectedExam, selectedSubject, students.length, selectedStudents.size, saving, deleting, isMobile, theme, setFooterContent, handleAbsentButton, handleDeleteMarks, handleSaveMarks]);
+
   // Selection is now handled based on marks data in loadExistingMarks and handleMarksInput
 
 
@@ -2744,83 +2866,6 @@ const MarksEntryManager: React.FC = () => {
         <ToTopButton onClick={() => mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}>
           <KeyboardArrowUpIcon />
         </ToTopButton>
-      )}
-
-      {/* Minimal Footer */}
-      {hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedExam && selectedSubject && students.length > 0 && (
-        <Footer>
-          <FooterButton
-            variant="secondary"
-            onClick={handleAbsentButton}
-            onMouseDown={(e) => e.preventDefault()}
-            style={{ 
-              backgroundColor: '#f59e0b',
-              color: 'white',
-              border: '1px solid #f59e0b',
-              fontWeight: 'bold',
-              fontSize: '0.9rem'
-            }}
-          >
-            A
-          </FooterButton>
-          <FooterButtonGroup>
-            <FooterButton
-              variant="secondary"
-              onClick={() => {
-                setMarksData({});
-                setSelectedStudents(new Set());
-              }}
-              style={{ minWidth: '60px' }}
-            >
-              Reset
-            </FooterButton>
-            <FooterButton
-              variant="secondary"
-              onClick={handleDeleteMarks}
-              disabled={deleting || selectedStudents.size === 0}
-              style={{ 
-                opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
-                cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: '1px solid #ef4444'
-              }}
-            >
-              {deleting ? (
-                <>
-                  <Spinner />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <DeleteIcon style={{ fontSize: 12 }} />
-                  Delete
-                </>
-              )}
-            </FooterButton>
-            <FooterButton
-              variant="primary"
-              onClick={handleSaveMarks}
-              disabled={saving || selectedStudents.size === 0}
-              style={{ 
-                opacity: (saving || selectedStudents.size === 0) ? 0.7 : 1,
-                cursor: (saving || selectedStudents.size === 0) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {saving ? (
-                <>
-                  <Spinner />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <SaveIcon style={{ fontSize: 12 }} />
-                  Save
-                </>
-              )}
-            </FooterButton>
-          </FooterButtonGroup>
-        </Footer>
       )}
 
       {/* Save Modal */}

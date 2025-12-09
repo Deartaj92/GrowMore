@@ -32,6 +32,7 @@ import { useActivityTracking } from '../hooks/useActivityTracking';
 import { whatsappSemiAutoService, AttendanceNotificationData } from '../services/whatsappSemiAuto';
 import WhatsAppBulkSender from './WhatsAppBulkSender';
 import { hasPermission } from '../services/permissionService';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 
 import Loader from '../components/Loader';
 // Move bounceAnimation to the top, before any styled components use it
@@ -72,13 +73,14 @@ const PageContainer = styled.div`
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
   min-height: 0; /* Critical for flex children */
   display: flex;
   flex-direction: column;
 `;
+
 const Header = styled.div`
-  flex: 0 0 auto;
+  flex-shrink: 0; /* Don't shrink */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -94,12 +96,13 @@ const Header = styled.div`
   padding: 4px 8px 2px 8px;
   min-height: 36px;
 `;
+
 const MainContent = styled.div`
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
+  flex: 1; /* Fill remaining space */
+  min-height: 0; /* Critical - allows flex child to shrink below content size */
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  overflow-x: hidden;
+  padding: 0 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
@@ -126,8 +129,9 @@ const MainContent = styled.div`
     background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
   }
 `;
+
 const Footer = styled.div`
-  flex: 0 0 auto;
+  flex-shrink: 0; /* Don't shrink */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -630,7 +634,7 @@ const MobileStudentList = styled.div`
   gap: 0.6rem;
   width: 100%;
   box-sizing: border-box;
-  padding-bottom: 5.5rem;
+  padding-bottom: 1rem;
 `;
 const MobileStudentCard = styled.div`
   display: flex;
@@ -1417,6 +1421,7 @@ const MarkAttendance: React.FC = () => {
   const [showStatusList, setShowStatusList] = useState(false);
   const [selectedStatusType, setSelectedStatusType] = useState<'present' | 'absent' | 'leave' | 'late' | null>(null);
   const [hasWhatsAppPermission, setHasWhatsAppPermission] = useState(false);
+  const { setFooterContent } = usePageFooter();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1425,6 +1430,9 @@ const MarkAttendance: React.FC = () => {
   const presentCount = students.filter(s => s.status === 'present').length;
   const absentCount = students.filter(s => s.status === 'absent').length;
   const leaveCount = students.filter(s => s.status === 'leave').length;
+
+  // Selected rows state - declared early to be used in footer useEffect
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
   const didSetDefaultStatus = useRef(false);
   const didAutoSelect = useRef(false);
@@ -1470,6 +1478,165 @@ const MarkAttendance: React.FC = () => {
     };
     checkWhatsAppPermission();
   }, [user?.id, user?.school_id]);
+
+  // Define filteredStudents early so it can be used in handleSave
+  const filteredStudents = useCallback((columnStudents: Student[]) =>
+    columnStudents.filter(student =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.father_name.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [searchTerm]);
+
+  // Define handleMarkAll early so it can be used in footer
+  const handleMarkAll = useCallback((status: 'present' | 'absent') => {
+    setStudents(prev =>
+      prev.map(s =>
+        selectedRows.includes(s.id) ? { ...s, status } : s
+      )
+    );
+  }, [selectedRows]);
+
+  // Create a ref for handleSave to avoid dependency issues
+  const handleSaveRef = useRef<() => Promise<void>>();
+  
+  // Set footer content for global footer
+  useEffect(() => {
+    const footerContent = (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'center' : 'center', 
+        justifyContent: isMobile ? 'center' : 'space-between', 
+        width: '100%',
+        gap: isMobile ? '0.5rem' : '1rem',
+        flexWrap: isMobile ? 'nowrap' : 'wrap'
+      }}>
+        <div style={{ 
+          fontSize: isMobile ? '0.75rem' : '0.98rem', 
+          color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), 
+          fontWeight: 600, 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: isMobile ? 3 : 8, 
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          justifyContent: isMobile ? 'center' : 'flex-start',
+          whiteSpace: isMobile ? 'nowrap' : 'normal'
+        }}>
+          <span>Total: {totalStudents}</span>
+          <span>|</span>
+          <ClickableSummaryItem 
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => {
+              setSelectedStatusType('present');
+              setShowStatusList(true);
+            }}
+          >
+            Present: {presentCount}
+          </ClickableSummaryItem>
+          <span>|</span>
+          <ClickableSummaryItem 
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => {
+              setSelectedStatusType('absent');
+              setShowStatusList(true);
+            }}
+          >
+            Absent: {absentCount}
+          </ClickableSummaryItem>
+          <span>|</span>
+          <ClickableSummaryItem 
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => {
+              setSelectedStatusType('leave');
+              setShowStatusList(true);
+            }}
+          >
+            Leave: {leaveCount}
+          </ClickableSummaryItem>
+          <span>|</span>
+          <ClickableSummaryItem 
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => {
+              setSelectedStatusType('late');
+              setShowStatusList(true);
+            }}
+          >
+            Late: {students.filter(s => s.status === 'late').length}
+          </ClickableSummaryItem>
+        </div>
+        <SegmentedGroup
+          theme={theme === 'dark' ? darkTheme : lightTheme}
+          style={isMobile
+            ? { width: '100%', justifyContent: 'center', overflowX: 'auto', marginTop: 0 }
+            : { justifyContent: 'flex-end', marginTop: 0 }
+          }
+        >
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            first
+            onClick={() => handleMarkAll('present')}
+            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
+            disabled={students.length === 0 || selectedRows.length === 0}
+          >
+            {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
+            All Present
+          </SegmentedButton>
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => handleMarkAll('absent')}
+            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
+            disabled={students.length === 0 || selectedRows.length === 0}
+          >
+            {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
+            All Absent
+          </SegmentedButton>
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={students.length === 0 || selectedRows.length === 0 || !selectedClass || !date || deleting || (classes.find(c => String(c.id) === String(selectedClass))?.has_sections ?? true) && !selectedSection}
+            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 32, opacity: 0.93 }}
+          >
+            {deleting ? <Spinner /> : <><Delete style={{ fontSize: 18, marginRight: 4 }} /> Delete</>}
+          </SegmentedButton>
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            last
+            onClick={() => handleSaveRef.current?.()}
+            disabled={students.length === 0 || selectedRows.length === 0 || saving}
+            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, minHeight: 32, opacity: 0.93 }}
+          >
+            {saving ? <Spinner /> : <><Save style={{ fontSize: 18, marginRight: 4 }} /> Save</>}
+          </SegmentedButton>
+        </SegmentedGroup>
+      </div>
+    );
+
+    setFooterContent({
+      visible: true,
+      content: footerContent
+    });
+
+    // Cleanup on unmount
+    return () => {
+      setFooterContent(null);
+    };
+  }, [
+    students, 
+    totalStudents, 
+    presentCount, 
+    absentCount, 
+    leaveCount, 
+    selectedRows, 
+    selectedClass, 
+    date, 
+    deleting, 
+    saving, 
+    isMobile, 
+    theme, 
+    classes, 
+    selectedSection,
+    setFooterContent,
+    handleMarkAll
+  ]);
 
   // Main data loading effect with progress bar
   useEffect(() => {
@@ -2039,7 +2206,7 @@ const MarkAttendance: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!selectedClass || !date || !user?.school_id) {
       toast.showToast('Please select class and date', 'error');
       return;
@@ -2068,6 +2235,7 @@ const MarkAttendance: React.FC = () => {
     try {
       // Only allow valid statuses
       const validStatuses = ['present', 'absent', 'leave', 'late'];
+      const filtered = filteredStudents(students);
       const studentsToSave = filtered.filter(student => typeof student.status === 'string' && validStatuses.includes(student.status));
       if (studentsToSave.length === 0) {
         toast.showToast('No valid attendance records to save', 'error');
@@ -2173,13 +2341,12 @@ const MarkAttendance: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const filteredStudents = (columnStudents: Student[]) =>
-    columnStudents.filter(student =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.father_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  }, [selectedClass, date, user?.school_id, selectedSection, sessionId, students, searchTerm, classes, sections, sendWhatsAppNotifications, sendAttendanceNotifications, fetchStudents, filteredStudents]);
+  
+  // Update handleSave ref whenever handleSave changes
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   useEffect(() => {
     // Clear students when class/section changes
@@ -2217,7 +2384,6 @@ const MarkAttendance: React.FC = () => {
   const unmarkedStudents = students.filter(s => !s.status);
 
   // Just before return, after students and filteredStudents are defined:
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const filtered = filteredStudents(students);
   const allChecked = filtered.length > 0 && filtered.every(s => selectedRows.includes(s.id));
   const handleToggleSelectAll = () => {
@@ -2230,13 +2396,6 @@ const MarkAttendance: React.FC = () => {
       setSelectedRows(prev => Array.from(new Set([...prev, ...filtered.map(s => s.id)])));
       setStudents(prev => prev.map(s => filtered.some(f => f.id === s.id) ? { ...s, status: 'present' } : s));
     }
-  };
-  const handleMarkAll = (status: 'present' | 'absent') => {
-    setStudents(prev =>
-      prev.map(s =>
-        selectedRows.includes(s.id) ? { ...s, status } : s
-      )
-    );
   };
   // Enter key submits
   useEffect(() => {
@@ -2507,61 +2666,6 @@ const MarkAttendance: React.FC = () => {
                 style={{ minWidth: 120 }}
               />
             </SegmentedGroup>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              width: '100%',
-              gap: 12,
-              fontSize: isMobile ? '0.89rem' : '0.98rem',
-              color: theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY,
-              fontWeight: 600,
-              marginTop: 8,
-              textAlign: 'center',
-              flexWrap: 'wrap'
-            }}>
-              <span>Total: {totalStudents}</span>
-              <span>|</span>
-              <ClickableSummaryItem 
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={() => {
-                  setSelectedStatusType('present');
-                  setShowStatusList(true);
-                }}
-              >
-                Present: {presentCount}
-              </ClickableSummaryItem>
-              <span>|</span>
-              <ClickableSummaryItem 
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={() => {
-                  setSelectedStatusType('absent');
-                  setShowStatusList(true);
-                }}
-              >
-                Absent: {absentCount}
-              </ClickableSummaryItem>
-              <span>|</span>
-              <ClickableSummaryItem 
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={() => {
-                  setSelectedStatusType('leave');
-                  setShowStatusList(true);
-                }}
-              >
-                Leave: {leaveCount}
-              </ClickableSummaryItem>
-              <span>|</span>
-              <ClickableSummaryItem 
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={() => {
-                  setSelectedStatusType('late');
-                  setShowStatusList(true);
-                }}
-              >
-                Late: {students.filter(s => s.status === 'late').length}
-              </ClickableSummaryItem>
-            </div>
           </>
         ) : (
           <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
@@ -2946,98 +3050,6 @@ const MarkAttendance: React.FC = () => {
           )}
         </div>
       )}
-      
-      <Footer>
-        {!isMobile && (
-          <div style={{ fontSize: '0.98rem', color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span>Total: {totalStudents}</span>
-            <span>|</span>
-            <ClickableSummaryItem 
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => {
-                setSelectedStatusType('present');
-                setShowStatusList(true);
-              }}
-            >
-              Present: {presentCount}
-            </ClickableSummaryItem>
-            <span>|</span>
-            <ClickableSummaryItem 
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => {
-                setSelectedStatusType('absent');
-                setShowStatusList(true);
-              }}
-            >
-              Absent: {absentCount}
-            </ClickableSummaryItem>
-            <span>|</span>
-            <ClickableSummaryItem 
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => {
-                setSelectedStatusType('leave');
-                setShowStatusList(true);
-              }}
-            >
-              Leave: {leaveCount}
-            </ClickableSummaryItem>
-            <span>|</span>
-            <ClickableSummaryItem 
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => {
-                setSelectedStatusType('late');
-                setShowStatusList(true);
-              }}
-            >
-              Late: {students.filter(s => s.status === 'late').length}
-            </ClickableSummaryItem>
-          </div>
-        )}
-        <SegmentedGroup
-          theme={theme === 'dark' ? darkTheme : lightTheme}
-          style={isMobile
-            ? { marginTop: 8, width: '100%', justifyContent: 'center', overflowX: 'auto' }
-            : { marginTop: 8, justifyContent: 'flex-end' }
-          }
-        >
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            first
-            onClick={() => handleMarkAll('present')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
-            disabled={students.length === 0 || selectedRows.length === 0}
-          >
-            {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
-            All Present
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            onClick={() => handleMarkAll('absent')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
-            disabled={students.length === 0 || selectedRows.length === 0}
-          >
-            {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
-            All Absent
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={() => setShowDeleteConfirm(true)}
-            disabled={students.length === 0 || selectedRows.length === 0 || !selectedClass || !date || deleting || (classes.find(c => String(c.id) === String(selectedClass))?.has_sections ?? true) && !selectedSection}
-            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 32, opacity: 0.93 }}
-            >
-            {deleting ? <Spinner /> : <><Delete style={{ fontSize: 18, marginRight: 4 }} /> Delete</>}
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            last
-            onClick={handleSave}
-            disabled={students.length === 0 || selectedRows.length === 0 || saving}
-            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, minHeight: 32, opacity: 0.93 }}
-          >
-            {saving ? <Spinner /> : <><Save style={{ fontSize: 18, marginRight: 4 }} /> Save</>}
-          </SegmentedButton>
-        </SegmentedGroup>
-      </Footer>
         {showDeleteConfirm && (
           <>
             <Overlay onClick={() => setShowDeleteConfirm(false)} />

@@ -22,6 +22,7 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import { keyframes } from '@emotion/react';
 import NoStudentsFound from '../components/NoStudentsFound';
 import Loader from '../components/Loader';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -94,7 +95,9 @@ const MainContent = styled.div`
   flex-direction: column;
   gap: 0.5rem;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 8px;
   
   @media (max-width: 768px) {
     gap: 0.375rem;
@@ -514,32 +517,6 @@ const ScrollableStudentList = muiStyled(Box)(({ theme }) => {
 });
 
 // Footer with Generate Button
-const StudentListFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: ${({ theme }) => isDark(theme)
-    ? 'rgba(40, 48, 80, 0.12)'
-    : 'rgba(0, 0, 0, 0.02)'};
-  border-top: 1px solid ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.06)'
-    : 'rgba(0, 0, 0, 0.06)'};
-  border-radius: 0 0 8px 8px;
-  margin-top: auto;
-  gap: 8px;
-  flex-shrink: 0;
-  min-height: 52px;
-  box-sizing: border-box;
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    min-height: auto;
-  }
-`;
-
 const GenerateButton = muiStyled(Button)<{ $disabled?: boolean }>(({ theme, $disabled }) => {
   const isDarkMode = theme.palette.mode === 'dark';
   return {
@@ -1101,6 +1078,7 @@ export default function LoadFeePage() {
   const { user } = useAuth();
   const schoolId = user?.school_id;
   const { showToast } = useToast();
+  const { setFooterContent } = usePageFooter();
 
   // State
   const [tab, setTab] = useState(0); // 0: Bulk, 1: Single, 2: Family
@@ -2664,6 +2642,242 @@ export default function LoadFeePage() {
     setIsDeleteFamilyFeesModalOpen(false);
   };
 
+  // Set global footer content based on current tab
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      const currentTheme = themeMode === 'dark' ? darkTheme : lightTheme;
+      
+      if (tab === 0) {
+        // Bulk tab footer
+        if (preview.length === 0) {
+          return null;
+        }
+        return (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: isMobile ? '10px' : '12px 16px',
+              gap: '8px',
+              flexDirection: isMobile ? 'column' : 'row',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
+              {selectedStudents.length} of {preview.length} selected
+            </Typography>
+            <Box
+              display="flex"
+              sx={{
+                gap: 0.5,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <GenerateButton 
+                onClick={handleBulkUpsert} 
+                disabled={loading || selectedStudents.length === 0 || !selectedMonth || !selectedYear} 
+                startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                sx={{
+                  fontSize: '0.75rem',
+                  padding: '6px 12px',
+                  minHeight: 28,
+                  '& .MuiButton-startIcon': { marginRight: 0.5 },
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {existingFeeInvoiceItemsMap.size > 0 ? `Update (${selectedStudents.length})` : `Generate (${selectedStudents.length})`}
+              </GenerateButton>
+              {existingFeeInvoiceItemsMap.size > 0 && (
+                <Button 
+                  onClick={handleBulkDelete} 
+                  disabled={loading || selectedStudents.length === 0 || !selectedSession || !selectedMonth || !selectedYear} 
+                  variant="outlined" 
+                  color="error"
+                  sx={{ 
+                    borderRadius: '6px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    padding: '6px 12px',
+                    minHeight: 28,
+                    whiteSpace: 'nowrap',
+                  }}
+                  size="small"
+                  startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                >
+                  Delete
+                </Button>
+              )}
+            </Box>
+          </Box>
+        );
+      } else if (tab === 1) {
+        // Single student tab footer
+        if (!singleStudent || singleStudentSelectedFeeHeads.length === 0) {
+          return null;
+        }
+        return (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: isMobile ? '10px' : '12px 16px',
+              gap: '8px',
+              flexDirection: isMobile ? 'column' : 'row',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
+              Ready to generate
+            </Typography>
+            <Box
+              display="flex"
+              sx={{
+                gap: 0.5,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <GenerateButton 
+                onClick={handleSingleUpsert} 
+                disabled={loading || !singleSession || !singleMonth || !singleYear}
+                startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                sx={{
+                  fontSize: '0.75rem',
+                  padding: '6px 12px',
+                  minHeight: 28,
+                  '& .MuiButton-startIcon': { marginRight: 0.5 },
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {existingFeeInvoiceItemsMap.size > 0 ? 'Update Fee' : 'Generate Fee'}
+              </GenerateButton>
+              {existingFeeInvoiceItemsMap.size > 0 && (
+                <Button 
+                  onClick={handleSingleDelete} 
+                  disabled={loading || !singleSession || !singleMonth || !singleYear} 
+                  variant="outlined" 
+                  color="error"
+                  sx={{ 
+                    borderRadius: '6px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    padding: '6px 12px',
+                    minHeight: 28,
+                    whiteSpace: 'nowrap',
+                  }}
+                  size="small"
+                  startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                >
+                  Delete
+                </Button>
+              )}
+            </Box>
+          </Box>
+        );
+      } else if (tab === 2) {
+        // Family tab footer
+        if (!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0) {
+          return null;
+        }
+        return (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: isMobile ? '10px' : '12px 16px',
+              gap: '8px',
+              flexDirection: isMobile ? 'column' : 'row',
+            }}
+          >
+            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: currentTheme.TEXT_SECONDARY, fontWeight: 500 }}>
+              {selectedFamilyStudents.length} student{selectedFamilyStudents.length !== 1 ? 's' : ''} selected
+            </Typography>
+            <Box
+              display="flex"
+              sx={{
+                gap: 0.5,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <GenerateButton 
+                disabled={!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0} 
+                onClick={handleFamilyGenerate}
+                startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
+                sx={{
+                  fontSize: '0.75rem',
+                  padding: '6px 12px',
+                  minHeight: 28,
+                  '& .MuiButton-startIcon': { marginRight: 0.5 },
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {existingFeeInvoiceItemsMap.size > 0 ? `Update (${selectedFamilyStudents.length})` : `Generate (${selectedFamilyStudents.length})`}
+              </GenerateButton>
+              {existingFeeInvoiceItemsMap.size > 0 && (
+                <Button 
+                  onClick={handleFamilyDelete} 
+                  disabled={loading || !selectedFamily || selectedFamilyStudents.length === 0 || !familySession || !familyMonth || !familyYear} 
+                  sx={{ 
+                    borderRadius: '6px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    padding: '6px 12px',
+                    minHeight: 28,
+                    whiteSpace: 'nowrap',
+                  }} 
+                  variant="outlined" 
+                  color="error"
+                  size="small"
+                  startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
+                >
+                  Delete
+                </Button>
+              )}
+            </Box>
+          </Box>
+        );
+      }
+      return null;
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+    
+    return () => {
+      setFooterContent(null);
+    };
+  }, [
+    tab,
+    preview.length,
+    selectedStudents.length,
+    singleStudent,
+    singleStudentSelectedFeeHeads.length,
+    selectedFamily,
+    familyTabSelectedFeeHeads.length,
+    selectedFamilyStudents.length,
+    existingFeeInvoiceItemsMap.size,
+    loading,
+    selectedMonth,
+    selectedYear,
+    selectedSession,
+    singleSession,
+    singleMonth,
+    singleYear,
+    familySession,
+    familyMonth,
+    familyYear,
+    isMobile,
+    themeMode,
+  ]);
+
   // Helper function to check if a specific fee head exists for a student
   const hasExistingFeeHead = (studentId: number, feeHeadId: number): boolean => {
     const key = `${studentId}-${feeHeadId}`;
@@ -3362,57 +3576,6 @@ export default function LoadFeePage() {
                         </Box>
                       )}
                       </ScrollableStudentList>
-                      
-                      {/* Footer with Generate Button */}
-                      <StudentListFooter theme={theme}>
-                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
-                          {selectedStudents.length} of {preview.length} selected
-                        </Typography>
-                        <Box
-                          display="flex"
-                          sx={{
-                            gap: 0.5,
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <GenerateButton 
-                            onClick={handleBulkUpsert} 
-                            disabled={loading || selectedStudents.length === 0 || !selectedMonth || !selectedYear} 
-                            startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
-                            sx={{
-                              fontSize: '0.75rem',
-                              padding: '6px 12px',
-                              minHeight: 28,
-                              '& .MuiButton-startIcon': { marginRight: 0.5 },
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {existingFeeInvoiceItemsMap.size > 0 ? `Update (${selectedStudents.length})` : `Generate (${selectedStudents.length})`}
-                          </GenerateButton>
-                          {existingFeeInvoiceItemsMap.size > 0 && (
-                            <Button 
-                              onClick={handleBulkDelete} 
-                              disabled={loading || selectedStudents.length === 0 || !selectedSession || !selectedMonth || !selectedYear} 
-                              variant="outlined" 
-                              color="error"
-                              sx={{ 
-                                borderRadius: '6px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                fontSize: '0.75rem',
-                                padding: '6px 12px',
-                                minHeight: 28,
-                                whiteSpace: 'nowrap',
-                              }}
-                              size="small"
-                              startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </Box>
-                      </StudentListFooter>
                     </Box>
                   ) : (
                     <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={6}>
@@ -3867,61 +4030,6 @@ export default function LoadFeePage() {
                     })}
                   </Box>
                   </ScrollableStudentList>
-                  
-                  {/* Footer with Buttons */}
-                  {singleStudent && singleStudentSelectedFeeHeads.length > 0 && (
-                    <Box sx={{ flexShrink: 0, mt: 'auto' }}>
-                      <StudentListFooter theme={theme}>
-                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
-                          Ready to generate
-                        </Typography>
-                        <Box
-                          display="flex"
-                          sx={{
-                            gap: 0.5,
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <GenerateButton 
-                            onClick={handleSingleUpsert} 
-                            disabled={loading || !singleSession || !singleMonth || !singleYear}
-                            startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
-                            sx={{
-                              fontSize: '0.75rem',
-                              padding: '6px 12px',
-                              minHeight: 28,
-                              '& .MuiButton-startIcon': { marginRight: 0.5 },
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {existingFeeInvoiceItemsMap.size > 0 ? 'Update Fee' : 'Generate Fee'}
-                          </GenerateButton>
-                          {existingFeeInvoiceItemsMap.size > 0 && (
-                            <Button 
-                              onClick={handleSingleDelete} 
-                              disabled={loading || !singleSession || !singleMonth || !singleYear} 
-                              variant="outlined" 
-                              color="error"
-                              sx={{ 
-                                borderRadius: '6px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                fontSize: '0.75rem',
-                                padding: '6px 12px',
-                                minHeight: 28,
-                                whiteSpace: 'nowrap',
-                              }}
-                              size="small"
-                              startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </Box>
-                      </StudentListFooter>
-                    </Box>
-                  )}
                 </MainCard>
                 </Box>
               </Box>
@@ -4392,55 +4500,6 @@ export default function LoadFeePage() {
                           </Typography>
                         </Box>
                      )}
-                     <StudentListFooter theme={theme}>
-                       <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>
-                         {selectedFamilyStudents.length} student{selectedFamilyStudents.length !== 1 ? 's' : ''} selected
-                       </Typography>
-                       <Box
-                         display="flex"
-                         sx={{
-                           gap: 0.5,
-                           alignItems: 'center',
-                           flexWrap: 'wrap',
-                         }}
-                       >
-                         <GenerateButton 
-                           disabled={!selectedFamily || familyTabSelectedFeeHeads.length === 0 || selectedFamilyStudents.length === 0} 
-                           onClick={handleFamilyGenerate}
-                           startIcon={<AddIcon sx={{ fontSize: '0.875rem' }} />}
-                           sx={{
-                             fontSize: '0.75rem',
-                             padding: '6px 12px',
-                             minHeight: 28,
-                             '& .MuiButton-startIcon': { marginRight: 0.5 },
-                             whiteSpace: 'nowrap',
-                           }}
-                         >
-                           {existingFeeInvoiceItemsMap.size > 0 ? `Update (${selectedFamilyStudents.length})` : `Generate (${selectedFamilyStudents.length})`}
-                         </GenerateButton>
-                         {existingFeeInvoiceItemsMap.size > 0 && (
-                           <Button 
-                             onClick={handleFamilyDelete} 
-                             disabled={loading || !selectedFamily || selectedFamilyStudents.length === 0 || !familySession || !familyMonth || !familyYear} 
-                             sx={{ 
-                               borderRadius: '6px',
-                               textTransform: 'none',
-                               fontWeight: 600,
-                               fontSize: '0.75rem',
-                               padding: '6px 12px',
-                               minHeight: 28,
-                               whiteSpace: 'nowrap',
-                             }} 
-                             variant="outlined" 
-                             color="error"
-                             size="small"
-                             startIcon={<Delete sx={{ fontSize: '0.875rem' }} />}
-                           >
-                             Delete
-                           </Button>
-                        )}
-                       </Box>
-                     </StudentListFooter>
                   </MainCard>
               </Box>
                 </>

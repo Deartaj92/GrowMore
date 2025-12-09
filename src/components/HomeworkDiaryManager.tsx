@@ -28,6 +28,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { useActivityTracking } from '../hooks/useActivityTracking';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
+import { useMediaQuery } from '@mui/material';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -37,15 +39,14 @@ const PageContainer = styled.div`
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  height: 93vh;
+  height: 100%;
   
   @media (max-width: 768px) {
     padding: 1rem;
-    height: calc(100vh - 3rem);
   }
   
   @media (max-width: 480px) {
@@ -336,19 +337,12 @@ const Select = styled.select`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 0 1.5rem 0;
+  overflow-x: hidden;
+  padding: 0 0 8px 0;
   -webkit-overflow-scrolling: touch;
-  
-  @media (max-width: 768px) {
-    padding: 0 0 1rem 0;
-  }
-  
-  @media (max-width: 480px) {
-    padding: 0 0 0.75rem 0;
-  }
   
   &::-webkit-scrollbar {
     width: 6px;
@@ -1212,37 +1206,13 @@ const ToggleChip = styled.button<{ active: boolean }>`
   }
 `;
 
-const FixedFooter = styled.div`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: ${({ theme }) => theme.CARD};
-  padding: 1rem 2rem;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  z-index: 100;
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
-  
-  @media (max-width: 768px) {
-    padding: 0.75rem 1rem;
-    gap: 0.75rem;
-    
-    button {
-      flex: 1;
-      padding: 0.625rem;
-      font-size: 0.875rem;
-    }
-  }
-`;
-
 const HomeworkDiaryManager: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const { user } = useAuth();
   const toast = useToast();
   const { logHomeworkDiaryActivity } = useActivityTracking();
+  const { setFooterContent } = usePageFooter();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Get the actual theme object
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
@@ -2162,6 +2132,60 @@ const HomeworkDiaryManager: React.FC = () => {
     return <NoSessionsFound />;
   }
 
+  // Set global footer content
+  useEffect(() => {
+    if (!(isBulkMode || (selectedClass && selectedDate))) {
+      setFooterContent(null);
+      return;
+    }
+
+    const FooterContent = React.memo(() => {
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          padding: isMobile ? '10px' : '12px 16px',
+          gap: isMobile ? '0.75rem' : '1rem',
+          flexDirection: isMobile ? 'column' : 'row',
+        }}>
+          {isBulkMode ? (
+            <>
+              <Button variant="secondary" onClick={() => setIsBulkMode(false)}>
+                <Cancel /> Cancel
+              </Button>
+              <Button variant="primary" onClick={handleGlobalBulkSave} disabled={saving || isSelectedDateSunday}>
+                <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Save Changes'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={handleCancel}>
+                <Cancel /> Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveHomework}
+                disabled={saving || !homeworkText.trim() || isSelectedDateSunday}
+              >
+                <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : (isEditing ? 'Update Homework' : 'Save Homework')}
+              </Button>
+            </>
+          )}
+        </div>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+    
+    return () => {
+      setFooterContent(null);
+    };
+  }, [isBulkMode, selectedClass, selectedDate, saving, isSelectedDateSunday, homeworkText, isEditing, isMobile, theme, handleGlobalBulkSave, handleSaveHomework, handleCancel]);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <PageContainer theme={theme}>
@@ -2285,7 +2309,7 @@ const HomeworkDiaryManager: React.FC = () => {
           </div>
         </Header>
 
-        <MainContent theme={theme} style={{ paddingBottom: '80px' }}>
+        <MainContent theme={theme}>
           {isBulkMode ? (
             <div style={{ padding: '0 0.5rem' }}>
               <div style={{ marginBottom: '1rem' }}>
@@ -2497,35 +2521,6 @@ const HomeworkDiaryManager: React.FC = () => {
               <EmptyStateIcon>📚</EmptyStateIcon>
               <EmptyStateText>Select class and date to view or assign homework</EmptyStateText>
             </EmptyState>
-          )}
-
-          {/* Fixed Footer for Actions */}
-          {(isBulkMode || (selectedClass && selectedDate)) && (
-            <FixedFooter theme={theme}>
-              {isBulkMode ? (
-                <>
-                  <Button variant="secondary" onClick={() => setIsBulkMode(false)}>
-                    <Cancel /> Cancel
-                  </Button>
-                  <Button variant="primary" onClick={handleGlobalBulkSave} disabled={saving || isSelectedDateSunday}>
-                    <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Save Changes'}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="secondary" onClick={handleCancel}>
-                    <Cancel /> Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSaveHomework}
-                    disabled={saving || !homeworkText.trim() || isSelectedDateSunday}
-                  >
-                    <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : (isEditing ? 'Update Homework' : 'Save Homework')}
-                  </Button>
-                </>
-              )}
-            </FixedFooter>
           )}
         </MainContent>
 

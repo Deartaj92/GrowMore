@@ -12,6 +12,7 @@ import NoStudentsFound from './NoStudentsFound';
 import { useLoading } from '../contexts/LoadingContext';
 import { useProgress as useProgressHook } from './Layout';
 import Loader from './Loader';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import {
   AccountCircle,
   Edit as EditIcon,
@@ -47,7 +48,7 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 93vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -1255,11 +1256,11 @@ const FormTextarea = styled.textarea`
 
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
   
   /* Hardware acceleration for better performance */
   transform: translateZ(0);
@@ -1769,6 +1770,7 @@ const StudentList: React.FC = () => {
   const { showToast } = useToast();
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
+  const { setFooterContent } = usePageFooter();
   const [students, setStudents] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
   const [searchInput, setSearchInput] = useState('');
@@ -2903,19 +2905,6 @@ const StudentList: React.FC = () => {
     }
   };
 
-  // Show loading animation until students are fully loaded
-  if (loading || !hasFetchedStudents) {
-    return <Loader />;
-  }
-  if (showNoStudents && students.length === 0 && hasFetchedStudents) { // MODIFIED
-    return <NoStudentsFound />;
-  }
-
-  // Add these calculations near the pagination logic
-  const from = (page - 1) * perPage + 1;
-  const to = (page - 1) * perPage + paginated.length;
-  const total = filtered.length;
-
   // Scroll to top when page changes
   const scrollToTop = () => {
     if (mainContentRef.current) {
@@ -2923,10 +2912,113 @@ const StudentList: React.FC = () => {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
     scrollToTop();
-  };
+  }, []);
+
+  // Add these calculations near the pagination logic
+  const from = (page - 1) * perPage + 1;
+  const to = (page - 1) * perPage + paginated.length;
+  const total = filtered.length;
+
+  // Set footer content for global footer - MUST be before early returns
+  useEffect(() => {
+    if (filtered.length > 0) {
+      const FooterContentComponent = React.memo(() => {
+        const themeObj = theme === 'dark' ? darkTheme : lightTheme;
+        const currentFrom = (page - 1) * perPage + 1;
+        const currentTo = (page - 1) * perPage + paginated.length;
+        const currentTotal = filtered.length;
+        
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'center' : 'center',
+            justifyContent: isMobile ? 'center' : 'space-between',
+            width: '100%',
+            gap: isMobile ? '0.5rem' : '1rem',
+            flexWrap: isMobile ? 'nowrap' : 'wrap'
+          }}>
+            <PaginationInfo theme={themeObj} style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', fontSize: isMobile ? '0.9rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isMobile
+                ? `${currentFrom} to ${currentTo} of ${currentTotal}`
+                : `Showing ${currentFrom} to ${currentTo} of ${currentTotal} students`
+              }
+            </PaginationInfo>
+            <PaginationControls theme={themeObj} style={{ flex: 'none', marginLeft: isMobile ? '0' : 'auto', width: 'auto' }}>
+              <SegmentedGroup theme={themeObj}>
+                <SegmentedButton
+                  theme={themeObj}
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  first
+                  style={{ minWidth: 32 }}
+                >
+                  ‹
+                </SegmentedButton>
+                {page > 1 && (
+                  <SegmentedButton
+                    theme={themeObj}
+                    onClick={() => handlePageChange(page - 1)}
+                    style={{ minWidth: 32 }}
+                  >
+                    {page - 1}
+                  </SegmentedButton>
+                )}
+                <SegmentedButton
+                  theme={themeObj}
+                  active
+                  disabled
+                  style={{ minWidth: 32 }}
+                >
+                  {page}
+                </SegmentedButton>
+                {page < totalPages && (
+                  <SegmentedButton
+                    theme={themeObj}
+                    onClick={() => handlePageChange(page + 1)}
+                    style={{ minWidth: 32 }}
+                  >
+                    {page + 1}
+                  </SegmentedButton>
+                )}
+                <SegmentedButton
+                  theme={themeObj}
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  last
+                  style={{ minWidth: 32 }}
+                >
+                  ›
+                </SegmentedButton>
+              </SegmentedGroup>
+            </PaginationControls>
+          </div>
+        );
+      });
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+
+      return () => {
+        setFooterContent(null);
+      };
+    } else {
+      setFooterContent(null);
+    }
+  }, [filtered.length, page, perPage, paginated.length, totalPages, isMobile, theme, setFooterContent, handlePageChange]);
+
+  // Show loading animation until students are fully loaded
+  if (loading || !hasFetchedStudents) {
+    return <Loader />;
+  }
+  if (showNoStudents && students.length === 0 && hasFetchedStudents) { // MODIFIED
+    return <NoStudentsFound />;
+  }
 
   return (
     <>
@@ -3215,62 +3307,6 @@ const StudentList: React.FC = () => {
             initialData={editForm}
           />
         )}
-        <PaginationContainer>
-          <PaginationInfo style={{ flex: 1, textAlign: 'left', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {window.innerWidth <= 700
-              ? `${from} to ${to} of ${total}`
-              : `Showing ${from} to ${to} of ${total} students`
-            }
-          </PaginationInfo>
-          <PaginationControls style={{ flex: 'none', marginLeft: 'auto', width: 'auto' }}>
-            <SegmentedGroup>
-              <SegmentedButton
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1}
-                first
-                style={{ minWidth: 32 }}
-              >
-                ‹
-              </SegmentedButton>
-              {page > 1 && (
-                <SegmentedButton
-                  theme={theme === 'dark' ? darkTheme : lightTheme}
-                  onClick={() => handlePageChange(page - 1)}
-                  style={{ minWidth: 32 }}
-                >
-                  {page - 1}
-                </SegmentedButton>
-              )}
-              <SegmentedButton
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                active
-                disabled
-                style={{ minWidth: 32 }}
-              >
-                {page}
-              </SegmentedButton>
-              {page < totalPages && (
-                <SegmentedButton
-                  theme={theme === 'dark' ? darkTheme : lightTheme}
-                  onClick={() => handlePageChange(page + 1)}
-                  style={{ minWidth: 32 }}
-                >
-                  {page + 1}
-                </SegmentedButton>
-              )}
-              <SegmentedButton
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page === totalPages}
-                last
-                style={{ minWidth: 32 }}
-              >
-                ›
-              </SegmentedButton>
-            </SegmentedGroup>
-          </PaginationControls>
-        </PaginationContainer>
         {printStudent && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#fff', zIndex: 9999, overflow: 'auto' }}>
             <Suspense fallback={<Loader />}>

@@ -67,6 +67,8 @@ import NoStudentsFound from '../components/NoStudentsFound';
 import { supabase } from '../supabaseClient';
 import { useProgress } from '../components/Layout';
 import { useActivityTracking } from '../hooks/useActivityTracking';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
 
 // Type definitions
 interface Report extends Omit<ImportedReport, 'id' | 'category_id' | 'reported_by' | 'category'> {
@@ -116,7 +118,7 @@ const PageContainer = styled(Box)`
   background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#252525' : '#f8fafc'};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 93vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -162,11 +164,11 @@ const Title = styled(Typography)`
 `;
 
 const MainContent = styled(Box)`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
@@ -555,6 +557,8 @@ export const Reports = (): JSX.Element => {
     const { user } = useAuth();
     const { startProgress, setProgress, completeProgress } = useProgress();
     const { logReportActivity } = useActivityTracking();
+    const { setFooterContent } = usePageFooter();
+    const muiTheme = useMuiTheme();
     const [loading, setLoading] = useState(true);
     const [reports, setReports] = useState<Report[]>([]);
     const [categories, setCategories] = useState<ReportCategory[]>([]);
@@ -578,6 +582,17 @@ export const Reports = (): JSX.Element => {
     const [loadingStudents, setLoadingStudents] = useState(true);
     const [activeSession, setActiveSession] = useState<any>(null);
     const [activeSessionStudents, setActiveSessionStudents] = useState<Set<number>>(new Set());
+    
+    // Mobile detection
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+    
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 700);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Check if there are any students in the system for the active session
     useEffect(() => {
@@ -760,6 +775,78 @@ export const Reports = (): JSX.Element => {
             category.id && usedCategoryIds.has(category.id.toString())
         );
     }, [categories, reports]);
+
+    // Set footer content for global footer
+    useEffect(() => {
+        if (reports.length > 0) {
+            const FooterContentComponent = React.memo(() => {
+                const isDark = muiTheme.palette.mode === 'dark';
+                const pendingCount = reports.filter(r => r.status === 'pending').length;
+                const inReviewCount = reports.filter(r => r.status === 'in_review').length;
+                const resolvedCount = reports.filter(r => r.status === 'resolved').length;
+                const dismissedCount = reports.filter(r => r.status === 'dismissed').length;
+
+                return (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        alignItems: isMobile ? 'center' : 'center',
+                        justifyContent: isMobile ? 'center' : 'space-between',
+                        width: '100%',
+                        gap: isMobile ? '0.5rem' : '1rem',
+                        flexWrap: isMobile ? 'nowrap' : 'wrap'
+                    }}>
+                        <div style={{
+                            fontSize: isMobile ? '0.75rem' : '0.95rem',
+                            color: isDark ? '#b0b8d1' : '#8a8a8a',
+                            fontWeight: 500
+                        }}>
+                            Showing {reports.length} reports
+                        </div>
+                        <div style={{
+                            display: 'flex',
+                            gap: isMobile ? '0.5rem' : '1rem',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            justifyContent: isMobile ? 'center' : 'flex-end'
+                        }}>
+                            <StatItem color="#ed6c02" theme={muiTheme}>
+                                <Timer style={{ fontSize: 16 }} />
+                                {pendingCount} Pending
+                            </StatItem>
+                            <StatItem color="#2196f3" theme={muiTheme}>
+                                <Search style={{ fontSize: 16 }} />
+                                {inReviewCount} In Review
+                            </StatItem>
+                            {!isMobile && (
+                                <>
+                                    <StatItem color="#2e7d32" theme={muiTheme}>
+                                        <CheckCircle style={{ fontSize: 16 }} />
+                                        {resolvedCount} Resolved
+                                    </StatItem>
+                                    <StatItem color="#757575" theme={muiTheme}>
+                                        <Cancel style={{ fontSize: 16 }} />
+                                        {dismissedCount} Dismissed
+                                    </StatItem>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            });
+
+            setFooterContent({
+                visible: true,
+                content: <FooterContentComponent />
+            });
+
+            return () => {
+                setFooterContent(null);
+            };
+        } else {
+            setFooterContent(null);
+        }
+    }, [reports, isMobile, muiTheme, setFooterContent]);
 
     // Check if user has school_id - MUST be after all hooks
     if (!user?.school_id) {
@@ -2354,41 +2441,6 @@ export const Reports = (): JSX.Element => {
                 />
             )}
             </MainContent>
-            
-            {/* Footer with report statistics */}
-            <FooterContainer>
-                <FooterInfo>
-                    Showing {reports.length} reports
-                </FooterInfo>
-                <FooterStats>
-                    <StatItem color="#ed6c02">
-                        <Timer style={{ fontSize: 16 }} />
-                        {reports.filter(r => r.status === 'pending').length} Pending
-                    </StatItem>
-                    <StatItem color="#2196f3">
-                        <Search style={{ fontSize: 16 }} />
-                        {reports.filter(r => r.status === 'in_review').length} In Review
-                    </StatItem>
-                    <StatItem 
-                        color="#2e7d32" 
-                        sx={{ 
-                            display: { xs: 'none', md: 'flex' }
-                        }}
-                    >
-                        <CheckCircle style={{ fontSize: 16 }} />
-                        {reports.filter(r => r.status === 'resolved').length} Resolved
-                    </StatItem>
-                    <StatItem 
-                        color="#757575" 
-                        sx={{ 
-                            display: { xs: 'none', md: 'flex' }
-                        }}
-                    >
-                        <Cancel style={{ fontSize: 16 }} />
-                        {reports.filter(r => r.status === 'dismissed').length} Dismissed
-                    </StatItem>
-                </FooterStats>
-            </FooterContainer>
         </PageContainer>
     );
 }; 

@@ -51,10 +51,11 @@ export const ContentArea = styled.main`
   width: 100%;
   flex: 1;
   min-height: 0; /* Critical for flex children - allows scrolling */
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* Changed from overflow-y: auto to allow footer to be sticky */
   background: ${props => props.theme.BG};
   padding: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const Overlay = styled.div<{ open: boolean }>`

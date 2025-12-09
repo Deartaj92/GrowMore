@@ -23,3 +23,4 @@ ALTER TABLE staff
 -- To rollback, drop the column (but not the type as it may be used by students table)
 -- ALTER TABLE staff DROP COLUMN IF EXISTS notification_channel;
 
+

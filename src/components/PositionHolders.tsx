@@ -2,10 +2,11 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
-import { ThemeContext } from '../contexts/ThemeContext';
+import { ThemeContext, darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
 import { useLoading } from '../contexts/LoadingContext';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import {
   EmojiEvents as TrophyIcon,
   School as SchoolIcon,
@@ -57,7 +58,7 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 92vh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -306,11 +307,10 @@ const HeaderRow = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
-  max-height: none;
   overflow-y: auto;
-  padding: 0 0 60px 0;
+  padding: 0 0 8px 0;
   /* Super smooth scrolling optimizations */
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -681,36 +681,7 @@ const PositionCountValue = styled.span`
   font-size: 0.7rem;
 `;
 
-const Footer = styled.div`
-  position: fixed;
-  bottom: 20px;
-  left: 0;
-  right: 0;
-  background: ${({ theme }) => theme.CARD};
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 8px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  
-  @media (max-width: 768px) {
-    bottom: 0;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
-    padding: 6px 8px;
-    min-height: auto;
-  }
-  
-  @media (max-width: 480px) {
-    padding: 4px 6px;
-    gap: 2px;
-  }
-`;
-
+// Footer Components (kept for use in global footer)
 const SummaryStats = styled.div`
   display: flex;
   align-items: center;
@@ -986,6 +957,7 @@ const PositionHolders: React.FC = () => {
   const { showToast } = useToast();
   const { theme } = useContext(ThemeContext);
   const { setLoading, loading } = useLoading();
+  const { setFooterContent } = usePageFooter();
   
   // State for data
   const [examinations, setExaminations] = useState<Examination[]>([]);
@@ -997,6 +969,17 @@ const PositionHolders: React.FC = () => {
   const [showToTop, setShowToTop] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Load examinations
   useEffect(() => {
@@ -1011,6 +994,83 @@ const PositionHolders: React.FC = () => {
       loadPositionData();
     }
   }, [selectedExam]);
+
+  // Set footer content for global footer
+  useEffect(() => {
+    if (selectedExam && positionData.length > 0) {
+      const totalStudents = positionData.reduce((sum, classData) => sum + classData.position_holders.length, 0);
+      const firstCount = positionData.reduce((sum, classData) => 
+        sum + classData.position_holders.filter(holder => holder.position === 1).length, 0
+      );
+      const secondCount = positionData.reduce((sum, classData) => 
+        sum + classData.position_holders.filter(holder => holder.position === 2).length, 0
+      );
+      const thirdCount = positionData.reduce((sum, classData) => 
+        sum + classData.position_holders.filter(holder => holder.position === 3).length, 0
+      );
+
+      const FooterContentComponent = React.memo(() => (
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'center' : 'center',
+          justifyContent: isMobile ? 'center' : 'space-between',
+          width: '100%',
+          gap: isMobile ? '0.5rem' : '1rem',
+          flexWrap: isMobile ? 'nowrap' : 'wrap'
+        }}>
+          {/* Desktop Summary Stats - Hidden on Mobile */}
+          {!isMobile && (
+            <SummaryStats theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+                <StatValue $type="classes" theme={theme === 'dark' ? darkTheme : lightTheme}>{positionData.length}</StatValue>
+                <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Classes</StatLabel>
+              </StatItem>
+              <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+                <StatValue $type="students" theme={theme === 'dark' ? darkTheme : lightTheme}>{totalStudents}</StatValue>
+                <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Top 3 Holders</StatLabel>
+              </StatItem>
+              <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+                <StatValue $type="total" theme={theme === 'dark' ? darkTheme : lightTheme}>{selectedExam.name}</StatValue>
+                <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Examination</StatLabel>
+              </StatItem>
+            </SummaryStats>
+          )}
+          
+          {/* Position Summary - Always Visible */}
+          <PositionCounts theme={theme === 'dark' ? darkTheme : lightTheme}>
+            {[1, 2, 3].map(position => {
+              const totalCount = positionData.reduce((sum, classData) => 
+                sum + classData.position_holders.filter(holder => holder.position === position).length, 0
+              );
+              if (totalCount > 0) {
+                return (
+                  <PositionCount key={position} $position={position} theme={theme === 'dark' ? darkTheme : lightTheme}>
+                    <PositionCountLabel>
+                      {position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'}
+                    </PositionCountLabel>
+                    <PositionCountValue>- {totalCount.toString().padStart(2, '0')}</PositionCountValue>
+                  </PositionCount>
+                );
+              }
+              return null;
+            })}
+          </PositionCounts>
+        </div>
+      ));
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+    } else {
+      setFooterContent(null);
+    }
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [selectedExam, positionData, isMobile, theme, setFooterContent]);
 
   const loadExaminations = async () => {
     try {
@@ -2015,49 +2075,6 @@ const PositionHolders: React.FC = () => {
 
         </MainContent>
       </PageContainer>
-      
-      {/* Footer with Summary - Outside PageContainer for true fixed positioning */}
-      {selectedExam && positionData.length > 0 && (
-        <Footer>
-          {/* Desktop Summary Stats - Hidden on Mobile */}
-          <SummaryStats>
-            <StatItem>
-              <StatValue $type="classes">{positionData.length}</StatValue>
-              <StatLabel>Classes</StatLabel>
-            </StatItem>
-            <StatItem>
-              <StatValue $type="students">
-                {positionData.reduce((sum, classData) => sum + classData.position_holders.length, 0)}
-              </StatValue>
-              <StatLabel>Top 3 Holders</StatLabel>
-            </StatItem>
-            <StatItem>
-              <StatValue $type="total">{selectedExam.name}</StatValue>
-              <StatLabel>Examination</StatLabel>
-            </StatItem>
-          </SummaryStats>
-          
-          {/* Position Summary - Always Visible */}
-          <PositionCounts>
-            {[1, 2, 3].map(position => {
-              const totalCount = positionData.reduce((sum, classData) => 
-                sum + classData.position_holders.filter(holder => holder.position === position).length, 0
-              );
-              if (totalCount > 0) {
-                return (
-                  <PositionCount key={position} $position={position}>
-                    <PositionCountLabel>
-                      {position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'}
-                    </PositionCountLabel>
-                    <PositionCountValue>- {totalCount.toString().padStart(2, '0')}</PositionCountValue>
-                  </PositionCount>
-                );
-              }
-              return null;
-            })}
-          </PositionCounts>
-        </Footer>
-      )}
       
       {showToTop && (
         <ToTopButton onClick={handleToTop} aria-label="Scroll to top">

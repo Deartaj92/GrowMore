@@ -10,6 +10,7 @@ import { examinationSummaryService, ExaminationSummary } from '../services/exami
 import { Examination, ExamMasterSheet } from '../types/examinations';
 import { useNavigate } from 'react-router-dom';
 import { useLoading } from '../contexts/LoadingContext';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import {
   Assessment as AssessmentIcon,
   Add as AddIcon,
@@ -85,9 +86,10 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 92vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const Header = styled.div`
@@ -641,41 +643,7 @@ const RemarksInput = styled.input<{ $status: string }>`
   }
 `;
 
-// Footer Components
-const Footer = styled.div`
-  position: sticky;
-  bottom: 0;
-  background: ${({ theme }) => theme.CARD};
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 4px 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  margin-top: 4px;
-  
-  /* Mobile enhancements */
-  @media (max-width: 768px) {
-    padding: 6px 12px;
-    flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-    border-top: 1px solid ${({ theme }) => theme.BORDER};
-  }
-  
-  @media (max-width: 480px) {
-    padding: 8px 10px;
-    gap: 8px;
-    border-radius: 8px 8px 0 0;
-    margin: 0;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-  }
-`;
-
+// Footer Components (kept for use in global footer)
 const SummaryStats = styled.div`
   display: flex;
   align-items: center;
@@ -1025,16 +993,12 @@ const ToTopButton = styled.button`
 
 const MainContent = styled.div`
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 0 2px;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  
-  /* Mobile enhancements - add bottom padding for fixed footer */
-  @media (max-width: 480px) {
-    padding-bottom: 60px;
-  }
+  padding-bottom: 8px;
 `;
 
 const ScrollableTableContainer = styled.div`
@@ -1112,6 +1076,7 @@ const MasterSheetManager: React.FC = () => {
   const { showToast } = useToast();
   const { theme } = useContext(ThemeContext);
   const { setLoading, loading } = useLoading();
+  const { setFooterContent } = usePageFooter();
   
   // State for data
   const [classes, setClasses] = useState<Class[]>([]);
@@ -1130,6 +1095,17 @@ const MasterSheetManager: React.FC = () => {
   const [showToTop, setShowToTop] = useState(false);
   const [editingRemarks, setEditingRemarks] = useState<{ [key: number]: string }>({});
   const mainContentRef = useRef<HTMLDivElement>(null);
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (user?.school_id) {
@@ -1541,6 +1517,64 @@ const MasterSheetManager: React.FC = () => {
       }
     }
   }, [selectedExam, selectedClass, selectedSection, loadMasterSheetData]);
+
+  // Set footer content for global footer
+  useEffect(() => {
+    if (masterSheetData.length > 0) {
+      const passCount = masterSheetData.filter(ms => ms.status === 'pass').length;
+      const failCount = masterSheetData.filter(ms => ms.status === 'fail').length;
+      const absentCount = masterSheetData.filter(ms => ms.status === 'absent').length;
+      const averagePercentage = masterSheetData.length > 0 
+        ? (masterSheetData.reduce((sum, ms) => sum + ms.percentage, 0) / masterSheetData.length).toFixed(1)
+        : '0.0';
+
+      const FooterContentComponent = React.memo(() => (
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'center' : 'center',
+          justifyContent: isMobile ? 'center' : 'space-between',
+          width: '100%',
+          gap: isMobile ? '0.5rem' : '1rem',
+          flexWrap: isMobile ? 'nowrap' : 'wrap'
+        }}>
+          <SummaryStats theme={theme === 'dark' ? darkTheme : lightTheme}>
+            <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <StatValue $type="total" theme={theme === 'dark' ? darkTheme : lightTheme}>{masterSheetData.length}</StatValue>
+              <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Total Students</StatLabel>
+            </StatItem>
+            <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <StatValue $type="pass" theme={theme === 'dark' ? darkTheme : lightTheme}>{passCount}</StatValue>
+              <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Passed</StatLabel>
+            </StatItem>
+            <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <StatValue $type="fail" theme={theme === 'dark' ? darkTheme : lightTheme}>{failCount}</StatValue>
+              <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Failed</StatLabel>
+            </StatItem>
+            <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <StatValue $type="absent" theme={theme === 'dark' ? darkTheme : lightTheme}>{absentCount}</StatValue>
+              <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Absent</StatLabel>
+            </StatItem>
+            <StatItem theme={theme === 'dark' ? darkTheme : lightTheme}>
+              <StatValue $type="average" theme={theme === 'dark' ? darkTheme : lightTheme}>{averagePercentage}%</StatValue>
+              <StatLabel theme={theme === 'dark' ? darkTheme : lightTheme}>Average</StatLabel>
+            </StatItem>
+          </SummaryStats>
+        </div>
+      ));
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+    } else {
+      setFooterContent(null);
+    }
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [masterSheetData, isMobile, theme, setFooterContent]);
 
   const handleGenerateMasterSheet = async () => {
     if (!selectedExam || !selectedClass) return;
@@ -2564,39 +2598,6 @@ const MasterSheetManager: React.FC = () => {
 
           {masterSheetData.length === 0 && selectedExam && selectedClass && ((selectedClass?.has_sections ?? true) ? selectedSection : true) && (
             <NoResults>No master sheet data available for the selected criteria.</NoResults>
-          )}
-
-          {/* Footer with Summary */}
-          {masterSheetData.length > 0 && (
-            <Footer>
-              <SummaryStats>
-                <StatItem>
-                  <StatValue $type="total">{masterSheetData.length}</StatValue>
-                  <StatLabel>Total Students</StatLabel>
-                </StatItem>
-                <StatItem>
-                  <StatValue $type="pass">{masterSheetData.filter(ms => ms.status === 'pass').length}</StatValue>
-                  <StatLabel>Passed</StatLabel>
-                </StatItem>
-                <StatItem>
-                  <StatValue $type="fail">{masterSheetData.filter(ms => ms.status === 'fail').length}</StatValue>
-                  <StatLabel>Failed</StatLabel>
-                </StatItem>
-                <StatItem>
-                  <StatValue $type="absent">{masterSheetData.filter(ms => ms.status === 'absent').length}</StatValue>
-                  <StatLabel>Absent</StatLabel>
-                </StatItem>
-                <StatItem>
-                  <StatValue $type="average">
-                    {masterSheetData.length > 0 
-                      ? (masterSheetData.reduce((sum, ms) => sum + ms.percentage, 0) / masterSheetData.length).toFixed(1)
-                      : '0.0'
-                    }%
-                  </StatValue>
-                  <StatLabel>Average</StatLabel>
-                </StatItem>
-              </SummaryStats>
-            </Footer>
           )}
 
         </MainContent>

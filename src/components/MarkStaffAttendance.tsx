@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import styled, { css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { ThemeContext, useProgress, darkTheme, lightTheme } from './Layout';
 import { useToast } from './useToast';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import { format, isSunday, parseISO } from 'date-fns';
 import {
   CheckCircle,
@@ -29,16 +30,16 @@ import Loader from '../components/Loader';
 // Styled Components
 const PageContainer = styled.div`
   width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0 12px 6px 12px;
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
-  overflow-x: hidden;
-  min-height: 0;
+  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
+  min-height: 0; /* Critical for flex children */
   display: flex;
   flex-direction: column;
-  height: 93vh;
 `;
 
 const Header = styled.div`
@@ -60,11 +61,11 @@ const Header = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
+  flex: 1; /* Fill remaining space */
+  min-height: 0; /* Critical - allows flex child to shrink below content size */
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  overflow-x: hidden;
+  padding: 0 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
@@ -92,25 +93,6 @@ const MainContent = styled.div`
   }
 `;
 
-const Footer = styled.div`
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.2rem 0.5rem;
-  border-top: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 -1px 6px #0001;
-  min-height: 36px;
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 0.5rem 0.2rem;
-    min-height: 44px;
-  }
-`;
-
 // Mobile block styles
 const MobileStaffList = styled.div`
   display: flex;
@@ -118,7 +100,7 @@ const MobileStaffList = styled.div`
   gap: 0.6rem;
   width: 100%;
   box-sizing: border-box;
-  padding-bottom: 5.5rem;
+  padding-bottom: 1rem;
 `;
 
 const MobileStaffCard = styled.div`
@@ -309,7 +291,7 @@ interface StaffMember {
   id: number;
   name: string;
   role: string;
-  status?: 'present' | 'absent' | 'leave' | 'late' | 'half_day';
+  status?: 'present' | 'absent' | 'leave' | 'late';
   picture_url?: string;
   remarks?: string;
 }
@@ -463,6 +445,7 @@ const MarkStaffAttendance: React.FC = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { startProgress, setProgress, completeProgress } = useProgress();
+  const { setFooterContent } = usePageFooter();
   
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -488,7 +471,6 @@ const MarkStaffAttendance: React.FC = () => {
   const absentCount = staffMembers.filter(s => s.status === 'absent').length;
   const leaveCount = staffMembers.filter(s => s.status === 'leave').length;
   const lateCount = staffMembers.filter(s => s.status === 'late').length;
-  const halfDayCount = staffMembers.filter(s => s.status === 'half_day').length;
 
   const didSetDefaultStatus = useRef(false);
   const didAutoSelect = useRef(false);
@@ -702,11 +684,11 @@ const MarkStaffAttendance: React.FC = () => {
     }
   };
 
-  const handleStatusChange = (staffId: number, status: 'present' | 'absent' | 'leave' | 'late' | 'half_day') => {
+  const handleStatusChange = (staffId: number, status: 'present' | 'absent' | 'leave' | 'late') => {
     setStaffMembers(prev =>
       prev.map(staff =>
         staff.id === staffId
-          ? ({ ...staff, status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late' | 'half_day' } as StaffMember)
+          ? ({ ...staff, status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late' } as StaffMember)
           : staff
       )
     );
@@ -715,12 +697,11 @@ const MarkStaffAttendance: React.FC = () => {
     setTimeout(() => setStatusBounce(null), 600);
   };
 
-  const handleBulkMark = (status: 'present' | 'absent') => {
+  const handleBulkMark = useCallback((status: 'present' | 'absent') => {
     setStaffMembers(prev =>
       prev.map(staff => ({ ...staff, status }))
     );
-    toast.showToast('Marked all staff as ' + status, 'success');
-  };
+  }, []);
 
   const filteredStaff = staffMembers.filter(staff =>
     staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -776,7 +757,7 @@ const MarkStaffAttendance: React.FC = () => {
     setProgress(10);
     
     try {
-      const validStatuses = ['present', 'absent', 'leave', 'late', 'half_day'];
+      const validStatuses = ['present', 'absent', 'leave', 'late'];
       const staffToSave = filteredStaff.filter(staff => typeof staff.status === 'string' && validStatuses.includes(staff.status));
       if (staffToSave.length === 0) {
         toast.showToast('No valid attendance records to save', 'error');
@@ -884,6 +865,113 @@ const MarkStaffAttendance: React.FC = () => {
       setSaveButtonBounce(false);
     }
   }, [selectedRows.length]);
+
+  // Set footer content for global footer
+  useEffect(() => {
+    const footerContent = (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'center' : 'center', 
+        justifyContent: isMobile ? 'center' : 'space-between', 
+        width: '100%',
+        gap: isMobile ? '0.5rem' : '1rem',
+        flexWrap: isMobile ? 'nowrap' : 'wrap'
+      }}>
+        <div style={{ 
+          fontSize: isMobile ? '0.75rem' : '0.98rem', 
+          color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), 
+          fontWeight: 600, 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: isMobile ? 3 : 8, 
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          justifyContent: isMobile ? 'center' : 'flex-start',
+          whiteSpace: isMobile ? 'nowrap' : 'normal'
+        }}>
+          <span>Total: {totalStaff}</span>
+          <span>|</span>
+          <span>Present: {presentCount}</span>
+          <span>|</span>
+          <span>Absent: {absentCount}</span>
+          <span>|</span>
+          <span>Leave: {leaveCount}</span>
+          <span>|</span>
+          <span>Late: {lateCount}</span>
+        </div>
+        <SegmentedGroup
+          theme={theme === 'dark' ? darkTheme : lightTheme}
+          style={isMobile
+            ? { width: '100%', justifyContent: 'center', overflowX: 'auto', marginTop: 0 }
+            : { justifyContent: 'flex-end', marginTop: 0 }
+          }
+        >
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            first
+            onClick={() => handleBulkMark('present')}
+            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
+            disabled={staffMembers.length === 0 || selectedRows.length === 0}
+          >
+            {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
+            All Present
+          </SegmentedButton>
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => handleBulkMark('absent')}
+            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
+            disabled={staffMembers.length === 0 || selectedRows.length === 0}
+          >
+            {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
+            All Absent
+          </SegmentedButton>
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={staffMembers.length === 0 || selectedRows.length === 0 || !date || deleting}
+            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 32, opacity: 0.93 }}
+          >
+            {deleting ? <Spinner /> : <><Delete style={{ fontSize: 18, marginRight: 4 }} /> Delete</>}
+          </SegmentedButton>
+          <SegmentedButton
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            last
+            onClick={handleSave}
+            disabled={staffMembers.length === 0 || selectedRows.length === 0 || saving}
+            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, minHeight: 32, opacity: 0.93 }}
+          >
+            {saving ? <Spinner /> : <><Save style={{ fontSize: 18, marginRight: 4 }} /> Save</>}
+          </SegmentedButton>
+        </SegmentedGroup>
+      </div>
+    );
+
+    setFooterContent({
+      visible: true,
+      content: footerContent
+    });
+
+    // Cleanup on unmount
+    return () => {
+      setFooterContent(null);
+    };
+  }, [
+    staffMembers,
+    totalStaff,
+    presentCount,
+    absentCount,
+    leaveCount,
+    lateCount,
+    selectedRows,
+    date,
+    deleting,
+    saving,
+    isMobile,
+    theme,
+    setFooterContent,
+    handleBulkMark,
+    handleSave
+  ]);
 
   // Show skeleton loader for any loading state
   if (loadingSession || loading) {
@@ -1036,13 +1124,6 @@ const MarkStaffAttendance: React.FC = () => {
                       >
                         Lt
                       </EnhancedStatusButton>
-                      <EnhancedStatusButton
-                        $active={staff.status === 'half_day'}
-                        $color="#8b5cf6"
-                        onClick={() => handleStatusChange(staff.id, 'half_day')}
-                      >
-                        H
-                      </EnhancedStatusButton>
                       <input
                         type="text"
                         value={staff.remarks || ''}
@@ -1110,13 +1191,6 @@ const MarkStaffAttendance: React.FC = () => {
                         >
                           Late
                         </DesktopStatusButton>
-                        <DesktopStatusButton
-                          $active={staff.status === 'half_day'}
-                          $color="#8b5cf6"
-                          onClick={() => handleStatusChange(staff.id, 'half_day')}
-                        >
-                          Half Day
-                        </DesktopStatusButton>
                       </DesktopStatusRow>
                     </>
                   )}
@@ -1126,58 +1200,6 @@ const MarkStaffAttendance: React.FC = () => {
           )}
         </MobileStaffList>
       </MainContent>
-      
-      <Footer>
-        {!isMobile && (
-          <div style={{ fontSize: '0.98rem', color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), fontWeight: 600 }}>
-            Total: {totalStaff} | Present: {presentCount} | Absent: {absentCount} | Leave: {leaveCount} | Late: {lateCount} | Half Day: {halfDayCount}
-          </div>
-        )}
-        <SegmentedGroup
-          theme={theme === 'dark' ? darkTheme : lightTheme}
-          style={isMobile
-            ? { marginTop: 8, width: '100%', justifyContent: 'center', overflowX: 'auto' }
-            : { marginTop: 8, justifyContent: 'flex-end' }
-          }
-        >
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            first
-            onClick={() => handleBulkMark('present')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: '0.85em', minHeight: 32 }}
-            disabled={staffMembers.length === 0 || selectedRows.length === 0}
-          >
-            {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
-            All Present
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            onClick={() => handleBulkMark('absent')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: '0.85em', minHeight: 32 }}
-            disabled={staffMembers.length === 0 || selectedRows.length === 0}
-          >
-            {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
-            All Absent
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            onClick={() => setShowDeleteConfirm(true)}
-            disabled={staffMembers.length === 0 || selectedRows.length === 0 || !date || deleting}
-            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 32, opacity: 0.93 }}
-          >
-            {deleting ? <Spinner /> : <><Delete style={{ fontSize: 18, marginRight: 4 }} /> Delete</>}
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            last
-            onClick={handleSave}
-            disabled={staffMembers.length === 0 || selectedRows.length === 0 || saving}
-            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, minHeight: 32, opacity: 0.93 }}
-          >
-            {saving ? <Spinner /> : <><Save style={{ fontSize: 18, marginRight: 4 }} /> Save</>}
-          </SegmentedButton>
-        </SegmentedGroup>
-      </Footer>
       
       {showDeleteConfirm && (
         <>

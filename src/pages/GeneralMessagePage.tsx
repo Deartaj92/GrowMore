@@ -9,6 +9,8 @@ import { AttendanceNotificationData } from '../services/whatsappSemiAuto';
 import { format } from 'date-fns';
 import { useToast } from '../components/useToast';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { useMediaQuery } from '@mui/material';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -26,6 +28,7 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: hidden;
 `;
 
 const Header = styled.div`
@@ -81,6 +84,9 @@ const MainGrid = styled.div`
   gap: 1rem;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 8px;
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
@@ -267,19 +273,6 @@ const MessageInputCard = styled(Card)`
   overflow: hidden;
 `;
 
-const SendButtonCard = styled(Card)`
-  width: 120px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  
-  @media (max-width: 700px) {
-    width: 100%;
-    height: 60px;
-  }
-`;
-
 const StyledTextArea = styled.textarea`
   width: 100%;
   height: 100%;
@@ -313,6 +306,42 @@ const StyledTextArea = styled.textarea`
 const SendButton = styled.button`
   width: 100%;
   height: 100%;
+  background: ${({ theme }) => theme.ACCENT};
+  color: ${({ theme }) => theme.BG};
+  border: none;
+  border-radius: 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: ${({ theme }) => isDark(theme)
+        ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+        : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+
+  &:hover:not(:disabled) {
+    background: ${({ theme }) => theme.ACCENT_DARK || theme.ACCENT};
+    transform: translateY(-2px);
+    box-shadow: ${({ theme }) => isDark(theme)
+        ? '0 6px 24px rgba(0, 0, 0, 0.4)'
+        : '0 6px 24px rgba(0, 0, 0, 0.15)'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const FooterSendButton = styled.button<{ $isMobile?: boolean }>`
+  width: ${({ $isMobile }) => $isMobile ? '100%' : '120px'};
+  height: ${({ $isMobile }) => $isMobile ? '60px' : 'auto'};
+  min-height: ${({ $isMobile }) => $isMobile ? '60px' : '80px'};
   background: ${({ theme }) => theme.ACCENT};
   color: ${({ theme }) => theme.BG};
   border: none;
@@ -666,6 +695,8 @@ const GeneralMessagePage: React.FC = () => {
     const theme = themeMode === 'dark' ? darkTheme : lightTheme;
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { setFooterContent } = usePageFooter();
+    const isMobile = useMediaQuery('(max-width: 768px)');
 
     const [targetType, setTargetType] = useState<'all' | 'class' | 'staff'>('all');
     const [classes, setClasses] = useState<any[]>([]);
@@ -1158,6 +1189,40 @@ const GeneralMessagePage: React.FC = () => {
         setSelectedStudentIds(new Set());
     };
 
+    // Set global footer content with Send button
+    useEffect(() => {
+        const FooterContent = React.memo(() => {
+            return (
+                <div style={{
+                    display: 'flex',
+                    justifyContent: isMobile ? 'center' : 'flex-end',
+                    alignItems: 'center',
+                    padding: isMobile ? '10px' : '12px 16px',
+                    width: '100%',
+                }}>
+                    <FooterSendButton
+                        theme={theme}
+                        $isMobile={isMobile}
+                        onClick={handleSend}
+                        disabled={loading || selectedStudentIds.size === 0}
+                    >
+                        <SendIcon style={{ fontSize: 28 }} />
+                        Send
+                    </FooterSendButton>
+                </div>
+            );
+        });
+
+        setFooterContent({
+            visible: true,
+            content: <FooterContent />
+        });
+        
+        return () => {
+            setFooterContent(null);
+        };
+    }, [loading, selectedStudentIds.size, isMobile, theme, handleSend]);
+
     return (
         <Container theme={theme}>
             <Header theme={theme}>
@@ -1305,12 +1370,6 @@ const GeneralMessagePage: React.FC = () => {
                                 )}
                             </VariablesBar>
                         </MessageInputCard>
-                        <SendButtonCard theme={theme}>
-                            <SendButton theme={theme} onClick={handleSend} disabled={loading || selectedStudentIds.size === 0}>
-                                <SendIcon style={{ fontSize: 28 }} />
-                                Send
-                            </SendButton>
-                        </SendButtonCard>
                     </MessageSection>
 
                     <HistorySection theme={theme}>

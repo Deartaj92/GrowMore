@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { ThemeProvider, keyframes, createGlobalStyle, css } from 'styled-components';
 import { Add as AddIcon, Refresh as RefreshIcon, Close as CloseIcon, Save as SaveIcon, Delete as DeleteIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import NoSessionsFound from './NoSessionsFound';
 import NoClassesFound from './NoClassesFound';
 import NoSectionsFound from './NoSectionsFound';
@@ -21,10 +22,11 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 93vh;
 `;
 
 const Header = styled.div`
@@ -46,11 +48,11 @@ const Header = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
-  max-height: none;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  overflow-x: hidden;
+  padding-bottom: 8px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
@@ -78,24 +80,6 @@ const MainContent = styled.div`
   }
 `;
 
-const Footer = styled.div`
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.2rem 0.5rem;
-  border-top: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 -1px 6px #0001;
-  min-height: 36px;
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 0.5rem 0.2rem;
-    min-height: 44px;
-  }
-`;
 
 
 const InputGroup = styled.div`
@@ -496,7 +480,19 @@ const BulkStudentAdmission: React.FC = () => {
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
   const { startProgress, completeProgress, setProgress } = useProgress();
+  const { setFooterContent } = usePageFooter();
   const navigate = useNavigate();
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   const [formData, setFormData] = useState({
     class: '',
@@ -704,7 +700,7 @@ const BulkStudentAdmission: React.FC = () => {
     return String(randomPassword);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!user?.school_id) {
       showToast('User school information not found', 'error');
       return;
@@ -868,13 +864,13 @@ const BulkStudentAdmission: React.FC = () => {
       setSubmitting(false);
       completeProgress();
     }
-  };
+  }, [user?.school_id, formData.class, formData.section, selectedClassHasSections, students, showToast, setSubmitting, startProgress, setProgress, completeProgress, generateRandomPassword]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     navigate(-1);
-  };
+  }, [navigate]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setStudents([]);
     setFormData({ class: '', section: '' });
     // Re-initialize with 10 default rows
@@ -885,7 +881,7 @@ const BulkStudentAdmission: React.FC = () => {
       gender: 'Male'
     }));
     setStudents(defaultStudents);
-  };
+  }, []);
 
   // Handle tab key to add new row when tabbing from gender field in last row
   const handleTabKey = (e: React.KeyboardEvent, studentId: string, isLastRow: boolean, fieldType: string) => {
@@ -951,7 +947,86 @@ const BulkStudentAdmission: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [students, focusedStudentId]);
+  }, [students, focusedStudentId, handleSubmit]);
+
+  // Set global footer content - MUST be before early returns
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      const themeObj = theme === 'dark' ? darkTheme : lightTheme;
+      
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'center' : 'center',
+          justifyContent: isMobile ? 'center' : 'space-between',
+          width: '100%',
+          gap: isMobile ? '0.5rem' : '1rem',
+          flexWrap: isMobile ? 'nowrap' : 'wrap'
+        }}>
+          {!isMobile && (
+            <div style={{ 
+              fontSize: '0.98rem', 
+              color: themeObj.TEXT_SECONDARY, 
+              fontWeight: 600 
+            }}>
+              Total Students: {students.length}
+            </div>
+          )}
+          <SegmentedGroup theme={themeObj}>
+            <SegmentedButton
+              theme={themeObj}
+              first
+              onClick={handleReset}
+            >
+              <RefreshIcon style={{ fontSize: 17, marginRight: 4 }} />
+              Reset
+            </SegmentedButton>
+            <SegmentedButton
+              theme={themeObj}
+              onClick={handleCancel}
+            >
+              <CloseIcon style={{ fontSize: 17, marginRight: 4 }} />
+              Cancel
+            </SegmentedButton>
+            <SegmentedButton
+              theme={themeObj}
+              last
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{ 
+                color: '#fff', 
+                background: '#16a34a', 
+                borderColor: '#16a34a', 
+                fontWeight: 700,
+                opacity: submitting ? 0.6 : 1,
+                whiteSpace: 'nowrap',
+                minWidth: 'fit-content'
+              }}
+            >
+              {submitting ? (
+                <div style={{ width: 16, height: 16, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              ) : (
+                <>
+                  <SaveIcon style={{ fontSize: 17, marginRight: 4 }} />
+                  <span style={{ whiteSpace: 'nowrap' }}>Add {students.length} Students</span>
+                </>
+              )}
+            </SegmentedButton>
+          </SegmentedGroup>
+        </div>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [students.length, submitting, isMobile, theme, setFooterContent, handleSubmit, handleCancel, handleReset]);
 
   if (loading) {
     return (
@@ -1154,52 +1229,6 @@ const BulkStudentAdmission: React.FC = () => {
             })}
           </StudentsListContainer>
         </MainContent>
-        <Footer>
-          <div style={{ fontSize: '0.98rem', color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), fontWeight: 600 }}>
-            Total Students: {students.length}
-          </div>
-          <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              first
-              onClick={handleReset}
-            >
-              <RefreshIcon style={{ fontSize: 17, marginRight: 4 }} />
-              Reset
-            </SegmentedButton>
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              onClick={handleCancel}
-            >
-              <CloseIcon style={{ fontSize: 17, marginRight: 4 }} />
-              Cancel
-            </SegmentedButton>
-            <SegmentedButton
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              last
-              onClick={handleSubmit}
-              disabled={submitting}
-              style={{ 
-                color: '#fff', 
-                background: '#16a34a', 
-                borderColor: '#16a34a', 
-                fontWeight: 700,
-                opacity: submitting ? 0.6 : 1,
-                whiteSpace: 'nowrap',
-                minWidth: 'fit-content'
-              }}
-            >
-              {submitting ? (
-                <div style={{ width: 16, height: 16, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              ) : (
-                <>
-                  <SaveIcon style={{ fontSize: 17, marginRight: 4 }} />
-                  <span style={{ whiteSpace: 'nowrap' }}>Add {students.length} Students</span>
-                </>
-              )}
-            </SegmentedButton>
-          </SegmentedGroup>
-        </Footer>
       </PageContainer>
     </ThemeProvider>
   );

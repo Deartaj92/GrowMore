@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from './NoSessionsFound';
 import Loader from '../components/Loader';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 
 // Spinner animation
 const spinAnimation = `
@@ -73,7 +74,7 @@ const MainContent = styled.div`
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  padding: 0 0 32px 0;
+  padding: 0 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   &::-webkit-scrollbar {
@@ -85,24 +86,6 @@ const MainContent = styled.div`
   &::-webkit-scrollbar-thumb {
     background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 4px;
-  }
-`;
-
-const Footer = styled.div`
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.2rem 0.5rem;
-  border-top: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 -1px 6px #0001;
-  min-height: 36px;
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 0.5rem 0.2rem;
   }
 `;
 
@@ -693,6 +676,7 @@ const StaffHalfLeaves: React.FC = () => {
   const toast = useToast();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { setFooterContent } = usePageFooter();
 
   // Inject CSS animations
   useEffect(() => {
@@ -981,6 +965,116 @@ const StaffHalfLeaves: React.FC = () => {
   const totalPersons = filteredPersons.length;
   const firstHalfCount = filteredPersons.filter(p => p.leave_type === 'first_half').length;
   const secondHalfCount = filteredPersons.filter(p => p.leave_type === 'second_half').length;
+
+  // Set global footer content
+  useEffect(() => {
+    const FooterContent = React.memo(() => {
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: isMobile ? '10px' : '12px 16px',
+          gap: '8px',
+          flexDirection: isMobile ? 'column' : 'row',
+        }}>
+          {!isMobile && (
+            <div style={{ fontSize: '0.98rem', color: theme.TEXT_SECONDARY, fontWeight: 600 }}>
+              Total: {totalPersons} | First Half: {firstHalfCount} | Second Half: {secondHalfCount}
+            </div>
+          )}
+          <SegmentedGroup
+            theme={theme}
+            style={isMobile
+              ? { marginTop: 8, width: '100%', justifyContent: 'center', overflowX: 'auto' }
+              : { marginTop: 8, justifyContent: 'flex-end' }
+            }
+          >
+            <SegmentedButton
+              theme={theme}
+              first
+              onClick={() => {
+                setSearchTerm('');
+                fetchPersons();
+              }}
+              disabled={loadingPersons}
+            >
+              <Refresh style={{ fontSize: 18 }} />
+              Refresh
+            </SegmentedButton>
+            <SegmentedButton
+              theme={theme}
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={
+                persons.length === 0 || 
+                deleting || 
+                !date || 
+                !sessionId ||
+                persons.filter(p => p.leave_type !== null).length === 0
+              }
+              style={{ 
+                color: '#fff', 
+                background: '#dc2626', 
+                borderColor: '#dc2626', 
+                fontWeight: 700,
+                opacity: (deleting || persons.length === 0 || persons.filter(p => p.leave_type !== null).length === 0 || !date || !sessionId) ? 0.6 : 0.93
+              }}
+            >
+              {deleting ? (
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  border: '2px solid #fff',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              ) : (
+                <Delete style={{ fontSize: 18 }} />
+              )}
+              {deleting ? 'Deleting...' : 'Delete'}
+            </SegmentedButton>
+            <SegmentedButton
+              theme={theme}
+              last
+              onClick={handleSave}
+              disabled={saving || loadingPersons}
+              style={{ 
+                color: '#fff', 
+                background: '#16a34a', 
+                borderColor: '#16a34a', 
+                fontWeight: 700,
+                opacity: (saving || loadingPersons) ? 0.6 : 0.93
+              }}
+            >
+              {saving ? (
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  border: '2px solid #fff',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              ) : (
+                <Save style={{ fontSize: 18 }} />
+              )}
+              {saving ? 'Saving...' : 'Save'}
+            </SegmentedButton>
+          </SegmentedGroup>
+        </div>
+      );
+    });
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContent />
+    });
+    
+    return () => {
+      setFooterContent(null);
+    };
+  }, [totalPersons, firstHalfCount, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, persons, handleSave, fetchPersons, setShowDeleteConfirm]);
 
   if (loadingSession) {
     return (
@@ -1328,92 +1422,6 @@ const StaffHalfLeaves: React.FC = () => {
           );
         })()}
       </MainContent>
-      <Footer>
-        {!isMobile && (
-          <div style={{ fontSize: '0.98rem', color: theme.TEXT_SECONDARY, fontWeight: 600 }}>
-            Total: {totalPersons} | First Half: {firstHalfCount} | Second Half: {secondHalfCount}
-          </div>
-        )}
-        <SegmentedGroup
-          theme={theme}
-          style={isMobile
-            ? { marginTop: 8, width: '100%', justifyContent: 'center', overflowX: 'auto' }
-            : { marginTop: 8, justifyContent: 'flex-end' }
-          }
-        >
-          <SegmentedButton
-            theme={theme}
-            first
-            onClick={() => {
-              setSearchTerm('');
-              fetchPersons();
-            }}
-            disabled={loadingPersons}
-          >
-            <Refresh style={{ fontSize: 18 }} />
-            Refresh
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme}
-            onClick={() => setShowDeleteConfirm(true)}
-            disabled={
-              persons.length === 0 || 
-              deleting || 
-              !date || 
-              !sessionId ||
-              persons.filter(p => p.leave_type !== null).length === 0
-            }
-            style={{ 
-              color: '#fff', 
-              background: '#dc2626', 
-              borderColor: '#dc2626', 
-              fontWeight: 700,
-              opacity: (deleting || persons.length === 0 || persons.filter(p => p.leave_type !== null).length === 0 || !date || !sessionId) ? 0.6 : 0.93
-            }}
-          >
-            {deleting ? (
-              <div style={{
-                width: 16,
-                height: 16,
-                border: '2px solid #fff',
-                borderTop: '2px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-            ) : (
-              <Delete style={{ fontSize: 18 }} />
-            )}
-            {deleting ? 'Deleting...' : 'Delete'}
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme}
-            last
-            onClick={handleSave}
-            disabled={saving || loadingPersons}
-            style={{ 
-              color: '#fff', 
-              background: '#16a34a', 
-              borderColor: '#16a34a', 
-              fontWeight: 700,
-              opacity: (saving || loadingPersons) ? 0.6 : 0.93
-            }}
-          >
-            {saving ? (
-              <div style={{
-                width: 16,
-                height: 16,
-                border: '2px solid #fff',
-                borderTop: '2px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-            ) : (
-              <Save style={{ fontSize: 18 }} />
-            )}
-            {saving ? 'Saving...' : 'Save'}
-          </SegmentedButton>
-        </SegmentedGroup>
-      </Footer>
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
