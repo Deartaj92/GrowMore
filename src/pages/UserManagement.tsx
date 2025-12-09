@@ -3,13 +3,16 @@ import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
-import { AccountCircle, Add, Edit, Delete, Search, FilterList, Visibility, VisibilityOff, Lock, People, School, FamilyRestroom, Refresh } from '@mui/icons-material';
+import { AccountCircle, Add, Edit, Delete, Search, FilterList, Visibility, VisibilityOff, Lock, People, School, FamilyRestroom, Refresh, PictureAsPdf } from '@mui/icons-material';
 import { Tabs, Tab, Box } from '@mui/material';
 import UserForm from '../components/UserForm';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { sortClasses } from '../utils/classUtils';
 import NoSessionsFound from '../components/NoSessionsFound';
 import Loader from '../components/Loader';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Types
 interface User {
@@ -817,6 +820,7 @@ const UserManagement: React.FC = () => {
   const [studentPassword, setStudentPassword] = useState<string>('');
   const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [exportLoading, setExportLoading] = useState(false);
   
   // Pagination state
   const [staffPage, setStaffPage] = useState(1);
@@ -826,11 +830,17 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     const checkActiveSession = async () => {
+      if (!user?.school_id) {
+        setHasActiveSession(false);
+        setLoading(false);
+        return;
+      }
+
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .select('id')
         .eq('is_active', true)
-        .eq('school_id', user?.school_id)
+        .eq('school_id', user.school_id)
         .maybeSingle();
       if (sessionError && !(
         sessionError.code === 'PGRST116' ||
@@ -1515,6 +1525,296 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      // Check if it's a mobile device
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Show immediate feedback for mobile users
+      if (isMobileDevice) {
+        toast.showToast('Generating PDF... Please wait.', 'success');
+      }
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const margin = 14;
+      const tableTop = 30;
+
+      // Get school name
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('name')
+        .eq('id', user.school_id)
+        .single();
+      
+      const schoolName = schoolData?.name || 'School';
+
+      let head: string[][];
+      let body: any[][];
+      let title: string;
+      let fileName: string;
+
+      if (activeTab === 0) {
+        // Staff/Users tab
+        title = 'All Users Export';
+        fileName = `All_Users_Export_${new Date().toISOString().split('T')[0]}.pdf`;
+
+        // Fetch all users with their complete data
+        const { data: allUsersData, error: usersError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('school_id', user.school_id)
+          .order('created_at', { ascending: false });
+
+        if (usersError) throw usersError;
+
+        // Get staff IDs to fetch mobile numbers
+        const staffIds = (allUsersData || [])
+          .filter(u => u.staff_id)
+          .map(u => u.staff_id)
+          .filter((id, index, self) => self.indexOf(id) === index);
+
+        let staffMobileMap: Record<number, string> = {};
+        if (staffIds.length > 0) {
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('id, name, mobile')
+            .in('id', staffIds)
+            .eq('school_id', user.school_id);
+
+          if (staffData) {
+            staffData.forEach(staff => {
+              staffMobileMap[staff.id] = staff.mobile || '-';
+            });
+          }
+        }
+
+        // Prepare table data
+        head = [['S.No', 'ID', 'Name', 'Father Name', 'Mobile', 'Username/ID', 'Password']];
+        
+        body = (allUsersData || []).map((user: User, idx: number) => {
+          const staffInfo = getStaffInfo(user.staff_id);
+          const displayName = user.role === 'Guest' ? user.name : staffInfo.name;
+          const mobile = user.staff_id ? (staffMobileMap[user.staff_id] || '-') : '-';
+          const fatherName = user.role === 'Guest' ? '-' : '-'; // Staff users don't have father name
+          
+          return [
+            idx + 1,
+            user.id,
+            displayName || '-',
+            fatherName,
+            mobile,
+            user.username || '-',
+            user.password || '-'
+          ];
+        });
+      } else if (activeTab === 1) {
+        // Parents tab
+        title = 'All Parents Export';
+        fileName = `All_Parents_Export_${new Date().toISOString().split('T')[0]}.pdf`;
+
+        head = [['S.No', 'ID', 'Name', 'Father Name', 'Mobile', 'Username/ID', 'Password']];
+        
+        body = parents.map((parent, idx: number) => {
+          const familyId = getFamilyDisplayId(parent.id);
+          return [
+            idx + 1,
+            familyId,
+            parent.name || '-',
+            '-', // Parents don't have father name
+            parent.contact_number || '-',
+            familyId, // Using family ID as username/ID
+            '-' // Parents don't have passwords in users table
+          ];
+        });
+      } else {
+        // Students tab
+        title = 'All Students Export';
+        fileName = `All_Students_Export_${new Date().toISOString().split('T')[0]}.pdf`;
+
+        head = [['S.No', 'ID', 'Name', 'Father Name', 'Mobile', 'Username/ID', 'Password', 'Last Online', 'Version', 'Status']];
+        
+        // Fetch student passwords
+        const studentIds = students.map(s => s.id);
+        let studentPasswordMap: Record<number, string> = {};
+        
+        if (studentIds.length > 0) {
+          const { data: studentsData } = await supabase
+            .from('students')
+            .select('id, password')
+            .in('id', studentIds)
+            .eq('school_id', user.school_id);
+
+          if (studentsData) {
+            studentsData.forEach(student => {
+              studentPasswordMap[student.id] = student.password || '-';
+            });
+          }
+        }
+
+        // Group students by class-section
+        const grouped: Record<string, Student[]> = {};
+        students.forEach(student => {
+          const className = student.classes?.name || '-';
+          const sectionName = student.sections?.name ? ` (${student.sections.name})` : '';
+          const groupKey = className + sectionName;
+          if (!grouped[groupKey]) grouped[groupKey] = [];
+          grouped[groupKey].push(student);
+        });
+
+        // Sort each group by student ID
+        Object.keys(grouped).forEach(groupKey => {
+          grouped[groupKey].sort((a, b) => a.id - b.id);
+        });
+
+        // Sort group keys using the universal class sorting function
+        const classObjects = Object.keys(grouped).map(groupKey => {
+          const className = groupKey.split(' (')[0];
+          return { name: className, groupKey };
+        });
+        const sortedClassObjects = sortClasses(classObjects);
+        const sortedGroupKeys = sortedClassObjects.map(obj => obj.groupKey);
+
+        // Build body with header rows for each group
+        body = [];
+        let globalSNo = 1;
+        
+        sortedGroupKeys.forEach((groupKey) => {
+          const groupStudents = grouped[groupKey];
+          
+          // Add header row for this class/section (using colSpan for merged cell)
+          body.push([
+            { 
+              content: groupKey, 
+              colSpan: 10, 
+              styles: { 
+                fillColor: [200, 200, 200], 
+                textColor: [0, 0, 0],
+                fontStyle: 'bold', 
+                halign: 'center', 
+                fontSize: 10,
+                cellPadding: 4
+              } 
+            },
+            '', '', '', '', '', '', '', '', '' // Empty cells for colSpan
+          ]);
+          
+          // Add student rows for this group
+          groupStudents.forEach((student) => {
+            const displayId = getStudentDisplayId(student);
+            const lastOnline = formatLastOnline(student.last_online);
+            const version = student.app_version ? `v${student.app_version}` : '-';
+            const status = student.status ? student.status.charAt(0).toUpperCase() + student.status.slice(1) : 'Active';
+            
+            body.push([
+              globalSNo++,
+              displayId,
+              student.name || '-',
+              student.father_name || '-',
+              student.phone || '-',
+              displayId,
+              studentPasswordMap[student.id] || '-',
+              lastOnline,
+              version,
+              status
+            ]);
+          });
+        });
+      }
+
+      // Header
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Users Details', doc.internal.pageSize.getWidth() / 2, margin, { align: 'center' });
+      
+      doc.setFontSize(10);
+      const currentDate = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      doc.text(`Generated on: ${currentDate}`, doc.internal.pageSize.getWidth() - margin, margin, { align: 'right' });
+
+      // Calculate page width for landscape A4
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const leftMargin = 10;
+      const rightMargin = 10;
+      const usableWidth = pageWidth - leftMargin - rightMargin;
+      
+      // Table
+      autoTable(doc, {
+        head,
+        body,
+        theme: 'grid',
+        startY: tableTop,
+        margin: { top: margin, left: leftMargin, right: rightMargin },
+        headStyles: {
+          fillColor: [99, 102, 241],
+          textColor: [255, 255, 255],
+          fontSize: 8,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2,
+        },
+        bodyStyles: {
+          fontSize: 7,
+          cellPadding: 1.5,
+          halign: 'left',
+          lineWidth: 0.1,
+          minCellHeight: 5,
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: usableWidth * 0.055 }, // S.No
+          1: { halign: 'center', cellWidth: usableWidth * 0.09 }, // ID
+          2: { halign: 'left', cellWidth: usableWidth * 0.13 }, // Name
+          3: { halign: 'left', cellWidth: usableWidth * 0.12 }, // Father Name
+          4: { halign: 'left', cellWidth: usableWidth * 0.10 }, // Mobile
+          5: { halign: 'left', cellWidth: usableWidth * 0.11 }, // Username/ID
+          6: { halign: 'left', cellWidth: usableWidth * 0.09 }, // Password
+          7: { halign: 'left', cellWidth: usableWidth * 0.12 }, // Last Online
+          8: { halign: 'center', cellWidth: usableWidth * 0.09 }, // Version
+          9: { halign: 'center', cellWidth: usableWidth * 0.09 }, // Status
+        },
+        styles: {
+          overflow: 'linebreak',
+          cellWidth: 'wrap',
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        alternateRowStyles: {
+          fillColor: [245, 247, 250],
+        },
+      });
+
+      // Add page numbers to all pages after table is complete
+      const totalPages = doc.internal.pages.length - 1;
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        const pageText = `Page ${i} of ${totalPages}`;
+        doc.text(pageText, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      }
+
+      // Save PDF
+      doc.save(fileName);
+      
+      toast.showToast('PDF exported successfully', 'success');
+    } catch (error: any) {
+      console.error('Error exporting PDF:', error);
+      toast.showToast(`Failed to export PDF: ${error?.message || 'Unknown error'}`, 'error');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   // Prevent body scroll when student password modal is open
   useEffect(() => {
     if (showStudentPasswordModal) {
@@ -2020,6 +2320,24 @@ const UserManagement: React.FC = () => {
       <Header>
         <Title>User Management</Title>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <AddButton
+            onClick={handleExportPDF}
+            disabled={
+              exportLoading || 
+              (activeTab === 0 && users.length === 0) ||
+              (activeTab === 1 && parents.length === 0) ||
+              (activeTab === 2 && students.length === 0)
+            }
+            style={{ 
+              background: exportLoading ? '#9ca3af' : '#6366f1',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <PictureAsPdf style={{ fontSize: 18 }} />
+            {exportLoading ? 'Exporting...' : 'Export PDF'}
+          </AddButton>
           <SearchBar>
             <Search style={{ color: '#6b7280' }} />
             <SearchInput

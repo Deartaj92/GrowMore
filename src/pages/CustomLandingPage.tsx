@@ -2210,6 +2210,7 @@ const CustomLandingPage: React.FC = () => {
   const [widgetData, setWidgetData] = useState<Record<string, any>>({});
   const [studentInfo, setStudentInfo] = useState<{ id: number; name: string; school_id: number; role: string } | null>(null);
   const [parentInfo, setParentInfo] = useState<{ id: number; name: string; school_id: number; role: string } | null>(null);
+  const [isStudentActive, setIsStudentActive] = useState<boolean>(true); // Default to true to avoid flicker
   const [linkedStudents, setLinkedStudents] = useState<Array<{
     id: number;
     name: string;
@@ -2656,6 +2657,7 @@ const CustomLandingPage: React.FC = () => {
               role: 'Student'
             });
             setParentInfo(null);
+            setIsStudentActive(true); // Reset to true, will be updated by loadStudentData
             return;
           }
         }
@@ -2671,20 +2673,24 @@ const CustomLandingPage: React.FC = () => {
               role: 'Parent'
             });
             setStudentInfo(null);
+            setIsStudentActive(true);
             return;
           }
         }
 
         setStudentInfo(null);
         setParentInfo(null);
+        setIsStudentActive(true);
       } catch (e) {
         // Error parsing session
         setStudentInfo(null);
         setParentInfo(null);
+        setIsStudentActive(true);
       }
     } else {
       setStudentInfo(null);
       setParentInfo(null);
+      setIsStudentActive(true);
     }
   }, [user]);
 
@@ -2862,7 +2868,7 @@ const CustomLandingPage: React.FC = () => {
 
   const loadStudentData = async () => {
     const schoolId = user?.school_id || studentInfo?.school_id;
-    if (!schoolId) return;
+    if (!schoolId || !studentInfo?.id) return;
 
     setLoading(true);
     try {
@@ -2880,8 +2886,34 @@ const CustomLandingPage: React.FC = () => {
       if (activeSessionData) {
         setActiveSessionId(activeSessionData.id);
       }
+
+      // Fetch latest status from student_status_history
+      const { data: statusHistory, error: statusError } = await supabase
+        .from('student_status_history')
+        .select('new_status, created_at')
+        .eq('student_id', studentInfo.id)
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!statusError && statusHistory) {
+        // Use the latest status from history
+        setIsStudentActive(statusHistory.new_status === 'active');
+      } else {
+        // If no history exists, check the students table status as fallback
+        const { data: studentData } = await supabase
+          .from('students')
+          .select('status')
+          .eq('id', studentInfo.id)
+          .eq('school_id', schoolId)
+          .maybeSingle();
+        
+        setIsStudentActive(studentData?.status === 'active' || studentData?.status === undefined);
+      }
     } catch (error) {
-      // Handle error silently
+      // Handle error silently, default to active
+      setIsStudentActive(true);
     } finally {
       setLoading(false);
     }
@@ -4484,7 +4516,7 @@ const CustomLandingPage: React.FC = () => {
         </QuickLinksGrid>
 
         {/* Quick Actions Section */}
-        {(isStudentCardVisible(renderSettings, 'request_leave') ||
+        {isStudentActive && (isStudentCardVisible(renderSettings, 'request_leave') ||
           isStudentCardVisible(renderSettings, 'register_complaint') ||
           isStudentCardVisible(renderSettings, 'suggestions')) && (
             <QuickActionsSection>

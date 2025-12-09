@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { useToast } from '../components/useToast';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
-import { useMediaQuery } from '@mui/material';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -29,6 +28,16 @@ const Container = styled.div`
   flex-direction: column;
   gap: 1rem;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
 `;
 
 const Header = styled.div`
@@ -48,6 +57,18 @@ const Header = styled.div`
   box-shadow: ${({ theme }) => isDark(theme)
         ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
         : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
+
+  @media (max-width: 768px) {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    gap: 0.5rem;
+  }
 `;
 
 const HeaderTitle = styled.h2`
@@ -61,6 +82,16 @@ const HeaderTitle = styled.h2`
   text-shadow: ${({ theme }) => isDark(theme)
         ? '0 2px 4px rgba(0, 0, 0, 0.5)'
         : 'none'};
+
+  @media (max-width: 768px) {
+    font-size: 1.25rem;
+    gap: 8px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.1rem;
+    gap: 6px;
+  }
 `;
 
 const StudentListFooter = styled.div`
@@ -90,6 +121,12 @@ const MainGrid = styled.div`
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    gap: 0.5rem;
+    padding-bottom: 4px;
   }
 `;
 
@@ -104,6 +141,11 @@ const LeftSidebar = styled.div`
   @media (max-width: 900px) {
     height: auto;
     position: static;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    gap: 0.5rem;
   }
 `;
 
@@ -132,6 +174,16 @@ const Card = styled.div`
   display: flex;
   flex-direction: column;
   transition: background-color 0.2s ease;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    border-radius: 12px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+    border-radius: 10px;
+  }
 `;
 
 const SelectionCard = styled(Card)`
@@ -152,6 +204,18 @@ const StudentListCard = styled(Card)`
   padding: 0;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 768px) {
+    height: 400px;
+    max-height: calc(100vh - 300px);
+    min-height: 250px;
+  }
+
+  @media (max-width: 480px) {
+    height: 300px;
+    max-height: calc(100vh - 250px);
+    min-height: 200px;
+  }
 `;
 
 const StudentListHeader = styled.div`
@@ -169,6 +233,18 @@ const StudentListHeader = styled.div`
         ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
   backdrop-filter: blur(8px);
+
+  @media (max-width: 768px) {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
 `;
 
 const StudentListContent = styled.div`
@@ -261,9 +337,16 @@ const MessageSection = styled.div`
   gap: 1rem;
   height: 250px;
 
+  @media (max-width: 768px) {
+    gap: 0.75rem;
+    height: auto;
+    min-height: 400px;
+  }
+
   @media (max-width: 700px) {
     flex-direction: column;
-    height: auto;
+    gap: 0.5rem;
+    min-height: 400px;
   }
 `;
 
@@ -271,6 +354,14 @@ const MessageInputCard = styled(Card)`
   flex: 1;
   padding: 0;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    min-height: 400px;
+  }
+
+  @media (max-width: 700px) {
+    min-height: 400px;
+  }
 `;
 
 const StyledTextArea = styled.textarea`
@@ -289,6 +380,16 @@ const StyledTextArea = styled.textarea`
   box-sizing: border-box;
   transition: background-color 0.2s ease;
 
+  @media (max-width: 768px) {
+    padding: 1rem;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
   &:focus {
     background: ${({ theme }) => isDark(theme)
         ? 'rgba(255, 255, 255, 0.05)'
@@ -304,8 +405,9 @@ const StyledTextArea = styled.textarea`
 `;
 
 const SendButton = styled.button`
-  width: 100%;
+  width: 120px;
   height: 100%;
+  min-height: 250px;
   background: ${({ theme }) => theme.ACCENT};
   color: ${({ theme }) => theme.BG};
   border: none;
@@ -322,42 +424,26 @@ const SendButton = styled.button`
   box-shadow: ${({ theme }) => isDark(theme)
         ? '0 4px 20px rgba(0, 0, 0, 0.3)'
         : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  flex-shrink: 0;
 
-  &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.ACCENT_DARK || theme.ACCENT};
-    transform: translateY(-2px);
-    box-shadow: ${({ theme }) => isDark(theme)
-        ? '0 6px 24px rgba(0, 0, 0, 0.4)'
-        : '0 6px 24px rgba(0, 0, 0, 0.15)'};
+  @media (max-width: 768px) {
+    width: 100px;
+    min-height: 200px;
+    font-size: 1.1rem;
+    border-radius: 12px;
   }
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+  @media (max-width: 700px) {
+    width: 100%;
+    height: auto;
+    min-height: 50px;
+    max-height: 50px;
+    font-size: 0.95rem;
+    border-radius: 10px;
+    padding: 0.5rem;
+    flex-direction: row;
+    gap: 0.5rem;
   }
-`;
-
-const FooterSendButton = styled.button<{ $isMobile?: boolean }>`
-  width: ${({ $isMobile }) => $isMobile ? '100%' : '120px'};
-  height: ${({ $isMobile }) => $isMobile ? '60px' : 'auto'};
-  min-height: ${({ $isMobile }) => $isMobile ? '60px' : '80px'};
-  background: ${({ theme }) => theme.ACCENT};
-  color: ${({ theme }) => theme.BG};
-  border: none;
-  border-radius: 16px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.2s ease;
-  box-shadow: ${({ theme }) => isDark(theme)
-        ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-        : '0 4px 20px rgba(0, 0, 0, 0.1)'};
 
   &:hover:not(:disabled) {
     background: ${({ theme }) => theme.ACCENT_DARK || theme.ACCENT};
@@ -382,6 +468,18 @@ const HistorySection = styled(Card)`
   padding: 0;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 768px) {
+    height: 220px;
+    max-height: 200px;
+    min-height: 200px;
+  }
+
+  @media (max-width: 480px) {
+    height: 180px;
+    max-height: 160px;
+    min-height: 160px;
+  }
 `;
 
 const HistoryHeader = styled.div`
@@ -398,9 +496,19 @@ const HistoryHeader = styled.div`
         : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
   backdrop-filter: blur(8px);
   
+  @media (max-width: 768px) {
+    padding: 0.4rem 0.6rem;
+    gap: 0.4rem;
+  }
+
   @media (max-width: 700px) {
     flex-wrap: wrap;
     padding: 0.4rem 0.5rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.3rem 0.4rem;
+    gap: 0.3rem;
   }
 `;
 
@@ -423,6 +531,17 @@ const HistoryList = styled.div`
   scrollbar-color: ${({ theme }) => isDark(theme)
         ? 'rgba(255, 255, 255, 0.2) transparent'
         : 'rgba(0, 0, 0, 0.2) transparent'};
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -611,6 +730,16 @@ const VariablesBar = styled.div`
   gap: 0.5rem;
   flex-wrap: wrap;
   align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 0.5rem 1rem;
+    gap: 0.4rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.4rem 0.75rem;
+    gap: 0.3rem;
+  }
 `;
 
 const VariableTag = styled.button`
@@ -627,6 +756,12 @@ const VariableTag = styled.button`
   cursor: pointer;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   transition: all 0.2s ease;
+
+  @media (max-width: 480px) {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-radius: 4px;
+  }
   
   &:hover {
     border-color: ${({ theme }) => theme.ACCENT};
@@ -696,7 +831,6 @@ const GeneralMessagePage: React.FC = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
     const { setFooterContent } = usePageFooter();
-    const isMobile = useMediaQuery('(max-width: 768px)');
 
     const [targetType, setTargetType] = useState<'all' | 'class' | 'staff'>('all');
     const [classes, setClasses] = useState<any[]>([]);
@@ -1114,7 +1248,7 @@ const GeneralMessagePage: React.FC = () => {
         }
     }, [user?.school_id, refreshHistory, selectedCategory, fetchHistory]);
 
-    const handleSend = async () => {
+    const handleSend = useCallback(async () => {
         if (!message.trim()) {
             showToast('Please enter a message', 'error');
             return;
@@ -1154,22 +1288,22 @@ const GeneralMessagePage: React.FC = () => {
 
         setNotificationData(formattedData);
         setSending(true);
-    };
+    }, [message, selectedStudentIds, filteredStudents, targetType, schoolName, schoolWebsite, showToast]);
 
-    const insertVariable = (variable: string) => {
+    const insertVariable = useCallback((variable: string) => {
         setMessage(prev => prev + variable);
-    };
+    }, []);
 
-    const handleRepeatMessage = (msg: string) => {
+    const handleRepeatMessage = useCallback((msg: string) => {
         setMessage(msg);
-    };
+    }, []);
 
-    const handleCloseSender = () => {
+    const handleCloseSender = useCallback(() => {
         setSending(false);
         setRefreshHistory(prev => prev + 1);
-    };
+    }, []);
 
-    const toggleStudentSelection = (studentId: number) => {
+    const toggleStudentSelection = useCallback((studentId: number) => {
         setSelectedStudentIds(prev => {
             const newSet = new Set(prev);
             if (newSet.has(studentId)) {
@@ -1179,49 +1313,24 @@ const GeneralMessagePage: React.FC = () => {
             }
             return newSet;
         });
-    };
+    }, []);
 
-    const handleSelectAll = () => {
+    const handleSelectAll = useCallback(() => {
         setSelectedStudentIds(new Set(filteredStudents.map(s => s.id)));
-    };
+    }, [filteredStudents]);
 
-    const handleDeselectAll = () => {
+    const handleDeselectAll = useCallback(() => {
         setSelectedStudentIds(new Set());
-    };
+    }, []);
 
-    // Set global footer content with Send button
+    // Clear footer content when component mounts/unmounts
     useEffect(() => {
-        const FooterContent = React.memo(() => {
-            return (
-                <div style={{
-                    display: 'flex',
-                    justifyContent: isMobile ? 'center' : 'flex-end',
-                    alignItems: 'center',
-                    padding: isMobile ? '10px' : '12px 16px',
-                    width: '100%',
-                }}>
-                    <FooterSendButton
-                        theme={theme}
-                        $isMobile={isMobile}
-                        onClick={handleSend}
-                        disabled={loading || selectedStudentIds.size === 0}
-                    >
-                        <SendIcon style={{ fontSize: 28 }} />
-                        Send
-                    </FooterSendButton>
-                </div>
-            );
-        });
-
-        setFooterContent({
-            visible: true,
-            content: <FooterContent />
-        });
+        setFooterContent(null);
         
         return () => {
             setFooterContent(null);
         };
-    }, [loading, selectedStudentIds.size, isMobile, theme, handleSend]);
+    }, [setFooterContent]);
 
     return (
         <Container theme={theme}>
@@ -1370,6 +1479,14 @@ const GeneralMessagePage: React.FC = () => {
                                 )}
                             </VariablesBar>
                         </MessageInputCard>
+                        <SendButton
+                            theme={theme}
+                            onClick={handleSend}
+                            disabled={loading || selectedStudentIds.size === 0}
+                        >
+                            <SendIcon style={{ fontSize: 28 }} />
+                            Send
+                        </SendButton>
                     </MessageSection>
 
                     <HistorySection theme={theme}>
