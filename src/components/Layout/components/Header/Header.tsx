@@ -451,13 +451,22 @@ const MobileSidebar = styled.div<{ $isOpen: boolean }>`
   left: 0;
   width: 85vw;
   max-width: 320px;
-  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   background: ${props => props.theme.CARD};
   z-index: 9999;
   transform: translateX(${props => props.$isOpen ? '0' : '-100%'});
   transition: transform 0.3s ease;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
+  
+  /* Fallback for browsers that don't support dvh */
+  @supports not (height: 100dvh) {
+    height: 100vh;
+    max-height: 100vh;
+  }
   
   @media (min-width: 701px) {
     display: none;
@@ -506,6 +515,37 @@ const MobileSidebarCloseButton = styled.button`
 
 const MobileMenuSection = styled.div`
   padding: 8px 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+      ? 'rgba(255, 255, 255, 0.2)' 
+      : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+      ? 'rgba(255, 255, 255, 0.3)' 
+      : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  scrollbar-width: thin;
+  scrollbar-color: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+    ? 'rgba(255, 255, 255, 0.2) transparent' 
+    : 'rgba(0, 0, 0, 0.2) transparent'};
 `;
 
 const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`

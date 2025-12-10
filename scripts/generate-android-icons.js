@@ -75,7 +75,7 @@ async function generateAndroidIcon(inputPath, outputDir) {
 }
 
 // Main execution
-const inputIcon = path.join(__dirname, '..', 'assets', 'New Icon.png');
+const inputIcon = path.join(__dirname, '..', 'assets', 'patternLogo.png');
 const outputDir = path.join(__dirname, '..', 'resources', 'android', 'icon-generated');
 
 generateAndroidIcon(inputIcon, outputDir)

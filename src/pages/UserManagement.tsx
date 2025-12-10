@@ -78,7 +78,9 @@ const Container = styled.div`
   margin: 0 auto;
   padding: 1.5rem 0.3rem;
   @media (max-width: 768px) {
-    padding: 1rem 0.1rem;
+    padding: 0.5rem 0.1rem;
+    width: 100vw;
+    max-width: 100vw;
   }
 `;
 
@@ -87,9 +89,14 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 600px) {
+    gap: 6px;
+    margin-bottom: 10px;
   }
 `;
 
@@ -97,6 +104,10 @@ const Title = styled.h1`
   font-size: 24px;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    font-weight: 600;
+  }
 `;
 
 const SearchBar = styled.div`
@@ -108,8 +119,13 @@ const SearchBar = styled.div`
   border-radius: 8px;
   padding: 8px 12px;
   width: 300px;
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     width: 100%;
+    padding: 6px 10px;
+    gap: 6px;
+  }
+  @media (max-width: 600px) {
+    padding: 5px 8px;
   }
 `;
 
@@ -121,6 +137,9 @@ const SearchInput = styled.input`
   width: 100%;
   &:focus {
     outline: none;
+  }
+  @media (max-width: 768px) {
+    font-size: 0.85rem;
   }
 `;
 
@@ -140,6 +159,16 @@ const AddButton = styled.button`
   &:hover {
     background: #4f46e5;
   }
+  @media (max-width: 768px) {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    gap: 6px;
+    border-radius: 6px;
+    
+    svg {
+      font-size: 0.9rem !important;
+    }
+  }
 `;
 
 const UserGrid = styled.div`
@@ -150,8 +179,13 @@ const UserGrid = styled.div`
   @media (max-width: 1100px) {
     grid-template-columns: repeat(2, 1fr);
   }
+  @media (max-width: 768px) {
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
   @media (max-width: 700px) {
     grid-template-columns: 1fr;
+    gap: 0.6rem;
   }
 `;
 
@@ -170,6 +204,12 @@ const UserCard = styled.div<{ status: string }>`
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border-color: rgba(${({ status }) => getStatusColor(status)}, 0.8);
+  }
+  @media (max-width: 768px) {
+    padding: 0.75rem 0.75rem 0.6rem 0.75rem;
+    border-radius: 10px;
+    border-width: 2px;
+    min-width: 0;
   }
 `;
 
@@ -196,6 +236,12 @@ const RoleBadge = styled.div<{ role: string }>`
   box-shadow: 0 2px 8px rgba(0,0,0,0.13);
   z-index: 3;
   letter-spacing: 0.02em;
+  @media (max-width: 768px) {
+    top: -8px;
+    right: 6px;
+    padding: 0.12rem 0.5rem;
+    font-size: 0.65rem;
+  }
 `;
 
 const StatusBadge = styled.div<{ status: string }>`
@@ -231,6 +277,18 @@ const StatusBadge = styled.div<{ status: string }>`
       50% { opacity: 0.8; }
     }
   `}
+  
+  @media (max-width: 768px) {
+    padding: 0.12rem 0.5rem;
+    font-size: 0.65rem;
+    margin-left: 4px;
+    gap: 0.3rem;
+    
+    &::before {
+      width: 4px !important;
+      height: 4px !important;
+    }
+  }
 `;
 
 const CardTop = styled.div`
@@ -255,6 +313,13 @@ const Avatar = styled.div<{ src?: string | null }>`
   margin-right: 1.2rem;
   flex-shrink: 0;
   overflow: hidden;
+  @media (max-width: 768px) {
+    width: 50px;
+    height: 65px;
+    border-radius: 12px;
+    font-size: 1.4rem;
+    margin-right: 0.75rem;
+  }
 `;
 
 const UserName = styled.h3`
@@ -265,18 +330,31 @@ const UserName = styled.h3`
   display: flex;
   align-items: center;
   gap: 8px;
+  @media (max-width: 768px) {
+    font-size: 0.9rem;
+    margin: 0 0 0.3rem 0;
+    gap: 6px;
+  }
 `;
 
 const UsernameText = styled.div`
   font-size: 0.95rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin-bottom: 0.2rem;
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    margin-bottom: 0.15rem;
+  }
 `;
 
 const InfoRow = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.9rem;
   margin: 0.25rem 0;
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
+    margin: 0.15rem 0;
+  }
 `;
 
 const ActionButtons = styled.div`
@@ -287,6 +365,10 @@ const ActionButtons = styled.div`
   width: 100%;
   justify-content: space-between;
   align-items: center;
+  @media (max-width: 768px) {
+    margin-top: 0.6rem;
+    gap: 0.2rem;
+  }
 `;
 
 const StatusInfo = styled.div`
@@ -337,6 +419,16 @@ const CardActionButton = styled.button<{ $variant?: 'primary' | 'danger' }>`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  @media (max-width: 768px) {
+    padding: 0.12rem 0.4rem;
+    font-size: 0.7rem;
+    border-radius: 5px;
+    gap: 0.2rem;
+    
+    svg {
+      font-size: 0.9rem !important;
+    }
   }
 `;
 
@@ -557,15 +649,47 @@ const AddUserCard = styled(UserCard)`
     border-color: ${({ theme }) => theme.ACCENT};
     color: ${({ theme }) => theme.ACCENT};
   }
+  @media (max-width: 768px) {
+    min-height: 120px;
+    
+    svg {
+      font-size: 2rem !important;
+    }
+    
+    div {
+      font-size: 0.85rem !important;
+    }
+  }
 `;
 
 const TabsContainer = styled.div`
   margin-bottom: 24px;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  @media (max-width: 768px) {
+    margin-bottom: 12px;
+    
+    .MuiTabs-root {
+      min-height: 36px;
+    }
+    
+    .MuiTab-root {
+      padding: 6px 8px !important;
+      min-height: 36px !important;
+      font-size: 0.75rem !important;
+      
+      svg {
+        font-size: 0.9rem !important;
+        margin-right: 4px !important;
+      }
+    }
+  }
 `;
 
 const TabPanel = styled.div`
   margin-top: 24px;
+  @media (max-width: 768px) {
+    margin-top: 12px;
+  }
 `;
 
 // Pagination styled components
@@ -582,7 +706,9 @@ const PaginationContainer = styled.div`
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px 0;
   }
 `;
 
@@ -590,6 +716,10 @@ const PaginationInfo = styled.div`
   font-size: 0.875rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-weight: 500;
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    text-align: center;
+  }
 `;
 
 const PaginationControls = styled.div`
@@ -636,6 +766,13 @@ const PaginationButton = styled.button<{ $active?: boolean }>`
   &:active:not(:disabled) {
     transform: translateY(0);
   }
+  
+  @media (max-width: 768px) {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    min-width: 32px;
+    border-radius: 5px;
+  }
 `;
 
 const PageInput = styled.input`
@@ -653,6 +790,13 @@ const PageInput = styled.input`
     outline: none;
     border-color: ${({ theme }) => theme.ACCENT};
     box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}15;
+  }
+  
+  @media (max-width: 768px) {
+    width: 40px;
+    padding: 5px 6px;
+    font-size: 0.75rem;
+    border-radius: 5px;
   }
 `;
 
@@ -1865,17 +2009,17 @@ const UserManagement: React.FC = () => {
             </>
           ) : filteredUsers.length === 0 ? (
             <>
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No users found</div>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: window.innerWidth <= 768 ? '20px' : '40px', fontSize: window.innerWidth <= 768 ? '0.85rem' : '1rem' }}>No users found</div>
               <AddUserCard status="active" onClick={handleAdd} title="Add User">
-                <Add style={{ fontSize: 48, marginBottom: 8 }} />
-                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
+                <Add style={{ fontSize: window.innerWidth <= 768 ? 32 : 48, marginBottom: window.innerWidth <= 768 ? 4 : 8 }} />
+                <div style={{ fontWeight: 600, fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.1rem' }}>Add User</div>
               </AddUserCard>
             </>
           ) : (
             <>
               <AddUserCard status="active" onClick={handleAdd} title="Add User">
-                <Add style={{ fontSize: 48, marginBottom: 8 }} />
-                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Add User</div>
+                <Add style={{ fontSize: window.innerWidth <= 768 ? 32 : 48, marginBottom: window.innerWidth <= 768 ? 4 : 8 }} />
+                <div style={{ fontWeight: 600, fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.1rem' }}>Add User</div>
               </AddUserCard>
               {paginatedUsers.map(user => {
                 const staffInfo = getStaffInfo(user.staff_id);
@@ -1906,24 +2050,24 @@ const UserManagement: React.FC = () => {
                     </CardTop>
                     <ActionButtons>
                       <StatusInfo>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? '4px' : '6px' }}>
                           <div style={{
-                            width: '8px',
-                            height: '8px',
+                            width: window.innerWidth <= 768 ? '6px' : '8px',
+                            height: window.innerWidth <= 768 ? '6px' : '8px',
                             borderRadius: '50%',
                             backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
                             boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
                           }} />
-                          <span style={{ fontSize: '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
+                          <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
                             {isOnline ? 'Online' : `Last Online: ${formatLastOnline(user.last_online)}`}
                           </span>
                         </div>
                         {user.app_version && (
                           <span style={{
-                            fontSize: '11px',
+                            fontSize: window.innerWidth <= 768 ? '0.65rem' : '11px',
                             fontFamily: 'monospace',
                             background: 'rgba(99, 102, 241, 0.1)',
-                            padding: '2px 6px',
+                            padding: window.innerWidth <= 768 ? '1px 4px' : '2px 6px',
                             borderRadius: '4px',
                             color: '#6366f1'
                           }}>
@@ -1970,8 +2114,8 @@ const UserManagement: React.FC = () => {
                 ‹
               </PaginationButton>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? '6px' : '8px' }}>
+                <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
                 <PageInput
                   type="number"
                   min={1}
@@ -1992,7 +2136,7 @@ const UserManagement: React.FC = () => {
                     }
                   }}
                 />
-                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalStaffPages}</span>
+                <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalStaffPages}</span>
               </div>
               
               <PaginationButton
@@ -2029,7 +2173,7 @@ const UserManagement: React.FC = () => {
               ))}
             </>
           ) : filteredParents.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No parents found</div>
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: window.innerWidth <= 768 ? '20px' : '40px', fontSize: window.innerWidth <= 768 ? '0.85rem' : '1rem' }}>No parents found</div>
           ) : (
             paginatedParents.map(parent => {
               // Use is_online flag if explicitly set to false, otherwise calculate from timestamp
@@ -2056,24 +2200,24 @@ const UserManagement: React.FC = () => {
                   </CardTop>
                   <ActionButtons>
                     <StatusInfo>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? '4px' : '6px' }}>
                         <div style={{
-                          width: '8px',
-                          height: '8px',
+                          width: window.innerWidth <= 768 ? '6px' : '8px',
+                          height: window.innerWidth <= 768 ? '6px' : '8px',
                           borderRadius: '50%',
                           backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
                           boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
                         }} />
-                        <span style={{ fontSize: '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
+                        <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
                           {isOnline ? 'Online' : `Last Online: ${formatLastOnline(parent.last_online)}`}
                         </span>
                       </div>
                       {parent.app_version && (
                         <span style={{
-                          fontSize: '11px',
+                          fontSize: window.innerWidth <= 768 ? '0.65rem' : '11px',
                           fontFamily: 'monospace',
                           background: 'rgba(99, 102, 241, 0.1)',
-                          padding: '2px 6px',
+                          padding: window.innerWidth <= 768 ? '1px 4px' : '2px 6px',
                           borderRadius: '4px',
                           color: '#6366f1'
                         }}>
@@ -2116,8 +2260,8 @@ const UserManagement: React.FC = () => {
                 ‹
               </PaginationButton>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? '6px' : '8px' }}>
+                <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
                 <PageInput
                   type="number"
                   min={1}
@@ -2138,7 +2282,7 @@ const UserManagement: React.FC = () => {
                     }
                   }}
                 />
-                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalParentsPages}</span>
+                <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalParentsPages}</span>
               </div>
               
               <PaginationButton
@@ -2175,7 +2319,7 @@ const UserManagement: React.FC = () => {
               ))}
             </>
           ) : filteredStudents.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>No students found</div>
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: window.innerWidth <= 768 ? '20px' : '40px', fontSize: window.innerWidth <= 768 ? '0.85rem' : '1rem' }}>No students found</div>
           ) : (
             paginatedStudents.map(student => {
               // Use is_online flag if explicitly set to false, otherwise calculate from timestamp
@@ -2209,24 +2353,24 @@ const UserManagement: React.FC = () => {
                   </CardTop>
                   <ActionButtons>
                     <StatusInfo>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? '4px' : '6px' }}>
                         <div style={{
-                          width: '8px',
-                          height: '8px',
+                          width: window.innerWidth <= 768 ? '6px' : '8px',
+                          height: window.innerWidth <= 768 ? '6px' : '8px',
                           borderRadius: '50%',
                           backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
                           boxShadow: isOnline ? '0 0 4px #22c55e' : 'none'
                         }} />
-                        <span style={{ fontSize: '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
+                        <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '12px', color: isOnline ? '#22c55e' : '#6b7280' }}>
                           {isOnline ? 'Online' : `Last Online: ${formatLastOnline(student.last_online)}`}
                         </span>
                       </div>
                       {student.app_version && (
                         <span style={{
-                          fontSize: '11px',
+                          fontSize: window.innerWidth <= 768 ? '0.65rem' : '11px',
                           fontFamily: 'monospace',
                           background: 'rgba(99, 102, 241, 0.1)',
-                          padding: '2px 6px',
+                          padding: window.innerWidth <= 768 ? '1px 4px' : '2px 6px',
                           borderRadius: '4px',
                           color: '#6366f1'
                         }}>
@@ -2269,8 +2413,8 @@ const UserManagement: React.FC = () => {
                 ‹
               </PaginationButton>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? '6px' : '8px' }}>
+                <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '0.875rem', color: 'inherit', opacity: 0.7 }}>Page</span>
                 <PageInput
                   type="number"
                   min={1}
@@ -2291,7 +2435,7 @@ const UserManagement: React.FC = () => {
                     }
                   }}
                 />
-                <span style={{ fontSize: '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalStudentsPages}</span>
+                <span style={{ fontSize: window.innerWidth <= 768 ? '0.7rem' : '0.875rem', color: 'inherit', opacity: 0.7 }}>of {totalStudentsPages}</span>
               </div>
               
               <PaginationButton
@@ -2319,7 +2463,7 @@ const UserManagement: React.FC = () => {
     <Container>
       <Header>
         <Title>User Management</Title>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: window.innerWidth <= 768 ? '6px' : '10px', width: window.innerWidth <= 768 ? '100%' : 'auto', flexDirection: window.innerWidth <= 768 ? 'column' : 'row' }}>
           <AddButton
             onClick={handleExportPDF}
             disabled={
@@ -2332,14 +2476,15 @@ const UserManagement: React.FC = () => {
               background: exportLoading ? '#9ca3af' : '#6366f1',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: window.innerWidth <= 768 ? '6px' : '8px',
+              width: window.innerWidth <= 768 ? '100%' : 'auto'
             }}
           >
-            <PictureAsPdf style={{ fontSize: 18 }} />
+            <PictureAsPdf style={{ fontSize: window.innerWidth <= 768 ? 14 : 18 }} />
             {exportLoading ? 'Exporting...' : 'Export PDF'}
           </AddButton>
           <SearchBar>
-            <Search style={{ color: '#6b7280' }} />
+            <Search style={{ color: '#6b7280', fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.2rem' }} />
             <SearchInput
               placeholder={
                 activeTab === 0 ? "Search by name..." :
@@ -2360,11 +2505,20 @@ const UserManagement: React.FC = () => {
           variant="scrollable"
           scrollButtons="auto"
           sx={{
+            minHeight: window.innerWidth <= 768 ? '36px' : '48px',
             '& .MuiTab-root': {
               textTransform: 'none',
               fontWeight: 600,
-              fontSize: '0.95rem',
-              minHeight: 48,
+              fontSize: window.innerWidth <= 768 ? '0.75rem' : '0.95rem',
+              minHeight: window.innerWidth <= 768 ? '36px' : '48px',
+              padding: window.innerWidth <= 768 ? '6px 8px' : '12px 16px',
+              '& .MuiSvgIcon-root': {
+                fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.2rem',
+                marginRight: window.innerWidth <= 768 ? '4px' : '8px',
+              },
+            },
+            '& .MuiTabs-indicator': {
+              height: window.innerWidth <= 768 ? '2px' : '3px',
             },
           }}
         >

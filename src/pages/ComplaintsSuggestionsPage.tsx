@@ -59,11 +59,16 @@ const PageContainer = styled.div`
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   position: relative;
+  min-height: 0;
   
   @media (max-width: 768px) {
     padding: 0.375rem;
     padding-bottom: 2rem;
     gap: 0.2rem;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
   }
 `;
 
@@ -81,12 +86,15 @@ const Header = styled.div`
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   margin-bottom: 0.25rem;
+  flex-shrink: 0;
   
   @media (max-width: 768px) {
-    padding: 0.5rem;
-    margin-bottom: 0.2rem;
-    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    margin-bottom: 0.15rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
+    flex-shrink: 0;
+    border-radius: 8px;
   }
 `;
 
@@ -100,7 +108,13 @@ const HeaderTitle = styled.h1`
   gap: 0.75rem;
   
   @media (max-width: 768px) {
-    font-size: 1.25rem;
+    font-size: 0.9rem;
+    gap: 0.4rem;
+    font-weight: 500;
+    
+    svg {
+      font-size: 1.1rem !important;
+    }
   }
 `;
 
@@ -138,8 +152,14 @@ const RefreshButton = styled.button`
   }
   
   @media (max-width: 768px) {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.85rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    gap: 0.3rem;
+    border-radius: 6px;
+    
+    svg {
+      font-size: 0.9rem !important;
+    }
   }
 `;
 
@@ -148,10 +168,13 @@ const StatsGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.5rem;
   margin-bottom: 0.25rem;
+  flex-shrink: 0;
   
   @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.4rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.3rem;
+    flex-shrink: 0;
+    margin-bottom: 0.15rem;
   }
 `;
 
@@ -167,7 +190,8 @@ const StatCard = styled.div`
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   
   @media (max-width: 768px) {
-    padding: 0.75rem;
+    padding: 0.5rem 0.4rem;
+    border-radius: 8px;
   }
 `;
 
@@ -178,8 +202,9 @@ const StatLabel = styled.div`
   font-weight: 500;
   
   @media (max-width: 768px) {
-    font-size: 0.75rem;
-    margin-bottom: 0.4rem;
+    font-size: 0.65rem;
+    margin-bottom: 0.25rem;
+    font-weight: 400;
   }
 `;
 
@@ -189,7 +214,8 @@ const StatValue = styled.div`
   color: ${({ theme }) => theme.ACCENT};
   
   @media (max-width: 768px) {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
   }
 `;
 
@@ -203,6 +229,28 @@ const TabsContainer = styled.div`
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   margin-bottom: 0.25rem;
+  flex-shrink: 0;
+  
+  @media (max-width: 768px) {
+    flex-shrink: 0;
+    margin-bottom: 0.15rem;
+    border-radius: 8px;
+    
+    .MuiTabs-root {
+      min-height: 36px;
+    }
+    
+    .MuiTab-root {
+      padding: 6px 8px !important;
+      min-height: 36px !important;
+      font-size: 0.75rem !important;
+      
+      svg {
+        font-size: 0.9rem !important;
+        margin-right: 4px !important;
+      }
+    }
+  }
 `;
 
 const FiltersContainer = styled.div`
@@ -216,9 +264,13 @@ const FiltersContainer = styled.div`
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   padding: 1rem;
   margin-bottom: 0.25rem;
+  flex-shrink: 0;
   
   @media (max-width: 768px) {
-    padding: 0.75rem;
+    padding: 0.5rem;
+    flex-shrink: 0;
+    margin-bottom: 0.15rem;
+    border-radius: 8px;
   }
 `;
 
@@ -229,7 +281,7 @@ const FiltersGrid = styled.div`
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 `;
 
@@ -239,7 +291,7 @@ const FilterRow = styled.div`
   
   @media (max-width: 768px) {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 `;
 
@@ -256,11 +308,27 @@ const TableContainer = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  
+  @media (max-width: 768px) {
+    flex: 1;
+    min-height: 200px;
+    max-height: none;
+  }
 `;
 
 const TableWrapper = styled.div`
   overflow-x: auto;
+  overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  
+  @media (max-width: 768px) {
+    flex: 1;
+    min-height: 150px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 `;
 
 const Table = styled.table`
@@ -717,14 +785,25 @@ const ComplaintsSuggestionsPage: React.FC = () => {
             value={activeTab}
             onChange={(e, newValue) => setActiveTab(newValue)}
             sx={{
+              minHeight: window.innerWidth <= 768 ? '36px' : 'auto',
               '& .MuiTab-root': {
                 color: theme.TEXT_SECONDARY,
+                padding: window.innerWidth <= 768 ? '6px 8px' : '12px 16px',
+                minHeight: window.innerWidth <= 768 ? '36px' : '48px',
+                fontSize: window.innerWidth <= 768 ? '0.75rem' : '0.95rem',
+                textTransform: 'none',
+                fontWeight: 500,
                 '&.Mui-selected': {
                   color: theme.ACCENT,
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.2rem',
+                  marginRight: window.innerWidth <= 768 ? '4px' : '8px',
                 },
               },
               '& .MuiTabs-indicator': {
                 backgroundColor: theme.ACCENT,
+                height: window.innerWidth <= 768 ? '2px' : '3px',
               },
             }}
           >
@@ -732,16 +811,16 @@ const ComplaintsSuggestionsPage: React.FC = () => {
               icon={<FeedbackIcon />}
               iconPosition="start"
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? 0.5 : 1 }}>
                   Complaints
                   {inReviewComplaintsCount > 0 && (
                     <Chip
                       label={inReviewComplaintsCount}
                       size="small"
                       sx={{
-                        height: '20px',
-                        minWidth: '20px',
-                        fontSize: '0.7rem',
+                        height: window.innerWidth <= 768 ? '16px' : '20px',
+                        minWidth: window.innerWidth <= 768 ? '16px' : '20px',
+                        fontSize: window.innerWidth <= 768 ? '0.6rem' : '0.7rem',
                         fontWeight: 600,
                         background: '#ef4444',
                         color: 'white',
@@ -756,16 +835,16 @@ const ComplaintsSuggestionsPage: React.FC = () => {
               icon={<LightbulbIcon />}
               iconPosition="start"
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: window.innerWidth <= 768 ? 0.5 : 1 }}>
                   Suggestions
                   {inReviewSuggestionsCount > 0 && (
                     <Chip
                       label={inReviewSuggestionsCount}
                       size="small"
                       sx={{
-                        height: '20px',
-                        minWidth: '20px',
-                        fontSize: '0.7rem',
+                        height: window.innerWidth <= 768 ? '16px' : '20px',
+                        minWidth: window.innerWidth <= 768 ? '16px' : '20px',
+                        fontSize: window.innerWidth <= 768 ? '0.6rem' : '0.7rem',
                         fontWeight: 600,
                         background: '#f59e0b',
                         color: 'white',

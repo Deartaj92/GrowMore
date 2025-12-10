@@ -65,7 +65,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/New Icon Fixed.ico",
+      "icon": "assets/patternLogo.ico",
       "requestedExecutionLevel": "asInvoker",
       "forceCodeSigning": false
     },
@@ -77,9 +77,9 @@
       "shortcutName": "Grow More",
       "deleteAppDataOnUninstall": false,
       "include": "installer.nsh",
-      "installerIcon": "assets/New Icon Fixed.ico",
-      "uninstallerIcon": "assets/New Icon Fixed.ico",
-      "installerHeaderIcon": "assets/New Icon Fixed.ico",
+      "installerIcon": "assets/patternLogo.ico",
+      "uninstallerIcon": "assets/patternLogo.ico",
+      "installerHeaderIcon": "assets/patternLogo.ico",
       "menuCategory": "Grow More",
       "displayLanguageSelector": true,
       "allowElevation": true,
@@ -89,13 +89,13 @@
       "target": [
         "dmg"
       ],
-      "icon": "assets/New Icon.icns"
+      "icon": "assets/patternLogo.icns"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "icon": "assets/New Icon.png"
+      "icon": "assets/patternLogo-linux.png"
     },
     "asar": true,
     "compression": "normal",

@@ -18,7 +18,7 @@ function createWindow() {
       preload: path.join(__dirname, 'public', 'preload.js'),
       enableRemoteModule: true
     },
-    icon: path.join(__dirname, 'assets', 'icon.ico'),
+    icon: path.join(__dirname, 'assets', 'patternLogo.ico'),
     frame: false,
     titleBarStyle: 'hidden'
   });

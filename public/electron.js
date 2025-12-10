@@ -75,7 +75,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       enableRemoteModule: true
     },
-    icon: getResourcePath('assets/New Icon Fixed.ico'),
+    icon: getResourcePath('assets/patternLogo.ico'),
     frame: false,
     titleBarStyle: 'hidden',
     show: false // Don't show window until ready to prevent flash
@@ -202,7 +202,7 @@ function createBackgroundWindow() {
       preload: path.join(__dirname, 'preload.js'),
       enableRemoteModule: true
     },
-    icon: getResourcePath('assets/New Icon Fixed.ico'),
+    icon: getResourcePath('assets/patternLogo.ico'),
     frame: false
   });
 
@@ -275,7 +275,7 @@ function createTray() {
     }
   };
 
-  const iconPath = getResourcePath('assets/New Icon Fixed.ico');
+  const iconPath = getResourcePath('assets/patternLogo.ico');
   const trayIcon = require('electron').nativeImage.createFromPath(iconPath);
 
   tray = new Menu.buildFromTemplate([

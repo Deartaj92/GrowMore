@@ -63,6 +63,10 @@ const ModernForm = styled.form`
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
+  @media (max-width: 700px) {
+    flex: 1;
+    min-height: 0;
+  }
 `;
 
 const StickyHeader = styled.div`
@@ -402,6 +406,10 @@ const ModernGrid = styled.div`
     padding: 0;
     width: 100%;
   }
+  @media (max-width: 700px) {
+    gap: 12px;
+    padding: 0;
+  }
 `;
 
 const Field = muiStyled(FormControl)(({ theme }) => ({
@@ -630,9 +638,13 @@ const FormBlocks = styled.div`
   background: transparent;
   overflow-x: hidden;
   box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
   @media (max-width: 900px) {
     flex-direction: column;
     gap: 18px;
+    flex: 1;
+    min-height: 0;
   }
 `;
 
@@ -645,6 +657,7 @@ const FieldsCard = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   z-index: 1;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -652,6 +665,14 @@ const FieldsCard = styled.div`
     width: 100%;
     padding: 18px 8px;
     border-radius: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+  @media (max-width: 700px) {
+    padding: 12px 4px;
+    border-radius: 8px;
+    flex: 1;
+    min-height: 0;
   }
 `;
 
@@ -1249,6 +1270,9 @@ const PageContainer = styled.div`
   flex-direction: column;
   transform: translateZ(0);
   will-change: transform;
+  @media (max-width: 700px) {
+    padding: 0 4px 6px 4px;
+  }
 `;
 
 const Header = styled.div`
@@ -1271,6 +1295,11 @@ const Header = styled.div`
   overflow-x: hidden;
   box-sizing: border-box;
   width: 100%;
+  @media (max-width: 700px) {
+    padding: 8px 12px 6px 12px;
+    margin: 12px 0 12px 0;
+    border-radius: 12px;
+  }
   h2 {
     font-size: 1.05rem;
     font-weight: 800;
@@ -1298,6 +1327,15 @@ const MainCard = styled.div`
   flex-direction: column;
   overflow-x: hidden;
   box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  @media (max-width: 700px) {
+    padding: 12px 8px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    flex: 1;
+    min-height: 0;
+  }
 `;
 
 const FooterCard = styled.div`

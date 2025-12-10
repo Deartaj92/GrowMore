@@ -251,11 +251,12 @@ export const DashboardDateInput = styled.input`
   }
   
   @media (max-width: 768px) {
-    width: 100%;
+    flex: 1;
     min-width: 0;
-    padding: 0.625rem 0.875rem;
-    font-size: 0.85rem;
-    border-radius: 8px;
+    max-width: calc(50% - 0.2rem);
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 6px;
   }
 `;
 

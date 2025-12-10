@@ -157,8 +157,20 @@ const DateRangeContainer = styled.div`
   justify-content: flex-end;
   
   @media (max-width: 768px) {
-    gap: 0.5rem;
+    gap: 0.4rem;
     margin-bottom: 0.2rem;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+`;
+
+const DateSeparator = styled.span`
+  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#888' : '#666'};
+  font-weight: 500;
+  flex-shrink: 0;
+  
+  @media (max-width: 768px) {
+    font-size: 0.7rem;
   }
 `;
 
@@ -207,7 +219,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
           }}
           title="From Date"
         />
-        <span style={{ color: isDark ? '#888' : '#666', fontWeight: 500 }}>to</span>
+        <DateSeparator theme={theme}>to</DateSeparator>
         <DashboardDateInput
           type="date"
           value={admissionsDateTo}
