@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from './NoSessionsFound';
 import Loader from '../components/Loader';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
+import { Skeleton, Box, Grid } from '@mui/material';
 
 // Spinner animation
 const spinAnimation = `
@@ -1341,12 +1342,23 @@ const HalfLeaves: React.FC = () => {
     };
   }, [totalPersons, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, selectedClass, selectedSection, persons, user?.role, teacherClasses, classes, handleSave, handleRefresh, handleDeleteClick]);
 
+  // Set footer loading state when loading
+  useEffect(() => {
+    if (loadingSession || loadingPersons) {
+      setFooterContent({
+        visible: true,
+        loading: true,
+      });
+    } else {
+      // Clear footer loading when not loading (actual footer content will be set by the footer useEffect)
+      if (!selectedClass || !date) {
+        setFooterContent(null);
+      }
+    }
+  }, [loadingSession, loadingPersons, selectedClass, date, setFooterContent]);
+
   if (loadingSession) {
-    return (
-      <PageContainer theme={theme}>
-        <Loader />
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   if (!hasActiveSession) {
@@ -1571,9 +1583,30 @@ const HalfLeaves: React.FC = () => {
           // Show loading state
           if (loadingPersons) {
             return (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: 16 }}>
-                <Loader />
-              </div>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, width: '100%', paddingBottom: { xs: '5.5rem', sm: 0 } }}>
+                {Array.from({ length: isMobile ? 6 : 8 }, (_, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 1,
+                      bgcolor: 'background.paper',
+                      borderRadius: '12px',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      padding: 1,
+                    }}
+                  >
+                    <Skeleton variant="circular" width={40} height={40} />
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Skeleton variant="text" width={150} height={20} />
+                      <Skeleton variant="text" width={100} height={16} />
+                    </Box>
+                    <Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1 }} />
+                  </Box>
+                ))}
+              </Box>
             );
           }
 

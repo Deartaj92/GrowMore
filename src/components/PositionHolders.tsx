@@ -21,6 +21,7 @@ import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import Loader from './Loader';
 
 // Spinner animation
 const spin = keyframes`
@@ -1735,136 +1736,7 @@ const PositionHolders: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <>
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-            @keyframes pulse {
-              0%, 100% { 
-                opacity: 1;
-                transform: scale(1);
-              }
-              50% { 
-                opacity: 0.5;
-                transform: scale(0.8);
-              }
-            }
-          `}
-        </style>
-        <PageContainer>
-          <Header>
-            <HeaderTopRow>
-              <Title>
-                <TrophyIcon style={{ fontSize: 20 }} />
-                Position Holders
-              </Title>
-            </HeaderTopRow>
-          </Header>
-          
-          <MainContent>
-      <div style={{
-        display: 'flex',
-              flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '60vh',
-        width: '100%',
-              gap: '24px',
-      }}>
-              {/* Enhanced Loading Spinner */}
-        <div style={{
-                position: 'relative',
-                width: 64,
-                height: 64,
-              }}>
-                {/* Outer ring */}
-                <div style={{
-                  width: 64,
-                  height: 64,
-                  border: '4px solid #e0e7ff',
-                  borderTop: '4px solid #6366f1',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                }} />
-                
-                {/* Inner ring */}
-                <div style={{
-                  position: 'absolute',
-                  top: '8px',
-                  left: '8px',
-          width: 48,
-          height: 48,
-                  border: '3px solid #f3f4f6',
-                  borderTop: '3px solid #8b5cf6',
-          borderRadius: '50%',
-                  animation: 'spin 1.5s linear infinite reverse',
-                }} />
-                
-                {/* Center dot */}
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: 12,
-                  height: 12,
-                  backgroundColor: '#6366f1',
-                  borderRadius: '50%',
-                  animation: 'pulse 2s ease-in-out infinite',
-        }} />
-      </div>
-              
-              {/* Loading Text */}
-              <div style={{
-                textAlign: 'center',
-                color: '#6b7280',
-              }}>
-                <h3 style={{
-                  margin: '0 0 8px 0',
-                  fontSize: '1.2rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                }}>
-                  Loading Position Holders
-                </h3>
-                <p style={{
-                  margin: '0',
-                  fontSize: '0.9rem',
-                  color: '#6b7280',
-                }}>
-                  Calculating marks, percentages, and rankings...
-                </p>
-              </div>
-              
-              {/* Progress Dots */}
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                alignItems: 'center',
-              }}>
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 8,
-                      height: 8,
-                      backgroundColor: '#6366f1',
-                      borderRadius: '50%',
-                      animation: `pulse 1.5s ease-in-out infinite`,
-                      animationDelay: `${i * 0.2}s`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </MainContent>
-        </PageContainer>
-      </>
-    );
+    return <Loader />;
   }
 
   return (

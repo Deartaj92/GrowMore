@@ -33,6 +33,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/useToast';
 import { reportCardService } from '../services/reportCardService';
 import { ReportCard } from '../types/reportCards';
+import Loader from '../components/Loader';
 
 const ReportCards: React.FC = () => {
     const { user } = useAuth();
@@ -90,11 +91,7 @@ const ReportCards: React.FC = () => {
     });
 
     if (loading) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <div style={{ textAlign: 'center', padding: '48px 0' }}>Loading...</div>
-            </Box>
-        );
+        return <Loader />;
     }
 
     return (

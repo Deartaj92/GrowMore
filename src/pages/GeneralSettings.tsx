@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
+import Loader from '../components/Loader';
 import {
   Box,
   Typography,
@@ -362,15 +363,7 @@ const GeneralSettings: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <ThemeProvider theme={theme}>
-        <Container $theme={theme}>
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-            <CircularProgress />
-          </Box>
-        </Container>
-      </ThemeProvider>
-    );
+    return <Loader />;
   }
 
   return (

@@ -18,7 +18,9 @@ import {
   Radio,
   Button,
   CircularProgress,
+  Box,
 } from '@mui/material';
+import Loader from '../components/Loader';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -233,14 +235,7 @@ const FeeSettings: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <PageContainer theme={theme}>
-        <LoadingContainer theme={theme}>
-          <CircularProgress size={24} style={{ marginRight: 12 }} />
-          Loading settings...
-        </LoadingContainer>
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   return (

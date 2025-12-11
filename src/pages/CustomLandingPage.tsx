@@ -18,6 +18,7 @@ import { getStudentDisplayId, createStudentSlug } from '../utils/studentUtils';
 import { format } from 'date-fns';
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
 import { ExpandMore, ExpandLess, Receipt, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined, ExitToApp as ExitIcon } from '@mui/icons-material';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 // Capacitor import for mobile back button handling
 let CapacitorApp: any = null;
@@ -2356,6 +2357,49 @@ const CustomLandingPage: React.FC = () => {
 
   const { showToast } = useToast();
   const isWeb = checkIsWeb();
+  const { setFooterContent } = usePageFooter();
+
+  // Set footer content with real-time clock
+  useEffect(() => {
+    const updateFooter = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true 
+      });
+      const dateStr = now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      setFooterContent({
+        visible: true,
+        content: (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', width: '100%' }}>
+            <span>{timeStr}</span>
+            <span style={{ opacity: 0.6 }}>•</span>
+            <span>{dateStr}</span>
+          </div>
+        )
+      });
+    };
+
+    // Update immediately
+    updateFooter();
+
+    // Update every second for real-time clock
+    const interval = setInterval(updateFooter, 1000);
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(interval);
+      setFooterContent(null);
+    };
+  }, [setFooterContent]);
 
   // Sync ref with state
   useEffect(() => {
@@ -4684,7 +4728,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 0 && (
                           <>
                             {loadingLeaveRequests ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : leaveRequests.length === 0 ? (
                               <EmptyState>No leave requests found</EmptyState>
                             ) : (
@@ -4799,7 +4843,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 1 && (
                           <>
                             {loadingComplaintsHistory ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : complaintsHistory.length === 0 ? (
                               <EmptyState>No complaints found</EmptyState>
                             ) : (
@@ -4852,7 +4896,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 2 && (
                           <>
                             {loadingSuggestionsHistory ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : suggestionsHistory.length === 0 ? (
                               <EmptyState>No suggestions found</EmptyState>
                             ) : (
@@ -5488,7 +5532,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 0 && (
                           <>
                             {loadingLeaveRequests ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : leaveRequests.length === 0 ? (
                               <EmptyState>No leave requests found</EmptyState>
                             ) : (
@@ -5603,7 +5647,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 1 && (
                           <>
                             {loadingComplaintsHistory ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : complaintsHistory.length === 0 ? (
                               <EmptyState>No complaints found</EmptyState>
                             ) : (
@@ -5656,7 +5700,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 2 && (
                           <>
                             {loadingSuggestionsHistory ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : suggestionsHistory.length === 0 ? (
                               <EmptyState>No suggestions found</EmptyState>
                             ) : (
@@ -6222,7 +6266,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 0 && (
                           <>
                             {loadingLeaveRequests ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : leaveRequests.length === 0 ? (
                               <EmptyState>No leave requests found</EmptyState>
                             ) : (
@@ -6361,7 +6405,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 1 && (
                           <>
                             {loadingComplaintsHistory ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : complaintsHistory.length === 0 ? (
                               <EmptyState>No complaints found</EmptyState>
                             ) : (
@@ -6414,7 +6458,7 @@ const CustomLandingPage: React.FC = () => {
                         {historyActiveTab === 2 && (
                           <>
                             {loadingSuggestionsHistory ? (
-                              <EmptyState>Loading...</EmptyState>
+                              <Loader size="small" />
                             ) : suggestionsHistory.length === 0 ? (
                               <EmptyState>No suggestions found</EmptyState>
                             ) : (

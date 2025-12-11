@@ -29,6 +29,7 @@ import {
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Loader from './Loader';
 import {
   BarChart,
   Bar,
@@ -721,13 +722,6 @@ const Divider = styled.div`
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid ${({ theme }) => theme.BORDER};
-`;
-
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 400px;
 `;
 
 const ToTopButton = styled.button`
@@ -2277,18 +2271,7 @@ const ExaminationAnalytics: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <LoadingContainer>
-        <div style={{
-          width: 48,
-          height: 48,
-          border: '5px solid #e0e7ff',
-          borderTop: '5px solid #6366f1',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-      </LoadingContainer>
-    );
+    return <Loader />;
   }
 
   return (
@@ -2329,16 +2312,7 @@ const ExaminationAnalytics: React.FC = () => {
 
       <MainContent ref={mainContentRef}>
         {analyticsLoading ? (
-          <LoadingContainer>
-            <div style={{
-              width: 48,
-              height: 48,
-              border: '5px solid #e0e7ff',
-              borderTop: '5px solid #6366f1',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
-          </LoadingContainer>
+          <Loader size="small" />
         ) : !selectedExam ? (
           <div style={{ textAlign: 'center', padding: '48px', color: '#666' }}>
             Please select an examination to view analytics

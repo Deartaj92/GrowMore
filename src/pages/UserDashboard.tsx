@@ -11,6 +11,8 @@ import { styled as muiStyled } from '@mui/material/styles';
 import { format } from 'date-fns';
 import { App as CapacitorApp } from '@capacitor/app';
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
+import Loader from '../components/Loader';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 const Container = styled.div`
   width: 100%;
@@ -907,6 +909,7 @@ const UserDashboard: React.FC = () => {
   const { showToast } = useToast();
   const muiTheme = useTheme();
   const fullScreen = useMediaQuery(muiTheme.breakpoints.down('sm'));
+  const { setFooterContent } = usePageFooter();
   
   const [events, setEvents] = useState<Array<{
     id: number;
@@ -993,6 +996,7 @@ const UserDashboard: React.FC = () => {
   }>>([]);
   const [loadingComplaintsHistory, setLoadingComplaintsHistory] = useState(false);
   const [loadingSuggestionsHistory, setLoadingSuggestionsHistory] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Exit dialog state
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -1004,39 +1008,127 @@ const UserDashboard: React.FC = () => {
     showExitConfirmRef.current = showExitConfirm;
   }, [showExitConfirm]);
 
-  // Load events and active session on component mount
+  // Fetch initial data on component mount
   useEffect(() => {
-    if (user?.school_id) {
-      loadEvents();
-      loadActiveSession();
-    }
-  }, [user?.school_id]);
+    const fetchInitialData = async () => {
+      if (!user?.school_id) {
+        setInitialLoading(false);
+        return;
+      }
 
-  // Fetch staff gender for teachers
-  useEffect(() => {
-    const fetchStaffGender = async () => {
-      if (user?.staff_id && user?.school_id) {
-        try {
-          const { data, error } = await supabase
-            .from('staff')
-            .select('gender')
-            .eq('id', user.staff_id)
-            .eq('school_id', user.school_id)
-            .single();
-          
-          if (!error && data) {
-            setStaffGender(data.gender || '');
-          }
-        } catch (error) {
-          console.error('Error fetching staff gender:', error);
+      try {
+        const schoolId = user.school_id;
+        const userRole = user?.role || 'Guest';
+
+        // Fetch all initial data concurrently
+        const [
+          { data: activeSessionData, error: sessionError },
+          { data: eventsData, error: eventsError },
+          { data: staffGenderData, error: staffGenderError }
+        ] = await Promise.all([
+          // Fetch active session
+          supabase
+            .from('sessions')
+            .select('id')
+            .eq('is_active', true)
+            .eq('school_id', schoolId)
+            .maybeSingle(),
+          // Fetch events
+          supabase
+            .from('events')
+            .select('*')
+            .eq('school_id', schoolId)
+            .gte('end_date', new Date().toISOString().split('T')[0])
+            .order('start_date', { ascending: true })
+            .limit(10),
+          // Fetch staff gender (only if user has staff_id)
+          user?.staff_id
+            ? supabase
+                .from('staff')
+                .select('gender')
+                .eq('id', user.staff_id)
+                .eq('school_id', schoolId)
+                .single()
+            : Promise.resolve({ data: null, error: null })
+        ]);
+
+        // Handle active session
+        if (!sessionError && activeSessionData) {
+          setActiveSessionId(activeSessionData.id);
         }
-      } else {
-        setStaffGender('');
+
+        // Handle events
+        if (!eventsError && eventsData) {
+          const filteredEvents = eventsData.filter(event => {
+            if (!event.visible_to || event.visible_to.length === 0) return true;
+            return event.visible_to.includes(userRole);
+          });
+          setEvents(filteredEvents);
+        }
+
+        // Handle staff gender
+        if (!staffGenderError && staffGenderData) {
+          setStaffGender(staffGenderData.gender || '');
+        } else if (!user?.staff_id) {
+          setStaffGender('');
+        }
+      } catch (error) {
+        console.error('[UserDashboard] Error fetching initial data:', error);
+      } finally {
+        setInitialLoading(false);
       }
     };
-    
-    fetchStaffGender();
-  }, [user?.staff_id, user?.school_id]);
+
+    fetchInitialData();
+  }, [user?.school_id, user?.role, user?.staff_id]);
+
+  // Set footer content with real-time clock - only after initial loading completes
+  useEffect(() => {
+    // Don't set footer during initial loading
+    if (initialLoading) {
+      setFooterContent(null);
+      return;
+    }
+
+    const updateFooter = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true 
+      });
+      const dateStr = now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      setFooterContent({
+        visible: true,
+        content: (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', width: '100%' }}>
+            <span>{timeStr}</span>
+            <span style={{ opacity: 0.6 }}>•</span>
+            <span>{dateStr}</span>
+          </div>
+        )
+      });
+    };
+
+    // Update immediately
+    updateFooter();
+
+    // Update every second for real-time clock
+    const interval = setInterval(updateFooter, 1000);
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(interval);
+      setFooterContent(null);
+    };
+  }, [initialLoading, setFooterContent]);
 
   // Helper function to get gender-based title
   const getGenderTitle = (gender: string) => {
@@ -1061,6 +1153,7 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  // These functions are kept for potential future use but initial data is now loaded in fetchInitialData
   const loadActiveSession = async () => {
     if (!user?.school_id) return;
     try {
@@ -2097,6 +2190,11 @@ const UserDashboard: React.FC = () => {
     };
   }, [user?.role, isWeb]);
 
+  // Show loader during initial data fetch
+  if (initialLoading) {
+    return <Loader />;
+  }
+
   return (
     <Container>
       <WelcomeCard>
@@ -2344,7 +2442,7 @@ const UserDashboard: React.FC = () => {
                 {historyActiveTab === 0 && (
                   <>
                     {loadingLeaveRequests ? (
-                      <EmptyState>Loading...</EmptyState>
+                      <Loader size="small" />
                     ) : leaveRequests.length === 0 ? (
                       <EmptyState>No leave requests found</EmptyState>
                     ) : (
@@ -2436,7 +2534,7 @@ const UserDashboard: React.FC = () => {
                 {historyActiveTab === 1 && (
                   <>
                     {loadingComplaintsHistory ? (
-                      <EmptyState>Loading...</EmptyState>
+                      <Loader size="small" />
                     ) : complaintsHistory.length === 0 ? (
                       <EmptyState>No complaints found</EmptyState>
                     ) : (
@@ -2489,7 +2587,7 @@ const UserDashboard: React.FC = () => {
                 {historyActiveTab === 2 && (
                   <>
                     {loadingSuggestionsHistory ? (
-                      <EmptyState>Loading...</EmptyState>
+                      <Loader size="small" />
                     ) : suggestionsHistory.length === 0 ? (
                       <EmptyState>No suggestions found</EmptyState>
                     ) : (

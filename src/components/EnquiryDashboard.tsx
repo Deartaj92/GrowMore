@@ -30,6 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { EnquiryDashboardData, Enquiry, EnquiryFollowUp } from '../types/enquiry';
 import { CircularProgress, Button, TextField, FormControl, InputLabel, Select, MenuItem, Chip, Avatar, IconButton, Tooltip } from '@mui/material';
+import Loader from './Loader';
 
 // ===== STYLED COMPONENTS =====
 
@@ -541,14 +542,7 @@ const EnquiryDashboard: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <PageContainer theme={theme}>
-        <LoadingContainer>
-          <CircularProgress style={{ marginRight: '1rem' }} />
-          Loading enquiry dashboard...
-        </LoadingContainer>
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   if (error) {

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { supabase } from '../supabaseClient';
+import Loader from '../components/Loader';
 import {
   Save as SaveIcon,
   Visibility as VisibilityIcon,
@@ -383,11 +384,7 @@ const RenderSettings: React.FC = () => {
         </ContentCard>
 
             {renderSettingsLoading ? (
-              <ContentCard $theme={theme}>
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                  <CircularProgress />
-                </Box>
-              </ContentCard>
+              <Loader />
             ) : (
               <>
                 {/* Teacher Tab Content */}

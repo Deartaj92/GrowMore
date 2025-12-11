@@ -22,6 +22,7 @@ import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import Loader from '../components/Loader';
 
 const Container = styled.div`
   width: 100%;
@@ -2192,7 +2193,7 @@ const UserAnnouncements: React.FC = () => {
               />
             </SeenBySearchRow>
             <SeenByList>
-              {seenByLoading && <SeenByEmpty>Loading…</SeenByEmpty>}
+              {seenByLoading && <Loader size="small" />}
               {!seenByLoading && seenByError && <SeenByEmpty>{seenByError}</SeenByEmpty>}
               {!seenByLoading && !seenByError && filteredSeenByEntries.length === 0 && (
                 <SeenByEmpty>

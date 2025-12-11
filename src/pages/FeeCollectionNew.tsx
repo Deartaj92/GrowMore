@@ -13,7 +13,8 @@ import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { getStudentDisplayId, matchesStudentSearch, getSequenceNumber } from '../utils/studentUtils';
 import { ThemeProvider } from 'styled-components';
 import { useTheme as useMuiTheme, useMediaQuery } from '@mui/material';
-import { CircularProgress, TextField, Button, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, SelectChangeEvent } from '@mui/material';
+import { CircularProgress, TextField, Button, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, SelectChangeEvent, Grid } from '@mui/material';
+import Loader from '../components/Loader';
 
 // ===== STYLED COMPONENTS =====
 
@@ -445,132 +446,6 @@ const PaymentHistorySection = styled.div`
 `;
 
 const PaymentHistoryCard = styled(Card)`
-  margin-top: 1rem;
-`;
-
-// Loading and Error States
-const LoadingContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-`;
-
-// Skeleton Loading Components
-const SkeletonCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 1.5rem;
-  animation: pulse 1.5s ease-in-out infinite;
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-`;
-
-const SkeletonHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-`;
-
-const SkeletonIcon = styled.div`
-  width: 24px;
-  height: 24px;
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 4px;
-`;
-
-const SkeletonTitle = styled.div`
-  height: 24px;
-  width: 120px;
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 4px;
-`;
-
-const SkeletonTable = styled.div`
-  width: 100%;
-`;
-
-const SkeletonTableHeader = styled.div`
-  display: grid;
-  grid-template-columns: 10% 50% 20% 20%;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  margin-bottom: 0.5rem;
-`;
-
-const SkeletonTableRow = styled.div`
-  display: grid;
-  grid-template-columns: 10% 50% 20% 20%;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-`;
-
-const SkeletonCell = styled.div<{ $width?: string }>`
-  height: 16px;
-  width: ${({ $width }) => $width || '100%'};
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 4px;
-`;
-
-const SkeletonStudentInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-`;
-
-const SkeletonAvatar = styled.div`
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.BORDER};
-`;
-
-const SkeletonStudentDetails = styled.div`
-  flex: 1;
-`;
-
-const SkeletonStudentName = styled.div`
-  height: 20px;
-  width: 150px;
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-`;
-
-const SkeletonStudentInfoText = styled.div`
-  height: 16px;
-  width: 200px;
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 4px;
-  margin-bottom: 0.25rem;
-`;
-
-const SkeletonForm = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-const SkeletonFormField = styled.div`
-  height: 40px;
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-`;
-
-const SkeletonButton = styled.div`
-  height: 40px;
-  background: ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
   margin-top: 1rem;
 `;
 
@@ -2441,70 +2316,7 @@ const FeeCollectionNew: React.FC = () => {
   }, [selectedStudent, totalRemainingAmount, isCollecting]);
 
   if (loading) {
-    return (
-      <ThemeProvider theme={theme}>
-        <PageContainer>
-          {/* Header Skeleton */}
-          <Header>
-            <Title>Fee Collection</Title>
-            <SearchContainer>
-              <SearchIcon style={{ color: (theme as any).TEXT_SECONDARY }} />
-              <SearchInput placeholder="Search by name or ID..." disabled />
-            </SearchContainer>
-          </Header>
-
-          {/* Main Content Skeleton */}
-          <ContentGrid>
-            {/* Fee Summary Skeleton */}
-            <SkeletonCard>
-              <SkeletonHeader>
-                <SkeletonIcon />
-                <SkeletonTitle />
-              </SkeletonHeader>
-              <SkeletonTable>
-                <SkeletonTableHeader>
-                  <SkeletonCell $width="30px" />
-                  <SkeletonCell $width="200px" />
-                  <SkeletonCell $width="80px" />
-                  <SkeletonCell $width="100px" />
-                </SkeletonTableHeader>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <SkeletonTableRow key={i}>
-                    <SkeletonCell $width="30px" />
-                    <SkeletonCell $width="200px" />
-                    <SkeletonCell $width="80px" />
-                    <SkeletonCell $width="100px" />
-                  </SkeletonTableRow>
-                ))}
-              </SkeletonTable>
-            </SkeletonCard>
-
-            {/* Student Details Skeleton */}
-            <SkeletonCard>
-              <SkeletonHeader>
-                <SkeletonIcon />
-                <SkeletonTitle />
-              </SkeletonHeader>
-              <SkeletonStudentInfo>
-                <SkeletonAvatar />
-                <SkeletonStudentDetails>
-                  <SkeletonStudentName />
-                  <SkeletonStudentInfoText />
-                  <SkeletonStudentInfoText />
-                </SkeletonStudentDetails>
-              </SkeletonStudentInfo>
-              <SkeletonForm>
-                <SkeletonFormField />
-                <SkeletonFormField />
-                <SkeletonFormField />
-                <SkeletonFormField />
-                <SkeletonButton />
-              </SkeletonForm>
-            </SkeletonCard>
-          </ContentGrid>
-        </PageContainer>
-      </ThemeProvider>
-    );
+    return <Loader />;
   }
 
   if (!loading && students.length === 0) {
@@ -2598,22 +2410,7 @@ const FeeCollectionNew: React.FC = () => {
             <TableContainer>
               {selectedStudent ? (
                 feeLoading ? (
-                  <SkeletonTable>
-                    <SkeletonTableHeader>
-                      <SkeletonCell $width="30px" />
-                      <SkeletonCell $width="200px" />
-                      <SkeletonCell $width="80px" />
-                      <SkeletonCell $width="100px" />
-                    </SkeletonTableHeader>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <SkeletonTableRow key={i}>
-                        <SkeletonCell $width="30px" />
-                        <SkeletonCell $width="200px" />
-                        <SkeletonCell $width="80px" />
-                        <SkeletonCell $width="100px" />
-                      </SkeletonTableRow>
-                    ))}
-                  </SkeletonTable>
+                  <Loader />
                 ) : feeInvoices.length > 0 ? (
                   <>
                     <TableWrapper style={{
@@ -2953,7 +2750,7 @@ const FeeCollectionNew: React.FC = () => {
               </CardTitle>
 
               {paymentHistoryLoading ? (
-                <LoadingContainer>Loading payment history...</LoadingContainer>
+                <Loader size="small" />
               ) : paymentHistory.length > 0 ? (
                 <TableWrapper>
                   <Table>

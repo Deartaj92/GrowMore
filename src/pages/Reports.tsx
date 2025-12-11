@@ -25,6 +25,7 @@ import {
     Theme,
     Skeleton
 } from '@mui/material';
+import Loader from '../components/Loader';
 import { 
     Add as AddIcon, 
     FilterList as FilterIcon, 
@@ -440,35 +441,6 @@ const WarningAvatar = styled(Avatar)(({ theme }) => ({
 }));
 
 // Skeleton component
-const ReportsSkeleton: React.FC = () => (
-    <Box sx={{ p: 3 }}>
-        <Box sx={{ mb: 4 }}>
-            <Skeleton variant="text" width="60%" height={40} />
-            <Skeleton variant="text" width="40%" height={24} sx={{ mt: 1 }} />
-        </Box>
-        <Grid container spacing={3}>
-            {[1, 2, 3].map((item) => (
-                <Grid item xs={12} key={item}>
-                    <Card>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Skeleton variant="text" width="30%" height={24} />
-                                <Skeleton variant="circular" width={24} height={24} />
-                            </Box>
-                            <Skeleton variant="text" width="100%" height={20} />
-                            <Skeleton variant="text" width="80%" height={20} />
-                            <Skeleton variant="text" width="60%" height={20} />
-                            <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                                <Skeleton variant="rounded" width={80} height={24} />
-                                <Skeleton variant="rounded" width={60} height={24} />
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            ))}
-        </Grid>
-    </Box>
-);
 
 // Footer components
 const FooterContainer = styled(Box)`
@@ -776,8 +748,14 @@ export const Reports = (): JSX.Element => {
         );
     }, [categories, reports]);
 
-    // Set footer content for global footer
+    // Set footer content for global footer - only after loading completes
     useEffect(() => {
+        // Don't set footer during loading - footer should only show after content loads
+        if (loading) {
+            setFooterContent(null);
+            return;
+        }
+
         if (reports.length > 0) {
             const FooterContentComponent = React.memo(() => {
                 const isDark = muiTheme.palette.mode === 'dark';
@@ -846,7 +824,7 @@ export const Reports = (): JSX.Element => {
         } else {
             setFooterContent(null);
         }
-    }, [reports, isMobile, muiTheme, setFooterContent]);
+    }, [loading, reports, isMobile, muiTheme, setFooterContent]);
 
     // Check if user has school_id - MUST be after all hooks
     if (!user?.school_id) {
@@ -1125,7 +1103,7 @@ export const Reports = (): JSX.Element => {
     }
 
     if (loading) {
-        return <ReportsSkeleton />;
+        return <Loader />;
     }
 
     if (sortedReports.unresolved.length === 0 && sortedReports.resolved.length === 0) {

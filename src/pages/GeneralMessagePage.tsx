@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { useToast } from '../components/useToast';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import Loader from '../components/Loader';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -1332,6 +1333,10 @@ const GeneralMessagePage: React.FC = () => {
         };
     }, [setFooterContent]);
 
+    if (loading) {
+        return <Loader />;
+    }
+
     return (
         <Container theme={theme}>
             <Header theme={theme}>
@@ -1416,9 +1421,7 @@ const GeneralMessagePage: React.FC = () => {
                             </div>
                         </StudentListHeader>
                         <StudentListContent theme={theme}>
-                            {loading ? (
-                                <LoadingText theme={theme}>Loading...</LoadingText>
-                            ) : filteredStudents.length > 0 ? (
+                            {filteredStudents.length > 0 ? (
                                 filteredStudents.map(student => (
                                     <StudentItem
                                         key={student.id}

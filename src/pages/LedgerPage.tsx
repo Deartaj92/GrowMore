@@ -660,109 +660,6 @@ const EmptyStateSubtext = styled.div`
   opacity: 0.7;
 `;
 
-// Skeleton Components
-const SkeletonBox = styled.div<{ $width?: string; $height?: string }>`
-  background: ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  border-radius: 8px;
-  animation: shimmer 1.5s infinite;
-  width: ${({ $width }) => $width || '100%'};
-  height: ${({ $height }) => $height || '20px'};
-  
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
-  }
-  
-  background: linear-gradient(
-    90deg,
-    ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.03)'} 0%,
-    ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.08)'} 50%,
-    ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.03)'} 100%
-  );
-  background-size: 1000px 100%;
-`;
-
-const LedgerSkeleton: React.FC<{ theme: any }> = ({ theme }) => (
-  <PageContainer theme={theme}>
-    <Header theme={theme}>
-      <SkeletonBox $width="150px" $height="28px" />
-      <SkeletonBox $width="100px" $height="36px" />
-    </Header>
-
-    <StatsGrid theme={theme}>
-      {[1, 2, 3, 4].map(i => (
-        <StatCard key={i} theme={theme}>
-          <SkeletonBox $width="100px" $height="12px" />
-          <SkeletonBox $width="120px" $height="24px" />
-        </StatCard>
-      ))}
-    </StatsGrid>
-
-    <FiltersContainer theme={theme}>
-      <SkeletonBox $width="100%" $height="40px" />
-      <SkeletonBox $width="150px" $height="40px" />
-      <SkeletonBox $width="150px" $height="40px" />
-      <SkeletonBox $width="150px" $height="40px" />
-      <SkeletonBox $width="150px" $height="40px" />
-    </FiltersContainer>
-
-    <TableContainer theme={theme}>
-      <TableWrapper theme={theme}>
-        <Table>
-          <TableHeader theme={theme}>
-            <tr>
-              <TableHeaderCell theme={theme} style={{ width: '40px' }}></TableHeaderCell>
-              {['Student ID', 'Student Name', 'Class/Section', 'Total Invoiced', 'Total Paid', 'Outstanding'].map((header, i) => (
-                <TableHeaderCell key={i} theme={theme}>
-                  <SkeletonBox $width="100px" $height="16px" />
-                </TableHeaderCell>
-              ))}
-            </tr>
-          </TableHeader>
-          <TableBody theme={theme}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(row => (
-              <TableRow key={row} theme={theme}>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="32px" $height="32px" />
-                </TableCell>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="80px" $height="16px" />
-                </TableCell>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="150px" $height="16px" />
-                </TableCell>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="120px" $height="16px" />
-                </TableCell>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="100px" $height="16px" />
-                </TableCell>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="100px" $height="16px" />
-                </TableCell>
-                <TableCell theme={theme}>
-                  <SkeletonBox $width="100px" $height="16px" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableWrapper>
-    </TableContainer>
-  </PageContainer>
-);
 
 const PaginationContainer = styled.div`
   display: flex;
@@ -1265,7 +1162,7 @@ export default function LedgerPage() {
   }, [filteredEntries.length, startIndex, endIndex, currentPage, totalPages, isMobile, theme, setFooterContent]);
 
   if (isLoadingData) {
-    return <LedgerSkeleton theme={theme} />;
+    return <Loader />;
   }
 
   return (

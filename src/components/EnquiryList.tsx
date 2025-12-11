@@ -22,6 +22,7 @@ import { enquiryService } from '../services/enquiryService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { Enquiry, EnquiryType, EnquiryStatus, EnquiryFilters } from '../types/enquiry';
+import Loader from './Loader';
 import {
   TextField,
   Button,
@@ -616,13 +617,7 @@ const EnquiryList: React.FC = () => {
   };
 
   if (loading && enquiries.length === 0) {
-    return (
-      <PageContainer theme={theme}>
-        <LoadingContainer>
-          Loading enquiries...
-        </LoadingContainer>
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   if (error) {

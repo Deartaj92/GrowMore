@@ -115,7 +115,9 @@ const FeePlansContent: React.FC<{ theme: typeof darkTheme }> = ({ theme: customT
   }, [user?.school_id]);
 
 
-  if (loading) return <Loader />;
+  if (loading) {
+    return <Loader />;
+  }
 
   if (sessions.length === 0) {
     return <NoSessionsFound />;

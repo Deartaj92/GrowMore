@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import NoSessionsFound from './NoSessionsFound';
 import Loader from './Loader';
 import { useProgress } from '../components/Layout';
+import { ThemeContext, darkTheme, lightTheme } from './Layout';
 
 const Container = styled.div`
   max-width: 100vw;
@@ -476,241 +477,6 @@ interface Holiday {
   end_date: string;
 }
 
-// --- Dashboard-style Skeleton Loading Components for StaffAttendanceReport ---
-const StaffAttendanceReportSkeletonContainer = styled.div`
-  width: 100%;
-  height: 100%;
-  padding: clamp(8px, 2vw, 24px);
-  box-sizing: border-box;
-  @media (max-width: 900px) {
-    padding: clamp(6px, 2vw, 12px);
-  }
-  @media (max-width: 600px) {
-    padding: 8px 10px;
-    padding-bottom: 2.5rem;
-  }
-`;
-
-const SkeletonFilterBar = styled.div`
-  display: flex;
-  gap: 1.1rem;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 1.1rem;
-  padding: 0.3rem 1.2rem;
-  border-radius: 18px;
-  background: ${({ theme }) => theme.CARD};
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  min-height: 48px;
-  flex-wrap: wrap;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.7rem;
-    padding: 0.7rem 0.5rem;
-  }
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-  }
-`;
-
-const SkeletonFilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 110px;
-  flex: 1 1 120px;
-  @media (max-width: 700px) {
-    min-width: 0;
-    width: 100%;
-    flex: none;
-  }
-`;
-
-const SkeletonLabel = styled.div`
-  width: 60px;
-  height: 16px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin-bottom: 4px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonInput = styled.div`
-  width: 100%;
-  height: 40px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonSummaryGrid = styled.div`
-  display: flex;
-  gap: 1.2rem;
-  margin-bottom: 1.2rem;
-  flex-wrap: wrap;
-`;
-
-const SkeletonSummaryCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  padding: 1.2rem 2.2rem;
-  min-width: 220px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
-`;
-
-const SkeletonSummaryTitle = styled.div`
-  width: 80px;
-  height: 16px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonSummaryValue = styled.div`
-  width: 60px;
-  height: 28px;
-  border-radius: 6px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonTableWrapper = styled.div`
-  width: 100%;
-  overflow-x: auto;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  margin-top: 1.2rem;
-`;
-
-const SkeletonTable = styled.div`
-  width: 100%;
-  min-width: 900px;
-  display: table;
-  border-collapse: collapse;
-`;
-
-const SkeletonTableRow = styled.div`
-  display: table-row;
-`;
-
-const SkeletonTableCell = styled.div`
-  display: table-cell;
-  padding: 0.18rem 0.2rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  min-width: 34px;
-  max-width: 36px;
-  height: 32px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonStaffNameCell = styled(SkeletonTableCell)`
-  min-width: 120px;
-  max-width: 220px;
-`;
-
-const SkeletonTableHeader = styled(SkeletonTableCell)`
-  background: ${({ theme }) => theme.CARD};
-  height: 28px;
-`;
-
-const skeletonStaffRows = 7;
-const skeletonDays = 20;
-
-const StaffAttendanceReportSkeleton: React.FC = () => (
-  <StaffAttendanceReportSkeletonContainer>
-    <SkeletonFilterBar>
-      {[1,2,3,4].map(i => (
-        <SkeletonFilterGroup key={i}>
-          <SkeletonLabel />
-          <SkeletonInput />
-        </SkeletonFilterGroup>
-      ))}
-    </SkeletonFilterBar>
-    <SkeletonSummaryGrid>
-      {[1,2].map(i => (
-        <SkeletonSummaryCard key={i}>
-          <SkeletonSummaryTitle />
-          <SkeletonSummaryValue />
-        </SkeletonSummaryCard>
-      ))}
-    </SkeletonSummaryGrid>
-    <SkeletonTableWrapper>
-      <SkeletonTable>
-        <SkeletonTableRow>
-          <SkeletonTableHeader style={{ minWidth: 28, maxWidth: 28 }} />
-          <SkeletonTableHeader style={{ minWidth: 28, maxWidth: 28 }} />
-          <SkeletonTableHeader style={{ minWidth: 120, maxWidth: 220 }} />
-          {Array.from({ length: skeletonDays }).map((_, i) => (
-            <SkeletonTableHeader key={i} />
-          ))}
-        </SkeletonTableRow>
-        {Array.from({ length: skeletonStaffRows }).map((_, rowIdx) => (
-          <SkeletonTableRow key={rowIdx}>
-            <SkeletonTableCell style={{ minWidth: 28, maxWidth: 28 }} />
-            <SkeletonTableCell style={{ minWidth: 28, maxWidth: 28 }} />
-            <SkeletonStaffNameCell />
-            {Array.from({ length: skeletonDays }).map((_, i) => (
-              <SkeletonTableCell key={i} />
-            ))}
-          </SkeletonTableRow>
-        ))}
-      </SkeletonTable>
-    </SkeletonTableWrapper>
-  </StaffAttendanceReportSkeletonContainer>
-);
 
 const StaffAttendanceReport: React.FC = () => {
   const theme = useTheme();
@@ -1715,16 +1481,13 @@ const StaffAttendanceReport: React.FC = () => {
 
   // Show skeleton loader only for initial session loading
   if (loadingSession || loading) {
-    return <StaffAttendanceReportSkeleton />;
+    return <Loader />;
   }
 
   if (!hasActiveSession) {
     return <NoSessionsFound />;
   }
 
-  if (loading) {
-    return <Loader />;
-  }
 
   if (!loading && hasAnyStaff === false) {
     return (

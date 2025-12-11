@@ -28,6 +28,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { Enquiry, EnquiryFollowUp, EnquiryAttachment, EnquiryStatus } from '../types/enquiry';
 import FollowUpForm from './FollowUpForm';
+import Loader from './Loader';
 import {
   Button,
   Chip,

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { usePageFooter } from '../../contexts/PageFooterContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { darkTheme, lightTheme } from '../../constants';
 
-const FooterContainer = styled.footer<{ visible: boolean; $keyboardOffset: number }>`
+const FooterContainer = styled.footer<{ visible: boolean }>`
   flex-shrink: 0;
   display: ${({ visible }) => visible ? 'flex' : 'none'};
   align-items: center;
@@ -15,10 +15,11 @@ const FooterContainer = styled.footer<{ visible: boolean; $keyboardOffset: numbe
   min-height: 36px;
   padding: 0.5rem 1rem;
   z-index: 100;
-  position: sticky;
-  bottom: ${({ $keyboardOffset }) => $keyboardOffset}px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  transition: bottom 0.2s ease-out;
   
   @media (max-width: 700px) {
     padding: 0.4rem 0.75rem;
@@ -36,134 +37,55 @@ const FooterContent = styled.div`
   }
 `;
 
-const GlobalFooter: React.FC = () => {
+interface GlobalFooterProps {
+  onHeightChange?: (height: number) => void;
+}
+
+const GlobalFooter: React.FC<GlobalFooterProps> = ({ onHeightChange }) => {
   const { footerContent } = usePageFooter();
   const { theme } = useTheme();
   const themeObj = theme === 'dark' ? darkTheme : lightTheme;
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
-  const lastHeightRef = useRef<number>(window.innerHeight);
+  const footerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (!isMobile) {
-      setKeyboardOffset(0);
+    if (!footerRef.current || !footerContent || footerContent.visible === false) {
+      onHeightChange?.(0);
       return;
     }
 
-    let keyboardHeight = 0;
-    let isInputFocused = false;
-
-    // Function to calculate keyboard height
-    const calculateKeyboardHeight = () => {
-      const currentHeight = window.innerHeight;
-      const heightDiff = lastHeightRef.current - currentHeight;
-      
-      // If height decreased significantly (more than 150px), keyboard is likely open
-      if (heightDiff > 150) {
-        keyboardHeight = heightDiff;
-        return keyboardHeight;
-      }
-      
-      // Use Visual Viewport API if available (more accurate)
-      if (window.visualViewport) {
-        const viewportHeight = window.visualViewport.height;
-        const windowHeight = window.innerHeight;
-        const diff = windowHeight - viewportHeight;
-        
-        if (diff > 150) {
-          keyboardHeight = diff;
-          return keyboardHeight;
+    const updateHeight = () => {
+      if (footerRef.current) {
+        const height = footerRef.current.offsetHeight;
+        onHeightChange?.(height);
         }
-      }
-      
-      keyboardHeight = 0;
-      return 0;
     };
 
-    // Handle window resize (keyboard show/hide)
-    const handleResize = () => {
-      if (!isInputFocused) {
-        setKeyboardOffset(0);
-        lastHeightRef.current = window.innerHeight;
-        return;
-      }
+    // Initial measurement
+    updateHeight();
 
-      const height = calculateKeyboardHeight();
-      setKeyboardOffset(height);
-      lastHeightRef.current = window.innerHeight;
-    };
+    // Use ResizeObserver to track height changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeight();
+    });
 
-    // Handle Visual Viewport changes (more accurate for mobile keyboards)
-    const handleVisualViewportResize = () => {
-      if (!isInputFocused || !window.visualViewport) return;
-      
-      const viewportHeight = window.visualViewport.height;
-      const windowHeight = window.innerHeight;
-      const diff = windowHeight - viewportHeight;
-      
-      if (diff > 150) {
-        setKeyboardOffset(diff);
-      } else {
-        setKeyboardOffset(0);
-      }
-    };
+    resizeObserver.observe(footerRef.current);
 
-    // Handle input focus
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable
-      ) {
-        isInputFocused = true;
-        // Small delay to let keyboard appear
-        setTimeout(() => {
-          const height = calculateKeyboardHeight();
-          setKeyboardOffset(height);
-        }, 300);
-      }
-    };
-
-    // Handle input blur
-    const handleBlur = () => {
-      isInputFocused = false;
-      // Delay to let keyboard hide
-      setTimeout(() => {
-        setKeyboardOffset(0);
-      }, 100);
-    };
-
-    // Add event listeners
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('focusin', handleFocus);
-    window.addEventListener('focusout', handleBlur);
-    
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleVisualViewportResize);
-    }
-
-    // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('focusin', handleFocus);
-      window.removeEventListener('focusout', handleBlur);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
-      }
+      resizeObserver.disconnect();
     };
-  }, [isMobile]);
+  }, [footerContent, onHeightChange]);
 
-  if (!footerContent || footerContent.visible === false) {
+  // Don't show footer if it's not visible or if it's in loading state
+  // Footer should only show after content has loaded
+  if (!footerContent || footerContent.visible === false || footerContent.loading === true) {
     return null;
   }
 
   return (
     <FooterContainer 
+      ref={footerRef}
       theme={themeObj} 
       visible={!!footerContent.visible}
-      $keyboardOffset={keyboardOffset}
     >
       <FooterContent theme={themeObj}>
         {footerContent.content}

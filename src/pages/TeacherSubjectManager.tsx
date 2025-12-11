@@ -32,6 +32,7 @@ import {
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import NoTeachersFound from '../components/NoTeachersFound';
+import Loader from '../components/Loader';
 
 // ============================================
 // PART 1: CONTAINER & HEADER
@@ -834,92 +835,107 @@ const TeacherSubjectManager = () => {
   const [sections, setSections] = useState<{ id: number; name: string; class_id: number }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(true);
 
+  // Fetch all initial data
   useEffect(() => {
-    if (user?.school_id) {
-      fetchClassSubjects();
-      fetchTeacherClassSubjects();
-      fetchClasses();
-      fetchSections();
-    }
-  }, [user?.school_id]);
+    const fetchInitialData = async () => {
+      if (!user?.school_id) {
+        setInitialLoading(false);
+        return;
+      }
 
-  useEffect(() => {
-    if (classes.length > 0 && user?.school_id) {
-      fetchTeachers();
-    }
-  }, [classes, user?.school_id]);
+      try {
+        // Fetch all data in parallel
+        const [classesResult, sectionsResult, classSubjectsResult, teacherClassSubjectsResult] = await Promise.all([
+          supabase
+            .from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', user.school_id),
+          supabase
+            .from('sections')
+            .select('id, name, class_id')
+            .eq('school_id', user.school_id),
+          supabase
+            .from('class_subjects')
+            .select('id, class_id, subject_id, classes (name, has_sections), subjects (name, code)')
+            .eq('school_id', user.school_id),
+          supabase
+            .from('teacher_class_subjects')
+            .select('*, class_subjects (id, classes (name, has_sections), subjects (name, code)), staff (name)')
+            .eq('school_id', user.school_id)
+        ]);
 
-  const fetchClasses = async () => {
-    if (!user?.school_id) return;
-    const { data, error } = await supabase
-      .from('classes')
-      .select('id, name, has_sections')
-      .eq('school_id', user.school_id);
-    if (!error && data) setClasses(data);
-  };
+        // Set classes
+        if (!classesResult.error && classesResult.data) {
+          setClasses(classesResult.data);
+        }
 
-  const fetchSections = async () => {
-    if (!user?.school_id) return;
-    const { data, error } = await supabase
-      .from('sections')
-      .select('id, name, class_id')
-      .eq('school_id', user.school_id);
-    if (!error && data) setSections(data);
-  };
+        // Set sections
+        if (!sectionsResult.error && sectionsResult.data) {
+          setSections(sectionsResult.data);
+        }
 
-  const fetchTeachers = async () => {
-    if (!user?.school_id) return;
-    const { data, error } = await supabase
-      .from('staff')
-      .select(`
-        id,
-        name,
-        role,
-        sections:sections(id, name, class_id, teacher_id, classes(id, name))
-      `)
-      .eq('role', 'Teacher')
-      .eq('school_id', user.school_id)
-      .order('name');
+        // Set class subjects
+        if (!classSubjectsResult.error && classSubjectsResult.data) {
+          const fixed = classSubjectsResult.data.map(cs => ({
+            ...cs,
+            classes: Array.isArray(cs.classes) ? cs.classes[0] : cs.classes,
+            subjects: Array.isArray(cs.subjects) ? cs.subjects[0] : cs.subjects,
+          }));
+          setClassSubjects(fixed);
+        } else if (classSubjectsResult.error) {
+          showToast('Error fetching class-subjects', 'error');
+        }
 
-    if (error) {
-      showToast('Error fetching teachers', 'error');
-      return;
-    }
+        // Set teacher class subjects
+        if (!teacherClassSubjectsResult.error && teacherClassSubjectsResult.data) {
+          setTeacherClassSubjects(teacherClassSubjectsResult.data);
+        } else if (teacherClassSubjectsResult.error) {
+          showToast('Error fetching assignments', 'error');
+        }
 
-    const getClassName = (id: number) => classes.find(c => c.id === id)?.name || 'Unknown';
+        // Fetch teachers after classes are loaded
+        if (classesResult.data && classesResult.data.length > 0) {
+          const { data: teachersData, error: teachersError } = await supabase
+            .from('staff')
+            .select(`
+              id,
+              name,
+              role,
+              sections:sections(id, name, class_id, teacher_id, classes(id, name))
+            `)
+            .eq('role', 'Teacher')
+            .eq('school_id', user.school_id)
+            .order('name');
 
-    const transformedData = (data || []).map(teacher => ({
-      ...teacher,
-      section: Array.isArray(teacher.sections)
-        ? teacher.sections
-            .filter(sec => sec.teacher_id === teacher.id)
-            .map(sec => ({
-              class_name: getClassName(sec.class_id),
-              section_name: sec.name || 'Unknown'
-            }))
-        : null
-    })) as Teacher[];
-    setTeachers(transformedData);
-  };
+          if (!teachersError && teachersData) {
+            const getClassName = (id: number) => classesResult.data.find(c => c.id === id)?.name || 'Unknown';
+            const transformedData = teachersData.map(teacher => ({
+              ...teacher,
+              section: Array.isArray(teacher.sections)
+                ? teacher.sections
+                    .filter(sec => sec.teacher_id === teacher.id)
+                    .map(sec => ({
+                      class_name: getClassName(sec.class_id),
+                      section_name: sec.name || 'Unknown'
+                    }))
+                : null
+            })) as Teacher[];
+            setTeachers(transformedData);
+          } else if (teachersError) {
+            showToast('Error fetching teachers', 'error');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
 
-  const fetchClassSubjects = async () => {
-    if (!user?.school_id) return;
-    const { data, error } = await supabase
-      .from('class_subjects')
-      .select('id, class_id, subject_id, classes (name, has_sections), subjects (name, code)')
-      .eq('school_id', user.school_id);
-    if (error) {
-      showToast('Error fetching class-subjects', 'error');
-      return;
-    }
-    const fixed = (data || []).map(cs => ({
-      ...cs,
-      classes: Array.isArray(cs.classes) ? cs.classes[0] : cs.classes,
-      subjects: Array.isArray(cs.subjects) ? cs.subjects[0] : cs.subjects,
-    }));
-    setClassSubjects(fixed);
-  };
+    fetchInitialData();
+  }, [user?.school_id, showToast]);
 
   const fetchTeacherClassSubjects = async () => {
     if (!user?.school_id) return;
@@ -1283,6 +1299,10 @@ const TeacherSubjectManager = () => {
       setFooterContent(null);
     };
   }, [stats.totalTeachers, stats.assigned, stats.classes, theme, setFooterContent]);
+
+  if (initialLoading) {
+    return <Loader />;
+  }
 
   if (!user?.school_id) {
     return (

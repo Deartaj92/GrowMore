@@ -27,6 +27,7 @@ import {
 import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell, Legend } from 'recharts';
+import Loader from './Loader';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -684,22 +685,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
   }, [analyticsData?.classWiseData, checkScrollPosition]);
 
   if (isLoadingData) {
-    return (
-      <PageContainer theme={theme} className={className}>
-        <Header theme={theme}>
-          <SkeletonBox $width="200px" $height="28px" />
-          <SkeletonBox $width="100px" $height="36px" />
-        </Header>
-        <StatsGrid theme={theme}>
-          {[1, 2, 3, 4].map(i => (
-            <StatCard key={i} theme={theme}>
-              <SkeletonBox $width="80px" $height="14px" />
-              <SkeletonBox $width="120px" $height="24px" />
-            </StatCard>
-          ))}
-        </StatsGrid>
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   if (!analyticsData) {
@@ -1270,39 +1256,5 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
     </PageContainer>
   );
 };
-
-// Skeleton Components
-const SkeletonBox = styled.div<{ $width?: string; $height?: string }>`
-  background: ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  border-radius: 8px;
-  animation: shimmer 1.5s infinite;
-  width: ${({ $width }) => $width || '100%'};
-  height: ${({ $height }) => $height || '20px'};
-  
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
-  }
-  
-  background: linear-gradient(
-    90deg,
-    ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.03)'} 0%,
-    ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.08)'} 50%,
-    ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.03)'} 100%
-  );
-  background-size: 1000px 100%;
-`;
 
 export default FeeAnalytics;

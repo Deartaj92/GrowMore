@@ -32,6 +32,7 @@ import { Textfit } from '@techstack/react-textfit';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Loader from './Loader';
 
 // Interfaces
 interface Class {
@@ -2258,24 +2259,7 @@ const MasterSheetManager: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '60vh',
-        width: '100%',
-      }}>
-        <div style={{
-          width: 48,
-          height: 48,
-          border: '5px solid #e0e7ff',
-          borderTop: '5px solid #6366f1',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }} />
-      </div>
-    );
+    return <Loader />;
   }
 
   return (

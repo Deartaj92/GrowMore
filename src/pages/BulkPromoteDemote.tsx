@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import styled, { useTheme } from 'styled-components';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import styled, { useTheme, keyframes } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { School as SchoolIcon } from '@mui/icons-material';
+import { Box, Grid } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
-import { darkTheme, lightTheme, useProgress } from '../components/Layout';
+import { darkTheme, lightTheme, useProgress, ThemeContext } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
@@ -833,210 +834,6 @@ const StudentListItemName = styled.span`
   font-size: 0.9rem;
 `;
 
-// Skeleton loading components
-const SkeletonHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-`;
-
-const SkeletonIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonTitle = styled.div`
-  width: 300px;
-  height: 28px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonControlPanel = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-`;
-
-const SkeletonControlGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const SkeletonField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const SkeletonLabel = styled.div`
-  width: 80px;
-  height: 14px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonSelect = styled.div`
-  width: 100%;
-  height: 44px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonStudentsGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-  margin-bottom: 1.5rem;
-`;
-
-const SkeletonStudentsCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  overflow: hidden;
-`;
-
-const SkeletonCardHeader = styled.div`
-  padding: 1rem 1.5rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8fafc'};
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const SkeletonCardTitle = styled.div`
-  width: 120px;
-  height: 16px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonCount = styled.div`
-  width: 40px;
-  height: 20px;
-  border-radius: 10px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonTable = styled.div`
-  padding: 1rem;
-`;
-
-const SkeletonTableRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-`;
-
-const SkeletonCheckbox = styled.div`
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonAvatar = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.ACCENT + '22'};
-`;
-
-const SkeletonText = styled.div<{ width?: string }>`
-  width: ${({ width }) => width || '100px'};
-  height: 14px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const SkeletonActionsPanel = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-`;
-
-const SkeletonButton = styled.div`
-  width: 120px;
-  height: 40px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-
-const PageSkeleton: React.FC = () => {
-  return (
-    <Container>
-      <SkeletonHeader>
-        <SkeletonIcon />
-        <SkeletonTitle />
-      </SkeletonHeader>
-      
-      <SkeletonControlPanel>
-        <SkeletonControlGrid>
-          {[1,2,3,4].map(i => (
-            <SkeletonField key={i}>
-              <SkeletonLabel />
-              <SkeletonSelect />
-            </SkeletonField>
-          ))}
-        </SkeletonControlGrid>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-          <SkeletonSelect style={{ width: '100px', height: '36px' }} />
-        </div>
-      </SkeletonControlPanel>
-      
-      <SkeletonStudentsGrid>
-        {[1,2].map(i => (
-          <SkeletonStudentsCard key={i}>
-            <SkeletonCardHeader>
-              <SkeletonCardTitle />
-              <SkeletonCount />
-            </SkeletonCardHeader>
-            <SkeletonTable>
-            {[1,2,3,4,5].map(j => (
-                <SkeletonTableRow key={j}>
-                  <SkeletonCheckbox />
-                  <SkeletonText width="20px" />
-                  <SkeletonText width="40px" />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                <SkeletonAvatar />
-                    <SkeletonText width="80px" />
-                  </div>
-                  <SkeletonText width="60px" />
-                </SkeletonTableRow>
-              ))}
-            </SkeletonTable>
-          </SkeletonStudentsCard>
-        ))}
-      </SkeletonStudentsGrid>
-      
-      <SkeletonActionsPanel>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <SkeletonButton />
-          <SkeletonButton />
-        </div>
-        <SkeletonButton />
-      </SkeletonActionsPanel>
-    </Container>
-  );
-};
 
 const BulkPromoteDemote: React.FC = () => {
   const theme = useTheme();
@@ -1806,11 +1603,7 @@ const BulkPromoteDemote: React.FC = () => {
   }, [processing, sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, action, classes, isMobile, theme, setFooterContent, handleCancel, handleConfirmClick]);
 
   if (loading) {
-    return (
-      <Container>
-        <PageSkeleton />
-      </Container>
-    );
+    return <Loader />;
   }
 
   // Show NoStudentsFound only if there are truly no students in the system

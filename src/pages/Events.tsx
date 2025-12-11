@@ -40,6 +40,7 @@ import {
   Theme,
 } from '@mui/material';
 import { styled as muiStyled } from '@mui/material/styles';
+import Loader from '../components/Loader';
 
 const Container = styled.div<{ $theme?: any }>`
   width: 100%;
@@ -543,11 +544,7 @@ const Events: React.FC = () => {
         </Header>
 
         {eventsLoading ? (
-          <ContentCard $theme={theme}>
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-              <CircularProgress />
-            </Box>
-          </ContentCard>
+          <Loader />
         ) : events.length === 0 ? (
           <ContentCard $theme={theme}>
             <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={4}>

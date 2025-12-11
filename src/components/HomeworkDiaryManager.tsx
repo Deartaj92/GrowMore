@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useContext, useMemo, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { ThemeContext, darkTheme, lightTheme } from './Layout';
@@ -23,6 +23,7 @@ import {
 import { format, parseISO, isSunday } from 'date-fns';
 import NoSessionsFound from './NoSessionsFound';
 import NoStudentsFound from './NoStudentsFound';
+import Loader from './Loader';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -1227,6 +1228,7 @@ const HomeworkDiaryManager: React.FC = () => {
   const [subjects, setSubjects] = useState<ClassSubject[]>([]);
   const [homeworkEntries, setHomeworkEntries] = useState<HomeworkDiary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState(true);
 
@@ -1285,89 +1287,92 @@ const HomeworkDiaryManager: React.FC = () => {
     }
   }, [selectedDate]);
 
-  // Fetch active sessions
+  // Fetch initial data (sessions and classes) - combined for initial loading
   useEffect(() => {
-    if (!user?.school_id) return;
+    if (!user?.school_id) {
+      setInitialLoading(false);
+      return;
+    }
 
-    const fetchSessions = async () => {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('school_id', user.school_id)
-        .order('name', { ascending: false });
-
-      if (error) {
-        return;
-      }
-
-      setSessions(data || []);
-      const activeSession = data?.find(s => s.is_active);
-      if (activeSession) {
-        setSelectedSession(activeSession.id);
-      }
-    };
-
-    fetchSessions();
-  }, [user?.school_id]);
-
-  // Fetch classes (no session requirement)
-  useEffect(() => {
-    if (!user?.school_id) return;
-
-    const fetchClasses = async () => {
-      setLoading(true);
-
+    const fetchInitialData = async () => {
+      setInitialLoading(true);
       try {
-        if (user?.role === 'Teacher' && user?.staff_id) {
-          // For teachers, get classes where they have assigned subjects
-          const { data, error } = await supabase
-            .from('teacher_class_subjects')
-            .select(`
-              class_subject_id,
-              class_subjects!inner(
-                class_id,
-                classes!inner(id, name, school_id, has_sections)
-              )
-            `)
-            .eq('teacher_id', user.staff_id)
-            .eq('school_id', user?.school_id);
-
-          if (error) throw error;
-
-          // Extract unique classes from the nested structure
-          const uniqueClasses = new Map();
-          data?.forEach(item => {
-            const classData = (item.class_subjects as any)?.classes;
-            if (classData && !uniqueClasses.has(classData.id)) {
-              uniqueClasses.set(classData.id, classData);
-            }
-          });
-
-          const teacherClasses = Array.from(uniqueClasses.values());
-          const sortedClasses = sortClasses(teacherClasses);
-          setClasses(sortedClasses);
-        } else {
-          // For other roles, load all classes
-          const { data, error } = await supabase
-            .from('classes')
-            .select('id, name, has_sections')
+        const [sessionsResult, classesResult] = await Promise.all([
+          // Fetch sessions
+          supabase
+            .from('sessions')
+            .select('*')
             .eq('school_id', user.school_id)
-            .order('name');
+            .order('name', { ascending: false }),
+          // Fetch classes
+          user?.role === 'Teacher' && user?.staff_id
+            ? supabase
+                .from('teacher_class_subjects')
+                .select(`
+                  class_subject_id,
+                  class_subjects!inner(
+                    class_id,
+                    classes!inner(id, name, school_id, has_sections)
+                  )
+                `)
+                .eq('teacher_id', user.staff_id)
+                .eq('school_id', user?.school_id)
+            : supabase
+                .from('classes')
+                .select('id, name, has_sections')
+                .eq('school_id', user.school_id)
+                .order('name')
+        ]);
 
-          if (error) throw error;
+        // Handle sessions
+        if (sessionsResult.error) {
+          console.error('Error fetching sessions:', sessionsResult.error);
+        } else {
+          setSessions(sessionsResult.data || []);
+          const activeSession = sessionsResult.data?.find(s => s.is_active);
+          if (activeSession) {
+            setSelectedSession(activeSession.id);
+          }
+        }
 
-          const sortedClasses = sortClasses(data || []);
-          setClasses(sortedClasses);
+        // Handle classes
+        if (classesResult.error) {
+          toast.showToast('Failed to load classes', 'error');
+        } else {
+          if (user?.role === 'Teacher' && user?.staff_id) {
+            // Extract unique classes from the nested structure
+            const uniqueClasses = new Map<number, Class>();
+            classesResult.data?.forEach((item: any) => {
+              const classData = item.class_subjects?.classes;
+              if (classData && classData.id && !uniqueClasses.has(classData.id)) {
+                uniqueClasses.set(classData.id, {
+                  id: classData.id,
+                  name: classData.name,
+                  has_sections: classData.has_sections
+                });
+              }
+            });
+            const teacherClasses = Array.from(uniqueClasses.values());
+            const sortedClasses = sortClasses(teacherClasses);
+            setClasses(sortedClasses);
+          } else {
+            const classesData = classesResult.data as Class[] | null;
+            if (classesData) {
+              const sortedClasses = sortClasses(classesData);
+              setClasses(sortedClasses);
+            }
+          }
         }
       } catch (error: any) {
-        toast.showToast('Failed to load classes', 'error');
+        console.error('Error fetching initial data:', error);
+        toast.showToast('Failed to load initial data', 'error');
       } finally {
-        setLoading(false);
+        setInitialLoading(false);
       }
     };
 
-    fetchClasses();
-  }, [user?.school_id, user?.role, user?.staff_id]);
+    fetchInitialData();
+  }, [user?.school_id, user?.role, user?.staff_id, toast]);
 
   // Professional auto-select: only when exactly one class linked to the teacher
   useEffect(() => {
@@ -1537,7 +1542,7 @@ const HomeworkDiaryManager: React.FC = () => {
   }, [selectedClass, user?.school_id, user?.role, user?.staff_id]);
 
   // Fetch existing homework entries
-  const fetchHomeworkEntries = async () => {
+  const fetchHomeworkEntries = useCallback(async () => {
     if (!user?.school_id || !selectedClass || !selectedDate) return;
 
     try {
@@ -1583,7 +1588,7 @@ const HomeworkDiaryManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.school_id, user?.role, user?.staff_id, selectedClass, selectedSection, selectedDate, selectedClassHasSections, classes, sections, logHomeworkDiaryActivity, toast]);
 
   // Fetch homework when filters change (session not required for viewing)
   useEffect(() => {
@@ -1834,7 +1839,7 @@ const HomeworkDiaryManager: React.FC = () => {
     loadBulkData();
   }, [isBulkMode, user?.school_id, classes, selectedDate]);
 
-  const handleGlobalBulkSave = async () => {
+  const handleGlobalBulkSave = useCallback(async () => {
     if (!user?.school_id || !selectedSession || !selectedDate) {
       toast.showToast('Missing required information', 'error');
       return;
@@ -1910,9 +1915,9 @@ const HomeworkDiaryManager: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [user?.school_id, user?.id, selectedSession, selectedDate, bulkGroups, selectedClass, fetchHomeworkEntries, toast]);
 
-  const handleSaveHomework = async () => {
+  const handleSaveHomework = useCallback(async () => {
     if (!user?.school_id || !selectedClass || !selectedDate || !homeworkText.trim() || !selectedSubjectForEdit) {
       toast.showToast('Please fill in all required fields including subject', 'error');
       return;
@@ -2029,7 +2034,7 @@ const HomeworkDiaryManager: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [user?.school_id, user?.id, selectedClass, selectedDate, homeworkText, selectedSubjectForEdit, selectedSession, selectedClassHasSections, selectedSection, isEditing, editingId, classes, sections, subjects, logHomeworkDiaryActivity, fetchHomeworkEntries, toast]);
 
   // Helper function to clear all form fields for new entry
   const clearFormFields = () => {
@@ -2114,14 +2119,19 @@ const HomeworkDiaryManager: React.FC = () => {
     setEntryToDelete(null);
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setHomeworkText('');
     setSelectedSubjectForEdit('');
     setIsEditing(false);
     setEditingId(null);
     setShowBulkForm(false);
     setBulkAssignments([]);
-  };
+  }, []);
+
+  // Show loader during initial data fetch
+  if (initialLoading) {
+    return <Loader />;
+  }
 
   if (!user?.school_id) {
     return <NoSessionsFound />;
@@ -2132,8 +2142,14 @@ const HomeworkDiaryManager: React.FC = () => {
     return <NoSessionsFound />;
   }
 
-  // Set global footer content
+  // Set global footer content - only after initial loading completes
   useEffect(() => {
+    // Don't set footer during initial loading
+    if (initialLoading) {
+      setFooterContent(null);
+      return;
+    }
+
     if (!(isBulkMode || (selectedClass && selectedDate))) {
       setFooterContent(null);
       return;
@@ -2145,30 +2161,75 @@ const HomeworkDiaryManager: React.FC = () => {
           display: 'flex',
           justifyContent: 'flex-end',
           alignItems: 'center',
-          padding: isMobile ? '10px' : '12px 16px',
-          gap: isMobile ? '0.75rem' : '1rem',
-          flexDirection: isMobile ? 'column' : 'row',
+          padding: isMobile ? '6px 8px' : '12px 16px',
+          gap: isMobile ? '0.5rem' : '1rem',
+          flexDirection: isMobile ? 'row' : 'row',
+          width: '100%',
         }}>
           {isBulkMode ? (
             <>
-              <Button variant="secondary" onClick={() => setIsBulkMode(false)}>
-                <Cancel /> Cancel
+              <Button 
+                variant="secondary" 
+                onClick={() => setIsBulkMode(false)}
+                style={isMobile ? {
+                  padding: '0.375rem 0.75rem',
+                  fontSize: '0.75rem',
+                  minHeight: '32px',
+                  gap: '0.25rem',
+                } : {}}
+              >
+                <Cancel style={{ fontSize: isMobile ? '0.875rem' : '1.125rem', width: isMobile ? '0.875rem' : '1.125rem', height: isMobile ? '0.875rem' : '1.125rem' }} /> 
+                {isMobile ? 'Cancel' : 'Cancel'}
               </Button>
-              <Button variant="primary" onClick={handleGlobalBulkSave} disabled={saving || isSelectedDateSunday}>
-                <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : 'Save Changes'}
+              <Button 
+                variant="primary" 
+                onClick={handleGlobalBulkSave} 
+                disabled={saving || isSelectedDateSunday}
+                style={isMobile ? {
+                  padding: '0.375rem 0.75rem',
+                  fontSize: '0.75rem',
+                  minHeight: '32px',
+                  gap: '0.25rem',
+                } : {}}
+              >
+                <Save style={{ fontSize: isMobile ? '0.875rem' : '1.125rem', width: isMobile ? '0.875rem' : '1.125rem', height: isMobile ? '0.875rem' : '1.125rem' }} /> 
+                {saving ? (isMobile ? 'Saving...' : 'Saving...') : isSelectedDateSunday ? (isMobile ? 'Sunday' : 'Sunday') : (isMobile ? 'Save' : 'Save Changes')}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="secondary" onClick={handleCancel}>
-                <Cancel /> Cancel
+              <Button 
+                variant="secondary" 
+                onClick={handleCancel}
+                style={isMobile ? {
+                  padding: '0.375rem 0.75rem',
+                  fontSize: '0.75rem',
+                  minHeight: '32px',
+                  gap: '0.25rem',
+                } : {}}
+              >
+                <Cancel style={{ fontSize: isMobile ? '0.875rem' : '1.125rem', width: isMobile ? '0.875rem' : '1.125rem', height: isMobile ? '0.875rem' : '1.125rem' }} /> 
+                {isMobile ? 'Cancel' : 'Cancel'}
               </Button>
               <Button
                 variant="primary"
                 onClick={handleSaveHomework}
                 disabled={saving || !homeworkText.trim() || isSelectedDateSunday}
+                style={isMobile ? {
+                  padding: '0.375rem 0.75rem',
+                  fontSize: '0.75rem',
+                  minHeight: '32px',
+                  gap: '0.25rem',
+                } : {}}
               >
-                <Save /> {saving ? 'Saving...' : isSelectedDateSunday ? 'Sunday' : (isEditing ? 'Update Homework' : 'Save Homework')}
+                <Save style={{ fontSize: isMobile ? '0.875rem' : '1.125rem', width: isMobile ? '0.875rem' : '1.125rem', height: isMobile ? '0.875rem' : '1.125rem' }} /> 
+                {saving 
+                  ? (isMobile ? 'Saving...' : 'Saving...') 
+                  : isSelectedDateSunday 
+                    ? (isMobile ? 'Sunday' : 'Sunday') 
+                    : (isMobile 
+                      ? (isEditing ? 'Update' : 'Save') 
+                      : (isEditing ? 'Update Homework' : 'Save Homework'))}
               </Button>
             </>
           )}
@@ -2184,7 +2245,14 @@ const HomeworkDiaryManager: React.FC = () => {
     return () => {
       setFooterContent(null);
     };
-  }, [isBulkMode, selectedClass, selectedDate, saving, isSelectedDateSunday, homeworkText, isEditing, isMobile, theme, handleGlobalBulkSave, handleSaveHomework, handleCancel]);
+  }, [initialLoading, isBulkMode, selectedClass, selectedDate, saving, isSelectedDateSunday, homeworkText, isEditing, isMobile, theme, handleGlobalBulkSave, handleSaveHomework, handleCancel, setFooterContent]);
+
+  // Cleanup footer on unmount
+  useEffect(() => {
+    return () => {
+      setFooterContent(null);
+    };
+  }, [setFooterContent]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>

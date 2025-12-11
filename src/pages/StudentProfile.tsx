@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { styled, useTheme, Theme, PaletteColor, PaletteColorOptions, keyframes } from '@mui/material/styles';
+import { styled as muiStyled, useTheme, Theme, PaletteColor, PaletteColorOptions, keyframes as muiKeyframes } from '@mui/material/styles';
+import styled, { keyframes } from 'styled-components';
 import {
   Box,
   Paper,
@@ -25,11 +26,12 @@ import {
   Stack,
   IconButton,
   Badge as MuiBadge,
-  Skeleton,
   useMediaQuery,
   TextField,
   MenuItem,
+  Skeleton,
 } from '@mui/material';
+import Loader from '../components/Loader';
 import {
   Person,
   School,
@@ -269,14 +271,14 @@ const statusColors: Record<string, string> = {
 };
 
 // Styled Components
-const ProfileContainer = styled(Box)(({ theme }) => ({
+const ProfileContainer = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
   }
 }));
 
-const GlassCard = styled(Paper)(({ theme }) => ({
+const GlassCard = muiStyled(Paper)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.8)
     : alpha(theme.palette.background.paper, 0.7),
@@ -292,7 +294,7 @@ const GlassCard = styled(Paper)(({ theme }) => ({
   transition: 'all 0.3s ease',
 }));
 
-const ProfileHeader = styled(Box)(({ theme }) => ({
+const ProfileHeader = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(2.5),
@@ -390,7 +392,7 @@ const ProfileHeader = styled(Box)(({ theme }) => ({
   }
 }));
 
-const ProfileAvatar = styled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
+const ProfileAvatar = muiStyled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
   width: 90,
   height: 90,
   fontSize: '2.25rem',
@@ -448,7 +450,7 @@ const ProfileAvatar = styled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
   }
 }));
 
-const StatCard = styled(GlassCard)(({ theme }) => ({
+const StatCard = muiStyled(GlassCard)(({ theme }) => ({
   padding: theme.spacing(2),
   display: 'flex',
   flexDirection: 'column',
@@ -490,14 +492,14 @@ const StatCard = styled(GlassCard)(({ theme }) => ({
   }
 }));
 
-const TabPanel = styled(Box)(({ theme }) => ({
+const TabPanel = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
   }
 }));
 
-const ModernTabs = styled(Tabs)(({ theme }) => ({
+const ModernTabs = muiStyled(Tabs)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.5)
     : alpha(theme.palette.background.paper, 0.8),
@@ -534,7 +536,7 @@ const ModernTabs = styled(Tabs)(({ theme }) => ({
   }
 }));
 
-const TabItem = styled(Tab)(({ theme }) => ({
+const TabItem = muiStyled(Tab)(({ theme }) => ({
   minHeight: 56,
   borderRadius: 12,
   padding: theme.spacing(1.5, 3),
@@ -612,7 +614,7 @@ const TabItem = styled(Tab)(({ theme }) => ({
   }
 }));
 
-const InfoCard = styled(GlassCard)(({ theme }) => ({
+const InfoCard = muiStyled(GlassCard)(({ theme }) => ({
   height: '100%',
   transition: 'transform 0.3s ease',
   '&:hover': {
@@ -620,7 +622,7 @@ const InfoCard = styled(GlassCard)(({ theme }) => ({
   }
 }));
 
-const InfoSection = styled(Box)(({ theme }) => ({
+const InfoSection = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius * 2,
   background: theme.palette.mode === 'dark'
@@ -638,7 +640,7 @@ const InfoSection = styled(Box)(({ theme }) => ({
   }
 }));
 
-const SectionTitle = styled(Box)(({ theme }) => ({
+const SectionTitle = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1.5),
@@ -670,7 +672,7 @@ const SectionTitle = styled(Box)(({ theme }) => ({
   }
 }));
 
-const InfoGrid = styled(Grid)(({ theme }) => ({
+const InfoGrid = muiStyled(Grid)(({ theme }) => ({
   '& .info-item': {
     display: 'flex',
     alignItems: 'flex-start',
@@ -734,7 +736,7 @@ const InfoGrid = styled(Grid)(({ theme }) => ({
   }
 }));
 
-const InfoItem = styled(Box)(({ theme }) => ({
+const InfoItem = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1.5),
@@ -863,7 +865,7 @@ const StyledTable = styled('table')(({ theme }) => ({
   }
 }));
 
-const AttendanceOverviewCard = styled(GlassCard)(({ theme }) => ({
+const AttendanceOverviewCard = muiStyled(GlassCard)(({ theme }) => ({
   padding: theme.spacing(3),
   display: 'flex',
   flexDirection: 'column',
@@ -890,7 +892,7 @@ const AttendanceOverviewCard = styled(GlassCard)(({ theme }) => ({
   },
 }));
 
-const AttendanceStatBox = styled(Box)<{ color: string }>(({ theme, color }) => ({
+const AttendanceStatBox = muiStyled(Box)<{ color: string }>(({ theme, color }) => ({
   padding: theme.spacing(2),
   borderRadius: theme.shape.borderRadius,
   background: alpha(color, 0.1),
@@ -916,7 +918,7 @@ const AttendanceStatBox = styled(Box)<{ color: string }>(({ theme, color }) => (
   },
 }));
 
-const AttendanceTable = styled(Box)(({ theme }) => ({
+const AttendanceTable = muiStyled(Box)(({ theme }) => ({
   '& .header': {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr 2fr',
@@ -952,7 +954,7 @@ const AttendanceTable = styled(Box)(({ theme }) => ({
   },
 }));
 
-const MonthlyAttendanceCard = styled(GlassCard)(({ theme }) => ({
+const MonthlyAttendanceCard = muiStyled(GlassCard)(({ theme }) => ({
   height: '100%',
   '& .month-grid': {
     display: 'grid',
@@ -962,7 +964,7 @@ const MonthlyAttendanceCard = styled(GlassCard)(({ theme }) => ({
   },
 }));
 
-const MonthCard = styled(GlassCard)(({ theme }) => ({
+const MonthCard = muiStyled(GlassCard)(({ theme }) => ({
   height: '100%',
   background: theme.palette.mode === 'dark'
     ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`
@@ -995,7 +997,7 @@ const MonthCard = styled(GlassCard)(({ theme }) => ({
 }));
 
 // Add these styled components near the other styled components
-const ReportsCard = styled(Paper)(({ theme }) => ({
+const ReportsCard = muiStyled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   borderRadius: theme.spacing(2),
   background: theme.palette.mode === 'dark'
@@ -1044,7 +1046,7 @@ const ReportsCard = styled(Paper)(({ theme }) => ({
   }
 }));
 
-const ReportsHeader = styled(Box)(({ theme }) => ({
+const ReportsHeader = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -1098,7 +1100,7 @@ const ReportsHeader = styled(Box)(({ theme }) => ({
   }
 }));
 
-const EmptyReportState = styled(Box)(({ theme }) => ({
+const EmptyReportState = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -1126,7 +1128,7 @@ const EmptyReportState = styled(Box)(({ theme }) => ({
   }
 }));
 
-const ReportsList = styled(Box)(({ theme }) => ({
+const ReportsList = muiStyled(Box)(({ theme }) => ({
   flex: 1,
   overflow: 'hidden',
   display: 'flex',
@@ -1168,7 +1170,7 @@ const ReportsList = styled(Box)(({ theme }) => ({
   }
 }));
 
-const ReportItem = styled(Box)<{ $shadeIndex?: number }>(({ theme, $shadeIndex = 0 }) => {
+const ReportItem = muiStyled(Box)<{ $shadeIndex?: number }>(({ theme, $shadeIndex = 0 }) => {
   // Define light color shades (light pastel colors) - base colors
   const shadeColors = [
     theme.palette.info.main,      // Blue
@@ -1212,7 +1214,7 @@ const ReportItem = styled(Box)<{ $shadeIndex?: number }>(({ theme, $shadeIndex =
 });
 
 // Add new styled components for month card elements
-const MonthHeader = styled(Box)(({ theme }) => ({
+const MonthHeader = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(2.5, 3),
   display: 'flex',
   justifyContent: 'space-between',
@@ -1233,13 +1235,13 @@ const MonthHeader = styled(Box)(({ theme }) => ({
   }
 }));
 
-const MonthTitle = styled(Box)(({ theme }) => ({
+const MonthTitle = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(0.5),
 }));
 
-const MonthBadge = styled(Box)(({ theme }) => ({
+const MonthBadge = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(0.75, 2),
   borderRadius: 20,
   fontSize: '0.75rem',
@@ -1256,11 +1258,11 @@ const MonthBadge = styled(Box)(({ theme }) => ({
   }
 }));
 
-const StatGrid = styled(Grid)(({ theme }) => ({
+const StatGrid = muiStyled(Grid)(({ theme }) => ({
   padding: theme.spacing(2, 3),
 }));
 
-const StatBox = styled(Box)<{ status: 'total' | 'present' | 'late' | 'absence' }>(({ theme, status }) => {
+const StatBox = muiStyled(Box)<{ status: 'total' | 'present' | 'late' | 'absence' }>(({ theme, status }) => {
   const getStatusColor = (status: string): {
     light: string;
     main: string;
@@ -1389,7 +1391,7 @@ const StatBox = styled(Box)<{ status: 'total' | 'present' | 'late' | 'absence' }
   };
 });
 
-const StatValue = styled(Typography)<{ color: string }>(({ theme, color }) => ({
+const StatValue = muiStyled(Typography)<{ color: string }>(({ theme, color }) => ({
   fontSize: '1.75rem',
   fontWeight: 700,
   color: color,
@@ -1404,7 +1406,7 @@ const StatValue = styled(Typography)<{ color: string }>(({ theme, color }) => ({
   }
 }));
 
-const StatLabel = styled(Typography)(({ theme }) => ({
+const StatLabel = muiStyled(Typography)(({ theme }) => ({
   fontSize: '0.75rem',
   fontWeight: 500,
   color: theme.palette.text.secondary,
@@ -1412,7 +1414,7 @@ const StatLabel = styled(Typography)(({ theme }) => ({
   letterSpacing: '0.5px',
 }));
 
-const ArcProgress = styled(Box)<{ value: number; color: string }>(({ theme, value, color }) => ({
+const ArcProgress = muiStyled(Box)<{ value: number; color: string }>(({ theme, value, color }) => ({
   position: 'relative',
   width: '60px',
   height: '30px',
@@ -1434,7 +1436,7 @@ const ArcProgress = styled(Box)<{ value: number; color: string }>(({ theme, valu
 }));
 
 // Add StatArc component and related styled components
-const StatsArcRow = styled(Box)(({ theme }) => ({
+const StatsArcRow = muiStyled(Box)(({ theme }) => ({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   gap: theme.spacing(3),
@@ -1445,7 +1447,7 @@ const StatsArcRow = styled(Box)(({ theme }) => ({
   }
 }));
 
-const StatArcWrapper = styled(Box)(({ theme }) => ({
+const StatArcWrapper = muiStyled(Box)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.6)
     : alpha(theme.palette.background.paper, 0.8),
@@ -1494,14 +1496,14 @@ const StatArcWrapper = styled(Box)(({ theme }) => ({
   }
 }));
 
-const StatArcLabel = styled(Box)<{ theme?: Theme }>(({ theme }) => ({
+const StatArcLabel = muiStyled(Box)<{ theme?: Theme }>(({ theme }) => ({
   fontSize: '0.85rem',
   color: theme?.palette.text.secondary,
   fontWeight: 600,
   marginTop: '0.5rem'
 }));
 
-const StatArcCount = styled(Box)<{ theme?: Theme }>(({ theme }) => ({
+const StatArcCount = muiStyled(Box)<{ theme?: Theme }>(({ theme }) => ({
   fontSize: '0.82rem',
   color: theme?.palette.text.primary,
   fontWeight: 500,
@@ -1849,7 +1851,7 @@ const getYearlyOverview = (
 };
 
 // Add new styled components for recent attendance
-const RecentAttendanceItem = styled(Box)(({ theme }) => ({
+const RecentAttendanceItem = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(2),
   borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
   '&:last-child': {
@@ -1861,7 +1863,7 @@ const RecentAttendanceItem = styled(Box)(({ theme }) => ({
   transition: 'background-color 0.2s ease'
 }));
 
-const DayLabel = styled(Typography)(({ theme }) => ({
+const DayLabel = muiStyled(Typography)(({ theme }) => ({
   fontSize: '0.75rem',
   fontWeight: 600,
   color: theme.palette.text.secondary,
@@ -1870,7 +1872,7 @@ const DayLabel = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(0.5)
 }));
 
-const DateLabel = styled(Typography)(({ theme }) => ({
+const DateLabel = muiStyled(Typography)(({ theme }) => ({
   fontSize: '0.875rem',
   color: theme.palette.text.primary,
   display: 'flex',
@@ -1878,7 +1880,7 @@ const DateLabel = styled(Typography)(({ theme }) => ({
   gap: theme.spacing(0.5)
 }));
 
-const RecentAttendanceContainer = styled(Box)(({ theme }) => ({
+const RecentAttendanceContainer = muiStyled(Box)(({ theme }) => ({
   maxHeight: '400px',
   overflowY: 'auto',
   overflowX: 'hidden',
@@ -1913,7 +1915,7 @@ const RecentAttendanceContainer = styled(Box)(({ theme }) => ({
   }
 }));
 
-const AttendanceStatsCard = styled(GlassCard)(({ theme }) => ({
+const AttendanceStatsCard = muiStyled(GlassCard)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
     ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`
     : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`,
@@ -1937,7 +1939,7 @@ const AttendanceStatsCard = styled(GlassCard)(({ theme }) => ({
   }
 }));
 
-const StatsHeader = styled(Box)(({ theme }) => ({
+const StatsHeader = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
   borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
   display: 'flex',
@@ -1959,7 +1961,7 @@ const StatsHeader = styled(Box)(({ theme }) => ({
   }
 }));
 
-const StatsGrid = styled(Grid)(({ theme }) => ({
+const StatsGrid = muiStyled(Grid)(({ theme }) => ({
   padding: theme.spacing(3),
   gap: theme.spacing(3),
   display: 'flex',
@@ -2012,7 +2014,7 @@ interface ReportUpdate {
 }
 
 // Add new styled components for updates
-const UpdatesHeader = styled(Box)(({ theme }) => ({
+const UpdatesHeader = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(2),
   display: 'flex',
   alignItems: 'center',
@@ -2026,7 +2028,7 @@ const UpdatesHeader = styled(Box)(({ theme }) => ({
   }
 }));
 
-const UpdateTimeline = styled(Box)(({ theme }) => ({
+const UpdateTimeline = muiStyled(Box)(({ theme }) => ({
   position: 'relative',
   padding: theme.spacing(2),
   '&::before': {
@@ -2041,7 +2043,7 @@ const UpdateTimeline = styled(Box)(({ theme }) => ({
   }
 }));
 
-const UpdateItem = styled(Box)(({ theme }) => ({
+const UpdateItem = muiStyled(Box)(({ theme }) => ({
   position: 'relative',
   paddingLeft: theme.spacing(6),
   paddingBottom: theme.spacing(3),
@@ -2061,7 +2063,7 @@ const UpdateItem = styled(Box)(({ theme }) => ({
   }
 }));
 
-const FormBlocks = styled('div')<{ theme?: Theme }>(({ theme }) => ({
+const FormBlocks = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'row',
   gap: '24px',
@@ -2076,10 +2078,10 @@ const FormBlocks = styled('div')<{ theme?: Theme }>(({ theme }) => ({
   }
 }));
 
-const CardBlock = styled('div')<{ theme?: Theme }>(({ theme }) => ({
-  background: theme?.palette.background.paper,
+const CardBlock = muiStyled(Box)(({ theme }) => ({
+  background: theme.palette.background.paper,
   borderRadius: '24px',
-  boxShadow: theme?.shadows[1],
+  boxShadow: theme.shadows[1],
   padding: '48px 32px',
   display: 'flex',
   flexDirection: 'column',
@@ -2088,7 +2090,7 @@ const CardBlock = styled('div')<{ theme?: Theme }>(({ theme }) => ({
   maxWidth: '340px',
   flex: '0 0 300px',
   position: 'relative',
-  border: `1px solid ${theme?.palette.divider}`,
+  border: `1px solid ${theme.palette.divider}`,
   backdropFilter: 'blur(8px)',
 
   '@media (max-width: 900px)': {
@@ -2101,10 +2103,10 @@ const CardBlock = styled('div')<{ theme?: Theme }>(({ theme }) => ({
   }
 }));
 
-const FieldsCard = styled('div')<{ theme?: Theme }>(({ theme }) => ({
-  background: theme?.palette.background.paper,
+const FieldsCard = muiStyled(Box)(({ theme }) => ({
+  background: theme.palette.background.paper,
   borderRadius: '16px',
-  boxShadow: theme?.shadows[1],
+  boxShadow: theme.shadows[1],
   padding: '24px 20px',
   flex: '1 1 0',
   display: 'flex',
@@ -2121,7 +2123,7 @@ const FieldsCard = styled('div')<{ theme?: Theme }>(({ theme }) => ({
   }
 }));
 
-const SectionContainer = styled('div')<{ theme?: Theme }>(({ theme }) => ({
+const SectionContainer = muiStyled(Box)(({ theme }) => ({
   marginBottom: '24px',
   position: 'relative',
   zIndex: 1,
@@ -2133,12 +2135,12 @@ const SectionContainer = styled('div')<{ theme?: Theme }>(({ theme }) => ({
     alignItems: 'center',
     marginBottom: '16px',
     paddingBottom: '8px',
-    borderBottom: `1px solid ${theme?.palette.divider}`,
+    borderBottom: `1px solid ${theme.palette.divider}`,
     '& .icon-wrapper': {
       width: '32px',
       height: '32px',
       borderRadius: '8px',
-      backgroundColor: theme?.palette.primary.main,
+      backgroundColor: theme.palette.primary.main,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -2180,13 +2182,13 @@ interface ProfileAvatarProps {
   theme?: Theme;
 }
 
-const StyledProfileAvatar = styled('div')<ProfileAvatarProps>(({ theme, src }) => ({
+const StyledProfileAvatar = muiStyled(Box)<ProfileAvatarProps>(({ theme, src }) => ({
   width: '160px',
   height: '160px',
   borderRadius: '50%',
   background: src ?
     `url(${src}) center/cover no-repeat` :
-    theme?.palette.primary.main,
+    theme.palette.primary.main,
   color: '#fff',
   display: 'flex',
   alignItems: 'center',
@@ -2199,7 +2201,7 @@ const StyledProfileAvatar = styled('div')<ProfileAvatarProps>(({ theme, src }) =
 }));
 
 // Add new styled component for info sections
-const InfoSectionTitle = styled(Box)(({ theme }) => ({
+const InfoSectionTitle = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1.5),
@@ -2225,7 +2227,7 @@ const InfoSectionTitle = styled(Box)(({ theme }) => ({
   }
 }));
 
-const CompactInfoGrid = styled(Grid)(({ theme }) => ({
+const CompactInfoGrid = muiStyled(Grid)(({ theme }) => ({
   '& .info-item': {
     display: 'flex',
     alignItems: 'center',
@@ -2261,7 +2263,7 @@ const CompactInfoGrid = styled(Grid)(({ theme }) => ({
 }));
 
 // Add new styled components for reports
-const ReportCard = styled(GlassCard)(({ theme }) => ({
+const ReportCard = muiStyled(GlassCard)(({ theme }) => ({
   height: '100%',
   '& .report-header': {
     padding: theme.spacing(2),
@@ -2282,7 +2284,7 @@ const ReportCard = styled(GlassCard)(({ theme }) => ({
   }
 }));
 
-const ReportStatusBadge = styled(Box)<{ status: ReportStatus }>(({ theme, status }) => {
+const ReportStatusBadge = muiStyled(Box)<{ status: ReportStatus }>(({ theme, status }) => {
   const getStatusColor = (status: ReportStatus): { main: string; light: string; dark: string; contrastText: string } => {
     switch (status) {
       case 'pending': return theme.palette.warning;
@@ -2336,7 +2338,7 @@ const ReportStatusBadge = styled(Box)<{ status: ReportStatus }>(({ theme, status
   };
 });
 
-const CategoryChip = styled(Chip)(({ theme }) => ({
+const CategoryChip = muiStyled(Chip)(({ theme }) => ({
   backgroundColor: alpha(theme.palette.primary.main, 0.1),
   color: theme.palette.primary.main,
   fontWeight: 500,
@@ -2459,519 +2461,8 @@ const getScoreLabel = (score: number): string => {
   return 'Poor';
 };
 
-// --- Dashboard-style Skeleton Loader for StudentProfile ---
-const StudentProfileSkeletonContainer = styled('div')(({ theme }) => ({
-  width: '100%',
-  height: '100%',
-  padding: 'clamp(8px, 2vw, 24px)',
-  boxSizing: 'border-box',
-  [theme.breakpoints.down('md')]: {
-    padding: 'clamp(6px, 2vw, 12px)',
-  },
-  [theme.breakpoints.down('sm')]: {
-    padding: '8px 10px',
-    paddingBottom: '2.5rem',
-  },
-}));
-const SkeletonHeader = styled('div')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '2.5rem',
-  marginBottom: '2.5rem',
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: '1.2rem',
-  },
-}));
-const SkeletonAvatar = styled('div')(({ theme }) => ({
-  width: 90,
-  height: 90,
-  borderRadius: '50%',
-  background: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
-  position: 'relative',
-  overflow: 'hidden',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
-    animation: 'shimmer 1.5s infinite',
-    borderRadius: '50%',
-  },
-  '@keyframes shimmer': {
-    '0%': { left: '-100%' },
-    '100%': { left: '100%' },
-  },
-}));
-const SkeletonNameBlock = styled('div')({
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.7rem',
-});
-const SkeletonName = styled('div')(({ theme }) => ({
-  width: 180,
-  height: 28,
-  background: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
-  borderRadius: 8,
-  position: 'relative',
-  overflow: 'hidden',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
-    animation: 'shimmer 1.5s infinite',
-    borderRadius: 8,
-  },
-}));
-const SkeletonStatus = styled('div')(({ theme }) => ({
-  width: 90,
-  height: 18,
-  background: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
-  borderRadius: 8,
-  position: 'relative',
-  overflow: 'hidden',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent)',
-    animation: 'shimmer 1.5s infinite',
-    borderRadius: 8,
-  },
-}));
-const SkeletonSummaryGrid = styled('div')(({ theme }) => ({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: 'clamp(0.7rem, 2vw, 1.5rem)',
-  marginBottom: 'clamp(1rem, 3vw, 2.2rem)',
-  width: '100%',
-}));
-const SkeletonSummaryCard = styled('div')(({ theme }) => ({
-  background: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
-  borderRadius: 14,
-  boxShadow: '0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10)',
-  padding: 'clamp(0.8rem, 2vw, 1.2rem)',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
-  minWidth: 0,
-  flex: '1 1 0',
-  position: 'relative',
-  border: `1px solid ${theme.palette.divider}`,
-  overflow: 'hidden',
-  minHeight: 120,
-  marginBottom: 0,
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent)',
-    animation: 'shimmer 1.5s infinite',
-    zIndex: 2,
-    borderRadius: 14,
-  },
-}));
-const SkeletonTabBar = styled('div')(({ theme }) => ({
-  width: '100%',
-  height: 48,
-  background: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
-  borderRadius: 12,
-  marginBottom: '2rem',
-  position: 'relative',
-  overflow: 'hidden',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent)',
-    animation: 'shimmer 1.5s infinite',
-    borderRadius: 12,
-  },
-}));
-const SkeletonTabContent = styled('div')(({ theme }) => ({
-  width: '100%',
-  height: 320,
-  background: theme.palette.mode === 'dark' ? theme.palette.background.default : '#f3f4f6',
-  borderRadius: 16,
-  marginBottom: '2rem',
-  position: 'relative',
-  overflow: 'hidden',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent)',
-    animation: 'shimmer 1.5s infinite',
-    borderRadius: 16,
-  },
-}));
-const StudentProfileSkeleton: React.FC = () => {
-  const theme = useTheme();
-  return (
-    <ProfileContainer>
-      {/* Profile Header Skeleton */}
-      <ProfileHeader>
-        <Skeleton variant="circular" width={90} height={90} sx={{ flexShrink: 0, [theme.breakpoints.down('sm')]: { width: 70, height: 70 } }} />
-        <Stack
-          spacing={0.5}
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            [theme.breakpoints.down('sm')]: {
-              alignItems: 'center',
-            }
-          }}
-        >
-          <Box sx={{
-            display: 'flex',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: 1,
-            flexWrap: 'wrap',
-            width: '100%'
-          }}>
-            <Skeleton variant="text" width={200} height={36} sx={{ [theme.breakpoints.down('sm')]: { width: 150, height: 24 } }} />
-            <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: '100px', [theme.breakpoints.down('sm')]: { width: 80, height: 20 } }} />
-          </Box>
-          <Box sx={{
-            mt: { xs: 0.5, sm: 1 },
-            width: '100%',
-            textAlign: { xs: 'left', sm: 'left' }
-          }}>
-            <Skeleton variant="text" width={150} height={24} sx={{ mb: 0.25, [theme.breakpoints.down('sm')]: { width: 120, height: 18 } }} />
-            <Skeleton variant="text" width={120} height={20} sx={{ [theme.breakpoints.down('sm')]: { width: 100, height: 16 } }} />
-          </Box>
-        </Stack>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: { xs: 0.8, sm: 1.6 },
-            ml: 'auto',
-            p: { xs: 0.8, sm: 1.6 },
-            borderRadius: 2.4,
-            bgcolor: theme => alpha(theme.palette.background.paper, 0.05),
-            backdropFilter: 'blur(10px)',
-            border: '1px solid',
-            borderColor: theme => alpha(theme.palette.divider, 0.1),
-            [theme.breakpoints.down('sm')]: {
-              position: 'absolute',
-              right: 12,
-              bottom: 12,
-              p: 1,
-            }
-          }}
-        >
-          <Skeleton variant="circular" width={38} height={38} sx={{ [theme.breakpoints.down('sm')]: { width: 32, height: 32 } }} />
-          <Box>
-            <Skeleton variant="text" width={80} height={16} sx={{ mb: 0.5, [theme.breakpoints.down('sm')]: { width: 60, height: 12 } }} />
-            <Skeleton variant="text" width={60} height={20} sx={{ [theme.breakpoints.down('sm')]: { width: 50, height: 16 } }} />
-          </Box>
-        </Box>
-      </ProfileHeader>
-
-      {/* Summary Cards Skeleton */}
-      <Box sx={{ mb: 3 }}>
-        <Grid container spacing={2}>
-          {/* Attendance Card Skeleton */}
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ position: 'relative', zIndex: 1 }}>
-                <Box sx={{
-                  position: 'relative',
-                  width: '180px',
-                  height: '180px',
-                  margin: '0 auto',
-                  mb: 3
-                }}>
-                  <Skeleton variant="circular" width={180} height={180} />
-                </Box>
-                <Grid container spacing={2}>
-                  {[1, 2, 3, 4].map((i) => (
-                    <Grid item xs={6} key={i}>
-                      <Box sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                        <Skeleton variant="circular" width={32} height={32} sx={{ mb: 1 }} />
-                        <Skeleton variant="text" width={40} height={24} />
-                        <Skeleton variant="text" width={60} height={14} sx={{ mt: 0.5 }} />
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            </StatCard>
-          </Grid>
-
-          {/* Test Records Summary Card Skeleton */}
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {/* Header Skeleton */}
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mb: 2,
-                  pb: 1.5,
-                  borderBottom: '1px solid',
-                  borderColor: 'divider'
-                }}>
-                  <Skeleton variant="text" width={80} height={16} />
-                  <Skeleton variant="text" width={50} height={28} />
-                </Box>
-
-                {/* Stats Grid Skeleton */}
-                <Grid container spacing={0.5} sx={{ mb: 1 }}>
-                  {[1, 2, 3].map((i) => (
-                    <Grid item xs={4} key={i}>
-                      <Box sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 1,
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        textAlign: 'center',
-                        height: '100%'
-                      }}>
-                        <Skeleton variant="circular" width={16} height={16} sx={{ mb: 0.5 }} />
-                        <Skeleton variant="text" width={40} height={18} sx={{ mb: 0.25 }} />
-                        <Skeleton variant="text" width={50} height={12} />
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Subject Summary Skeleton */}
-                <Box sx={{
-                  flex: 1,
-                  minHeight: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
-                  pt: 1.5
-                }}>
-                  <Skeleton variant="text" width={100} height={14} sx={{ mb: 1 }} />
-                  <Grid container spacing={1}>
-                    {[1, 2, 3, 4].map((i) => (
-                      <Grid item xs={6} key={i}>
-                        <Box sx={{
-                          p: 1.25,
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                        }}>
-                          <Skeleton variant="text" width="70%" height={12} sx={{ mb: 0.5 }} />
-                          <Skeleton variant="text" width="50%" height={12} />
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              </Box>
-            </StatCard>
-          </Grid>
-
-          {/* Examinations Summary Card Skeleton */}
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{ p: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {/* Header Skeleton */}
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mb: 2,
-                  pb: 1.5,
-                  borderBottom: '1px solid',
-                  borderColor: 'divider'
-                }}>
-                  <Skeleton variant="text" width={90} height={16} />
-                  <Skeleton variant="text" width={50} height={28} />
-                </Box>
-
-                {/* Stats Grid Skeleton */}
-                <Grid container spacing={1} sx={{ mb: 1.5 }}>
-                  {[1, 2, 3].map((i) => (
-                    <Grid item xs={4} key={i}>
-                      <Box sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 1,
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        textAlign: 'center',
-                        height: '100%'
-                      }}>
-                        <Skeleton variant="circular" width={16} height={16} sx={{ mb: 0.5 }} />
-                        <Skeleton variant="text" width={40} height={18} sx={{ mb: 0.25 }} />
-                        <Skeleton variant="text" width={50} height={12} />
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Exam Summary Skeleton */}
-                <Box sx={{
-                  flex: 1,
-                  minHeight: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
-                  pt: 1.5
-                }}>
-                  <Skeleton variant="text" width={100} height={14} sx={{ mb: 1 }} />
-                  <Grid container spacing={1}>
-                    {[1, 2, 3, 4].map((i) => (
-                      <Grid item xs={6} key={i}>
-                        <Box sx={{
-                          p: 1.25,
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                        }}>
-                          <Skeleton variant="text" width="70%" height={12} sx={{ mb: 0.5 }} />
-                          <Skeleton variant="text" width="50%" height={12} />
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              </Box>
-            </StatCard>
-          </Grid>
-
-          {/* Reports/Homework Diary Card Skeleton */}
-          <Grid item xs={12} sm={6} md={3}>
-            <ReportsCard>
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                mb: 2,
-                pb: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider'
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Skeleton variant="rectangular" width={40} height={40} sx={{ borderRadius: '12px' }} />
-                  <Box>
-                    <Skeleton variant="text" width={120} height={24} />
-                    <Skeleton variant="text" width={100} height={16} sx={{ mt: 0.5 }} />
-                  </Box>
-                </Box>
-                <Skeleton variant="rectangular" width={120} height={32} sx={{ borderRadius: 1 }} />
-              </Box>
-              <Stack spacing={1}>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Box key={i} sx={{
-                    p: 1.5,
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5
-                  }}>
-                    <Skeleton variant="rectangular" width={32} height={32} sx={{ borderRadius: '8px' }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Skeleton variant="text" width="80%" height={16} sx={{ mb: 0.5 }} />
-                      <Skeleton variant="text" width="100%" height={14} />
-                    </Box>
-                    <Skeleton variant="circular" width={24} height={24} />
-                  </Box>
-                ))}
-              </Stack>
-            </ReportsCard>
-          </Grid>
-
-        </Grid>
-      </Box>
-
-      {/* Tabs Skeleton */}
-      <GlassCard>
-        <ModernTabs value={0}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <TabItem
-              key={i}
-              disabled
-              label={
-                <Box className="tab-wrapper">
-                  <Box className="icon-wrapper" sx={{ display: { xs: 'none', sm: 'flex' } }}>
-                    <Skeleton variant="circular" width={24} height={24} />
-                  </Box>
-                  <Skeleton variant="text" width={80} height={20} />
-                </Box>
-              }
-            />
-          ))}
-        </ModernTabs>
-
-        {/* Tab Content Skeleton */}
-        <TabPanel>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Box sx={{
-                p: 3,
-                borderRadius: 2,
-                background: theme => alpha(theme.palette.background.paper, 0.6),
-                border: '1px solid',
-                borderColor: 'divider'
-              }}>
-                <Skeleton variant="text" width={200} height={28} sx={{ mb: 3 }} />
-                <Grid container spacing={2}>
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Grid item xs={12} sm={6} key={i}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 1 }}>
-                        <Skeleton variant="circular" width={36} height={36} />
-                        <Box sx={{ flex: 1 }}>
-                          <Skeleton variant="text" width={100} height={14} sx={{ mb: 0.5 }} />
-                          <Skeleton variant="text" width={150} height={18} />
-                        </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Box sx={{
-                p: 3,
-                borderRadius: 2,
-                background: theme => alpha(theme.palette.background.paper, 0.6),
-                border: '1px solid',
-                borderColor: 'divider'
-              }}>
-                <Skeleton variant="text" width={200} height={28} sx={{ mb: 3 }} />
-                <Grid container spacing={2}>
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Grid item xs={12} sm={6} key={i}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, borderRadius: 1 }}>
-                        <Skeleton variant="circular" width={36} height={36} />
-                        <Box sx={{ flex: 1 }}>
-                          <Skeleton variant="text" width={100} height={14} sx={{ mb: 0.5 }} />
-                          <Skeleton variant="text" width={150} height={18} />
-                        </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            </Grid>
-          </Grid>
-        </TabPanel>
-      </GlassCard>
-    </ProfileContainer>
-  );
-};
+// --- Skeleton Loader for StudentProfile with subtle styling ---
+// Removed - using Loader component instead
 // --- Dashboard-style Skeleton Loader for StudentProfile ---
 
 const ExaminationsSkeleton: React.FC = () => {
@@ -4750,7 +4241,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   };
 
   if (loading) {
-    return <StudentProfileSkeleton />;
+    return <Loader />;
   }
 
   if (!student) {

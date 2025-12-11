@@ -34,6 +34,7 @@ import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from './NoSessionsFound';
 import NoClassesFound from './NoClassesFound';
 import NoSectionsFound from './NoSectionsFound';
+import Loader from './Loader';
 
 const Container = styled.div`
   width: 100%;
@@ -1954,20 +1955,7 @@ const HolidayManager: React.FC = () => {
 
   // Show loading state if school context is not available
   if (!user?.school_id) {
-    return (
-      <Container>
-        <PageHeader>
-          <PageTitle>
-            <CalendarMonth />
-            Manage Holidays
-          </PageTitle>
-        </PageHeader>
-        <LoadingContainer>
-          <Spinner />
-          <LoadingText>Loading school context...</LoadingText>
-        </LoadingContainer>
-      </Container>
-    );
+    return <Loader />;
   }
 
   // Show NoSessionsFound if there are no sessions

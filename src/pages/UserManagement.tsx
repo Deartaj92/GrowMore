@@ -800,144 +800,6 @@ const PageInput = styled.input`
   }
 `;
 
-// Skeleton Loading Components
-const SkeletonCard = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : theme.CARD};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
-  position: relative;
-  border: 2.5px solid ${({ theme }) => theme.BORDER};
-  min-width: 270px;
-  max-width: 100%;
-  width: 100%;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-`;
-
-const SkeletonAvatar = styled.div`
-  width: 68px;
-  height: 88px;
-  border-radius: 16px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin-right: 1.2rem;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonLine = styled.div<{ $width?: string; $height?: string; $margin?: string }>`
-  width: ${({ $width }) => $width || '100%'};
-  height: ${({ $height }) => $height || '16px'};
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  border-radius: 4px;
-  margin-bottom: ${({ $margin }) => $margin || '8px'};
-  position: relative;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  right: 8px;
-  width: 80px;
-  height: 24px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  border-radius: 999px;
-  position: relative;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonButton = styled.div`
-  width: 40px;
-  height: 32px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonCardContent = styled.div`
-  display: flex;
-  align-items: stretch;
-  gap: 0.7rem;
-  margin-bottom: 1rem;
-`;
-
-const SkeletonCardActions = styled.div`
-  display: flex;
-  gap: 0.25rem;
-  margin-top: 1rem;
-  justify-content: flex-end;
-`;
-
-const SkeletonUserCard = () => (
-  <SkeletonCard>
-    <SkeletonBadge />
-    <SkeletonCardContent>
-      <SkeletonAvatar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <SkeletonLine $width="70%" $height="20px" $margin="0.5rem" />
-        <SkeletonLine $width="50%" $height="14px" $margin="0.25rem" />
-        <SkeletonLine $width="60%" $height="14px" $margin="0.25rem" />
-        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-          <SkeletonLine $width="60px" $height="12px" $margin="0" />
-          <SkeletonLine $width="50px" $height="12px" $margin="0" />
-        </div>
-      </div>
-    </SkeletonCardContent>
-    <SkeletonCardActions>
-      <SkeletonButton />
-      <SkeletonButton />
-      <SkeletonButton />
-    </SkeletonCardActions>
-  </SkeletonCard>
-);
-
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -1005,12 +867,11 @@ const UserManagement: React.FC = () => {
     if (hasActiveSession) {
       setLoading(true);
       if (activeTab === 0) {
-        fetchUsers();
-        fetchStaff();
+        Promise.all([fetchUsers(), fetchStaff()]).finally(() => setLoading(false));
       } else if (activeTab === 1) {
-        fetchParents();
+        fetchParents(); // fetchParents already sets loading to false
       } else if (activeTab === 2) {
-        fetchStudents();
+        fetchStudents(); // fetchStudents already sets loading to false
       }
     }
   }, [user?.school_id, hasActiveSession, activeTab]);
@@ -2001,13 +1862,7 @@ const UserManagement: React.FC = () => {
     return (
       <>
         <UserGrid>
-          {loading ? (
-            <>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <SkeletonUserCard key={i} />
-              ))}
-            </>
-          ) : filteredUsers.length === 0 ? (
+          {filteredUsers.length === 0 ? (
             <>
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: window.innerWidth <= 768 ? '20px' : '40px', fontSize: window.innerWidth <= 768 ? '0.85rem' : '1rem' }}>No users found</div>
               <AddUserCard status="active" onClick={handleAdd} title="Add User">
@@ -2166,13 +2021,7 @@ const UserManagement: React.FC = () => {
     return (
       <>
         <UserGrid>
-          {loading ? (
-            <>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <SkeletonUserCard key={i} />
-              ))}
-            </>
-          ) : filteredParents.length === 0 ? (
+          {filteredParents.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: window.innerWidth <= 768 ? '20px' : '40px', fontSize: window.innerWidth <= 768 ? '0.85rem' : '1rem' }}>No parents found</div>
           ) : (
             paginatedParents.map(parent => {
@@ -2312,13 +2161,7 @@ const UserManagement: React.FC = () => {
     return (
       <>
         <UserGrid>
-          {loading ? (
-            <>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <SkeletonUserCard key={i} />
-              ))}
-            </>
-          ) : filteredStudents.length === 0 ? (
+          {filteredStudents.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: window.innerWidth <= 768 ? '20px' : '40px', fontSize: window.innerWidth <= 768 ? '0.85rem' : '1rem' }}>No students found</div>
           ) : (
             paginatedStudents.map(student => {

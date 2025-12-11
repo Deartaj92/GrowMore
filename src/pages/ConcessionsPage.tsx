@@ -2164,11 +2164,7 @@ const ConcessionsPage: React.FC = () => {
   ]);
 
   if (isLoadingData) {
-    return (
-      <PageContainer theme={theme}>
-        <Loader />
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   return (

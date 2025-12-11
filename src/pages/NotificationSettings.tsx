@@ -11,6 +11,7 @@ import {
   Refresh as RefreshIcon,
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
+import Loader from '../components/Loader';
 
 const Container = styled.div`
   width: 100%;
@@ -740,46 +741,6 @@ const SkeletonCategoryToggle = styled.div`
   margin-left: 1rem;
 `;
 
-// Skeleton Loader Component
-const NotificationSettingsSkeleton: React.FC<{ theme: any }> = ({ theme }) => (
-  <Container theme={theme}>
-    <SkeletonHeader theme={theme}>
-      <SkeletonHeaderLeft>
-        <SkeletonTitle theme={theme} />
-        <SkeletonHeaderSettings theme={theme}>
-          <SkeletonToggleItem>
-            <SkeletonToggleLabel theme={theme} />
-            <SkeletonToggle theme={theme} />
-          </SkeletonToggleItem>
-          <SkeletonToggleItem>
-            <SkeletonToggleLabel theme={theme} />
-            <SkeletonToggle theme={theme} />
-          </SkeletonToggleItem>
-        </SkeletonHeaderSettings>
-      </SkeletonHeaderLeft>
-      <SkeletonHeaderActions theme={theme}>
-        <SkeletonButton theme={theme} />
-        <SkeletonButton theme={theme} style={{ width: '100px' }} />
-      </SkeletonHeaderActions>
-    </SkeletonHeader>
-
-    <SkeletonCard theme={theme}>
-      <SkeletonSectionTitle theme={theme} />
-      <SkeletonDescription theme={theme} />
-      <SkeletonCategoryGrid theme={theme}>
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <SkeletonCategoryRow key={i} theme={theme}>
-            <SkeletonCategoryInfo>
-              <SkeletonCategoryLabel theme={theme} />
-              <SkeletonCategoryDesc theme={theme} />
-            </SkeletonCategoryInfo>
-            <SkeletonCategoryToggle theme={theme} />
-          </SkeletonCategoryRow>
-        ))}
-      </SkeletonCategoryGrid>
-    </SkeletonCard>
-  </Container>
-);
 
 interface NotificationCategory {
   key: 'notify_attendance' | 'notify_test_marks' | 'notify_examination_marks' | 'notify_homework_diary' | 'notify_subject_assignment' | 'notify_reports' | 'notify_announcements' | 'notify_system';
@@ -953,7 +914,7 @@ const NotificationSettings: React.FC = () => {
   };
 
   if (loading) {
-    return <NotificationSettingsSkeleton theme={theme} />;
+    return <Loader />;
   }
 
   if (!user?.staff_id) {

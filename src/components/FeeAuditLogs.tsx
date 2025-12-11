@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FeeAuditLog } from '../types/fee';
 import FeeAuditSetupInstructions from './FeeAuditSetupInstructions';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import Loader from './Loader';
 
 // Styled Components
 const Container = styled.div`
@@ -241,16 +242,6 @@ const EmptyState = styled.div`
   text-align: center;
   padding: 3rem 1rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-`;
-
-const LoadingState = styled.div`
-  text-align: center;
-  padding: 3rem 1rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
 `;
 
 const ErrorState = styled.div`
@@ -837,10 +828,7 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
 
       <LogsContainer>
         {loading ? (
-          <LoadingState>
-            <Refresh style={{ animation: 'spin 1s linear infinite' }} />
-            Loading audit logs...
-          </LoadingState>
+          <Loader size="small" />
         ) : filteredLogs.length === 0 ? (
           <EmptyState>
             <History style={{ fontSize: '3rem', marginBottom: '1rem' }} />

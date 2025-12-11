@@ -15,6 +15,7 @@ import {
 import { CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button, FormControlLabel, Radio, RadioGroup } from '@mui/material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Loader from './Loader';
 
 interface DMCData {
   student_id: string;
@@ -864,14 +865,6 @@ const ColorCodedValue = styled.span<{ $value: number }>`
 
 
 
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 400px;
-  font-size: 18px;
-  color: #7f8c8d;
-`;
 
 const ProgressBar = styled.div<{ $progress: number }>`
     position: absolute;
@@ -3476,11 +3469,7 @@ const DetailedMarksCertificate: React.FC = () => {
       </Header>
 
       <MainContent>
-        {loading && (
-          <LoadingContainer>
-            Loading Detailed Marks Certificate...
-          </LoadingContainer>
-        )}
+        {loading && <Loader />}
 
         {error && (
           <ErrorContainer>

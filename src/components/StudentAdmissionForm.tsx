@@ -752,6 +752,40 @@ const RsInputWrapper = styled.div`
 `;
 
 // Skeleton loading components
+const shimmer = keyframes`
+  0% { 
+    transform: translateX(-100%);
+  }
+  100% { 
+    transform: translateX(100%);
+  }
+`;
+
+const isDark = (theme: any) => theme.BG === '#252525' || theme.BG === '#181c2a';
+
+const SkeletonBase = styled.div`
+  position: relative;
+  overflow: hidden;
+  background: ${({ theme }) => isDark(theme) ? '#2a2a2a' : '#f5f5f5'};
+  border-radius: 8px;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      ${({ theme }) => isDark(theme) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'},
+      transparent
+    );
+    animation: ${shimmer} 2.5s ease-in-out infinite;
+  }
+`;
+
 const FormSkeletonContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -765,12 +799,17 @@ const FormSkeletonContainer = styled.div`
     flex-direction: column;
     gap: 18px;
   }
+  @media (max-width: 700px) {
+    padding: 0;
+  }
 `;
 
 const SkeletonCardBlock = styled.div`
   background: ${({ theme }) => theme.CARD};
   border-radius: 24px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 2px 8px rgba(0, 0, 0, 0.2)'
+    : '0 2px 8px rgba(0, 0, 0, 0.08)'};
   padding: 48px 32px;
   display: flex;
   flex-direction: column;
@@ -779,21 +818,10 @@ const SkeletonCardBlock = styled.div`
   max-width: 340px;
   flex: 0 0 300px;
   position: relative;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
   backdrop-filter: blur(8px);
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-  }
   @media (max-width: 900px) {
     width: 100%;
     max-width: 100vw;
@@ -802,168 +830,127 @@ const SkeletonCardBlock = styled.div`
     margin-bottom: 0;
     border-radius: 16px;
   }
-`;
-
-const SkeletonAvatar = styled.div`
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin: 8px 8px 48px 8px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
+  @media (max-width: 700px) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
   }
 `;
 
-const SkeletonButton = styled.div`
+const SkeletonAvatar = styled(SkeletonBase)`
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  margin: 8px 8px 48px 8px;
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
+  @media (max-width: 900px) {
+    width: 72px;
+    height: 72px;
+  }
+  @media (max-width: 700px) {
+    width: 120px;
+    height: 120px;
+  }
+`;
+
+const SkeletonButton = styled(SkeletonBase)`
   width: 100%;
   height: 48px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
   border-radius: 12px;
   margin-bottom: 16px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
+  @media (max-width: 900px) {
+    max-width: 200px;
   }
 `;
 
 const SkeletonFieldsCard = styled.div`
   background: ${({ theme }) => theme.CARD};
   border-radius: 18px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 2px 8px rgba(0, 0, 0, 0.2)'
+    : '0 2px 8px rgba(0, 0, 0, 0.08)'};
   padding: 32px 24px;
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
   z-index: 1;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
   @media (max-width: 900px) {
     width: 100%;
     padding: 18px 8px;
     border-radius: 12px;
   }
+  @media (max-width: 700px) {
+    padding: 12px 4px;
+    border-radius: 8px;
+  }
 `;
 
-const SkeletonTitle = styled.div`
+const SkeletonTitle = styled(SkeletonBase)`
   width: 60%;
   height: 32px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
   border-radius: 8px;
   margin: 0 auto 24px auto;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
 `;
 
-const SkeletonInfoBox = styled.div`
+const SkeletonInfoBox = styled(SkeletonBase)`
   width: 100%;
   height: 40px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2d3748' : '#f7fafc'};
   border-radius: 8px;
   margin-bottom: 16px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
+  background: ${({ theme }) => isDark(theme) ? '#2a2a2a' : '#f5f5f5'};
 `;
 
-const SkeletonSectionTitle = styled.div`
+const SkeletonSectionTitle = styled(SkeletonBase)`
   width: 40%;
   height: 24px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
   border-radius: 6px;
   margin: 18px 0 8px 0;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
 `;
 
 const SkeletonGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 24px 16px;
   width: 100%;
   flex: 1;
   min-height: 0;
   padding: 0 24px;
   box-sizing: border-box;
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
   @media (max-width: 900px) {
     grid-template-columns: 1fr 1fr;
+    padding: 0;
   }
   @media (max-width: 700px) {
     grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 0 8px;
+    gap: 12px;
+    padding: 0;
   }
 `;
 
-const SkeletonField = styled.div`
+const SkeletonField = styled(SkeletonBase)`
   width: 100%;
   height: 48px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
   border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
 `;
 
-const SkeletonTextArea = styled.div`
+const SkeletonTextArea = styled(SkeletonBase)`
   width: 100%;
   height: 80px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
   border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
 `;
 
 const SkeletonHeader = styled.div`
@@ -971,48 +958,45 @@ const SkeletonHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   background: ${({ theme }) => theme.CARD};
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
   border-radius: 16px;
-  box-shadow: 0 4px 16px #0002;
+  box-shadow: ${({ theme }) => isDark(theme)
+    ? '0 2px 8px rgba(0, 0, 0, 0.2)'
+    : '0 2px 8px rgba(0, 0, 0, 0.08)'};
   padding: 12px 24px 10px 24px;
   min-height: 36px;
   margin: 16px 0 18px 0;
   width: 100%;
-`;
-const SkeletonHeaderTitle = styled.div`
-  width: 180px;
-  height: 22px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  border-radius: 8px;
-  margin-right: 18px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
+  @media (max-width: 700px) {
+    padding: 8px 12px 6px 12px;
+    margin: 12px 0 12px 0;
+    border-radius: 12px;
   }
 `;
+
+const SkeletonHeaderTitle = styled(SkeletonBase)`
+  width: 180px;
+  height: 22px;
+  border-radius: 8px;
+  margin-right: 18px;
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
+`;
+
 const SkeletonSegmentedGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
 `;
-const SkeletonSegmentedButton = styled.div`
+
+const SkeletonSegmentedButton = styled(SkeletonBase)`
   width: 38px;
   height: 32px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
   border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
+  background: ${({ theme }) => isDark(theme) ? '#333333' : '#e8e8e8'};
+  @media (max-width: 700px) {
+    height: 26px;
   }
 `;
 
@@ -1088,62 +1072,6 @@ const LastInsertedFeed = styled.div`
 `;
 
 
-// Skeleton loading component
-const FormSkeleton: React.FC = () => {
-  return (
-    <>
-      <SkeletonHeader>
-        <SkeletonHeaderTitle />
-        <SkeletonSegmentedGroup>
-          <SkeletonSegmentedButton />
-          <SkeletonSegmentedButton />
-          <SkeletonSegmentedButton />
-        </SkeletonSegmentedGroup>
-      </SkeletonHeader>
-    <FormSkeletonContainer>
-      <SkeletonCardBlock>
-        <SkeletonAvatar />
-        <SkeletonButton />
-        <SkeletonButton />
-        <SkeletonButton />
-      </SkeletonCardBlock>
-      <SkeletonFieldsCard>
-        <SkeletonTitle />
-        <SkeletonInfoBox />
-        {/* Student Information Section */}
-        <SkeletonSectionTitle />
-        <SkeletonGrid>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <SkeletonField key={i} />
-          ))}
-        </SkeletonGrid>
-        {/* Other Information Section */}
-        <SkeletonSectionTitle />
-        <SkeletonGrid>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-            <SkeletonField key={i} />
-          ))}
-          <SkeletonTextArea style={{ gridColumn: '1 / -1' }} />
-        </SkeletonGrid>
-        {/* Father Information Section */}
-        <SkeletonSectionTitle />
-        <SkeletonGrid>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <SkeletonField key={i} />
-          ))}
-        </SkeletonGrid>
-        {/* Mother Information Section */}
-        <SkeletonSectionTitle />
-        <SkeletonGrid>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <SkeletonField key={i} />
-          ))}
-        </SkeletonGrid>
-      </SkeletonFieldsCard>
-    </FormSkeletonContainer>
-    </>
-  );
-};
 
 // --- Segmented Button Styles: Exact copy from StudentList.tsx ---
 const SEGMENTED_HEIGHT = '32px';
@@ -2374,11 +2302,7 @@ const StudentAdmissionForm: React.FC = () => {
   }, [showConfirm]);
 
   if (loading) {
-    return (
-      <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
-        <FormSkeleton />
-      </ThemeProvider>
-    );
+    return <Loader />;
   }
 
   if (!activeSession) {

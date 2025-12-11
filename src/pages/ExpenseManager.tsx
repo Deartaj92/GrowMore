@@ -713,13 +713,7 @@ const ExpenseManager: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <ThemeProvider theme={theme}>
-        <PageContainer>
-          <Loader />
-        </PageContainer>
-      </ThemeProvider>
-    );
+    return <Loader />;
   }
 
   return (

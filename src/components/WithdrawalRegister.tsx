@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
-import styled, { css } from 'styled-components';
+import React, { useEffect, useState, useRef, useMemo, useCallback, memo, useContext } from 'react';
+import styled, { css, keyframes } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
@@ -1237,6 +1237,8 @@ const WithdrawalRegister: React.FC = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+
+  // Native MUI Skeleton Component
 
   // Show loading
   if (loading || !hasFetchedStudents) {

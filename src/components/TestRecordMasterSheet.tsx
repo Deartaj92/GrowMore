@@ -35,6 +35,7 @@ import { Textfit } from '@techstack/react-textfit';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Loader from './Loader';
 
 // Interfaces
 interface Class {
@@ -1669,28 +1670,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
 
       <MainContent>
         {loadingSessions ? (
-          <div style={{ 
-            padding: '40px', 
-            textAlign: 'center', 
-            color: '#6b7280',
-            fontSize: '1rem'
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: `3px solid #e0e0e0`,
-              borderTop: `3px solid #4a6cf7`,
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 1rem auto'
-            }}></div>
-            <div style={{ marginBottom: '0.5rem', fontWeight: '600' }}>
-              Loading Sessions
-            </div>
-            <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-              Please wait while we fetch available sessions...
-            </div>
-          </div>
+          <Loader />
         ) : !selectedSession ? (
           <div style={{ 
             padding: '40px', 
@@ -1736,21 +1716,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
           </div>
         ) : selectedStudent ? (
           loading ? (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              padding: '2rem',
-              color: '#6b7280',
-              fontSize: '0.9rem'
-            }}>
-              <RefreshIcon style={{ 
-                marginRight: '8px', 
-                animation: 'spin 1s linear infinite',
-                fontSize: '18px'
-              }} />
-              Loading existing test records...
-            </div>
+            <Loader />
           ) : masterSheetData.length > 0 ? (
           <>
             {/* Summary Card */}

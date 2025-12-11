@@ -1008,133 +1008,6 @@ const AvatarUploadBox = muiStyled(Box)(({ theme }: { theme: MuiTheme }) => ({
   }
 }));
 
-// --- FamilyManagement Skeleton Loader Styled Components (matching StudentList) ---
-const FamilyManagementSkeletonContainer = styled.div`
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  width: 100%;
-  padding: clamp(8px, 2vw, 24px);
-  box-sizing: border-box;
-  @media (max-width: 900px) {
-    padding: clamp(6px, 2vw, 12px);
-  }
-  @media (max-width: 600px) {
-    padding: 8px 10px;
-    padding-bottom: 2.5rem;
-  }
-`;
-const FamilyManagementSkeletonGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1.5rem 1.5rem;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 18px 0 32px 0;
-  background: transparent;
-`;
-const FamilySkeletonCard = styled.div`
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#232a3b' : '#f3f4f6'};
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
-  min-height: 180px;
-  width: 100%;
-  max-width: 340px;
-  margin: 0 auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-    border-radius: 12px;
-  }
-  
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-  }
-  
-  @media (max-width: 700px) {
-    padding: 0.85rem;
-    border-radius: 10px;
-  }
-`;
-const FamilySkeletonAvatar = styled.div`
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin: 0 0 12px 0;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-    border-radius: 50%;
-  }
-`;
-const FamilySkeletonLine = styled.div<{ width?: string; height?: string }>`
-  height: ${({ height }) => height || '16px'};
-  width: ${({ width }) => width || '80%'};
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e0e7ef'};
-  border-radius: 6px;
-  margin: 6px 0;
-  position: relative;
-  overflow: hidden;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-    border-radius: 6px;
-  }
-`;
-const FamilySkeletonDivider = styled.div`
-  width: 100%;
-  height: 1px;
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
-  margin: 8px 0;
-  border-radius: 1px;
-`;
-const skeletonFamilyCount = 8;
-const FamilyManagementSkeleton: React.FC = () => (
-  <FamilyManagementSkeletonContainer>
-    <FamilyManagementSkeletonGrid>
-      {Array.from({ length: skeletonFamilyCount }).map((_, i) => (
-        <FamilySkeletonCard key={i}>
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.85rem', paddingBottom: '0.85rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <FamilySkeletonAvatar />
-            <div style={{ flex: 1 }}>
-              <FamilySkeletonLine width="65%" height="18px" />
-              <FamilySkeletonLine width="85%" height="14px" />
-            </div>
-          </div>
-          <FamilySkeletonLine width="40%" height="12px" />
-          <FamilySkeletonLine width="100%" height="36px" />
-          <FamilySkeletonLine width="100%" height="36px" />
-        </FamilySkeletonCard>
-      ))}
-    </FamilyManagementSkeletonGrid>
-  </FamilyManagementSkeletonContainer>
-);
 
 const FamilyManagement: React.FC = () => {
   const { theme } = useContext(ThemeContext);
@@ -1676,9 +1549,7 @@ const FamilyManagement: React.FC = () => {
         </DeleteModalOverlay>
       )}
       <PageContainer>
-        {loadingFamilies ? (
-          <FamilyManagementSkeleton />
-        ) : (
+        {!loadingFamilies && (
           <>
             <PageHeader>
               <PageTitle>Families</PageTitle>

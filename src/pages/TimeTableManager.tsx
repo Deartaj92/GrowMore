@@ -2039,7 +2039,7 @@ const TimeTableManager: React.FC = () => {
         </HeaderLeft>
       </PageHeader>
       <MainContent>
-        {loading ? <div>Loading...</div> : (
+        {loading ? <Loader /> : (
           <TableWrapper>
           <TimetableTable>
             <thead>

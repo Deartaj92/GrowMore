@@ -26,6 +26,7 @@ import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { examinationService } from '../services/examinationService';
 import { Examination, DMCTemplate, ExamMasterSheet } from '../types/examinations';
+import Loader from './Loader';
 
 // Styled Components (copied and adapted from SubjectManager)
 const PageContainer = styled.div`
@@ -250,15 +251,7 @@ const DMCManager: React.FC = () => {
 
   if (loading) return (
     <ThemeProvider theme={themeObj}>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '2rem',
-        color: themeObj.TEXT_SECONDARY
-      }}>
-        Loading DMC Manager...
-      </div>
+      <Loader />
     </ThemeProvider>
   );
 

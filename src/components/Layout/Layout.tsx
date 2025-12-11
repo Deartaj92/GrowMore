@@ -11,7 +11,7 @@ import { WifiOff as WifiOffIcon } from '@mui/icons-material';
 import { ThemeProvider as CustomThemeProvider, useTheme } from './contexts/ThemeContext';
 import { MuteProvider } from './contexts/MuteContext';
 import { PageHeaderProvider, usePageHeader } from './contexts/PageHeaderContext';
-import { PageFooterProvider } from './contexts/PageFooterContext';
+import { PageFooterProvider, usePageFooter } from './contexts/PageFooterContext';
 import { ProgressProvider, useProgress } from './contexts/ProgressContext';
 import { hasPermission } from '../../services/permissionService';
 
@@ -74,6 +74,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { setPageHeader } = usePageHeader();
+  const { footerContent } = usePageFooter();
   const { theme, toggleTheme } = useTheme();
   const { startProgress, completeProgress } = useProgress();
   const { navHistory, forwardHistory, handleGoBack, handleGoForward } = useNavigation();
@@ -125,6 +126,7 @@ const Layout: React.FC = () => {
   const [seenByError, setSeenByError] = useState<string | null>(null);
   const seenAnnouncementsRef = useRef<Set<number>>(new Set());
   const snoozedAnnouncementsRef = useRef<Set<number>>(new Set());
+  const [footerHeight, setFooterHeight] = useState(0);
 
   // Refs
   const profileDropdownRef = useRef<HTMLDivElement>(null);
@@ -1001,6 +1003,10 @@ const Layout: React.FC = () => {
     setSeenByModalOpen(false);
   };
 
+  const handleFooterHeightChange = useCallback((height: number) => {
+    setFooterHeight(height);
+  }, []);
+
   const [canViewSeenByList, setCanViewSeenByList] = useState(false);
   
   useEffect(() => {
@@ -1066,7 +1072,16 @@ const Layout: React.FC = () => {
                       minHeight: 0 
                     }}
                   >
-                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div 
+                      style={{ 
+                        flex: 1, 
+                        minHeight: 0, 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        paddingBottom: footerHeight > 0 ? `${footerHeight}px` : '0',
+                        boxSizing: 'border-box'
+                      }}
+                    >
                       {isOnline ? (
                         <Outlet />
                       ) : (
@@ -1081,7 +1096,7 @@ const Layout: React.FC = () => {
                         </OfflineContainer>
                       )}
                     </div>
-                    <GlobalFooter />
+                    <GlobalFooter onHeightChange={handleFooterHeightChange} />
                   </motion.div>
                 </AnimatePresence>
               </ContentArea>

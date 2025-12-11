@@ -1076,12 +1076,22 @@ const StaffHalfLeaves: React.FC = () => {
     };
   }, [totalPersons, firstHalfCount, secondHalfCount, isMobile, theme, loadingPersons, deleting, saving, date, sessionId, persons, handleSave, fetchPersons]);
 
+  // Set footer loading state when loading
+  useEffect(() => {
+    if (loadingSession || loadingPersons) {
+      setFooterContent({
+        visible: true,
+        loading: true,
+      });
+    } else {
+      if (!date) {
+        setFooterContent(null);
+      }
+    }
+  }, [loadingSession, loadingPersons, date, setFooterContent]);
+
   if (loadingSession) {
-    return (
-      <PageContainer theme={theme}>
-        <Loader />
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   if (!hasActiveSession) {
@@ -1197,11 +1207,7 @@ const StaffHalfLeaves: React.FC = () => {
 
           // Show loading state
           if (loadingPersons) {
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: 16 }}>
-                <Loader />
-              </div>
-            );
+            return <Loader />;
           }
 
           // Show empty state when no persons found

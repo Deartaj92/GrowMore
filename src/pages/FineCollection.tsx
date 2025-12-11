@@ -942,144 +942,6 @@ const DropdownDate = styled.div`
   margin-bottom: 0.2rem;
 `;
 
-// --- Dashboard-style Skeleton Loader for FineCollection ---
-const FineCollectionSkeletonContainer = styled.div`
-  width: 100%;
-  height: 100%;
-  padding: clamp(8px, 2vw, 24px);
-  box-sizing: border-box;
-  @media (max-width: 900px) {
-    padding: 1rem 0.5rem;
-  }
-  @media (max-width: 700px) {
-    padding: 0.7rem 0.5rem;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    box-sizing: border-box;
-  }
-`;
-const SkeletonPageGrid = styled.div`
-  display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 1.5rem;
-  align-items: start;
-  min-height: calc(100vh - 200px);
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  @media (max-width: 700px) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    box-sizing: border-box;
-    > div {
-      width: 100%;
-    }
-  }
-`;
-const SkeletonCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 18px;
-  box-shadow: 0 6px 32px #00000029, 0 1.5px 6px #0000001a;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 1.8rem 2rem;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  min-height: 180px;
-  margin-bottom: 1.2rem;
-  overflow: hidden;
-  width: 100%;
-  @media (max-width: 700px) {
-    padding: 1.1rem 0.6rem;
-    border-radius: 12px;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0 0 1rem 0;
-  }
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.08), transparent);
-    animation: shimmer 1.5s infinite;
-    border-radius: 18px;
-  }
-`;
-const SkeletonSearchBar = styled.div`
-  width: 100%;
-  height: 44px;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 10px;
-  margin-bottom: 1.2rem;
-  position: relative;
-  overflow: hidden;
-  @media (max-width: 700px) {
-    border-radius: 10px;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0;
-  }
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    border-radius: 10px;
-  }
-`;
-const SkeletonTable = styled.div`
-  width: 100%;
-  height: 180px;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  margin-top: 1.2rem;
-  position: relative;
-  overflow: hidden;
-  @media (max-width: 700px) {
-    border-radius: 10px;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0;
-  }
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.08), transparent);
-    animation: shimmer 1.5s infinite;
-    border-radius: 12px;
-  }
-`;
-const FineCollectionSkeleton: React.FC = () => (
-  <FineCollectionSkeletonContainer>
-    <SkeletonPageGrid>
-      <div>
-        <SkeletonSearchBar />
-        <SkeletonCard />
-      </div>
-      <div>
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonTable />
-      </div>
-    </SkeletonPageGrid>
-  </FineCollectionSkeletonContainer>
-);
 
 const FineCollection: React.FC = () => {
   const theme = useTheme();
@@ -1843,7 +1705,7 @@ const FineCollection: React.FC = () => {
                     </thead>
                     <tbody>
                       {attendanceLoading ? (
-                        <tr><AttendanceTd colSpan={4}>Loading...</AttendanceTd></tr>
+                        <tr><AttendanceTd colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}><Loader size="small" /></AttendanceTd></tr>
                       ) : attendanceError ? (
                         <tr><AttendanceTd colSpan={4}>{attendanceError}</AttendanceTd></tr>
                       ) : attendanceRows.length === 0 ? (
@@ -2161,7 +2023,7 @@ const FineCollection: React.FC = () => {
             <CardTitle><History style={{ color: (theme as any).ACCENT }} /> Payment History</CardTitle>
             {selectedStudent ? (
               paymentHistoryLoading ? (
-                <CardPlaceholder style={{ minHeight: '120px' }}>Loading payment history...</CardPlaceholder>
+                <CardPlaceholder style={{ minHeight: '120px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Loader size="small" /></CardPlaceholder>
               ) : paymentHistoryError ? (
                 <CardPlaceholder style={{ minHeight: '120px', color: 'red' }}>{paymentHistoryError}</CardPlaceholder>
               ) : paymentHistory.length > 0 ? (

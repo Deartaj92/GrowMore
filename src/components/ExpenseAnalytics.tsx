@@ -26,6 +26,7 @@ import {
 import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell, Legend } from 'recharts';
+import Loader from './Loader';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -524,9 +525,7 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
       </Header>
 
       {isLoadingData ? (
-        <ContentCard theme={theme}>
-          <EmptyState theme={theme}>Loading analytics data...</EmptyState>
-        </ContentCard>
+        <Loader />
       ) : !analyticsData ? (
         <ContentCard theme={theme}>
           <EmptyState theme={theme}>No expense data available for the selected period</EmptyState>

@@ -24,6 +24,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { darkTheme, lightTheme } from '../contexts/ThemeContext';
+import Loader from '../components/Loader';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -2877,16 +2878,7 @@ const FeeDefaultersList: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <PageContainer>
-        <TableArea>
-          <LoadingContainer>
-            <Refresh style={{ marginRight: '0.5rem' }} />
-            Loading fee defaulters...
-          </LoadingContainer>
-        </TableArea>
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   if (error) {

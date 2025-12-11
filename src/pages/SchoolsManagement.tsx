@@ -1328,37 +1328,6 @@ const SchoolsManagement: React.FC = () => {
     </Grid>
   );
 
-  const renderSkeletonCards = () => (
-    <>
-      {[...Array(6)].map((_, index) => (
-        <Grid item xs={12} sm={6} lg={4} key={index}>
-          <Card sx={{ borderRadius: '16px', overflow: 'hidden', minHeight: '280px' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, mb: 3, pb: 3, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                <Skeleton variant="circular" width={80} height={80} />
-                <Box sx={{ flex: 1 }}>
-                  <Skeleton variant="text" width="80%" height={32} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="60%" height={20} sx={{ mb: 1.5 }} />
-                  <Skeleton variant="rounded" width={80} height={28} />
-                </Box>
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {[...Array(3)].map((_, i) => (
-                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5 }}>
-                    <Skeleton variant="rounded" width={40} height={40} />
-                    <Box sx={{ flex: 1 }}>
-                      <Skeleton variant="text" width="30%" height={16} sx={{ mb: 0.25 }} />
-                      <Skeleton variant="text" width="70%" height={20} />
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      ))}
-    </>
-  );
 
   return (
     <PageContainer>
@@ -1373,8 +1342,11 @@ const SchoolsManagement: React.FC = () => {
       </PageHeader>
 
       <Grid container spacing={3}>
-        {loading ? renderSkeletonCards() : 
-          schools.length > 0 ? 
+        {loading ? (
+          <Grid item xs={12}>
+            <Loader />
+          </Grid>
+        ) : schools.length > 0 ? 
             schools.map(renderSchoolCard) :
             (
               <Grid item xs={12}>

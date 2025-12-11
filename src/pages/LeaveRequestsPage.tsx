@@ -45,6 +45,7 @@ import {
   InputLabel,
   Box,
   Chip,
+  Grid,
 } from '@mui/material';
 
 // Helper function to check if theme is dark
@@ -1421,6 +1422,18 @@ const LeaveRequestsPage: React.FC = () => {
       setSelectedSection('');
     }
   }, [selectedClass]);
+  
+  // Set footer loading state when loading
+  useEffect(() => {
+    if (isLoadingData) {
+      setFooterContent({
+        visible: true,
+        loading: true,
+      });
+    } else {
+      setFooterContent(null);
+    }
+  }, [isLoadingData, setFooterContent]);
   
   if (isLoadingData) {
     return <Loader />;

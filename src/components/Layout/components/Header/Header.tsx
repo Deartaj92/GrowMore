@@ -1231,20 +1231,6 @@ const Header: React.FC<HeaderProps> = ({
       icon: <PieChartIcon />,
       path: '/fines/statistics',
       color: '#8b5cf6'
-    },
-    {
-      title: 'Fine History',
-      description: 'View complete fine payment history',
-      icon: <ListAltIcon />,
-      path: '/fines/history',
-      color: '#6366f1'
-    },
-    {
-      title: 'Fine Reports',
-      description: 'Generate comprehensive fine reports',
-      icon: <BarChartIcon />,
-      path: '/fines/reports',
-      color: '#ef4444'
     }
   ];
 

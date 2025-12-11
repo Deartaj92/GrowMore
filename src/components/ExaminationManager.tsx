@@ -26,6 +26,7 @@ import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { examinationService } from '../services/examinationService';
 import { Examination, ExaminationFilters } from '../types/examinations';
+import Loader from './Loader';
 
 // Styled Components (copied and adapted from SubjectManager)
 const PageContainer = styled.div`
@@ -995,59 +996,6 @@ const NoResults = styled.div`
   margin: 48px 0;
 `;
 
-const ExaminationsLoadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 320px;
-  width: 100%;
-  animation: fadeIn 0.5s;
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-`;
-
-const ExaminationsLoadingCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 18px;
-  box-shadow: 0 8px 32px 0 #0002, 0 1.5px 6px #0001;
-  padding: 2.5rem 2.5rem 2rem 2.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 320px;
-  max-width: 95vw;
-`;
-
-const ExaminationsLoadingSpinner = styled.div`
-  width: 54px;
-  height: 54px;
-  border: 5px solid ${({ theme }) => theme.BORDER};
-  border-top: 5px solid ${({ theme }) => theme.ACCENT};
-  border-radius: 50%;
-  animation: spin 1.1s linear infinite;
-  margin-bottom: 28px;
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-
-const ExaminationsLoadingText = styled.div`
-  color: ${({ theme }) => theme.ACCENT};
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  margin-bottom: 6px;
-`;
-
-const ExaminationsLoadingSubText = styled.div`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 1.05rem;
-  font-weight: 500;
-`;
 
 const PaginationContainer = styled.div`
   display: flex;
@@ -1661,13 +1609,7 @@ const ExaminationManager: React.FC = () => {
 
   if (loading) return (
     <ThemeProvider theme={theme}>
-      <ExaminationsLoadingContainer>
-        <ExaminationsLoadingCard>
-          <ExaminationsLoadingSpinner />
-          <ExaminationsLoadingText>Loading Examinations...</ExaminationsLoadingText>
-          <ExaminationsLoadingSubText>Please wait while we fetch the latest examinations.</ExaminationsLoadingSubText>
-        </ExaminationsLoadingCard>
-      </ExaminationsLoadingContainer>
+      <Loader />
     </ThemeProvider>
   );
 

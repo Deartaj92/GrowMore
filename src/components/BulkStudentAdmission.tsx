@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
+import { Box, Grid } from '@mui/material';
+import Loader from './Loader';
 import NoSessionsFound from './NoSessionsFound';
 import NoClassesFound from './NoClassesFound';
 import NoSectionsFound from './NoSectionsFound';
@@ -347,6 +349,202 @@ const GlobalStyle = createGlobalStyle<{
     transition: background-color 5000s ease-in-out 0s;
   }
 `;
+
+// --- Skeleton Loading Components ---
+const skeletonShimmer = keyframes`
+  0% { 
+    transform: translateX(-100%);
+  }
+  100% { 
+    transform: translateX(100%);
+  }
+`;
+
+const isDarkSkeleton = (theme: any) => theme.BG === '#252525' || theme.BG === '#181c2a';
+
+const SkeletonBase = styled.div`
+  position: relative;
+  overflow: hidden;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#2a2a2a' : '#f5f5f5'};
+  border-radius: 8px;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      ${({ theme }) => isDarkSkeleton(theme) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'},
+      transparent
+    );
+    animation: ${skeletonShimmer} 2.5s ease-in-out infinite;
+  }
+`;
+
+const SkeletonHeaderTitle = styled(SkeletonBase)`
+  width: 180px;
+  height: 22px;
+  border-radius: 6px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+`;
+
+const SkeletonSegmentedSelect = styled(SkeletonBase)`
+  height: 32px;
+  width: 140px;
+  border-radius: 11px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+  margin-right: 1px;
+  
+  &:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  
+  &:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+`;
+
+const SkeletonListHeaderTitle = styled(SkeletonBase)`
+  width: 120px;
+  height: 20px;
+  border-radius: 6px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+`;
+
+const SkeletonStudentRow = styled.div`
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: ${({ theme }) => theme.CARD};
+  border: ${({ theme }) => isDarkSkeleton(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: ${({ theme }) => isDarkSkeleton(theme)
+    ? '0 2px 8px rgba(0, 0, 0, 0.2)'
+    : '0 2px 8px rgba(0, 0, 0, 0.08)'};
+  
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+`;
+
+const SkeletonSerialNumber = styled(SkeletonBase)`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+  flex-shrink: 0;
+`;
+
+const SkeletonInput = styled(SkeletonBase)`
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+`;
+
+const SkeletonSelect = styled(SkeletonBase)`
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+`;
+
+const SkeletonButtonGroup = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  
+  @media (max-width: 700px) {
+    width: 100%;
+    justify-content: flex-end;
+  }
+`;
+
+const SkeletonButton = styled(SkeletonBase)`
+  width: 80px;
+  height: 36px;
+  border-radius: 6px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+`;
+
+const SkeletonFooter = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: ${({ theme }) => theme.CARD};
+  border-top: ${({ theme }) => isDarkSkeleton(theme)
+    ? '1px solid rgba(255, 255, 255, 0.05)'
+    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => isDarkSkeleton(theme)
+    ? '0 -1px 6px rgba(0, 0, 0, 0.2)'
+    : '0 -1px 6px rgba(0, 0, 0, 0.08)'};
+  min-height: 36px;
+  
+  @media (max-width: 700px) {
+    padding: 0.4rem 0.75rem;
+    gap: 0.5rem;
+    min-height: 32px;
+  }
+`;
+
+const SkeletonFooterText = styled(SkeletonBase)`
+  height: 18px;
+  width: 140px;
+  border-radius: 6px;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+  
+  @media (max-width: 700px) {
+    display: none;
+  }
+`;
+
+const SkeletonFooterSegmentedGroup = styled.div`
+  display: flex;
+  align-items: center;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
+  border-radius: 11px;
+  box-shadow: 1.4px 1.4px 4px #2222;
+  overflow: hidden;
+`;
+
+const SkeletonFooterButton = styled(SkeletonBase)`
+  height: 32px;
+  width: 100px;
+  border-radius: 0;
+  background: ${({ theme }) => isDarkSkeleton(theme) ? '#333333' : '#e8e8e8'};
+  margin-right: 1px;
+  
+  &:first-child {
+    border-top-left-radius: 11px;
+    border-bottom-left-radius: 11px;
+  }
+  
+  &:last-child {
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
+    margin-right: 0;
+    width: 160px;
+  }
+`;
+
 
 // --- Segmented Group Styles (matching MarkAttendance.tsx) ---
 const SEGMENTED_HEIGHT = '32px';
@@ -1038,14 +1236,7 @@ const BulkStudentAdmission: React.FC = () => {
   }, [students.length, submitting, isMobile, theme, setFooterContent, handleSubmit, handleCancel, handleReset]);
 
   if (loading) {
-    return (
-      <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
-        <LoadingOverlay>
-          <LoadingSpinner />
-          <div>Loading...</div>
-        </LoadingOverlay>
-      </ThemeProvider>
-    );
+    return <Loader />;
   }
 
   if (!activeSession) {

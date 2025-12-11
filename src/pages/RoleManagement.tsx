@@ -18,6 +18,7 @@ import {
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
 import { getPermissionKeyForPath } from '../utils/permissionMapping';
+import Loader from '../components/Loader';
 
 const Container = styled.div`
   width: 100%;
@@ -894,13 +895,7 @@ const RoleManagement: React.FC = () => {
   const hasChanges = rolePermissions.size > 0;
 
   if (loading) {
-    return (
-      <Container>
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
-          Loading...
-        </div>
-      </Container>
-    );
+    return <Loader />;
   }
 
   return (

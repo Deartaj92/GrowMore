@@ -79,6 +79,7 @@ import { examinationConfigurationService } from '../services/examinationConfigur
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useToast } from '../components/useToast';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import Loader from '../components/Loader';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -264,19 +265,6 @@ const LoadingContainer = styled.div`
   justify-content: center;
   height: 60vh;
   width: 100%;
-`;
-
-const LoadingSpinner = styled.div`
-  width: 48px;
-  height: 48px;
-  border: 5px solid #e0e7ff;
-  border-top: 5px solid #6366f1;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
 `;
 
 const LoadingText = styled.div`
@@ -762,10 +750,7 @@ const ExaminationConfiguration: React.FC = () => {
   if (loading) {
     return (
       <PageContainer theme={theme === 'dark' ? darkTheme : lightTheme}>
-        <LoadingContainer>
-          <LoadingSpinner />
-          <LoadingText>Loading configuration...</LoadingText>
-        </LoadingContainer>
+        <Loader />
       </PageContainer>
     );
   }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
-import styled, { useTheme, css } from 'styled-components';
+import React, { useState, useEffect, useRef, useMemo, memo, useCallback, useContext } from 'react';
+import styled, { useTheme, css, keyframes } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { supabase } from '../supabaseClient';
@@ -19,8 +19,8 @@ import {
 import { useToast } from '../components/useToast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CircularProgress } from '@mui/material';
-import { darkTheme, lightTheme, useProgress } from '../components/Layout';
+import { CircularProgress, Box, Grid } from '@mui/material';
+import { darkTheme, lightTheme, useProgress, ThemeContext } from '../components/Layout';
 import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
@@ -1224,133 +1224,7 @@ const InfoBox = styled.div<{ type?: 'success' | 'warning' | 'error' }>`
   gap: 0.5rem;
 `;
 
-const LoadingContainer = styled.div`
-  grid-column: 1/-1;
-  text-align: center;
-  padding: 3rem 0;
-`;
 
-const LoadingText = styled.div`
-  margin-top: 16px;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 1.1rem;
-  font-weight: 500;
-`;
-
-// Skeleton loading components
-const SkeletonHeaderRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.1rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-const SkeletonHeading = styled.div`
-  width: 220px;
-  height: 32px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-`;
-const SkeletonFilter = styled.div`
-  width: 140px;
-  height: 36px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin-left: 1rem;
-  @media (max-width: 768px) {
-    width: 100%;
-    margin-left: 0;
-    margin-top: 8px;
-  }
-`;
-const SkeletonSearch = styled.div`
-  width: 300px;
-  height: 36px;
-  border-radius: 10px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-`;
-const SkeletonStudentGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-top: 2rem;
-  @media (max-width: 1100px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  @media (max-width: 700px) {
-    grid-template-columns: 1fr;
-  }
-`;
-const SkeletonStudentCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.08), 0 1.5px 6px rgba(0,0,0,0.05);
-  padding: 1.5rem 1.5rem 1.2rem 1.5rem;
-  min-width: 270px;
-  max-width: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-`;
-const SkeletonAvatar = styled.div`
-  width: 68px;
-  height: 88px;
-  border-radius: 16px;
-  background: ${({ theme }) => theme.ACCENT + '22'};
-`;
-const SkeletonLine = styled.div<{ width?: string; height?: string }>`
-  width: ${({ width }) => width || '100%'};
-  height: ${({ height }) => height || '18px'};
-  border-radius: 6px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin-bottom: 8px;
-`;
-const SkeletonStudentInfo = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.5rem;
-`;
-const PageSkeleton: React.FC = () => {
-  return (
-    <>
-      <SkeletonHeaderRow>
-        <SkeletonHeading />
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <SkeletonSearch />
-          <SkeletonFilter />
-          <SkeletonFilter />
-          <SkeletonFilter />
-        </div>
-      </SkeletonHeaderRow>
-      <SkeletonStudentGrid>
-        {[1, 2, 3, 4, 5, 6].map(i => (
-          <SkeletonStudentCard key={i}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <SkeletonAvatar />
-              <SkeletonStudentInfo>
-                <SkeletonLine width="80%" height="20px" />
-                <SkeletonLine width="60%" height="16px" />
-                <SkeletonLine width="40%" height="14px" />
-              </SkeletonStudentInfo>
-            </div>
-            <SkeletonLine width="60%" height="18px" />
-          </SkeletonStudentCard>
-        ))}
-      </SkeletonStudentGrid>
-    </>
-  );
-};
 
 // Add SegmentedGroup, SegmentedInput, SegmentedSelect styled components (copied from StudentList.tsx)
 const SEGMENTED_HEIGHT = '32px';
@@ -2714,11 +2588,7 @@ const StudentStatusManager: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <PageContainer style={{ paddingTop: '80px' }}>
-        <PageSkeleton />
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   // Top-level check for no students in table at page load
@@ -2921,12 +2791,7 @@ const StudentStatusManager: React.FC = () => {
 
       <ContentArea ref={contentAreaRef}>
         {loading || loadingStudents || (hasAnyStudents === null) ? (
-          <LoadingContainer>
-            <CircularProgress size={isMobile ? 32 : 48} sx={{ color: (theme as any).ACCENT }} />
-            <LoadingText style={{ fontSize: isMobile ? '0.9rem' : '1.1rem' }}>
-              {isMobile ? 'Loading...' : 'Loading Students...'}
-            </LoadingText>
-          </LoadingContainer>
+          <Loader />
         ) : hasAnyStudents === false ? (
           <NoStudentsFound />
         ) : students.length === 0 && !loadingStudents ? (

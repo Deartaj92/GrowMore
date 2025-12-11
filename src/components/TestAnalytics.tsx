@@ -29,6 +29,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from './useToast';
+import Loader from './Loader';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -753,98 +754,6 @@ interface TeacherMonthlyTest {
 }
 
 // Skeleton Loader Component
-const TestAnalyticsSkeleton: React.FC<{ theme: any; activeTab: 'students' | 'teachers' }> = ({ theme, activeTab }) => {
-  if (activeTab === 'students') {
-    return (
-      <>
-        <SkeletonGrid>
-          {[1, 2, 3].map(i => (
-            <SkeletonCard key={i}>
-              <SkeletonLine $width="60%" $height="20px" />
-              <SkeletonLine $width="40%" $height="32px" />
-            </SkeletonCard>
-          ))}
-        </SkeletonGrid>
-        <SkeletonCard>
-          <SkeletonLine $width="40%" $height="24px" />
-          <div style={{ marginTop: '16px' }}>
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <SkeletonCircle />
-                <div style={{ flex: 1 }}>
-                  <SkeletonLine $width="70%" $height="16px" />
-                  <SkeletonLine $width="50%" $height="12px" />
-                </div>
-                <SkeletonLine $width="60px" $height="24px" />
-              </div>
-            ))}
-          </div>
-        </SkeletonCard>
-        <SkeletonCard>
-          <SkeletonLine $width="40%" $height="24px" />
-          <div style={{ marginTop: '16px' }}>
-            {[1, 2, 3, 4].map(i => (
-              <SkeletonCard key={i} style={{ marginBottom: '12px' }}>
-                <SkeletonLine $width="50%" $height="16px" />
-                <SkeletonLine $width="30%" $height="20px" />
-              </SkeletonCard>
-            ))}
-          </div>
-        </SkeletonCard>
-      </>
-    );
-  } else {
-    return (
-      <>
-        <SkeletonGrid>
-          {[1, 2, 3].map(i => (
-            <SkeletonCard key={i}>
-              <SkeletonLine $width="60%" $height="20px" />
-              <SkeletonLine $width="40%" $height="32px" />
-            </SkeletonCard>
-          ))}
-        </SkeletonGrid>
-        <SkeletonGrid>
-          {[1, 2].map(i => (
-            <SkeletonCard key={i}>
-              <SkeletonLine $width="50%" $height="20px" />
-              <SkeletonLine $width="30%" $height="24px" />
-              <SkeletonLine $width="80%" $height="8px" style={{ marginTop: '12px' }} />
-              <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                <SkeletonTag />
-                <SkeletonTag />
-                <SkeletonTag />
-              </div>
-            </SkeletonCard>
-          ))}
-        </SkeletonGrid>
-        <SkeletonCard>
-          <SkeletonLine $width="40%" $height="24px" />
-          <div style={{ marginTop: '16px' }}>
-            {[1, 2].map(i => (
-              <SkeletonCard key={i} style={{ marginBottom: '16px' }}>
-                <SkeletonLine $width="50%" $height="20px" />
-                <SkeletonLine $width="30%" $height="24px" />
-                <div style={{ marginTop: '12px' }}>
-                  {[1, 2, 3].map(j => (
-                    <SkeletonWeekBlock key={j} style={{ marginBottom: '8px' }}>
-                      <SkeletonLine $width="60%" $height="16px" />
-                      <SkeletonLine $width="40%" $height="16px" />
-                      <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        <SkeletonTag />
-                        <SkeletonTag />
-                      </div>
-                    </SkeletonWeekBlock>
-                  ))}
-                </div>
-              </SkeletonCard>
-            ))}
-          </div>
-        </SkeletonCard>
-      </>
-    );
-  }
-};
 
 const TestAnalytics: React.FC = () => {
   const { user } = useAuth();
@@ -2505,11 +2414,9 @@ const TestAnalytics: React.FC = () => {
 
       <MainContent>
         {loading ? (
-          <LoadingSpinner>
-            <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-          </LoadingSpinner>
+          <Loader />
         ) : isLoadingAnalytics ? (
-          <TestAnalyticsSkeleton theme={theme} activeTab={activeTab} />
+          <Loader />
         ) : selectedSession ? (
           <>
             {/* Tabs */}

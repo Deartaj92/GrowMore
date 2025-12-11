@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
 import NoTeachersFound from '../components/NoTeachersFound';
+import { Box, Grid } from '@mui/material';
+import Loader from '../components/Loader';
 
 const PageContainer = styled.div`
   width: 100%;
@@ -349,87 +351,6 @@ const AddEmployeeCard = styled(EmployeeCard)`
   justify-content: center;
 `;
 
-// Skeleton loading (similar style across app)
-const EmployeeSkeletonContainer = styled.div`
-  width: 100%;
-  height: 100%;
-  padding: 8px 12px 24px 12px;
-  box-sizing: border-box;
-`;
-
-const EmployeeSkeletonGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  width: 100%;
-  @media (max-width: 1200px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  @media (max-width: 700px) {
-    grid-template-columns: repeat(1, 1fr);
-    gap: 8px;
-  }
-`;
-
-const EmployeeSkeletonCard = styled.div`
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#232a3b' : '#f3f4f6'};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.10);
-  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
-  min-height: 180px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-    border-radius: 14px;
-  }
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-`;
-
-const EmployeeSkeletonBanner = styled.div`
-  height: 100px;
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#2b3242' : '#e5e7ef'};
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
-`;
-
-const EmployeeSkeletonLine = styled.div<{ width?: string; height?: string }>`
-  height: ${({ height }) => height || '16px'};
-  width: ${({ width }) => width || '80%'};
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e0e7ef'};
-  border-radius: 6px;
-  margin: 10px auto 0 auto;
-`;
-
-const EmployeeListSkeleton: React.FC = () => (
-  <EmployeeSkeletonContainer>
-    <EmployeeSkeletonGrid>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <EmployeeSkeletonCard key={i}>
-          <EmployeeSkeletonBanner />
-          <div style={{ padding: '10px 6px 16px 6px' }}>
-            <EmployeeSkeletonLine width="60%" height="18px" />
-            <EmployeeSkeletonLine width="40%" height="14px" />
-            <EmployeeSkeletonLine width="50%" height="14px" />
-          </div>
-        </EmployeeSkeletonCard>
-      ))}
-    </EmployeeSkeletonGrid>
-  </EmployeeSkeletonContainer>
-);
 
 const EmployeeList: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -527,7 +448,7 @@ const EmployeeList: React.FC = () => {
           <Title>All Employees</Title>
         </Header>
         <MainContent>
-          <EmployeeListSkeleton />
+          <Loader />
         </MainContent>
       </PageContainer>
     );

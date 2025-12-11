@@ -65,6 +65,7 @@ import AdmissionsTab from './components/AdmissionsTab/AdmissionsTab';
 import HomeworkTab from './components/HomeworkTab/HomeworkTab';
 import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAttendanceTab';
 import AccountsTab from './components/AccountsTab/AccountsTab';
+import { Box } from '@mui/material';
 
 // TypeScript declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -147,7 +148,11 @@ const Dashboard: React.FC = () => {
     if (newTab === activeTab) return;
     
     // Immediately set loading states for the new tab before changing
-    if (newTab === 'fee') {
+    if (newTab === 'attendance') {
+      setAttendanceStatsLoading(true);
+      setAttendanceChartsLoading(true);
+      setConsecutiveAbsentLoading(true);
+    } else if (newTab === 'fee') {
       setFeeSummaryLoading(true);
       setCollectionChartsLoading(true);
       setFeeCollectionDetailsLoading(true);
@@ -559,6 +564,8 @@ const Dashboard: React.FC = () => {
 
   // Fetch attendance for date
   useEffect(() => {
+    if (activeTab !== 'attendance') return;
+    
     const fetchAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
 
@@ -603,7 +610,7 @@ const Dashboard: React.FC = () => {
       setAttendanceStatsLoading(false);
     };
     fetchAttendanceForDate();
-  }, [dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession]);
+  }, [activeTab, dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession]);
 
   // Calculate attendance stats
   const presentToday = attendanceDataForDate.filter(a => a.status === 'present').length;
@@ -620,6 +627,8 @@ const Dashboard: React.FC = () => {
 
   // Fetch attendance trend
   useEffect(() => {
+    if (activeTab !== 'attendance') return;
+    
     const fetchAttendanceTrend = async () => {
       if (!user?.school_id || !sessionData?.id || !dashboardDate) return;
 
@@ -840,7 +849,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchAttendanceTrend();
-  }, [dashboardDate, user?.school_id, sessionData?.id, attendanceDataForDate]);
+  }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, attendanceDataForDate]);
 
   // Fetch class attendance
   useEffect(() => {
@@ -988,6 +997,8 @@ const Dashboard: React.FC = () => {
 
   // Fetch consecutive absent
   useEffect(() => {
+    if (activeTab !== 'attendance') return;
+    
     const fetchConsecutiveAbsent = async () => {
       if (!user?.school_id || !sessionData?.id) return;
 
@@ -1145,7 +1156,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchConsecutiveAbsent();
-  }, [user?.school_id, sessionData?.id, dashboardDate]);
+  }, [activeTab, user?.school_id, sessionData?.id, dashboardDate]);
 
   // Fetch fee summary
   useEffect(() => {
@@ -1554,15 +1565,44 @@ const Dashboard: React.FC = () => {
     fetchSchoolName();
   }, [user?.school_id]);
 
-  // Set footer content
+  // Set footer content with real-time clock
   useEffect(() => {
-    setFooterContent({
-      visible: true,
-      content: 'Copyrights 2025'
-    });
+    const updateFooter = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true 
+      });
+      const dateStr = now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      setFooterContent({
+        visible: true,
+        content: (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', width: '100%' }}>
+            <span>{timeStr}</span>
+            <span style={{ opacity: 0.6 }}>•</span>
+            <span>{dateStr}</span>
+          </div>
+        )
+      });
+    };
+
+    // Update immediately
+    updateFooter();
+
+    // Update every second for real-time clock
+    const interval = setInterval(updateFooter, 1000);
 
     // Cleanup on unmount
     return () => {
+      clearInterval(interval);
       setFooterContent(null);
     };
   }, [setFooterContent]);
@@ -2740,6 +2780,26 @@ const Dashboard: React.FC = () => {
 
   const isMobile = window.innerWidth <= 700;
 
+  // Helper function to check if a tab is currently loading
+  const isTabLoading = (tab: DashboardTab): boolean => {
+    switch (tab) {
+      case 'attendance':
+        return attendanceStatsLoading || attendanceChartsLoading || consecutiveAbsentLoading;
+      case 'fee':
+        return feeSummaryLoading || collectionChartsLoading || feeCollectionDetailsLoading || defaultersLoading;
+      case 'admissions':
+        return admissionsLoading;
+      case 'homework':
+        return homeworkLoading;
+      case 'employeeAttendance':
+        return employeeAttendanceStatsLoading || employeeAttendanceChartsLoading;
+      case 'accounts':
+        return accountsLoading;
+      default:
+        return false;
+    }
+  };
+
   return (
     <DashboardContainer>
       <TabNavigation
@@ -2751,6 +2811,11 @@ const Dashboard: React.FC = () => {
         setFineDate={setFineDate}
       />
 
+      {/* Show loader if tab is loading */}
+      {isTabLoading(activeTab) ? (
+        <Loader />
+      ) : (
+        <>
       {activeTab === 'attendance' && (
         <AttendanceTab
           presentToday={presentToday}
@@ -2908,6 +2973,8 @@ const Dashboard: React.FC = () => {
           accountsDateTo={accountsDateTo}
           setAccountsDateTo={setAccountsDateTo}
         />
+      )}
+        </>
       )}
 
       {hoveredAvatar && (

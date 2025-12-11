@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import imageCompression from 'browser-image-compression';
 import NoSessionsFound from '../components/NoSessionsFound';
 import { Radio, RadioGroup, FormControlLabel, FormLabel } from '@mui/material';
+import Loader from '../components/Loader';
 
 const ModernForm = styled.form`
   background: ${({ theme }) => theme.CARD};
@@ -379,20 +380,56 @@ const StaffAddForm: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [sessions, setSessions] = useState<Array<{ id: number; name: string }>>([]);
   const [roles, setRoles] = useState<Array<{ id: number; name: string }>>([]);
 
+  // Fetch all initial data
   useEffect(() => {
-    if (editId) {
-      const fetchEmployee = async () => {
-        if (!user?.school_id) return;
-        const { data, error } = await supabase
-          .from('staff')
-          .select('*')
-          .eq('id', editId)
-          .eq('school_id', user.school_id)
-          .single();
-        if (!error && data) {
+    const fetchInitialData = async () => {
+      if (!user?.school_id) {
+        setInitialLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch all data in parallel
+        const [sessionsResult, rolesResult, employeeResult] = await Promise.all([
+          supabase
+            .from('sessions')
+            .select('id, name')
+            .eq('school_id', user.school_id)
+            .order('name'),
+          supabase
+            .from('roles')
+            .select('id, name')
+            .eq('school_id', user.school_id)
+            .order('name'),
+          editId
+            ? supabase
+                .from('staff')
+                .select('*')
+                .eq('id', editId)
+                .eq('school_id', user.school_id)
+                .single()
+            : Promise.resolve({ data: null, error: null })
+        ]);
+
+        // Set sessions
+        if (!sessionsResult.error && sessionsResult.data) {
+          setSessions(sessionsResult.data);
+        }
+
+        // Set roles
+        if (!rolesResult.error && rolesResult.data) {
+          setRoles(rolesResult.data);
+        } else if (rolesResult.error) {
+          console.error('Error fetching roles:', rolesResult.error);
+        }
+
+        // Set employee data if editing
+        if (editId && !employeeResult.error && employeeResult.data) {
+          const data = employeeResult.data;
           setForm({
             name: data.name || '',
             mobile: data.mobile || '',
@@ -415,46 +452,15 @@ const StaffAddForm: React.FC = () => {
           });
           setImage(data.picture_url || null);
         }
-      };
-      fetchEmployee();
-    }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchInitialData();
   }, [editId, user?.school_id]);
-
-  // Fetch sessions
-  useEffect(() => {
-    const fetchSessions = async () => {
-      if (!user?.school_id) return;
-      
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('id, name')
-        .eq('school_id', user.school_id)
-        .order('name');
-      if (!error && data) {
-        setSessions(data);
-      }
-    };
-    fetchSessions();
-  }, [user?.school_id]);
-
-  // Fetch roles from roles table
-  useEffect(() => {
-    const fetchRoles = async () => {
-      if (!user?.school_id) return;
-      
-      const { data, error } = await supabase
-        .from('roles')
-        .select('id, name')
-        .eq('school_id', user.school_id)
-        .order('name');
-      if (!error && data) {
-        setRoles(data);
-      } else if (error) {
-        console.error('Error fetching roles:', error);
-      }
-    };
-    fetchRoles();
-  }, [user?.school_id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -605,6 +611,11 @@ const StaffAddForm: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Show loader during initial data fetch
+  if (initialLoading) {
+    return <Loader />;
+  }
 
   // Show NoSessionsFound if there are no sessions
   if (sessions.length === 0) {

@@ -1043,254 +1043,6 @@ const ClickableSummaryItem = styled.span`
   }
 `;
 
-// Add skeleton loading components
-const SkeletonControlsBar = styled.div`
-  display: flex;
-  gap: 1.2rem;
-  margin-bottom: 1.2rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  padding: 0.7rem 1rem 0.7rem 1rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : theme.CARD};
-  border-radius: 10px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.7rem;
-    padding: 0.7rem;
-  }
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-  }
-`;
-
-const SkeletonInputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 140px;
-  flex: 1 1 180px;
-  @media (max-width: 700px) {
-    width: 100%;
-    min-width: 0;
-    flex: none;
-  }
-`;
-
-const SkeletonLabel = styled.div`
-  width: 60px;
-  height: 16px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  margin-bottom: 4px;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonInput = styled.div`
-  width: 100%;
-  height: 40px;
-  border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonSelectAllRow = styled.div`
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 0.7rem;
-  margin-left: 0.2rem;
-  justify-content: space-between;
-`;
-
-const SkeletonCheckbox = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: ${({ theme }: { theme: any }) => theme.BG === '#252525' ? '#181c2a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.06), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonButton = styled.div`
-  width: 120px;
-  height: 36px;
-  border-radius: 8px;
-  background: ${({ theme }: { theme: any }) => theme.BG === '#252525' ? '#181c2a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.06), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonStudentCard = styled.div`
-  display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 0.5rem 0.7rem;
-  gap: 0.7rem;
-  width: 100%;
-  /* Removed min-width and margin-bottom for full expansion */
-  position: relative;
-  overflow: hidden;
-  z-index: 1;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.10), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
-`;
-
-const SkeletonAvatar = styled.div`
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonNameBlock = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex: 1;
-  min-width: 0;
-  gap: 4px;
-`;
-
-const SkeletonName = styled.div`
-  width: 120px;
-  height: 16px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonFatherName = styled.div`
-  width: 80px;
-  height: 12px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonStatusGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-gap: 0.3rem;
-  width: 64px;
-`;
-
-const SkeletonStatusButton = styled.div`
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#181c2a' : '#e5e7eb'};
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.06), transparent);
-    animation: shimmer 1.5s infinite;
-  }
-`;
-
-const SkeletonFloatingButtons = styled.div`
-  position: fixed;
-  bottom: 2rem;
-  right: 4rem;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.7rem 1.2rem;
-  border-radius: 32px;
-  background: rgba(40, 40, 60, 0.32);
-  backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(255,255,255,0.18);
-  z-index: 3000;
-  position: relative;
-  overflow: hidden;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.06), transparent);
-    animation: shimmer 1.5s infinite;
-    z-index: 2;
-  }
-`;
 
 const SkeletonFloatingButton = styled.div`
   width: 56px;
@@ -2586,6 +2338,21 @@ const MarkAttendance: React.FC = () => {
     }
   }
 
+  // Set footer loading state when loading
+  useEffect(() => {
+    if (loadingSession || loading) {
+      setFooterContent({
+        visible: true,
+        loading: true,
+      });
+    } else {
+      // Clear footer loading when not loading (actual footer content will be set by the footer useEffect)
+      if (!selectedClass || !date) {
+        setFooterContent(null);
+      }
+    }
+  }, [loadingSession, loading, selectedClass, date, setFooterContent]);
+
   // Show skeleton loader for any loading state
   if (loadingSession || loading) {
     return <Loader />;
@@ -3217,66 +2984,7 @@ const MarkAttendance: React.FC = () => {
   );
 };
 
-// Dashboard-style MarkAttendanceSkeleton component
-const MarkAttendanceSkeleton: React.FC = () => {
-  return (
-    <MarkAttendanceSkeletonContainer>
-      {/* Controls bar skeleton */}
-      <SkeletonControlsBar>
-        {[1,2,3].map(i => (
-          <SkeletonInputGroup key={i}>
-            <SkeletonLabel />
-            <SkeletonInput />
-          </SkeletonInputGroup>
-        ))}
-      </SkeletonControlsBar>
-      {/* Stats row skeleton */}
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', margin: '8px 0 12px 0' }}>
-        <div style={{ width: 320, height: 18, borderRadius: 8, background: '#232a3b22', maxWidth: '100%' }} />
-      </div>
-      {/* Select All skeleton */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 8px 12px', fontSize: '0.97em' }}>
-        <div style={{ width: 16, height: 16, borderRadius: 4, background: '#232a3b22' }} />
-        <div style={{ width: 60, height: 12, borderRadius: 4, background: '#232a3b22' }} />
-      </div>
-      {/* Student list skeleton */}
-      <div style={{ width: '100%' }}>
-        {[1,2,3,4,5,6,7,8].map(i => (
-          <SkeletonStudentCard key={i}>
-            <SkeletonAvatar />
-            <SkeletonNameBlock>
-              <SkeletonName />
-              <SkeletonFatherName />
-            </SkeletonNameBlock>
-          </SkeletonStudentCard>
-        ))}
-      </div>
-      {/* Footer segmented group skeleton */}
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-        <div style={{ display: 'flex', gap: 0, borderRadius: 11, overflow: 'hidden', boxShadow: '1.4px 1.4px 4px #2222' }}>
-          {[1,2,3,4].map((i) => (
-            <div key={i} style={{ width: 90, height: 32, background: '#232a3b22', border: '1.5px solid #232a3b33', borderLeft: i === 1 ? '1.5px solid #232a3b33' : 'none', borderRadius: i === 1 ? '11px 0 0 11px' : i === 4 ? '0 11px 11px 0' : '0', marginLeft: i === 1 ? 0 : -1.5 }} />
-          ))}
-        </div>
-      </div>
-    </MarkAttendanceSkeletonContainer>
-  );
-};
-
-// Dashboard-style skeleton container for MarkAttendance
-const MarkAttendanceSkeletonContainer = styled.div`
-  width: 100%;
-  height: 100%;
-  padding: clamp(8px, 2vw, 24px);
-  box-sizing: border-box;
-  @media (max-width: 900px) {
-    padding: clamp(6px, 2vw, 12px);
-  }
-  @media (max-width: 600px) {
-    padding: 8px 10px;
-    padding-bottom: 2.5rem;
-  }
-`;
+// Native MUI Skeleton Component
 
 // --- Segmented Group Styles (copied from StudentList) ---
 const SEGMENTED_HEIGHT = '32px';
@@ -3289,11 +2997,17 @@ const SegmentedGroup = styled.div`
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     border-radius: 11px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 `;
 const SegmentedBase = css`
@@ -3309,6 +3023,11 @@ const SegmentedBase = css`
   appearance: none;
   background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
   color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
+  @media (max-width: 700px) {
+    font-size: 0.7em;
+    height: 28px;
+    line-height: 28px;
+  }
 `;
 const SegmentedInput = styled.input<{ pill?: boolean }>`
   ${SegmentedBase}
@@ -3335,8 +3054,10 @@ const SegmentedInput = styled.input<{ pill?: boolean }>`
     border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
   }
   @media (max-width: 700px) {
-    width: 100%;
-    min-width: 0;
+    min-width: 80px;
+    max-width: 120px;
+    flex: 0 0 auto;
+    padding: 0 0.6em;
     border-radius: 0;
     &:last-child {
       border-top-right-radius: 11px;
@@ -3373,8 +3094,12 @@ const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   background-position: right 0.8em center;
   background-size: 1em 1em;
   @media (max-width: 700px) {
-    width: 100%;
-    min-width: 0;
+    min-width: 90px;
+    max-width: 130px;
+    flex: 0 0 auto;
+    padding: 0 1.8em 0 0.6em;
+    background-position: right 0.5em center;
+    background-size: 0.85em 0.85em;
     border-radius: 0;
     ${({ first }) => first && `
       border-top-left-radius: 11px;
@@ -3418,9 +3143,16 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
     display: inline-block;
   }
   @media (max-width: 700px) {
-    width: 100%;
-    min-width: 0;
+    min-width: 70px;
+    max-width: 100px;
+    flex: 0 0 auto;
+    padding: 0 0.8em;
+    gap: 0.25em;
     border-radius: 0;
+    white-space: nowrap;
+    & svg {
+      font-size: 14px;
+    }
     ${({ first }) => first && `
       border-top-left-radius: 11px;
       border-bottom-left-radius: 11px;

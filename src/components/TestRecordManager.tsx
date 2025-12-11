@@ -104,6 +104,7 @@ import { useToast } from './useToast';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { useTheme } from '@mui/material';
 import { ThemeProvider } from 'styled-components';
+import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import { testRecordService } from '../services/testRecordService';
 import { TestRecord, TestResult, CreateTestRecordDTO, CreateTestResultDTO } from '../types/testRecords';
 import { useNavigate } from 'react-router-dom';
@@ -130,6 +131,7 @@ import {
 import { Textfit } from '@techstack/react-textfit';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
 import { supabase } from '../supabaseClient';
+import Loader from './Loader';
 
 
 // Styled components matching MarksEntryManager.tsx exactly
@@ -359,6 +361,53 @@ const MainContent = styled.div`
   }
 `;
 
+// Footer button styled components
+const FooterButtonGroup = styled.div`
+  display: flex;
+  gap: 6px;
+  
+  @media (min-width: 701px) {
+    gap: 8px;
+  }
+`;
+
+const FooterButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 60px;
+
+  ${({ variant, theme }) => {
+    if (variant === 'primary') {
+      return `
+        background: #4a6cf7;
+        color: white;
+        &:hover {
+          background: #4a6cf7cc;
+        }
+      `;
+    } else {
+      return `
+        background: ${theme.palette?.mode === 'dark' ? '#252525' : '#f7faff'};
+        color: ${theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a'};
+        border: 1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+        &:hover {
+          background: ${theme.palette?.mode === 'dark' ? '#252525' : '#f7faff'}cc;
+          border-color: #4a6cf7;
+        }
+      `;
+    }
+  }}
+`;
+
 // Types for the new structure
 interface Class {
   id: number;
@@ -405,6 +454,10 @@ const TestRecordManager: React.FC = () => {
   const { setLoading, loading } = useLoading();
   const navigate = useNavigate();
   const { logTestMarksActivity } = useActivityTracking();
+  const { setFooterContent } = usePageFooter();
+  
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
   
   // State for form fields
   const [classes, setClasses] = useState<Class[]>([]);
@@ -442,6 +495,7 @@ const TestRecordManager: React.FC = () => {
   
   // Marks data
   const [marksData, setMarksData] = useState<{ [studentId: number]: number | string }>({});
+  const [hasExistingRecords, setHasExistingRecords] = useState(false);
   
   const [showToTop, setShowToTop] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
@@ -587,7 +641,7 @@ const TestRecordManager: React.FC = () => {
   };
 
   // Handle "A" button click for absent students
-  const handleAbsentButton = (e: React.MouseEvent) => {
+  const handleAbsentButton = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -626,7 +680,7 @@ const TestRecordManager: React.FC = () => {
         }, 0);
       }
     }
-  };
+  }, [students]);
 
   // Handle marks input with validation and error feedback
   const handleMarksInput = (studentId: number, inputValue: string, maxMarks: number | '') => {
@@ -695,7 +749,7 @@ const TestRecordManager: React.FC = () => {
   };
 
   // Save test record and results
-  const handleSaveTest = async () => {
+  const handleSaveTest = useCallback(async () => {
     if (!testCreated) {
       showToast('Please create the test first', 'error');
       return;
@@ -834,16 +888,16 @@ const TestRecordManager: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [testCreated, selectedStudents.size, saving, selectedClass, selectedSection, selectedSubject, testName, testType, testDate, maxMarks, passingMarks, activeSessionId, marksData, user?.school_id, user?.id, showToast, logTestMarksActivity]);
 
   // Show delete confirmation modal
-  const handleDeleteClick = () => {
+  const handleDeleteClick = useCallback(() => {
     if (selectedStudents.size === 0) {
       showToast('Please select students to delete marks for', 'error');
       return;
     }
     setShowDeleteModal(true);
-  };
+  }, [selectedStudents.size, showToast]);
 
   // Delete test results for selected students from database
   const handleDeleteMarks = async () => {
@@ -945,6 +999,7 @@ const TestRecordManager: React.FC = () => {
           setPassingMarks('');
           setMarksData({});
           setSelectedStudents(new Set());
+          setHasExistingRecords(false);
           
           // Log test marks activity (test record deleted)
           try {
@@ -1100,6 +1155,126 @@ const TestRecordManager: React.FC = () => {
     }
   }, [testDate]);
 
+  // Mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Cleanup footer on unmount
+  useEffect(() => {
+    return () => {
+      setFooterContent(null);
+    };
+  }, [setFooterContent]);
+
+  // Set footer content for global footer
+  useEffect(() => {
+    const shouldShowFooter = selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedSubject && students.length > 0 && testCreated && !checkingExistingMarks;
+    
+    if (shouldShowFooter) {
+      const FooterContentComponent = React.memo(() => {
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            gap: isMobile ? '6px' : '8px',
+            flexWrap: 'nowrap'
+          }}>
+            <button
+              onMouseDown={handleAbsentButton}
+              style={{
+                padding: isMobile ? '6px 10px' : '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                border: '1px solid #f59e0b',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: isMobile ? '0.85rem' : '0.9rem',
+                flexShrink: 0
+              }}
+            >
+              A
+            </button>
+            <FooterButtonGroup style={{ marginLeft: 'auto' }}>
+              <FooterButton
+                variant="secondary"
+                onClick={() => {
+                  setMarksData({});
+                  setSelectedStudents(new Set());
+                }}
+                style={{ minWidth: isMobile ? '50px' : '60px', fontSize: isMobile ? '0.75rem' : '0.8rem' }}
+              >
+                Reset
+              </FooterButton>
+              {hasExistingRecords && (
+                <FooterButton
+                  variant="secondary"
+                  onClick={handleDeleteClick}
+                  disabled={deleting || selectedStudents.size === 0}
+                  style={{ 
+                    opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
+                    cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: '1px solid #ef4444',
+                    fontSize: isMobile ? '0.75rem' : '0.8rem'
+                  }}
+                >
+                  {deleting ? (
+                    <>
+                      <Spinner />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </FooterButton>
+              )}
+              <FooterButton
+                variant="primary"
+                onClick={handleSaveTest}
+                disabled={saving || deleting || selectedStudents.size === 0}
+                style={{ 
+                  opacity: (saving || deleting || selectedStudents.size === 0) ? 0.7 : 1,
+                  cursor: (saving || deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                  fontSize: isMobile ? '0.75rem' : '0.8rem'
+                }}
+              >
+                {saving ? (
+                  <>
+                    <Spinner />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Test'
+                )}
+              </FooterButton>
+            </FooterButtonGroup>
+          </div>
+        );
+      });
+
+      setFooterContent({
+        visible: true,
+        content: <FooterContentComponent />
+      });
+
+      return () => {
+        setFooterContent(null);
+      };
+    } else {
+      setFooterContent(null);
+    }
+  }, [selectedClass, selectedSection, selectedSubject, students.length, testCreated, checkingExistingMarks, selectedStudents.size, saving, deleting, isMobile, theme, setFooterContent, handleAbsentButton, handleDeleteClick, handleSaveTest, hasExistingRecords]);
+
   // Create test and show students
   const handleCreateTest = () => {
     if (!hasActiveSession || !activeSessionId) {
@@ -1137,6 +1312,7 @@ const TestRecordManager: React.FC = () => {
     setMaxMarks('');
     setPassingMarks('');
     setTestDate(new Date().toISOString().split('T')[0]);
+    setHasExistingRecords(false);
   };
 
 
@@ -1426,6 +1602,7 @@ const TestRecordManager: React.FC = () => {
         setMaxMarks('');
         setPassingMarks('');
         setTestCreated(false);
+        setHasExistingRecords(false);
         return;
       }
 
@@ -1466,6 +1643,9 @@ const TestRecordManager: React.FC = () => {
       // Set test as created so students section appears
       setTestCreated(true);
       
+      // Track if there are existing records
+      setHasExistingRecords(existingResults && existingResults.length > 0);
+      
       if (existingResults && existingResults.length > 0) {
         showToast(`Loaded existing marks for ${existingResults.length} students`, 'success');
       } else {
@@ -1480,23 +1660,7 @@ const TestRecordManager: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        padding: '40px',
-        height: '100vh'
-      }}>
-        <div style={{ 
-          animation: 'spin 1s linear infinite', 
-          borderRadius: '50%', 
-          height: '128px', 
-          width: '128px', 
-          borderBottom: '2px solid #3b82f6' 
-        }}></div>
-      </div>
-    );
+    return <Loader />;
   }
 
   return (
@@ -1927,20 +2091,9 @@ const TestRecordManager: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '0.5rem',
-                  color: theme.palette?.mode === 'dark' ? '#b0b8d1' : '#666666',
-                  fontSize: '0.8rem',
-                  gap: '0.5rem'
+                  padding: '0.5rem'
                 }}>
-                  <div style={{
-                    width: '12px',
-                    height: '12px',
-                    border: '2px solid #e5e7eb',
-                    borderTop: '2px solid #4a6cf7',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }}></div>
-                  Checking for existing marks...
+                  <Loader size="small" />
                 </div>
               )}
             </div>
@@ -1948,34 +2101,7 @@ const TestRecordManager: React.FC = () => {
 
           {/* Loading Sessions Indicator */}
           {loadingSessions && (
-            <div style={{
-              background: theme.palette?.mode === 'dark' ? '#2a2a2a' : '#ffffff',
-              borderRadius: '8px',
-              padding: '1rem',
-              marginBottom: '1rem',
-              border: `1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              color: theme.palette?.mode === 'dark' ? '#4a6cf7' : '#4a6cf7'
-            }}>
-              <div style={{
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                border: `2px solid ${theme.palette?.mode === 'dark' ? '#3a3f4b' : '#e0e0e0'}`,
-                borderTop: '2px solid #4a6cf7',
-                animation: 'spin 1s linear infinite'
-              }}></div>
-              <div>
-                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-                  Loading Sessions
-                </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-                  Checking for active sessions...
-                </div>
-              </div>
-            </div>
+            <Loader size="small" />
           )}
 
           {/* No Active Session Warning */}
@@ -2019,33 +2145,7 @@ const TestRecordManager: React.FC = () => {
 
           {/* Loading indicator when checking existing marks */}
           {checkingExistingMarks && (
-            <div style={{
-              background: theme.palette?.mode === 'dark' ? '#2a2a2a' : '#ffffff',
-              borderRadius: '12px',
-              boxShadow: theme.palette?.mode === 'dark' ? '0 1.8px 7.2px 0 #0003' : '0 1.8px 7.2px 0 #0003',
-              border: `1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
-              overflow: 'hidden',
-              marginTop: '20px',
-              padding: '40px',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                color: theme.palette?.mode === 'dark' ? '#b0b8d1' : '#666666',
-                fontSize: '1.1rem',
-                marginBottom: '16px'
-              }}>
-                Checking for existing marks...
-              </div>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                border: `3px solid ${theme.palette?.mode === 'dark' ? '#3a3f4b' : '#e0e0e0'}`,
-                borderTop: `3px solid #4a6cf7`,
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto'
-              }}></div>
-            </div>
+            <Loader size="small" />
           )}
 
           {/* Students and Marks Entry */}
@@ -2266,112 +2366,6 @@ const TestRecordManager: React.FC = () => {
             </div>
           )}
         </MainContent>
-
-        {/* Footer */}
-        {selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedSubject && students.length > 0 && testCreated && !checkingExistingMarks && (
-          <div style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: theme.palette?.mode === 'dark' ? '#2a2a2a' : '#ffffff',
-            borderTop: `1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
-            padding: '12px 16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
-            zIndex: 1000
-          }}>
-            <button
-              onMouseDown={handleAbsentButton}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                border: '1px solid #f59e0b',
-                backgroundColor: '#f59e0b',
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: '0.9rem'
-              }}
-            >
-              A
-            </button>
-            
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button
-                onClick={() => {
-                  setMarksData({});
-                  setSelectedStudents(new Set());
-                }}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontWeight: '500',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  background: theme.palette?.mode === 'dark' ? '#252525' : '#f7faff',
-                  color: theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
-                  border: `1px solid ${theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
-                  minWidth: '60px'
-                }}
-              >
-                Reset
-              </button>
-              <button
-                onClick={handleDeleteClick}
-                disabled={deleting || selectedStudents.size === 0}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontWeight: '500',
-                  fontSize: '0.8rem',
-                  cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  border: '1px solid #ef4444',
-                  opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
-                  minWidth: '60px'
-                }}
-              >
-                {deleting ? (
-                  <>
-                    <Spinner />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </button>
-              <button
-                onClick={handleSaveTest}
-                disabled={saving || deleting || selectedStudents.size === 0}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontWeight: '500',
-                  fontSize: '0.8rem',
-                  cursor: (saving || deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
-                  border: 'none',
-                  backgroundColor: '#4a6cf7',
-                  color: 'white',
-                  opacity: (saving || deleting || selectedStudents.size === 0) ? 0.7 : 1,
-                  minWidth: '60px'
-                }}
-              >
-                {saving ? (
-                  <>
-                    <Spinner />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Test'
-                )}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Save Modal */}
         {showSaveModal && (

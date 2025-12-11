@@ -1005,6 +1005,21 @@ const MarkStaffAttendance: React.FC = () => {
     handleDeleteClick
   ]);
 
+  // Set footer loading state when loading
+  useEffect(() => {
+    if (loadingSession || loading) {
+      setFooterContent({
+        visible: true,
+        loading: true,
+      });
+    } else {
+      // Clear footer loading when not loading (actual footer content will be set by the footer useEffect)
+      if (!date) {
+        setFooterContent(null);
+      }
+    }
+  }, [loadingSession, loading, date, setFooterContent]);
+
   // Show skeleton loader for any loading state
   if (loadingSession || loading) {
     return <Loader />;
