@@ -35,6 +35,11 @@ import {
   Event as EventIcon,
   Feedback as FeedbackIcon,
   TrendingUp as TrendingUpIcon,
+  Calculate as CalculateIcon,
+  Payment as PaymentIcon,
+  History as HistoryIcon,
+  Analytics as AnalyticsIcon,
+  AccountBalanceWallet as AccountBalanceWalletIcon,
 } from '@mui/icons-material';
 
 export interface MenuItem {
@@ -213,6 +218,73 @@ export const employeeMenuItems: MenuItem[] = [
     icon: React.createElement(CalendarMonthIcon),
     path: '/timetable',
     color: '#8b5cf6'
+  }
+];
+
+// Payroll menu items
+export const payrollMenuItems: MenuItem[] = [
+  {
+    title: 'Payroll Dashboard',
+    description: 'Manage employee salaries and payroll operations',
+    icon: React.createElement(DashboardIcon),
+    path: '/payroll',
+    color: '#3b82f6'
+  },
+  {
+    title: 'Payroll Plans',
+    description: 'Create and manage salary structures',
+    icon: React.createElement(AccountBalanceIcon),
+    path: '/payroll?tab=1',
+    color: '#10b981'
+  },
+  {
+    title: 'Generate Payroll',
+    description: 'Calculate and generate monthly payroll',
+    icon: React.createElement(CalculateIcon),
+    path: '/payroll?tab=2',
+    color: '#f59e0b'
+  },
+  {
+    title: 'Process Payments',
+    description: 'Process salary payments to employees',
+    icon: React.createElement(PaymentIcon),
+    path: '/payroll?tab=3',
+    color: '#8b5cf6'
+  },
+  {
+    title: 'Payment History',
+    description: 'View complete payment history and records',
+    icon: React.createElement(HistoryIcon),
+    path: '/payroll?tab=4',
+    color: '#ec4899'
+  },
+  {
+    title: 'Payroll Analytics',
+    description: 'View payroll reports and analytics',
+    icon: React.createElement(AnalyticsIcon),
+    path: '/payroll?tab=5',
+    color: '#06b6d4'
+  },
+  {
+    title: 'Advance Payments',
+    description: 'Manage employee salary advances',
+    icon: React.createElement(AccountBalanceWalletIcon),
+    path: '/payroll?tab=6',
+    color: '#f43f5e'
+  },
+  {
+    title: 'Adjustments',
+    description: 'Apply bonuses, fines, or extra cuts',
+    icon: React.createElement(SettingsIcon),
+    path: '/payroll?tab=7',
+    color: '#a855f7'
+  },
+  {
+    title: 'Payroll Settings',
+    description: 'Configure general payroll settings',
+    icon: React.createElement(SettingsIcon),
+    path: '/payroll?tab=8',
+    color: '#6366f1'
   }
 ];
 
@@ -635,9 +707,10 @@ export const menuStructure: MainMenuItem[] = [
         items: feeMenuItems2,
         expenseItems: expenseMenuItems
       },
-      { title: 'Fine Management', items: fineMenuItems }
+      { title: 'Fine Management', items: fineMenuItems },
+      { title: 'Payroll Management', items: payrollMenuItems }
     ],
-    columns: 3
+    columns: 4
   },
   {
     icon: React.createElement(AssessmentIcon),

@@ -192,7 +192,7 @@ export const ReverseIncrementModal: React.FC<ReverseIncrementModalProps> = ({
     if (type === 'percentage') {
       return `${value}%`;
     }
-    return `₹${value.toFixed(2)}`;
+    return `Rs. ${value.toFixed(2)}`;
   };
 
   if (!isOpen) return null;

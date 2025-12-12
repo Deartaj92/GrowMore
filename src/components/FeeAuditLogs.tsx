@@ -713,9 +713,9 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
     
     // Add amount if available
     if (log.new_values?.amount) {
-      details.push(`₹${log.new_values.amount}`);
+      details.push(`Rs. ${log.new_values.amount}`);
     } else if (log.old_values?.amount) {
-      details.push(`₹${log.old_values.amount}`);
+      details.push(`Rs. ${log.old_values.amount}`);
     }
     
     // Add student information with class details

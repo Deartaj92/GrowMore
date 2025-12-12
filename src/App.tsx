@@ -49,6 +49,7 @@ import StaffAddForm from './pages/StaffAddForm';
 import { useAuth } from './contexts/AuthContext';
 import HolidayManager from './components/HolidayManager';
 import EmployeeList from './pages/EmployeeList';
+import PayrollDashboard from './pages/Payroll';
 import SubjectManager from './pages/SubjectManager';
 import TeacherSubjectManager from './pages/TeacherSubjectManager';
 import MyTimetable from './pages/MyTimetable';
@@ -424,6 +425,16 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="teacher-subjects">
                                 <TeacherSubjectManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Payroll Management */}
+                          <Route
+                            path="payroll"
+                            element={
+                              <ProtectedRoute requiredPermission="payroll-view">
+                                <PayrollDashboard />
                               </ProtectedRoute>
                             }
                           />

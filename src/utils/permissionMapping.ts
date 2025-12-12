@@ -102,6 +102,9 @@ export const pathToPermissionKey: Record<string, string> = {
   '/settings/general-settings': 'settings-general',
   '/settings/notifications': 'settings-notifications',
   
+  // Payroll Management
+  '/payroll': 'payroll-view',
+  
   // User Dashboard
   '/user': 'dashboard', // User dashboard uses dashboard permission
   
@@ -120,9 +123,12 @@ export const pathToPermissionKey: Record<string, string> = {
 
 /**
  * Get permission key for a given path
+ * Handles paths with query parameters by extracting the base path
  */
 export function getPermissionKeyForPath(path: string): string | null {
-  return pathToPermissionKey[path] || null;
+  // Remove query parameters and hash from path
+  const basePath = path.split('?')[0].split('#')[0];
+  return pathToPermissionKey[basePath] || pathToPermissionKey[path] || null;
 }
 
 /**

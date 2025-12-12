@@ -2128,20 +2128,6 @@ const HomeworkDiaryManager: React.FC = () => {
     setBulkAssignments([]);
   }, []);
 
-  // Show loader during initial data fetch
-  if (initialLoading) {
-    return <Loader />;
-  }
-
-  if (!user?.school_id) {
-    return <NoSessionsFound />;
-  }
-
-  const hasActiveSession = sessions.some(s => s.is_active);
-  if (!hasActiveSession && sessions.length > 0) {
-    return <NoSessionsFound />;
-  }
-
   // Set global footer content - only after initial loading completes
   useEffect(() => {
     // Don't set footer during initial loading
@@ -2253,6 +2239,20 @@ const HomeworkDiaryManager: React.FC = () => {
       setFooterContent(null);
     };
   }, [setFooterContent]);
+
+  // Show loader during initial data fetch
+  if (initialLoading) {
+    return <Loader />;
+  }
+
+  if (!user?.school_id) {
+    return <NoSessionsFound />;
+  }
+
+  const hasActiveSession = sessions.some(s => s.is_active);
+  if (!hasActiveSession && sessions.length > 0) {
+    return <NoSessionsFound />;
+  }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>

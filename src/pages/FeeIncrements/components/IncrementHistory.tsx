@@ -520,7 +520,7 @@ export const IncrementHistoryComponent: React.FC<IncrementHistoryProps> = ({
     if (type === 'percentage') {
       return `${value}%`;
     }
-    return `₹${value.toFixed(2)}`;
+    return `Rs. ${value.toFixed(2)}`;
   };
 
   const getTargetTypeLabel = (type: string) => {

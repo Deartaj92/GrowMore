@@ -35,12 +35,10 @@ export const compareClassNames = (a: string, b: string): number => {
 };
 
 export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-PK', {
-    style: 'currency',
-    currency: 'PKR',
+  return `Rs. ${value.toLocaleString('en-IN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  })}`;
 };
 
 export const getStatus = (percent: number, isPositive: boolean = false): StatusType => {

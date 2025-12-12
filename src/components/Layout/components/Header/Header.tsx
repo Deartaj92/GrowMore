@@ -49,6 +49,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Feedback as FeedbackIcon,
   TrendingUp as TrendingUpIcon,
+  Calculate as CalculateIcon,
 } from '@mui/icons-material';
 import styled from 'styled-components';
 import {
@@ -1150,6 +1151,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <ListAltIcon />,
       path: '/fee-audit-logs',
       color: '#6b7280'
+    },
+    {
+      title: 'Payroll Management',
+      description: 'Manage employee salaries, payments, and payroll operations',
+      icon: <CalculateIcon />,
+      path: '/payroll',
+      color: '#3b82f6'
     }
   ];
 
@@ -1233,6 +1241,7 @@ const Header: React.FC<HeaderProps> = ({
       color: '#8b5cf6'
     }
   ];
+
 
 
 

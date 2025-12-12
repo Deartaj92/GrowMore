@@ -318,7 +318,7 @@ export const EditIncrementModal: React.FC<EditIncrementModalProps> = ({
               min="0"
               value={incrementValue}
               onChange={(e) => setIncrementValue(Number(e.target.value))}
-              placeholder={incrementType === 'percentage' ? 'e.g., 10 for 10%' : 'e.g., 500 for ₹500'}
+              placeholder={incrementType === 'percentage' ? 'e.g., 10 for 10%' : 'e.g., 500 for Rs. 500'}
             />
           </FormSection>
 

@@ -828,12 +828,10 @@ const ConcessionIndicator = muiStyled(Box)(({ theme }) => ({
 
 // Add helper function to format amount
 const formatAmount = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
+  return `Rs. ${amount.toLocaleString('en-IN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount).replace('₹', 'Rs. ');
+  })}`;
 };
 
 // Add months array at the top level
