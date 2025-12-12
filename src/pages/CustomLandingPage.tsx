@@ -6,7 +6,7 @@ import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import * as Icons from '@mui/icons-material';
-import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, AccessTime as AccessTimeIcon, Person as PersonIcon, Event as EventIcon, CalendarToday as CalendarIcon, LocationOn as LocationIcon, Phone as PhoneIcon, Sms as SmsIcon, WhatsApp as WhatsAppIcon, AccountCircle, AttachMoney as AttachMoneyIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Assessment as AssessmentIcon, BarChart as BarChartIcon, Assignment as AssignmentIcon, Quiz as QuizIcon, School as SchoolIcon, Schedule as ScheduleIcon, AccessTime as AccessTimeIcon, Person as PersonIcon, Event as EventIcon, CalendarToday as CalendarIcon, LocationOn as LocationIcon, Phone as PhoneIcon, Sms as SmsIcon, WhatsApp as WhatsAppIcon, AccountCircle, AttachMoney as AttachMoneyIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon, Notifications as NoticeIcon, Warning as WarningIcon, Info as InfoIcon, Error as ErrorIcon } from '@mui/icons-material';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Typography, IconButton, Tabs, Tab, Chip, useTheme as useMuiTheme, useMediaQuery, Theme } from '@mui/material';
 import { styled as muiStyled } from '@mui/material/styles';
 import { useToast } from '../components/useToast';
@@ -185,6 +185,113 @@ const WidgetDescription = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin: 0;
   line-height: 1.4;
+`;
+
+// Notices section styled components
+const NoticesSection = styled.div`
+  margin-bottom: 3rem;
+  width: 100%;
+`;
+
+const NoticesTitle = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const NoticesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+`;
+
+const NoticeCard = styled.div<{ $noticeType?: string }>`
+  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-left: 4px solid ${({ $noticeType }) => {
+    switch ($noticeType) {
+      case 'warning': return '#f59e0b';
+      case 'urgent': return '#ef4444';
+      case 'success': return '#10b981';
+      default: return '#3b82f6';
+    }
+  }};
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: ${({ $noticeType }) => {
+      switch ($noticeType) {
+        case 'warning': return '#f59e0b';
+        case 'urgent': return '#ef4444';
+        case 'success': return '#10b981';
+        default: return '#3b82f6';
+      }
+    }};
+  }
+`;
+
+const NoticeHeader = styled.div`
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+`;
+
+const NoticeTitleStyled = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const NoticeTypeBadge = styled.span<{ $noticeType?: string }>`
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: ${({ $noticeType }) => {
+    switch ($noticeType) {
+      case 'warning': return '#f59e0b15';
+      case 'urgent': return '#ef444415';
+      case 'success': return '#10b98115';
+      default: return '#3b82f615';
+    }
+  }};
+  color: ${({ $noticeType }) => {
+    switch ($noticeType) {
+      case 'warning': return '#f59e0b';
+      case 'urgent': return '#ef4444';
+      case 'success': return '#10b981';
+      default: return '#3b82f6';
+    }
+  }};
+`;
+
+const NoticeDescription = styled.p`
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  line-height: 1.6;
+  margin: 0;
 `;
 
 const WidgetAction = styled.div<{ $color?: string }>`
@@ -2282,6 +2389,19 @@ const CustomLandingPage: React.FC = () => {
     visible_to: string[];
   }>>([]);
 
+  // Notices state
+  const [dismissedNotices, setDismissedNotices] = useState<Set<number>>(new Set());
+  const [notices, setNotices] = useState<Array<{
+    id: number;
+    title: string;
+    description: string;
+    notice_type: string;
+    visible_to: string[];
+    is_active: boolean;
+    expiry_date?: string | null;
+    created_at: string;
+  }>>([]);
+
   // Leave Request Modal state
   const [leaveRequestModalOpen, setLeaveRequestModalOpen] = useState(false);
   const [leaveRequestForm, setLeaveRequestForm] = useState({
@@ -2892,8 +3012,9 @@ const CustomLandingPage: React.FC = () => {
   useEffect(() => {
     const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
     if (schoolId) {
-      // Load events for all users
+      // Load events and notices for all users
       loadEvents();
+      loadNotices();
 
       // If user is a Teacher, load teacher-specific data
       if (user?.role === 'Teacher') {
@@ -2908,7 +3029,7 @@ const CustomLandingPage: React.FC = () => {
         loadWidgets();
       }
     }
-  }, [user, studentInfo, parentInfo]);
+  }, [user?.school_id, studentInfo?.school_id, parentInfo?.school_id]);
 
   const loadStudentData = async () => {
     const schoolId = user?.school_id || studentInfo?.school_id;
@@ -3458,6 +3579,326 @@ const CustomLandingPage: React.FC = () => {
       setEvents(filteredEvents);
     } catch (error) {
       console.error('[CustomLandingPage] Error loading events:', error);
+    }
+  };
+
+  // Load dismissed notices from database on mount (only dismissed ones)
+  useEffect(() => {
+    const loadDismissedNotices = async () => {
+      const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+      if (!schoolId) return;
+
+      // Build viewer_identifier based on user type
+      let viewerIdentifier: string | null = null;
+      if (studentInfo?.id) {
+        viewerIdentifier = `student_${studentInfo.id}`;
+      } else if (parentInfo?.id) {
+        viewerIdentifier = `parent_${parentInfo.id}`;
+      } else if (user?.staff_id) {
+        viewerIdentifier = `staff_${user.staff_id}`;
+      } else if (user?.id) {
+        viewerIdentifier = `user_${user.id}`;
+      }
+
+      if (!viewerIdentifier) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('notice_views')
+          .select('notice_id')
+          .eq('viewer_identifier', viewerIdentifier)
+          .eq('school_id', schoolId)
+          .eq('dismissed', true); // Only get dismissed notices
+
+        if (error) throw error;
+
+        const dismissedIds = (data || []).map(item => item.notice_id);
+        setDismissedNotices(new Set(dismissedIds));
+      } catch (error) {
+        console.error('Error loading dismissed notices:', error);
+      }
+    };
+
+    loadDismissedNotices();
+  }, [user?.id, user?.staff_id, user?.school_id, studentInfo?.id, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id]);
+
+  const loadNotices = async () => {
+    const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+    if (!schoolId) return;
+
+    try {
+      const userRole = user?.role || studentInfo?.role || parentInfo?.role || 'Guest';
+      const today = new Date().toISOString().split('T')[0];
+      const userId = user?.id || studentInfo?.id || parentInfo?.id;
+
+      // Fetch dismissed notices for this user first
+      let dismissedIds = new Set<number>();
+      
+      // Build viewer_identifier based on user type
+      let viewerIdentifier: string | null = null;
+      if (studentInfo?.id) {
+        viewerIdentifier = `student_${studentInfo.id}`;
+      } else if (parentInfo?.id) {
+        viewerIdentifier = `parent_${parentInfo.id}`;
+      } else if (user?.staff_id) {
+        viewerIdentifier = `staff_${user.staff_id}`;
+      } else if (user?.id) {
+        viewerIdentifier = `user_${user.id}`;
+      }
+
+      if (viewerIdentifier && schoolId) {
+        // Only fetch dismissed notices (dismissed=true)
+        const { data: dismissedData, error: dismissedError } = await supabase
+          .from('notice_views')
+          .select('notice_id')
+          .eq('viewer_identifier', viewerIdentifier)
+          .eq('school_id', schoolId)
+          .eq('dismissed', true);
+
+        if (!dismissedError && dismissedData) {
+          dismissedData.forEach(item => dismissedIds.add(item.notice_id));
+          setDismissedNotices(dismissedIds);
+        }
+      }
+
+      // Fetch all active notices for the school
+      const { data, error } = await supabase
+        .from('notices')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .or(`expiry_date.is.null,expiry_date.gte.${today}`) // Only get notices that haven't expired
+        .order('created_at', { ascending: false })
+        .limit(10); // Limit to 10 recent notices
+
+      if (error) throw error;
+
+      // Filter notices based on individual targeting or visible_to roles
+      const filteredNotices = (data || []).filter(notice => {
+        // Filter out dismissed notices - use the fetched data, not state
+        if (dismissedIds.has(notice.id)) {
+          return false;
+        }
+        // Check individual targeting first (new method)
+        if (notice.audience_group && notice.target_scope) {
+          // Individual targeting is set
+          if (notice.audience_group === 'all_users') {
+            return true; // Show to all users
+          }
+          
+          // Check if user is a student (via user.role or studentInfo)
+          const studentId = studentInfo?.id;
+          if (studentId) {
+            if (notice.audience_group !== 'students') return false;
+            switch (notice.target_scope) {
+              case 'all':
+                return true;
+              case 'single':
+              case 'multi': {
+                const targetIds = [
+                  ...(notice.student_id ? [notice.student_id] : []),
+                  ...(notice.student_ids || [])
+                ];
+                return targetIds.includes(studentId);
+              }
+              case 'class': {
+                // Check if student's class/section matches
+                // For students, we need to get class_id from linkedStudents or fetch it
+                // For now, if we have linkedStudents with this student, use that
+                const studentData = linkedStudents.find(s => s.id === studentId);
+                const studentClassId = studentData?.class_id;
+                const studentSectionId = studentData?.section_id;
+                const classMatches = !notice.class_id || notice.class_id === studentClassId;
+                const sectionMatches = !notice.section_id || notice.section_id === studentSectionId;
+                return classMatches && sectionMatches;
+              }
+              default:
+                return false;
+            }
+          }
+          
+          // Check if user is staff (via user.role or user.staff_id)
+          const staffId = user?.staff_id;
+          if (staffId) {
+            if (notice.audience_group !== 'staff') return false;
+            switch (notice.target_scope) {
+              case 'all':
+                return true;
+              case 'single':
+              case 'multi': {
+                const targetIds = [
+                  ...(notice.staff_id ? [notice.staff_id] : []),
+                  ...(notice.staff_ids || [])
+                ];
+                return targetIds.includes(staffId);
+              }
+              case 'role':
+                return notice.staff_role === userRole;
+              default:
+                return false;
+            }
+          }
+          
+          // Check if user is a parent (via user.role or parentInfo)
+          // For parents, check if any of their linked students match
+          if (user?.role === 'Parent' || parentInfo) {
+            if (notice.audience_group !== 'parents') return false;
+            switch (notice.target_scope) {
+              case 'all':
+                return true;
+              case 'single':
+              case 'multi': {
+                // For parents, check if family_id matches
+                const familyId = parentInfo?.id;
+                if (familyId) {
+                  const targetIds = [
+                    ...(notice.family_id ? [notice.family_id] : []),
+                    ...(notice.family_ids || [])
+                  ];
+                  return targetIds.includes(familyId);
+                }
+                return false;
+              }
+              default:
+                return false;
+            }
+          }
+          
+          return false;
+        }
+        
+        // Legacy: fall back to visible_to roles
+        if (!notice.visible_to || notice.visible_to.length === 0) return true;
+        return notice.visible_to.includes(userRole);
+      });
+
+      setNotices(filteredNotices);
+
+      // Track all displayed notices as "seen" (automatically)
+      if (filteredNotices.length > 0 && viewerIdentifier && schoolId) {
+        // Build viewer payload for tracking
+        let viewerPayload: any = {
+          school_id: schoolId,
+          viewer_identifier: viewerIdentifier,
+          dismissed: false, // Just marking as seen, not dismissed
+        };
+
+        if (studentInfo?.id) {
+          viewerPayload.viewer_type = 'student';
+          viewerPayload.viewer_role = 'Student';
+          viewerPayload.viewer_name = studentInfo.name || 'Student';
+          viewerPayload.student_id = studentInfo.id;
+        } else if (parentInfo?.id) {
+          viewerPayload.viewer_type = 'parent';
+          viewerPayload.viewer_role = 'Parent';
+          viewerPayload.viewer_name = parentInfo.name || 'Parent';
+        } else if (user?.staff_id) {
+          viewerPayload.viewer_type = 'staff';
+          viewerPayload.viewer_role = user.role || 'Staff';
+          viewerPayload.viewer_name = user.name || 'Staff Member';
+          viewerPayload.staff_id = user.staff_id;
+          if (user.id) {
+            viewerPayload.user_id = user.id;
+          }
+        } else if (user?.id) {
+          viewerPayload.viewer_type = 'user';
+          viewerPayload.viewer_role = user.role || 'User';
+          viewerPayload.viewer_name = user.name || 'User';
+          viewerPayload.user_id = user.id;
+        }
+
+        // Track each notice as seen (upsert to avoid duplicates)
+        filteredNotices.forEach(async (notice) => {
+          if (notice.id) {
+            try {
+              await supabase
+                .from('notice_views')
+                .upsert({
+                  notice_id: notice.id,
+                  ...viewerPayload,
+                }, {
+                  onConflict: 'notice_id,viewer_identifier'
+                });
+            } catch (error) {
+              // Silent fail - don't block UI if tracking fails
+              console.error('Error tracking notice as seen:', error);
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[CustomLandingPage] Error loading notices:', error);
+    }
+  };
+
+  const handleDismissNotice = async (noticeId: number) => {
+    const schoolId = user?.school_id || studentInfo?.school_id || parentInfo?.school_id;
+    if (!schoolId || !noticeId) return;
+
+    // Build viewer_identifier and payload based on user type
+    let viewerIdentifier: string | null = null;
+    let viewerPayload: any = {
+      notice_id: noticeId,
+      school_id: schoolId,
+    };
+
+    if (studentInfo?.id) {
+      viewerIdentifier = `student_${studentInfo.id}`;
+      viewerPayload.viewer_type = 'student';
+      viewerPayload.viewer_role = 'Student';
+      viewerPayload.viewer_name = studentInfo.name || 'Student';
+      viewerPayload.student_id = studentInfo.id;
+    } else if (parentInfo?.id) {
+      viewerIdentifier = `parent_${parentInfo.id}`;
+      viewerPayload.viewer_type = 'parent';
+      viewerPayload.viewer_role = 'Parent';
+      viewerPayload.viewer_name = parentInfo.name || 'Parent';
+      // Note: parentInfo.id is family_id, not user_id
+    } else if (user?.staff_id) {
+      viewerIdentifier = `staff_${user.staff_id}`;
+      viewerPayload.viewer_type = 'staff';
+      viewerPayload.viewer_role = user.role || 'Staff';
+      viewerPayload.viewer_name = user.name || 'Staff Member';
+      viewerPayload.staff_id = user.staff_id;
+      if (user.id) {
+        viewerPayload.user_id = user.id;
+      }
+    } else if (user?.id) {
+      viewerIdentifier = `user_${user.id}`;
+      viewerPayload.viewer_type = 'user';
+      viewerPayload.viewer_role = user.role || 'User';
+      viewerPayload.viewer_name = user.name || 'User';
+      viewerPayload.user_id = user.id;
+    }
+
+    if (!viewerIdentifier) {
+      console.error('Cannot determine viewer identifier');
+      return;
+    }
+
+    viewerPayload.viewer_identifier = viewerIdentifier;
+    viewerPayload.dismissed = true; // Mark as dismissed
+    viewerPayload.dismissed_at = new Date().toISOString(); // Track when dismissed
+
+    try {
+      // Save to database using notice_views with dismissed=true
+      const { error } = await supabase
+        .from('notice_views')
+        .upsert(viewerPayload, {
+          onConflict: 'notice_id,viewer_identifier'
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      const newDismissed = new Set(dismissedNotices);
+      newDismissed.add(noticeId);
+      setDismissedNotices(newDismissed);
+      setNotices(prev => prev.filter(n => n.id !== noticeId));
+    } catch (error) {
+      console.error('Error dismissing notice:', error);
     }
   };
 
@@ -4487,6 +4928,56 @@ const CustomLandingPage: React.FC = () => {
           <Subtitle>{user?.name || studentInfo?.name || 'Student'}</Subtitle>
         </WelcomeHeader>
 
+        {/* Notices Section */}
+        {notices.length > 0 && (
+          <NoticesSection>
+            <NoticesTitle>
+              <NoticeIcon />
+              Important
+            </NoticesTitle>
+            <NoticesGrid>
+              {notices.map((notice) => {
+                const getNoticeIcon = () => {
+                  switch (notice.notice_type) {
+                    case 'warning': return <WarningIcon style={{ color: '#f59e0b' }} />;
+                    case 'urgent': return <ErrorIcon style={{ color: '#ef4444' }} />;
+                    case 'success': return <CheckCircle style={{ color: '#10b981' }} />;
+                    default: return <InfoIcon style={{ color: '#3b82f6' }} />;
+                  }
+                };
+                
+                return (
+                  <NoticeCard key={notice.id} $noticeType={notice.notice_type}>
+                    <NoticeHeader>
+                      <NoticeTitleStyled>
+                        {getNoticeIcon()}
+                        {notice.title}
+                      </NoticeTitleStyled>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <NoticeTypeBadge $noticeType={notice.notice_type}>
+                          {notice.notice_type}
+                        </NoticeTypeBadge>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDismissNotice(notice.id)}
+                          sx={{ 
+                            color: 'text.secondary',
+                            '&:hover': { color: 'text.primary' }
+                          }}
+                          title="Dismiss notice"
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </NoticeHeader>
+                    <NoticeDescription>{notice.description}</NoticeDescription>
+                  </NoticeCard>
+                );
+              })}
+            </NoticesGrid>
+          </NoticesSection>
+        )}
+
         {/* Events Section */}
         {events.length > 0 && (
           <EventsSection>
@@ -5032,6 +5523,56 @@ const CustomLandingPage: React.FC = () => {
           </WelcomeText>
           <Subtitle>{user?.name || parentInfo?.name || 'Parent'}</Subtitle>
         </WelcomeHeader>
+
+        {/* Notices Section */}
+        {notices.length > 0 && (
+          <NoticesSection>
+            <NoticesTitle>
+              <NoticeIcon />
+              Important
+            </NoticesTitle>
+            <NoticesGrid>
+              {notices.map((notice) => {
+                const getNoticeIcon = () => {
+                  switch (notice.notice_type) {
+                    case 'warning': return <WarningIcon style={{ color: '#f59e0b' }} />;
+                    case 'urgent': return <ErrorIcon style={{ color: '#ef4444' }} />;
+                    case 'success': return <CheckCircle style={{ color: '#10b981' }} />;
+                    default: return <InfoIcon style={{ color: '#3b82f6' }} />;
+                  }
+                };
+                
+                return (
+                  <NoticeCard key={notice.id} $noticeType={notice.notice_type}>
+                    <NoticeHeader>
+                      <NoticeTitleStyled>
+                        {getNoticeIcon()}
+                        {notice.title}
+                      </NoticeTitleStyled>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <NoticeTypeBadge $noticeType={notice.notice_type}>
+                          {notice.notice_type}
+                        </NoticeTypeBadge>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDismissNotice(notice.id)}
+                          sx={{ 
+                            color: 'text.secondary',
+                            '&:hover': { color: 'text.primary' }
+                          }}
+                          title="Dismiss notice"
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </NoticeHeader>
+                    <NoticeDescription>{notice.description}</NoticeDescription>
+                  </NoticeCard>
+                );
+              })}
+            </NoticesGrid>
+          </NoticesSection>
+        )}
 
         {/* Events Section */}
         {events.length > 0 && (
@@ -5837,6 +6378,56 @@ const CustomLandingPage: React.FC = () => {
           <Subtitle>{getGenderTitle(staffGender)}{staffName || user?.name || 'User'}{getClassSectionInfo()}</Subtitle>
         </WelcomeHeader>
 
+        {/* Notices Section */}
+        {notices.length > 0 && (
+          <NoticesSection>
+            <NoticesTitle>
+              <NoticeIcon />
+              Important
+            </NoticesTitle>
+            <NoticesGrid>
+              {notices.map((notice) => {
+                const getNoticeIcon = () => {
+                  switch (notice.notice_type) {
+                    case 'warning': return <WarningIcon style={{ color: '#f59e0b' }} />;
+                    case 'urgent': return <ErrorIcon style={{ color: '#ef4444' }} />;
+                    case 'success': return <CheckCircle style={{ color: '#10b981' }} />;
+                    default: return <InfoIcon style={{ color: '#3b82f6' }} />;
+                  }
+                };
+                
+                return (
+                  <NoticeCard key={notice.id} $noticeType={notice.notice_type}>
+                    <NoticeHeader>
+                      <NoticeTitleStyled>
+                        {getNoticeIcon()}
+                        {notice.title}
+                      </NoticeTitleStyled>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <NoticeTypeBadge $noticeType={notice.notice_type}>
+                          {notice.notice_type}
+                        </NoticeTypeBadge>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDismissNotice(notice.id)}
+                          sx={{ 
+                            color: 'text.secondary',
+                            '&:hover': { color: 'text.primary' }
+                          }}
+                          title="Dismiss notice"
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </NoticeHeader>
+                    <NoticeDescription>{notice.description}</NoticeDescription>
+                  </NoticeCard>
+                );
+              })}
+            </NoticesGrid>
+          </NoticesSection>
+        )}
+
         {/* Events Section */}
         {events.length > 0 && (
           <EventsSection>
@@ -6603,6 +7194,43 @@ const CustomLandingPage: React.FC = () => {
         <Title>Welcome, {displayName}</Title>
         <Subtitle>Your personalized landing page</Subtitle>
       </WelcomeHeader>
+
+      {/* Notices Section */}
+      {notices.length > 0 && (
+        <NoticesSection>
+          <NoticesTitle>
+            <NoticeIcon />
+            Important
+          </NoticesTitle>
+          <NoticesGrid>
+            {notices.map((notice) => {
+              const getNoticeIcon = () => {
+                switch (notice.notice_type) {
+                  case 'warning': return <WarningIcon style={{ color: '#f59e0b' }} />;
+                  case 'urgent': return <ErrorIcon style={{ color: '#ef4444' }} />;
+                  case 'success': return <CheckCircle style={{ color: '#10b981' }} />;
+                  default: return <InfoIcon style={{ color: '#3b82f6' }} />;
+                }
+              };
+              
+              return (
+                <NoticeCard key={notice.id} $noticeType={notice.notice_type}>
+                  <NoticeHeader>
+                    <NoticeTitleStyled>
+                      {getNoticeIcon()}
+                      {notice.title}
+                    </NoticeTitleStyled>
+                    <NoticeTypeBadge $noticeType={notice.notice_type}>
+                      {notice.notice_type}
+                    </NoticeTypeBadge>
+                  </NoticeHeader>
+                  <NoticeDescription>{notice.description}</NoticeDescription>
+                </NoticeCard>
+              );
+            })}
+          </NoticesGrid>
+        </NoticesSection>
+      )}
 
       {/* Events Section */}
       {events.length > 0 && (

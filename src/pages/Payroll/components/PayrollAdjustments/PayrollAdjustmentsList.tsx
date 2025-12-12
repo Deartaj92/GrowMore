@@ -7,85 +7,33 @@ import { payrollService } from '../../../../services/payrollService';
 import { PayrollAdjustment, CreatePayrollAdjustmentInput } from '../../../../types/payroll';
 import {
   Box,
-  Button,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Tooltip,
   MenuItem,
   Select,
-  FormControl,
+  FormControl as MuiFormControl,
   InputLabel,
+  Button,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Delete as DeleteIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import CreateAdjustmentModal from './CreateAdjustmentModal';
+import {
+  PayrollContainer,
+  ContentCard,
+  TableWrapper,
+  StyledTable,
+  StatusBadge,
+  EmptyStateContainer,
+  EmptyStateIcon,
+  EmptyStateTitle,
+  EmptyStateText,
+} from '../../styles';
 
-const PageContainer = styled.div`
-  width: 100%;
-  margin: 0;
-  padding: 16px;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  min-height: 100%;
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-`;
-
-const Title = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0;
-`;
-
-const FiltersCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-`;
-
-const TableContainer = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  overflow: hidden;
-`;
-
-const StyledTable = styled(Table)`
-  & .MuiTableCell-root {
-    padding: 8px 12px;
-    font-size: 0.875rem;
-  }
-  
-  & .MuiTableCell-head {
-    font-weight: 600;
-    font-size: 0.8rem;
-    background: ${({ theme }) => theme.BG};
-  }
-`;
 
 const PayrollAdjustmentsList: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
@@ -136,122 +84,171 @@ const PayrollAdjustmentsList: React.FC = () => {
   });
 
   if (loading) {
-    return (
-      <PageContainer>
-        <Loader />
-      </PageContainer>
-    );
+    return <Loader />;
   }
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'bonus': return 'success';
-      case 'fine': return 'error';
-      case 'extra_cut': return 'warning';
-      default: return 'default';
+      case 'bonus': return '#10b981';
+      case 'fine': return '#ef4444';
+      case 'extra_cut': return '#f59e0b';
+      default: return theme.TEXT_SECONDARY;
     }
   };
 
   return (
-    <PageContainer>
-      <Header>
-        <Title>Payroll Adjustments</Title>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateModalOpen(true)}
-          size="small"
-        >
-          Create Adjustment
-        </Button>
-      </Header>
+    <PayrollContainer>
+      {/* Header matching Generate Payroll tab style */}
+      <ContentCard style={{ padding: '0.75rem 1rem', marginBottom: '0.375rem' }}>
+        <Box display="flex" gap={1} alignItems="flex-end" flexWrap="wrap" justifyContent="space-between" sx={{ 
+          '@media (max-width: 768px)': { 
+            gap: 0.75,
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            justifyContent: 'stretch',
+          } 
+        }}>
+          <Box display="flex" gap={1} alignItems="flex-end" flexWrap="wrap" sx={{ 
+            '@media (max-width: 768px)': { 
+              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+            } 
+          }}>
+            <TextField
+              size="small"
+              placeholder="Search by employee, reason..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: theme.TEXT_SECONDARY, fontSize: 16 }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                minWidth: { xs: '100%', sm: 200 },
+                '& .MuiInputBase-root': {
+                  height: '30px',
+                  fontSize: '0.75rem',
+                },
+              }}
+            />
+            <MuiFormControl size="small" sx={{ minWidth: { xs: '100%', sm: 120 } }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Type</InputLabel>
+              <Select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                label="Type"
+                sx={{ fontSize: '0.75rem', height: '30px' }}
+              >
+                <MenuItem value="all" sx={{ fontSize: '0.75rem' }}>All</MenuItem>
+                <MenuItem value="bonus" sx={{ fontSize: '0.75rem' }}>Bonus</MenuItem>
+                <MenuItem value="fine" sx={{ fontSize: '0.75rem' }}>Fine</MenuItem>
+                <MenuItem value="extra_cut" sx={{ fontSize: '0.75rem' }}>Extra Cut</MenuItem>
+                <MenuItem value="other" sx={{ fontSize: '0.75rem' }}>Other</MenuItem>
+              </Select>
+            </MuiFormControl>
+          </Box>
 
-      <FiltersCard>
-        <TextField
-          size="small"
-          placeholder="Search by employee, reason..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <SearchIcon style={{ fontSize: 18, marginRight: 8, color: theme.TEXT_SECONDARY }} />,
-          }}
-          style={{ flex: 1, minWidth: 200 }}
-          variant="outlined"
-        />
-        <FormControl size="small" style={{ minWidth: 150 }}>
-          <InputLabel>Type</InputLabel>
-          <Select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            label="Type"
-          >
-            <MenuItem value="all">All</MenuItem>
-            <MenuItem value="bonus">Bonus</MenuItem>
-            <MenuItem value="fine">Fine</MenuItem>
-            <MenuItem value="extra_cut">Extra Cut</MenuItem>
-            <MenuItem value="other">Other</MenuItem>
-          </Select>
-        </FormControl>
-      </FiltersCard>
+          <Box display="flex" gap={0.75} alignItems="flex-end" sx={{ 
+            '@media (max-width: 768px)': { 
+              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+            } 
+          }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
+              onClick={() => loadAdjustments()}
+              disabled={loading}
+              sx={{ 
+                fontSize: '0.75rem',
+                height: '30px',
+                padding: '4px 10px',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+              onClick={() => setCreateModalOpen(true)}
+              sx={{ 
+                fontSize: '0.75rem',
+                height: '30px',
+                padding: '4px 10px',
+                whiteSpace: 'nowrap',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
+            >
+              Create Adjustment
+            </Button>
+          </Box>
+        </Box>
+      </ContentCard>
 
-      <TableContainer>
-        <StyledTable size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Employee</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Month/Year</TableCell>
-              <TableCell>Reason</TableCell>
-              <TableCell>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <TableWrapper>
+        <StyledTable>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Type</th>
+              <th style={{ textAlign: 'right' }}>Amount</th>
+              <th>Month/Year</th>
+              <th>Reason</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
             {filteredAdjustments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" style={{ padding: '32px' }}>
-                  {searchTerm ? 'No adjustments found matching your search' : 'No adjustments recorded yet'}
-                </TableCell>
-              </TableRow>
+              <tr>
+                <td colSpan={6}>
+                  <EmptyStateContainer>
+                    <EmptyStateIcon><AddIcon /></EmptyStateIcon>
+                    <EmptyStateTitle>{searchTerm ? 'No adjustments found matching your search' : 'No adjustments recorded yet'}</EmptyStateTitle>
+                    {!searchTerm && <EmptyStateText>Create adjustments to add bonuses, fines, or other adjustments to employee payrolls.</EmptyStateText>}
+                  </EmptyStateContainer>
+                </td>
+              </tr>
             ) : (
               filteredAdjustments.map((adjustment) => (
-                <TableRow key={adjustment.id} hover>
-                  <TableCell style={{ fontWeight: 500 }}>
+                <tr key={adjustment.id}>
+                  <td style={{ fontWeight: 500 }}>
                     {adjustment.staff?.name || 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={adjustment.adjustmentType.replace('_', ' ')}
-                      size="small"
-                      color={getTypeColor(adjustment.adjustmentType) as any}
-                      style={{ fontSize: '0.75rem', height: '22px', textTransform: 'capitalize' }}
-                    />
-                  </TableCell>
-                  <TableCell style={{ fontWeight: 600 }}>
+                  </td>
+                  <td>
+                    <StatusBadge color={getTypeColor(adjustment.adjustmentType)}>
+                      {adjustment.adjustmentType.replace('_', ' ')}
+                    </StatusBadge>
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 600 }}>
                     {adjustment.adjustmentType === 'bonus' ? '+' : '-'}
                     Rs. {adjustment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     {adjustment.payrollMonth}/{adjustment.payrollYear}
-                  </TableCell>
-                  <TableCell style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem' }}>
+                  </td>
+                  <td style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem' }}>
                     {adjustment.reason}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={adjustment.isApplied ? 'Applied' : 'Pending'}
-                      size="small"
-                      color={adjustment.isApplied ? 'success' : 'warning'}
-                      style={{ fontSize: '0.75rem', height: '22px' }}
-                    />
-                  </TableCell>
-                </TableRow>
+                  </td>
+                  <td>
+                    <StatusBadge status={adjustment.isApplied ? 'paid' : 'pending'}>
+                      {adjustment.isApplied ? 'Applied' : 'Pending'}
+                    </StatusBadge>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
+          </tbody>
         </StyledTable>
-      </TableContainer>
+      </TableWrapper>
 
       {createModalOpen && (
         <CreateAdjustmentModal
@@ -263,7 +260,7 @@ const PayrollAdjustmentsList: React.FC = () => {
           }}
         />
       )}
-    </PageContainer>
+    </PayrollContainer>
   );
 };
 

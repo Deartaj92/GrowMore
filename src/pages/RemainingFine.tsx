@@ -544,23 +544,59 @@ const RemainingFine: React.FC = () => {
       setLoading(true);
       startProgress(false);
       setProgress(10);
+      
+      // Helper function to fetch all rows with pagination (handles 1000 row limit)
+      const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
+        const allData: any[] = [];
+        let from = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          const to = from + pageSize - 1;
+          const { data, error } = await queryBuilder.range(from, to);
+          if (error) throw error;
+          if (data && data.length > 0) {
+            allData.push(...data);
+            hasMore = data.length === pageSize;
+            from += pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
+        return allData;
+      };
+
       const [
         { data: studentsData },
         { data: classesData },
         { data: sectionsData },
         { data: finesData },
-        { data: paymentsData },
-        { data: attendanceData },
       ] = await Promise.all([
         supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
         supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
         supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
-        supabase.from('fines').select('class_id, absent_fine, late_fine, effective_from').eq('school_id', user.school_id),
-        supabase.from('fine_payments').select('*').eq('school_id', user.school_id),
-        supabase.from('attendance_records').select('student_id, class_id, date, status')
-          .eq('school_id', user.school_id)
-          .in('status', ['absent', 'late']),
+        supabase.from('fines').select('class_id, absent_fine, late_fine, effective_from').eq('school_id', user.school_id).order('effective_from', { ascending: true }),
       ]);
+      
+      setProgress(50);
+      
+      // Fetch all attendance records with pagination to handle 1000+ rows
+      const attendanceQuery = supabase
+        .from('attendance_records')
+        .select('student_id, class_id, date, status')
+        .eq('school_id', user.school_id)
+        .in('status', ['absent', 'late']);
+      
+      const attendanceData = await fetchAllRows(attendanceQuery);
+      
+      // Fetch all fine payments with pagination to handle 1000+ rows
+      const paymentsQuery = supabase
+        .from('fine_payments')
+        .select('*')
+        .eq('school_id', user.school_id);
+      
+      const paymentsData = await fetchAllRows(paymentsQuery);
+      
       setProgress(70);
       setStudents(studentsData || []);
       const sortedClasses = sortClasses(classesData || []);
@@ -629,7 +665,10 @@ const RemainingFine: React.FC = () => {
   }, [students, selectedClass, selectedSection]);
 
   // Fine calculation logic - uses class_id from attendance records for accurate fine calculation
+  // This matches the logic in FineCollection.tsx exactly
   function calculateFine(student: any) {
+    if (!fines || fines.length === 0) return 0;
+    
     const studentAtt = attendanceRecords.filter(
       (rec: any) => rec.student_id === student.id && (rec.status === 'absent' || rec.status === 'late')
     );
@@ -637,21 +676,24 @@ const RemainingFine: React.FC = () => {
     
     for (const rec of studentAtt) {
       // Use the class_id directly from the attendance record (this is the class the student was in when attendance was marked)
-      const classIdFromRecord = rec.class_id;
+      // If class_id is not available in the record (old records), fall back to student's current class
+      const classIdFromRecord = rec.class_id || student.class_id;
       
-      // Find fines for that specific class
-      const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord));
+      // Find fines for that specific class - match FineCollection.tsx exactly
+      const classFines = fines.filter((f: any) => f.class_id === classIdFromRecord) || [];
       
-      // Always pick the latest fine setting with effective_from <= rec.date
+      // Find the latest fine setting with effective_from <= rec.date
+      // Since fines are already sorted by effective_from ascending, loop through and keep the last matching one
       let fine = classFines && classFines.length > 0 ? classFines[0] : null;
       for (const f of classFines) {
         if (f.effective_from <= rec.date) fine = f;
       }
       
+      let fineAmount = 0;
       if (fine) {
-        if (rec.status === 'absent') total += Number(fine.absent_fine);
-        else if (rec.status === 'late') total += Number(fine.late_fine);
+        fineAmount = rec.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
       }
+      total += fineAmount;
     }
     return total;
   }

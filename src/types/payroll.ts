@@ -7,12 +7,14 @@ export interface PayrollSettings {
   allowedLeavesPerMonth: number;
   leaveDeductionMethod: 'full_day' | 'half_day' | 'proportional';
   salaryCalculationMethod: 'monthly' | 'daily' | 'hourly';
-  defaultPaymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'upi' | 'other';
+  defaultPaymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
   autoApprovePayroll: boolean;
   lateDeductionEnabled?: boolean;
   allowedLateDaysPerMonth?: number;
   lateDeductionAmount?: number;
   lateDeductionType?: 'fixed' | 'percentage';
+  allowLeaveBonus?: boolean;
+  leaveBonusDays?: number; // 1 or 2 days
   createdAt?: string;
   updatedAt?: string;
 }
@@ -96,6 +98,82 @@ export interface PayrollGeneration {
   presentDays?: number;
   leaveDays?: number;
   absentDays?: number;
+  lateDays?: number;
+  halfDayLeaves?: number;
+  calculationMode?: 'full' | 'partial';
+  grossSalary?: number;
+  absentDeductions?: number;
+  leaveDeductions?: number;
+  lateDeductions?: number;
+  advanceDeductions?: number;
+  attendanceData?: {
+    records: Array<{ status: string; date: string }>;
+    halfLeaves: Array<{ date: string; type: 'first_half' | 'second_half' }>;
+    summary: {
+      workingDays: number;
+      presentDays: number;
+      leaveDays: number;
+      absentDays: number;
+      lateDays: number;
+      halfDayLeaves: number;
+    };
+    dateRange: {
+      startDate: string;
+      endDate: string;
+    };
+  };
+  calculationDetails?: {
+    calculationMode: 'full' | 'partial';
+    grossSalary: number;
+    allowances: Array<{ name: string; amount: number }>;
+    deductions: Array<{ name: string; amount: number }>;
+    absentDeductions: number;
+    leaveDeductions: number;
+    lateDeductions: number;
+    advanceDeductions: number;
+    adjustments: Array<{ name: string; amount: number; type: string }>;
+    netSalary: number;
+    settings: {
+      monthlyWorkingDays: number;
+      allowedLeavesPerMonth: number;
+      leaveDeductionMethod: 'full_day' | 'half_day' | 'proportional';
+      lateDeductionEnabled: boolean;
+      allowedLateDaysPerMonth: number;
+      lateDeductionAmount: number;
+      lateDeductionType: 'fixed' | 'percentage';
+    };
+    advances: Array<{
+      id: number;
+      amount: number;
+      remainingAmount: number;
+      deductionAmount: number;
+    }>;
+    appliedAdjustments: Array<{
+      id: number;
+      adjustmentType: string;
+      amount: number;
+      reason: string;
+    }>;
+  };
+  planId?: number;
+  planSnapshot?: {
+    planId: number;
+    planName: string;
+    basicPay: number;
+    description?: string;
+    effectiveFrom: string;
+    effectiveTo?: string;
+    items: Array<{
+      id: number;
+      itemType: 'allowance' | 'deduction';
+      name: string;
+      amountType: 'fixed' | 'percentage';
+      amount: number;
+      isTaxable: boolean;
+      calculationBasis?: string;
+    }>;
+    capturedAt: string;
+  };
   status: 'draft' | 'approved' | 'paid' | 'cancelled';
   approvedBy?: number;
   approvedAt?: string;
@@ -138,7 +216,7 @@ export interface PayrollPayment {
   generationId: number;
   paymentDate: string;
   amount: number;
-  paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'upi' | 'other';
+  paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
   referenceNo?: string;
   remarks?: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
@@ -283,6 +361,7 @@ export interface SalaryCalculationResult {
   netSalary: number;
   attendanceSummary: AttendanceSummary;
   absentDeductions?: number; // Absent deductions (Full mode only, always deducted)
+  leaveBonusAmount?: number; // Leave bonus amount added to gross pay
 }
 
 // Form input types
@@ -317,7 +396,7 @@ export interface ProcessPaymentInput {
   generationId: number;
   paymentDate: string;
   amount: number;
-  paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'upi' | 'other';
+  paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
   referenceNo?: string;
   remarks?: string;
 }

@@ -32,61 +32,96 @@ const ModalOverlay = styled.div<{ open: boolean }>`
   align-items: center;
   justify-content: center;
   z-index: 1300;
-  padding: 20px;
+  padding: 16px;
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    align-items: flex-end;
+  }
 `;
 
 const ModalContent = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  border-radius: 8px;
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   border: 1px solid ${({ theme }) => theme.BORDER};
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  
+  @media (max-width: 768px) {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px 12px 0 0;
+    margin: 0;
+  }
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 10px 14px;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+  }
 `;
 
 const ModalTitle = styled.h3`
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;
+  
+  @media (max-width: 768px) {
+    font-size: 0.9375rem;
+  }
 `;
 
 const ModalBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  
+  @media (max-width: 768px) {
+    padding: 12px;
+    gap: 10px;
+  }
 `;
 
 const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 20px;
+  gap: 8px;
+  padding: 10px 14px;
   border-top: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    gap: 6px;
+    flex-direction: column-reverse;
+    
+    & > button {
+      width: 100%;
+    }
+  }
 `;
 
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 `;
 
 const Label = styled.label`
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
@@ -94,9 +129,14 @@ const Label = styled.label`
 const InfoBox = styled.div`
   background: ${({ theme }) => theme.BG};
   border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 4px;
+  padding: 6px 8px;
   margin-bottom: 8px;
+  
+  @media (max-width: 768px) {
+    padding: 5px 6px;
+    margin-bottom: 6px;
+  }
 `;
 
 interface ProcessPaymentModalProps {
@@ -118,10 +158,11 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [generation, setGeneration] = useState<PayrollGeneration | null>(null);
+  const [remainingBalance, setRemainingBalance] = useState(0);
   const [formData, setFormData] = useState({
     paymentDate: new Date().toISOString().split('T')[0],
     amount: 0,
-    paymentMode: 'bank_transfer' as 'cash' | 'bank_transfer' | 'cheque' | 'upi' | 'other',
+    paymentMode: 'bank_transfer' as 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other',
     referenceNo: '',
     remarks: '',
   });
@@ -141,9 +182,17 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
       const data = await payrollService.getPayrollGeneration(user.school_id, generationId);
       if (data) {
         setGeneration(data);
+        
+        // Get all payments for this generation to calculate remaining balance
+        const payments = await payrollService.getPayrollPayments(user.school_id, {});
+        const generationPayments = payments.filter(p => p.generationId === generationId && p.status === 'completed');
+        const totalPaid = generationPayments.reduce((sum, p) => sum + p.amount, 0);
+        const remaining = Math.max(0, data.netSalary - totalPaid);
+        
+        setRemainingBalance(remaining);
         setFormData(prev => ({
           ...prev,
-          amount: data.netSalary,
+          amount: remaining, // Pre-fill with remaining balance
         }));
       }
     } catch (error: any) {
@@ -178,6 +227,11 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
 
     if (formData.amount <= 0) {
       showToast('Payment amount must be greater than 0', 'error');
+      return;
+    }
+
+    if (formData.amount > remainingBalance) {
+      showToast(`Payment amount cannot exceed remaining balance of Rs. ${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'error');
       return;
     }
 
@@ -220,18 +274,16 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
             <Loader />
           ) : generation ? (
             <InfoBox>
-              <Typography variant="subtitle2" style={{ marginBottom: 8, fontWeight: 600 }}>
-                Payroll Details
-              </Typography>
-              <Typography variant="body2" style={{ marginBottom: 4 }}>
-                Employee: {generation.staff?.name}
-              </Typography>
-              <Typography variant="body2" style={{ marginBottom: 4 }}>
-                Month/Year: {generation.payrollMonth}/{generation.payrollYear}
-              </Typography>
-              <Typography variant="body2" style={{ marginBottom: 4 }}>
-                Net Salary: Rs. {generation.netSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </Typography>
+              <Box display="flex" flexDirection="column" gap={0.5}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+                  <Typography variant="caption" sx={{ fontSize: { xs: '0.6875rem', sm: '0.75rem' }, color: theme.TEXT_SECONDARY }}>
+                    {generation.staff?.name} • {generation.payrollMonth}/{generation.payrollYear}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontSize: { xs: '0.6875rem', sm: '0.75rem' }, fontWeight: 600, color: remainingBalance > 0 ? '#ef4444' : '#10b981' }}>
+                    Balance: Rs. {remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+              </Box>
             </InfoBox>
           ) : null}
 
@@ -245,6 +297,12 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
               fullWidth
               variant="outlined"
               InputLabelProps={{ shrink: true }}
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  height: { xs: '36px', sm: '32px' },
+                },
+              }}
             />
           </FormGroup>
 
@@ -257,23 +315,52 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
               fullWidth
               variant="outlined"
-              inputProps={{ min: 0, step: 0.01 }}
+              inputProps={{ min: 0, max: remainingBalance, step: 0.01 }}
+              helperText={`Maximum: Rs. ${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  height: { xs: '36px', sm: '32px' },
+                },
+                '& .MuiFormHelperText-root': {
+                  fontSize: { xs: '0.625rem', sm: '0.6875rem' },
+                },
+              }}
             />
+            <Box display="flex" gap={1} marginTop={1} sx={{ '@media (max-width: 768px)': { marginTop: 0.75 } }}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setFormData({ ...formData, amount: remainingBalance })}
+                disabled={remainingBalance === 0}
+                sx={{
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  height: { xs: '32px', sm: '28px' },
+                  padding: { xs: '4px 10px', sm: '2px 10px' },
+                }}
+              >
+                Pay Full Balance
+              </Button>
+            </Box>
           </FormGroup>
 
           <FormGroup>
             <FormControl fullWidth size="small">
-              <InputLabel>Payment Mode *</InputLabel>
+              <InputLabel sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Payment Mode *</InputLabel>
               <Select
                 value={formData.paymentMode}
                 onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value as any })}
                 label="Payment Mode *"
+                sx={{
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  height: { xs: '36px', sm: '32px' },
+                }}
               >
-                <MenuItem value="cash">Cash</MenuItem>
-                <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
-                <MenuItem value="cheque">Cheque</MenuItem>
-                <MenuItem value="upi">UPI</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
+                <MenuItem value="cash" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Cash</MenuItem>
+                <MenuItem value="bank_transfer" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Bank Transfer</MenuItem>
+                <MenuItem value="cheque" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Cheque</MenuItem>
+                <MenuItem value="easypaisa_jazzcash" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>EasyPaisa/JazzCash</MenuItem>
+                <MenuItem value="other" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Other</MenuItem>
               </Select>
             </FormControl>
           </FormGroup>
@@ -287,6 +374,12 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
               placeholder="Transaction ID, Cheque No, etc."
               fullWidth
               variant="outlined"
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  height: { xs: '36px', sm: '32px' },
+                },
+              }}
             />
           </FormGroup>
 
@@ -300,12 +393,27 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
               rows={2}
               fullWidth
               variant="outlined"
+              sx={{
+                '& .MuiInputBase-root': {
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                },
+              }}
             />
           </FormGroup>
         </ModalBody>
 
         <ModalFooter>
-          <Button onClick={onClose} variant="outlined" size="small" disabled={loading}>
+          <Button 
+            onClick={onClose} 
+            variant="outlined" 
+            size="small" 
+            disabled={loading}
+            sx={{
+              fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+              height: { xs: '36px', sm: '32px' },
+              padding: { xs: '4px 10px', sm: '4px 12px' },
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -314,7 +422,12 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
             color="primary"
             size="small"
             disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} /> : <PaymentIcon />}
+            startIcon={loading ? <CircularProgress size={14} /> : <PaymentIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />}
+            sx={{
+              fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+              height: { xs: '36px', sm: '32px' },
+              padding: { xs: '4px 10px', sm: '4px 12px' },
+            }}
           >
             {loading ? 'Processing...' : 'Process Payment'}
           </Button>

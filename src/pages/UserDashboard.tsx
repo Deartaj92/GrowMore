@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Dashboard as DashboardIcon, Event as EventIcon, CalendarToday as CalendarIcon, AccessTime as AccessTimeIcon, LocationOn as LocationIcon, Person as PersonIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon, ExpandMore, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined, ExitToApp as ExitIcon, School as SchoolIcon } from '@mui/icons-material';
+import { Dashboard as DashboardIcon, Event as EventIcon, CalendarToday as CalendarIcon, AccessTime as AccessTimeIcon, LocationOn as LocationIcon, Person as PersonIcon, EventBusy as EventBusyIcon, Feedback as FeedbackIcon, Lightbulb as LightbulbIcon, Close as CloseIcon, ExpandMore, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined, ExitToApp as ExitIcon, School as SchoolIcon, Notifications as NoticeIcon, Warning as WarningIcon, Info as InfoIcon, Error as ErrorIcon } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, IconButton, Typography, useTheme, useMediaQuery, Theme, Tabs, Tab, Chip } from '@mui/material';
 import { useToast } from '../components/useToast';
@@ -13,6 +13,9 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
 import Loader from '../components/Loader';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { useAnnouncements } from '../components/Layout/hooks/useAnnouncements';
+import { getAnnouncementIdentity } from '../components/Layout/utils/announcementUtils';
+import AnnouncementModal from '../components/Layout/components/Modals/AnnouncementModal';
 
 const Container = styled.div`
   width: 100%;
@@ -110,6 +113,113 @@ const InfoText = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   line-height: 1.6;
   margin: 0;
+`;
+
+// Notices section styled components
+const NoticesSection = styled.div`
+  margin-bottom: 3rem;
+  width: 100%;
+`;
+
+const NoticesTitle = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const NoticesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+`;
+
+const NoticeCard = styled.div<{ $noticeType?: string }>`
+  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-left: 4px solid ${({ $noticeType }) => {
+    switch ($noticeType) {
+      case 'warning': return '#f59e0b';
+      case 'urgent': return '#ef4444';
+      case 'success': return '#10b981';
+      default: return '#3b82f6';
+    }
+  }};
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: ${({ $noticeType }) => {
+      switch ($noticeType) {
+        case 'warning': return '#f59e0b';
+        case 'urgent': return '#ef4444';
+        case 'success': return '#10b981';
+        default: return '#3b82f6';
+      }
+    }};
+  }
+`;
+
+const NoticeHeader = styled.div`
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+`;
+
+const NoticeTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const NoticeTypeBadge = styled.span<{ $noticeType?: string }>`
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: ${({ $noticeType }) => {
+    switch ($noticeType) {
+      case 'warning': return '#f59e0b15';
+      case 'urgent': return '#ef444415';
+      case 'success': return '#10b98115';
+      default: return '#3b82f615';
+    }
+  }};
+  color: ${({ $noticeType }) => {
+    switch ($noticeType) {
+      case 'warning': return '#f59e0b';
+      case 'urgent': return '#ef4444';
+      case 'success': return '#10b981';
+      default: return '#3b82f6';
+    }
+  }};
+`;
+
+const NoticeDescription = styled.p`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin: 0;
+  line-height: 1.5;
 `;
 
 // Events section styled components
@@ -925,6 +1035,53 @@ const UserDashboard: React.FC = () => {
     visible_to: string[];
   }>>([]);
 
+  const [notices, setNotices] = useState<Array<{
+    id: number;
+    title: string;
+    description: string;
+    notice_type: string;
+    visible_to?: string[];
+    is_active: boolean;
+    expiry_date?: string | null;
+    created_at: string;
+    // Individual targeting fields
+    audience_group?: 'students' | 'staff' | 'parents' | 'all_users';
+    target_scope?: 'all' | 'single' | 'multi' | 'class' | 'role';
+    student_id?: number | null;
+    student_ids?: number[] | null;
+    staff_id?: number | null;
+    staff_ids?: number[] | null;
+    family_id?: number | null;
+    family_ids?: number[] | null;
+    class_id?: number | null;
+    section_id?: number | null;
+    staff_role?: string | null;
+  }>>([]);
+  const [dismissedNotices, setDismissedNotices] = useState<Set<number>>(new Set());
+
+  // Announcement state
+  const announcementIdentity = useMemo(() => {
+    if (!user?.school_id) return null;
+    return getAnnouncementIdentity(null, user, user?.staff_id?.toString() || null);
+  }, [user?.school_id, user?.staff_id, user?.id, user?.role]);
+
+  const {
+    announcementQueue,
+    currentAnnouncementIndex,
+    showAnnouncement,
+    setCurrentAnnouncementIndex,
+    setShowAnnouncement,
+    setAnnouncementQueue,
+    loadAnnouncements,
+    trackAnnouncementSeen,
+    persistAnnouncementDismissal,
+    snoozedAnnouncementsRef,
+  } = useAnnouncements(announcementIdentity, user, null, user?.staff_id?.toString() || null);
+
+  const currentAnnouncement = showAnnouncement && announcementQueue.length
+    ? announcementQueue[currentAnnouncementIndex]
+    : null;
+
   // Leave Request Modal state
   const [leaveRequestModalOpen, setLeaveRequestModalOpen] = useState(false);
   const [leaveRequestForm, setLeaveRequestForm] = useState({
@@ -1024,7 +1181,9 @@ const UserDashboard: React.FC = () => {
         const [
           { data: activeSessionData, error: sessionError },
           { data: eventsData, error: eventsError },
-          { data: staffGenderData, error: staffGenderError }
+          { data: noticesData, error: noticesError },
+          { data: staffGenderData, error: staffGenderError },
+          { data: dismissedNoticesData, error: dismissedNoticesError }
         ] = await Promise.all([
           // Fetch active session
           supabase
@@ -1041,6 +1200,14 @@ const UserDashboard: React.FC = () => {
             .gte('end_date', new Date().toISOString().split('T')[0])
             .order('start_date', { ascending: true })
             .limit(10),
+          // Fetch notices
+          supabase
+            .from('notices')
+            .select('*')
+            .eq('school_id', schoolId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(10),
           // Fetch staff gender (only if user has staff_id)
           user?.staff_id
             ? supabase
@@ -1049,7 +1216,27 @@ const UserDashboard: React.FC = () => {
                 .eq('id', user.staff_id)
                 .eq('school_id', schoolId)
                 .single()
-            : Promise.resolve({ data: null, error: null })
+            : Promise.resolve({ data: null, error: null }),
+          // Fetch dismissed notices for this user (only dismissed ones)
+          user?.id && user?.school_id
+            ? (() => {
+                // Build viewer_identifier based on user type
+                let viewerIdentifier: string | null = null;
+                if (user.staff_id) {
+                  viewerIdentifier = `staff_${user.staff_id}`;
+                } else if (user.id) {
+                  viewerIdentifier = `user_${user.id}`;
+                }
+                return viewerIdentifier
+                  ? supabase
+                      .from('notice_views')
+                      .select('notice_id')
+                      .eq('viewer_identifier', viewerIdentifier)
+                      .eq('school_id', user.school_id)
+                      .eq('dismissed', true)
+                  : Promise.resolve({ data: [], error: null });
+              })()
+            : Promise.resolve({ data: [], error: null })
         ]);
 
         // Handle active session
@@ -1066,6 +1253,119 @@ const UserDashboard: React.FC = () => {
           setEvents(filteredEvents);
         }
 
+        // Get dismissed notice IDs from fetched data
+        const dismissedIdsSet = new Set<number>();
+        if (!dismissedNoticesError && dismissedNoticesData) {
+          (dismissedNoticesData || []).forEach(item => dismissedIdsSet.add(item.notice_id));
+          setDismissedNotices(dismissedIdsSet);
+        }
+        
+        // Build viewer_identifier for current user (for dismissal tracking)
+        let viewerIdentifier: string | null = null;
+        if (user?.staff_id) {
+          viewerIdentifier = `staff_${user.staff_id}`;
+        } else if (user?.id) {
+          viewerIdentifier = `user_${user.id}`;
+        }
+
+        // Handle notices
+        if (!noticesError && noticesData) {
+          const today = new Date().toISOString().split('T')[0];
+          const filteredNotices = noticesData.filter(notice => {
+            // Filter out expired notices
+            if (notice.expiry_date && notice.expiry_date < today) {
+              return false;
+            }
+            
+            // Filter out dismissed notices - use fetched data directly
+            if (dismissedIdsSet.has(notice.id)) {
+              return false;
+            }
+            
+            // Check individual targeting first (new method)
+            if (notice.audience_group && notice.target_scope) {
+              // Individual targeting is set
+              if (notice.audience_group === 'all_users') {
+                return true; // Show to all users
+              }
+              
+              // Check if user is a student
+              // Note: User type doesn't have student_id, so we skip individual student targeting for now
+              // This would require fetching student_id from students table based on user.id
+              // For now, we'll rely on legacy visible_to roles for students in UserDashboard
+              
+              // Check if user is staff
+              if (user?.staff_id) {
+                if (notice.audience_group !== 'staff') return false;
+                switch (notice.target_scope) {
+                  case 'all':
+                    return true;
+                  case 'single':
+                  case 'multi': {
+                    const targetIds = [
+                      ...(notice.staff_id ? [notice.staff_id] : []),
+                      ...(notice.staff_ids || [])
+                    ];
+                    return targetIds.includes(user.staff_id);
+                  }
+                  case 'role':
+                    return notice.staff_role === userRole;
+                  default:
+                    return false;
+                }
+              }
+              
+              // Check if user is a parent (would need family_id from user)
+              // For now, skip parent targeting as it requires family linkage
+              return false;
+            }
+            
+            // Legacy: fall back to visible_to roles
+            if (!notice.visible_to || notice.visible_to.length === 0) return true;
+            return notice.visible_to.includes(userRole);
+          });
+          setNotices(filteredNotices);
+
+          // Track all displayed notices as "seen" (automatically)
+          if (filteredNotices.length > 0 && viewerIdentifier && user?.school_id) {
+            // Build viewer payload for tracking
+            const viewerPayload: any = {
+              school_id: user.school_id,
+              viewer_identifier: viewerIdentifier,
+              viewer_type: user.staff_id ? 'staff' : 'user',
+              viewer_role: user.role || 'Staff',
+              viewer_name: user.name || 'User',
+              dismissed: false, // Just marking as seen, not dismissed
+            };
+            
+            if (user.staff_id) {
+              viewerPayload.staff_id = user.staff_id;
+            }
+            if (user.id) {
+              viewerPayload.user_id = user.id;
+            }
+
+            // Track each notice as seen (upsert to avoid duplicates)
+            filteredNotices.forEach(async (notice) => {
+              if (notice.id) {
+                try {
+                  await supabase
+                    .from('notice_views')
+                    .upsert({
+                      notice_id: notice.id,
+                      ...viewerPayload,
+                    }, {
+                      onConflict: 'notice_id,viewer_identifier'
+                    });
+                } catch (error) {
+                  // Silent fail - don't block UI if tracking fails
+                  console.error('Error tracking notice as seen:', error);
+                }
+              }
+            });
+          }
+        }
+
         // Handle staff gender
         if (!staffGenderError && staffGenderData) {
           setStaffGender(staffGenderData.gender || '');
@@ -1079,8 +1379,60 @@ const UserDashboard: React.FC = () => {
       }
     };
 
-    fetchInitialData();
-  }, [user?.school_id, user?.role, user?.staff_id]);
+      fetchInitialData();
+    }, [user?.school_id, user?.role, user?.staff_id, user?.id]);
+
+  // Load announcements on mount and when user changes
+  useEffect(() => {
+    if (announcementIdentity && !initialLoading) {
+      loadAnnouncements(announcementIdentity);
+    }
+  }, [announcementIdentity, initialLoading, loadAnnouncements]);
+
+  // Track announcement as seen when it's displayed
+  useEffect(() => {
+    if (currentAnnouncement && announcementIdentity) {
+      trackAnnouncementSeen(
+        currentAnnouncement,
+        announcementIdentity,
+        null,
+        null,
+        user?.name || null,
+        user
+      );
+    }
+  }, [currentAnnouncement, announcementIdentity, trackAnnouncementSeen, user]);
+
+  // Announcement handlers
+  const handleDismissAnnouncement = () => {
+    if (!announcementQueue.length) {
+      setShowAnnouncement(false);
+      setAnnouncementQueue([]);
+      setCurrentAnnouncementIndex(0);
+      return;
+    }
+
+    if (currentAnnouncementIndex + 1 < announcementQueue.length) {
+      setCurrentAnnouncementIndex(currentAnnouncementIndex + 1);
+    } else {
+      setShowAnnouncement(false);
+      setAnnouncementQueue([]);
+      setCurrentAnnouncementIndex(0);
+    }
+  };
+
+  const handleRemindMeLater = () => {
+    if (currentAnnouncement?.id) {
+      snoozedAnnouncementsRef.current.add(currentAnnouncement.id);
+    }
+    handleDismissAnnouncement();
+  };
+
+  const handleDontShowAgain = () => {
+    if (!currentAnnouncement || !announcementIdentity) return;
+    persistAnnouncementDismissal(currentAnnouncement.id, announcementIdentity);
+    handleDismissAnnouncement();
+  };
 
   // Set footer content with real-time clock - only after initial loading completes
   useEffect(() => {
@@ -2204,6 +2556,111 @@ const UserDashboard: React.FC = () => {
         </WelcomeTitle>
       </WelcomeCard>
 
+      {/* Notices Section */}
+      {notices.length > 0 && (
+        <NoticesSection>
+          <NoticesTitle>
+            <NoticeIcon />
+            Important
+          </NoticesTitle>
+          <NoticesGrid>
+            {notices.map((notice) => {
+              const getNoticeIcon = () => {
+                switch (notice.notice_type) {
+                  case 'warning': return <WarningIcon style={{ color: '#f59e0b' }} />;
+                  case 'urgent': return <ErrorIcon style={{ color: '#ef4444' }} />;
+                  case 'success': return <CheckCircle style={{ color: '#10b981' }} />;
+                  default: return <InfoIcon style={{ color: '#3b82f6' }} />;
+                }
+              };
+              
+              return (
+                <NoticeCard key={notice.id} $noticeType={notice.notice_type}>
+                  <NoticeHeader>
+                    <NoticeTitle>
+                      {getNoticeIcon()}
+                      {notice.title}
+                    </NoticeTitle>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <NoticeTypeBadge $noticeType={notice.notice_type}>
+                        {notice.notice_type}
+                      </NoticeTypeBadge>
+                      <IconButton
+                        size="small"
+                        onClick={async () => {
+                          if (user?.id && user?.school_id && notice.id) {
+                            try {
+                              // Build viewer_identifier
+                              let viewerIdentifier: string | null = null;
+                              if (user.staff_id) {
+                                viewerIdentifier = `staff_${user.staff_id}`;
+                              } else if (user.id) {
+                                viewerIdentifier = `user_${user.id}`;
+                              }
+                              
+                              if (!viewerIdentifier) {
+                                console.error('Cannot determine viewer identifier');
+                                return;
+                              }
+
+                              // Build viewer payload (similar to announcements)
+                              const viewerPayload: any = {
+                                notice_id: notice.id,
+                                school_id: user.school_id,
+                                viewer_identifier: viewerIdentifier,
+                                viewer_type: user.staff_id ? 'staff' : 'user',
+                                viewer_role: user.role || 'Staff',
+                                viewer_name: user.name || 'User',
+                                dismissed: true, // Mark as dismissed
+                                dismissed_at: new Date().toISOString(), // Track when dismissed
+                              };
+                              
+                              if (user.staff_id) {
+                                viewerPayload.staff_id = user.staff_id;
+                              }
+                              if (user.id) {
+                                viewerPayload.user_id = user.id;
+                              }
+
+                              // Save to database using notice_views with dismissed=true
+                              const { error } = await supabase
+                                .from('notice_views')
+                                .upsert(viewerPayload, {
+                                  onConflict: 'notice_id,viewer_identifier'
+                                });
+
+                              if (error) {
+                                throw error;
+                              }
+
+                              // Update local state
+                              const newDismissed = new Set(dismissedNotices);
+                              newDismissed.add(notice.id);
+                              setDismissedNotices(newDismissed);
+                              setNotices(prev => prev.filter(n => n.id !== notice.id));
+                            } catch (error) {
+                              console.error('Error dismissing notice:', error);
+                            }
+                          }
+                        }}
+                        sx={{ 
+                          color: 'text.secondary',
+                          '&:hover': { color: 'text.primary' }
+                        }}
+                        title="Dismiss notice"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </NoticeHeader>
+                  <NoticeDescription>{notice.description}</NoticeDescription>
+                </NoticeCard>
+              );
+            })}
+          </NoticesGrid>
+        </NoticesSection>
+      )}
+
       {/* Events Section */}
       {events.length > 0 && (
         <EventsSection>
@@ -2646,6 +3103,15 @@ const UserDashboard: React.FC = () => {
       {leaveRequestModalJSX}
       {complaintModalJSX}
       {suggestionModalJSX}
+
+      {/* Announcement Modal */}
+      {currentAnnouncement && (
+        <AnnouncementModal
+          announcement={currentAnnouncement}
+          onRemindMeLater={handleRemindMeLater}
+          onDontShowAgain={handleDontShowAgain}
+        />
+      )}
 
       {/* Exit Confirmation Modal */}
       {showExitConfirm && (

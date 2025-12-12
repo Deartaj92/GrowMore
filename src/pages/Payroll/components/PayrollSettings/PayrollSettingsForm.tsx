@@ -24,28 +24,28 @@ import Loader from '../../../../components/Loader';
 const PageContainer = styled.div`
   width: 100%;
   margin: 0;
-  padding: 20px;
+  padding: 0;
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   min-height: 100%;
 `;
 
 const Header = styled.div`
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 `;
 
 const Title = styled.h1`
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 `;
 
 const Subtitle = styled.p`
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin: 0;
 `;
@@ -53,51 +53,83 @@ const Subtitle = styled.p`
 const SettingsCard = styled.div`
   background: ${({ theme }) => theme.CARD};
   border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  
+  @media (max-width: 768px) {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+  }
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 1.125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 16px 0;
+  margin: 0 0 10px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  
+  @media (max-width: 768px) {
+    font-size: 0.875rem;
+    margin: 0 0 8px 0;
+  }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   
   &:last-child {
     margin-bottom: 0;
+  }
+  
+  @media (max-width: 768px) {
+    margin-bottom: 12px;
   }
 `;
 
 const Label = styled.label`
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+  }
 `;
 
 const HelperText = styled.p`
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin: 4px 0 0 0;
+  margin: 3px 0 0 0;
   line-height: 1.4;
+  
+  @media (max-width: 768px) {
+    font-size: 0.625rem;
+  }
 `;
 
 const ActionButton = styled(Button)`
-  margin-top: 16px;
-  padding: 10px 24px;
+  margin-top: 12px;
+  padding: 6px 16px;
   font-weight: 600;
+  font-size: 0.8125rem;
   text-transform: none;
-  border-radius: 8px;
+  border-radius: 6px;
+  height: 32px;
+  
+  @media (max-width: 768px) {
+    margin-top: 10px;
+    width: 100%;
+    height: 36px;
+    font-size: 0.75rem;
+  }
 `;
 
 const PayrollSettingsForm: React.FC = () => {
@@ -114,12 +146,14 @@ const PayrollSettingsForm: React.FC = () => {
     allowedLeavesPerMonth: 2,
     leaveDeductionMethod: 'full_day' as 'full_day' | 'half_day' | 'proportional',
     salaryCalculationMethod: 'monthly' as 'monthly' | 'daily' | 'hourly',
-    defaultPaymentMode: 'bank_transfer' as 'cash' | 'bank_transfer' | 'cheque' | 'upi' | 'other',
+    defaultPaymentMode: 'bank_transfer' as 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other',
     autoApprovePayroll: false,
     lateDeductionEnabled: false,
     allowedLateDaysPerMonth: 0,
     lateDeductionAmount: 0,
     lateDeductionType: 'fixed' as 'fixed' | 'percentage',
+    allowLeaveBonus: false,
+    leaveBonusDays: 1 as 1 | 2,
   });
 
   useEffect(() => {
@@ -148,6 +182,8 @@ const PayrollSettingsForm: React.FC = () => {
           allowedLateDaysPerMonth: data.allowedLateDaysPerMonth || 0,
           lateDeductionAmount: data.lateDeductionAmount || 0,
           lateDeductionType: data.lateDeductionType || 'fixed',
+          allowLeaveBonus: data.allowLeaveBonus || false,
+          leaveBonusDays: (data.leaveBonusDays === 2 ? 2 : 1) as 1 | 2,
         });
       }
     } catch (error: any) {
@@ -366,6 +402,56 @@ const PayrollSettingsForm: React.FC = () => {
       </SettingsCard>
 
       <SettingsCard>
+        <SectionTitle>Leave Bonus</SectionTitle>
+        
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.allowLeaveBonus}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  allowLeaveBonus: e.target.checked,
+                })}
+                size="small"
+              />
+            }
+            label="Allow Leave Bonus"
+          />
+          <HelperText>Enable bonus leave days for employees with no absentees</HelperText>
+        </FormGroup>
+
+        {formData.allowLeaveBonus && (
+          <FormGroup>
+            <FormControl component="fieldset">
+              <FormLabel component="legend" style={{ fontSize: '0.875rem', marginBottom: '8px' }}>
+                Bonus Leave Days
+              </FormLabel>
+              <RadioGroup
+                value={formData.leaveBonusDays}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  leaveBonusDays: parseInt(e.target.value) as 1 | 2,
+                })}
+              >
+                <FormControlLabel
+                  value={1}
+                  control={<Radio size="small" />}
+                  label="1 Day"
+                />
+                <FormControlLabel
+                  value={2}
+                  control={<Radio size="small" />}
+                  label="2 Days"
+                />
+              </RadioGroup>
+            </FormControl>
+            <HelperText>Number of bonus leave days to add when employee has zero absentees</HelperText>
+          </FormGroup>
+        )}
+      </SettingsCard>
+
+      <SettingsCard>
         <SectionTitle>Salary Calculation</SectionTitle>
         
         <FormGroup>
@@ -431,9 +517,9 @@ const PayrollSettingsForm: React.FC = () => {
                 label="Cheque"
               />
               <FormControlLabel
-                value="upi"
+                value="easypaisa_jazzcash"
                 control={<Radio size="small" />}
-                label="UPI"
+                label="EasyPaisa/JazzCash"
               />
               <FormControlLabel
                 value="other"

@@ -1287,8 +1287,8 @@ const Header: React.FC<HeaderProps> = ({
       color: '#10b981'
     },
     {
-      title: 'Events',
-      description: 'Create and manage school events',
+      title: 'Events and Notices',
+      description: 'Create and manage school events and notices',
       icon: <EventIcon />,
       path: '/events',
       color: '#8b5cf6'

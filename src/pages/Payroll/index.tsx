@@ -1,16 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
-import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  Box,
-  Tabs,
-  Tab,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-} from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Settings as SettingsIcon,
@@ -32,78 +22,22 @@ import PayrollAdvancesList from './components/PayrollAdvances/PayrollAdvancesLis
 import PayrollAdjustmentsList from './components/PayrollAdjustments/PayrollAdjustmentsList';
 import { payrollService } from '../../services/payrollService';
 import { PayrollSummary } from '../../types/payroll';
-
-const PageContainer = styled.div`
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  min-height: 100vh;
-`;
-
-const Header = styled.div`
-  padding: 20px 20px 0 20px;
-  background: ${({ theme }) => theme.BG};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-`;
-
-const Title = styled.h1`
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const Subtitle = styled.p`
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin: 0 0 16px 0;
-`;
-
-const Content = styled.div`
-  padding: 20px;
-`;
-
-const SummaryCard = styled(Card)`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  height: 100%;
-  transition: transform 0.2s, box-shadow 0.2s;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-`;
-
-const SummaryCardContent = styled(CardContent)`
-  padding: 16px !important;
-`;
-
-const SummaryTitle = styled(Typography)`
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const SummaryValue = styled(Typography)`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-`;
-
-const SummarySubtext = styled(Typography)`
-  font-size: 0.75rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin-top: 4px;
-`;
+import {
+  PayrollContainer,
+  TabContainer,
+  TabsWrapper,
+  TabButton,
+  StatsGrid,
+  StatCard,
+  StatCardHeader,
+  StatCardIcon,
+  StatCardTitle,
+  StatCardValue,
+  StatCardSubtext,
+  ContentCard,
+  ContentCardHeader,
+  ContentCardTitle,
+} from './styles';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -114,7 +48,7 @@ interface TabPanelProps {
 const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
   return (
     <div role="tabpanel" hidden={value !== index}>
-      {value === index && <Box>{children}</Box>}
+      {value === index && <div>{children}</div>}
     </div>
   );
 };
@@ -150,176 +84,171 @@ const PayrollDashboard: React.FC = () => {
     return `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
+  const tabs = [
+    { id: 0, label: 'Dashboard', icon: DashboardIcon },
+    { id: 1, label: 'Payroll Plans', icon: PlansIcon },
+    { id: 2, label: 'Generate Payroll', icon: GenerateIcon },
+    { id: 3, label: 'Payments', icon: PaymentIcon },
+    { id: 4, label: 'History', icon: HistoryIcon },
+    { id: 5, label: 'Analytics', icon: AnalyticsIcon },
+    { id: 6, label: 'Advances', icon: AdvanceIcon },
+    { id: 7, label: 'Adjustments', icon: AdjustmentIcon },
+    { id: 8, label: 'Settings', icon: SettingsIcon },
+  ];
 
   return (
-    <PageContainer>
-      <Header>
-        <Title>
-          <DashboardIcon style={{ fontSize: 28 }} />
-          Payroll Management
-        </Title>
-        <Subtitle>Manage employee salaries, payments, and payroll operations</Subtitle>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            '& .MuiTab-root': {
-              minHeight: 48,
-              fontSize: '0.875rem',
-              textTransform: 'none',
-              fontWeight: 500,
-            },
-          }}
-        >
-          <Tab icon={<DashboardIcon />} iconPosition="start" label="Dashboard" />
-          <Tab icon={<PlansIcon />} iconPosition="start" label="Payroll Plans" />
-          <Tab icon={<GenerateIcon />} iconPosition="start" label="Generate Payroll" />
-          <Tab icon={<PaymentIcon />} iconPosition="start" label="Payments" />
-          <Tab icon={<HistoryIcon />} iconPosition="start" label="History" />
-          <Tab icon={<AnalyticsIcon />} iconPosition="start" label="Analytics" />
-          <Tab icon={<AdvanceIcon />} iconPosition="start" label="Advances" />
-          <Tab icon={<AdjustmentIcon />} iconPosition="start" label="Adjustments" />
-          <Tab icon={<SettingsIcon />} iconPosition="start" label="Settings" />
-        </Tabs>
-      </Header>
+    <PayrollContainer>
+      <TabContainer>
+        <TabsWrapper>
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <TabButton
+                key={tab.id}
+                active={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <Icon />
+                {tab.label}
+              </TabButton>
+            );
+          })}
+        </TabsWrapper>
+      </TabContainer>
 
-      <Content>
-        <TabPanel value={activeTab} index={0}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <SummaryCard>
-                <SummaryCardContent>
-                  <SummaryTitle>Total Payroll</SummaryTitle>
-                  <SummaryValue>
-                    {loadingSummary ? '...' : formatCurrency(summary?.totalPayroll || 0)}
-                  </SummaryValue>
-                </SummaryCardContent>
-              </SummaryCard>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <SummaryCard>
-                <SummaryCardContent>
-                  <SummaryTitle>Pending Payments</SummaryTitle>
-                  <SummaryValue>
-                    {loadingSummary ? '...' : formatCurrency(summary?.totalPending || 0)}
-                  </SummaryValue>
-                  <SummarySubtext>{summary?.pendingCount || 0} pending</SummarySubtext>
-                </SummaryCardContent>
-              </SummaryCard>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <SummaryCard>
-                <SummaryCardContent>
-                  <SummaryTitle>Active Advances</SummaryTitle>
-                  <SummaryValue>
-                    {loadingSummary ? '...' : formatCurrency(summary?.totalAdvances || 0)}
-                  </SummaryValue>
-                </SummaryCardContent>
-              </SummaryCard>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <SummaryCard>
-                <SummaryCardContent>
-                  <SummaryTitle>Employees</SummaryTitle>
-                  <SummaryValue>{loadingSummary ? '...' : summary?.employeeCount || 0}</SummaryValue>
-                </SummaryCardContent>
-              </SummaryCard>
-            </Grid>
-          </Grid>
-          <Box marginTop={3}>
-            <Typography variant="h6" style={{ marginBottom: 16, color: theme.TEXT_PRIMARY }}>
-              Quick Actions
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={4}>
-                <Card style={{ padding: 16, cursor: 'pointer' }} onClick={() => setActiveTab(1)}>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <PlansIcon style={{ fontSize: 32, color: theme.ACCENT }} />
-                    <Box>
-                      <Typography variant="subtitle1" style={{ fontWeight: 600 }}>
-                        Create Payroll Plan
-                      </Typography>
-                      <Typography variant="caption" style={{ color: theme.TEXT_SECONDARY }}>
-                        Set up salary structure
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Card>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <Card style={{ padding: 16, cursor: 'pointer' }} onClick={() => setActiveTab(2)}>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <GenerateIcon style={{ fontSize: 32, color: theme.ACCENT }} />
-                    <Box>
-                      <Typography variant="subtitle1" style={{ fontWeight: 600 }}>
-                        Generate Payroll
-                      </Typography>
-                      <Typography variant="caption" style={{ color: theme.TEXT_SECONDARY }}>
-                        Calculate monthly salaries
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Card>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <Card style={{ padding: 16, cursor: 'pointer' }} onClick={() => setActiveTab(3)}>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <PaymentIcon style={{ fontSize: 32, color: theme.ACCENT }} />
-                    <Box>
-                      <Typography variant="subtitle1" style={{ fontWeight: 600 }}>
-                        Process Payments
-                      </Typography>
-                      <Typography variant="caption" style={{ color: theme.TEXT_SECONDARY }}>
-                        Pay employee salaries
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        </TabPanel>
+      <TabPanel value={activeTab} index={0}>
+        <StatsGrid>
+          <StatCard accentColor="#3b82f6">
+            <StatCardHeader>
+              <StatCardTitle>Total Payroll</StatCardTitle>
+              <StatCardIcon color="#3b82f6">
+                <DashboardIcon />
+              </StatCardIcon>
+            </StatCardHeader>
+            <StatCardValue>
+              {loadingSummary ? '...' : formatCurrency(summary?.totalPayroll || 0)}
+            </StatCardValue>
+          </StatCard>
 
-        <TabPanel value={activeTab} index={1}>
-          <PayrollPlansList />
-        </TabPanel>
+          <StatCard accentColor="#f59e0b">
+            <StatCardHeader>
+              <StatCardTitle>Pending Payments</StatCardTitle>
+              <StatCardIcon color="#f59e0b">
+                <PaymentIcon />
+              </StatCardIcon>
+            </StatCardHeader>
+            <StatCardValue>
+              {loadingSummary ? '...' : formatCurrency(summary?.totalPending || 0)}
+            </StatCardValue>
+            <StatCardSubtext>{summary?.pendingCount || 0} pending</StatCardSubtext>
+          </StatCard>
 
-        <TabPanel value={activeTab} index={2}>
-          <PayrollGenerationManager />
-        </TabPanel>
+          <StatCard accentColor="#8b5cf6">
+            <StatCardHeader>
+              <StatCardTitle>Active Advances</StatCardTitle>
+              <StatCardIcon color="#8b5cf6">
+                <AdvanceIcon />
+              </StatCardIcon>
+            </StatCardHeader>
+            <StatCardValue>
+              {loadingSummary ? '...' : formatCurrency(summary?.totalAdvances || 0)}
+            </StatCardValue>
+          </StatCard>
 
-        <TabPanel value={activeTab} index={3}>
-          <PayrollPaymentsList />
-        </TabPanel>
+          <StatCard accentColor="#10b981">
+            <StatCardHeader>
+              <StatCardTitle>Employees</StatCardTitle>
+              <StatCardIcon color="#10b981">
+                <DashboardIcon />
+              </StatCardIcon>
+            </StatCardHeader>
+            <StatCardValue>{loadingSummary ? '...' : summary?.employeeCount || 0}</StatCardValue>
+          </StatCard>
+        </StatsGrid>
 
-        <TabPanel value={activeTab} index={4}>
-          <PayrollHistoryList />
-        </TabPanel>
+        <ContentCard>
+          <ContentCardHeader>
+            <ContentCardTitle>Quick Actions</ContentCardTitle>
+          </ContentCardHeader>
+          <StatsGrid>
+            <StatCard 
+              accentColor="#6366f1"
+              onClick={() => setActiveTab(1)}
+              style={{ cursor: 'pointer' }}
+            >
+              <StatCardHeader>
+                <StatCardTitle>Create Payroll Plan</StatCardTitle>
+                <StatCardIcon color="#6366f1">
+                  <PlansIcon />
+                </StatCardIcon>
+              </StatCardHeader>
+              <StatCardSubtext>Set up salary structure</StatCardSubtext>
+            </StatCard>
 
-        <TabPanel value={activeTab} index={5}>
-          <PayrollAnalyticsDashboard />
-        </TabPanel>
+            <StatCard 
+              accentColor="#6366f1"
+              onClick={() => setActiveTab(2)}
+              style={{ cursor: 'pointer' }}
+            >
+              <StatCardHeader>
+                <StatCardTitle>Generate Payroll</StatCardTitle>
+                <StatCardIcon color="#6366f1">
+                  <GenerateIcon />
+                </StatCardIcon>
+              </StatCardHeader>
+              <StatCardSubtext>Calculate monthly salaries</StatCardSubtext>
+            </StatCard>
 
-        <TabPanel value={activeTab} index={6}>
-          <PayrollAdvancesList />
-        </TabPanel>
+            <StatCard 
+              accentColor="#6366f1"
+              onClick={() => setActiveTab(3)}
+              style={{ cursor: 'pointer' }}
+            >
+              <StatCardHeader>
+                <StatCardTitle>Process Payments</StatCardTitle>
+                <StatCardIcon color="#6366f1">
+                  <PaymentIcon />
+                </StatCardIcon>
+              </StatCardHeader>
+              <StatCardSubtext>Pay employee salaries</StatCardSubtext>
+            </StatCard>
+          </StatsGrid>
+        </ContentCard>
+      </TabPanel>
 
-        <TabPanel value={activeTab} index={7}>
-          <PayrollAdjustmentsList />
-        </TabPanel>
+      <TabPanel value={activeTab} index={1}>
+        <PayrollPlansList />
+      </TabPanel>
 
-        <TabPanel value={activeTab} index={8}>
-          <PayrollSettingsForm />
-        </TabPanel>
-      </Content>
-    </PageContainer>
+      <TabPanel value={activeTab} index={2}>
+        <PayrollGenerationManager />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={3}>
+        <PayrollPaymentsList />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={4}>
+        <PayrollHistoryList />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={5}>
+        <PayrollAnalyticsDashboard />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={6}>
+        <PayrollAdvancesList />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={7}>
+        <PayrollAdjustmentsList />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={8}>
+        <PayrollSettingsForm />
+      </TabPanel>
+    </PayrollContainer>
   );
 };
 
 export default PayrollDashboard;
-

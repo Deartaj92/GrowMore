@@ -1286,22 +1286,46 @@ const FineCollection: React.FC = () => {
       setAttendanceLoading(true);
       setAttendanceError(null);
       try {
-        // 1. Fetch attendance records (absent/late)
-        const { data: attData, error: attError } = await supabase
+        // Helper function to fetch all rows with pagination (handles 1000 row limit)
+        const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
+          const allData: any[] = [];
+          let from = 0;
+          let hasMore = true;
+
+          while (hasMore) {
+            const to = from + pageSize - 1;
+            const { data, error } = await queryBuilder.range(from, to);
+            if (error) throw error;
+            if (data && data.length > 0) {
+              allData.push(...data);
+              hasMore = data.length === pageSize;
+              from += pageSize;
+            } else {
+              hasMore = false;
+            }
+          }
+          return allData;
+        };
+
+        // 1. Fetch attendance records (absent/late) with pagination
+        const attendanceQuery = supabase
           .from('attendance_records')
           .select('date, status, session_id, class_id')
           .eq('student_id', selectedStudent.id)
           .eq('school_id', user.school_id)
           .in('status', ['absent', 'late'])
           .order('date', { ascending: false });
-        if (attError) throw attError;
-        // 2. Fetch all fine settings for the school
-        const { data: fineData, error: fineError } = await supabase
+        
+        const attData = await fetchAllRows(attendanceQuery);
+        
+        // 2. Fetch all fine settings for the school with pagination
+        const finesQuery = supabase
           .from('fines')
           .select('class_id, absent_fine, late_fine, effective_from')
           .eq('school_id', user.school_id)
           .order('effective_from', { ascending: true });
-        if (fineError) throw fineError;
+        
+        const fineData = await fetchAllRows(finesQuery);
         // 3. For each attendance record, find the fine in effect on that date using the class from the record
         const rows = (attData || []).map((rec: any) => {
           // Use the class_id directly from the attendance record (this is the class the student was in when attendance was marked)
@@ -1350,16 +1374,35 @@ const FineCollection: React.FC = () => {
       setPaymentHistoryLoading(true);
       setPaymentHistoryError(null);
       try {
-        const { data, error } = await supabase
+        // Helper function to fetch all rows with pagination (handles 1000 row limit)
+        const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
+          const allData: any[] = [];
+          let from = 0;
+          let hasMore = true;
+
+          while (hasMore) {
+            const to = from + pageSize - 1;
+            const { data, error } = await queryBuilder.range(from, to);
+            if (error) throw error;
+            if (data && data.length > 0) {
+              allData.push(...data);
+              hasMore = data.length === pageSize;
+              from += pageSize;
+            } else {
+              hasMore = false;
+            }
+          }
+          return allData;
+        };
+
+        const paymentsQuery = supabase
           .from('fine_payments')
           .select('*')
           .eq('student_id', selectedStudent.id)
           .eq('school_id', user.school_id)
           .order('payment_date', { ascending: false });
 
-        if (error) {
-          throw error;
-        }
+        const data = await fetchAllRows(paymentsQuery);
         setPaymentHistory(data || []);
       } catch (err: any) {
         setPaymentHistoryError('Failed to fetch payment history. ' + (err.message || 'Unknown error'));
@@ -1800,21 +1843,47 @@ const FineCollection: React.FC = () => {
                                                 setAttendanceLoading(true);
                                                 setAttendanceError(null);
                                                 try {
-                                                  const { data: attData, error: attError } = await supabase
+                                                  // Helper function to fetch all rows with pagination (handles 1000 row limit)
+                                                  const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
+                                                    const allData: any[] = [];
+                                                    let from = 0;
+                                                    let hasMore = true;
+
+                                                    while (hasMore) {
+                                                      const to = from + pageSize - 1;
+                                                      const { data, error } = await queryBuilder.range(from, to);
+                                                      if (error) throw error;
+                                                      if (data && data.length > 0) {
+                                                        allData.push(...data);
+                                                        hasMore = data.length === pageSize;
+                                                        from += pageSize;
+                                                      } else {
+                                                        hasMore = false;
+                                                      }
+                                                    }
+                                                    return allData;
+                                                  };
+
+                                                  // Fetch attendance records with pagination
+                                                  const attendanceQuery = supabase
                                                     .from('attendance_records')
                                                     .select('date, status, session_id')
                                                     .eq('student_id', selectedStudent.id)
                                                     .eq('school_id', user.school_id)
                                                     .in('status', ['absent', 'late'])
                                                     .order('date', { ascending: false });
-                                                  if (attError) throw attError;
-                                                  const { data: fineData, error: fineError } = await supabase
+                                                  
+                                                  const attData = await fetchAllRows(attendanceQuery);
+                                                  
+                                                  // Fetch fines with pagination
+                                                  const finesQuery = supabase
                                                     .from('fines')
                                                     .select('absent_fine, late_fine, effective_from')
                                                     .eq('class_id', selectedStudent.class_id)
                                                     .eq('school_id', user.school_id)
                                                     .order('effective_from', { ascending: true });
-                                                  if (fineError) throw fineError;
+                                                  
+                                                  const fineData = await fetchAllRows(finesQuery);
                                                   const rows = (attData || []).map((rec: any) => {
                                                     let fine = fineData && fineData.length > 0 ? fineData[0] : null;
                                                     for (const f of fineData) {

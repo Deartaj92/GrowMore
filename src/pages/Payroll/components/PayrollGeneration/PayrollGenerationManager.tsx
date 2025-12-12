@@ -12,7 +12,7 @@ import {
   TextField,
   MenuItem,
   Select,
-  FormControl,
+  FormControl as MuiFormControl,
   InputLabel,
   Table,
   TableBody,
@@ -42,54 +42,16 @@ import {
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import { PayrollGeneration } from '../../../../types/payroll';
-
-const PageContainer = styled.div`
-  width: 100%;
-  margin: 0;
-  padding: 16px;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  min-height: 100%;
-`;
-
-const Header = styled.div`
-  margin-bottom: 20px;
-`;
-
-const Title = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 8px 0;
-`;
-
-const ControlsCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-`;
-
-const TableContainer = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  overflow: hidden;
-`;
-
-const StyledTable = styled(Table)`
-  & .MuiTableCell-root {
-    padding: 8px 12px;
-    font-size: 0.875rem;
-  }
-  
-  & .MuiTableCell-head {
-    font-weight: 600;
-    font-size: 0.8rem;
-    background: ${({ theme }) => theme.BG};
-  }
-`;
+import {
+  PayrollContainer,
+  ContentCard,
+  TableWrapper,
+  StyledTable as SharedStyledTable,
+  EmptyStateContainer,
+  EmptyStateIcon,
+  EmptyStateTitle,
+  EmptyStateText,
+} from '../../styles';
 
 const ProgressDialog = styled(Dialog)`
   & .MuiDialog-paper {
@@ -118,6 +80,13 @@ const CalculationCard = styled.div`
   padding: 32px;
   min-width: 400px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  
+  @media (max-width: 768px) {
+    padding: 20px;
+    min-width: 280px;
+    max-width: 90vw;
+    border-radius: 8px;
+  }
 `;
 
 const CalculationTitle = styled.div`
@@ -126,6 +95,11 @@ const CalculationTitle = styled.div`
   font-size: 1.25rem;
   margin-bottom: 16px;
   text-align: center;
+  
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
 `;
 
 const ProgressText = styled.div`
@@ -133,6 +107,11 @@ const ProgressText = styled.div`
   font-size: 0.875rem;
   margin-top: 12px;
   text-align: center;
+  
+  @media (max-width: 768px) {
+    font-size: 0.8125rem;
+    margin-top: 8px;
+  }
 `;
 
 interface EligibleStaff {
@@ -157,6 +136,7 @@ interface PreviewData {
   advanceDeductions: number;
   adjustments: number;
   absentDeductions?: number;
+  leaveBonusAmount?: number;
   netSalary: number;
   workingDays: number;
   presentDays: number;
@@ -175,18 +155,20 @@ const PayrollGenerationManager: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [eligibleStaff, setEligibleStaff] = useState<EligibleStaff[]>([]);
-  const [selectedStaff, setSelectedStaff] = useState<Set<number>>(new Set());
+  const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
   const [generations, setGenerations] = useState<PayrollGeneration[]>([]);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const [salaryBreakdowns, setSalaryBreakdowns] = useState<Map<number, PreviewData>>(new Map());
-  const [loadingBreakdowns, setLoadingBreakdowns] = useState<Set<number>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [salaryBreakdowns, setSalaryBreakdowns] = useState<Map<string, PreviewData>>(new Map());
+  const [loadingBreakdowns, setLoadingBreakdowns] = useState<Set<string>>(new Set());
   const [progressOpen, setProgressOpen] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, message: '' });
   const [calculationMode, setCalculationMode] = useState<'full' | 'partial'>('full');
-  const [calculationModes, setCalculationModes] = useState<Map<number, 'full' | 'partial'>>(new Map());
+  const [calculationModes, setCalculationModes] = useState<Map<string, 'full' | 'partial'>>(new Map());
   const [calculatingAmounts, setCalculatingAmounts] = useState(false);
   const [calculationProgress, setCalculationProgress] = useState({ current: 0, total: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  const [includeLeaveBonus, setIncludeLeaveBonus] = useState<boolean>(true);
+  const [payrollSettings, setPayrollSettings] = useState<any>(null);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -202,26 +184,50 @@ const PayrollGenerationManager: React.FC = () => {
     }
   }, [user?.school_id, selectedMonth, selectedYear, calculationMode]);
 
+  // Load payroll settings
+  useEffect(() => {
+    if (user?.school_id) {
+      loadPayrollSettings();
+    }
+  }, [user?.school_id]);
+
+  const loadPayrollSettings = async () => {
+    if (!user?.school_id) return;
+    try {
+      const settings = await payrollService.getPayrollSettings(user.school_id);
+      setPayrollSettings(settings);
+      // Set default includeLeaveBonus based on settings
+      if (settings?.allowLeaveBonus) {
+        setIncludeLeaveBonus(true);
+      }
+    } catch (error) {
+      console.error('Error loading payroll settings:', error);
+    }
+  };
+
   // Auto-calculate salaries for all eligible staff when they load or when month/year/mode changes
   useEffect(() => {
     if (eligibleStaff.length > 0 && user?.school_id) {
       // Clear existing breakdowns
       setSalaryBreakdowns(new Map());
+      setExpandedRows(new Set());
       setCalculatingAmounts(true);
       setCalculationProgress({ current: 0, total: eligibleStaff.length });
       
       // Calculate breakdowns for all eligible staff automatically
-      eligibleStaff.forEach((staff, index) => {
+      // Use a copy of eligibleStaff to avoid stale closure issues
+      const staffToProcess = [...eligibleStaff];
+      staffToProcess.forEach((staff, index) => {
         // Add small delay to prevent overwhelming the API
         setTimeout(() => {
-          loadSalaryBreakdown(staff.staffId, eligibleStaff.length);
+          loadSalaryBreakdown(staff.staffId, staff.planId, staffToProcess.length);
         }, index * 50);
       });
     } else {
       setCalculatingAmounts(false);
       setCalculationProgress({ current: 0, total: 0 });
     }
-  }, [eligibleStaff, selectedMonth, selectedYear, calculationMode, calculationModes, user?.school_id]);
+  }, [eligibleStaff, selectedMonth, selectedYear, calculationMode, calculationModes, includeLeaveBonus, user?.school_id]);
 
   const loadEligibleStaff = async () => {
     if (!user?.school_id) return;
@@ -260,43 +266,71 @@ const PayrollGenerationManager: React.FC = () => {
     if (selectedStaff.size === eligibleStaff.length) {
       setSelectedStaff(new Set());
     } else {
-      setSelectedStaff(new Set(eligibleStaff.map(s => s.staffId)));
+      setSelectedStaff(new Set(eligibleStaff.map(s => `${s.staffId}-${s.planId}`)));
     }
   };
 
-  const handleSelectStaff = (staffId: number) => {
+  const handleSelectStaff = (staffPlanKey: string) => {
     const newSelected = new Set(selectedStaff);
-    if (newSelected.has(staffId)) {
-      newSelected.delete(staffId);
+    if (newSelected.has(staffPlanKey)) {
+      newSelected.delete(staffPlanKey);
     } else {
-      newSelected.add(staffId);
+      newSelected.add(staffPlanKey);
     }
     setSelectedStaff(newSelected);
   };
 
-  const toggleExpand = (staffId: number) => {
+  const toggleExpand = (staffPlanKey: string) => {
     const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(staffId)) {
-      newExpanded.delete(staffId);
+    if (newExpanded.has(staffPlanKey)) {
+      newExpanded.delete(staffPlanKey);
     } else {
-      newExpanded.add(staffId);
+      newExpanded.add(staffPlanKey);
       // Load breakdown if not already loaded
-      if (!salaryBreakdowns.has(staffId)) {
-        loadSalaryBreakdown(staffId);
+      if (!salaryBreakdowns.has(staffPlanKey)) {
+        const [staffId, planId] = staffPlanKey.split('-').map(Number);
+        loadSalaryBreakdown(staffId, planId);
       }
     }
     setExpandedRows(newExpanded);
   };
 
-  const loadSalaryBreakdown = async (staffId: number, totalCount?: number) => {
+  const loadSalaryBreakdown = async (staffId: number, planId: number, totalCount?: number) => {
     if (!user?.school_id) return;
     
-    setLoadingBreakdowns(prev => new Set(prev).add(staffId));
+    const staffPlanKey = `${staffId}-${planId}`;
+    setLoadingBreakdowns(prev => new Set(prev).add(staffPlanKey));
     
     try {
-      const staff = eligibleStaff.find(s => s.staffId === staffId);
+      // Get staff info from eligibleStaff first - this is more reliable
+      let staff = eligibleStaff.find(s => s.staffId === staffId && s.planId === planId);
+      let currentEligibleStaff = eligibleStaff;
+      
+      // If not found in eligibleStaff, try to reload (in case a new plan was just created)
       if (!staff) {
-        showToast('Staff not found', 'error');
+        console.log(`Staff plan ${staffPlanKey} not found in eligibleStaff, reloading...`);
+        try {
+          const refreshedStaff = await payrollService.getStaffEligibleForPayroll(
+            user.school_id,
+            selectedMonth,
+            selectedYear
+          );
+          // Update eligibleStaff state
+          setEligibleStaff(refreshedStaff);
+          // Use the refreshed data directly (don't rely on state update)
+          currentEligibleStaff = refreshedStaff;
+          // Try to find again in the refreshed data
+          staff = refreshedStaff.find(s => s.staffId === staffId && s.planId === planId);
+        } catch (error) {
+          console.error('Error reloading eligible staff:', error);
+        }
+      }
+      
+      if (!staff) {
+        console.error(`Staff plan ${staffPlanKey} not found after reload. Available plans:`, 
+          currentEligibleStaff.map(s => `${s.staffId}-${s.planId}`).join(', '));
+        // Don't show error toast - just silently fail and show as "not generated"
+        // This allows new plans to appear in the list even if they can't be loaded yet
         return;
       }
 
@@ -307,11 +341,66 @@ const PayrollGenerationManager: React.FC = () => {
         return;
       }
 
-      // Get plan
-      const plan = await payrollService.getPayrollPlan(user.school_id, staff.planId);
+      // Try to get the plan - handle errors gracefully, especially 406 errors
+      let plan: any = null;
+      let planFetchError: any = null;
+      
+      try {
+        plan = await payrollService.getPayrollPlan(user.school_id, planId);
+      } catch (error: any) {
+        planFetchError = error;
+        console.error(`Error fetching plan ${planId}:`, error);
+        
+        // If we get a 406 (Not Acceptable) or other error, try to fetch plan items separately
+        // and construct a minimal plan object from staff data
+        if (staff) {
+          let planItems: any[] = [];
+          try {
+            // Try to fetch plan items directly (this might work even if the full plan query fails)
+            planItems = await payrollService.getPayrollPlanItems(user.school_id, planId);
+          } catch (itemsError) {
+            console.error(`Error fetching plan items for plan ${planId}:`, itemsError);
+            // Continue with empty items - basic salary calculation will still work
+          }
+          
+          // Create a minimal plan object from staff data
+          plan = {
+            id: staff.planId,
+            name: staff.planName,
+            basicPay: staff.basicPay,
+            staffId: staff.staffId,
+            items: planItems,
+            status: 'active',
+            effectiveFrom: null,
+            effectiveTo: null,
+          };
+        } else {
+          // Can't proceed without plan or staff info
+          return;
+        }
+      }
+      
       if (!plan) {
-        showToast('Payroll plan not found', 'error');
+        console.error(`Plan ${planId} not found`);
         return;
+      }
+      
+      // Verify the plan belongs to the correct staff
+      if (plan.staffId && plan.staffId !== staffId) {
+        console.error(`Plan ${planId} does not belong to staff ${staffId}`);
+        return;
+      }
+      
+      // If plan was successfully fetched but doesn't have items, try to fetch them
+      if (!planFetchError && (!plan.items || plan.items.length === 0)) {
+        try {
+          const planItems = await payrollService.getPayrollPlanItems(user.school_id, planId);
+          plan.items = planItems;
+        } catch (error) {
+          console.error(`Error fetching plan items for plan ${planId}:`, error);
+          // Continue with empty items - basic salary calculation will still work
+          plan.items = plan.items || [];
+        }
       }
 
       // Get attendance summary
@@ -374,8 +463,8 @@ const PayrollGenerationManager: React.FC = () => {
         halfLeavesMap.set(hl.date, hl.leave_type);
       });
 
-      // Get calculation mode for this staff (use per-employee mode if set, otherwise global mode)
-      const staffCalculationMode = calculationModes.get(staffId) || calculationMode;
+      // Get calculation mode for this staff plan (use per-employee mode if set, otherwise global mode)
+      const staffCalculationMode = calculationModes.get(staffPlanKey) || calculationMode;
 
       // Use monthlyWorkingDays from settings (not calculated)
       // This matches how employee profile counts attendance
@@ -410,7 +499,8 @@ const PayrollGenerationManager: React.FC = () => {
         settings.allowedLateDaysPerMonth || 0,
         settings.lateDeductionAmount || 0,
         settings.lateDeductionType || 'fixed',
-        staffCalculationMode
+        staffCalculationMode,
+        includeLeaveBonus && settings.allowLeaveBonus ? settings.leaveBonusDays : 0
       );
 
       const breakdownData: PreviewData = {
@@ -424,6 +514,7 @@ const PayrollGenerationManager: React.FC = () => {
         advanceDeductions: breakdown.advanceDeductions,
         adjustments: breakdown.adjustments.reduce((sum, adj) => sum + adj.amount, 0),
         absentDeductions: breakdown.absentDeductions || 0,
+        leaveBonusAmount: breakdown.leaveBonusAmount,
         netSalary: breakdown.netSalary,
         workingDays: attendanceSummary.workingDays,
         presentDays: attendanceSummary.presentDays,
@@ -432,14 +523,14 @@ const PayrollGenerationManager: React.FC = () => {
         lateDays: attendanceSummary.lateDays,
       };
       
-      setSalaryBreakdowns(prev => new Map(prev).set(staffId, breakdownData));
+      setSalaryBreakdowns(prev => new Map(prev).set(staffPlanKey, breakdownData));
     } catch (error: any) {
       console.error('Error loading salary breakdown:', error);
       showToast(error.message || 'Failed to load salary breakdown', 'error');
     } finally {
       setLoadingBreakdowns(prev => {
         const newSet = new Set(prev);
-        newSet.delete(staffId);
+        newSet.delete(staffPlanKey);
         
         // Update calculation progress based on completed count
         if (totalCount !== undefined) {
@@ -473,45 +564,99 @@ const PayrollGenerationManager: React.FC = () => {
       return;
     }
 
+    // Check if any selected staff has a payroll with payments for the selected month/year (parallelized)
+    const staffArray = Array.from(selectedStaff);
+    const paymentChecks = staffArray.map(staffPlanKey => {
+      const [staffId] = staffPlanKey.split('-').map(Number);
+      return payrollService.hasPayrollWithPaymentsForMonth(
+        user.school_id,
+        staffId,
+        selectedMonth,
+        selectedYear
+      ).then(hasPayments => ({ staffPlanKey, staffId, hasPayments }));
+    });
+
+    const paymentCheckResults = await Promise.all(paymentChecks);
+    const staffWithPayments: string[] = [];
+
+    paymentCheckResults.forEach(({ staffPlanKey, staffId, hasPayments }) => {
+      if (hasPayments) {
+        const staff = eligibleStaff.find(s => `${s.staffId}-${s.planId}` === staffPlanKey);
+        staffWithPayments.push(staff?.staffName || `Employee ${staffId}`);
+      }
+    });
+
+    if (staffWithPayments.length > 0) {
+      showToast(
+        `Cannot regenerate payroll. Payments have been made for: ${staffWithPayments.join(', ')}`,
+        'error'
+      );
+      return;
+    }
+
     setGenerating(true);
     setProgressOpen(true);
     setProgress({ current: 0, total: selectedStaff.size, message: 'Starting generation...' });
 
-    const staffArray = Array.from(selectedStaff);
     let successCount = 0;
     let errorCount = 0;
 
+    // Process payroll generation in parallel batches (5 at a time for optimal performance)
+    const BATCH_SIZE = 5;
+    
     try {
-      for (let i = 0; i < staffArray.length; i++) {
-        const staffId = staffArray[i];
-        const staff = eligibleStaff.find(s => s.staffId === staffId);
+      for (let i = 0; i < staffArray.length; i += BATCH_SIZE) {
+        const batch = staffArray.slice(i, i + BATCH_SIZE);
         
-        setProgress({
-          current: i + 1,
-          total: staffArray.length,
-          message: `Generating payroll for ${staff?.staffName || 'employee'}...`,
+        // Process batch in parallel
+        const batchPromises = batch.map(async (staffPlanKey, batchIndex) => {
+          const [staffId, planId] = staffPlanKey.split('-').map(Number);
+          const staff = eligibleStaff.find(s => s.staffId === staffId && s.planId === planId);
+          const globalIndex = i + batchIndex;
+          
+          setProgress({
+            current: globalIndex + 1,
+            total: staffArray.length,
+            message: `Generating payroll for ${staff?.staffName || 'employee'}...`,
+          });
+
+          try {
+            // Get calculation mode for this staff plan (use per-employee mode if set, otherwise global mode)
+            const staffCalculationMode = calculationModes.get(staffPlanKey) || calculationMode;
+            
+            // Update generatePayroll to accept planId - we'll need to modify the service function
+            // For now, we'll use the planId from the staff object
+            await payrollService.generatePayroll(
+              user.school_id,
+              staffId,
+              selectedMonth,
+              selectedYear,
+              user.id,
+              staffCalculationMode,
+              includeLeaveBonus && payrollSettings?.allowLeaveBonus ? payrollSettings.leaveBonusDays : 0,
+              planId // Pass planId to use the specific plan
+            );
+            return { success: true, staffPlanKey };
+          } catch (error: any) {
+            console.error(`Error generating payroll for staff ${staffId} plan ${planId}:`, error);
+            return { success: false, staffPlanKey, error };
+          }
         });
 
-        try {
-          // Get calculation mode for this staff (use per-employee mode if set, otherwise global mode)
-          const staffCalculationMode = calculationModes.get(staffId) || calculationMode;
-          
-          await payrollService.generatePayroll(
-            user.school_id,
-            staffId,
-            selectedMonth,
-            selectedYear,
-            user.id,
-            staffCalculationMode
-          );
-          successCount++;
-        } catch (error: any) {
-          console.error(`Error generating payroll for staff ${staffId}:`, error);
-          errorCount++;
-        }
-
-        // Small delay to allow UI update
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for batch to complete
+        const batchResults = await Promise.allSettled(batchPromises);
+        
+        batchResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            if (result.value.success) {
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } else {
+            errorCount++;
+          }
+        });
       }
 
       showToast(
@@ -583,100 +728,222 @@ const PayrollGenerationManager: React.FC = () => {
   });
 
   return (
-    <PageContainer>
-      <Header>
-        <Title>Generate Payroll</Title>
-      </Header>
+    <PayrollContainer>
+      <ContentCard style={{ padding: '0.75rem 1rem', marginBottom: '0.375rem' }}>
+        <Box display="flex" gap={1} alignItems="flex-end" flexWrap="wrap" justifyContent="space-between" sx={{ 
+          '@media (max-width: 768px)': { 
+            gap: 0.75,
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            justifyContent: 'stretch',
+          } 
+        }}>
+          <Box display="flex" gap={1} alignItems="flex-end" flexWrap="wrap" sx={{ 
+            '@media (max-width: 768px)': { 
+              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+            } 
+          }}>
+            <MuiFormControl size="small" sx={{ minWidth: { xs: '100%', sm: 110 } }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Month</InputLabel>
+              <Select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value as number)}
+                label="Month"
+                sx={{ fontSize: '0.75rem', height: '30px' }}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                  <MenuItem key={month} value={month} sx={{ fontSize: '0.75rem' }}>
+                    {new Date(2000, month - 1, 1).toLocaleString('default', { month: 'short' })}
+                  </MenuItem>
+                ))}
+              </Select>
+            </MuiFormControl>
 
-      <ControlsCard>
-        <Box display="flex" gap={2} alignItems="flex-end" flexWrap="wrap">
-          <FormControl size="small" style={{ minWidth: 150 }}>
-            <InputLabel>Month</InputLabel>
-            <Select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value as number)}
-              label="Month"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                <MenuItem key={month} value={month}>
-                  {new Date(2000, month - 1, 1).toLocaleString('default', { month: 'long' })}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <MuiFormControl size="small" sx={{ minWidth: { xs: '100%', sm: 90 } }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Year</InputLabel>
+              <Select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value as number)}
+                label="Year"
+                sx={{ fontSize: '0.75rem', height: '30px' }}
+              >
+                {years.map((year) => (
+                  <MenuItem key={year} value={year} sx={{ fontSize: '0.75rem' }}>
+                    {year}
+                  </MenuItem>
+                ))}
+              </Select>
+            </MuiFormControl>
 
-          <FormControl size="small" style={{ minWidth: 120 }}>
-            <InputLabel>Year</InputLabel>
-            <Select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value as number)}
-              label="Year"
-            >
-              {years.map((year) => (
-                <MenuItem key={year} value={year}>
-                  {year}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <MuiFormControl size="small" sx={{ minWidth: { xs: '100%', sm: 90 } }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Mode</InputLabel>
+              <Select
+                value={calculationMode}
+                onChange={(e) => {
+                  setCalculationMode(e.target.value as 'full' | 'partial');
+                  // Clear all breakdowns when mode changes
+                  setSalaryBreakdowns(new Map());
+                  setExpandedRows(new Set());
+                }}
+                label="Mode"
+                sx={{ fontSize: '0.75rem', height: '30px' }}
+              >
+                <MenuItem value="full" sx={{ fontSize: '0.75rem' }}>Full</MenuItem>
+                <MenuItem value="partial" sx={{ fontSize: '0.75rem' }}>Partial</MenuItem>
+              </Select>
+            </MuiFormControl>
 
-          <FormControl size="small" style={{ minWidth: 120 }}>
-            <InputLabel>Mode</InputLabel>
-            <Select
-              value={calculationMode}
-              onChange={(e) => {
-                setCalculationMode(e.target.value as 'full' | 'partial');
-                // Clear all breakdowns when mode changes
-                setSalaryBreakdowns(new Map());
-                setExpandedRows(new Set());
+            {payrollSettings?.allowLeaveBonus && (
+              <MuiFormControl component="fieldset" size="small" sx={{ minWidth: { xs: '100%', sm: 'auto' } }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 0.25,
+                  padding: '2px 0',
+                }}>
+                  <Typography variant="caption" sx={{ 
+                    fontSize: '0.6875rem', 
+                    color: theme.TEXT_SECONDARY,
+                    fontWeight: 500,
+                  }}>
+                    Leave Bonus
+                  </Typography>
+                  <Box display="flex" gap={0.75}>
+                    <Box display="flex" alignItems="center" gap={0.375}>
+                      <input
+                        type="radio"
+                        id="include-leave-bonus-yes"
+                        name="includeLeaveBonus"
+                        checked={includeLeaveBonus === true}
+                        onChange={() => {
+                          setIncludeLeaveBonus(true);
+                          setSalaryBreakdowns(new Map());
+                          setExpandedRows(new Set());
+                        }}
+                        style={{ 
+                          width: '12px', 
+                          height: '12px', 
+                          cursor: 'pointer',
+                          accentColor: theme.ACCENT,
+                        }}
+                      />
+                      <label 
+                        htmlFor="include-leave-bonus-yes" 
+                        style={{ 
+                          fontSize: '0.6875rem', 
+                          color: theme.TEXT_PRIMARY,
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        Include
+                      </label>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={0.375}>
+                      <input
+                        type="radio"
+                        id="include-leave-bonus-no"
+                        name="includeLeaveBonus"
+                        checked={includeLeaveBonus === false}
+                        onChange={() => {
+                          setIncludeLeaveBonus(false);
+                          setSalaryBreakdowns(new Map());
+                          setExpandedRows(new Set());
+                        }}
+                        style={{ 
+                          width: '12px', 
+                          height: '12px', 
+                          cursor: 'pointer',
+                          accentColor: theme.ACCENT,
+                        }}
+                      />
+                      <label 
+                        htmlFor="include-leave-bonus-no" 
+                        style={{ 
+                          fontSize: '0.6875rem', 
+                          color: theme.TEXT_PRIMARY,
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        Exclude
+                      </label>
+                    </Box>
+                  </Box>
+                </Box>
+              </MuiFormControl>
+            )}
+          </Box>
+
+          <Box display="flex" gap={0.75} alignItems="flex-end" sx={{ 
+            '@media (max-width: 768px)': { 
+              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+            } 
+          }}>
+            <TextField
+              size="small"
+              placeholder="Search employees..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: theme.TEXT_SECONDARY, fontSize: 16 }} />
+                  </InputAdornment>
+                ),
               }}
-              label="Mode"
+              sx={{
+                minWidth: { xs: '100%', sm: 200 },
+                '& .MuiInputBase-root': {
+                  height: '30px',
+                  fontSize: '0.75rem',
+                },
+              }}
+            />
+
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
+              onClick={() => {
+                loadEligibleStaff();
+                loadGenerations();
+              }}
+              disabled={loading}
+              sx={{ 
+                fontSize: '0.75rem',
+                height: '30px',
+                padding: '4px 10px',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
             >
-              <MenuItem value="full">Full</MenuItem>
-              <MenuItem value="partial">Partial</MenuItem>
-            </Select>
-          </FormControl>
+              Refresh
+            </Button>
 
-          <TextField
-            size="small"
-            placeholder="Search employees..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon style={{ color: theme.TEXT_SECONDARY }} />
-                </InputAdornment>
-              ),
-            }}
-            style={{
-              minWidth: 250,
-            }}
-          />
-
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => {
-              loadEligibleStaff();
-              loadGenerations();
-            }}
-            disabled={loading}
-          >
-            Refresh
-          </Button>
-
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={generating ? <CircularProgress size={16} /> : <CalculateIcon />}
-            onClick={handleGenerate}
-            disabled={generating || selectedStaff.size === 0}
-          >
-            {generating ? 'Generating...' : `Generate (${selectedStaff.size})`}
-          </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={generating ? <CircularProgress size={12} /> : <CalculateIcon sx={{ fontSize: 14 }} />}
+              onClick={handleGenerate}
+              disabled={generating || selectedStaff.size === 0}
+              sx={{ 
+                fontSize: '0.75rem',
+                height: '30px',
+                padding: '4px 10px',
+                whiteSpace: 'nowrap',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
+            >
+              {generating ? 'Generating...' : `Generate (${selectedStaff.size})`}
+            </Button>
+          </Box>
         </Box>
-      </ControlsCard>
+      </ContentCard>
 
       {calculatingAmounts && (
         <CalculationOverlay>
@@ -700,200 +967,389 @@ const PayrollGenerationManager: React.FC = () => {
         <Loader />
       ) : (
         <>
-          <TableContainer>
-            <StyledTable>
-              <TableHead>
-                <TableRow>
-                  <TableCell style={{ width: '40px' }}></TableCell>
-                  <TableCell padding="checkbox">
+          <TableWrapper>
+            <SharedStyledTable>
+              <thead>
+                <tr>
+                  <th style={{ width: '32px', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}></th>
+                  <th style={{ width: '40px', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>
                     <Checkbox
                       checked={eligibleStaff.length > 0 && selectedStaff.size === eligibleStaff.length}
                       indeterminate={selectedStaff.size > 0 && selectedStaff.size < eligibleStaff.length}
                       onChange={handleSelectAll}
+                      size="small"
+                      sx={{ padding: '2px' }}
                     />
-                  </TableCell>
-                  <TableCell>Employee</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Payroll Plan</TableCell>
-                  <TableCell align="right">Salary</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="center">Mode</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+                  </th>
+                  <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Employee</th>
+                  <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Role</th>
+                  <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Payroll Plan</th>
+                  <th style={{ textAlign: 'right', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Salary</th>
+                  <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Status</th>
+                  <th style={{ textAlign: 'center', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Mode</th>
+                  <th style={{ textAlign: 'center', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                 {eligibleStaff.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" style={{ padding: '32px' }}>
-                      <Typography color={theme.TEXT_SECONDARY}>
-                        No employees with active payroll plans found
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
+                  <tr>
+                    <td colSpan={9}>
+                      <EmptyStateContainer>
+                        <EmptyStateIcon><CalculateIcon /></EmptyStateIcon>
+                        <EmptyStateTitle>No employees with active payroll plans found</EmptyStateTitle>
+                        <EmptyStateText>Create payroll plans for employees to generate payrolls.</EmptyStateText>
+                      </EmptyStateContainer>
+                    </td>
+                  </tr>
                 ) : (
                   filteredStaff.map((staff) => {
-                    const isSelected = selectedStaff.has(staff.staffId);
-                    const generation = generations.find(g => g.staffId === staff.staffId);
-                    const isExpanded = expandedRows.has(staff.staffId);
-                    const breakdown = salaryBreakdowns.get(staff.staffId);
-                    const isLoadingBreakdown = loadingBreakdowns.has(staff.staffId);
+                    // Use a unique key combining staffId and planId to handle multiple plans per employee
+                    const staffPlanKey = `${staff.staffId}-${staff.planId}`;
+                    const isSelected = selectedStaff.has(staffPlanKey);
+                    const generation = generations.find(g => g.staffId === staff.staffId && g.planId === staff.planId);
+                    const isExpanded = expandedRows.has(staffPlanKey);
+                    const breakdown = salaryBreakdowns.get(staffPlanKey);
+                    const isLoadingBreakdown = loadingBreakdowns.has(staffPlanKey);
                     
                     return (
-                      <React.Fragment key={staff.staffId}>
-                        <TableRow 
-                          hover 
-                          onClick={() => toggleExpand(staff.staffId)}
+                      <React.Fragment key={staffPlanKey}>
+                        <tr 
+                          onClick={() => toggleExpand(staffPlanKey)}
                           style={{ cursor: 'pointer' }}
                         >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <td onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
                             <IconButton
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleExpand(staff.staffId);
+                                toggleExpand(staffPlanKey);
                               }}
-                              style={{ padding: '4px' }}
+                              style={{ padding: '2px', width: '20px', height: '20px' }}
                             >
-                              {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                              {isExpanded ? <ExpandLessIcon style={{ fontSize: '1rem' }} /> : <ExpandMoreIcon style={{ fontSize: '1rem' }} />}
                             </IconButton>
-                          </TableCell>
-                          <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
                             <Checkbox
                               checked={isSelected}
-                              onChange={() => handleSelectStaff(staff.staffId)}
+                              onChange={() => handleSelectStaff(staffPlanKey)}
+                              size="small"
+                              sx={{ padding: '2px' }}
                             />
-                          </TableCell>
-                          <TableCell>{staff.staffName}</TableCell>
-                          <TableCell>{staff.staffRole}</TableCell>
-                          <TableCell>{staff.planName}</TableCell>
-                        <TableCell align="right" style={{ fontWeight: 600, color: theme.ACCENT }}>
-                          {(() => {
-                            // Priority: generation net salary > breakdown net salary > basic pay
-                            if (generation) {
-                              return formatCurrency(generation.netSalary);
-                            }
-                            const breakdown = salaryBreakdowns.get(staff.staffId);
-                            if (breakdown) {
-                              return formatCurrency(breakdown.netSalary);
-                            }
-                            return formatCurrency(staff.basicPay || 0);
-                          })()}
-                        </TableCell>
-                          <TableCell>
+                          </td>
+                          <td style={{ padding: '0.625rem 0.625rem', fontSize: '0.8125rem', fontWeight: 500 }}>{staff.staffName}</td>
+                          <td style={{ padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>{staff.staffRole}</td>
+                          <td style={{ padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>{staff.planName}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: theme.ACCENT, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>
+                            {(() => {
+                              // Priority: generation net salary > breakdown net salary > basic pay
+                              if (generation) {
+                                return formatCurrency(generation.netSalary);
+                              }
+                              const breakdown = salaryBreakdowns.get(staffPlanKey);
+                              if (breakdown) {
+                                return formatCurrency(breakdown.netSalary);
+                              }
+                              return formatCurrency(staff.basicPay || 0);
+                            })()}
+                          </td>
+                          <td style={{ padding: '0.625rem 0.625rem' }}>
                             {generation ? (
                               <Chip
                                 label={generation.status}
                                 size="small"
                                 color={getStatusColor(generation.status) as any}
+                                sx={{ fontSize: '0.6875rem', height: '20px' }}
                               />
                             ) : (
-                              <Chip label="Not Generated" size="small" color="default" />
+                              <Chip label="Not Generated" size="small" color="default" sx={{ fontSize: '0.6875rem', height: '20px' }} />
                             )}
-                          </TableCell>
-                          <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                            <FormControl size="small" style={{ minWidth: 100 }}>
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '0.625rem 0.625rem' }} onClick={(e) => e.stopPropagation()}>
+                            <MuiFormControl size="small" style={{ minWidth: 80 }}>
                               <Select
-                                value={calculationModes.get(staff.staffId) || calculationMode}
+                                value={calculationModes.get(staffPlanKey) || calculationMode}
                                 onChange={(e) => {
                                   const newModes = new Map(calculationModes);
-                                  newModes.set(staff.staffId, e.target.value as 'full' | 'partial');
+                                  newModes.set(staffPlanKey, e.target.value as 'full' | 'partial');
                                   setCalculationModes(newModes);
-                                  // Clear and recalculate breakdown for this staff
+                                  // Clear and recalculate breakdown for this staff plan
                                   const newBreakdowns = new Map(salaryBreakdowns);
-                                  newBreakdowns.delete(staff.staffId);
+                                  newBreakdowns.delete(staffPlanKey);
                                   setSalaryBreakdowns(newBreakdowns);
                                   // Recalculate immediately
-                                  loadSalaryBreakdown(staff.staffId);
+                                  loadSalaryBreakdown(staff.staffId, staff.planId);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ fontSize: '0.875rem' }}
+                                sx={{ fontSize: '0.6875rem', height: '26px' }}
                               >
-                                <MenuItem value="full">Full</MenuItem>
-                                <MenuItem value="partial">Partial</MenuItem>
+                                <MenuItem value="full" sx={{ fontSize: '0.6875rem' }}>Full</MenuItem>
+                                <MenuItem value="partial" sx={{ fontSize: '0.6875rem' }}>Partial</MenuItem>
                               </Select>
-                            </FormControl>
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
-                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                              <Box sx={{ padding: '16px' }}>
+                            </MuiFormControl>
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '0.625rem 0.625rem' }} onClick={(e) => e.stopPropagation()}>
+                            {generation && generation.status === 'draft' ? (
+                              <Box display="flex" gap={0.375} justifyContent="center">
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  size="small"
+                                  onClick={() => handleApprove(generation.id)}
+                                  sx={{ minWidth: 65, fontSize: '0.6875rem', height: '24px', padding: '2px 6px' }}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  onClick={() => handleReject(generation.id)}
+                                  sx={{ minWidth: 65, fontSize: '0.6875rem', height: '24px', padding: '2px 6px' }}
+                                >
+                                  Reject
+                                </Button>
+                              </Box>
+                            ) : generation && generation.status === 'approved' ? (
+                              <Chip label="Approved" size="small" color="success" sx={{ fontSize: '0.6875rem', height: '20px' }} />
+                            ) : generation && generation.status === 'paid' ? (
+                              <Chip label="Paid" size="small" color="info" sx={{ fontSize: '0.6875rem', height: '20px' }} />
+                            ) : null}
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
+                              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ 
+                                padding: { xs: '0.5rem 0.625rem', sm: '0.625rem 0.75rem' },
+                              }}>
                                 {isLoadingBreakdown ? (
-                                  <Box display="flex" justifyContent="center" padding={2}>
-                                    <CircularProgress size={24} />
+                                  <Box display="flex" justifyContent="center" padding={1} sx={{ '@media (max-width: 768px)': { padding: 0.75 } }}>
+                                    <CircularProgress size={18} />
                                   </Box>
                                 ) : breakdown ? (
                                   <Box>
-                                    <Typography variant="subtitle2" style={{ marginBottom: '12px', fontWeight: 600, color: theme.TEXT_PRIMARY }}>
+                                    <Typography variant="subtitle2" sx={{ 
+                                      marginBottom: '0.5rem', 
+                                      fontWeight: 700, 
+                                      color: theme.TEXT_PRIMARY, 
+                                      fontSize: '0.75rem',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.5px',
+                                    }}>
                                       Salary Breakdown
                                     </Typography>
-                                    <Box display="flex" flexDirection="column" gap={1}>
-                                      <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                        <Typography variant="body2">Working Days:</Typography>
-                                        <Typography variant="body2" style={{ color: '#6366f1' }}>{breakdown.workingDays}</Typography>
+                                    
+                                    {/* Attendance Summary Section */}
+                                    <Box sx={{ 
+                                      background: theme.BG === '#252525' ? 'rgba(99, 102, 241, 0.05)' : 'rgba(99, 102, 241, 0.08)',
+                                      borderRadius: '6px',
+                                      padding: '0.5rem',
+                                      marginBottom: '0.5rem',
+                                      border: theme.BG === '#252525' ? 'none' : '1px solid rgba(99, 102, 241, 0.15)',
+                                    }}>
+                                      <Typography variant="caption" sx={{ 
+                                        fontSize: '0.65rem',
+                                        fontWeight: 600,
+                                        color: theme.TEXT_SECONDARY,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        marginBottom: '0.375rem',
+                                        display: 'block',
+                                      }}>
+                                        Attendance
+                                      </Typography>
+                                      <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap="0.375rem 0.75rem">
+                                        <Box>
+                                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Working Days</Typography>
+                                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#6366f1' : '#4f46e5' }}>{breakdown.workingDays}</Typography>
+                                        </Box>
+                                        <Box>
+                                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Present Days</Typography>
+                                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#10b981' : '#059669' }}>{breakdown.presentDays}</Typography>
+                                        </Box>
+                                        <Box>
+                                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Leave Days</Typography>
+                                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#3b82f6' : '#2563eb' }}>{breakdown.leaveDays}</Typography>
+                                        </Box>
+                                        <Box>
+                                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Absent Days</Typography>
+                                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#ef4444' : '#dc2626' }}>{breakdown.absentDays}</Typography>
+                                        </Box>
+                                        {breakdown.lateDays > 0 && (
+                                          <Box>
+                                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Late Days</Typography>
+                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#f59e0b' : '#d97706' }}>{breakdown.lateDays}</Typography>
+                                          </Box>
+                                        )}
+                                        {includeLeaveBonus && payrollSettings?.allowLeaveBonus && breakdown.absentDays === 0 && breakdown.leaveDays === 0 && payrollSettings.leaveBonusDays > 0 && (
+                                          <Box>
+                                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Bonus Leave</Typography>
+                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#10b981' : '#059669' }}>+{payrollSettings.leaveBonusDays}</Typography>
+                                          </Box>
+                                        )}
                                       </Box>
-                                      <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                        <Typography variant="body2">Present Days:</Typography>
-                                        <Typography variant="body2" style={{ color: '#10b981' }}>{breakdown.presentDays}</Typography>
+                                    </Box>
+
+                                    {/* Earnings Section */}
+                                    <Box sx={{ marginBottom: '0.5rem' }}>
+                                      <Typography variant="caption" sx={{ 
+                                        fontSize: '0.65rem',
+                                        fontWeight: 600,
+                                        color: theme.TEXT_SECONDARY,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        marginBottom: '0.375rem',
+                                        display: 'block',
+                                      }}>
+                                        Earnings
+                                      </Typography>
+                                      <Box display="flex" flexDirection="column" gap="0.25rem">
+                                        <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                          <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Gross Salary</Typography>
+                                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.TEXT_PRIMARY }}>{formatCurrency(breakdown.grossSalary)}</Typography>
+                                        </Box>
+                                        {breakdown.leaveBonusAmount && breakdown.leaveBonusAmount > 0 && (
+                                          <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                            <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Leave Bonus</Typography>
+                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#10b981' : '#059669' }}>+{formatCurrency(breakdown.leaveBonusAmount)}</Typography>
+                                          </Box>
+                                        )}
+                                        {breakdown.adjustments !== 0 && breakdown.adjustments > 0 && (
+                                          <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                            <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Adjustments</Typography>
+                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#10b981' : '#059669' }}>+{formatCurrency(breakdown.adjustments)}</Typography>
+                                          </Box>
+                                        )}
                                       </Box>
-                                      <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                        <Typography variant="body2">Leave Days:</Typography>
-                                        <Typography variant="body2" style={{ color: '#3b82f6' }}>{breakdown.leaveDays}</Typography>
+                                    </Box>
+
+                                    {/* Deductions Section */}
+                                    {((breakdown.absentDeductions ?? 0) > 0 || breakdown.leaveDeductions > 0 || breakdown.lateDeductions > 0 || breakdown.advanceDeductions > 0 || (breakdown.adjustments < 0)) && (
+                                      <Box sx={{ 
+                                        background: theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.08)',
+                                        borderRadius: '6px',
+                                        padding: '0.5rem',
+                                        marginBottom: '0.5rem',
+                                        border: theme.BG === '#252525' ? 'none' : '1px solid rgba(239, 68, 68, 0.15)',
+                                      }}>
+                                        <Typography variant="caption" sx={{ 
+                                          fontSize: '0.65rem',
+                                          fontWeight: 600,
+                                          color: theme.TEXT_SECONDARY,
+                                          textTransform: 'uppercase',
+                                          letterSpacing: '0.5px',
+                                          marginBottom: '0.375rem',
+                                          display: 'block',
+                                        }}>
+                                          Deductions
+                                        </Typography>
+                                        <Box display="flex" flexDirection="column" gap="0.25rem">
+                                          {(breakdown.absentDeductions ?? 0) > 0 && (
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                              <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Absent</Typography>
+                                              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#ef4444' : '#dc2626' }}>-{formatCurrency(breakdown.absentDeductions ?? 0)}</Typography>
+                                            </Box>
+                                          )}
+                                          {breakdown.leaveDeductions > 0 && (
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                              <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Leave</Typography>
+                                              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#ef4444' : '#dc2626' }}>-{formatCurrency(breakdown.leaveDeductions)}</Typography>
+                                            </Box>
+                                          )}
+                                          {breakdown.lateDeductions > 0 && (
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                              <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Late</Typography>
+                                              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#ef4444' : '#dc2626' }}>-{formatCurrency(breakdown.lateDeductions)}</Typography>
+                                            </Box>
+                                          )}
+                                          {breakdown.advanceDeductions > 0 && (
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                              <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Advance</Typography>
+                                              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#ef4444' : '#dc2626' }}>-{formatCurrency(breakdown.advanceDeductions)}</Typography>
+                                            </Box>
+                                          )}
+                                          {breakdown.adjustments < 0 && (
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" padding="0.25rem 0">
+                                              <Typography variant="body2" sx={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Adjustments</Typography>
+                                              <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#ef4444' : '#dc2626' }}>{formatCurrency(breakdown.adjustments)}</Typography>
+                                            </Box>
+                                          )}
+                                        </Box>
                                       </Box>
-                                      <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                        <Typography variant="body2">Absent Days:</Typography>
-                                        <Typography variant="body2" style={{ color: '#ef4444' }}>{breakdown.absentDays}</Typography>
-                                      </Box>
-                                      {breakdown.lateDays > 0 && (
-                                        <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                          <Typography variant="body2">Late Days:</Typography>
-                                          <Typography variant="body2" style={{ color: '#f59e0b' }}>{breakdown.lateDays}</Typography>
-                                        </Box>
-                                      )}
-                                      <Divider style={{ margin: '8px 0' }} />
-                                      <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                        <Typography variant="body2">Gross Salary:</Typography>
-                                        <Typography variant="body2" fontWeight={600}>{formatCurrency(breakdown.grossSalary)}</Typography>
-                                      </Box>
-                                      {breakdown.absentDeductions && breakdown.absentDeductions > 0 && (
-                                        <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                          <Typography variant="body2">Absent Deductions:</Typography>
-                                          <Typography variant="body2" color="error.main">-{formatCurrency(breakdown.absentDeductions)}</Typography>
-                                        </Box>
-                                      )}
-                                      {breakdown.leaveDeductions > 0 && (
-                                        <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                          <Typography variant="body2">Leave Deductions:</Typography>
-                                          <Typography variant="body2" color="error.main">-{formatCurrency(breakdown.leaveDeductions)}</Typography>
-                                        </Box>
-                                      )}
-                                      {breakdown.lateDeductions > 0 && (
-                                        <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                          <Typography variant="body2">Late Deductions:</Typography>
-                                          <Typography variant="body2" color="error.main">-{formatCurrency(breakdown.lateDeductions)}</Typography>
-                                        </Box>
-                                      )}
-                                      {breakdown.advanceDeductions > 0 && (
-                                        <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                          <Typography variant="body2">Advance Deductions:</Typography>
-                                          <Typography variant="body2" color="error.main">-{formatCurrency(breakdown.advanceDeductions)}</Typography>
-                                        </Box>
-                                      )}
-                                      {breakdown.adjustments !== 0 && (
-                                        <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                          <Typography variant="body2">Adjustments:</Typography>
-                                          <Typography variant="body2" color={breakdown.adjustments > 0 ? 'success.main' : 'error.main'}>
-                                            {breakdown.adjustments > 0 ? '+' : ''}{formatCurrency(breakdown.adjustments)}
-                                          </Typography>
-                                        </Box>
-                                      )}
-                                      <Divider style={{ margin: '8px 0' }} />
-                                      <Box display="flex" justifyContent="space-between" padding="4px 0">
-                                        <Typography variant="body2" fontWeight={600}>Net Salary:</Typography>
-                                        <Typography variant="body2" fontWeight={700} color="primary">
+                                    )}
+
+                                    {/* Net Salary Section */}
+                                    <Box sx={{ 
+                                      background: theme.BG === '#252525' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.12)',
+                                      borderRadius: '6px',
+                                      padding: '0.625rem',
+                                      border: theme.BG === '#252525' ? `1px solid ${theme.ACCENT}40` : `1px solid ${theme.ACCENT}60`,
+                                      marginBottom: generation && generation.status === 'draft' ? '0.5rem' : '0',
+                                    }}>
+                                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 700, color: theme.TEXT_PRIMARY, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                          Net Salary
+                                        </Typography>
+                                        <Typography variant="h6" sx={{ fontSize: '0.875rem', fontWeight: 800, color: theme.ACCENT }}>
                                           {formatCurrency(breakdown.netSalary)}
                                         </Typography>
                                       </Box>
                                     </Box>
+
+                                    {/* Approve/Reject Buttons (Mobile Only) */}
+                                    {generation && generation.status === 'draft' && (
+                                      <Box 
+                                        display="flex" 
+                                        gap={0.75} 
+                                        marginTop={0.75} 
+                                        paddingTop={0.75} 
+                                        borderTop={`1px solid ${theme.BORDER}`}
+                                        sx={{ 
+                                          '@media (min-width: 769px)': { 
+                                            display: 'none', // Hide on desktop
+                                          },
+                                          '@media (max-width: 768px)': { 
+                                            gap: 0.5, 
+                                            marginTop: 0.625, 
+                                            paddingTop: 0.625,
+                                            flexDirection: 'column',
+                                          },
+                                        }}
+                                      >
+                                        <Button
+                                          variant="contained"
+                                          color="success"
+                                          size="small"
+                                          onClick={() => handleApprove(generation.id)}
+                                          sx={{ 
+                                            flex: 1, 
+                                            fontSize: { xs: '0.6875rem', sm: '0.75rem' }, 
+                                            height: { xs: '32px', sm: '28px' }, 
+                                            padding: { xs: '4px 8px', sm: '2px 8px' },
+                                            '@media (max-width: 768px)': { width: '100%' },
+                                          }}
+                                        >
+                                          Approve
+                                        </Button>
+                                        <Button
+                                          variant="outlined"
+                                          color="error"
+                                          size="small"
+                                          onClick={() => handleReject(generation.id)}
+                                          sx={{ 
+                                            flex: 1, 
+                                            fontSize: { xs: '0.6875rem', sm: '0.75rem' }, 
+                                            height: { xs: '32px', sm: '28px' }, 
+                                            padding: { xs: '4px 8px', sm: '2px 8px' },
+                                            '@media (max-width: 768px)': { width: '100%' },
+                                          }}
+                                        >
+                                          Reject
+                                        </Button>
+                                      </Box>
+                                    )}
                                   </Box>
                                 ) : (
                                   <Typography variant="body2" color={theme.TEXT_SECONDARY} style={{ padding: '16px', textAlign: 'center' }}>
@@ -902,15 +1358,16 @@ const PayrollGenerationManager: React.FC = () => {
                                 )}
                               </Box>
                             </Collapse>
-                          </TableCell>
-                        </TableRow>
+                            </td>
+                          </tr>
+                        )}
                       </React.Fragment>
                     );
                   })
                 )}
-              </TableBody>
-            </StyledTable>
-          </TableContainer>
+              </tbody>
+            </SharedStyledTable>
+          </TableWrapper>
         </>
       )}
 
@@ -946,7 +1403,7 @@ const PayrollGenerationManager: React.FC = () => {
           </Box>
         </DialogContent>
       </ProgressDialog>
-    </PageContainer>
+    </PayrollContainer>
   );
 };
 

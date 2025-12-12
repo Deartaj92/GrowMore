@@ -613,7 +613,8 @@ const Dashboard: React.FC = () => {
   }, [activeTab, dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession]);
 
   // Calculate attendance stats
-  const presentToday = attendanceDataForDate.filter(a => a.status === 'present').length;
+  // Present count includes both 'present' and 'late' statuses
+  const presentToday = attendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late').length;
   const absentToday = attendanceDataForDate.filter(a => a.status === 'absent').length;
   const leaveToday = attendanceDataForDate.filter(a => a.status === 'leave').length;
   const lateToday = attendanceDataForDate.filter(a => a.status === 'late').length;
@@ -1325,7 +1326,8 @@ const Dashboard: React.FC = () => {
   }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, getCachedSession]);
 
   // Calculate employee attendance stats
-  const employeePresentToday = employeeAttendanceDataForDate.filter(a => a.status === 'present').length;
+  // Present count includes both 'present' and 'late' statuses
+  const employeePresentToday = employeeAttendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late').length;
   const employeeAbsentToday = employeeAttendanceDataForDate.filter(a => a.status === 'absent').length;
   const employeeLeaveToday = employeeAttendanceDataForDate.filter(a => a.status === 'leave').length;
   const employeeLateToday = employeeAttendanceDataForDate.filter(a => a.status === 'late').length;
@@ -1776,12 +1778,13 @@ const Dashboard: React.FC = () => {
         .eq('session_id', sessionData.id)
         .eq('school_id', user.school_id);
 
-      const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
+      // Present count includes both 'present' and 'late' statuses
+      const presentCount = completeAttendanceData?.filter(a => a.status === 'present' || a.status === 'late').length || 0;
       const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
       const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
       const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
       const totalCount = completeAttendanceData?.length || 0;
-      const attPercent = totalCount ? (((presentCount + lateCount) / totalCount) * 100).toFixed(1) : '0.0';
+      const attPercent = totalCount ? (((presentCount) / totalCount) * 100).toFixed(1) : '0.0';
 
       const doc = new jsPDF();
       doc.setFontSize(18);
@@ -2288,13 +2291,14 @@ const Dashboard: React.FC = () => {
         .eq('session_id', sessionData.id)
         .eq('school_id', user.school_id);
 
-      const presentCount = completeAttendanceData?.filter(a => a.status === 'present').length || 0;
+      // Present count includes both 'present' and 'late' statuses
+      const presentCount = completeAttendanceData?.filter(a => a.status === 'present' || a.status === 'late').length || 0;
       const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
       const leaveCount = completeAttendanceData?.filter(a => a.status === 'leave').length || 0;
       const lateCount = completeAttendanceData?.filter(a => a.status === 'late').length || 0;
       const halfDayCount = completeAttendanceData?.filter(a => a.status === 'half_day').length || 0;
       const totalCount = completeAttendanceData?.length || 0;
-      const attPercent = totalCount ? (((presentCount + lateCount + halfDayCount) / totalCount) * 100).toFixed(1) : '0.0';
+      const attPercent = totalCount ? (((presentCount + halfDayCount) / totalCount) * 100).toFixed(1) : '0.0';
 
       const doc = new jsPDF();
       doc.setFontSize(18);
@@ -2307,7 +2311,7 @@ const Dashboard: React.FC = () => {
       doc.setTextColor(99, 102, 241);
       doc.text(`Total: ${totalCount}`, 120, 18);
       doc.setTextColor(34, 197, 94);
-      doc.text(`Present: ${presentCount + lateCount + halfDayCount}`, 120, 24);
+      doc.text(`Present: ${presentCount + halfDayCount}`, 120, 24);
       doc.setTextColor(239, 68, 68);
       doc.text(`Absent: ${absentCount}`, 170, 18);
       doc.setTextColor(37, 99, 235);

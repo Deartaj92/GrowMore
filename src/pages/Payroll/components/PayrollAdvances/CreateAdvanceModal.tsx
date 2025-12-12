@@ -32,61 +32,96 @@ const ModalOverlay = styled.div<{ open: boolean }>`
   align-items: center;
   justify-content: center;
   z-index: 1300;
-  padding: 20px;
+  padding: 16px;
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    align-items: flex-end;
+  }
 `;
 
 const ModalContent = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  border-radius: 8px;
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   border: 1px solid ${({ theme }) => theme.BORDER};
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  
+  @media (max-width: 768px) {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px 12px 0 0;
+    margin: 0;
+  }
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 10px 14px;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+  }
 `;
 
 const ModalTitle = styled.h3`
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;
+  
+  @media (max-width: 768px) {
+    font-size: 0.9375rem;
+  }
 `;
 
 const ModalBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  
+  @media (max-width: 768px) {
+    padding: 12px;
+    gap: 10px;
+  }
 `;
 
 const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 20px;
+  gap: 8px;
+  padding: 10px 14px;
   border-top: 1px solid ${({ theme }) => theme.BORDER};
+  
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    gap: 6px;
+    flex-direction: column-reverse;
+    
+    & > button {
+      width: 100%;
+    }
+  }
 `;
 
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 `;
 
 const Label = styled.label`
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
@@ -179,6 +214,33 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
 
     if (formData.repaymentAmountPerMonth <= 0) {
       showToast('Repayment amount per month must be greater than 0', 'error');
+      return;
+    }
+
+    // Check if the staff has a payroll with payments for the month of the advance date
+    const advanceDate = new Date(formData.advanceDate);
+    const advanceMonth = advanceDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+    const advanceYear = advanceDate.getFullYear();
+
+    try {
+      const hasPayrollWithPayments = await payrollService.hasPayrollWithPaymentsForMonth(
+        user.school_id,
+        formData.staffId,
+        advanceMonth,
+        advanceYear
+      );
+
+      if (hasPayrollWithPayments) {
+        const monthName = advanceDate.toLocaleString('default', { month: 'long' });
+        showToast(
+          `Cannot create advance. A payroll with payments already exists for ${monthName} ${advanceYear}`,
+          'error'
+        );
+        return;
+      }
+    } catch (error: any) {
+      console.error('Error checking payroll payments:', error);
+      showToast('Failed to validate advance. Please try again.', 'error');
       return;
     }
 
