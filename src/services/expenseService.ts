@@ -120,6 +120,18 @@ export const expenseService = {
           description,
           color,
           is_active
+        ),
+        accounts (
+          id,
+          name,
+          type,
+          bank_name,
+          account_number,
+          wallet_number,
+          mobile_number,
+          iban,
+          swift_code,
+          raast_id
         )
       `)
       .eq('school_id', schoolId)
@@ -167,6 +179,9 @@ export const expenseService = {
       createdBy: item.created_by,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      accountId: item.account_id || undefined,
+      transactionId: item.transaction_id || undefined,
+      chequeNumber: item.cheque_number || undefined,
       category: item.expense_categories ? {
         id: item.expense_categories.id,
         schoolId: item.expense_categories.school_id,
@@ -174,6 +189,18 @@ export const expenseService = {
         description: item.expense_categories.description,
         color: item.expense_categories.color,
         isActive: item.expense_categories.is_active,
+      } : undefined,
+      account: item.accounts ? {
+        id: item.accounts.id,
+        name: item.accounts.name,
+        type: item.accounts.type,
+        bank_name: item.accounts.bank_name,
+        account_number: item.accounts.account_number,
+        wallet_number: item.accounts.wallet_number,
+        mobile_number: item.accounts.mobile_number,
+        iban: item.accounts.iban,
+        swift_code: item.accounts.swift_code,
+        raast_id: item.accounts.raast_id,
       } : undefined,
     }));
     
@@ -202,6 +229,18 @@ export const expenseService = {
           description,
           color,
           is_active
+        ),
+        accounts (
+          id,
+          name,
+          type,
+          bank_name,
+          account_number,
+          wallet_number,
+          mobile_number,
+          iban,
+          swift_code,
+          raast_id
         )
       `)
       .eq('id', id)
@@ -244,7 +283,7 @@ export const expenseService = {
     };
   },
 
-  async createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'category' | 'createdByUser' | 'approvedByUser'>): Promise<Expense> {
+  async createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'category' | 'account' | 'createdByUser' | 'approvedByUser'>): Promise<Expense> {
     const {
       schoolId,
       categoryId,
@@ -258,6 +297,9 @@ export const expenseService = {
       vendorContact,
       status,
       createdBy,
+      accountId,
+      transactionId,
+      chequeNumber,
     } = expense;
     
     const { data, error } = await supabase
@@ -275,6 +317,9 @@ export const expenseService = {
         vendor_contact: vendorContact,
         status: status || 'pending',
         created_by: createdBy,
+        account_id: accountId || null,
+        transaction_id: transactionId || null,
+        cheque_number: chequeNumber || null,
       })
       .select(`
         *,
@@ -284,6 +329,18 @@ export const expenseService = {
           description,
           color,
           is_active
+        ),
+        accounts (
+          id,
+          name,
+          type,
+          bank_name,
+          account_number,
+          wallet_number,
+          mobile_number,
+          iban,
+          swift_code,
+          raast_id
         )
       `)
       .single();
@@ -308,6 +365,9 @@ export const expenseService = {
       createdBy: data.created_by,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      accountId: data.account_id || undefined,
+      transactionId: data.transaction_id || undefined,
+      chequeNumber: data.cheque_number || undefined,
       category: data.expense_categories ? {
         id: data.expense_categories.id,
         schoolId: data.expense_categories.school_id,
@@ -316,13 +376,25 @@ export const expenseService = {
         color: data.expense_categories.color,
         isActive: data.expense_categories.is_active,
       } : undefined,
+      account: data.accounts ? {
+        id: data.accounts.id,
+        name: data.accounts.name,
+        type: data.accounts.type,
+        bank_name: data.accounts.bank_name,
+        account_number: data.accounts.account_number,
+        wallet_number: data.accounts.wallet_number,
+        mobile_number: data.accounts.mobile_number,
+        iban: data.accounts.iban,
+        swift_code: data.accounts.swift_code,
+        raast_id: data.accounts.raast_id,
+      } : undefined,
     };
   },
 
   async updateExpense(
     id: number,
     schoolId: number,
-    updates: Partial<Omit<Expense, 'id' | 'schoolId' | 'createdAt' | 'updatedAt' | 'category' | 'createdByUser' | 'approvedByUser'>>
+    updates: Partial<Omit<Expense, 'id' | 'schoolId' | 'createdAt' | 'updatedAt' | 'category' | 'account' | 'createdByUser' | 'approvedByUser'>>
   ): Promise<Expense> {
     const updateData: any = {};
     
@@ -338,6 +410,9 @@ export const expenseService = {
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.approvedBy !== undefined) updateData.approved_by = updates.approvedBy;
     if (updates.approvedAt !== undefined) updateData.approved_at = updates.approvedAt;
+    if (updates.accountId !== undefined) updateData.account_id = updates.accountId || null;
+    if (updates.transactionId !== undefined) updateData.transaction_id = updates.transactionId || null;
+    if (updates.chequeNumber !== undefined) updateData.cheque_number = updates.chequeNumber || null;
     
     updateData.updated_at = new Date().toISOString();
     
@@ -354,6 +429,18 @@ export const expenseService = {
           description,
           color,
           is_active
+        ),
+        accounts (
+          id,
+          name,
+          type,
+          bank_name,
+          account_number,
+          wallet_number,
+          mobile_number,
+          iban,
+          swift_code,
+          raast_id
         )
       `)
       .single();
@@ -378,6 +465,9 @@ export const expenseService = {
       createdBy: data.created_by,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      accountId: data.account_id || undefined,
+      transactionId: data.transaction_id || undefined,
+      chequeNumber: data.cheque_number || undefined,
       category: data.expense_categories ? {
         id: data.expense_categories.id,
         schoolId: data.expense_categories.school_id,
@@ -385,6 +475,18 @@ export const expenseService = {
         description: data.expense_categories.description,
         color: data.expense_categories.color,
         isActive: data.expense_categories.is_active,
+      } : undefined,
+      account: data.accounts ? {
+        id: data.accounts.id,
+        name: data.accounts.name,
+        type: data.accounts.type,
+        bank_name: data.accounts.bank_name,
+        account_number: data.accounts.account_number,
+        wallet_number: data.accounts.wallet_number,
+        mobile_number: data.accounts.mobile_number,
+        iban: data.accounts.iban,
+        swift_code: data.accounts.swift_code,
+        raast_id: data.accounts.raast_id,
       } : undefined,
     };
   },

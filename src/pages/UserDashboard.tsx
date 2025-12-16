@@ -1379,7 +1379,7 @@ const UserDashboard: React.FC = () => {
       }
     };
 
-      fetchInitialData();
+    fetchInitialData();
     }, [user?.school_id, user?.role, user?.staff_id, user?.id]);
 
   // Load announcements on mount and when user changes

@@ -28,6 +28,7 @@ import {
   AccountBalance as AccountBalanceIcon,
   ListAlt as ListAltIcon,
   AccountBalanceWallet as WalletIcon,
+  AccountBalanceWallet,
   Receipt as ReceiptIcon,
   Gavel as GavelIcon,
   PieChart as PieChartIcon,
@@ -146,14 +147,8 @@ const AppLogo = styled.div`
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3);
   cursor: pointer;
-  transition: all 0.2s ease;
   overflow: hidden;
   -webkit-app-region: no-drag;
-  
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
-  }
   
   svg {
     font-size: 18px;
@@ -811,6 +806,7 @@ const Header: React.FC<HeaderProps> = ({
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [cachedDashboardPath, setCachedDashboardPath] = useState<string | null>(null);
   
   useEffect(() => {
     const loadPermissions = async () => {
@@ -828,6 +824,7 @@ const Header: React.FC<HeaderProps> = ({
             // Super Admin has all permissions
             setUserPermissions(new Set(Object.values(pathToPermissionKey)));
             setPermissionsLoaded(true);
+            setCachedDashboardPath('/dashboard');
             return;
           }
         } catch (error) {
@@ -840,12 +837,20 @@ const Header: React.FC<HeaderProps> = ({
         try {
           const perms = await getUserPermissions(user.id, user.school_id);
           setUserPermissions(perms);
+          // Cache dashboard path based on permissions
+          if (perms.has('dashboard')) {
+            setCachedDashboardPath('/dashboard');
+          } else {
+            setCachedDashboardPath('/user');
+          }
           setPermissionsLoaded(true);
         } catch (error) {
           console.error('Error loading permissions:', error);
+          setCachedDashboardPath('/user');
           setPermissionsLoaded(true);
         }
       } else {
+        setCachedDashboardPath('/user');
         setPermissionsLoaded(true);
       }
     };
@@ -874,6 +879,7 @@ const Header: React.FC<HeaderProps> = ({
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
   const [employeeMenuOpen, setEmployeeMenuOpen] = useState(false);
   const [financeMenuOpen, setFinanceMenuOpen] = useState(false);
+  const [accountsMenuOpen, setAccountsMenuOpen] = useState(false);
   const [communicationMenuOpen, setCommunicationMenuOpen] = useState(false);
   const [academicsMenuOpen, setAcademicsMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
@@ -889,6 +895,9 @@ const Header: React.FC<HeaderProps> = ({
   const financeMenuRef = useRef<HTMLDivElement>(null);
   const financeButtonRef = useRef<HTMLButtonElement>(null);
   const financeDropdownRef = useRef<HTMLDivElement>(null);
+  const accountsMenuRef = useRef<HTMLDivElement>(null);
+  const accountsButtonRef = useRef<HTMLButtonElement>(null);
+  const accountsDropdownRef = useRef<HTMLDivElement>(null);
   const communicationMenuRef = useRef<HTMLDivElement>(null);
   const communicationButtonRef = useRef<HTMLButtonElement>(null);
   const communicationDropdownRef = useRef<HTMLDivElement>(null);
@@ -912,6 +921,7 @@ const Header: React.FC<HeaderProps> = ({
     if (studentMenuOpen) updatePosition(studentButtonRef, studentDropdownRef);
     if (employeeMenuOpen) updatePosition(employeeButtonRef, employeeDropdownRef);
     if (financeMenuOpen) updatePosition(financeButtonRef, financeDropdownRef);
+    if (accountsMenuOpen) updatePosition(accountsButtonRef, accountsDropdownRef);
     if (communicationMenuOpen) updatePosition(communicationButtonRef, communicationDropdownRef);
     if (academicsMenuOpen) updatePosition(academicsButtonRef, academicsDropdownRef);
     if (settingsMenuOpen) updatePosition(settingsButtonRef, settingsDropdownRef);
@@ -919,7 +929,7 @@ const Header: React.FC<HeaderProps> = ({
 
   // Update positions when menus open or on scroll/resize
   useEffect(() => {
-    if (studentMenuOpen || employeeMenuOpen || financeMenuOpen || 
+    if (studentMenuOpen || employeeMenuOpen || financeMenuOpen || accountsMenuOpen ||
         communicationMenuOpen || academicsMenuOpen || settingsMenuOpen) {
       updateDropdownPositions();
       const handleScroll = () => updateDropdownPositions();
@@ -933,7 +943,7 @@ const Header: React.FC<HeaderProps> = ({
         window.removeEventListener('resize', handleResize);
       };
     }
-  }, [studentMenuOpen, employeeMenuOpen, financeMenuOpen, 
+  }, [studentMenuOpen, employeeMenuOpen, financeMenuOpen, accountsMenuOpen,
       communicationMenuOpen, academicsMenuOpen, settingsMenuOpen]);
 
   // Cleanup timeouts on unmount
@@ -1242,6 +1252,24 @@ const Header: React.FC<HeaderProps> = ({
     }
   ];
 
+  // Accounts menu items
+  const accountsMenuItems = [
+    {
+      title: 'Setup Accounts',
+      description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
+      icon: <AccountBalanceWallet />,
+      path: '/setup-accounts',
+      color: '#3b82f6'
+    },
+    {
+      title: 'Balance Sheet',
+      description: 'View account balances including income and expenses',
+      icon: <AccountBalanceIcon />,
+      path: '/balance-sheet',
+      color: '#10b981'
+    }
+  ];
+
 
 
 
@@ -1511,24 +1539,82 @@ const Header: React.FC<HeaderProps> = ({
   ];
 
   // Helper function to get dashboard path based on permissions
+  // Note: This is primarily for display/reference. For actual navigation, use handleLogoClick.
   const getDashboardPath = useCallback(() => {
+    // If we have a cached path, use it (prevents incorrect navigation during loading)
+    if (cachedDashboardPath) {
+      return cachedDashboardPath;
+    }
+    
     // Super Admin always has dashboard access
     if (isSuperAdmin) {
       return '/dashboard';
     }
     
-    if (!user?.id || !user?.school_id || !permissionsLoaded) {
-      return '/user'; // Default to UserDashboard while loading
+    // If permissions are loaded, check them
+    if (permissionsLoaded) {
+      if (userPermissions.has('dashboard')) {
+        return '/dashboard';
+      }
+      return '/user';
     }
     
-    // Check dashboard permission using role_id from roles table
-    if (userPermissions.has('dashboard')) {
-      return '/dashboard';
+    // While permissions are loading, return null to indicate we need async check
+    // This prevents incorrect navigation during the loading phase
+    return null;
+  }, [permissionsLoaded, userPermissions, isSuperAdmin, cachedDashboardPath]);
+  
+  // Async handler for logo click that checks permissions if needed
+  const handleLogoClick = useCallback(async () => {
+    if (isRestrictedRole) {
+      navigate('/home');
+      return;
     }
     
-    // Default to UserDashboard if no dashboard permission
-    return '/user';
-  }, [user?.id, user?.school_id, permissionsLoaded, userPermissions, isSuperAdmin]);
+    // If permissions are loaded, use the cached path
+    if (permissionsLoaded && cachedDashboardPath) {
+      navigate(cachedDashboardPath);
+      return;
+    }
+    
+    // If permissions aren't loaded yet, check them asynchronously
+    if (!permissionsLoaded && user?.id && user?.school_id) {
+      try {
+        // Check if Super Admin
+        if (!user.school_id) {
+          const { data: superAdminData } = await supabase
+            .from('super_admins')
+            .select('id')
+            .eq('username', user.username)
+            .maybeSingle();
+          
+          if (superAdminData) {
+            navigate('/dashboard');
+            return;
+          }
+        }
+        
+        // Check dashboard permission
+        const { hasPermission } = await import('../../../../services/permissionService');
+        const hasDashboardPerm = await hasPermission(user.id, 'dashboard', user.school_id);
+        navigate(hasDashboardPerm ? '/dashboard' : '/user');
+      } catch (error) {
+        console.error('Error checking permission for logo click:', error);
+        // On error, stay on current page or go to user dashboard
+        if (location.pathname !== '/dashboard' && location.pathname !== '/user') {
+          navigate('/user');
+        }
+      }
+      return;
+    }
+    
+    // Fallback: use current pathname if no user info
+    if (!user?.id || !user?.school_id) {
+      if (location.pathname !== '/user') {
+        navigate('/user');
+      }
+    }
+  }, [isRestrictedRole, permissionsLoaded, cachedDashboardPath, user, navigate, location.pathname]);
 
   const menuItems = [
     {
@@ -1573,6 +1659,16 @@ const Header: React.FC<HeaderProps> = ({
         { title: 'Fine Management', items: fineMenuItems }
       ],
       columns: 3
+    },
+    {
+      icon: <AccountBalanceWallet />,
+      path: '/accounts',
+      label: 'Accounts',
+      hasDropdown: true,
+      menuItems: [
+        { title: 'Account Management', items: accountsMenuItems }
+      ],
+      columns: 1
     },
     {
       icon: <AssessmentIcon />,
@@ -1840,13 +1936,7 @@ const Header: React.FC<HeaderProps> = ({
             </HamburgerButton>
           )}
           <AppLogo 
-            onClick={() => {
-              if (isRestrictedRole) {
-                navigate('/home');
-              } else {
-                navigate(getDashboardPath());
-              }
-            }} 
+            onClick={handleLogoClick}
             title={isRestrictedRole ? 'Go to Home' : 'Go to Dashboard'}
           >
           {instituteProfile?.logo_url ? (
@@ -1865,6 +1955,7 @@ const Header: React.FC<HeaderProps> = ({
               if (isStudents) return { open: studentMenuOpen, setOpen: setStudentMenuOpen, ref: studentMenuRef, buttonRef: studentButtonRef, dropdownRef: studentDropdownRef };
               if (isEmployees) return { open: employeeMenuOpen, setOpen: setEmployeeMenuOpen, ref: employeeMenuRef, buttonRef: employeeButtonRef, dropdownRef: employeeDropdownRef };
               if (item.label === 'Finance') return { open: financeMenuOpen, setOpen: setFinanceMenuOpen, ref: financeMenuRef, buttonRef: financeButtonRef, dropdownRef: financeDropdownRef };
+              if (item.label === 'Accounts') return { open: accountsMenuOpen, setOpen: setAccountsMenuOpen, ref: accountsMenuRef, buttonRef: accountsButtonRef, dropdownRef: accountsDropdownRef };
               if (item.label === 'Communication') return { open: communicationMenuOpen, setOpen: setCommunicationMenuOpen, ref: communicationMenuRef, buttonRef: communicationButtonRef, dropdownRef: communicationDropdownRef };
               if (item.label === 'Academics') return { open: academicsMenuOpen, setOpen: setAcademicsMenuOpen, ref: academicsMenuRef, buttonRef: academicsButtonRef, dropdownRef: academicsDropdownRef };
               if (item.label === 'Settings') return { open: settingsMenuOpen, setOpen: setSettingsMenuOpen, ref: settingsMenuRef, buttonRef: settingsButtonRef, dropdownRef: settingsDropdownRef };
@@ -1883,6 +1974,7 @@ const Header: React.FC<HeaderProps> = ({
                     if (!isStudents && studentMenuOpen) setStudentMenuOpen(false);
                     if (!isEmployees && employeeMenuOpen) setEmployeeMenuOpen(false);
                     if (item.label !== 'Finance' && financeMenuOpen) setFinanceMenuOpen(false);
+                    if (item.label !== 'Accounts' && accountsMenuOpen) setAccountsMenuOpen(false);
                     if (item.label !== 'Communication' && communicationMenuOpen) setCommunicationMenuOpen(false);
                     if (item.label !== 'Academics' && academicsMenuOpen) setAcademicsMenuOpen(false);
                     if (item.label !== 'Settings' && settingsMenuOpen) setSettingsMenuOpen(false);

@@ -20,7 +20,13 @@ import {
   Print,
   Visibility,
   VisibilityOff,
+  Description,
+  AccountCircle,
+  Info as InfoIcon,
 } from '@mui/icons-material';
+import * as Icons from '@mui/icons-material';
+import { FormControl, InputLabel, Select, MenuItem, Box, TextField, SelectChangeEvent, Dialog, DialogContent, DialogActions, Typography, Grid, IconButton, Button } from '@mui/material';
+import { supabase } from '../supabaseClient';
 import { expenseService } from '../services/expenseService';
 import { Expense, ExpenseCategory, ExpenseFilters } from '../types/expense';
 import { useAuth } from '../contexts/AuthContext';
@@ -103,7 +109,7 @@ const ActionButtons = styled.div`
   align-items: center;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+const StyledButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -285,7 +291,7 @@ const ActionCell = styled(TableCell)`
   align-items: center;
 `;
 
-const IconButton = styled.button`
+const StyledIconButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,7 +402,7 @@ const TextArea = styled.textarea`
   }
 `;
 
-const Select = styled.select`
+const StyledSelect = styled.select`
   padding: 10px;
   border-radius: 8px;
   border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
@@ -429,12 +435,17 @@ const EmptyStateText = styled.p`
   margin: 0;
 `;
 
+// Helper function to check if theme is dark
+const isDark = (themeObj: any) => themeObj.BG === '#252525';
+
 const ExpenseManager: React.FC = () => {
   const themeContext = useContext(ThemeContext);
   const theme = themeContext?.theme === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth();
   const { showToast } = useToast();
   const { setLoading } = useLoading();
+  const muiTheme = useTheme();
+  const fullScreen = useMediaQuery(muiTheme.breakpoints.down('sm'));
   
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -453,12 +464,19 @@ const ExpenseManager: React.FC = () => {
     amount: '',
     expenseDate: new Date().toISOString().split('T')[0],
     categoryId: '',
-    paymentMethod: 'cash',
+    paymentMethod: 'Cash',
     referenceNumber: '',
     vendorName: '',
     vendorContact: '',
     status: 'pending',
   });
+  
+  // Payment-related state
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accountTypes, setAccountTypes] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [transactionId, setTransactionId] = useState('');
+  const [chequeNumber, setChequeNumber] = useState('');
   
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
@@ -476,17 +494,73 @@ const ExpenseManager: React.FC = () => {
     }
   }, [user?.school_id, filters, searchQuery]);
 
+  // Helper function to get icon component from account type
+  const getAccountTypeIcon = (iconName: string) => {
+    const IconComponent = (Icons as any)[iconName] || AccountCircle;
+    return React.createElement(IconComponent);
+  };
+
+  // Get account type label
+  const getAccountTypeLabel = (account: any) => {
+    const accountType = accountTypes.find(t => t.name === account.type);
+    return accountType?.display_name || account.type;
+  };
+
+  // Get payment method options (Cash + Cheque + Accounts)
+  const paymentMethodOptions = React.useMemo(() => {
+    const options: Array<{ value: string; label: string; isAccount: boolean; accountId?: number; icon?: React.ReactElement }> = [
+      { value: 'Cash', label: 'Cash', isAccount: false, icon: React.createElement(AttachMoney) },
+      { value: 'Cheque', label: 'Cheque', isAccount: false, icon: React.createElement(Description) }
+    ];
+
+    // Add accounts as payment options
+    accounts.forEach(account => {
+      const accountType = accountTypes.find(t => t.name === account.type);
+      const displayName = accountType?.display_name || account.name;
+      options.push({
+        value: `account_${account.id}`,
+        label: `${displayName} - ${account.name}`,
+        isAccount: true,
+        accountId: account.id,
+        icon: accountType ? getAccountTypeIcon(accountType.icon_name) : undefined
+      });
+    });
+
+    return options;
+  }, [accounts, accountTypes]);
+
   const loadData = async () => {
     if (!user?.school_id) return;
     
     try {
       setLocalLoading(true);
-      const [categoriesData, expensesData] = await Promise.all([
+      const [categoriesData, expensesData, accountsData, accountTypesData] = await Promise.all([
         expenseService.getExpenseCategories(user.school_id),
         expenseService.getExpenses(user.school_id, { ...filters, searchQuery }),
+        supabase.from('accounts').select('*').eq('school_id', user.school_id).eq('is_active', true).order('name'),
+        supabase.from('account_types').select('*').or(`school_id.eq.1,school_id.eq.${user.school_id}`).eq('is_active', true).order('display_name'),
       ]);
       setCategories(categoriesData);
       setExpenses(expensesData);
+      if (accountsData.data) setAccounts(accountsData.data);
+      if (accountTypesData.data) {
+        // Deduplicate account types (prefer system types)
+        const uniqueTypes = new Map();
+        accountTypesData.data.forEach((type: any) => {
+          if (!uniqueTypes.has(type.name) || type.school_id === 1) {
+            uniqueTypes.set(type.name, type);
+          }
+        });
+        // Sort: system types first, then custom, "other" at end
+        const sortedTypes = Array.from(uniqueTypes.values()).sort((a, b) => {
+          if (a.name === 'other' && b.name !== 'other') return 1;
+          if (a.name !== 'other' && b.name === 'other') return -1;
+          if (a.is_system_type && !b.is_system_type) return -1;
+          if (!a.is_system_type && b.is_system_type) return 1;
+          return a.display_name.localeCompare(b.display_name);
+        });
+        setAccountTypes(sortedTypes);
+      }
     } catch (error: any) {
       showToast('Error loading data: ' + (error.message || 'Unknown error'), 'error');
     } finally {
@@ -513,29 +587,44 @@ const ExpenseManager: React.FC = () => {
       amount: '',
       expenseDate: new Date().toISOString().split('T')[0],
       categoryId: categories[0]?.id.toString() || '',
-      paymentMethod: 'cash',
+      paymentMethod: 'Cash',
       referenceNumber: '',
       vendorName: '',
       vendorContact: '',
       status: 'pending',
     });
+    setSelectedAccountId(null);
+    setTransactionId('');
+    setChequeNumber('');
     setIsModalOpen(true);
   };
 
   const handleEditExpense = (expense: Expense) => {
     setEditingExpense(expense);
+    // Determine payment method display value
+    let paymentMethodValue = expense.paymentMethod;
+    if (expense.paymentMethod === 'account' && expense.accountId) {
+      paymentMethodValue = `account_${expense.accountId}`;
+    } else if (expense.paymentMethod === 'cash') {
+      paymentMethodValue = 'Cash';
+    } else if (expense.paymentMethod === 'cheque') {
+      paymentMethodValue = 'Cheque';
+    }
     setFormData({
       title: expense.title,
       description: expense.description || '',
       amount: expense.amount.toString(),
       expenseDate: expense.expenseDate,
       categoryId: expense.categoryId.toString(),
-      paymentMethod: expense.paymentMethod,
+      paymentMethod: paymentMethodValue,
       referenceNumber: expense.referenceNumber || '',
       vendorName: expense.vendorName || '',
       vendorContact: expense.vendorContact || '',
       status: expense.status,
     });
+    setSelectedAccountId(expense.accountId || null);
+    setTransactionId(expense.transactionId || '');
+    setChequeNumber(expense.chequeNumber || '');
     setIsModalOpen(true);
   };
 
@@ -565,6 +654,20 @@ const ExpenseManager: React.FC = () => {
     
     try {
       setLoading(true);
+      // Determine payment method and account ID
+      let paymentMethod = formData.paymentMethod;
+      let accountId: number | undefined = undefined;
+      
+      if (formData.paymentMethod.startsWith('account_')) {
+        accountId = parseInt(formData.paymentMethod.replace('account_', ''));
+        // Store 'account' as payment method for database constraint
+        paymentMethod = 'account';
+      } else if (formData.paymentMethod === 'Cash') {
+        paymentMethod = 'cash';
+      } else if (formData.paymentMethod === 'Cheque') {
+        paymentMethod = 'cheque';
+      }
+      
       const expenseData = {
         schoolId: user.school_id,
         categoryId: parseInt(formData.categoryId),
@@ -572,12 +675,15 @@ const ExpenseManager: React.FC = () => {
         description: formData.description || undefined,
         amount: parseFloat(formData.amount),
         expenseDate: formData.expenseDate,
-        paymentMethod: formData.paymentMethod as any,
+        paymentMethod: paymentMethod as any,
         referenceNumber: formData.referenceNumber || undefined,
         vendorName: formData.vendorName || undefined,
         vendorContact: formData.vendorContact || undefined,
         status: formData.status as any,
         createdBy: user.id,
+        accountId: accountId,
+        transactionId: transactionId && transactionId.trim() ? transactionId.trim() : undefined,
+        chequeNumber: chequeNumber && chequeNumber.trim() ? chequeNumber.trim() : undefined,
       };
       
       if (editingExpense) {
@@ -679,19 +785,37 @@ const ExpenseManager: React.FC = () => {
     const doc = new jsPDF();
     doc.text('Expense Report', 14, 20);
     
-    const tableData = expenses.map(exp => [
-      format(new Date(exp.expenseDate), 'MMM dd, yyyy'),
-      exp.title,
-      exp.category?.name || 'N/A',
-      exp.paymentMethod,
-      `Rs. ${exp.amount.toFixed(2)}`,
-      exp.status,
-    ]);
+    const tableData = expenses.map(exp => {
+      // Format payment method with transaction ID or cheque number
+      let paymentMethodDisplay = exp.paymentMethod.replace('_', ' ').toUpperCase();
+      
+      if (exp.paymentMethod === 'account' && exp.account) {
+        paymentMethodDisplay = exp.account.name;
+        if (exp.transactionId) {
+          paymentMethodDisplay += `\nTrx ID: ${exp.transactionId}`;
+        }
+      } else if (exp.paymentMethod === 'cheque' && exp.chequeNumber) {
+        paymentMethodDisplay = `Cheque\nCheque #: ${exp.chequeNumber}`;
+      }
+      
+      return [
+        format(new Date(exp.expenseDate), 'MMM dd, yyyy'),
+        exp.title,
+        exp.category?.name || 'N/A',
+        paymentMethodDisplay,
+        `Rs. ${exp.amount.toFixed(2)}`,
+        exp.status,
+      ];
+    });
     
     autoTable(doc, {
       head: [['Date', 'Title', 'Category', 'Payment Method', 'Amount', 'Status']],
       body: tableData,
       startY: 30,
+      styles: { fontSize: 9 },
+      columnStyles: {
+        3: { cellWidth: 40 } // Payment Method column wider to accommodate multi-line text
+      }
     });
     
     doc.save(`expenses-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
@@ -730,18 +854,18 @@ const ExpenseManager: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </SearchBar>
-            <Button variant="secondary" onClick={handleManageCategories}>
+            <StyledButton variant="secondary" onClick={handleManageCategories}>
               <CategoryIcon style={{ fontSize: '16px' }} />
               Categories
-            </Button>
-            <Button variant="secondary" onClick={handleExportPDF}>
+            </StyledButton>
+            <StyledButton variant="secondary" onClick={handleExportPDF}>
               <Download style={{ fontSize: '16px' }} />
               Export
-            </Button>
-            <Button variant="primary" onClick={handleAddExpense}>
+            </StyledButton>
+            <StyledButton variant="primary" onClick={handleAddExpense}>
               <AddIcon style={{ fontSize: '16px' }} />
               Add Expense
-            </Button>
+            </StyledButton>
           </ActionButtons>
         </Header>
 
@@ -828,7 +952,29 @@ const ExpenseManager: React.FC = () => {
                         </CategoryBadge>
                       )}
                     </TableCell>
-                    <TableCell>{expense.paymentMethod.replace('_', ' ').toUpperCase()}</TableCell>
+                    <TableCell>
+                      {expense.paymentMethod === 'account' && expense.account
+                        ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <div>{expense.account.name}</div>
+                              {expense.transactionId && (
+                                <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
+                                  Trx ID: {expense.transactionId}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        : expense.paymentMethod === 'cheque' && expense.chequeNumber
+                        ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <div>Cheque</div>
+                              <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
+                                Cheque #: {expense.chequeNumber}
+                              </div>
+                            </div>
+                          )
+                        : expense.paymentMethod.replace('_', ' ').toUpperCase()}
+                    </TableCell>
                     <AmountCell>Rs. {expense.amount.toFixed(2)}</AmountCell>
                     <TableCell>
                       <StatusBadge status={expense.status}>
@@ -837,12 +983,12 @@ const ExpenseManager: React.FC = () => {
                       </StatusBadge>
                     </TableCell>
                     <ActionCell>
-                      <IconButton onClick={() => handleEditExpense(expense)} title="Edit">
+                      <StyledIconButton onClick={() => handleEditExpense(expense)} title="Edit">
                         <EditIcon style={{ fontSize: '16px' }} />
-                      </IconButton>
-                      <IconButton onClick={() => handleDeleteExpense(expense.id)} title="Delete">
+                      </StyledIconButton>
+                      <StyledIconButton onClick={() => handleDeleteExpense(expense.id)} title="Delete">
                         <DeleteIcon style={{ fontSize: '16px' }} />
-                      </IconButton>
+                      </StyledIconButton>
                     </ActionCell>
                   </TableRow>
                 ))}
@@ -852,133 +998,397 @@ const ExpenseManager: React.FC = () => {
         </ContentArea>
 
         {/* Expense Modal */}
-        <ModalOverlay open={isModalOpen} onClick={() => setIsModalOpen(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</ModalTitle>
-              <IconButton onClick={() => setIsModalOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </ModalHeader>
-            <ModalBody>
-              <FormGroup>
-                <Label>Title *</Label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Enter expense title"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Description</Label>
-                <TextArea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Enter expense description"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Category *</Label>
-                <Select
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                >
-                  <option value="">Select category</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </Select>
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Amount *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  placeholder="0.00"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Expense Date *</Label>
-                <Input
-                  type="date"
-                  value={formData.expenseDate}
-                  onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Payment Method *</Label>
-                <Select
-                  value={formData.paymentMethod}
-                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                >
-                  <option value="cash">Cash</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="card">Card</option>
-                  <option value="online">Online</option>
-                  <option value="other">Other</option>
-                </Select>
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Reference Number</Label>
-                <Input
-                  value={formData.referenceNumber}
-                  onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                  placeholder="Cheque number, transaction ID, etc."
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Vendor Name</Label>
-                <Input
-                  value={formData.vendorName}
-                  onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
-                  placeholder="Supplier/vendor name"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Vendor Contact</Label>
-                <Input
-                  value={formData.vendorContact}
-                  onChange={(e) => setFormData({ ...formData, vendorContact: e.target.value })}
-                  placeholder="Vendor contact information"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="paid">Paid</option>
-                </Select>
-              </FormGroup>
-              
-              <ActionButtons style={{ marginTop: '8px' }}>
-                <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleSaveExpense}>
-                  {editingExpense ? 'Update' : 'Create'} Expense
-                </Button>
-              </ActionButtons>
-            </ModalBody>
-          </ModalContent>
-        </ModalOverlay>
+        <Dialog
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          fullScreen={fullScreen}
+          maxWidth="sm"
+          slotProps={{
+            backdrop: {
+              sx: {
+                position: 'fixed',
+                zIndex: 1300,
+                backgroundColor: isDark(theme) ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)'
+              }
+            }
+          }}
+          PaperProps={{
+            sx: {
+              borderRadius: '16px',
+              background: theme.CARD,
+              maxWidth: '600px',
+              width: '95%',
+              margin: '84px 16px 16px',
+              overflow: 'hidden',
+              boxShadow: isDark(theme)
+                ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
+                : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)',
+              border: isDark(theme)
+                ? '1px solid rgba(255, 255, 255, 0.05)'
+                : '1px solid rgba(0, 0, 0, 0.05)',
+              maxHeight: {
+                xs: 'calc(100% - 96px)',
+                sm: 'calc(100% - 100px)'
+              },
+              position: 'relative',
+              zIndex: 1301,
+              isolation: 'isolate'
+            }
+          }}
+        >
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '20px 24px',
+            borderBottom: `1px solid ${isDark(theme) ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+            background: isDark(theme)
+              ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+              : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <Typography sx={{
+              fontSize: '1.5rem',
+              fontWeight: 600,
+              color: theme.ACCENT,
+              textShadow: isDark(theme) ? '0 2px 4px rgba(0, 0, 0, 0.5)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              {editingExpense ? <EditIcon /> : <AddIcon />}
+              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+            </Typography>
+            <IconButton onClick={() => setIsModalOpen(false)} size="small">
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          <DialogContent sx={{
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            maxHeight: 'calc(100vh - 180px)',
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
+            scrollbarColor: isDark(theme) ? 'rgba(255, 255, 255, 0.2) transparent' : 'rgba(0, 0, 0, 0.2) transparent',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              backgroundColor: 'transparent'
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'transparent',
+              borderRadius: '4px',
+              margin: '4px'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: isDark(theme) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '4px',
+              border: `2px solid ${theme.CARD}`,
+              '&:hover': {
+                backgroundColor: isDark(theme) ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'
+              }
+            },
+            background: isDark(theme)
+              ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
+              : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)',
+            '& .MuiFormControl-root': {
+              transition: 'background-color 0.2s ease',
+            },
+            '& .MuiInputBase-root': {
+              background: isDark(theme) ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.8)',
+              borderRadius: '8px',
+              border: isDark(theme) ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)',
+              transition: 'background-color 0.2s ease',
+              '&:hover, &.Mui-focused': {
+                background: isDark(theme) ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
+              },
+              '& .MuiSelect-select, & .MuiInputBase-input': {
+                padding: '12px 14px',
+                fontSize: '0.95rem',
+                '&::placeholder': {
+                  color: isDark(theme) ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+                  opacity: 1
+                }
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                border: 'none'
+              }
+            }
+          }}>
+            <form id="expense-form" onSubmit={(e) => { e.preventDefault(); handleSaveExpense(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Title *"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    placeholder="Enter expense title"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Enter expense description"
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      value={formData.categoryId}
+                      label="Category"
+                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                      required
+                    >
+                      {categories.map(cat => (
+                        <MenuItem key={cat.id} value={cat.id.toString()}>{cat.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Amount"
+                    type="number"
+                    inputProps={{ step: 0.01, min: 0 }}
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    required
+                    placeholder="0.00"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Expense Date"
+                    type="date"
+                    value={formData.expenseDate}
+                    onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
+                    required
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={formData.status}
+                      label="Status"
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    >
+                      <MenuItem value="pending">Pending</MenuItem>
+                      <MenuItem value="approved">Approved</MenuItem>
+                      <MenuItem value="rejected">Rejected</MenuItem>
+                      <MenuItem value="paid">Paid</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Payment Method</InputLabel>
+                    <Select
+                      value={formData.paymentMethod}
+                      label="Payment Method"
+                      onChange={(e: SelectChangeEvent<string>) => {
+                        const value = e.target.value;
+                        setFormData({ ...formData, paymentMethod: value });
+                        // Extract account ID if it's an account payment
+                        if (value.startsWith('account_')) {
+                          const accountId = parseInt(value.replace('account_', ''));
+                          setSelectedAccountId(accountId);
+                        } else {
+                          setSelectedAccountId(null);
+                          setTransactionId(''); // Clear transaction ID when not using account
+                        }
+                        // Clear cheque number if not cheque
+                        if (value !== 'Cheque') {
+                          setChequeNumber('');
+                        }
+                      }}
+                      required
+                    >
+                      {paymentMethodOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {option.icon && <Box sx={{ display: 'flex', alignItems: 'center' }}>{option.icon}</Box>}
+                            <span>{option.label}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {selectedAccountId && (
+                  <>
+                    <Grid item xs={12}>
+                      <Box sx={{ 
+                        padding: '0.75rem', 
+                        background: theme.CARD, 
+                        borderRadius: '8px',
+                        border: `1px solid ${theme.BORDER}`,
+                        fontSize: '0.85rem'
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: '0.5rem' }}>
+                          <InfoIcon sx={{ fontSize: '1rem', color: theme.ACCENT }} />
+                          <strong>Selected Account Details:</strong>
+                        </Box>
+                        {(() => {
+                          const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+                          if (!selectedAccount) return null;
+                          const accountType = accountTypes.find(t => t.name === selectedAccount.type);
+                          return (
+                            <Box sx={{ paddingLeft: '1.5rem', color: theme.TEXT_SECONDARY }}>
+                              <div><strong>Name:</strong> {selectedAccount.name}</div>
+                              <div><strong>Type:</strong> {accountType?.display_name || selectedAccount.type}</div>
+                              {selectedAccount.type === 'bank' && (
+                                <>
+                                  {selectedAccount.bank_name && <div><strong>Bank:</strong> {selectedAccount.bank_name}</div>}
+                                  {selectedAccount.account_number && <div><strong>Account:</strong> {selectedAccount.account_number}</div>}
+                                  {selectedAccount.iban && <div><strong>IBAN:</strong> {selectedAccount.iban}</div>}
+                                </>
+                              )}
+                              {(selectedAccount.type === 'easypaisa' || selectedAccount.type === 'jazzcash') && (
+                                <>
+                                  {selectedAccount.wallet_number && <div><strong>Wallet:</strong> {selectedAccount.wallet_number}</div>}
+                                </>
+                              )}
+                              {selectedAccount.type === 'raast_id' && (
+                                <>
+                                  {selectedAccount.raast_id && <div><strong>Raast ID:</strong> {selectedAccount.raast_id}</div>}
+                                </>
+                              )}
+                              {selectedAccount.type !== 'bank' && selectedAccount.type !== 'easypaisa' && selectedAccount.type !== 'jazzcash' && selectedAccount.type !== 'raast_id' && (
+                                <>
+                                  {selectedAccount.account_number && <div><strong>Account:</strong> {selectedAccount.account_number}</div>}
+                                  {selectedAccount.mobile_number && <div><strong>Mobile:</strong> {selectedAccount.mobile_number}</div>}
+                                </>
+                              )}
+                            </Box>
+                          );
+                        })()}
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Transaction ID"
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value)}
+                        placeholder="Enter transaction ID (optional)"
+                      />
+                    </Grid>
+                  </>
+                )}
+
+                {formData.paymentMethod === 'Cheque' && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Cheque Number *"
+                      value={chequeNumber}
+                      onChange={(e) => setChequeNumber(e.target.value)}
+                      placeholder="Enter cheque number"
+                      required
+                    />
+                  </Grid>
+                )}
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Reference Number"
+                    value={formData.referenceNumber}
+                    onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
+                    placeholder="Additional reference (optional)"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Vendor Name"
+                    value={formData.vendorName}
+                    onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
+                    placeholder="Supplier/vendor name"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Vendor Contact"
+                    value={formData.vendorContact}
+                    onChange={(e) => setFormData({ ...formData, vendorContact: e.target.value })}
+                    placeholder="Vendor contact information"
+                  />
+                </Grid>
+              </Grid>
+            </form>
+          </DialogContent>
+
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            padding: '16px 24px',
+            borderTop: `1px solid ${isDark(theme) ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+            background: isDark(theme)
+              ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
+              : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+            '& .MuiButton-root': {
+              borderRadius: '8px',
+              textTransform: 'none',
+              padding: '8px 20px',
+              fontWeight: 500,
+              transition: 'background-color 0.2s ease'
+            }
+          }}>
+            <Button
+              variant="outlined"
+              onClick={() => setIsModalOpen(false)}
+              sx={{ minWidth: '100px' }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              form="expense-form"
+              sx={{ minWidth: '100px' }}
+            >
+              {editingExpense ? 'Update' : 'Create'} Expense
+            </Button>
+          </Box>
+        </Dialog>
 
         {/* Category Management Modal */}
         <ModalOverlay open={isCategoryModalOpen} onClick={() => setIsCategoryModalOpen(false)}>
@@ -986,13 +1396,13 @@ const ExpenseManager: React.FC = () => {
             <ModalHeader>
               <ModalTitle>Manage Categories</ModalTitle>
               <ActionButtons>
-                <Button variant="primary" onClick={handleAddCategory} style={{ fontSize: '0.75rem', padding: '4px 8px' }}>
+                <StyledButton variant="primary" onClick={handleAddCategory} style={{ fontSize: '0.75rem', padding: '4px 8px' }}>
                   <AddIcon style={{ fontSize: '14px' }} />
                   Add
-                </Button>
-                <IconButton onClick={() => setIsCategoryModalOpen(false)}>
+                </StyledButton>
+                <StyledIconButton onClick={() => setIsCategoryModalOpen(false)}>
                   <CloseIcon />
-                </IconButton>
+                </StyledIconButton>
               </ActionButtons>
             </ModalHeader>
             <ModalBody>
@@ -1021,15 +1431,16 @@ const ExpenseManager: React.FC = () => {
                     />
                   </FormGroup>
                   <ActionButtons>
-                    <Button variant="secondary" onClick={() => {
+                    <StyledButton variant="secondary" onClick={() => {
                       setEditingCategory(null);
                       setIsAddingCategory(false);
                     }}>
                       Cancel
-                    </Button>
-                    <Button variant="primary" onClick={handleSaveCategory}>
+                    </StyledButton>
+
+                    <StyledButton variant="primary" onClick={handleSaveCategory}>
                       Save
-                    </Button>
+                    </StyledButton>
                   </ActionButtons>
                 </>
               ) : (
@@ -1058,12 +1469,12 @@ const ExpenseManager: React.FC = () => {
                         <span style={{ fontWeight: 600 }}>{cat.name}</span>
                       </div>
                       <ActionButtons>
-                        <IconButton onClick={() => handleEditCategory(cat)}>
+                        <StyledIconButton onClick={() => handleEditCategory(cat)}>
                           <EditIcon style={{ fontSize: '16px' }} />
-                        </IconButton>
-                        <IconButton onClick={() => handleDeleteCategory(cat.id)}>
+                        </StyledIconButton>
+                        <StyledIconButton onClick={() => handleDeleteCategory(cat.id)}>
                           <DeleteIcon style={{ fontSize: '16px' }} />
-                        </IconButton>
+                        </StyledIconButton>
                       </ActionButtons>
                     </div>
                   ))}

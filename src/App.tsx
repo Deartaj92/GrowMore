@@ -74,6 +74,8 @@ import ConcessionsPage from './pages/ConcessionsPage';
 import FeeSettings from './pages/FeeSettings';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import LedgerPage from './pages/LedgerPage';
+import SetupAccountsPage from './pages/SetupAccountsPage';
+import BalanceSheetPage from './pages/BalanceSheetPage';
 // Enquiry Management Components
 import EnquiryManagementDashboardPage from './pages/EnquiryManagementDashboardPage';
 import EnquiryDashboardPage from './pages/EnquiryDashboardPage';
@@ -735,6 +737,24 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="fee-ledger">
                                 <LedgerPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="setup-accounts"
+                            element={
+                              <ProtectedRoute requiredPermission="setup-accounts">
+                                <SetupAccountsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="balance-sheet"
+                            element={
+                              <ProtectedRoute requiredPermission="setup-accounts">
+                                <BalanceSheetPage />
                               </ProtectedRoute>
                             }
                           />

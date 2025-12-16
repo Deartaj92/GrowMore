@@ -1231,97 +1231,97 @@ const Events: React.FC = () => {
         {/* Events Tab Content */}
         {activeTab === 0 && (
           <>
-            {eventsLoading ? (
-              <Loader />
-            ) : events.length === 0 ? (
-              <ContentCard $theme={theme}>
-                <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={4}>
-                  <EventIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary" gutterBottom>
-                    No events created yet
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Create your first event to get started
-                  </Typography>
-                  <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddEvent}>
-                    Create Event
-                  </Button>
-                </Box>
-              </ContentCard>
-            ) : (
-              <Grid container spacing={2}>
-                {events.map((event) => (
-                  <Grid item xs={12} sm={6} md={4} key={event.id}>
-                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
-                          <Typography variant="h6" component="h3" gutterBottom>
-                            {event.title}
-                          </Typography>
-                          <Box display="flex" gap={0.5}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEditEvent(event)}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteEvent(event.id!)}
-                              color="error"
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          {event.description}
-                        </Typography>
-                        <Box mt={2}>
-                          <Typography variant="caption" display="block" color="text.secondary">
-                            <CalendarIcon sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
-                            {new Date(event.start_date).toLocaleDateString()}
-                            {event.start_date !== event.end_date && ` - ${new Date(event.end_date).toLocaleDateString()}`}
-                          </Typography>
-                          {!event.is_all_day && event.start_time && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              {event.start_time} {event.end_time && `- ${event.end_time}`}
-                            </Typography>
-                          )}
-                          {event.location && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              📍 {event.location}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Box mt={2}>
-                          <Typography variant="caption" display="block" color="text.secondary" gutterBottom>
-                            Visible to:
-                          </Typography>
-                          <Box display="flex" flexWrap="wrap" gap={0.5}>
-                            {event.visible_to?.map((role) => (
-                              <Chip
-                                key={role}
-                                label={role}
-                                size="small"
-                                variant="outlined"
-                              />
-                            ))}
-                          </Box>
-                        </Box>
-                      </CardContent>
-                      <CardActions>
-                        <Chip
-                          label={event.event_type}
+        {eventsLoading ? (
+          <Loader />
+        ) : events.length === 0 ? (
+          <ContentCard $theme={theme}>
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={4}>
+              <EventIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No events created yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Create your first event to get started
+              </Typography>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddEvent}>
+                Create Event
+              </Button>
+            </Box>
+          </ContentCard>
+        ) : (
+          <Grid container spacing={2}>
+            {events.map((event) => (
+              <Grid item xs={12} sm={6} md={4} key={event.id}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
+                      <Typography variant="h6" component="h3" gutterBottom>
+                        {event.title}
+                      </Typography>
+                      <Box display="flex" gap={0.5}>
+                        <IconButton
                           size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
+                          onClick={() => handleEditEvent(event)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteEvent(event.id!)}
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      {event.description}
+                    </Typography>
+                    <Box mt={2}>
+                      <Typography variant="caption" display="block" color="text.secondary">
+                        <CalendarIcon sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
+                        {new Date(event.start_date).toLocaleDateString()}
+                        {event.start_date !== event.end_date && ` - ${new Date(event.end_date).toLocaleDateString()}`}
+                      </Typography>
+                      {!event.is_all_day && event.start_time && (
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          {event.start_time} {event.end_time && `- ${event.end_time}`}
+                        </Typography>
+                      )}
+                      {event.location && (
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          📍 {event.location}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box mt={2}>
+                      <Typography variant="caption" display="block" color="text.secondary" gutterBottom>
+                        Visible to:
+                      </Typography>
+                      <Box display="flex" flexWrap="wrap" gap={0.5}>
+                        {event.visible_to?.map((role) => (
+                          <Chip
+                            key={role}
+                            label={role}
+                            size="small"
+                            variant="outlined"
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                  <CardActions>
+                    <Chip
+                      label={event.event_type}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  </CardActions>
+                </Card>
               </Grid>
+            ))}
+          </Grid>
             )}
           </>
         )}

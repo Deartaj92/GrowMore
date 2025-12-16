@@ -841,6 +841,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
                     }}
                   />
                   <Area
+                    key="collection-area"
                     type="monotone"
                     dataKey="amount"
                     stroke="#3b82f6"

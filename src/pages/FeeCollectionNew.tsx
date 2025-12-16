@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
-import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Info, School, Class, Receipt, Add as AddIcon, Edit as EditIcon, Delete as DeleteIconMUI, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, School as SchoolIcon, Close as CloseIcon, MoreVert as MoreIcon, Check as CheckIcon, Warning as WarningIcon, Info as InfoIcon, RemoveCircleOutline as UnlinkIcon, Assessment as AssessmentIcon, CalendarToday as CalendarIcon, KeyboardArrowUp as KeyboardArrowUpIcon, Print as PrintIcon } from '@mui/icons-material';
+import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Info, School, Class, Receipt, Add as AddIcon, Edit as EditIcon, Delete as DeleteIconMUI, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, School as SchoolIcon, Close as CloseIcon, MoreVert as MoreIcon, Check as CheckIcon, Warning as WarningIcon, Info as InfoIcon, RemoveCircleOutline as UnlinkIcon, Assessment as AssessmentIcon, CalendarToday as CalendarIcon, KeyboardArrowUp as KeyboardArrowUpIcon, Print as PrintIcon, AccountBalance, AccountBalanceWallet, CreditCard, AttachMoney, Description } from '@mui/icons-material';
+import * as Icons from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useLocation } from 'react-router-dom';
@@ -654,6 +655,9 @@ const FeeCollectionNew: React.FC = () => {
   // Payment-related state
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [transactionId, setTransactionId] = useState('');
+  const [chequeNumber, setChequeNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentRemarks, setPaymentRemarks] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
@@ -662,6 +666,8 @@ const FeeCollectionNew: React.FC = () => {
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [paymentHistoryError, setPaymentHistoryError] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accountTypes, setAccountTypes] = useState<any[]>([]);
 
   // Amount distribution state
   const [distributedAmounts, setDistributedAmounts] = useState<{ [key: string]: number }>({});
@@ -671,6 +677,41 @@ const FeeCollectionNew: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Helper function to get icon component from account type
+  const getAccountTypeIcon = (iconName: string) => {
+    const IconComponent = (Icons as any)[iconName] || AccountCircle;
+    return React.createElement(IconComponent);
+  };
+
+  // Get account type label
+  const getAccountTypeLabel = (account: any) => {
+    const accountType = accountTypes.find(t => t.name === account.type);
+    return accountType?.display_name || account.type;
+  };
+
+  // Get payment method options (Cash + Cheque + Accounts)
+  const paymentMethodOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string; isAccount: boolean; accountId?: number; icon?: React.ReactElement }> = [
+      { value: 'Cash', label: 'Cash', isAccount: false, icon: React.createElement(AttachMoney) },
+      { value: 'Cheque', label: 'Cheque', isAccount: false, icon: React.createElement(Description) }
+    ];
+
+    // Add accounts as payment options
+    accounts.forEach(account => {
+      const accountType = accountTypes.find(t => t.name === account.type);
+      const displayName = accountType?.display_name || account.name;
+      options.push({
+        value: `account_${account.id}`,
+        label: `${displayName} - ${account.name}`,
+        isAccount: true,
+        accountId: account.id,
+        icon: accountType ? getAccountTypeIcon(accountType.icon_name) : undefined
+      });
+    });
+
+    return options;
+  }, [accounts, accountTypes]);
 
   // Refs
   const inputRef = useRef<HTMLInputElement>(null);
@@ -702,12 +743,14 @@ const FeeCollectionNew: React.FC = () => {
       const start = Date.now();
 
       const dataPromise = (async () => {
-        const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: sessionsData }, { data: usersData }] = await Promise.all([
+        const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: sessionsData }, { data: usersData }, { data: accountsData }, { data: accountTypesData }] = await Promise.all([
           supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name').eq('school_id', user.school_id),
           supabase.from('sections').select('id, name').eq('school_id', user.school_id),
           supabase.from('sessions').select('id, name, is_active').eq('school_id', user.school_id).order('is_active', { ascending: false }),
           supabase.from('users').select('id, name, email').eq('school_id', user.school_id),
+          supabase.from('accounts').select('*').eq('school_id', user.school_id).eq('is_active', true).order('name'),
+          supabase.from('account_types').select('*').or(`school_id.eq.1,school_id.eq.${user.school_id}`).eq('is_active', true).order('display_name'),
         ]);
         if (studentsData) setStudents(studentsData);
         if (classesData) setClasses(classesData);
@@ -718,6 +761,8 @@ const FeeCollectionNew: React.FC = () => {
           if (activeSession) setCurrentSession(activeSession);
         }
         if (usersData) setUsers(usersData);
+        if (accountsData) setAccounts(accountsData);
+        if (accountTypesData) setAccountTypes(accountTypesData);
       })();
 
       const timerPromise = new Promise(res => setTimeout(res, minDuration));
@@ -779,6 +824,9 @@ const FeeCollectionNew: React.FC = () => {
     // Reset all form fields to default values
     setPaymentAmount('');
     setPaymentMethod('Cash');
+    setSelectedAccountId(null);
+    setTransactionId('');
+    setChequeNumber('');
     setPaymentDate(new Date().toISOString().slice(0, 10));
     setPaymentRemarks('');
     setDiscountAmount('');
@@ -947,6 +995,8 @@ const FeeCollectionNew: React.FC = () => {
     paymentRemarks: string;
     receivedBy: number;
     feeInvoicesOverride?: any[]; // Optional override for fee invoices (for past payments)
+    transactionId?: string; // Transaction ID when payment is made through account
+    chequeNumber?: string; // Cheque number when payment is made via cheque
   }) => {
     try {
       // Fetch school information
@@ -1353,6 +1403,16 @@ const FeeCollectionNew: React.FC = () => {
                 <div style="margin-bottom: 4px;">
                   <strong>Payment Mode:</strong> ${paymentData.paymentMethod}
                 </div>
+                ${paymentData.transactionId ? `
+                <div style="margin-bottom: 4px;">
+                  <strong>Transaction ID:</strong> ${paymentData.transactionId}
+                </div>
+                ` : ''}
+                ${paymentData.chequeNumber ? `
+                <div style="margin-bottom: 4px;">
+                  <strong>Cheque Number:</strong> ${paymentData.chequeNumber}
+                </div>
+                ` : ''}
                 <div>
                   <strong>Received By:</strong> ${paymentData.receivedBy} - ${getUserName(paymentData.receivedBy)}
                 </div>
@@ -1410,16 +1470,25 @@ const FeeCollectionNew: React.FC = () => {
   // Generate invoice for a payment from history
   const generateInvoiceForPayment = async (payment: any) => {
     try {
+      // Get account name for display
+      let paymentMethodDisplay = payment.payment_mode || 'Cash';
+      if (payment.account_id && payment.accounts) {
+        const accountType = accountTypes.find(t => t.name === payment.accounts.type);
+        paymentMethodDisplay = `${accountType?.display_name || payment.accounts.type} - ${payment.accounts.name}`;
+      }
+
       // Generate invoice using payment_id - it will fetch from fee_payment_items
       await generateInvoicePDF({
         paymentId: payment.id, // Use payment_id to fetch from fee_payment_items
         amount: Number(payment.amount || 0),
         discount: Number(payment.discount_amount || 0),
         netAmount: Number(payment.net_amount || payment.amount || 0),
-        paymentMethod: payment.payment_mode || 'Cash',
+        paymentMethod: paymentMethodDisplay,
         paymentDate: payment.payment_date || payment.created_at,
         paymentRemarks: payment.remarks || '',
-        receivedBy: payment.received_by || user.id
+        receivedBy: payment.received_by || user.id,
+        transactionId: payment.transaction_id || undefined,
+        chequeNumber: payment.cheque_number || undefined
       });
     } catch (error: any) {
       showToast('Failed to generate invoice: ' + (error.message || 'Unknown error'), 'error');
@@ -1438,6 +1507,8 @@ const FeeCollectionNew: React.FC = () => {
     paymentRemarks: string;
     receivedBy: number;
     feeInvoicesOverride?: any[];
+    transactionId?: string; // Transaction ID when payment is made through account
+    chequeNumber?: string; // Cheque number when payment is made via cheque
   }) => {
     try {
       if (!selectedStudent) {
@@ -1704,6 +1775,18 @@ const FeeCollectionNew: React.FC = () => {
               <span class="info-label">Payment Mode:</span>
               <span>${paymentData.paymentMethod}</span>
             </div>
+            ${paymentData.transactionId ? `
+            <div class="info-line">
+              <span class="info-label">Transaction ID:</span>
+              <span>${paymentData.transactionId}</span>
+            </div>
+            ` : ''}
+            ${paymentData.chequeNumber ? `
+            <div class="info-line">
+              <span class="info-label">Cheque Number:</span>
+              <span>${paymentData.chequeNumber}</span>
+            </div>
+            ` : ''}
             <div class="info-line">
               <span class="info-label">Received By:</span>
               <span>${paymentData.receivedBy} - ${getUserName(paymentData.receivedBy)}</span>
@@ -1749,15 +1832,24 @@ const FeeCollectionNew: React.FC = () => {
   // Generate thermal receipt for a payment from history
   const generateThermalReceiptForPayment = async (payment: any) => {
     try {
+      // Get account name for display
+      let paymentMethodDisplay = payment.payment_mode || 'Cash';
+      if (payment.account_id && payment.accounts) {
+        const accountType = accountTypes.find(t => t.name === payment.accounts.type);
+        paymentMethodDisplay = `${accountType?.display_name || payment.accounts.type} - ${payment.accounts.name}`;
+      }
+
       await generateThermalReceipt({
         paymentId: payment.id,
         amount: Number(payment.amount || 0),
         discount: Number(payment.discount_amount || 0),
         netAmount: Number(payment.net_amount || payment.amount || 0),
-        paymentMethod: payment.payment_mode || 'Cash',
+        paymentMethod: paymentMethodDisplay,
         paymentDate: payment.payment_date || payment.created_at,
         paymentRemarks: payment.remarks || '',
-        receivedBy: payment.received_by || user.id
+        receivedBy: payment.received_by || user.id,
+        transactionId: payment.transaction_id || undefined,
+        chequeNumber: payment.cheque_number || undefined
       });
     } catch (error: any) {
       showToast('Failed to generate thermal receipt: ' + (error.message || 'Unknown error'), 'error');
@@ -1842,6 +1934,15 @@ const FeeCollectionNew: React.FC = () => {
               fee_item_id,
               amount,
               paid_amount
+            ),
+            accounts (
+              id,
+              name,
+              type,
+              bank_name,
+              account_number,
+              mobile_number,
+              wallet_number
             )
           `)
           .eq('fee_invoices.student_id', selectedStudent.id)
@@ -2056,7 +2157,7 @@ const FeeCollectionNew: React.FC = () => {
       const netAmount = amount + discount;
 
       // Create main payment record
-      const paymentRecord = {
+      const paymentRecord: any = {
         invoice_id: feeInvoices[0].id, // Use first invoice for now
         amount: amount,
         payment_mode: paymentMethod,
@@ -2067,6 +2168,21 @@ const FeeCollectionNew: React.FC = () => {
         discount_amount: discount,
         net_amount: netAmount
       };
+
+      // Add account_id if an account is selected (not Cash)
+      if (selectedAccountId && paymentMethod !== 'Cash') {
+        paymentRecord.account_id = selectedAccountId;
+      }
+
+      // Add transaction_id if provided (when account is selected)
+      if (transactionId && transactionId.trim()) {
+        paymentRecord.transaction_id = transactionId.trim();
+      }
+
+      // Add cheque_number if provided (when payment method is Cheque)
+      if (chequeNumber && chequeNumber.trim()) {
+        paymentRecord.cheque_number = chequeNumber.trim();
+      }
 
       // Insert payment and get the ID
       const { data: newPayment, error: paymentError } = await supabase
@@ -2129,7 +2245,7 @@ const FeeCollectionNew: React.FC = () => {
 
             if (invoicesError) throw invoicesError;
 
-            // Refresh payment history with items
+            // Refresh payment history with items and account information
             const { data: paymentData, error: paymentError } = await supabase
               .from('fee_payments')
               .select(`
@@ -2142,6 +2258,15 @@ const FeeCollectionNew: React.FC = () => {
                   fee_item_id,
                   amount,
                   paid_amount
+                ),
+                accounts (
+                  id,
+                  name,
+                  type,
+                  bank_name,
+                  account_number,
+                  mobile_number,
+                  wallet_number
                 )
               `)
               .eq('fee_invoices.student_id', selectedStudent.id)
@@ -2167,16 +2292,28 @@ const FeeCollectionNew: React.FC = () => {
 
         // Generate default print type based on settings
         const defaultPrintType = getDefaultPrintType();
+        // Get account name for display
+        let paymentMethodDisplay = paymentMethod;
+        if (selectedAccountId) {
+          const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+          if (selectedAccount) {
+            const accountType = accountTypes.find(t => t.name === selectedAccount.type);
+            paymentMethodDisplay = `${accountType?.display_name || selectedAccount.type} - ${selectedAccount.name}`;
+          }
+        }
+
         const paymentData = {
           paymentId: paymentId,
           amount: amount,
           discount: discount,
           netAmount: netAmount,
-          paymentMethod: paymentMethod,
+          paymentMethod: paymentMethodDisplay,
           paymentDate: paymentDate,
           paymentRemarks: paymentRemarks,
           receivedBy: user.id,
-          feeInvoicesOverride: freshInvoicesData || undefined
+          feeInvoicesOverride: freshInvoicesData || undefined,
+          transactionId: transactionId && transactionId.trim() ? transactionId.trim() : undefined,
+          chequeNumber: chequeNumber && chequeNumber.trim() ? chequeNumber.trim() : undefined
         };
 
         if (defaultPrintType === 'invoice') {
@@ -2659,15 +2796,108 @@ const FeeCollectionNew: React.FC = () => {
                         <Select
                           value={paymentMethod}
                           label="Payment Method"
-                          onChange={(e: SelectChangeEvent<string>) => setPaymentMethod(e.target.value)}
+                          onChange={(e: SelectChangeEvent<string>) => {
+                            const value = e.target.value;
+                            setPaymentMethod(value);
+                            // Extract account ID if it's an account payment
+                            if (value.startsWith('account_')) {
+                              const accountId = parseInt(value.replace('account_', ''));
+                              setSelectedAccountId(accountId);
+                            } else {
+                              setSelectedAccountId(null);
+                              setTransactionId(''); // Clear transaction ID when not using account
+                            }
+                            // Clear cheque number if not cheque
+                            if (value !== 'Cheque') {
+                              setChequeNumber('');
+                            }
+                          }}
                         >
-                          <MenuItem value="Cash">Cash</MenuItem>
-                          <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
-                          <MenuItem value="Cheque">Cheque</MenuItem>
-                          <MenuItem value="Online">Online</MenuItem>
+                          {paymentMethodOptions.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {option.icon && <Box sx={{ display: 'flex', alignItems: 'center' }}>{option.icon}</Box>}
+                                <span>{option.label}</span>
+                              </Box>
+                            </MenuItem>
+                          ))}
                         </Select>
                       </FormControl>
                     </FormRow>
+
+                    {selectedAccountId && (
+                      <>
+                        <FormRow>
+                          <Box sx={{ 
+                            padding: '0.75rem', 
+                            background: (theme as any).CARD, 
+                            borderRadius: '8px',
+                            border: `1px solid ${(theme as any).BORDER}`,
+                            fontSize: '0.85rem'
+                          }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: '0.5rem' }}>
+                              <InfoIcon sx={{ fontSize: '1rem', color: (theme as any).ACCENT }} />
+                              <strong>Selected Account Details:</strong>
+                            </Box>
+                            {(() => {
+                              const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+                              if (!selectedAccount) return null;
+                              const accountType = accountTypes.find(t => t.name === selectedAccount.type);
+                              return (
+                                <Box sx={{ paddingLeft: '1.5rem', color: (theme as any).TEXT_SECONDARY }}>
+                                  <div><strong>Name:</strong> {selectedAccount.name}</div>
+                                  <div><strong>Type:</strong> {accountType?.display_name || selectedAccount.type}</div>
+                                  {selectedAccount.type === 'bank' && (
+                                    <>
+                                      {selectedAccount.bank_name && <div><strong>Bank:</strong> {selectedAccount.bank_name}</div>}
+                                      {selectedAccount.account_number && <div><strong>Account:</strong> {selectedAccount.account_number}</div>}
+                                      {selectedAccount.iban && <div><strong>IBAN:</strong> {selectedAccount.iban}</div>}
+                                    </>
+                                  )}
+                                  {(selectedAccount.type === 'easypaisa' || selectedAccount.type === 'jazzcash') && (
+                                    <>
+                                      {selectedAccount.wallet_number && <div><strong>Wallet:</strong> {selectedAccount.wallet_number}</div>}
+                                    </>
+                                  )}
+                                  {selectedAccount.type !== 'bank' && selectedAccount.type !== 'easypaisa' && selectedAccount.type !== 'jazzcash' && (
+                                    <>
+                                      {selectedAccount.account_number && <div><strong>Account:</strong> {selectedAccount.account_number}</div>}
+                                      {selectedAccount.mobile_number && <div><strong>Mobile:</strong> {selectedAccount.mobile_number}</div>}
+                                    </>
+                                  )}
+                                </Box>
+                              );
+                            })()}
+                          </Box>
+                        </FormRow>
+                        <FormRow>
+                          <TextField
+                            label="Transaction ID"
+                            value={transactionId}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTransactionId(e.target.value)}
+                            onKeyDown={handleFormKeyDown}
+                            placeholder="Enter transaction ID (optional)"
+                            fullWidth
+                            size="small"
+                          />
+                        </FormRow>
+                      </>
+                    )}
+
+                    {paymentMethod === 'Cheque' && (
+                      <FormRow>
+                        <TextField
+                          label="Cheque Number"
+                          value={chequeNumber}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChequeNumber(e.target.value)}
+                          onKeyDown={handleFormKeyDown}
+                          placeholder="Enter cheque number"
+                          fullWidth
+                          size="small"
+                          required
+                        />
+                      </FormRow>
+                    )}
 
                     <FormRow>
                       <TextField
@@ -2794,7 +3024,28 @@ const FeeCollectionNew: React.FC = () => {
                             <TableCell style={{ fontWeight: '600' }}>
                               Rs. {formatCurrency(Number(payment.net_amount || payment.amount || 0))}
                             </TableCell>
-                            <TableCell>{payment.payment_mode}</TableCell>
+                            <TableCell>
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{payment.payment_mode}</div>
+                                {payment.account_id && payment.accounts && (
+                                  <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY, marginTop: '0.25rem' }}>
+                                    {payment.accounts.name}
+                                    {payment.accounts.type === 'bank' && payment.accounts.bank_name && ` - ${payment.accounts.bank_name}`}
+                                    {(payment.accounts.type === 'easypaisa' || payment.accounts.type === 'jazzcash') && payment.accounts.wallet_number && ` - ${payment.accounts.wallet_number}`}
+                                  </div>
+                                )}
+                                {payment.transaction_id && (
+                                  <div style={{ fontSize: '0.75rem', color: (theme as any).ACCENT, marginTop: '0.25rem' }}>
+                                    <strong>Txn ID:</strong> {payment.transaction_id}
+                                  </div>
+                                )}
+                                {payment.cheque_number && (
+                                  <div style={{ fontSize: '0.75rem', color: (theme as any).ACCENT, marginTop: '0.25rem' }}>
+                                    <strong>Cheque #:</strong> {payment.cheque_number}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               {payment.received_by ? `${payment.received_by} - ${getUserName(payment.received_by)}` : '-'}
                             </TableCell>

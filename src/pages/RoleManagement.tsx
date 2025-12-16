@@ -14,6 +14,8 @@ import {
   Person as PersonIcon,
   Work as WorkIcon,
   WhatsApp as WhatsAppIcon,
+  AccountBalanceWallet,
+  AccountBalance as AccountBalanceIcon,
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
@@ -731,7 +733,9 @@ const RoleManagement: React.FC = () => {
     const standalonePages = [
       '/dashboard',
       '/students/profile/:id',
-      '/profile'
+      '/profile',
+      '/setup-accounts',
+      '/balance-sheet'
     ];
     const standalonePermissionIds = standalonePages
       .map(path => getPermissionIdForPath(path))
@@ -1160,7 +1164,9 @@ const RoleManagement: React.FC = () => {
                         const standalonePages = [
                           { path: '/dashboard' },
                           { path: '/students/profile/:id' },
-                          { path: '/profile' }
+                          { path: '/profile' },
+                          { path: '/setup-accounts' },
+                          { path: '/balance-sheet' }
                         ];
                         const allSelected = standalonePages.every(page => {
                           const permissionId = getPermissionIdForPath(page.path);
@@ -1192,7 +1198,9 @@ const RoleManagement: React.FC = () => {
                         const standalonePages = [
                           { path: '/dashboard' },
                           { path: '/students/profile/:id' },
-                          { path: '/profile' }
+                          { path: '/profile' },
+                          { path: '/setup-accounts' },
+                          { path: '/balance-sheet' }
                         ];
                         const allSelected = standalonePages.every(page => {
                           const permissionId = getPermissionIdForPath(page.path);
@@ -1223,6 +1231,13 @@ const RoleManagement: React.FC = () => {
                       path: '/profile', 
                       color: '#8b5cf6', 
                       icon: React.createElement(WorkIcon) 
+                    },
+                    { 
+                      title: 'Setup Accounts', 
+                      description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
+                      path: '/setup-accounts', 
+                      color: '#3b82f6', 
+                      icon: React.createElement(AccountBalanceWallet) 
                     }
                   ].map((pageItem, itemIdx) => {
                     const isChecked = isMenuItemChecked(pageItem);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Box,
     Button,
@@ -748,83 +748,91 @@ export const Reports = (): JSX.Element => {
         );
     }, [categories, reports]);
 
-    // Set footer content for global footer - only after loading completes
+    // Set footer content for global footer - using interval pattern like Dashboard
     useEffect(() => {
-        // Don't set footer during loading - footer should only show after content loads
+        // Don't set footer during loading
         if (loading) {
             setFooterContent(null);
             return;
         }
 
-        if (reports.length > 0) {
-            const FooterContentComponent = React.memo(() => {
-                const isDark = muiTheme.palette.mode === 'dark';
+        const updateFooter = () => {
+            if (reports.length > 0) {
+                const totalCount = reports.length;
                 const pendingCount = reports.filter(r => r.status === 'pending').length;
                 const inReviewCount = reports.filter(r => r.status === 'in_review').length;
                 const resolvedCount = reports.filter(r => r.status === 'resolved').length;
                 const dismissedCount = reports.filter(r => r.status === 'dismissed').length;
+                const isDark = muiTheme.palette.mode === 'dark';
 
-                return (
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: isMobile ? 'column' : 'row',
-                        alignItems: isMobile ? 'center' : 'center',
-                        justifyContent: isMobile ? 'center' : 'space-between',
-                        width: '100%',
-                        gap: isMobile ? '0.5rem' : '1rem',
-                        flexWrap: isMobile ? 'nowrap' : 'wrap'
-                    }}>
-                        <div style={{
-                            fontSize: isMobile ? '0.75rem' : '0.95rem',
-                            color: isDark ? '#b0b8d1' : '#8a8a8a',
-                            fontWeight: 500
-                        }}>
-                            Showing {reports.length} reports
-                        </div>
+                setFooterContent({
+                    visible: true,
+                    content: (
                         <div style={{
                             display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'center' : 'center',
+                            justifyContent: isMobile ? 'center' : 'space-between',
+                            width: '100%',
                             gap: isMobile ? '0.5rem' : '1rem',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                            justifyContent: isMobile ? 'center' : 'flex-end'
+                            flexWrap: isMobile ? 'nowrap' : 'wrap'
                         }}>
-                            <StatItem color="#ed6c02" theme={muiTheme}>
-                                <Timer style={{ fontSize: 16 }} />
-                                {pendingCount} Pending
-                            </StatItem>
-                            <StatItem color="#2196f3" theme={muiTheme}>
-                                <Search style={{ fontSize: 16 }} />
-                                {inReviewCount} In Review
-                            </StatItem>
-                            {!isMobile && (
-                                <>
-                                    <StatItem color="#2e7d32" theme={muiTheme}>
-                                        <CheckCircle style={{ fontSize: 16 }} />
-                                        {resolvedCount} Resolved
-                                    </StatItem>
-                                    <StatItem color="#757575" theme={muiTheme}>
-                                        <Cancel style={{ fontSize: 16 }} />
-                                        {dismissedCount} Dismissed
-                                    </StatItem>
-                                </>
-                            )}
+                            <div style={{
+                                fontSize: isMobile ? '0.75rem' : '0.95rem',
+                                color: isDark ? '#b0b8d1' : '#8a8a8a',
+                                fontWeight: 500
+                            }}>
+                                Showing {totalCount} reports
+                            </div>
+                            <div style={{
+                                display: 'flex',
+                                gap: isMobile ? '0.5rem' : '1rem',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                justifyContent: isMobile ? 'center' : 'flex-end'
+                            }}>
+                                <StatItem color="#ed6c02" theme={muiTheme}>
+                                    <Timer style={{ fontSize: 16 }} />
+                                    {pendingCount} Pending
+                                </StatItem>
+                                <StatItem color="#2196f3" theme={muiTheme}>
+                                    <Search style={{ fontSize: 16 }} />
+                                    {inReviewCount} In Review
+                                </StatItem>
+                                {!isMobile && (
+                                    <>
+                                        <StatItem color="#2e7d32" theme={muiTheme}>
+                                            <CheckCircle style={{ fontSize: 16 }} />
+                                            {resolvedCount} Resolved
+                                        </StatItem>
+                                        <StatItem color="#757575" theme={muiTheme}>
+                                            <Cancel style={{ fontSize: 16 }} />
+                                            {dismissedCount} Dismissed
+                                        </StatItem>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                );
-            });
-
-            setFooterContent({
-                visible: true,
-                content: <FooterContentComponent />
-            });
-
-            return () => {
+                    )
+                });
+            } else {
                 setFooterContent(null);
-            };
-        } else {
+            }
+        };
+
+        // Update immediately
+        updateFooter();
+
+        // Update periodically (every 2 seconds) to catch data changes
+        // This pattern avoids dependency array issues while staying reactive
+        const interval = setInterval(updateFooter, 2000);
+
+        // Cleanup on unmount
+        return () => {
+            clearInterval(interval);
             setFooterContent(null);
-        }
-    }, [loading, reports, isMobile, muiTheme, setFooterContent]);
+        };
+    }, [loading, setFooterContent]);
 
     // Check if user has school_id - MUST be after all hooks
     if (!user?.school_id) {

@@ -19,7 +19,7 @@ export interface Expense {
   description?: string;
   amount: number;
   expenseDate: string;
-  paymentMethod: 'cash' | 'bank_transfer' | 'cheque' | 'card' | 'online' | 'other';
+  paymentMethod: 'cash' | 'bank_transfer' | 'cheque' | 'card' | 'online' | 'other' | string; // Allow string for account-based payments
   referenceNumber?: string;
   vendorName?: string;
   vendorContact?: string;
@@ -29,8 +29,24 @@ export interface Expense {
   createdBy?: number;
   createdAt?: string;
   updatedAt?: string;
+  // Payment fields (for account-based payments)
+  accountId?: number;
+  transactionId?: string;
+  chequeNumber?: string;
   // Joined data
   category?: ExpenseCategory;
+  account?: {
+    id: number;
+    name: string;
+    type: string;
+    bank_name?: string;
+    account_number?: string;
+    wallet_number?: string;
+    mobile_number?: string;
+    iban?: string;
+    swift_code?: string;
+    raast_id?: string;
+  };
   createdByUser?: {
     id: number;
     name: string;

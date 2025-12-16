@@ -288,6 +288,24 @@ export const payrollMenuItems: MenuItem[] = [
   }
 ];
 
+// Accounts menu items
+export const accountsMenuItems: MenuItem[] = [
+  {
+    title: 'Setup Accounts',
+    description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
+    icon: React.createElement(AccountBalanceWalletIcon),
+    path: '/setup-accounts',
+    color: '#3b82f6'
+  },
+  {
+    title: 'Balance Sheet',
+    description: 'View account balances including income and expenses',
+    icon: React.createElement(AccountBalanceIcon),
+    path: '/balance-sheet',
+    color: '#10b981'
+  }
+];
+
 // Fee menu items - split into two groups
 export const feeMenuItems1: MenuItem[] = [
   {
@@ -711,6 +729,16 @@ export const menuStructure: MainMenuItem[] = [
       { title: 'Payroll Management', items: payrollMenuItems }
     ],
     columns: 4
+  },
+  {
+    icon: React.createElement(AccountBalanceWalletIcon),
+    path: '/accounts',
+    label: 'Accounts',
+    hasDropdown: true,
+    menuItems: [
+      { title: 'Account Management', items: accountsMenuItems }
+    ],
+    columns: 1
   },
   {
     icon: React.createElement(AssessmentIcon),

@@ -11,7 +11,7 @@ import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 
 import Loader from '../components/Loader';
-import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier } from '../utils/studentUtils';
+import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier, getSequenceNumber } from '../utils/studentUtils';
 const Container = styled.div`
   width: 100%;
   max-width: 1400px;
@@ -99,16 +99,29 @@ const SearchBar = styled.div`
   width: 100%;
   margin-bottom: 1.2rem;
   position: relative;
+  transition: border-color 0.15s;
+  
+  &:focus-within {
+    border-color: ${({ theme }) => theme.ACCENT};
+  }
 `;
 
 const SearchInput = styled.input`
-  border: none;
+  border: none !important;
   background: transparent;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 1rem;
-  outline: none;
+  outline: none !important;
   width: 100%;
   margin-left: 10px;
+  box-shadow: none !important;
+  
+  &:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
   &::placeholder {
     color: #7c8597;
   }
@@ -651,6 +664,9 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  overflow-y: auto;
+  padding: 1rem;
+  box-sizing: border-box;
 `;
 
 const ModalDialog = styled.div`
@@ -983,6 +999,9 @@ const FineCollection: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const suggestionItemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const isFocusingAmountRef = useRef(false);
+  const shouldFocusSearchAfterPaymentRef = useRef(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [attendanceRows, setAttendanceRows] = useState<any[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
@@ -1072,11 +1091,13 @@ const FineCollection: React.FC = () => {
       // Start data fetch and timer in parallel
       const dataPromise = (async () => {
         const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
+          supabase.from('students').select('*').eq('status', 'active').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
           supabase.from('sections').select('id, name').eq('school_id', user.school_id),
         ]);
-        if (studentsData) setStudents(studentsData);
+        if (studentsData) {
+          setStudents(studentsData);
+        }
         if (classesData) setClasses(classesData);
         if (sectionsData) setSections(sectionsData);
       })();
@@ -1097,11 +1118,13 @@ const FineCollection: React.FC = () => {
       const start = Date.now();
       setLoading(true);
       const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
-        supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url').eq('status', 'active').eq('school_id', user.school_id),
+        supabase.from('students').select('*').eq('status', 'active').eq('school_id', user.school_id),
         supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
         supabase.from('sections').select('id, name').eq('school_id', user.school_id),
       ]);
-      if (studentsData) setStudents(studentsData);
+      if (studentsData) {
+        setStudents(studentsData);
+      }
       if (classesData) setClasses(classesData);
       if (sectionsData) setSections(sectionsData);
       const elapsed = Date.now() - start;
@@ -1112,12 +1135,21 @@ const FineCollection: React.FC = () => {
       }
     };
     fetchAll();
-    
-    // Auto-focus search input on page load
-    setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
   }, [user?.school_id]);
+
+  // Auto-focus search input on page load (after loading completes)
+  useEffect(() => {
+    if (!loading && students.length > 0 && !selectedStudent) {
+      // Focus search input after page is loaded and no student is selected
+      const focusTimer = setTimeout(() => {
+        if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 100);
+      
+      return () => clearTimeout(focusTimer);
+    }
+  }, [loading, students.length, selectedStudent]);
 
   useEffect(() => {
     // If navigated with a studentId (can be ID or roll_number sequence), auto-select that student after students are loaded
@@ -1143,17 +1175,57 @@ const FineCollection: React.FC = () => {
   }, [students, location.state]);
 
   const handleSelectStudent = (student: any) => {
+    // Blur search input first to release focus (important for Enter key)
+    if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+      searchInputRef.current.blur();
+    }
+    
+    // Update state
     setSearch(student.name);
     setShowSuggestions(false);
     setJustSelectedStudent(true);
     setSearchExactMatch(true);
     setSelectedStudent(student);
-    inputRef.current?.blur();
     
-    // Focus on amount field ONLY when a student is explicitly selected
-    setTimeout(() => {
-      amountInputRef.current?.focus();
-    }, 100);
+    // Check if amount field will be disabled (after state updates complete)
+    // If disabled, focus search field instead; otherwise focus amount field
+    const determineFocus = () => {
+      // Check if amount field is disabled (which happens when remaining fine is 0)
+      if (amountInputRef.current && amountInputRef.current.disabled) {
+        // Field is disabled, focus search field and select its content
+        isFocusingAmountRef.current = false; // Don't try to focus amount
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+        }
+      } else if (amountInputRef.current && !amountInputRef.current.disabled) {
+        // Field is enabled, focus amount field
+        isFocusingAmountRef.current = true;
+        amountInputRef.current.focus();
+        if (amountInputRef.current.value) {
+          amountInputRef.current.select();
+        }
+      }
+    };
+    
+    // Wait for state updates and disabled state to be calculated
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        determineFocus();
+        // Try again after a delay to catch delayed disabled state updates
+        setTimeout(determineFocus, 50);
+        setTimeout(determineFocus, 150);
+        setTimeout(determineFocus, 300);
+        // Final check after all calculations complete
+        setTimeout(() => {
+          determineFocus();
+          // Only clear flag if field is disabled, otherwise keep it for useEffect backup
+          if (amountInputRef.current && amountInputRef.current.disabled) {
+            isFocusingAmountRef.current = false;
+          }
+        }, 400);
+      });
+    });
   };
 
   // Search effect
@@ -1165,14 +1237,22 @@ const FineCollection: React.FC = () => {
       return;
     }
 
-    // If the search exactly matches the selected student's name, don't show suggestions
-    if (searchExactMatch && selectedStudent && search === selectedStudent.name) {
-      setShowSuggestions(false);
-      return;
+    // If the search exactly matches the selected student's name or roll number, don't show suggestions
+    if (searchExactMatch && selectedStudent) {
+      const selectedRollNumber = getStudentDisplayId(selectedStudent);
+      if (search === selectedStudent.name || search === String(selectedRollNumber)) {
+        setShowSuggestions(false);
+        return;
+      }
     }
 
-    // If search doesn't match selected student name anymore, clear the exact match flag
-    if (searchExactMatch && (!selectedStudent || search !== selectedStudent.name)) {
+    // If search doesn't match selected student name or roll number anymore, clear the exact match flag
+    if (searchExactMatch && selectedStudent) {
+      const selectedRollNumber = getStudentDisplayId(selectedStudent);
+      if (search !== selectedStudent.name && search !== String(selectedRollNumber)) {
+        setSearchExactMatch(false);
+      }
+    } else if (searchExactMatch && !selectedStudent) {
       setSearchExactMatch(false);
     }
 
@@ -1182,45 +1262,75 @@ const FineCollection: React.FC = () => {
       setSuggestionsLoading(false);
       return;
     }
+    
+    setSuggestionsLoading(true);
      
     const searchTerm = search.trim();
     const searchLower = searchTerm.toLowerCase();
     
-    // Filter and score students for better sorting
+    // Filter and score students for better sorting - use roll number only (not ID)
+    const isNumericSearch = !isNaN(Number(searchLower));
+    const searchTermNum = isNumericSearch ? parseInt(searchLower) : null;
+    
     const scoredStudents = students
-      .map(student => {
+      .map((student) => {
         const studentNameLower = student.name.toLowerCase();
         let score = 0;
         let matches = false;
+        
+        // Get roll number sequence for search and sorting
+        // roll_number format: "S{school_id}-{sequence}" (e.g., "S1-20")
+        const sequenceNumber = getSequenceNumber(student.roll_number);
+        const sequenceStr = sequenceNumber || '';
+        const rollNumberNum = sequenceNumber ? parseInt(sequenceNumber) : Infinity; // Use Infinity for students without roll number so they sort last
 
-        // Check ID/roll_number search using utility function
-        const idMatch = matchesStudentSearch(student, searchTerm);
-        if (idMatch.matches) {
-          score = idMatch.score;
-          matches = true;
+        // Check roll number search only (not ID)
+        if (isNumericSearch && searchTermNum !== null) {
+          // Numeric search - check roll_number sequence only
+          if (sequenceStr && sequenceStr === searchLower) {
+            score = 1000; // Highest priority for exact roll_number sequence match
+            matches = true;
+          } else if (sequenceStr && sequenceStr.startsWith(searchLower)) {
+            score = 800; // High priority for roll_number sequence starts with
+            matches = true;
+          } else if (sequenceStr && sequenceStr.includes(searchLower)) {
+            score = 600; // Medium priority for roll_number sequence contains
+            matches = true;
+          }
+        } else {
+          // Non-numeric search - check roll_number sequence only
+          if (sequenceStr && sequenceStr.includes(searchLower)) {
+            score = 10;
+            matches = true;
+          }
         }
 
-        // Also check name search
-        if (studentNameLower.startsWith(searchLower)) {
-          score = Math.max(score, 100); // High priority for name starts with
-          matches = true;
-        } else if (studentNameLower.includes(searchLower)) {
-          score = Math.max(score, 50); // Lower priority for name contains
-          matches = true;
+        // Name search (only if roll number didn't match)
+        if (!matches) {
+          if (studentNameLower.startsWith(searchLower)) {
+            score = 100; // High priority for name starts with
+            matches = true;
+          } else if (studentNameLower.includes(searchLower)) {
+            score = 50; // Lower priority for name contains
+            matches = true;
+          }
         }
         
-        return matches ? { student, score } : null;
+        return matches ? { student, score, rollNumberNum } : null;
       })
       .filter(item => item !== null)
       .sort((a, b) => {
+        // First sort by score (higher score first)
         if (b!.score !== a!.score) {
-          return b!.score - a!.score; // Higher score first
+          return b!.score - a!.score;
         }
-        return a!.student.id - b!.student.id; // Then by ID ascending
+        // Then sort by roll number numerically ascending (for same score group)
+        // This ensures "20" comes before "200", "201", etc.
+        return a!.rollNumberNum - b!.rollNumberNum;
       })
       .slice(0, 8)
       .map(item => item!.student);
-    
+
     setSuggestions(scoredStudents);
     setShowSuggestions(scoredStudents.length > 0);
     setActiveSuggestion(0);
@@ -1234,15 +1344,43 @@ const FineCollection: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showSuggestions) return;
     if (e.key === 'ArrowDown') {
-      setActiveSuggestion(prev => Math.min(prev + 1, suggestions.length - 1));
+      e.preventDefault();
+      const newIndex = Math.min(activeSuggestion + 1, suggestions.length - 1);
+      setActiveSuggestion(newIndex);
     } else if (e.key === 'ArrowUp') {
-      setActiveSuggestion(prev => Math.max(prev - 1, 0));
+      e.preventDefault();
+      const newIndex = Math.max(activeSuggestion - 1, 0);
+      setActiveSuggestion(newIndex);
     } else if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
       if (suggestions[activeSuggestion]) {
+        // Call handleSelectStudent directly - it handles blur and focus internally
+        // No need to blur here as handleSelectStudent does it
         handleSelectStudent(suggestions[activeSuggestion]);
       }
     }
   };
+
+  // Scroll active suggestion into view when arrow keys are used
+  useEffect(() => {
+    if (showSuggestions && suggestionItemRefs.current[activeSuggestion]) {
+      suggestionItemRefs.current[activeSuggestion]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [activeSuggestion, showSuggestions]);
+
+  // Scroll active suggestion into view when arrow keys are used
+  useEffect(() => {
+    if (showSuggestions && suggestionItemRefs.current[activeSuggestion]) {
+      suggestionItemRefs.current[activeSuggestion]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [activeSuggestion, showSuggestions]);
 
   // Handling suggestions showing/hiding with onFocus
   const handleSearchFocus = () => {
@@ -1258,10 +1396,13 @@ const FineCollection: React.FC = () => {
     const newValue = e.target.value;
     setSearch(newValue);
     setSuggestionsLoading(true);
-    // If the user modifies the search text and it no longer matches the selected student,
+    // If the user modifies the search text and it no longer matches the selected student's name or roll number,
     // clear the exact match flag to allow suggestions to show again
-    if (searchExactMatch && selectedStudent && newValue !== selectedStudent.name) {
-      setSearchExactMatch(false);
+    if (searchExactMatch && selectedStudent) {
+      const selectedRollNumber = getStudentDisplayId(selectedStudent);
+      if (newValue !== selectedStudent.name && newValue !== String(selectedRollNumber)) {
+        setSearchExactMatch(false);
+      }
     }
   };
 
@@ -1415,15 +1556,63 @@ const FineCollection: React.FC = () => {
     fetchPaymentHistoryData();
   }, [selectedStudent, user?.school_id]);
 
-  // Auto-focus amount field when student is first selected (only when selectedStudent changes, not when remainingFineDisplay changes)
+  // Persistent focus restoration - checks and restores focus if lost during re-renders
+  // Also handles case where amount field is disabled (remaining fine = 0) by focusing search
   useEffect(() => {
-    if (selectedStudent) {
-      // Focus on amount field when a student is selected
-      setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 100);
+    // Don't run if we just collected a payment and want to focus search
+    if (shouldFocusSearchAfterPaymentRef.current) {
+      return;
     }
-  }, [selectedStudent]);
+    
+    if (selectedStudent && amountInputRef.current) {
+      // Check if field is disabled - if so, focus search field instead
+      if (amountInputRef.current.disabled) {
+        // Field is disabled (remaining fine is 0), ensure search field has focus
+        isFocusingAmountRef.current = false; // Clear flag since we're focusing search
+        if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+        }
+        return;
+      }
+      
+      // Field is enabled - ensure we're trying to focus it
+      // Set flag to true if it's not already set (in case it was cleared by previous disabled student)
+      if (!isFocusingAmountRef.current) {
+        isFocusingAmountRef.current = true;
+      }
+      
+      // Check and restore focus if needed
+      const checkAndRestoreFocus = () => {
+        // Don't restore focus if we should be focusing search after payment
+        if (shouldFocusSearchAfterPaymentRef.current) {
+          return;
+        }
+        if (amountInputRef.current && 
+            !amountInputRef.current.disabled &&
+            isFocusingAmountRef.current && 
+            document.activeElement !== amountInputRef.current) {
+          amountInputRef.current.focus();
+        }
+      };
+      
+      // Check at various intervals to catch focus loss
+      const timers = [
+        setTimeout(checkAndRestoreFocus, 100),
+        setTimeout(checkAndRestoreFocus, 200),
+        setTimeout(checkAndRestoreFocus, 400),
+        setTimeout(() => {
+          checkAndRestoreFocus();
+          // Clear flag after final check
+          isFocusingAmountRef.current = false;
+        }, 600)
+      ];
+      
+      return () => {
+        timers.forEach(timer => clearTimeout(timer));
+      };
+    }
+  }, [selectedStudent, remainingFineDisplay]);
 
   const handleCollectPayment = async () => {
     if (!selectedStudent) {
@@ -1493,10 +1682,30 @@ const FineCollection: React.FC = () => {
         setCollectDate(new Date().toISOString().slice(0, 10));
         
         // After payment is collected, focus back on search and select its content
-        setTimeout(() => {
-          searchInputRef.current?.focus();
-          searchInputRef.current?.select();
-        }, 100);
+        // Set flag to prevent useEffect from interfering
+        shouldFocusSearchAfterPaymentRef.current = true;
+        isFocusingAmountRef.current = false;
+        
+        // Use requestAnimationFrame to ensure state updates and DOM updates are complete
+        // Also blur any currently focused elements first to ensure clean focus transfer
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (searchInputRef.current) {
+              searchInputRef.current.focus();
+              // Select all content in the search field
+              if (searchInputRef.current.value) {
+                searchInputRef.current.select();
+              }
+            }
+            // Clear flag after focus is set
+            setTimeout(() => {
+              shouldFocusSearchAfterPaymentRef.current = false;
+            }, 100);
+          });
+        });
       } else {
         showToast("Payment collected, but failed to retrieve the record. Please refresh.", 'error');
       }
@@ -1651,6 +1860,7 @@ const FineCollection: React.FC = () => {
                   {suggestions.map((student, idx) => (
                     <SuggestionItem
                       key={student.id}
+                      ref={(el) => { suggestionItemRefs.current[idx] = el; }}
                       active={idx === activeSuggestion}
                       onClick={() => handleSelectStudent(student)}
                       onMouseEnter={() => setActiveSuggestion(idx)}
@@ -1983,6 +2193,17 @@ const FineCollection: React.FC = () => {
                         const val = e.target.value.replace(/[^0-9]/g, '');
                         setAmount(val);
                       }}
+                      onFocus={() => {
+                        // Clear the focusing flag when field actually receives focus
+                        if (isFocusingAmountRef.current) {
+                          // Don't clear immediately, wait a bit to ensure focus sticks
+                          setTimeout(() => {
+                            if (document.activeElement === amountInputRef.current) {
+                              isFocusingAmountRef.current = false;
+                            }
+                          }, 100);
+                        }
+                      }}
                       placeholder="0.00"
                       style={{ paddingLeft: '2.8rem' }}
                       onKeyDown={e => {
@@ -2143,7 +2364,7 @@ const FineCollection: React.FC = () => {
       </PageGrid>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirmModal && (
+      {showDeleteConfirmModal && ReactDOM.createPortal(
         <ModalOverlay onClick={cancelDelete}> {/* Optional: close on overlay click */}
           <ModalDialog onClick={(e) => e.stopPropagation()}> {/* Prevents closing when clicking inside dialog */}
             <ModalTitle>Confirm Deletion</ModalTitle>
@@ -2161,7 +2382,8 @@ const FineCollection: React.FC = () => {
               </ModalButton>
             </ModalButtonRow>
           </ModalDialog>
-        </ModalOverlay>
+        </ModalOverlay>,
+        document.body
       )}
     </Container>
   );
