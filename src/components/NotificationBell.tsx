@@ -890,106 +890,40 @@ const NotificationBell: React.FC = () => {
         try {
           // Get school_id from user or parentInfo
           const schoolId = user?.school_id || parentInfo?.school_id;
+          
           if (!schoolId) {
             showToast('Unable to access reports', 'error');
             return;
           }
           
-          // Early return for delete actions - show who deleted it
-          if (notification.activity_action === 'delete') {
-            let deletedBy = notification.title || 'Unknown';
-            
-            if (notification.activity_log_id) {
-              const { data: activityLog } = await supabase
-                .from('activity_logs')
-                .select('teacher_id')
-                .eq('id', notification.activity_log_id)
-                .maybeSingle();
-              
-              if (activityLog?.teacher_id) {
-                const { data: staffData } = await supabase
-                  .from('staff')
-                  .select('name')
-                  .eq('id', activityLog.teacher_id)
-                  .maybeSingle();
-                deletedBy = staffData?.name || deletedBy;
-              }
-            }
-            
-            showToast(`Report is deleted by ${deletedBy}`, 'error');
+          // Use activity_log_id to get the report ID (same approach as notification generation)
+          if (!notification.activity_log_id) {
+            showToast('Report notification is missing activity log reference', 'error');
             setIsOpen(false);
             return;
           }
           
-          // STEP 1: Get activity log data (contains entity_id and activity_action)
-          let reportId: string | null = null;
-          let activityLogData: any = null;
+          // Fetch activity log to get entity_id (report ID)
+          const { data: activityLog, error: activityLogError } = await supabase
+            .from('activity_logs')
+            .select('entity_id, activity_action, teacher_id, school_id')
+            .eq('id', notification.activity_log_id)
+            .maybeSingle();
           
-          if (notification.activity_log_id) {
-            const { data: activityLog, error: activityLogError } = await supabase
-              .from('activity_logs')
-              .select('entity_id, activity_action, teacher_id')
-              .eq('id', notification.activity_log_id)
-              .maybeSingle();
-            
-            if (!activityLogError && activityLog) {
-              activityLogData = activityLog;
-              
-              // Get report ID from entity_id (if it's not a delete action)
-              if (activityLog.entity_id && activityLog.activity_action !== 'delete') {
-                reportId = activityLog.entity_id.toString();
-              }
-            }
-          }
-          
-          // STEP 2: If we have a report ID, try to fetch and open the report
-          if (reportId) {
-            const { data: reportCheck, error: reportCheckError } = await supabase
-              .from('reports')
-              .select('id')
-              .eq('id', reportId)
-              .eq('school_id', schoolId)
-              .maybeSingle();
-            
-            if (!reportCheckError && reportCheck) {
-              // Report exists - open it
-              setSelectedReportId(reportId);
-              setReportModalOpen(true);
-              setIsOpen(false);
-              return;
-            }
-            
-            // Report doesn't exist - check if it was deleted
-            if (activityLogData?.activity_action === 'delete') {
-              let deletedBy = notification.title || 'Unknown';
-              if (activityLogData.teacher_id) {
-                const { data: staffData } = await supabase
-                  .from('staff')
-                  .select('name')
-                  .eq('id', activityLogData.teacher_id)
-                  .maybeSingle();
-                deletedBy = staffData?.name || deletedBy;
-              }
-              showToast(`Report is deleted by ${deletedBy}`, 'error');
-              setIsOpen(false);
-              return;
-            }
-            
-            // Report doesn't exist but no delete action found
-            showToast('Report not found', 'error');
+          if (activityLogError || !activityLog) {
+            showToast('Unable to find activity log for this notification', 'error');
             setIsOpen(false);
             return;
           }
           
-          // STEP 3: If we don't have report ID yet, check if it's a delete action
-          if (activityLogData?.activity_action === 'delete') {
-            // This is a deleted report - show who deleted it
+          // Check if report was deleted
+          if (activityLog.activity_action === 'delete') {
             let deletedBy = notification.title || 'Unknown';
-            if (activityLogData.teacher_id) {
+            if (activityLog.teacher_id) {
               const { data: staffData } = await supabase
                 .from('staff')
                 .select('name')
-                .eq('id', activityLogData.teacher_id)
+                .eq('id', activityLog.teacher_id)
                 .maybeSingle();
               deletedBy = staffData?.name || deletedBy;
             }
@@ -998,240 +932,63 @@ const NotificationBell: React.FC = () => {
             return;
           }
           
-          // STEP 4: If we still don't have report ID, try to get it from entity_id (even if it was null before)
-          if (activityLogData?.entity_id) {
-            reportId = activityLogData.entity_id.toString();
-            
-            // Try to fetch the report
-            const { data: reportCheck, error: reportCheckError } = await supabase
-              .from('reports')
-              .select('id')
+          // Get report ID from entity_id
+          if (!activityLog.entity_id) {
+            showToast('Report ID not found in activity log', 'error');
+            setIsOpen(false);
+            return;
+          }
+          
+          const reportId = activityLog.entity_id.toString();
+          
+          // Simple approach: Get ID from activity log → Fetch report by ID
+          // Try student_reports first (most common), then employee_reports
+          // Try student_reports first
+          let { data: report, error: reportError } = await supabase
+            .from('student_reports')
+            .select('id, school_id')
+            .eq('id', reportId)
+            .maybeSingle();
+          
+          // If not found in student_reports, try employee_reports
+          if (!report && !reportError) {
+            const employeeResult = await supabase
+              .from('employee_reports')
+              .select('id, school_id')
               .eq('id', reportId)
-              .eq('school_id', schoolId)
               .maybeSingle();
             
-            if (!reportCheckError && reportCheck) {
-              // Report exists - open it
-              setSelectedReportId(reportId);
-              setReportModalOpen(true);
-              setIsOpen(false);
-              return;
-            }
-            
-            // Report doesn't exist - it was deleted
-            let deletedBy = notification.title || 'Unknown';
-            if (activityLogData.teacher_id) {
-              const { data: staffData } = await supabase
-                .from('staff')
-                .select('name')
-                .eq('id', activityLogData.teacher_id)
-                .maybeSingle();
-              deletedBy = staffData?.name || deletedBy;
-            }
-            showToast(`Report is deleted by ${deletedBy}`, 'error');
+            report = employeeResult.data;
+            reportError = employeeResult.error;
+          }
+          
+          if (reportError) {
+            showToast('Error loading report: ' + (reportError.message || 'Unknown error'), 'error');
             setIsOpen(false);
             return;
           }
           
-          // STEP 5: If we still don't have report ID, check if it's a delete action
-          // Use activity_action to accurately identify delete actions
-          const isDeletedReport = notification.activity_action === 'delete';
-          
-          if (isDeletedReport) {
-            // This looks like a deleted report - try to get who deleted it
-            let deletedBy = notification.title || 'Unknown';
-            
-            if (notification.activity_log_id) {
-              const { data: activityLog } = await supabase
-                .from('activity_logs')
-                .select('activity_action, teacher_id')
-                .eq('id', notification.activity_log_id)
-                .maybeSingle();
-              
-              if (activityLog?.teacher_id) {
-                const { data: staffData } = await supabase
-                  .from('staff')
-                  .select('name')
-                  .eq('id', activityLog.teacher_id)
-                  .maybeSingle();
-                deletedBy = staffData?.name || deletedBy;
-              }
-            }
-            
-            showToast(`Report is deleted by ${deletedBy}`, 'error');
+          if (!report) {
+            showToast('Report not found. It may have been deleted.', 'error');
             setIsOpen(false);
             return;
           }
           
-          // STEP 6: Try to find report by parsing notification message
-          // Message format: "New Student Report - [CATEGORY] [SEVERITY] - [SUBJECT]"
-          // or "New Staff Report - [CATEGORY] [SEVERITY] - [SUBJECT]"
-          try {
-            const message = notification.message || '';
-            const parts = message.split(' - ');
-            
-            if (parts.length >= 3) {
-              const reportTypePart = parts[0]; // "New Student Report", etc.
-              const categoryPart = parts[1]; // "Homework Incomplete [LOW]"
-              const subjectName = parts[2]; // "Zohaib" or "Mehran"
-              
-              const isStudentReport = reportTypePart.toLowerCase().includes('student');
-              // Remove severity like "[LOW]", "[HIGH]", etc. from category name
-              const categoryName = categoryPart.replace(/\s*\[.*?\]\s*/g, '').trim();
-              
-              // Get teacher ID from title (teacher name)
-              const { data: teacherData, error: teacherError } = await supabase
-                .from('staff')
-                .select('id')
-                .eq('name', notification.title)
-                .eq('school_id', schoolId)
-                .maybeSingle();
-              
-              if (teacherData?.id) {
-                // Query reports to find matching one
-                // First try with reported_by filter
-                let query = supabase
-                  .from('reports')
-                  .select(`
-                    id,
-                    student_id,
-                    staff_id,
-                    subject_type,
-                    category_id,
-                    category:report_categories(name),
-                    student:students(name)
-                  `)
-                  .eq('school_id', schoolId)
-                  .eq('reported_by', teacherData.id)
-                  .order('created_at', { ascending: false })
-                  .limit(50);
-                
-                let { data: reports, error: reportsError } = await query;
-                
-                // If error or no results, try simpler query
-                if (reportsError || !reports || reports.length === 0) {
-                  const simpleQuery = supabase
-                    .from('reports')
-                    .select('id, student_id, staff_id, subject_type, category_id')
-                    .eq('school_id', schoolId)
-                    .eq('reported_by', teacherData.id)
-                    .order('created_at', { ascending: false })
-                    .limit(50);
-                  
-                  const simpleResult = await simpleQuery;
-                  
-                  if (!simpleResult.error && simpleResult.data) {
-                    // Fetch related data separately
-                    reports = await Promise.all(simpleResult.data.map(async (r: any) => {
-                      const [categoryResult, studentResult, staffResult] = await Promise.all([
-                        r.category_id ? supabase.from('report_categories').select('name').eq('id', r.category_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-                        r.student_id ? supabase.from('students').select('name').eq('id', r.student_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-                        r.staff_id ? supabase.from('staff').select('name').eq('id', r.staff_id).maybeSingle() : Promise.resolve({ data: null, error: null })
-                      ]);
-                      return {
-                        ...r,
-                        category: categoryResult.data ? { name: categoryResult.data.name } : null,
-                        student: studentResult.data ? { name: studentResult.data.name } : null,
-                        staff: staffResult.data ? { name: staffResult.data.name } : null
-                      };
-                    }));
-                    reportsError = null;
-                  }
-                }
-                
-                // If still no results, try broader search (all reports in school, not just by reported_by)
-                if ((reportsError || !reports || reports.length === 0) && isStudentReport) {
-                  // First, find the student ID
-                  const { data: studentData } = await supabase
-                    .from('students')
-                    .select('id')
-                    .eq('name', subjectName)
-                    .eq('school_id', schoolId)
-                    .maybeSingle();
-                  
-                  if (studentData?.id) {
-                    // Query reports for this student
-                    const broaderQuery = supabase
-                      .from('reports')
-                      .select('id, student_id, staff_id, subject_type, category_id')
-                      .eq('school_id', schoolId)
-                      .eq('student_id', studentData.id)
-                      .eq('subject_type', 'student')
-                      .order('created_at', { ascending: false })
-                      .limit(50);
-                    
-                    const broaderResult = await broaderQuery;
-                    
-                    if (!broaderResult.error && broaderResult.data) {
-                      // Fetch related data separately
-                      reports = await Promise.all(broaderResult.data.map(async (r: any) => {
-                        const [categoryResult, studentResult] = await Promise.all([
-                          r.category_id ? supabase.from('report_categories').select('name').eq('id', r.category_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-                          r.student_id ? supabase.from('students').select('name').eq('id', r.student_id).maybeSingle() : Promise.resolve({ data: null, error: null })
-                        ]);
-                        return {
-                          ...r,
-                          category: categoryResult.data ? { name: categoryResult.data.name } : null,
-                          student: studentResult.data ? { name: studentResult.data.name } : null
-                        };
-                      }));
-                      reportsError = null;
-                    }
-                  }
-                }
-                
-                if (!reportsError && reports && reports.length > 0) {
-                  // Find matching report (case-insensitive)
-                  const normalizedCategoryName = categoryName.trim().toLowerCase();
-                  const normalizedSubjectName = subjectName.trim().toLowerCase();
-                  
-                  const matchingReport = reports.find((r: any) => {
-                    const reportCategory = r.category?.name?.trim().toLowerCase() || '';
-                    const matchesCategory = reportCategory === normalizedCategoryName;
-                    
-                    if (isStudentReport) {
-                      const reportStudent = r.student?.name?.trim().toLowerCase() || '';
-                      const matchesStudent = reportStudent === normalizedSubjectName;
-                      return matchesCategory && matchesStudent && r.subject_type === 'student';
-                    } else {
-                      const reportStaff = r.staff?.name?.trim().toLowerCase() || '';
-                      const matchesStaff = reportStaff === normalizedSubjectName;
-                      return matchesCategory && matchesStaff && r.subject_type === 'staff';
-                    }
-                  });
-                  
-                  if (matchingReport) {
-                    reportId = matchingReport.id.toString();
-                    
-                    // Verify the report exists
-                    const { data: reportCheck } = await supabase
-                      .from('reports')
-                      .select('id')
-                      .eq('id', reportId)
-                      .eq('school_id', schoolId)
-                      .maybeSingle();
-                    
-                    if (reportCheck) {
-                      // Report exists - open it
-                      setSelectedReportId(reportId);
-                      setReportModalOpen(true);
-                      setIsOpen(false);
-                      return;
-                    }
-                  }
-                }
-              }
-            }
-          } catch (parseError) {
-            // Error parsing message
+          // Verify school_id matches (security check)
+          if (report.school_id !== schoolId) {
+            showToast('Report belongs to a different school', 'error');
+            setIsOpen(false);
+            return;
           }
           
-          // If we can't find the report at all
-          showToast('Report not found', 'error');
+          // Report exists and school matches - open it
+          setSelectedReportId(reportId);
+          setReportModalOpen(true);
           setIsOpen(false);
+          await markAsRead([notification.id]);
           return;
-        } catch (error) {
-          showToast('Failed to load report', 'error');
+        } catch (error: any) {
+          showToast('Failed to load report: ' + (error.message || 'Unknown error'), 'error');
           setIsOpen(false);
         }
       }

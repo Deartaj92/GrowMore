@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useMemo } from 'react';
 import styled, { css } from 'styled-components';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
@@ -23,9 +23,13 @@ import {
   Description,
   AccountCircle,
   Info as InfoIcon,
+  Check as CheckIcon,
+  ArrowUpward,
+  ArrowDownward,
+  UnfoldMore,
 } from '@mui/icons-material';
 import * as Icons from '@mui/icons-material';
-import { FormControl, InputLabel, Select, MenuItem, Box, TextField, SelectChangeEvent, Dialog, DialogContent, DialogActions, Typography, Grid, IconButton, Button } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem, Box, TextField, SelectChangeEvent, Dialog, DialogContent, DialogActions, Typography, Grid, IconButton, Button, Checkbox, FormControlLabel } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import { expenseService } from '../services/expenseService';
 import { Expense, ExpenseCategory, ExpenseFilters } from '../types/expense';
@@ -33,6 +37,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { useLoading } from '../contexts/LoadingContext';
 import Loader from '../components/Loader';
+import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -159,7 +164,7 @@ const FiltersContainer = styled.div`
   padding: 8px;
   background: ${({ theme }) => theme.FIELD_BG};
   border-radius: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 `;
 
 const FilterSelect = styled.select`
@@ -181,15 +186,15 @@ const ContentArea = styled.div`
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0;
+  padding: 0;
 `;
 
 const ExpensesTable = styled.table`
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: ${({ theme }) => theme.CARD};
   border-radius: 8px;
-  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
@@ -197,18 +202,53 @@ const TableHeader = styled.thead`
   background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f9fafb'};
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 10;
+  
+  th:first-child {
+    border-top-left-radius: 8px;
+  }
+  
+  th:last-child {
+    border-top-right-radius: 8px;
+  }
 `;
 
 const TableHeaderRow = styled.tr``;
 
-const TableHeaderCell = styled.th`
+const TableHeaderCell = styled.th<{ $sortable?: boolean }>`
   padding: 12px;
   text-align: left;
   font-size: 0.85rem;
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   border-bottom: 2px solid ${({ theme }) => theme.BORDER};
+  border-right: 1px solid ${({ theme }) => theme.BORDER}40;
+  cursor: ${({ $sortable }) => ($sortable ? 'pointer' : 'default')};
+  user-select: none;
+  position: relative;
+  transition: background 0.2s;
+  
+  &:hover {
+    background: ${({ theme, $sortable }) =>
+      $sortable ? (theme.BG === '#252525' ? '#333333' : '#f0f0f0') : 'transparent'};
+  }
+  
+  &:last-child {
+    cursor: default;
+    border-right: none;
+  }
+`;
+
+const SortIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+  opacity: 0.6;
+  
+  svg {
+    font-size: 14px;
+  }
 `;
 
 const TableBody = styled.tbody``;
@@ -220,12 +260,25 @@ const TableRow = styled.tr<{ status?: string }>`
   &:hover {
     background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f9fafb'};
   }
+  
+  &:last-child td:first-child {
+    border-bottom-left-radius: 8px;
+  }
+  
+  &:last-child td:last-child {
+    border-bottom-right-radius: 8px;
+  }
 `;
 
 const TableCell = styled.td`
   padding: 12px;
   font-size: 0.85rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-right: 1px solid ${({ theme }) => theme.BORDER}40;
+  
+  &:last-child {
+    border-right: none;
+  }
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -435,6 +488,118 @@ const EmptyStateText = styled.p`
   margin: 0;
 `;
 
+// =============== Confirmation Modal ===============
+const ConfirmationModalOverlay = styled.div<{ $open: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: ${props => props.$open ? 'flex' : 'none'};
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+`;
+
+const ConfirmationModalContent = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  animation: slideIn 0.2s ease-out;
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+`;
+
+const ConfirmationModalTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ConfirmationModalMessage = styled.p`
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+`;
+
+const ConfirmationModalActions = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+`;
+
+const ConfirmationButton = styled.button<{ $variant: 'primary' | 'secondary' | 'danger' }>`
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  
+  ${({ $variant, theme }) => {
+    if ($variant === 'primary') {
+      return css`
+        background: ${theme.ACCENT};
+        color: white;
+        &:hover {
+          opacity: 0.9;
+          transform: translateY(-1px);
+        }
+        &:active {
+          transform: translateY(0);
+        }
+      `;
+    } else if ($variant === 'danger') {
+      return css`
+        background: #ef4444;
+        color: white;
+        &:hover {
+          background: #dc2626;
+          transform: translateY(-1px);
+        }
+        &:active {
+          transform: translateY(0);
+        }
+      `;
+    } else {
+      return css`
+        background: ${theme.FIELD_BG};
+        color: ${theme.TEXT_PRIMARY};
+        border: 1px solid ${theme.FIELD_BORDER};
+        &:hover {
+          background: ${theme.BG === '#252525' ? '#353535' : '#f3f4f6'};
+        }
+      `;
+    }
+  }}
+`;
+
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
 
@@ -452,11 +617,29 @@ const ExpenseManager: React.FC = () => {
   const [loading, setLocalLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<ExpenseFilters>({});
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const { setFooterContent } = usePageFooter();
+  const isMobile = useMediaQuery('(max-width: 700px)');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  
+  const [confirmationModal, setConfirmationModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDeleteStep?: boolean;
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    isDeleteStep: false,
+  });
   
   const [formData, setFormData] = useState({
     title: '',
@@ -477,6 +660,7 @@ const ExpenseManager: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [transactionId, setTransactionId] = useState('');
   const [chequeNumber, setChequeNumber] = useState('');
+  const [paidWithCheque, setPaidWithCheque] = useState(false);
   
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
@@ -506,11 +690,10 @@ const ExpenseManager: React.FC = () => {
     return accountType?.display_name || account.type;
   };
 
-  // Get payment method options (Cash + Cheque + Accounts)
-  const paymentMethodOptions = React.useMemo(() => {
+  // Get payment method options (Cash + Accounts)
+  const paymentMethodOptions = useMemo(() => {
     const options: Array<{ value: string; label: string; isAccount: boolean; accountId?: number; icon?: React.ReactElement }> = [
-      { value: 'Cash', label: 'Cash', isAccount: false, icon: React.createElement(AttachMoney) },
-      { value: 'Cheque', label: 'Cheque', isAccount: false, icon: React.createElement(Description) }
+      { value: 'Cash', label: 'Cash', isAccount: false, icon: React.createElement(AttachMoney) }
     ];
 
     // Add accounts as payment options
@@ -528,6 +711,11 @@ const ExpenseManager: React.FC = () => {
 
     return options;
   }, [accounts, accountTypes]);
+
+  // Get accounts with chequebook for cheque payments
+  const accountsWithChequebook = useMemo(() => {
+    return accounts.filter(account => account.has_chequebook === true);
+  }, [accounts]);
 
   const loadData = async () => {
     if (!user?.school_id) return;
@@ -596,6 +784,7 @@ const ExpenseManager: React.FC = () => {
     setSelectedAccountId(null);
     setTransactionId('');
     setChequeNumber('');
+    setPaidWithCheque(false);
     setIsModalOpen(true);
   };
 
@@ -605,10 +794,12 @@ const ExpenseManager: React.FC = () => {
     let paymentMethodValue = expense.paymentMethod;
     if (expense.paymentMethod === 'account' && expense.accountId) {
       paymentMethodValue = `account_${expense.accountId}`;
+      // Check if this was a cheque payment
+      if (expense.chequeNumber) {
+        setPaidWithCheque(true);
+      }
     } else if (expense.paymentMethod === 'cash') {
       paymentMethodValue = 'Cash';
-    } else if (expense.paymentMethod === 'cheque') {
-      paymentMethodValue = 'Cheque';
     }
     setFormData({
       title: expense.title,
@@ -628,20 +819,63 @@ const ExpenseManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteExpense = async (id: number) => {
+  const handleDeleteExpense = async (expense: Expense) => {
     if (!user?.school_id) return;
-    if (!window.confirm('Are you sure you want to delete this expense?')) return;
     
+    // First confirmation step
+    setConfirmationModal({
+      open: true,
+      title: 'Delete Expense',
+      message: `Are you sure you want to delete "${expense.title}"?`,
+      isDeleteStep: false,
+      onConfirm: () => {
+        // Second confirmation step - irreversible warning
+        setConfirmationModal({
+          open: true,
+          title: 'Confirm Deletion',
+          message: 'This action cannot be reversed. Please confirm to permanently delete this expense record.',
+          isDeleteStep: true,
+          onConfirm: async () => {
+            if (!user?.school_id) return;
     try {
       setLoading(true);
-      await expenseService.deleteExpense(id, user.school_id);
+              await expenseService.deleteExpense(expense.id, user.school_id);
       showToast('Expense deleted successfully', 'success');
       loadExpenses();
+              setConfirmationModal({ open: false, title: '', message: '', onConfirm: () => {}, isDeleteStep: false });
     } catch (error: any) {
       showToast('Error deleting expense: ' + (error.message || 'Unknown error'), 'error');
     } finally {
       setLoading(false);
     }
+          },
+        });
+      },
+    });
+  };
+
+  const handleMarkAsPaid = async (expense: Expense) => {
+    if (!user?.school_id) return;
+    
+    setConfirmationModal({
+      open: true,
+      title: 'Mark as Paid',
+      message: `Are you sure you want to mark "${expense.title}" as paid?`,
+      onConfirm: async () => {
+        if (!user?.school_id) return;
+        try {
+          setLoading(true);
+          await expenseService.updateExpense(expense.id, user.school_id, { status: 'paid' });
+          showToast('Expense marked as paid successfully', 'success');
+          loadExpenses();
+          setConfirmationModal({ open: false, title: '', message: '', onConfirm: () => {} });
+        } catch (error: any) {
+          showToast('Error updating expense: ' + (error.message || 'Unknown error'), 'error');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleSaveExpense = async () => {
@@ -658,14 +892,24 @@ const ExpenseManager: React.FC = () => {
       let paymentMethod = formData.paymentMethod;
       let accountId: number | undefined = undefined;
       
-      if (formData.paymentMethod.startsWith('account_')) {
+      // Handle cheque payments - they must use an account
+      if (paidWithCheque) {
+        if (!selectedAccountId) {
+          showToast('Please select an account for cheque payment', 'error');
+          return;
+        }
+        if (!chequeNumber || !chequeNumber.trim()) {
+          showToast('Please enter cheque number', 'error');
+          return;
+        }
+        accountId = selectedAccountId;
+        paymentMethod = 'account';
+      } else if (formData.paymentMethod.startsWith('account_')) {
         accountId = parseInt(formData.paymentMethod.replace('account_', ''));
         // Store 'account' as payment method for database constraint
         paymentMethod = 'account';
       } else if (formData.paymentMethod === 'Cash') {
         paymentMethod = 'cash';
-      } else if (formData.paymentMethod === 'Cheque') {
-        paymentMethod = 'cheque';
       }
       
       const expenseData = {
@@ -836,6 +1080,143 @@ const ExpenseManager: React.FC = () => {
     }
   };
 
+  // Handle column sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column and default to descending
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  // Get sort icon for column
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <UnfoldMore style={{ fontSize: '14px' }} />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUpward style={{ fontSize: '14px' }} />
+    ) : (
+      <ArrowDownward style={{ fontSize: '14px' }} />
+    );
+  };
+
+  // Sort expenses based on current sort settings
+  const sortedExpenses = useMemo(() => {
+    if (!sortColumn) return expenses;
+
+    const sorted = [...expenses].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case 'date':
+          aValue = new Date(a.expenseDate).getTime();
+          bValue = new Date(b.expenseDate).getTime();
+          break;
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'category':
+          aValue = a.category?.name || '';
+          bValue = b.category?.name || '';
+          break;
+        case 'amount':
+          aValue = a.amount;
+          bValue = b.amount;
+          break;
+        case 'status':
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [expenses, sortColumn, sortDirection]);
+
+  // Calculate summary statistics
+  const summary = useMemo(() => {
+    const total = sortedExpenses.length;
+    const totalAmount = sortedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const pendingCount = sortedExpenses.filter(exp => exp.status === 'pending').length;
+    const pendingAmount = sortedExpenses
+      .filter(exp => exp.status === 'pending')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    const paidCount = sortedExpenses.filter(exp => exp.status === 'paid').length;
+    const paidAmount = sortedExpenses
+      .filter(exp => exp.status === 'paid')
+      .reduce((sum, exp) => sum + exp.amount, 0);
+    
+    return {
+      total,
+      totalAmount,
+      pendingCount,
+      pendingAmount,
+      paidCount,
+      paidAmount,
+    };
+  }, [sortedExpenses]);
+
+  // Set footer content
+  useEffect(() => {
+    if (expenses.length === 0) {
+      setFooterContent(null);
+      return;
+    }
+
+    const FooterContentComponent = React.memo(() => (
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: 'center',
+        justifyContent: isMobile ? 'center' : 'space-between',
+        width: '100%',
+        gap: isMobile ? '6px' : '12px',
+        flexWrap: 'wrap',
+        fontSize: isMobile ? '0.8rem' : '0.85rem',
+      }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontWeight: 600, color: theme.TEXT_PRIMARY }}>
+            Total: <span style={{ color: theme.ACCENT }}>{summary.total}</span> expenses
+          </span>
+          <span style={{ opacity: 0.6 }}>•</span>
+          <span style={{ fontWeight: 600, color: theme.TEXT_PRIMARY }}>
+            Amount: <span style={{ color: theme.ACCENT }}>Rs. {summary.totalAmount.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: '#f59e0b' }}>
+            Pending: {summary.pendingCount} (Rs. {summary.pendingAmount.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+          </span>
+          <span style={{ opacity: 0.6 }}>•</span>
+          <span style={{ color: '#10b981' }}>
+            Paid: {summary.paidCount} (Rs. {summary.paidAmount.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+          </span>
+        </div>
+      </div>
+    ));
+
+    setFooterContent({
+      visible: true,
+      content: <FooterContentComponent />,
+    });
+
+    return () => {
+      setFooterContent(null);
+    };
+  }, [summary, expenses.length, isMobile, theme, setFooterContent]);
+
   if (loading) {
     return <Loader />;
   }
@@ -886,8 +1267,6 @@ const ExpenseManager: React.FC = () => {
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
             <option value="paid">Paid</option>
           </FilterSelect>
           
@@ -931,17 +1310,32 @@ const ExpenseManager: React.FC = () => {
             <ExpensesTable>
               <TableHeader>
                 <TableHeaderRow>
-                  <TableHeaderCell>Date</TableHeaderCell>
-                  <TableHeaderCell>Title</TableHeaderCell>
-                  <TableHeaderCell>Category</TableHeaderCell>
+                  <TableHeaderCell $sortable onClick={() => handleSort('date')}>
+                    Date
+                    <SortIcon>{getSortIcon('date')}</SortIcon>
+                  </TableHeaderCell>
+                  <TableHeaderCell $sortable onClick={() => handleSort('title')}>
+                    Title
+                    <SortIcon>{getSortIcon('title')}</SortIcon>
+                  </TableHeaderCell>
+                  <TableHeaderCell $sortable onClick={() => handleSort('category')}>
+                    Category
+                    <SortIcon>{getSortIcon('category')}</SortIcon>
+                  </TableHeaderCell>
                   <TableHeaderCell>Payment Method</TableHeaderCell>
-                  <TableHeaderCell>Amount</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell $sortable onClick={() => handleSort('amount')}>
+                    Amount
+                    <SortIcon>{getSortIcon('amount')}</SortIcon>
+                  </TableHeaderCell>
+                  <TableHeaderCell $sortable onClick={() => handleSort('status')}>
+                    Status
+                    <SortIcon>{getSortIcon('status')}</SortIcon>
+                  </TableHeaderCell>
                   <TableHeaderCell>Actions</TableHeaderCell>
                 </TableHeaderRow>
               </TableHeader>
               <TableBody>
-                {expenses.map(expense => (
+                {sortedExpenses.map(expense => (
                   <TableRow key={expense.id} status={expense.status}>
                     <TableCell>{format(new Date(expense.expenseDate), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>{expense.title}</TableCell>
@@ -957,7 +1351,12 @@ const ExpenseManager: React.FC = () => {
                         ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               <div>{expense.account.name}</div>
-                              {expense.transactionId && (
+                              {expense.chequeNumber && (
+                                <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
+                                  Cheque #: {expense.chequeNumber}
+                                </div>
+                              )}
+                              {expense.transactionId && !expense.chequeNumber && (
                                 <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
                                   Trx ID: {expense.transactionId}
                                 </div>
@@ -967,7 +1366,7 @@ const ExpenseManager: React.FC = () => {
                         : expense.paymentMethod === 'cheque' && expense.chequeNumber
                         ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <div>Cheque</div>
+                              <div>Cheque (Legacy)</div>
                               <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
                                 Cheque #: {expense.chequeNumber}
                               </div>
@@ -983,10 +1382,19 @@ const ExpenseManager: React.FC = () => {
                       </StatusBadge>
                     </TableCell>
                     <ActionCell>
+                      {expense.status === 'pending' && (
+                        <StyledIconButton
+                          onClick={() => handleMarkAsPaid(expense)}
+                          title="Mark as Paid"
+                          style={{ color: '#10b981' }}
+                        >
+                          <CheckIcon style={{ fontSize: '16px' }} />
+                        </StyledIconButton>
+                      )}
                       <StyledIconButton onClick={() => handleEditExpense(expense)} title="Edit">
                         <EditIcon style={{ fontSize: '16px' }} />
                       </StyledIconButton>
-                      <StyledIconButton onClick={() => handleDeleteExpense(expense.id)} title="Delete">
+                      <StyledIconButton onClick={() => handleDeleteExpense(expense)} title="Delete">
                         <DeleteIcon style={{ fontSize: '16px' }} />
                       </StyledIconButton>
                     </ActionCell>
@@ -1199,11 +1607,41 @@ const ExpenseManager: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     >
                       <MenuItem value="pending">Pending</MenuItem>
-                      <MenuItem value="approved">Approved</MenuItem>
-                      <MenuItem value="rejected">Rejected</MenuItem>
                       <MenuItem value="paid">Paid</MenuItem>
                     </Select>
                   </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={paidWithCheque}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setPaidWithCheque(checked);
+                          if (checked) {
+                            // When enabling cheque, require account selection
+                            // Filter to only accounts with chequebook
+                            if (accountsWithChequebook.length > 0) {
+                              const firstAccount = accountsWithChequebook[0];
+                              setFormData({ ...formData, paymentMethod: `account_${firstAccount.id}` });
+                              setSelectedAccountId(firstAccount.id);
+                            }
+                          } else {
+                            // When disabling cheque, clear cheque number
+                            setChequeNumber('');
+                            // Reset to cash if no account selected
+                            if (!selectedAccountId || formData.paymentMethod.startsWith('account_')) {
+                              setFormData({ ...formData, paymentMethod: 'Cash' });
+                              setSelectedAccountId(null);
+                            }
+                          }
+                        }}
+                      />
+                    }
+                    label="Paid with Cheque"
+                  />
                 </Grid>
 
                 <Grid item xs={12}>
@@ -1219,18 +1657,39 @@ const ExpenseManager: React.FC = () => {
                         if (value.startsWith('account_')) {
                           const accountId = parseInt(value.replace('account_', ''));
                           setSelectedAccountId(accountId);
+                          // If paid with cheque, verify account has chequebook
+                          if (paidWithCheque) {
+                            const account = accounts.find(a => a.id === accountId);
+                            if (!account?.has_chequebook) {
+                              showToast('Selected account does not have chequebook facility', 'error');
+                              setPaidWithCheque(false);
+                              setChequeNumber('');
+                            }
+                          }
                         } else {
                           setSelectedAccountId(null);
                           setTransactionId(''); // Clear transaction ID when not using account
-                        }
-                        // Clear cheque number if not cheque
-                        if (value !== 'Cheque') {
+                          // If switching to cash, disable cheque
+                          if (paidWithCheque) {
+                            setPaidWithCheque(false);
                           setChequeNumber('');
+                          }
                         }
                       }}
                       required
+                      disabled={paidWithCheque}
                     >
-                      {paymentMethodOptions.map((option) => (
+                      {(paidWithCheque ? accountsWithChequebook.map(account => {
+                        const accountType = accountTypes.find(t => t.name === account.type);
+                        const displayName = accountType?.display_name || account.name;
+                        return {
+                          value: `account_${account.id}`,
+                          label: `${displayName} - ${account.name}`,
+                          isAccount: true,
+                          accountId: account.id,
+                          icon: accountType ? getAccountTypeIcon(accountType.icon_name) : undefined
+                        };
+                      }) : paymentMethodOptions).map((option) => (
                         <MenuItem key={option.value} value={option.value}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {option.icon && <Box sx={{ display: 'flex', alignItems: 'center' }}>{option.icon}</Box>}
@@ -1241,6 +1700,20 @@ const ExpenseManager: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Grid>
+
+                {paidWithCheque && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Cheque Number *"
+                      value={chequeNumber}
+                      onChange={(e) => setChequeNumber(e.target.value)}
+                      required
+                      placeholder="Enter cheque number"
+                    />
+                  </Grid>
+                )}
 
                 {selectedAccountId && (
                   <>
@@ -1483,6 +1956,51 @@ const ExpenseManager: React.FC = () => {
             </ModalBody>
           </ModalContent>
         </ModalOverlay>
+
+        {/* Confirmation Modal */}
+        <ConfirmationModalOverlay
+          $open={confirmationModal.open}
+          onClick={() => setConfirmationModal({ open: false, title: '', message: '', onConfirm: () => {}, isDeleteStep: false })}
+        >
+          <ConfirmationModalContent onClick={(e) => e.stopPropagation()}>
+            <ConfirmationModalTitle>
+              {confirmationModal.isDeleteStep ? (
+                <DeleteIcon style={{ fontSize: '20px', color: '#ef4444' }} />
+              ) : (
+                <CheckCircle style={{ fontSize: '20px', color: theme.ACCENT }} />
+              )}
+              {confirmationModal.title}
+            </ConfirmationModalTitle>
+            <ConfirmationModalMessage>{confirmationModal.message}</ConfirmationModalMessage>
+            <ConfirmationModalActions>
+              <ConfirmationButton
+                $variant="secondary"
+                onClick={() => setConfirmationModal({ open: false, title: '', message: '', onConfirm: () => {}, isDeleteStep: false })}
+              >
+                Cancel
+              </ConfirmationButton>
+              <ConfirmationButton
+                $variant={confirmationModal.isDeleteStep ? 'danger' : 'primary'}
+                onClick={() => {
+                  confirmationModal.onConfirm();
+                }}
+                style={confirmationModal.isDeleteStep ? { background: '#ef4444', color: 'white' } : undefined}
+              >
+                {confirmationModal.isDeleteStep ? (
+                  <>
+                    <DeleteIcon style={{ fontSize: '16px' }} />
+                    Confirm Delete
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon style={{ fontSize: '16px' }} />
+                    Confirm
+                  </>
+                )}
+              </ConfirmationButton>
+            </ConfirmationModalActions>
+          </ConfirmationModalContent>
+        </ConfirmationModalOverlay>
       </PageContainer>
     </ThemeProvider>
   );

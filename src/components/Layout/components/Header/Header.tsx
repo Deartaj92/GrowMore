@@ -586,7 +586,7 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
 `;
 
 const MobileSubmenu = styled.div<{ $isOpen: boolean }>`
-  max-height: ${props => props.$isOpen ? '1000px' : '0'};
+  max-height: ${props => props.$isOpen ? '5000px' : '0'};
   overflow: hidden;
   transition: max-height 0.3s ease;
   background: ${props => props.theme.BG};
@@ -1217,6 +1217,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BarChartIcon />,
       path: '/expense-analytics',
       color: '#3b82f6'
+    },
+    {
+      title: 'Other Incomes',
+      description: 'Record and track non-fee income sources',
+      icon: <AttachMoneyIcon />,
+      path: '/other-income-manager',
+      color: '#16a34a'
     }
   ];
 

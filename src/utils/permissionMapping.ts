@@ -61,6 +61,7 @@ export const pathToPermissionKey: Record<string, string> = {
   // Finance
   '/expense-manager': 'expense-manager',
   '/expense-analytics': 'expense-analytics',
+  '/other-income-manager': 'other-income-manager',
   
   // Fine Management
   '/fines/assign': 'fine-assign',

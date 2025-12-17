@@ -405,6 +405,13 @@ export const expenseMenuItems: MenuItem[] = [
     icon: React.createElement(BarChartIcon),
     path: '/expense-analytics',
     color: '#3b82f6'
+  },
+  {
+    title: 'Other Incomes',
+    description: 'Record and track non-fee income sources',
+    icon: React.createElement(AttachMoneyIcon),
+    path: '/other-income-manager',
+    color: '#16a34a'
   }
 ];
 

@@ -521,6 +521,7 @@ interface Account {
   wallet_number?: string;
   raast_id?: string;
   description?: string;
+  has_chequebook?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -577,6 +578,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
     wallet_number: '',
     raast_id: '',
     description: '',
+    has_chequebook: false,
     is_active: true
   });
 
@@ -698,6 +700,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
       wallet_number: '',
       raast_id: '',
       description: '',
+      has_chequebook: false,
       is_active: true
     });
     setEditingAccount(null);
@@ -723,6 +726,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
       wallet_number: account.wallet_number || '',
       raast_id: account.raast_id || '',
       description: account.description || '',
+      has_chequebook: account.has_chequebook || false,
       is_active: account.is_active
     });
     setEditingAccount(account);
@@ -791,6 +795,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
         wallet_number: formData.wallet_number || null,
         raast_id: formData.raast_id || null,
         description: formData.description || null,
+        has_chequebook: formData.type === 'bank' ? formData.has_chequebook : false,
         is_active: formData.is_active
       };
 
@@ -1339,6 +1344,18 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
                       placeholder="Enter SWIFT code"
                     />
                   </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.has_chequebook}
+                          onChange={(e) => setFormData({ ...formData, has_chequebook: e.target.checked })}
+                        />
+                      }
+                      label="Has ChequeBook"
+                    />
+                  </Grid>
                 </>
               )}
 
@@ -1687,5 +1704,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
 };
 
 export default SetupAccounts;
+
+
 
 

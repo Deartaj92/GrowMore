@@ -107,6 +107,7 @@ import FeeManagementDashboard from './components/FeeManagementDashboard';
 import ExpenseDashboard from './components/ExpenseDashboard';
 import ExpenseManager from './pages/ExpenseManager';
 import ExpenseAnalyticsPage from './pages/ExpenseAnalyticsPage';
+import OtherIncomeManager from './pages/OtherIncomeManager';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
 // Communication Management Components
@@ -775,6 +776,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="expense-manager">
                                 <ExpenseManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="other-income-manager"
+                            element={
+                              <ProtectedRoute requiredPermission="other-income-manager">
+                                <OtherIncomeManager />
                               </ProtectedRoute>
                             }
                           />

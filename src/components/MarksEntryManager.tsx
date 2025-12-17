@@ -2419,17 +2419,9 @@ const MarksEntryManager: React.FC = () => {
       const formattedStudents = (studentsData || []).sort((a, b) => a.id - b.id);
       setStudents(formattedStudents);
       
-      // Log examination marks view activity (no notification for view)
+      // View activities are not logged - only create, update, and delete
       try {
-        await logExaminationMarksActivity(
-          'view',
-          selectedClass?.name || 'Unknown Class',
-          selectedSection?.name || 'All Sections',
-          selectedSubject?.subject?.name || 'Unknown Subject',
-          selectedExam?.name || 'Unknown Examination',
-          formattedStudents.length,
-          { createNotification: false } // Don't create notification for view
-        );
+        // No activity logging for view actions
       } catch (activityError) {
         // Don't fail the operation if activity logging fails
       }

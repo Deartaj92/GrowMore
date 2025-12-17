@@ -42,7 +42,7 @@ export const useActivityTracking = () => {
   }, [user?.staff_id, user?.school_id]);
 
   const logAttendanceActivity = useCallback(async (
-    action: 'create' | 'update' | 'delete' | 'view',
+    action: 'create' | 'update' | 'delete',
     className: string,
     sectionName: string,
     studentCount: number,
@@ -104,7 +104,7 @@ export const useActivityTracking = () => {
   }, [logActivity]);
 
   const logExaminationMarksActivity = useCallback(async (
-    action: 'create' | 'update' | 'delete' | 'view',
+    action: 'create' | 'update' | 'delete',
     className: string,
     sectionName: string,
     subjectName: string,
@@ -252,7 +252,7 @@ export const useActivityTracking = () => {
   }, [logActivity]);
 
   const logReportActivity = useCallback(async (
-    action: 'create' | 'update' | 'delete' | 'view',
+    action: 'create' | 'update' | 'delete',
     categoryName: string,
     subjectName: string,
     subjectType: 'student' | 'staff',

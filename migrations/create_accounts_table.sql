@@ -36,3 +36,5 @@ CREATE TRIGGER update_accounts_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 
+
+

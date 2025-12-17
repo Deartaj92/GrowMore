@@ -231,15 +231,34 @@ export const generateDummyAbsentees = (studentIds: number[], date: string) => {
   }));
 };
 
-export const generateDummyAttendanceTrend = () => {
+export const generateDummyAttendanceTrend = (): Array<{ day: string; rate: number; present: number; absent: number; leave: number; late: number; presentWithLate: number; dayOfWeek?: string; dateStr?: string }> => {
   const today = new Date();
-  // Generate exactly 7 days of data (one week)
-  return Array.from({ length: 7 }, (_, i) => {
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  // Generate exactly 30 days of data
+  return Array.from({ length: 30 }, (_, i) => {
     const date = new Date(today);
-    date.setDate(date.getDate() - (6 - i));
+    date.setDate(date.getDate() - (29 - i));
+    const dayOfWeek = dayNames[date.getDay()];
+    const dateStr = date.toISOString().slice(0, 10);
+    
+    // Generate realistic counts
+    const total = Math.floor(Math.random() * 20) + 40; // 40-60 students
+    const present = Math.floor(total * (0.75 + Math.random() * 0.2)); // 75-95% present
+    const absent = Math.floor(total * (0.05 + Math.random() * 0.1)); // 5-15% absent
+    const leave = Math.floor(total * (0.02 + Math.random() * 0.05)); // 2-7% leave
+    const late = Math.floor(total * (0.01 + Math.random() * 0.03)); // 1-4% late
+    const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+    
     return {
       day: `${date.getDate()}/${date.getMonth() + 1}`,
-      rate: Math.floor(Math.random() * 20) + 75, // 75-95%
+      rate,
+      present,
+      absent,
+      leave,
+      late,
+      presentWithLate: present + late, // Present includes late
+      dayOfWeek,
+      dateStr
     };
   });
 };

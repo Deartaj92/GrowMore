@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
   const [attendanceDataForDate, setAttendanceDataForDate] = useState<any[]>([]);
   const [halfLeavesForDate, setHalfLeavesForDate] = useState<any[]>([]);
   const [attendanceStatsLoading, setAttendanceStatsLoading] = useState(false);
-  const [attendanceTrendData, setAttendanceTrendData] = useState<Array<{ day: string; rate: number }>>([]);
+  const [attendanceTrendData, setAttendanceTrendData] = useState<Array<{ day: string; rate: number; present: number; absent: number; leave: number; late: number; presentWithLate: number; dayOfWeek?: string; dateStr?: string; change?: number; isIncrease?: boolean | null }>>([]);
   const [classAttendanceData, setClassAttendanceData] = useState<Array<{
     class: string;
     present: number;
@@ -646,7 +646,7 @@ const Dashboard: React.FC = () => {
         }
 
         const selectedDate = new Date(dashboardDate);
-        const trendData: Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; change?: number; isIncrease?: boolean | null }> = [];
+        const trendData: Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; present: number; absent: number; leave: number; late: number; presentWithLate: number; change?: number; isIncrease?: boolean | null }> = [];
         let totalRate = 0;
 
         const selectedDateStr = selectedDate.toISOString().slice(0, 10);
@@ -768,10 +768,10 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        const attendanceByDate = new Map<string, { total: number; present: number }>();
+        const attendanceByDate = new Map<string, { total: number; present: number; absent: number; leave: number; late: number }>();
 
         days.forEach(({ dateStr }) => {
-          attendanceByDate.set(dateStr, { total: 0, present: 0 });
+          attendanceByDate.set(dateStr, { total: 0, present: 0, absent: 0, leave: 0, late: 0 });
         });
 
         // Process ALL attendance data
@@ -788,8 +788,14 @@ const Dashboard: React.FC = () => {
                 const stats = attendanceByDate.get(dateStr);
                 if (stats) {
                   stats.total++;
-                  if (record.status === 'present' || record.status === 'late') {
+                  if (record.status === 'present') {
                     stats.present++;
+                  } else if (record.status === 'absent') {
+                    stats.absent++;
+                  } else if (record.status === 'leave') {
+                    stats.leave++;
+                  } else if (record.status === 'late') {
+                    stats.late++;
                   }
                 }
               }
@@ -798,21 +804,35 @@ const Dashboard: React.FC = () => {
         }
 
         if (isSelectedDateWorkingDay && daysDateStrs.has(selectedDateStr)) {
-          const selectedDatePresent = attendanceDataForDate.filter(a =>
-            a.status === 'present' || a.status === 'late'
-          ).length;
+          const selectedDatePresent = attendanceDataForDate.filter(a => a.status === 'present').length;
+          const selectedDateAbsent = attendanceDataForDate.filter(a => a.status === 'absent').length;
+          const selectedDateLeave = attendanceDataForDate.filter(a => a.status === 'leave').length;
+          const selectedDateLate = attendanceDataForDate.filter(a => a.status === 'late').length;
           const selectedDateTotal = attendanceDataForDate.length;
 
           attendanceByDate.set(selectedDateStr, {
             total: selectedDateTotal,
-            present: selectedDatePresent
+            present: selectedDatePresent,
+            absent: selectedDateAbsent,
+            leave: selectedDateLeave,
+            late: selectedDateLate
           });
         }
 
         days.forEach(({ dateStr, dayName, dayOfWeek }) => {
-          const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
-          const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-          trendData.push({ day: dayName, rate, dayOfWeek, dateStr });
+          const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0, absent: 0, leave: 0, late: 0 };
+          const rate = stats.total > 0 ? Math.round(((stats.present + stats.late) / stats.total) * 100) : 0;
+          trendData.push({ 
+            day: dayName, 
+            rate, 
+            dayOfWeek, 
+            dateStr,
+            present: stats.present,
+            absent: stats.absent,
+            leave: stats.leave,
+            late: stats.late,
+            presentWithLate: stats.present + stats.late // Present includes late
+          });
           totalRate += rate;
         });
 

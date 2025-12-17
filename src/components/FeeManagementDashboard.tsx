@@ -427,6 +427,13 @@ const feeManagementItems = [
     icon: <ReceiptIcon />,
     path: '/expense-manager',
     color: '#dc2626' // Red
+  },
+  {
+    title: 'Other Incomes',
+    description: 'Record and manage incomes other than student fees',
+    icon: <AttachMoneyIcon />,
+    path: '/other-income-manager',
+    color: '#16a34a' // Green
   }
 ];
 

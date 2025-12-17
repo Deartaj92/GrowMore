@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { useLoading } from '../contexts/LoadingContext';
 import Loader from '../components/Loader';
+import { incomeService } from '../services/incomeService';
 import {
   AccountBalance as AccountBalanceIcon,
   AttachMoney as CashIcon,
@@ -415,13 +416,27 @@ const BalanceSheetPage: React.FC = () => {
           .range(from, to);
       });
 
-      // Fetch expenses (outgoing) with account_id, filtered by date - using pagination
+      // Fetch expenses (outgoing) with account_id, filtered by date and status - using pagination
+      // Only count paid expenses
       const expenses = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('expenses')
-          .select('account_id, amount, payment_method, expense_date')
+          .select('account_id, amount, payment_method, expense_date, status')
           .eq('school_id', user.school_id)
+          .eq('status', 'paid')
           .lte('expense_date', dateFilter)
+          .range(from, to);
+      });
+
+      // Fetch other incomes (non-fee income) with account_id, filtered by date and status - using pagination
+      // Only count received incomes (pending incomes are not yet received)
+      const otherIncomes = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('other_incomes')
+          .select('account_id, amount, payment_method, income_date, status')
+          .eq('school_id', user.school_id)
+          .lte('income_date', dateFilter)
+          .eq('status', 'received')
           .range(from, to);
       });
 
@@ -431,9 +446,16 @@ const BalanceSheetPage: React.FC = () => {
         const displayName = accountType?.display_name || account.type;
         
         // Calculate income from fee payments
-        const income = feePayments
+        const feeIncome = feePayments
           .filter(p => p.account_id === account.id)
           .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+        
+        // Calculate income from other incomes (where payment_method is 'account' and account_id matches)
+        const otherIncome = otherIncomes
+          .filter(oi => oi.payment_method === 'account' && oi.account_id === account.id)
+          .reduce((sum, oi) => sum + parseFloat(oi.amount || 0), 0);
+        
+        const income = feeIncome + otherIncome;
         
         // Calculate expenses
         const expensesAmount = expenses
@@ -455,9 +477,16 @@ const BalanceSheetPage: React.FC = () => {
 
       // Calculate Cash in Hand
       // Cash income: fee payments where payment_mode is 'Cash' and no account_id
-      const cashIncome = feePayments
+      const cashFeeIncome = feePayments
         .filter(p => p.payment_mode === 'Cash' && !p.account_id)
         .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+      
+      // Cash income from other incomes: where payment_method is 'cash' or 'cheque' and no account_id
+      const cashOtherIncome = otherIncomes
+        .filter(oi => (oi.payment_method === 'cash' || oi.payment_method === 'cheque') && !oi.account_id)
+        .reduce((sum, oi) => sum + parseFloat(oi.amount || 0), 0);
+      
+      const cashIncome = cashFeeIncome + cashOtherIncome;
       
       // Cash expenses: expenses where payment_method is 'cash' and no account_id
       const cashExpenses = expenses
@@ -645,4 +674,6 @@ const BalanceSheetPage: React.FC = () => {
 };
 
 export default BalanceSheetPage;
+
+
 

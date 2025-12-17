@@ -1848,17 +1848,7 @@ const MarkAttendance: React.FC = () => {
       
       // Log attendance view activity (no notification for view)
       try {
-        const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
-        const selectedSectionObj = sections.find(s => String(s.id) === String(selectedSection));
-        
-        await logAttendanceActivity(
-          'view',
-          selectedClassObj?.name || 'Unknown Class',
-          selectedSectionObj?.name || 'All Sections',
-          formattedStudents.length,
-          date,
-          { createNotification: false } // Don't create notification for view
-        );
+        // View activities are not logged - only create, update, and delete
       } catch (activityError) {
         // Don't fail the operation if activity logging fails
       }

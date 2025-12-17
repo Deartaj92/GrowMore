@@ -1535,17 +1535,9 @@ const TestRecordManager: React.FC = () => {
       const formattedStudents = (studentsData || []).sort((a, b) => a.id - b.id);
       setStudents(formattedStudents);
       
-      // Log test marks view activity (no notification for view)
+      // View activities are not logged - only create, update, and delete
       try {
-        await logTestMarksActivity(
-          'view',
-          selectedClass?.name || 'Unknown Class',
-          selectedSection?.name || 'All Sections',
-          selectedSubject?.subject?.name || 'Unknown Subject',
-          'Test Records View',
-          formattedStudents.length,
-          { createNotification: false } // Don't create notification for view
-        );
+        // No activity logging for view actions
       } catch (activityError) {
         // Don't fail the operation if activity logging fails
       }

@@ -13,3 +13,5 @@ BEGIN
     CHECK (payment_method IN ('cash', 'bank_transfer', 'cheque', 'card', 'online', 'other', 'account'));
 END $$;
 
+
+

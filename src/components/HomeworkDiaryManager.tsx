@@ -1567,19 +1567,7 @@ const HomeworkDiaryManager: React.FC = () => {
 
       // Log view activity
       try {
-        const selectedClassObj = classes.find(c => c.id === Number(selectedClass));
-        const selectedSectionObj = sections.find(s => s.id === Number(selectedSection));
-        const dateStr = selectedDate.format('YYYY-MM-DD');
-
-        await logHomeworkDiaryActivity(
-          'view',
-          selectedClassObj?.name || 'Unknown Class',
-          selectedSectionObj?.name || null,
-          null, // subject name (viewing all subjects)
-          dateStr,
-          entries.length,
-          { createNotification: false } // Don't create notification for view
-        );
+        // View activities are not logged - only create, update, and delete
       } catch (activityError) {
         // Don't fail the operation if activity logging fails
       }

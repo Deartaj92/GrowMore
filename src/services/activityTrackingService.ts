@@ -88,6 +88,11 @@ class ActivityTrackingService {
       createNotification?: boolean;
     } = {}
   ): Promise<number> {
+    // Skip logging view/read activities - only log create, update, and delete
+    if (activityAction === 'view' || activityAction === 'read') {
+      return 0; // Return early without logging
+    }
+
     try {
       const { data, error } = await supabase.rpc('log_teacher_activity', {
         p_teacher_id: teacherId,
@@ -106,7 +111,7 @@ class ActivityTrackingService {
         throw error;
       }
 
-      // Create notification for admins if requested (only for create/update/delete, not view)
+      // Create notification for admins if requested (only for create/update/delete)
       console.log('[ActivityTracking] Checking if notification should be created:', {
         createNotification: options.createNotification,
         activityAction,
@@ -354,7 +359,7 @@ class ActivityTrackingService {
     const actionText = activityAction === 'create' ? 'Created' : 
                       activityAction === 'update' ? 'Updated' : 
                       activityAction === 'delete' ? 'Deleted' :
-                      activityAction === 'view' ? 'Viewed' : 'Modified';
+                      'Modified';
     
     switch (activityType) {
       case 'attendance':

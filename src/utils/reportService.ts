@@ -388,9 +388,9 @@ export const reportService = {
     },
 
     async getReportById(id: string, schoolId?: number): Promise<Report> {
-        // First, fetch the basic report data
+        // Try student_reports first
         let query = supabase
-            .from('reports')
+            .from('student_reports')
             .select('*')
             .eq('id', id);
             
@@ -398,10 +398,33 @@ export const reportService = {
             query = query.eq('school_id', schoolId);
         }
         
-        const { data: reportData, error: reportError } = await query.single();
+        let { data: reportData, error: reportError } = await query.maybeSingle();
+        let isStudentReport = true;
+        let updatesTable = 'student_reports_updates';
+        
+        // If not found in student_reports, try employee_reports
+        if (!reportData && !reportError) {
+            let employeeQuery = supabase
+                .from('employee_reports')
+                .select('*')
+                .eq('id', id);
+                
+            if (schoolId) {
+                employeeQuery = employeeQuery.eq('school_id', schoolId);
+            }
+            
+            const employeeResult = await employeeQuery.maybeSingle();
+            reportData = employeeResult.data;
+            reportError = employeeResult.error;
+            isStudentReport = false;
+            updatesTable = 'employee_reports_updates';
+        }
         
         if (reportError) throw reportError;
         if (!reportData) throw new Error('Report not found');
+        
+        // Determine subject_type based on which table we found it in
+        const subject_type = isStudentReport ? 'student' : 'staff';
         
         // Fetch related data separately to avoid foreign key constraint issues
         const [categoryResult, reporterResult, studentResult, staffResult, updatesResult] = await Promise.all([
@@ -418,7 +441,7 @@ export const reportService = {
                 .eq('id', reportData.reported_by)
                 .single() : Promise.resolve({ data: null, error: null }),
             // Student (if student report)
-            reportData.student_id ? supabase
+            isStudentReport && reportData.student_id ? supabase
                 .from('students')
                 .select(`
                     id,
@@ -431,14 +454,14 @@ export const reportService = {
                 .eq('id', reportData.student_id)
                 .single() : Promise.resolve({ data: null, error: null }),
             // Staff (if staff report)
-            reportData.staff_id ? supabase
+            !isStudentReport && reportData.staff_id ? supabase
                 .from('staff')
                 .select('id, name, role, picture_url')
                 .eq('id', reportData.staff_id)
                 .single() : Promise.resolve({ data: null, error: null }),
-            // Updates
+            // Updates - use the correct updates table
             supabase
-                .from('reports_updates')
+                .from(updatesTable as any)
                 .select('*')
                 .eq('report_id', reportData.id)
                 .order('created_at', { ascending: false })
@@ -454,7 +477,7 @@ export const reportService = {
                             .from('staff')
                             .select('id, name, role')
                             .eq('id', update.updated_by)
-                            .single();
+                            .maybeSingle();
                         update.staff = staffData;
                     }
                     return update;
@@ -466,13 +489,14 @@ export const reportService = {
         // Combine all data
         const report = {
             ...reportData,
+            subject_type,
             category: categoryResult.data,
             reporter: reporterResult.data,
             student: studentResult.data,
             staff: staffResult.data,
             updates: updates,
-            subject_id: reportData.subject_type === 'student' ? reportData.student_id : reportData.staff_id,
-            subject: reportData.subject_type === 'student' ? studentResult.data : staffResult.data
+            subject_id: isStudentReport ? reportData.student_id : reportData.staff_id,
+            subject: isStudentReport ? studentResult.data : staffResult.data
         };
         
         return report as Report;
