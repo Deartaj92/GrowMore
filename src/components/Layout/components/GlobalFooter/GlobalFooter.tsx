@@ -31,6 +31,7 @@ const FooterContent = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.85rem;
   width: 100%;
+  pointer-events: auto;
   
   @media (max-width: 700px) {
     font-size: 0.8rem;

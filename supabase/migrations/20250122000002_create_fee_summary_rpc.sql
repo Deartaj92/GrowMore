@@ -96,3 +96,4 @@ GRANT EXECUTE ON FUNCTION get_fee_invoices_sum(BIGINT, INTEGER) TO anon;
 
 
 
+

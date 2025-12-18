@@ -199,15 +199,15 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       <TabsContainer ref={tabsContainerRef}>
         <TabsWrapper ref={tabsWrapperRef} $hideScrollbar={true} $preventScroll={true}>
           {tabs.map((tab) => (
-            <TabButton
+        <TabButton
               key={tab.id}
               data-tab-id={tab.id}
               active={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-            >
+        >
               {tab.icon}
               {tab.label}
-            </TabButton>
+        </TabButton>
           ))}
         </TabsWrapper>
         {hasOverflow && (

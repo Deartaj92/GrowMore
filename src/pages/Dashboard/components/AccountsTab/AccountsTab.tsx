@@ -159,7 +159,7 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
   const theme = useTheme() as any;
   const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
 
-  const { summary, cashAccounts, incomeVsExpenses, monthlyData } = accountsData;
+  const { summary, cashAccounts, incomeVsExpenses, monthlyData, balanceSheet, assetsLiabilities } = accountsData;
 
   // Prepare data for donut chart
   const donutChartData = [
@@ -244,6 +244,32 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
             {accountsLoading ? <DottedLoader /> : formatCurrency(summary?.cash || 0)}
           </StatValue>
         </StatCard>
+
+        {/* Balance Sheet Total Balance */}
+        {balanceSheet && (
+          <StatCard theme={theme}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+              <StatLabel theme={theme}>Total Balance</StatLabel>
+              <AccountBalanceIcon style={{ fontSize: '1.25rem', color: balanceSheet.totalBalance >= 0 ? '#22c55e' : '#ef4444' }} />
+            </div>
+            <StatValue theme={theme} style={{ color: balanceSheet.totalBalance >= 0 ? '#22c55e' : '#ef4444' }}>
+              {accountsLoading ? <DottedLoader /> : formatCurrency(balanceSheet.totalBalance || 0)}
+            </StatValue>
+          </StatCard>
+        )}
+
+        {/* Net Worth */}
+        {assetsLiabilities && (
+          <StatCard theme={theme}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+              <StatLabel theme={theme}>Net Worth</StatLabel>
+              <AttachMoneyIcon style={{ fontSize: '1.25rem', color: assetsLiabilities.netWorth >= 0 ? '#22c55e' : '#ef4444' }} />
+            </div>
+            <StatValue theme={theme} style={{ color: assetsLiabilities.netWorth >= 0 ? '#22c55e' : '#ef4444' }}>
+              {accountsLoading ? <DottedLoader /> : formatCurrency(assetsLiabilities.netWorth || 0)}
+            </StatValue>
+          </StatCard>
+        )}
       </StatsGrid>
 
       {/* Charts Section */}
@@ -450,6 +476,225 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
           </ResponsiveContainer>
         )}
       </ContentCard>
+
+      {/* Balance Sheet Account Balances */}
+      {balanceSheet && balanceSheet.accounts.length > 0 && (
+        <ContentCard theme={theme}>
+          <CardTitle theme={theme}>
+            <AccountBalanceIcon />
+            Account Balances (as of {accountsDateTo})
+          </CardTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ 
+                  background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                  borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
+                }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>Account</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>Income</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>Expenses</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Cash in Hand Row */}
+                {(balanceSheet.cashInHand.income > 0 || balanceSheet.cashInHand.expenses > 0 || balanceSheet.cashInHand.balance !== 0) && (
+                  <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}` }}>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: theme.TEXT_PRIMARY, fontWeight: 600 }}>Cash in Hand</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#22c55e', fontWeight: 500, textAlign: 'right' }}>
+                      {formatCurrency(balanceSheet.cashInHand.income)}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#ef4444', fontWeight: 500, textAlign: 'right' }}>
+                      {formatCurrency(balanceSheet.cashInHand.expenses)}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        background: balanceSheet.cashInHand.balance >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: balanceSheet.cashInHand.balance >= 0 ? '#22c55e' : '#ef4444',
+                        border: `1px solid ${balanceSheet.cashInHand.balance >= 0 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                      }}>
+                        {formatCurrency(balanceSheet.cashInHand.balance)}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {/* Account Rows */}
+                {balanceSheet.accounts.map((account) => (
+                  <tr key={account.id} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}` }}>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: theme.TEXT_PRIMARY }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{account.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>{account.displayName}</div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#22c55e', fontWeight: 500, textAlign: 'right' }}>
+                      {formatCurrency(account.income)}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: '#ef4444', fontWeight: 500, textAlign: 'right' }}>
+                      {formatCurrency(account.expenses)}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        background: account.balance >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: account.balance >= 0 ? '#22c55e' : '#ef4444',
+                        border: `1px solid ${account.balance >= 0 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                      }}>
+                        {formatCurrency(account.balance)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {/* Grand Total Row */}
+                <tr style={{ 
+                  background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                  borderTop: `2px solid ${theme.ACCENT}`,
+                  borderBottom: `2px solid ${theme.ACCENT}`
+                }}>
+                  <td style={{ padding: '0.75rem', fontSize: '1rem', fontWeight: 700, color: theme.TEXT_PRIMARY }}>Grand Total</td>
+                  <td style={{ padding: '0.75rem', fontSize: '1rem', color: '#22c55e', fontWeight: 700, textAlign: 'right' }}>
+                    {formatCurrency(balanceSheet.totalIncome)}
+                  </td>
+                  <td style={{ padding: '0.75rem', fontSize: '1rem', color: '#ef4444', fontWeight: 700, textAlign: 'right' }}>
+                    {formatCurrency(balanceSheet.totalExpenses)}
+                  </td>
+                  <td style={{ padding: '0.75rem', fontSize: '1rem', textAlign: 'right' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '0.35rem 0.85rem',
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      background: balanceSheet.totalBalance >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      color: balanceSheet.totalBalance >= 0 ? '#22c55e' : '#ef4444',
+                      border: `1px solid ${balanceSheet.totalBalance >= 0 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                    }}>
+                      {formatCurrency(balanceSheet.totalBalance)}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ContentCard>
+      )}
+
+      {/* Assets & Liabilities Summary */}
+      {assetsLiabilities && (
+        <ContentGrid theme={theme}>
+          {/* Assets Summary */}
+          <ContentCard theme={theme}>
+            <CardTitle theme={theme}>
+              <AccountBalanceIcon />
+              Assets (as of {accountsDateTo})
+            </CardTitle>
+            {accountsLoading ? (
+              <EmptyState theme={theme}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </EmptyState>
+            ) : assetsLiabilities.assets.byCategory.length === 0 ? (
+              <EmptyState theme={theme}>
+                No assets data available
+              </EmptyState>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 700, color: theme.ACCENT }}>
+                  {formatCurrency(assetsLiabilities.assets.total)}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {assetsLiabilities.assets.byCategory.map((category) => (
+                    <div key={category.categoryId} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                      borderRadius: '8px',
+                      border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          background: category.color
+                        }} />
+                        <span style={{ fontSize: '0.9rem', color: theme.TEXT_PRIMARY, fontWeight: 500 }}>
+                          {category.categoryName}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.9rem', color: theme.TEXT_PRIMARY, fontWeight: 600 }}>
+                        {formatCurrency(category.total)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </ContentCard>
+
+          {/* Liabilities Summary */}
+          <ContentCard theme={theme}>
+            <CardTitle theme={theme}>
+              <AccountBalanceIcon />
+              Liabilities (as of {accountsDateTo})
+            </CardTitle>
+            {accountsLoading ? (
+              <EmptyState theme={theme}>
+                <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+              </EmptyState>
+            ) : assetsLiabilities.liabilities.byCategory.length === 0 ? (
+              <EmptyState theme={theme}>
+                No liabilities data available
+              </EmptyState>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>
+                  {formatCurrency(assetsLiabilities.liabilities.total)}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {assetsLiabilities.liabilities.byCategory.map((category) => (
+                    <div key={category.categoryId} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                      borderRadius: '8px',
+                      border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          background: category.color
+                        }} />
+                        <span style={{ fontSize: '0.9rem', color: theme.TEXT_PRIMARY, fontWeight: 500 }}>
+                          {category.categoryName}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.9rem', color: theme.TEXT_PRIMARY, fontWeight: 600 }}>
+                        {formatCurrency(category.total)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </ContentCard>
+        </ContentGrid>
+      )}
     </Container>
   );
 };

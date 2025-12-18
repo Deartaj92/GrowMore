@@ -6,6 +6,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { supabase } from '../../../../supabaseClient';
 import { examinationService } from '../../../../services/examinationService';
 import type { Examination } from '../../../../types/examinations';
+import { fetchUnreadCounts, UnreadCounts } from '../../../../services/notificationService';
 import {
   Refresh as RefreshIcon,
   AccountCircle as UserIcon,
@@ -230,6 +231,10 @@ const NavMenuItem = styled.button<{ $hasDropdown?: boolean; $isDashboard?: boole
     flex-shrink: 0;
   }
   
+  span {
+    flex-shrink: 0;
+  }
+  
   @media (max-width: 700px) {
     padding: 6px 10px;
     font-size: 0.8rem;
@@ -363,6 +368,25 @@ const ColumnTitle = styled.h3`
   letter-spacing: 0.5px;
 `;
 
+const Badge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: 8px;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+`;
+
 const DropdownMenuItem = styled.button<{ $color: string }>`
   display: flex;
   align-items: center;
@@ -375,6 +399,7 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   transition: all 0.2s ease;
   text-align: left;
   width: 100%;
+  position: relative;
   
   &:hover {
     background: ${props => props.theme.BG};
@@ -401,6 +426,7 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   .menu-content {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
   }
   
   .menu-title {
@@ -593,6 +619,7 @@ const MobileSubmenu = styled.div<{ $isOpen: boolean }>`
 `;
 
 const MobileSubmenuItem = styled.button`
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
@@ -875,6 +902,103 @@ const Header: React.FC<HeaderProps> = ({
     
     loadPublishedExaminations();
   }, [authUser?.school_id, user?.school_id]);
+
+  // Fetch unread counts for notifications with real-time updates
+  useEffect(() => {
+    const schoolId = authUser?.school_id || user?.school_id;
+    if (!schoolId) return;
+
+    let debounceTimer: NodeJS.Timeout | null = null;
+
+    const loadUnreadCounts = async () => {
+      try {
+        const counts = await fetchUnreadCounts(schoolId);
+        setUnreadCounts(counts);
+      } catch (error) {
+        console.error('Error loading unread counts:', error);
+      }
+    };
+
+    // Debounced version to prevent excessive reloads
+    const debouncedLoadUnreadCounts = () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(() => {
+        loadUnreadCounts();
+      }, 300); // 300ms debounce
+    };
+    
+    // Initial load
+    loadUnreadCounts();
+    
+    // Set up real-time subscriptions
+    const channelName = `unread-counts-${schoolId}`;
+    const channel = supabase
+      .channel(channelName, {
+        config: {
+          broadcast: { self: false }
+        }
+      });
+
+    // Subscribe to leave_requests changes
+    channel
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'leave_requests',
+          filter: `school_id=eq.${schoolId}`
+        },
+        (payload) => {
+          console.log('Leave request change detected:', payload.eventType, payload.new?.id || payload.old?.id);
+          // Reload counts when leave requests change (debounced)
+          debouncedLoadUnreadCounts();
+        }
+      )
+      // Subscribe to complaints changes
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'complaints',
+          filter: `school_id=eq.${schoolId}`
+        },
+        (payload) => {
+          // Reload counts when complaints change (debounced)
+          debouncedLoadUnreadCounts();
+        }
+      )
+      // Subscribe to suggestions changes
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'suggestions',
+          filter: `school_id=eq.${schoolId}`
+        },
+        (payload) => {
+          // Reload counts when suggestions change (debounced)
+          debouncedLoadUnreadCounts();
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Error subscribing to unread counts');
+        }
+      });
+
+    // Cleanup: unsubscribe when component unmounts or dependencies change
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [authUser?.school_id, user?.school_id]);
   
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
   const [employeeMenuOpen, setEmployeeMenuOpen] = useState(false);
@@ -884,6 +1008,11 @@ const Header: React.FC<HeaderProps> = ({
   const [academicsMenuOpen, setAcademicsMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<UnreadCounts>({
+    leaveRequests: 0,
+    complaints: 0,
+    suggestions: 0,
+  });
   const [mobileOpenMenus, setMobileOpenMenus] = useState<Set<string>>(new Set());
   const menuLeaveTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({});
   const studentMenuRef = useRef<HTMLDivElement>(null);
@@ -1313,43 +1442,51 @@ const Header: React.FC<HeaderProps> = ({
   ];
 
   // Communication menu items (placeholder for future communication features)
-  const communicationMenuItems = [
-    {
-      title: 'Messages',
-      description: 'Send and receive messages',
-      icon: <ForumIcon />,
-      path: '/students/general-message',
-      color: '#3b82f6'
-    },
-    {
-      title: 'Announcements',
-      description: 'Create and manage announcements',
-      icon: <ListAltIcon />,
-      path: '/settings/user-announcements',
-      color: '#10b981'
-    },
-    {
-      title: 'Events and Notices',
-      description: 'Create and manage school events and notices',
-      icon: <EventIcon />,
-      path: '/events',
-      color: '#8b5cf6'
-    },
-    {
-      title: 'Leave Requests',
-      description: 'Review and manage leave requests',
-      icon: <EventBusyIcon />,
-      path: '/attendance/leave-requests',
-      color: '#ef4444'
-    },
-    {
-      title: 'Complaints & Suggestions',
-      description: 'Review and manage student and parent complaints and suggestions',
-      icon: <FeedbackIcon />,
-      path: '/attendance/complaints-suggestions',
-      color: '#f59e0b'
-    }
-  ];
+  const communicationMenuItems = useMemo(() => {
+    const items = [
+      {
+        title: 'Messages',
+        description: 'Send and receive messages',
+        icon: <ForumIcon />,
+        path: '/students/general-message',
+        color: '#3b82f6',
+        badgeCount: 0
+      },
+      {
+        title: 'Announcements',
+        description: 'Create and manage announcements',
+        icon: <ListAltIcon />,
+        path: '/settings/user-announcements',
+        color: '#10b981',
+        badgeCount: 0
+      },
+      {
+        title: 'Events and Notices',
+        description: 'Create and manage school events and notices',
+        icon: <EventIcon />,
+        path: '/events',
+        color: '#8b5cf6',
+        badgeCount: 0
+      },
+      {
+        title: 'Leave Requests',
+        description: 'Review and manage leave requests',
+        icon: <EventBusyIcon />,
+        path: '/attendance/leave-requests',
+        color: '#ef4444',
+        badgeCount: unreadCounts.leaveRequests
+      },
+      {
+        title: 'Complaints & Suggestions',
+        description: 'Review and manage student and parent complaints and suggestions',
+        icon: <FeedbackIcon />,
+        path: '/attendance/complaints-suggestions',
+        color: '#f59e0b',
+        badgeCount: unreadCounts.complaints + unreadCounts.suggestions
+      }
+    ];
+    return items;
+  }, [unreadCounts]);
 
   // Generate description for Marks Entry based on published examinations
   const getMarksEntryDescription = useMemo(() => {
@@ -1834,6 +1971,14 @@ const Header: React.FC<HeaderProps> = ({
                 >
                   <span className="menu-icon">{item.icon}</span>
                   <span className="menu-label">{item.label}</span>
+                  {item.label === 'Communication' && (() => {
+                    const totalUnread = unreadCounts.leaveRequests + unreadCounts.complaints + unreadCounts.suggestions;
+                    return totalUnread > 0 ? (
+                      <Badge style={{ marginLeft: 'auto', marginRight: item.hasDropdown ? '8px' : '0' }}>
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                      </Badge>
+                    ) : null;
+                  })()}
                   {item.hasDropdown && (
                     <ChevronRightIcon 
                       className="menu-arrow"
@@ -1882,6 +2027,9 @@ const Header: React.FC<HeaderProps> = ({
                                   <div className="submenu-title">{menuItem.title}</div>
                                   <div className="submenu-description">{menuItem.description}</div>
                                 </div>
+                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                              )}
                               </MobileSubmenuItem>
                             ))}
                             {section.expenseItems && (
@@ -1902,6 +2050,9 @@ const Header: React.FC<HeaderProps> = ({
                                       <div className="submenu-title">{menuItem.title}</div>
                                       <div className="submenu-description">{menuItem.description}</div>
                                     </div>
+                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                              )}
                                   </MobileSubmenuItem>
                                 ))}
                               </>
@@ -1926,6 +2077,9 @@ const Header: React.FC<HeaderProps> = ({
                               <div className="submenu-title">{menuItem.title}</div>
                               <div className="submenu-description">{menuItem.description}</div>
                             </div>
+                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                              )}
                           </MobileSubmenuItem>
                         ))
                       )
@@ -2034,6 +2188,12 @@ const Header: React.FC<HeaderProps> = ({
                   >
                     {item.icon}
                     <span>{item.label}</span>
+                    {item.label === 'Communication' && (() => {
+                      const totalUnread = unreadCounts.leaveRequests + unreadCounts.complaints + unreadCounts.suggestions;
+                      return totalUnread > 0 ? (
+                        <Badge style={{ marginLeft: '6px' }}>{totalUnread > 99 ? '99+' : totalUnread}</Badge>
+                      ) : null;
+                    })()}
                   </NavMenuItem>
                   <MenuDropdown
                     ref={menuState?.dropdownRef}
@@ -2076,6 +2236,9 @@ const Header: React.FC<HeaderProps> = ({
                                     <div className="menu-title">{menuItem.title}</div>
                                     <div className="menu-description">{menuItem.description}</div>
                                   </div>
+                                  {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                    <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                                  )}
                                 </DropdownMenuItem>
                               ))}
                               <ColumnSeparator />
@@ -2095,6 +2258,9 @@ const Header: React.FC<HeaderProps> = ({
                                     <div className="menu-title">{menuItem.title}</div>
                                     <div className="menu-description">{menuItem.description}</div>
                                   </div>
+                                  {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                    <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                                  )}
                                 </DropdownMenuItem>
                               ))}
                             </>
@@ -2138,6 +2304,9 @@ const Header: React.FC<HeaderProps> = ({
                                 <div className="menu-title">{menuItem.title}</div>
                                 <div className="menu-description">{menuItem.description}</div>
                               </div>
+                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                              )}
                             </DropdownMenuItem>
                           ))}
                         </DropdownColumn>
@@ -2208,6 +2377,12 @@ const Header: React.FC<HeaderProps> = ({
               >
                 {item.icon}
                 <span>{item.label}</span>
+                {item.label === 'Communication' && (() => {
+                  const totalUnread = unreadCounts.leaveRequests + unreadCounts.complaints + unreadCounts.suggestions;
+                  return totalUnread > 0 ? (
+                    <Badge style={{ marginLeft: '6px' }}>{totalUnread > 99 ? '99+' : totalUnread}</Badge>
+                  ) : null;
+                })()}
               </NavMenuItem>
             );
           })}

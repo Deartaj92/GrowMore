@@ -209,7 +209,7 @@ const Dashboard: React.FC = () => {
   const [staffDetails, setStaffDetails] = useState<Record<string, any>>({});
   const [employeeAttendanceDataForDate, setEmployeeAttendanceDataForDate] = useState<any[]>([]);
   const [employeeAttendanceStatsLoading, setEmployeeAttendanceStatsLoading] = useState(false);
-  const [employeeAttendanceTrendData, setEmployeeAttendanceTrendData] = useState<Array<{ day: string; rate: number }>>([]);
+  const [employeeAttendanceTrendData, setEmployeeAttendanceTrendData] = useState<Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; present: number; absent: number; leave: number; late: number; presentWithLate: number }>>([]);
   const [employeeAttendanceChartsLoading, setEmployeeAttendanceChartsLoading] = useState(false);
   const [employeeTodayAttendanceRate, setEmployeeTodayAttendanceRate] = useState(0);
   const [employeeWeekAvgAttendanceRate, setEmployeeWeekAvgAttendanceRate] = useState(0);
@@ -223,7 +223,9 @@ const Dashboard: React.FC = () => {
     summary: { income: 0, expenses: 0, profitLoss: 0, cash: 0 },
     cashAccounts: [],
     incomeVsExpenses: { income: 0, expenses: 0 },
-    monthlyData: []
+    monthlyData: [],
+    balanceSheet: null,
+    assetsLiabilities: null
   });
   const [accountsLoading, setAccountsLoading] = useState(false);
 
@@ -1368,21 +1370,43 @@ const Dashboard: React.FC = () => {
       try {
         if (USE_DUMMY_DATA) {
           await new Promise(resolve => setTimeout(resolve, 100));
-          // Generate dummy data excluding Sundays
-          const trendData: Array<{ day: string; rate: number }> = [];
+          // Generate dummy data excluding Sundays (matching students attendance structure)
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const trendData: Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; present: number; absent: number; leave: number; late: number; presentWithLate: number }> = [];
           const selectedDate = new Date(dashboardDate);
           for (let i = 29; i >= 0; i--) {
             const date = new Date(selectedDate);
             date.setDate(date.getDate() - i);
             // Skip Sundays (day of week === 0)
             if (date.getDay() === 0) continue;
+            const dateStr = date.toISOString().slice(0, 10);
+            const dayOfWeek = dayNames[date.getDay()];
+            const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
+            
+            // Generate random counts
+            const present = Math.floor(Math.random() * 40) + 30;
+            const absent = Math.floor(Math.random() * 10) + 2;
+            const leave = Math.floor(Math.random() * 5) + 1;
+            const late = Math.floor(Math.random() * 8) + 1;
+            const total = present + absent + leave + late;
+            const presentWithLate = present + late;
+            const rate = total > 0 ? Math.round((presentWithLate / total) * 100) : 0;
+            
             trendData.push({
-              day: `${date.getDate()}/${date.getMonth() + 1}`,
-              rate: Math.floor(Math.random() * 30) + 70
+              day: dayName,
+              rate,
+              dayOfWeek,
+              dateStr,
+              present,
+              absent,
+              leave,
+              late,
+              presentWithLate
             });
           }
           setEmployeeAttendanceTrendData(trendData);
-          setEmployeeTodayAttendanceRate(85);
+          const lastRate = trendData[trendData.length - 1]?.rate || 85;
+          setEmployeeTodayAttendanceRate(lastRate);
           const avg = trendData.length > 0 
             ? Math.round(trendData.reduce((sum, d) => sum + d.rate, 0) / trendData.length)
             : 0;
@@ -1391,89 +1415,193 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        // Simplified trend - fetch all data at once instead of 30 sequential calls
+        // Fetch employee attendance trend (matching students attendance logic)
         const selectedDate = new Date(dashboardDate);
+        const selectedDateStr = selectedDate.toISOString().slice(0, 10);
+        const endDate = new Date(selectedDate);
+        endDate.setHours(23, 59, 59, 999);
+        // Look back enough days to find 30 working days (excluding Sundays and holidays)
         const startDate = new Date(selectedDate);
-        startDate.setDate(startDate.getDate() - 29);
+        startDate.setDate(startDate.getDate() - 42);
+        startDate.setHours(0, 0, 0, 0);
+
         const startDateStr = startDate.toISOString().slice(0, 10);
-        const endDateStr = selectedDate.toISOString().slice(0, 10);
+        const endDateStr = endDate.toISOString().slice(0, 10);
 
-        const { data: allAttendanceData } = await supabase
-          .from('staff_attendance_records')
-          .select('date, status')
-          .gte('date', startDateStr)
-          .lte('date', endDateStr)
-          .eq('session_id', sessionData.id)
-          .eq('school_id', user.school_id)
-          .order('date', { ascending: true });
-
-        // Group by date
-        const attendanceByDate = new Map<string, { total: number; present: number }>();
-        
-        if (allAttendanceData && allAttendanceData.length > 0) {
-          allAttendanceData.forEach((record: any) => {
-            const dateStr = record.date?.split('T')[0] || record.date;
-            if (!attendanceByDate.has(dateStr)) {
-              attendanceByDate.set(dateStr, { total: 0, present: 0 });
-            }
-            const stats = attendanceByDate.get(dateStr)!;
-            stats.total++;
-            if (record.status === 'present' || record.status === 'late' || record.status === 'half_day') {
-              stats.present++;
-            }
-          });
-        }
-
-        // Fetch holidays for the date range
         const { data: holidaysData } = await supabase
           .from('holidays')
           .select('start_date, end_date')
           .eq('school_id', user.school_id)
-          .eq('session_id', sessionData.id)
           .lte('start_date', endDateStr)
           .gte('end_date', startDateStr);
 
-        // Create a set of holiday dates for quick lookup
         const holidayDates = new Set<string>();
         if (holidaysData) {
           holidaysData.forEach((holiday: any) => {
-            const start = new Date(holiday.start_date);
-            const end = new Date(holiday.end_date);
-            const current = new Date(start);
-            while (current <= end) {
-              holidayDates.add(current.toISOString().slice(0, 10));
+            const holidayStart = new Date(holiday.start_date);
+            const holidayEnd = new Date(holiday.end_date);
+            const current = new Date(holidayStart);
+            while (current <= holidayEnd) {
+              const dateStr = current.toISOString().slice(0, 10);
+              if (dateStr >= startDateStr && dateStr <= endDateStr) {
+                holidayDates.add(dateStr);
+              }
               current.setDate(current.getDate() + 1);
             }
           });
         }
 
-        // Build trend data array, excluding Sundays and holidays
-        const trendData: Array<{ day: string; rate: number }> = [];
-        for (let i = 29; i >= 0; i--) {
+        const selectedDayOfWeek = selectedDate.getDay();
+        const isSelectedDateWorkingDay = selectedDayOfWeek !== 0 && !holidayDates.has(selectedDateStr);
+
+        // Build array of 30 working days (excluding Sundays and holidays) from selected date going backwards
+        const days: Array<{ date: Date; dateStr: string; dayName: string; dayOfWeek: string }> = [];
+        
+        // Get day names for tooltip
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        // Start from selected date and go back enough days to find 30 working days
+        let daysBack = 0;
+        let workingDaysCount = 0;
+        const maxDaysToCheck = 60; // Look back up to 60 days to find 30 working days
+        
+        // First, add the selected date if it's a working day
+        if (isSelectedDateWorkingDay) {
+          const dayName = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`;
+          days.push({
+            date: new Date(selectedDate),
+            dateStr: selectedDateStr,
+            dayName,
+            dayOfWeek: dayNames[selectedDayOfWeek]
+          });
+          workingDaysCount++;
+          daysBack = 1;
+        } else {
+          daysBack = 1;
+        }
+        
+        // Continue looking back to find 30 working days total
+        while (workingDaysCount < 30 && daysBack < maxDaysToCheck) {
           const date = new Date(selectedDate);
-          date.setDate(date.getDate() - i);
+          date.setDate(date.getDate() - daysBack);
           const dateStr = date.toISOString().slice(0, 10);
-          
-          // Skip Sundays (day of week === 0) and holidays
           const dayOfWeek = date.getDay();
-          if (dayOfWeek === 0 || holidayDates.has(dateStr)) {
-            continue;
+          
+          // Only include if it's not Sunday and not a holiday
+          if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr >= startDateStr) {
+            const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
+            days.push({
+              date,
+              dateStr,
+              dayName,
+              dayOfWeek: dayNames[dayOfWeek]
+            });
+            workingDaysCount++;
           }
-          
-          const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0 };
-          const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-          
-          trendData.push({
-            day: `${date.getDate()}/${date.getMonth() + 1}`,
-            rate
+          daysBack++;
+        }
+
+        // Sort days chronologically (oldest first)
+        days.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+
+        if (days.length === 0) {
+          setEmployeeAttendanceTrendData([]);
+          setEmployeeTodayAttendanceRate(0);
+          setEmployeeWeekAvgAttendanceRate(0);
+          setEmployeeAttendanceChartsLoading(false);
+          return;
+        }
+
+        const daysDateStrs = new Set(days.map(d => d.dateStr));
+        const minDate = days[0].dateStr;
+        const maxDate = days[days.length - 1].dateStr;
+
+        // Use fetchAllRows to get ALL attendance records in the range (handles pagination)
+        const allAttendanceData = await fetchAllRows(async (from, to) => {
+          const result = await supabase
+            .from('staff_attendance_records')
+            .select('date, status')
+            .gte('date', minDate)
+            .lte('date', maxDate)
+            .eq('session_id', sessionData.id)
+            .eq('school_id', user.school_id)
+            .range(from, to);
+          return { data: result.data, error: result.error };
+        });
+        
+        if (!allAttendanceData) {
+          console.error('Error fetching employee attendance trend: Failed to fetch data');
+          setEmployeeAttendanceChartsLoading(false);
+          return;
+        }
+
+        const attendanceByDate = new Map<string, { total: number; present: number; absent: number; leave: number; late: number }>();
+
+        days.forEach(({ dateStr }) => {
+          attendanceByDate.set(dateStr, { total: 0, present: 0, absent: 0, leave: 0, late: 0 });
+        });
+
+        // Process ALL attendance data
+        if (allAttendanceData && allAttendanceData.length > 0) {
+          allAttendanceData.forEach((record: any) => {
+            // Ensure date is in YYYY-MM-DD format
+            let dateStr = record.date;
+            if (dateStr && typeof dateStr === 'string') {
+              // If date includes time, extract just the date part
+              dateStr = dateStr.split('T')[0];
+
+              // Only process if it's in our date range
+              if (daysDateStrs.has(dateStr)) {
+                const stats = attendanceByDate.get(dateStr);
+                if (stats) {
+                  stats.total++;
+                  if (record.status === 'present') {
+                    stats.present++;
+                  } else if (record.status === 'absent') {
+                    stats.absent++;
+                  } else if (record.status === 'leave') {
+                    stats.leave++;
+                  } else if (record.status === 'late' || record.status === 'half_day') {
+                    stats.late++;
+                  }
+                }
+              }
+            }
           });
         }
 
+        // Build trend data array with detailed counts
+        const trendData: Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; present: number; absent: number; leave: number; late: number; presentWithLate: number }> = [];
+        let totalRate = 0;
+
+        days.forEach(({ dateStr, dayName, dayOfWeek }) => {
+          const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0, absent: 0, leave: 0, late: 0 };
+          const rate = stats.total > 0 ? Math.round(((stats.present + stats.late) / stats.total) * 100) : 0;
+          trendData.push({ 
+            day: dayName, 
+            rate, 
+            dayOfWeek, 
+            dateStr,
+            present: stats.present,
+            absent: stats.absent,
+            leave: stats.leave,
+            late: stats.late,
+            presentWithLate: stats.present + stats.late // Present includes late
+          });
+          totalRate += rate;
+        });
+
         setEmployeeAttendanceTrendData(trendData);
-        setEmployeeTodayAttendanceRate(trendData[trendData.length - 1]?.rate || 0);
-        const avg = trendData.length > 0 
-          ? Math.round(trendData.reduce((sum, d) => sum + d.rate, 0) / trendData.length)
-          : 0;
+
+        let todayRate = 0;
+        if (isSelectedDateWorkingDay) {
+          // Use the last data point if available
+          todayRate = trendData[trendData.length - 1]?.rate || 0;
+        } else {
+          todayRate = trendData[trendData.length - 1]?.rate || 0;
+        }
+        const avg = trendData.length > 0 ? Math.round(totalRate / trendData.length) : 0;
+        setEmployeeTodayAttendanceRate(todayRate);
         setEmployeeWeekAvgAttendanceRate(avg);
       } catch (error) {
         console.error('Error fetching employee attendance trend:', error);

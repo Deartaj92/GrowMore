@@ -1,6 +1,8 @@
 import { supabase } from '../../../supabaseClient';
 import { USE_DUMMY_DATA } from '../constants';
 import { format, startOfMonth, endOfMonth, parseISO, startOfYear } from 'date-fns';
+import { balanceSheetService } from '../../AssetsLiabilities/services/balanceSheetService';
+import { BalanceSheet } from '../../../types/liability';
 
 export interface AccountsSummary {
   income: number;
@@ -20,6 +22,50 @@ export interface MonthlyIncomeExpense {
   expenses: number;
 }
 
+export interface AccountBalance {
+  id: number;
+  name: string;
+  type: string;
+  displayName: string;
+  income: number;
+  expenses: number;
+  balance: number;
+}
+
+export interface BalanceSheetData {
+  accounts: AccountBalance[];
+  cashInHand: {
+    income: number;
+    expenses: number;
+    balance: number;
+  };
+  totalIncome: number;
+  totalExpenses: number;
+  totalBalance: number;
+}
+
+export interface AssetsLiabilitiesData {
+  assets: {
+    total: number;
+    byCategory: Array<{
+      categoryId: number;
+      categoryName: string;
+      total: number;
+      color: string;
+    }>;
+  };
+  liabilities: {
+    total: number;
+    byCategory: Array<{
+      categoryId: number;
+      categoryName: string;
+      total: number;
+      color: string;
+    }>;
+  };
+  netWorth: number;
+}
+
 export interface AccountsData {
   summary: AccountsSummary;
   cashAccounts: CashAccount[];
@@ -28,6 +74,8 @@ export interface AccountsData {
     expenses: number;
   };
   monthlyData: MonthlyIncomeExpense[];
+  balanceSheet: BalanceSheetData | null;
+  assetsLiabilities: AssetsLiabilitiesData | null;
 }
 
 export const fetchAccountsData = async (
@@ -75,7 +123,36 @@ export const fetchAccountsData = async (
           { month: 'Oct', income: 55000, expenses: 50000 },
           { month: 'Nov', income: 45000, expenses: 48000 },
           { month: 'Dec', income: 15000, expenses: 0 }
-        ]
+        ],
+        balanceSheet: {
+          accounts: [
+            { id: 1, name: 'Bank Account', type: 'bank', displayName: 'Bank Account', income: 500000, expenses: 200000, balance: 300000 },
+            { id: 2, name: 'Savings Account', type: 'savings', displayName: 'Savings Account', income: 200000, expenses: 50000, balance: 150000 }
+          ],
+          cashInHand: { income: 100000, expenses: 50000, balance: 50000 },
+          totalIncome: 800000,
+          totalExpenses: 300000,
+          totalBalance: 500000
+        },
+        assetsLiabilities: {
+          assets: {
+            total: 2000000,
+            byCategory: [
+              { categoryId: 1, categoryName: 'Technology', total: 500000, color: '#3b82f6' },
+              { categoryId: 2, categoryName: 'Furniture', total: 300000, color: '#10b981' },
+              { categoryId: 3, categoryName: 'Vehicles', total: 800000, color: '#f59e0b' },
+              { categoryId: 4, categoryName: 'Infrastructure', total: 400000, color: '#ef4444' }
+            ]
+          },
+          liabilities: {
+            total: 500000,
+            byCategory: [
+              { categoryId: 1, categoryName: 'Loans', total: 300000, color: '#ef4444' },
+              { categoryId: 2, categoryName: 'Leases', total: 200000, color: '#f59e0b' }
+            ]
+          },
+          netWorth: 1500000
+        }
       };
       setAccountsData(dummyData);
       setAccountsLoading(false);
@@ -84,26 +161,57 @@ export const fetchAccountsData = async (
 
     const sessionData = await getCachedSession();
     
-    // Fetch income (from fee payments in date range)
-    const { data: feePayments } = await supabase
-      .from('fee_payments')
-      .select('amount, payment_mode, payment_date')
-      .eq('school_id', schoolId)
-      .gte('payment_date', dateFrom)
-      .lte('payment_date', dateTo);
+    // Helper function to fetch all rows with pagination
+    const fetchAllRows = async <T,>(
+      queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>
+    ): Promise<T[]> => {
+      const allResults: T[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-    const income = (feePayments || []).reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+      while (hasMore) {
+        const { data, error } = await queryFn(from, from + pageSize - 1);
+        if (error) throw error;
 
-    // Fetch expenses (from expenses table in date range)
-    const { data: expensesData } = await supabase
-      .from('expenses')
-      .select('amount, payment_method, expense_date, status')
-      .eq('school_id', schoolId)
-      .gte('expense_date', dateFrom)
-      .lte('expense_date', dateTo)
-      .eq('status', 'approved');
+        if (data && data.length > 0) {
+          allResults.push(...data);
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
 
-    const expenses = (expensesData || []).reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+      return allResults;
+    };
+    
+    // Fetch income (from fee payments in date range) - with pagination
+    const feePayments = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('fee_payments')
+        .select('amount, payment_mode, payment_date')
+        .eq('school_id', schoolId)
+        .gte('payment_date', dateFrom)
+        .lte('payment_date', dateTo)
+        .range(from, to);
+    });
+
+    const income = feePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+
+    // Fetch expenses (from expenses table in date range) - with pagination
+    const expensesData = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('expenses')
+        .select('amount, payment_method, expense_date, status')
+        .eq('school_id', schoolId)
+        .gte('expense_date', dateFrom)
+        .lte('expense_date', dateTo)
+        .eq('status', 'approved')
+        .range(from, to);
+    });
+
+    const expenses = expensesData.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
 
     // Calculate profit/loss
     const profitLoss = income - expenses;
@@ -126,7 +234,7 @@ export const fetchAccountsData = async (
     });
 
     // Calculate cash from fee payments (income adds to cash)
-    (feePayments || []).forEach(payment => {
+    feePayments.forEach(payment => {
       const mode = payment.payment_mode?.toLowerCase() || '';
       let accountName = 'Cash in hand';
       
@@ -145,7 +253,7 @@ export const fetchAccountsData = async (
     });
 
     // Calculate cash from expenses (expenses reduce cash)
-    (expensesData || []).forEach(expense => {
+    expensesData.forEach(expense => {
       const method = expense.payment_method?.toLowerCase() || '';
       let accountName = 'Cash in hand';
       
@@ -173,10 +281,10 @@ export const fetchAccountsData = async (
     const cash = cashAccounts.reduce((sum, account) => sum + account.balance, 0);
 
     // Get all fee payments for the date range (already fetched above, reuse)
-    const allFeePayments = feePayments || [];
+    const allFeePayments = feePayments;
 
     // Get all expenses for the date range (already fetched above, reuse)
-    const allExpenses = expensesData || [];
+    const allExpenses = expensesData;
 
     // Group by month for the date range
     const monthlyMap = new Map<string, { income: number; expenses: number }>();
@@ -197,7 +305,7 @@ export const fetchAccountsData = async (
     }
 
     // Aggregate fee payments by month
-    (allFeePayments || []).forEach(payment => {
+    allFeePayments.forEach(payment => {
       const paymentDate = parseISO(payment.payment_date);
       const monthKey = `${monthNames[paymentDate.getMonth()]}-${paymentDate.getFullYear()}`;
       const current = monthlyMap.get(monthKey) || { income: 0, expenses: 0 };
@@ -206,7 +314,7 @@ export const fetchAccountsData = async (
     });
 
     // Aggregate expenses by month
-    (allExpenses || []).forEach(expense => {
+    allExpenses.forEach(expense => {
       const expenseDate = parseISO(expense.expense_date);
       const monthKey = `${monthNames[expenseDate.getMonth()]}-${expenseDate.getFullYear()}`;
       const current = monthlyMap.get(monthKey) || { income: 0, expenses: 0 };
@@ -229,6 +337,166 @@ export const fetchAccountsData = async (
       .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
       .map((item) => ({ month: item.month, income: item.income, expenses: item.expenses }));
 
+    // Fetch balance sheet data (as of dateTo)
+    let balanceSheetData: BalanceSheetData | null = null;
+    try {
+      const schoolIdNum = Number(schoolId);
+      
+      // Fetch accounts and account types (unlikely to exceed 1000, but using pagination to be safe)
+      const accountsDataResult = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('accounts')
+          .select('*')
+          .eq('school_id', schoolIdNum)
+          .eq('is_active', true)
+          .order('name')
+          .range(from, to);
+      });
+
+      const accountTypesDataResult = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('account_types')
+          .select('*')
+          .or(`school_id.eq.1,school_id.eq.${schoolIdNum}`)
+          .eq('is_active', true)
+          .order('display_name')
+          .range(from, to);
+      });
+
+      if (accountsDataResult.length > 0 || accountTypesDataResult.length > 0) {
+        // Prepare date filter (as of dateTo)
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        const dateFilter = endDate.toISOString().split('T')[0];
+
+        // Fetch fee payments (income) with account_id, filtered by date
+        const feePayments = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_payments')
+            .select('account_id, amount, payment_mode, payment_date')
+            .eq('school_id', schoolIdNum)
+            .lte('payment_date', dateFilter)
+            .range(from, to);
+        });
+
+        // Fetch expenses (outgoing) with account_id, filtered by date and status
+        const expenses = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('expenses')
+            .select('account_id, amount, payment_method, expense_date, status')
+            .eq('school_id', schoolIdNum)
+            .eq('status', 'paid')
+            .lte('expense_date', dateFilter)
+            .range(from, to);
+        });
+
+        // Fetch other incomes (non-fee income) with account_id, filtered by date and status
+        const otherIncomes = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('other_incomes')
+            .select('account_id, amount, payment_method, income_date, status')
+            .eq('school_id', schoolIdNum)
+            .lte('income_date', dateFilter)
+            .eq('status', 'received')
+            .range(from, to);
+        });
+
+        // Deduplicate account types
+        const uniqueTypes = new Map();
+        accountTypesDataResult.forEach((type: any) => {
+          if (!uniqueTypes.has(type.name) || type.school_id === 1) {
+            uniqueTypes.set(type.name, type);
+          }
+        });
+
+        // Calculate balances for each account
+        const balances: AccountBalance[] = accountsDataResult.map((account: any) => {
+          const accountType = Array.from(uniqueTypes.values()).find((t: any) => t.name === account.type);
+          const displayName = accountType?.display_name || account.type;
+          
+          // Calculate income from fee payments
+          const feeIncome = feePayments
+            .filter(p => p.account_id === account.id)
+            .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+          
+          // Calculate income from other incomes
+          const otherIncome = otherIncomes
+            .filter(oi => oi.payment_method === 'account' && oi.account_id === account.id)
+            .reduce((sum, oi) => sum + parseFloat(oi.amount || 0), 0);
+          
+          const accountIncome = feeIncome + otherIncome;
+          
+          // Calculate expenses
+          const expensesAmount = expenses
+            .filter(e => e.account_id === account.id)
+            .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+          
+          const accountBalance = accountIncome - expensesAmount;
+          
+          return {
+            id: account.id,
+            name: account.name,
+            type: account.type,
+            displayName,
+            income: accountIncome,
+            expenses: expensesAmount,
+            balance: accountBalance
+          };
+        });
+
+        // Calculate Cash in Hand
+        const cashFeeIncome = feePayments
+          .filter(p => p.payment_mode === 'Cash' && !p.account_id)
+          .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+        
+        const cashOtherIncome = otherIncomes
+          .filter(oi => (oi.payment_method === 'cash' || oi.payment_method === 'cheque') && !oi.account_id)
+          .reduce((sum, oi) => sum + parseFloat(oi.amount || 0), 0);
+        
+        const cashIncome = cashFeeIncome + cashOtherIncome;
+        
+        const cashExpenses = expenses
+          .filter(e => e.payment_method === 'cash' && !e.account_id)
+          .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        
+        const cashBalance = cashIncome - cashExpenses;
+        
+        // Calculate totals
+        const totalInc = balances.reduce((sum, b) => sum + b.income, 0) + cashIncome;
+        const totalExp = balances.reduce((sum, b) => sum + b.expenses, 0) + cashExpenses;
+        const totalBal = totalInc - totalExp;
+
+        balanceSheetData = {
+          accounts: balances,
+          cashInHand: {
+            income: cashIncome,
+            expenses: cashExpenses,
+            balance: cashBalance
+          },
+          totalIncome: totalInc,
+          totalExpenses: totalExp,
+          totalBalance: totalBal
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching balance sheet data:', error);
+    }
+
+    // Fetch assets and liabilities data (as of dateTo)
+    let assetsLiabilitiesData: AssetsLiabilitiesData | null = null;
+    try {
+      const schoolIdNum = Number(schoolId);
+      const balanceSheet = await balanceSheetService.getBalanceSheet(schoolIdNum, dateTo);
+      
+      assetsLiabilitiesData = {
+        assets: balanceSheet.assets,
+        liabilities: balanceSheet.liabilities,
+        netWorth: balanceSheet.netWorth
+      };
+    } catch (error) {
+      console.error('Error fetching assets/liabilities data:', error);
+    }
+
     const accountsData: AccountsData = {
       summary: {
         income,
@@ -241,7 +509,9 @@ export const fetchAccountsData = async (
         income,
         expenses
       },
-      monthlyData
+      monthlyData,
+      balanceSheet: balanceSheetData,
+      assetsLiabilities: assetsLiabilitiesData
     };
 
     setAccountsData(accountsData);
@@ -251,7 +521,9 @@ export const fetchAccountsData = async (
       summary: { income: 0, expenses: 0, profitLoss: 0, cash: 0 },
       cashAccounts: [],
       incomeVsExpenses: { income: 0, expenses: 0 },
-      monthlyData: []
+      monthlyData: [],
+      balanceSheet: null,
+      assetsLiabilities: null
     });
   } finally {
     setAccountsLoading(false);

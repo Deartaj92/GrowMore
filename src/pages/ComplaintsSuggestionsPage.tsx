@@ -508,6 +508,7 @@ interface Complaint {
   reviewed_by: number | null;
   reviewed_at: string | null;
   review_notes: string | null;
+  is_read: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -525,6 +526,7 @@ interface Suggestion {
   reviewed_by: number | null;
   reviewed_at: string | null;
   review_notes: string | null;
+  is_read: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1161,10 +1163,26 @@ const ComplaintsSuggestionsPage: React.FC = () => {
                         <ActionButton
                           $variant="primary"
                           theme={theme}
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedItem(complaint);
                             setReviewNotes(complaint.review_notes || '');
                             setReviewModalOpen(true);
+                            
+                            // Mark as read when viewing
+                            if (!complaint.is_read) {
+                              try {
+                                await supabase
+                                  .from('complaints')
+                                  .update({ is_read: true })
+                                  .eq('id', complaint.id);
+                                // Update local state
+                                complaint.is_read = true;
+                                // Refresh data to update counts
+                                fetchComplaints();
+                              } catch (error) {
+                                console.error('Error marking complaint as read:', error);
+                              }
+                            }
                           }}
                         >
                           <ViewIcon style={{ fontSize: '1rem' }} />
@@ -1236,10 +1254,26 @@ const ComplaintsSuggestionsPage: React.FC = () => {
                         <ActionButton
                           $variant="primary"
                           theme={theme}
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedItem(suggestion);
                             setReviewNotes(suggestion.review_notes || '');
                             setReviewModalOpen(true);
+                            
+                            // Mark as read when viewing
+                            if (!suggestion.is_read) {
+                              try {
+                                await supabase
+                                  .from('suggestions')
+                                  .update({ is_read: true })
+                                  .eq('id', suggestion.id);
+                                // Update local state
+                                suggestion.is_read = true;
+                                // Refresh data to update counts
+                                fetchSuggestions();
+                              } catch (error) {
+                                console.error('Error marking suggestion as read:', error);
+                              }
+                            }
                           }}
                         >
                           <ViewIcon style={{ fontSize: '1rem' }} />
@@ -1560,6 +1594,7 @@ const ComplaintsSuggestionsPage: React.FC = () => {
                       reviewed_by: user.id,
                       reviewed_at: new Date().toISOString(),
                       review_notes: reviewNotes.trim() || null,
+                      is_read: true, // Mark as read when reviewed
                     };
 
                     const tableName = activeTab === 0 ? 'complaints' : 'suggestions';

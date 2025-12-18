@@ -23,7 +23,10 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Area,
-  AreaChart
+  AreaChart,
+  LineChart,
+  Line,
+  Legend
 } from 'recharts';
 import { supabase } from '../../../../supabaseClient';
 import { useToast } from '../../../../components/useToast';
@@ -430,29 +433,23 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
 
       {/* Attendance Trend Chart */}
       <ContentGrid theme={theme}>
-        <ContentCard theme={theme} style={{ padding: '1rem' }}>
-          <CardTitle theme={theme} style={{ marginBottom: '0.75rem' }}>
-            <CheckCircle style={{ color: '#3b82f6', fontSize: '1.1rem' }} />
+        <ContentCard theme={theme}>
+          <CardTitle theme={theme}>
+            <CheckCircle style={{ fontSize: '1.1rem' }} />
             Attendance Trend
           </CardTitle>
           {attendanceChartsLoading ? (
-            <EmptyState theme={theme}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
               <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </EmptyState>
+            </div>
           ) : attendanceTrendData.length === 0 ? (
             <EmptyState theme={theme}>
               <div style={{ fontSize: '0.9rem' }}>No attendance data available</div>
             </EmptyState>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
-                  <defs>
-                    <linearGradient id="colorEmployeeAttendance" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
@@ -466,43 +463,75 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                     axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
                   />
                   <YAxis
-                    domain={[0, 100]}
                     tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
                     tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
                     axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    tickFormatter={(value) => `${value}%`}
                     width={50}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                      border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
                       borderRadius: '8px',
-                      color: '#1e293b',
+                      color: isDark ? '#f3f4f6' : '#1e293b',
                       fontSize: '12px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}
-                    formatter={(value: any) => [`${value}%`, 'Attendance Rate']}
+                    labelFormatter={(label, payload) => {
+                      const data = payload && payload[0]?.payload;
+                      const dayOfWeek = data?.dayOfWeek || '';
+                      return dayOfWeek ? `${dayOfWeek}, ${label}` : `Date: ${label}`;
+                    }}
+                    formatter={(value: any, name: string, props: any) => {
+                      const data = props.payload;
+                      // Calculate total employees: present + absent + leave + late
+                      const total = (data?.present || 0) + (data?.absent || 0) + (data?.leave || 0) + (data?.late || 0);
+                      const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                      return [`${value} (${percentage}%)`, name];
+                    }}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="rate"
-                    stroke="#3b82f6"
+                  <Legend 
+                    wrapperStyle={{ fontSize: '0.75rem', paddingTop: '10px' }}
+                    iconType="line"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="presentWithLate"
+                    stroke="#10b981" 
                     strokeWidth={2}
-                    fill="url(#colorEmployeeAttendance)"
+                    name="Present"
+                    dot={false}
+                    activeDot={{ r: 5 }}
                   />
-                </AreaChart>
+                  <Line 
+                    type="monotone" 
+                    dataKey="absent" 
+                    stroke="#ef4444" 
+                    strokeWidth={2}
+                    name="Absent"
+                    dot={false}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="leave" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    name="Leave"
+                    dot={false}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="late" 
+                    stroke="#f59e0b" 
+                    strokeWidth={2}
+                    name="Late"
+                    dot={false}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
-              <ChartSummary theme={theme}>
-                <ChartSummaryItem>
-                  <ChartSummaryLabel theme={theme}>Today</ChartSummaryLabel>
-                  <ChartSummaryValue theme={theme}>{todayAttendanceRate}%</ChartSummaryValue>
-                </ChartSummaryItem>
-                <ChartSummaryItem>
-                  <ChartSummaryLabel theme={theme}>Week Avg</ChartSummaryLabel>
-                  <ChartSummaryValue theme={theme}>{weekAvgAttendanceRate}%</ChartSummaryValue>
-                </ChartSummaryItem>
-              </ChartSummary>
             </>
           )}
         </ContentCard>

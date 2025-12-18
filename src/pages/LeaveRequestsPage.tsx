@@ -775,6 +775,7 @@ interface LeaveRequest {
   reviewed_by: number | null;
   reviewed_at: string | null;
   review_notes: string | null;
+  is_read: boolean;
   created_at: string;
   updated_at: string;
   students?: {
@@ -1207,11 +1208,46 @@ const LeaveRequestsPage: React.FC = () => {
     return leaveType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
   
-  const handleReview = (request: LeaveRequest, action: 'approve' | 'reject') => {
+  const handleReview = async (request: LeaveRequest, action: 'approve' | 'reject') => {
     setSelectedRequest(request);
     setReviewAction(action);
     setReviewNotes('');
     setReviewModalOpen(true);
+    
+    // Mark as read when viewing
+    if (!request.is_read) {
+      try {
+        await supabase
+          .from('leave_requests')
+          .update({ is_read: true })
+          .eq('id', request.id);
+        // Update local state
+        request.is_read = true;
+      } catch (error) {
+        console.error('Error marking leave request as read:', error);
+      }
+    }
+  };
+  
+  const handleViewDetails = async (request: LeaveRequest) => {
+    setSelectedRequest(request);
+    setReviewAction(null);
+    setReviewNotes(request.review_notes || '');
+    setReviewModalOpen(true);
+    
+    // Mark as read when viewing
+    if (!request.is_read) {
+      try {
+        await supabase
+          .from('leave_requests')
+          .update({ is_read: true })
+          .eq('id', request.id);
+        // Update local state
+        request.is_read = true;
+      } catch (error) {
+        console.error('Error marking leave request as read:', error);
+      }
+    }
   };
   
   const handleSubmitReview = async () => {
@@ -1228,6 +1264,7 @@ const LeaveRequestsPage: React.FC = () => {
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
           review_notes: reviewNotes || null,
+          is_read: true, // Mark as read when reviewed
           updated_at: new Date().toISOString(),
         })
         .eq('id', selectedRequest.id);
@@ -1747,12 +1784,7 @@ const LeaveRequestsPage: React.FC = () => {
                           <ActionButton
                             $variant="view"
                             theme={theme}
-                            onClick={() => {
-                              setSelectedRequest(request);
-                              setReviewAction(null);
-                              setReviewNotes(request.review_notes || '');
-                              setReviewModalOpen(true);
-                            }}
+                            onClick={() => handleViewDetails(request)}
                             title={request.review_notes ? 'View review notes' : 'View details'}
                           >
                             <ViewIcon style={{ fontSize: '0.9rem' }} />
@@ -1945,12 +1977,7 @@ const LeaveRequestsPage: React.FC = () => {
                       <ActionButton
                         $variant="view"
                         theme={theme}
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setReviewAction(null);
-                          setReviewNotes(request.review_notes || '');
-                          setReviewModalOpen(true);
-                        }}
+                        onClick={() => handleViewDetails(request)}
                         style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '0.45rem' }}
                       >
                         <ViewIcon style={{ fontSize: '0.8rem' }} />

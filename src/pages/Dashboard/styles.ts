@@ -154,9 +154,9 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
   ${({ $preventScroll }) => $preventScroll 
     ? 'overflow: hidden;'
     : `
-      overflow-x: auto;
-      overflow-y: hidden;
-      -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
     `}
   
   /* Desktop: Hide scrollbar when $hideScrollbar is true */
@@ -174,35 +174,35 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
           }
         `
         : `
-          scrollbar-width: thin;
+  scrollbar-width: thin;
           -ms-overflow-style: auto;
           scrollbar-color: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-            ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
-            : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
-          
-          &::-webkit-scrollbar {
+    ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
+  
+  &::-webkit-scrollbar {
             display: block;
-            height: 4px;
-          }
-          
-          &::-webkit-scrollbar-track {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
             background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-              ? 'rgba(255, 255, 255, 0.05)'
-              : 'rgba(0, 0, 0, 0.05)'};
-            border-radius: 2px;
-          }
-          
-          &::-webkit-scrollbar-thumb {
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(0, 0, 0, 0.05)'};
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
             background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-              ? 'rgba(255, 255, 255, 0.2)'
-              : 'rgba(0, 0, 0, 0.2)'};
-            border-radius: 2px;
-            
-            &:hover {
+      ? 'rgba(255, 255, 255, 0.2)'
+      : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 2px;
+    
+    &:hover {
               background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-                ? 'rgba(255, 255, 255, 0.3)'
-                : 'rgba(0, 0, 0, 0.3)'};
-            }
+        ? 'rgba(255, 255, 255, 0.3)'
+        : 'rgba(0, 0, 0, 0.3)'};
+    }
           }
         `;
       return scrollbarStyles;
@@ -284,7 +284,7 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
     ? 'rgba(99, 102, 241, 0.1)'
     : 'transparent'};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.85rem;
+    font-size: 0.85rem;
   text-align: left;
   cursor: pointer;
   transition: background 0.2s ease;
