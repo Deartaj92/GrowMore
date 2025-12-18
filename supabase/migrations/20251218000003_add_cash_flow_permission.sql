@@ -1,14 +1,14 @@
--- Migration: Add setup-accounts permission
--- This adds the permission for the Setup Accounts feature
+-- Migration: Add cash-flow-view permission
+-- This adds the permission for the Cash Flow Statement feature
 
 -- Insert the permission if it doesn't exist
 INSERT INTO permissions (key, name, description, category, path)
 VALUES (
-  'setup-accounts',
-  'Setup Accounts',
-  'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
+  'cash-flow-view',
+  'View Cash Flow',
+  'View cash flow statement with inflows, outflows, and net cash flow',
   'Accounts',
-  '/setup-accounts'
+  '/cash-flow'
 )
 ON CONFLICT (key) DO UPDATE
 SET 
@@ -16,16 +16,5 @@ SET
   description = EXCLUDED.description,
   category = EXCLUDED.category,
   path = EXCLUDED.path;
-
-
-
-
-
-
-
-
-
-
-
 
 

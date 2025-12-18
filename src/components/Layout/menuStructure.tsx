@@ -305,6 +305,13 @@ export const accountsMenuItems: MenuItem[] = [
     color: '#10b981'
   },
   {
+    title: 'Cash Flow',
+    description: 'View cash inflows, outflows, and net cash flow statement',
+    icon: React.createElement(TrendingUpIcon),
+    path: '/cash-flow',
+    color: '#f59e0b'
+  },
+  {
     title: 'Assets & Liabilities',
     description: 'Manage school assets and liabilities',
     icon: React.createElement(AccountBalanceIcon),

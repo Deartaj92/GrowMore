@@ -14,7 +14,7 @@ import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { getStudentDisplayId, matchesStudentSearch, getSequenceNumber } from '../utils/studentUtils';
 import { ThemeProvider } from 'styled-components';
 import { useTheme as useMuiTheme, useMediaQuery } from '@mui/material';
-import { CircularProgress, TextField, Button, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, SelectChangeEvent, Grid } from '@mui/material';
+import { CircularProgress, TextField, Button, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, SelectChangeEvent, Grid, Checkbox, FormControlLabel } from '@mui/material';
 import Loader from '../components/Loader';
 
 // ===== STYLED COMPONENTS =====

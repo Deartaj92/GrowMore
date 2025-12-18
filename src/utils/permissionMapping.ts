@@ -55,6 +55,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/concessions': 'fee-concessions',
   '/setup-accounts': 'setup-accounts',
   '/balance-sheet': 'balance-sheet',
+  '/cash-flow': 'cash-flow-view',
   '/payment-history': 'payment-history',
   '/ledger': 'fee-ledger',
   

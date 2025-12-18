@@ -15,6 +15,8 @@ import {
   TrendingDown as ExpenseIcon,
   AccountBalanceWallet as WalletIcon,
   CalendarToday as CalendarIcon,
+  Inventory as AssetsIcon,
+  CreditCard as LiabilitiesIcon,
 } from '@mui/icons-material';
 
 // Helper function to check if theme is dark
@@ -316,6 +318,8 @@ interface AccountBalance {
   displayName: string;
   income: number;
   expenses: number;
+  assets: number;
+  liabilityPayments: number;
   balance: number;
 }
 
@@ -331,8 +335,12 @@ const BalanceSheetPage: React.FC = () => {
   const [accountTypes, setAccountTypes] = useState<any[]>([]);
   const [accountBalances, setAccountBalances] = useState<AccountBalance[]>([]);
   const [cashInHand, setCashInHand] = useState({ income: 0, expenses: 0, balance: 0 });
+  const [cashAssets, setCashAssets] = useState(0);
+  const [cashLiabilityPayments, setCashLiabilityPayments] = useState(0);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalAssets, setTotalAssets] = useState(0);
+  const [totalLiabilityPayments, setTotalLiabilityPayments] = useState(0);
   const [totalBalance, setTotalBalance] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
@@ -440,6 +448,26 @@ const BalanceSheetPage: React.FC = () => {
           .range(from, to);
       });
 
+      // Fetch asset purchases with account_id, filtered by date - using pagination
+      const assetPurchases = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('assets')
+          .select('account_id, purchase_cost, purchase_date, payment_method')
+          .eq('school_id', user.school_id)
+          .lte('purchase_date', dateFilter)
+          .range(from, to);
+      });
+
+      // Fetch liability payments with account_id, filtered by date - using pagination
+      const liabilityPayments = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('liability_payments')
+          .select('account_id, payment_amount, payment_date, payment_method')
+          .eq('school_id', user.school_id)
+          .lte('payment_date', dateFilter)
+          .range(from, to);
+      });
+
       // Calculate balances for each account
       const balances: AccountBalance[] = accountsData.data?.map((account: any) => {
         const accountType = accountTypesData.data?.find((t: any) => t.name === account.type);
@@ -462,7 +490,17 @@ const BalanceSheetPage: React.FC = () => {
           .filter(e => e.account_id === account.id)
           .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
         
-        const balance = income - expensesAmount;
+        // Calculate asset purchases (where payment_method is 'account' and account_id matches)
+        const assetsAmount = assetPurchases
+          .filter(a => a.payment_method === 'account' && a.account_id === account.id)
+          .reduce((sum, a) => sum + parseFloat(a.purchase_cost || 0), 0);
+        
+        // Calculate liability payments (where payment_method is 'account' and account_id matches)
+        const liabilityPaymentsAmount = liabilityPayments
+          .filter(lp => lp.payment_method === 'account' && lp.account_id === account.id)
+          .reduce((sum, lp) => sum + parseFloat(lp.payment_amount || 0), 0);
+        
+        const balance = income - expensesAmount - assetsAmount - liabilityPaymentsAmount;
         
         return {
           id: account.id,
@@ -471,6 +509,8 @@ const BalanceSheetPage: React.FC = () => {
           displayName,
           income,
           expenses: expensesAmount,
+          assets: assetsAmount,
+          liabilityPayments: liabilityPaymentsAmount,
           balance
         };
       }) || [];
@@ -493,22 +533,38 @@ const BalanceSheetPage: React.FC = () => {
         .filter(e => e.payment_method === 'cash' && !e.account_id)
         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
       
-      const cashBalance = cashIncome - cashExpenses;
+      // Cash asset purchases: assets where payment_method is 'cash' and no account_id
+      const cashAssets = assetPurchases
+        .filter(a => a.payment_method === 'cash' && !a.account_id)
+        .reduce((sum, a) => sum + parseFloat(a.purchase_cost || 0), 0);
+      
+      // Cash liability payments: liability payments where payment_method is 'cash' and no account_id
+      const cashLiabilityPayments = liabilityPayments
+        .filter(lp => lp.payment_method === 'cash' && !lp.account_id)
+        .reduce((sum, lp) => sum + parseFloat(lp.payment_amount || 0), 0);
+      
+      const cashBalance = cashIncome - cashExpenses - cashAssets - cashLiabilityPayments;
       
       setCashInHand({
         income: cashIncome,
         expenses: cashExpenses,
         balance: cashBalance
       });
+      setCashAssets(cashAssets);
+      setCashLiabilityPayments(cashLiabilityPayments);
 
       // Calculate totals
       const totalInc = balances.reduce((sum, b) => sum + b.income, 0) + cashIncome;
       const totalExp = balances.reduce((sum, b) => sum + b.expenses, 0) + cashExpenses;
-      const totalBal = totalInc - totalExp;
+      const totalAssetsSum = balances.reduce((sum, b) => sum + b.assets, 0) + cashAssets;
+      const totalLiabilityPaymentsSum = balances.reduce((sum, b) => sum + b.liabilityPayments, 0) + cashLiabilityPayments;
+      const totalBal = totalInc - totalExp - totalAssetsSum - totalLiabilityPaymentsSum;
 
       setAccountBalances(balances);
       setTotalIncome(totalInc);
       setTotalExpenses(totalExp);
+      setTotalAssets(totalAssetsSum);
+      setTotalLiabilityPayments(totalLiabilityPaymentsSum);
       setTotalBalance(totalBal);
     } catch (error: any) {
       showToast('Error loading balance sheet: ' + (error.message || 'Unknown error'), 'error');
@@ -571,6 +627,26 @@ const BalanceSheetPage: React.FC = () => {
 
           <StatCard>
             <StatLabel>
+              <AssetsIcon />
+              Assets
+            </StatLabel>
+            <StatValue $color="#f59e0b">
+              {formatCurrency(totalAssets)}
+            </StatValue>
+          </StatCard>
+
+          <StatCard>
+            <StatLabel>
+              <LiabilitiesIcon />
+              Liabilities Payments
+            </StatLabel>
+            <StatValue $color="#ef4444">
+              {formatCurrency(totalLiabilityPayments)}
+            </StatValue>
+          </StatCard>
+
+          <StatCard>
+            <StatLabel>
               <AccountBalanceIcon />
               Net Balance
             </StatLabel>
@@ -592,6 +668,8 @@ const BalanceSheetPage: React.FC = () => {
                   <TableHeaderCell>Account</TableHeaderCell>
                   <TableHeaderCell>Income</TableHeaderCell>
                   <TableHeaderCell>Expenses</TableHeaderCell>
+                  <TableHeaderCell>Assets</TableHeaderCell>
+                  <TableHeaderCell>Liabilities Payments</TableHeaderCell>
                   <TableHeaderCell>Balance</TableHeaderCell>
                 </TableRow>
               </TableHead>
@@ -609,6 +687,12 @@ const BalanceSheetPage: React.FC = () => {
                   </TableCell>
                   <TableCell style={{ color: '#ef4444', fontWeight: 500 }}>
                     {formatCurrency(cashInHand.expenses)}
+                  </TableCell>
+                  <TableCell style={{ color: '#f59e0b', fontWeight: 500 }}>
+                    {formatCurrency(cashAssets)}
+                  </TableCell>
+                  <TableCell style={{ color: '#ef4444', fontWeight: 500 }}>
+                    {formatCurrency(cashLiabilityPayments)}
                   </TableCell>
                   <TableCell>
                     <BalanceChip $positive={cashInHand.balance >= 0}>
@@ -633,6 +717,12 @@ const BalanceSheetPage: React.FC = () => {
                     <TableCell style={{ color: '#ef4444', fontWeight: 500 }}>
                       {formatCurrency(account.expenses)}
                     </TableCell>
+                    <TableCell style={{ color: '#f59e0b', fontWeight: 500 }}>
+                      {formatCurrency(account.assets)}
+                    </TableCell>
+                    <TableCell style={{ color: '#ef4444', fontWeight: 500 }}>
+                      {formatCurrency(account.liabilityPayments)}
+                    </TableCell>
                     <TableCell>
                       <BalanceChip $positive={account.balance >= 0}>
                         {formatCurrency(account.balance)}
@@ -652,6 +742,12 @@ const BalanceSheetPage: React.FC = () => {
                     </TableCell>
                     <TableCell style={{ color: '#ef4444', fontWeight: 700, fontSize: '1rem' }}>
                       {formatCurrency(totalExpenses)}
+                    </TableCell>
+                    <TableCell style={{ color: '#f59e0b', fontWeight: 700, fontSize: '1rem' }}>
+                      {formatCurrency(totalAssets)}
+                    </TableCell>
+                    <TableCell style={{ color: '#ef4444', fontWeight: 700, fontSize: '1rem' }}>
+                      {formatCurrency(totalLiabilityPayments)}
                     </TableCell>
                     <TableCell>
                       <BalanceChip $positive={totalBalance >= 0} style={{ fontSize: '0.95rem', padding: '0.35rem 0.85rem' }}>

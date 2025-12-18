@@ -225,7 +225,8 @@ const Dashboard: React.FC = () => {
     incomeVsExpenses: { income: 0, expenses: 0 },
     monthlyData: [],
     balanceSheet: null,
-    assetsLiabilities: null
+    assetsLiabilities: null,
+    cashFlow: null
   });
   const [accountsLoading, setAccountsLoading] = useState(false);
 
@@ -2080,6 +2081,162 @@ const Dashboard: React.FC = () => {
     }
   }, [absentees, user?.school_id, absentDate, schoolName, toast, savePdf, getCachedSession]);
 
+  const exportConsecutiveAbsentPDF = useCallback(async () => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    if (!consecutiveAbsentStudents || consecutiveAbsentStudents.length === 0) {
+      toast.showToast('No consecutive absent students to export.', 'error');
+      return;
+    }
+
+    setExportAbsentLoading(true);
+    try {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobileDevice) {
+        toast.showToast('Generating PDF for mobile... Please wait.', 'success');
+      }
+
+      const [yyyy, mm, dd] = absentDate.split('-');
+      const formattedDate = `${dd}-${mm}-${yyyy}`;
+
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('Consecutive Absent Students Report', 15, 18);
+      doc.setFontSize(11);
+      doc.text(`Date: ${formattedDate}`, 15, 26);
+      doc.setFontSize(10);
+      doc.setTextColor(99, 102, 241);
+      doc.text(`Total: ${consecutiveAbsentStudents.length}`, 120, 18);
+      doc.setTextColor(239, 68, 68);
+      doc.text(`Consecutive Absentees`, 120, 24);
+      doc.setTextColor(0, 0, 0);
+
+      const sortedStudents = [...consecutiveAbsentStudents].sort((a, b) => {
+        const classComparison = compareClassNames(a.class_name, b.class_name);
+        if (classComparison !== 0) return classComparison;
+        return a.student_name.localeCompare(b.student_name);
+      });
+
+      autoTable(doc, {
+        startY: 36,
+        head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Consecutive Days']],
+        body: sortedStudents.map((student, idx) => [
+          idx + 1,
+          getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number }),
+          student.student_name,
+          student.father_name || '-',
+          student.mobile || '-',
+          `${student.class_name}${student.section_name ? ` (${student.section_name})` : ''}`,
+          student.consecutive_days
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: [99, 102, 241],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2,
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 2,
+          halign: 'center',
+          textColor: [60, 60, 60],
+          minCellHeight: 6,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        alternateRowStyles: { fillColor: [232, 240, 254] },
+        margin: { top: 36, left: 10, right: 10 },
+        columnStyles: {
+          0: { cellWidth: 14, halign: 'center' },
+          1: { cellWidth: 14, halign: 'center' },
+          2: { cellWidth: 32, halign: 'left' },
+          3: { cellWidth: 32, halign: 'left' },
+          4: { cellWidth: 25, halign: 'center' },
+          5: { cellWidth: 30, halign: 'left' },
+          6: { cellWidth: 25, halign: 'center' },
+        },
+        didParseCell: function (data) {
+          if (data.column.index === 6) {
+            const days = parseInt(String(data.cell.raw || '0'));
+            if (days >= 5) data.cell.styles.textColor = [239, 68, 68];
+            else if (days >= 3) data.cell.styles.textColor = [234, 179, 8];
+            else data.cell.styles.textColor = [59, 130, 246];
+          }
+        },
+      });
+
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        10,
+        doc.internal.pageSize.height - 10
+      );
+
+      const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
+      const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
+      
+      if (isCapacitor) {
+        const pdfBlob = doc.output('blob');
+        await savePdf(pdfBlob, `Consecutive Absent Students (${formattedDate}).pdf`, true);
+      } else if (isElectron) {
+        let electron;
+        try {
+          electron = (window as any).electron || (window as any).require && (window as any).require('electron');
+        } catch (e) { electron = null; }
+        if (electron && electron.remote && electron.remote.dialog && electron.remote.app) {
+          const path = electron.remote.require('path');
+          const documentsPath = electron.remote.app.getPath('documents');
+          const defaultFilePath = path.join(documentsPath, `Consecutive Absent Students (${formattedDate}).pdf`);
+          const { filePath } = await electron.remote.dialog.showSaveDialog({
+            title: 'Save Consecutive Absent Students Report',
+            defaultPath: defaultFilePath,
+            filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+          });
+          if (filePath) {
+            const pdfBuffer = doc.output('arraybuffer');
+            const fs = electron.remote.require('fs');
+            fs.writeFileSync(filePath, Buffer.from(pdfBuffer));
+            alert(`PDF saved successfully to: ${filePath}`);
+          }
+        } else {
+          const formatDateForFileName = (date: Date) => {
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          };
+          const fileName = `Consecutive Absent Students (${formatDateForFileName(new Date())}).pdf`;
+          doc.save(fileName);
+          toast.showToast('Consecutive absent students PDF generated successfully', 'success');
+        }
+      } else {
+        const formatDateForFileName = (date: Date) => {
+          const day = date.getDate().toString().padStart(2, '0');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const month = months[date.getMonth()];
+          const year = date.getFullYear();
+          return `${day}-${month}-${year}`;
+        };
+        const fileName = `Consecutive Absent Students (${formatDateForFileName(new Date())}).pdf`;
+        doc.save(fileName);
+        toast.showToast('Consecutive absent students PDF generated successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Error exporting consecutive absent students PDF:', error);
+      toast.showToast('Failed to export consecutive absent students PDF', 'error');
+    } finally {
+      setExportAbsentLoading(false);
+    }
+  }, [consecutiveAbsentStudents, user?.school_id, absentDate, toast, savePdf]);
+
   const exportPresentStudentsPDF = useCallback(async () => {
     if (!user?.school_id) {
       toast.showToast('User school information not found', 'error');
@@ -3002,6 +3159,7 @@ const Dashboard: React.FC = () => {
           exportAbsentLoading={exportAbsentLoading}
           exportPresentLoading={exportPresentLoading}
           exportAbsenteesPDF={exportAbsenteesPDF}
+          exportConsecutiveAbsentPDF={exportConsecutiveAbsentPDF}
           exportPresentStudentsPDF={exportPresentStudentsPDF}
           showExportDropdown={showExportDropdown}
           setShowExportDropdown={setShowExportDropdown}

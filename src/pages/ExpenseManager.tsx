@@ -1613,38 +1613,6 @@ const ExpenseManager: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={paidWithCheque}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setPaidWithCheque(checked);
-                          if (checked) {
-                            // When enabling cheque, require account selection
-                            // Filter to only accounts with chequebook
-                            if (accountsWithChequebook.length > 0) {
-                              const firstAccount = accountsWithChequebook[0];
-                              setFormData({ ...formData, paymentMethod: `account_${firstAccount.id}` });
-                              setSelectedAccountId(firstAccount.id);
-                            }
-                          } else {
-                            // When disabling cheque, clear cheque number
-                            setChequeNumber('');
-                            // Reset to cash if no account selected
-                            if (!selectedAccountId || formData.paymentMethod.startsWith('account_')) {
-                              setFormData({ ...formData, paymentMethod: 'Cash' });
-                              setSelectedAccountId(null);
-                            }
-                          }
-                        }}
-                      />
-                    }
-                    label="Paid with Cheque"
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Payment Method</InputLabel>
                     <Select
@@ -1658,38 +1626,23 @@ const ExpenseManager: React.FC = () => {
                           const accountId = parseInt(value.replace('account_', ''));
                           setSelectedAccountId(accountId);
                           // If paid with cheque, verify account has chequebook
-                          if (paidWithCheque) {
-                            const account = accounts.find(a => a.id === accountId);
-                            if (!account?.has_chequebook) {
-                              showToast('Selected account does not have chequebook facility', 'error');
-                              setPaidWithCheque(false);
-                              setChequeNumber('');
-                            }
+                          const account = accounts.find(a => a.id === accountId);
+                          if (paidWithCheque && !account?.has_chequebook) {
+                            showToast('Selected account does not have chequebook facility', 'error');
+                            setPaidWithCheque(false);
+                            setChequeNumber('');
                           }
                         } else {
+                          // Cash selected - reset account-related fields
                           setSelectedAccountId(null);
-                          setTransactionId(''); // Clear transaction ID when not using account
-                          // If switching to cash, disable cheque
-                          if (paidWithCheque) {
-                            setPaidWithCheque(false);
+                          setPaidWithCheque(false);
                           setChequeNumber('');
-                          }
+                          setTransactionId('');
                         }
                       }}
                       required
-                      disabled={paidWithCheque}
                     >
-                      {(paidWithCheque ? accountsWithChequebook.map(account => {
-                        const accountType = accountTypes.find(t => t.name === account.type);
-                        const displayName = accountType?.display_name || account.name;
-                        return {
-                          value: `account_${account.id}`,
-                          label: `${displayName} - ${account.name}`,
-                          isAccount: true,
-                          accountId: account.id,
-                          icon: accountType ? getAccountTypeIcon(accountType.icon_name) : undefined
-                        };
-                      }) : paymentMethodOptions).map((option) => (
+                      {paymentMethodOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {option.icon && <Box sx={{ display: 'flex', alignItems: 'center' }}>{option.icon}</Box>}
@@ -1701,16 +1654,51 @@ const ExpenseManager: React.FC = () => {
                   </FormControl>
                 </Grid>
 
-                {paidWithCheque && (
+                {/* Show checkbox only when bank account is selected AND has chequebook */}
+                {formData.paymentMethod.startsWith('account_') && (() => {
+                  const accountId = parseInt(formData.paymentMethod.replace('account_', ''));
+                  const selectedAccount = accounts.find(a => a.id === accountId);
+                  return selectedAccount?.has_chequebook ? (
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={paidWithCheque}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setPaidWithCheque(checked);
+                              if (checked) {
+                                setChequeNumber('');
+                                setTransactionId('');
+                              } else {
+                                setChequeNumber('');
+                              }
+                            }}
+                          />
+                        }
+                        label="Paid with Cheque"
+                      />
+                    </Grid>
+                  ) : null;
+                })()}
+
+                {/* Show Transaction ID / Cheque No. field when bank account is selected */}
+                {formData.paymentMethod.startsWith('account_') && (
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
                       size="small"
-                      label="Cheque Number *"
-                      value={chequeNumber}
-                      onChange={(e) => setChequeNumber(e.target.value)}
-                      required
-                      placeholder="Enter cheque number"
+                      label={paidWithCheque ? "Cheque No. *" : "Transaction ID"}
+                      value={paidWithCheque ? chequeNumber : transactionId}
+                      onChange={(e) => {
+                        if (paidWithCheque) {
+                          setChequeNumber(e.target.value);
+                        } else {
+                          setTransactionId(e.target.value);
+                        }
+                      }}
+                      required={paidWithCheque}
+                      placeholder={paidWithCheque ? "Enter cheque number" : "Enter transaction ID"}
                     />
                   </Grid>
                 )}

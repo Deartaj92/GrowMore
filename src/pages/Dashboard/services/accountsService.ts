@@ -1,5 +1,4 @@
 import { supabase } from '../../../supabaseClient';
-import { USE_DUMMY_DATA } from '../constants';
 import { format, startOfMonth, endOfMonth, parseISO, startOfYear } from 'date-fns';
 import { balanceSheetService } from '../../AssetsLiabilities/services/balanceSheetService';
 import { BalanceSheet } from '../../../types/liability';
@@ -66,6 +65,29 @@ export interface AssetsLiabilitiesData {
   netWorth: number;
 }
 
+export interface CashFlowData {
+  openingBalance: number;
+  inflows: {
+    feePayments: number;
+    otherIncomes: number;
+    total: number;
+  };
+  outflows: {
+    expenses: number;
+    assetPurchases: number;
+    liabilityPayments: number;
+    total: number;
+  };
+  netCashFlow: number;
+  closingBalance: number;
+  monthlyCashFlow: Array<{
+    month: string;
+    inflows: number;
+    outflows: number;
+    netFlow: number;
+  }>;
+}
+
 export interface AccountsData {
   summary: AccountsSummary;
   cashAccounts: CashAccount[];
@@ -76,6 +98,7 @@ export interface AccountsData {
   monthlyData: MonthlyIncomeExpense[];
   balanceSheet: BalanceSheetData | null;
   assetsLiabilities: AssetsLiabilitiesData | null;
+  cashFlow: CashFlowData | null;
 }
 
 export const fetchAccountsData = async (
@@ -90,75 +113,6 @@ export const fetchAccountsData = async (
 
   setAccountsLoading(true);
   try {
-    if (USE_DUMMY_DATA) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const dummyData: AccountsData = {
-        summary: {
-          income: 15000.00,
-          expenses: 0.00,
-          profitLoss: 15000.00,
-          cash: -1725867
-        },
-        cashAccounts: [
-          { name: 'Cash in hand', balance: 0 },
-          { name: 'Cash at Bank', balance: 0 },
-          { name: 'Petty Cash', balance: 3100 },
-          { name: 'Jazz Cash', balance: 0 },
-          { name: 'Easy paisa', balance: 2000 }
-        ],
-        incomeVsExpenses: {
-          income: 15000,
-          expenses: 0
-        },
-        monthlyData: [
-          { month: 'Jan', income: 50000, expenses: 45000 },
-          { month: 'Feb', income: 60000, expenses: 55000 },
-          { month: 'Mar', income: 55000, expenses: 50000 },
-          { month: 'Apr', income: 70000, expenses: 65000 },
-          { month: 'May', income: 250000, expenses: 80000 },
-          { month: 'Jun', income: 65000, expenses: 60000 },
-          { month: 'Jul', income: 32200, expenses: 210300 },
-          { month: 'Aug', income: 50000, expenses: 1050000 },
-          { month: 'Sep', income: 60000, expenses: 55000 },
-          { month: 'Oct', income: 55000, expenses: 50000 },
-          { month: 'Nov', income: 45000, expenses: 48000 },
-          { month: 'Dec', income: 15000, expenses: 0 }
-        ],
-        balanceSheet: {
-          accounts: [
-            { id: 1, name: 'Bank Account', type: 'bank', displayName: 'Bank Account', income: 500000, expenses: 200000, balance: 300000 },
-            { id: 2, name: 'Savings Account', type: 'savings', displayName: 'Savings Account', income: 200000, expenses: 50000, balance: 150000 }
-          ],
-          cashInHand: { income: 100000, expenses: 50000, balance: 50000 },
-          totalIncome: 800000,
-          totalExpenses: 300000,
-          totalBalance: 500000
-        },
-        assetsLiabilities: {
-          assets: {
-            total: 2000000,
-            byCategory: [
-              { categoryId: 1, categoryName: 'Technology', total: 500000, color: '#3b82f6' },
-              { categoryId: 2, categoryName: 'Furniture', total: 300000, color: '#10b981' },
-              { categoryId: 3, categoryName: 'Vehicles', total: 800000, color: '#f59e0b' },
-              { categoryId: 4, categoryName: 'Infrastructure', total: 400000, color: '#ef4444' }
-            ]
-          },
-          liabilities: {
-            total: 500000,
-            byCategory: [
-              { categoryId: 1, categoryName: 'Loans', total: 300000, color: '#ef4444' },
-              { categoryId: 2, categoryName: 'Leases', total: 200000, color: '#f59e0b' }
-            ]
-          },
-          netWorth: 1500000
-        }
-      };
-      setAccountsData(dummyData);
-      setAccountsLoading(false);
-      return;
-    }
-
     const sessionData = await getCachedSession();
     
     // Helper function to fetch all rows with pagination
@@ -190,24 +144,39 @@ export const fetchAccountsData = async (
     const feePayments = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('fee_payments')
-        .select('amount, payment_mode, payment_date')
+        .select('amount, payment_mode, payment_date, account_id')
         .eq('school_id', schoolId)
         .gte('payment_date', dateFrom)
         .lte('payment_date', dateTo)
         .range(from, to);
     });
 
-    const income = feePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+    // Fetch other incomes (non-fee income) in date range - with pagination
+    const otherIncomes = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('other_incomes')
+        .select('amount, payment_method, income_date, status')
+        .eq('school_id', schoolId)
+        .gte('income_date', dateFrom)
+        .lte('income_date', dateTo)
+        .in('status', ['approved', 'received'])
+        .range(from, to);
+    });
+
+    const feeIncome = feePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+    const otherIncome = otherIncomes.reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
+    const income = feeIncome + otherIncome;
 
     // Fetch expenses (from expenses table in date range) - with pagination
+    // Include both 'approved' and 'paid' expenses since paid expenses are the ones actually paid
     const expensesData = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('expenses')
-        .select('amount, payment_method, expense_date, status')
+        .select('amount, payment_method, expense_date, status, account_id')
         .eq('school_id', schoolId)
         .gte('expense_date', dateFrom)
         .lte('expense_date', dateTo)
-        .eq('status', 'approved')
+        .in('status', ['approved', 'paid'])
         .range(from, to);
     });
 
@@ -252,6 +221,28 @@ export const fetchAccountsData = async (
       cashAccountsMap.set(accountName, currentBalance + (Number(payment.amount) || 0));
     });
 
+    // Calculate cash from other incomes (income adds to cash)
+    otherIncomes.forEach(income => {
+      const method = income.payment_method?.toLowerCase() || '';
+      let accountName = 'Cash in hand';
+      
+      if (method.includes('bank') || method === 'bank_transfer') {
+        accountName = 'Cash at Bank';
+      } else if (method.includes('jazz')) {
+        accountName = 'Jazz Cash';
+      } else if (method.includes('easy') || method.includes('paisa')) {
+        accountName = 'Easy paisa';
+      } else if (method === 'cash') {
+        accountName = 'Cash in hand';
+      } else if (method === 'account') {
+        // Account-based payments don't affect cash accounts
+        return;
+      }
+
+      const currentBalance = cashAccountsMap.get(accountName) || 0;
+      cashAccountsMap.set(accountName, currentBalance + (Number(income.amount) || 0));
+    });
+
     // Calculate cash from expenses (expenses reduce cash)
     expensesData.forEach(expense => {
       const method = expense.payment_method?.toLowerCase() || '';
@@ -283,6 +274,9 @@ export const fetchAccountsData = async (
     // Get all fee payments for the date range (already fetched above, reuse)
     const allFeePayments = feePayments;
 
+    // Get all other incomes for the date range (already fetched above, reuse)
+    const allOtherIncomes = otherIncomes;
+
     // Get all expenses for the date range (already fetched above, reuse)
     const allExpenses = expensesData;
 
@@ -310,6 +304,15 @@ export const fetchAccountsData = async (
       const monthKey = `${monthNames[paymentDate.getMonth()]}-${paymentDate.getFullYear()}`;
       const current = monthlyMap.get(monthKey) || { income: 0, expenses: 0 };
       current.income += Number(payment.amount) || 0;
+      monthlyMap.set(monthKey, current);
+    });
+
+    // Aggregate other incomes by month
+    allOtherIncomes.forEach(income => {
+      const incomeDate = parseISO(income.income_date);
+      const monthKey = `${monthNames[incomeDate.getMonth()]}-${incomeDate.getFullYear()}`;
+      const current = monthlyMap.get(monthKey) || { income: 0, expenses: 0 };
+      current.income += Number(income.amount) || 0;
       monthlyMap.set(monthKey, current);
     });
 
@@ -497,6 +500,324 @@ export const fetchAccountsData = async (
       console.error('Error fetching assets/liabilities data:', error);
     }
 
+    // Fetch cash flow data
+    let cashFlowData: CashFlowData | null = null;
+    try {
+      const schoolIdNum = Number(schoolId);
+      
+      // Helper function to check if payment method is cash-based (not account-based)
+      const isCashBased = (paymentMethod: string | null | undefined): boolean => {
+        if (!paymentMethod) return true; // Default to cash if not specified
+        const method = paymentMethod.toLowerCase();
+        // Exclude account-based payments
+        return method !== 'account';
+      };
+      
+      // Calculate opening balance (cash balance before dateFrom)
+      // This represents the actual cash position at the start of the selected period
+      // Calculated using the same logic as cash accounts but for all transactions before dateFrom
+      
+      // Fetch all fee payments before dateFrom
+      const openingFeePayments = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('fee_payments')
+          .select('amount, payment_mode, account_id')
+          .eq('school_id', schoolIdNum)
+          .lt('payment_date', dateFrom)
+          .range(from, to);
+      });
+      
+      // Fetch all other incomes before dateFrom (only received status)
+      const openingOtherIncomes = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('other_incomes')
+          .select('amount, payment_method, status, account_id')
+          .eq('school_id', schoolIdNum)
+          .eq('status', 'received') // Only received (actual cash received)
+          .lt('income_date', dateFrom)
+          .range(from, to);
+      });
+      
+      // Fetch all expenses before dateFrom (only paid status)
+      const openingExpenses = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('expenses')
+          .select('amount, payment_method, status, account_id')
+          .eq('school_id', schoolIdNum)
+          .eq('status', 'paid') // Only paid expenses (actual cash paid out)
+          .lt('expense_date', dateFrom)
+          .range(from, to);
+      });
+      
+      // Fetch all asset purchases before dateFrom
+      // Fetch asset purchases before dateFrom (now with payment_method and account_id)
+      const openingAssetPurchases = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('assets')
+          .select('purchase_cost, purchase_date, payment_method, account_id')
+          .eq('school_id', schoolIdNum)
+          .lt('purchase_date', dateFrom)
+          .range(from, to);
+      });
+      
+      // Fetch all liability payments before dateFrom
+      // Filter same as expenses: only cash-based, exclude account-based
+      const openingLiabilityPayments = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('liability_payments')
+          .select('payment_amount, payment_date, payment_method, account_id')
+          .eq('school_id', schoolIdNum)
+          .lt('payment_date', dateFrom)
+          .range(from, to);
+      });
+      
+      // Calculate opening balance using same logic as cash accounts
+      // Only count cash-based transactions (exclude account-based)
+      let openingBalance = 0;
+      
+      // Add cash inflows from fee payments (exclude account-based)
+      openingFeePayments.forEach(payment => {
+        // Exclude if it has an account_id (paid to account, not cash)
+        if (payment.account_id) return;
+        
+        const mode = payment.payment_mode?.toLowerCase() || '';
+        // Exclude account-based payments
+        if (mode === 'account' || mode.includes('account')) return;
+        
+        openingBalance += Number(payment.amount) || 0;
+      });
+      
+      // Add cash inflows from other incomes (exclude account-based)
+      openingOtherIncomes.forEach(income => {
+        // Exclude if it has an account_id (paid to account, not cash)
+        if (income.account_id) return;
+        
+        // Only count cash-based payment methods
+        if (!isCashBased(income.payment_method)) return;
+        
+        openingBalance += Number(income.amount) || 0;
+      });
+      
+      // Subtract cash outflows from expenses (exclude account-based)
+      // Filtering logic: exclude if account_id exists OR payment_method is 'account'
+      openingExpenses.forEach(expense => {
+        // Exclude if it has an account_id (paid from account, not cash)
+        if (expense.account_id) return;
+        
+        // Only count cash-based payment methods (exclude 'account' method)
+        if (!isCashBased(expense.payment_method)) return;
+        
+        openingBalance -= Number(expense.amount) || 0;
+      });
+      
+      // Subtract asset purchases (EXACT same filtering logic as expenses)
+      // Filtering logic: exclude if account_id exists OR payment_method is 'account'
+      openingAssetPurchases.forEach(asset => {
+        // Exclude if it has an account_id (paid from account, not cash) - EXACT same as expenses
+        if (asset.account_id) return;
+        
+        // Only count cash-based payment methods (exclude 'account' method) - EXACT same as expenses
+        // Uses the same isCashBased() function that expenses use
+        if (!isCashBased(asset.payment_method)) return;
+        
+        openingBalance -= Number(asset.purchase_cost) || 0;
+      });
+      
+      // Subtract liability payments (EXACT same filtering logic as expenses)
+      // Filtering logic: exclude if account_id exists OR payment_method is 'account'
+      openingLiabilityPayments.forEach(payment => {
+        // Exclude if it has an account_id (paid from account, not cash) - EXACT same as expenses
+        if (payment.account_id) return;
+        
+        // Only count cash-based payment methods (exclude 'account' method) - EXACT same as expenses
+        // Uses the same isCashBased() function that expenses use
+        if (!isCashBased(payment.payment_method)) return;
+        
+        openingBalance -= Number(payment.payment_amount) || 0;
+      });
+      
+      // Filter period data to only cash-based transactions
+      // Fee payments: filter out account-based payments
+      const cashFeePayments = feePayments.filter(p => {
+        // Exclude if it has an account_id (paid to account, not cash)
+        if ((p as any).account_id) return false;
+        const mode = p.payment_mode?.toLowerCase() || '';
+        return mode !== 'account' && !p.payment_mode?.toLowerCase().includes('account');
+      });
+      const cashFeeIncome = cashFeePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+      
+      // Other incomes: only received status and cash-based
+      const cashOtherIncomes = otherIncomes.filter(i => {
+        // Exclude if it has an account_id (paid to account, not cash)
+        if ((i as any).account_id) return false;
+        return i.status === 'received' && isCashBased(i.payment_method);
+      });
+      const cashOtherIncome = cashOtherIncomes.reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
+      const cashIncome = cashFeeIncome + cashOtherIncome;
+      
+      // Expenses: only paid status and cash-based (exclude account-based)
+      // Filtering logic: exclude if account_id exists OR payment_method is 'account'
+      // Expenses use accounts from SetupAccounts - when account is selected, payment_method = 'account' and account_id is set
+      const cashExpensesData = expensesData.filter(e => {
+        // Exclude if it has an account_id (paid from account, not cash)
+        if ((e as any).account_id) return false;
+        // Only count 'paid' status and cash-based payment methods (exclude 'account' method)
+        return e.status === 'paid' && isCashBased(e.payment_method);
+      });
+      const cashExpenses = cashExpensesData.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+      
+      // Fetch asset purchases in date range
+      // Fetch asset purchases in date range (now with payment_method and account_id)
+      const assetPurchases = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('assets')
+          .select('purchase_cost, purchase_date, payment_method, account_id')
+          .eq('school_id', schoolIdNum)
+          .gte('purchase_date', dateFrom)
+          .lte('purchase_date', dateTo)
+          .range(from, to);
+      });
+      
+      // Fetch liability payments in date range
+      // Filter same as expenses: only cash-based, exclude account-based
+      // Liability payments use same approach as expenses - accounts from SetupAccounts can be selected
+      const liabilityPayments = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('liability_payments')
+          .select('payment_amount, payment_date, payment_method, account_id')
+          .eq('school_id', schoolIdNum)
+          .gte('payment_date', dateFrom)
+          .lte('payment_date', dateTo)
+          .range(from, to);
+      });
+      
+      // Liability payments: EXACT same filtering logic as expenses
+      // (No status field for liability payments - they're always "paid" when they exist)
+      // Filtering logic: exclude if account_id exists OR payment_method is 'account'
+      // Uses same approach as expenses - accounts from SetupAccounts are used as payment methods
+      const cashLiabilityPaymentsData = liabilityPayments.filter(lp => {
+        // Exclude if it has an account_id (paid from account, not cash) - EXACT same as expenses
+        if (lp.account_id) return false;
+        // Only count cash-based payment methods (exclude 'account' method) - EXACT same as expenses
+        // This uses the same isCashBased() function that expenses use
+        return isCashBased(lp.payment_method);
+      });
+      
+      // Asset purchases: use exact same filtering as expenses (already filtered above)
+      const cashAssetPurchases = assetPurchases.filter(asset => {
+        // Exclude if it has an account_id (paid from account, not cash) - EXACT same as expenses
+        if (asset.account_id) return false;
+        
+        // Only count cash-based payment methods (exclude 'account' method) - EXACT same as expenses
+        return isCashBased(asset.payment_method);
+      });
+      
+      const totalAssetPurchases = cashAssetPurchases.reduce((sum, a) => sum + (Number(a.purchase_cost) || 0), 0);
+      
+      // Liability payments: use exact same filtering as expenses (already filtered above)
+      const totalLiabilityPayments = cashLiabilityPaymentsData.reduce((sum, lp) => sum + (Number(lp.payment_amount) || 0), 0);
+      
+      // Calculate monthly cash flow
+      const monthlyCashFlowMap = new Map<string, { inflows: number; outflows: number }>();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      // Initialize months in date range
+      const startDate = parseISO(dateFrom);
+      const endDate = parseISO(dateTo);
+      const currentMonth = new Date(startDate);
+      while (currentMonth <= endDate) {
+        const monthKey = `${monthNames[currentMonth.getMonth()]}-${currentMonth.getFullYear()}`;
+        if (!monthlyCashFlowMap.has(monthKey)) {
+          monthlyCashFlowMap.set(monthKey, { inflows: 0, outflows: 0 });
+        }
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+      }
+      
+      // Aggregate inflows by month (only cash-based)
+      cashFeePayments.forEach(payment => {
+        const paymentDate = parseISO(payment.payment_date);
+        const monthKey = `${monthNames[paymentDate.getMonth()]}-${paymentDate.getFullYear()}`;
+        const current = monthlyCashFlowMap.get(monthKey) || { inflows: 0, outflows: 0 };
+        current.inflows += Number(payment.amount) || 0;
+        monthlyCashFlowMap.set(monthKey, current);
+      });
+      
+      cashOtherIncomes.forEach(income => {
+        const incomeDate = parseISO(income.income_date);
+        const monthKey = `${monthNames[incomeDate.getMonth()]}-${incomeDate.getFullYear()}`;
+        const current = monthlyCashFlowMap.get(monthKey) || { inflows: 0, outflows: 0 };
+        current.inflows += Number(income.amount) || 0;
+        monthlyCashFlowMap.set(monthKey, current);
+      });
+      
+      // Aggregate outflows by month (only cash-based)
+      cashExpensesData.forEach(expense => {
+        const expenseDate = parseISO(expense.expense_date);
+        const monthKey = `${monthNames[expenseDate.getMonth()]}-${expenseDate.getFullYear()}`;
+        const current = monthlyCashFlowMap.get(monthKey) || { inflows: 0, outflows: 0 };
+        current.outflows += Number(expense.amount) || 0;
+        monthlyCashFlowMap.set(monthKey, current);
+      });
+      
+      // Use filtered cash asset purchases for monthly trend
+      cashAssetPurchases.forEach(asset => {
+        const purchaseDate = parseISO(asset.purchase_date);
+        const monthKey = `${monthNames[purchaseDate.getMonth()]}-${purchaseDate.getFullYear()}`;
+        const current = monthlyCashFlowMap.get(monthKey) || { inflows: 0, outflows: 0 };
+        current.outflows += Number(asset.purchase_cost) || 0;
+        monthlyCashFlowMap.set(monthKey, current);
+      });
+      
+      // Liability payments: use exact same filtering as expenses (already filtered above)
+      cashLiabilityPaymentsData.forEach(payment => {
+        const paymentDate = parseISO(payment.payment_date);
+        const monthKey = `${monthNames[paymentDate.getMonth()]}-${paymentDate.getFullYear()}`;
+        const current = monthlyCashFlowMap.get(monthKey) || { inflows: 0, outflows: 0 };
+        current.outflows += Number(payment.payment_amount) || 0;
+        monthlyCashFlowMap.set(monthKey, current);
+      });
+      
+      const monthlyCashFlow = Array.from(monthlyCashFlowMap.entries())
+        .map(([monthYear, data]) => {
+          const [month, year] = monthYear.split('-');
+          return {
+            monthYear,
+            month: `${month} ${year.slice(-2)}`,
+            sortDate: new Date(parseInt(year), monthNames.indexOf(month), 1),
+            inflows: data.inflows,
+            outflows: data.outflows,
+            netFlow: data.inflows - data.outflows
+          };
+        })
+        .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
+        .map((item) => ({
+          month: item.month,
+          inflows: item.inflows,
+          outflows: item.outflows,
+          netFlow: item.netFlow
+        }));
+      
+      cashFlowData = {
+        openingBalance,
+        inflows: {
+          feePayments: cashFeeIncome,
+          otherIncomes: cashOtherIncome,
+          total: cashIncome
+        },
+        outflows: {
+          expenses: cashExpenses,
+          assetPurchases: totalAssetPurchases,
+          liabilityPayments: totalLiabilityPayments,
+          total: cashExpenses + totalAssetPurchases + totalLiabilityPayments
+        },
+        netCashFlow: cashIncome - (cashExpenses + totalAssetPurchases + totalLiabilityPayments),
+        closingBalance: openingBalance + cashIncome - (cashExpenses + totalAssetPurchases + totalLiabilityPayments),
+        monthlyCashFlow
+      };
+    } catch (error) {
+      console.error('Error fetching cash flow data:', error);
+    }
+
     const accountsData: AccountsData = {
       summary: {
         income,
@@ -511,7 +832,8 @@ export const fetchAccountsData = async (
       },
       monthlyData,
       balanceSheet: balanceSheetData,
-      assetsLiabilities: assetsLiabilitiesData
+      assetsLiabilities: assetsLiabilitiesData,
+      cashFlow: cashFlowData
     };
 
     setAccountsData(accountsData);
@@ -523,7 +845,8 @@ export const fetchAccountsData = async (
       incomeVsExpenses: { income: 0, expenses: 0 },
       monthlyData: [],
       balanceSheet: null,
-      assetsLiabilities: null
+      assetsLiabilities: null,
+      cashFlow: null
     });
   } finally {
     setAccountsLoading(false);

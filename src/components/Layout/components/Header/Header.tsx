@@ -1404,6 +1404,13 @@ const Header: React.FC<HeaderProps> = ({
       color: '#10b981'
     },
     {
+      title: 'Cash Flow',
+      description: 'View cash inflows, outflows, and net cash flow statement',
+      icon: <TrendingUpIcon />,
+      path: '/cash-flow',
+      color: '#f59e0b'
+    },
+    {
       title: 'Assets & Liabilities',
       description: 'Manage school assets and liabilities',
       icon: <AccountBalanceIcon />,

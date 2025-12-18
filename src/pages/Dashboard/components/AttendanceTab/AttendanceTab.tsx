@@ -16,7 +16,8 @@ import {
   AccountCircle,
   FileDownloadOutlined as ExportIcon,
   KeyboardArrowUpRounded as ChevronDownIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  GetApp
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -287,6 +288,7 @@ interface AttendanceTabProps {
   exportPresentLoading: boolean;
   exportAbsenteesPDF: () => void;
   exportPresentStudentsPDF: () => void;
+  exportConsecutiveAbsentPDF: () => void;
   showExportDropdown: boolean;
   setShowExportDropdown: (show: boolean) => void;
   exportDropdownRef: React.RefObject<HTMLButtonElement>;
@@ -342,6 +344,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   exportPresentLoading,
   exportAbsenteesPDF,
   exportPresentStudentsPDF,
+  exportConsecutiveAbsentPDF,
   showExportDropdown,
   setShowExportDropdown,
   exportDropdownRef,
@@ -675,8 +678,20 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
       <ContentGrid theme={theme}>
         <ContentCard theme={theme}>
           <CardTitle theme={theme}>
-            <Warning style={{ fontSize: '1.1rem' }} />
-            Consecutive Absent Students
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+              <Warning style={{ fontSize: '1.1rem' }} />
+              Consecutive Absent Students
+            </div>
+            {consecutiveAbsentStudents.length > 0 && (
+              <ExportButton
+                onClick={exportConsecutiveAbsentPDF}
+                disabled={exportAbsentLoading}
+                title="Export to PDF"
+              >
+                <GetApp style={{ fontSize: '1rem' }} />
+                {exportAbsentLoading ? 'Exporting...' : 'Export PDF'}
+              </ExportButton>
+            )}
           </CardTitle>
         {consecutiveAbsentLoading ? (
           <EmptyState theme={theme}>

@@ -16,6 +16,7 @@ import {
   WhatsApp as WhatsAppIcon,
   AccountBalanceWallet,
   AccountBalance as AccountBalanceIcon,
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
@@ -1557,6 +1558,13 @@ const UserPermissionManagement: React.FC = () => {
                       path: '/balance-sheet', 
                       color: '#10b981', 
                       icon: React.createElement(AccountBalanceIcon) 
+                    },
+                    { 
+                      title: 'Cash Flow', 
+                      description: 'View cash inflows, outflows, and net cash flow statement',
+                      path: '/cash-flow', 
+                      color: '#f59e0b', 
+                      icon: React.createElement(TrendingUpIcon) 
                     }
                   ].map((pageItem, itemIdx) => {
                     const isGranted = isMenuItemGranted(pageItem);

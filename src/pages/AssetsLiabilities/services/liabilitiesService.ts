@@ -508,7 +508,7 @@ export const liabilitiesService = {
     payment: Omit<LiabilityPayment, 'id' | 'createdAt' | 'liability' | 'account' | 'createdByUser'>,
     liability: Liability
   ): Promise<LiabilityPayment> {
-    const { schoolId, liabilityId, paymentDate, paymentAmount, principalPaid, interestPaid, paymentMethod, accountId, referenceNumber, notes, createdBy } = payment;
+    const { schoolId, liabilityId, paymentDate, paymentAmount, principalPaid, interestPaid, paymentMethod, accountId, referenceNumber, notes, createdBy, chequeNumber, transactionId } = payment as any;
     
     // If liability has no interest rate, ensure interest_paid is NULL and all payment goes to principal
     const finalInterestPaid = liability.interestRate ? (interestPaid || null) : null;
@@ -525,6 +525,8 @@ export const liabilitiesService = {
         interest_paid: finalInterestPaid,
         payment_method: paymentMethod,
         account_id: accountId || null,
+        cheque_number: chequeNumber || null,
+        transaction_id: transactionId || null,
         reference_number: referenceNumber || null,
         notes: notes || null,
         created_by: createdBy || null,

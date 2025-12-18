@@ -76,6 +76,7 @@ import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import LedgerPage from './pages/LedgerPage';
 import SetupAccountsPage from './pages/SetupAccountsPage';
 import BalanceSheetPage from './pages/BalanceSheetPage';
+import CashFlowPage from './pages/CashFlowPage';
 // Enquiry Management Components
 import EnquiryManagementDashboardPage from './pages/EnquiryManagementDashboardPage';
 import EnquiryDashboardPage from './pages/EnquiryDashboardPage';
@@ -758,6 +759,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="setup-accounts">
                                 <BalanceSheetPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="cash-flow"
+                            element={
+                              <ProtectedRoute requiredPermission="cash-flow-view">
+                                <CashFlowPage />
                               </ProtectedRoute>
                             }
                           />

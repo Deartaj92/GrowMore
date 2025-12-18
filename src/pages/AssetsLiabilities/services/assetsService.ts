@@ -292,7 +292,9 @@ export const assetsService = {
       status,
       notes,
       createdBy,
-    } = asset;
+      paymentMethod,
+      accountId,
+    } = asset as any;
     
     const { data, error } = await supabase
       .from('assets')
@@ -313,6 +315,10 @@ export const assetsService = {
         serial_number: serialNumber || null,
         status: status || 'active',
         notes: notes || null,
+        payment_method: paymentMethod || 'cash',
+        account_id: accountId || null,
+        cheque_number: (asset as any).chequeNumber || null,
+        transaction_id: (asset as any).transactionId || null,
         created_by: createdBy || null,
       })
       .select(`
@@ -391,6 +397,10 @@ export const assetsService = {
     if (updates.disposedDate !== undefined) updateData.disposed_date = updates.disposedDate || null;
     if (updates.disposedValue !== undefined) updateData.disposed_value = updates.disposedValue || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+    if ((updates as any).paymentMethod !== undefined) updateData.payment_method = (updates as any).paymentMethod;
+    if ((updates as any).accountId !== undefined) updateData.account_id = (updates as any).accountId || null;
+    if ((updates as any).chequeNumber !== undefined) updateData.cheque_number = (updates as any).chequeNumber || null;
+    if ((updates as any).transactionId !== undefined) updateData.transaction_id = (updates as any).transactionId || null;
     
     updateData.updated_at = new Date().toISOString();
     

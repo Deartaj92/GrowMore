@@ -16,7 +16,10 @@ import {
   TrendingUp,
   Close as CloseIcon,
   CheckCircle,
+  AttachMoney,
+  AccountCircle,
 } from '@mui/icons-material';
+import * as Icons from '@mui/icons-material';
 import {
   Box,
   Button as MuiButton,
@@ -813,6 +816,7 @@ const LiabilitiesTab: React.FC = () => {
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [categories, setCategories] = useState<LiabilityCategory[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [accountTypes, setAccountTypes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [filters, setFilters] = useState<LiabilityFilters>({});
@@ -870,11 +874,14 @@ const LiabilitiesTab: React.FC = () => {
     paymentAmount: '',
     principalPaid: '',
     interestPaid: '',
-    paymentMethod: 'cash' as PaymentMethod,
+    paymentMethod: 'Cash', // Use 'Cash' as default (same as ExpenseManager)
     accountId: '',
     referenceNumber: '',
     notes: '',
   });
+  const [paidWithCheque, setPaidWithCheque] = useState(false);
+  const [chequeNumber, setChequeNumber] = useState('');
+  const [transactionId, setTransactionId] = useState('');
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-PK', {
@@ -916,15 +923,37 @@ const LiabilitiesTab: React.FC = () => {
     if (!user?.school_id) return;
     
     try {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('school_id', user.school_id)
-        .eq('is_active', true)
-        .order('name');
+      // Fetch both accounts and account types (same as ExpenseManager)
+      const [accountsData, accountTypesData] = await Promise.all([
+        supabase
+          .from('accounts')
+          .select('*')
+          .eq('school_id', user.school_id)
+          .eq('is_active', true)
+          .order('name'),
+        supabase
+          .from('account_types')
+          .select('*')
+          .or(`school_id.eq.1,school_id.eq.${user.school_id}`)
+          .eq('is_active', true)
+          .order('display_name')
+      ]);
       
-      if (error) throw error;
-      setAccounts(data || []);
+      if (accountsData.error) throw accountsData.error;
+      if (accountTypesData.error) throw accountTypesData.error;
+      
+      setAccounts(accountsData.data || []);
+      
+      // Deduplicate account types (prefer system types) - same as ExpenseManager
+      if (accountTypesData.data) {
+        const uniqueTypes = new Map();
+        accountTypesData.data.forEach((type: any) => {
+          if (!uniqueTypes.has(type.name) || type.school_id === 1) {
+            uniqueTypes.set(type.name, type);
+          }
+        });
+        setAccountTypes(Array.from(uniqueTypes.values()));
+      }
     } catch (error: any) {
       console.error('Error fetching accounts:', error);
     }
@@ -942,6 +971,40 @@ const LiabilitiesTab: React.FC = () => {
   useEffect(() => {
     setFilters(prev => ({ ...prev, searchQuery }));
   }, [searchQuery]);
+
+  // Helper function to get icon component from account type (same as ExpenseManager)
+  const getAccountTypeIcon = (iconName: string) => {
+    const IconComponent = (Icons as any)[iconName] || AccountCircle;
+    return React.createElement(IconComponent);
+  };
+
+  // Get account type label (same as ExpenseManager)
+  const getAccountTypeLabel = (account: any) => {
+    const accountType = accountTypes.find(t => t.name === account.type);
+    return accountType?.display_name || account.type;
+  };
+
+  // Get payment method options (Cash + Accounts) - same as ExpenseManager
+  const paymentMethodOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string; isAccount: boolean; accountId?: number; icon?: React.ReactElement }> = [
+      { value: 'Cash', label: 'Cash', isAccount: false, icon: React.createElement(AttachMoney) }
+    ];
+
+    // Add accounts as payment options
+    accounts.forEach(account => {
+      const accountType = accountTypes.find(t => t.name === account.type);
+      const displayName = accountType?.display_name || account.name;
+      options.push({
+        value: `account_${account.id}`,
+        label: `${displayName} - ${account.name}`,
+        isAccount: true,
+        accountId: account.id,
+        icon: accountType ? getAccountTypeIcon(accountType.icon_name) : undefined
+      });
+    });
+
+    return options;
+  }, [accounts, accountTypes]);
 
   const handleAdd = () => {
     setEditingLiability(null);
@@ -1077,11 +1140,14 @@ const LiabilitiesTab: React.FC = () => {
       paymentAmount: String(selectedLiability.currentBalance > 0 ? Math.min(selectedLiability.currentBalance, selectedLiability.paymentAmount || selectedLiability.currentBalance) : 0),
       principalPaid: '',
       interestPaid: '',
-      paymentMethod: 'cash',
+      paymentMethod: 'Cash', // Use 'Cash' as default (same as ExpenseManager)
       accountId: '',
       referenceNumber: '',
       notes: '',
     });
+    setPaidWithCheque(false);
+    setChequeNumber('');
+    setTransactionId('');
     setShowPaymentForm(true);
   };
 
@@ -1097,6 +1163,44 @@ const LiabilitiesTab: React.FC = () => {
       const principalPaid = paymentFormData.principalPaid ? parseFloat(paymentFormData.principalPaid) : paymentAmount;
       const interestPaid = paymentFormData.interestPaid ? parseFloat(paymentFormData.interestPaid) : null;
 
+      // Validate cheque payment
+      if (paidWithCheque) {
+        if (!paymentFormData.accountId || !paymentFormData.paymentMethod.startsWith('account_')) {
+          showToast('Please select an account for cheque payment', 'error');
+          setSaving(false);
+          setLoading(false);
+          return;
+        }
+        if (!chequeNumber || !chequeNumber.trim()) {
+          showToast('Please enter cheque number', 'error');
+          setSaving(false);
+          setLoading(false);
+          return;
+        }
+        // Verify account has chequebook
+        const accountId = parseInt(paymentFormData.paymentMethod.replace('account_', ''));
+        const account = accounts.find(a => a.id === accountId);
+        if (!account?.has_chequebook) {
+          showToast('Selected account does not have chequebook facility', 'error');
+          setSaving(false);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Handle payment method and account selection (same as ExpenseManager)
+      let paymentMethod = paymentFormData.paymentMethod;
+      let accountId: number | undefined = undefined;
+
+      // If payment method starts with 'account_', extract account ID and set payment_method to 'account'
+      if (paymentFormData.paymentMethod.startsWith('account_')) {
+        accountId = parseInt(paymentFormData.paymentMethod.replace('account_', ''));
+        // Store 'account' as payment method for database constraint
+        paymentMethod = 'account';
+      } else if (paymentFormData.paymentMethod === 'Cash') {
+        paymentMethod = 'cash';
+      }
+
       const paymentData = {
         schoolId: user.school_id,
         liabilityId: selectedLiability.id,
@@ -1104,8 +1208,10 @@ const LiabilitiesTab: React.FC = () => {
         paymentAmount,
         principalPaid,
         interestPaid,
-        paymentMethod: paymentFormData.paymentMethod,
-        accountId: paymentFormData.accountId ? parseInt(paymentFormData.accountId) : undefined,
+        paymentMethod: paymentMethod as PaymentMethod,
+        accountId: accountId,
+        chequeNumber: paidWithCheque ? chequeNumber.trim() : undefined,
+        transactionId: !paidWithCheque && paymentFormData.paymentMethod.startsWith('account_') ? transactionId.trim() : undefined,
         referenceNumber: paymentFormData.referenceNumber || undefined,
         notes: paymentFormData.notes || undefined,
         createdBy: user.id,
@@ -1974,38 +2080,90 @@ const LiabilitiesTab: React.FC = () => {
                       <Select
                         value={paymentFormData.paymentMethod}
                         label="Payment Method"
-                        onChange={(e) => setPaymentFormData(prev => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setPaymentFormData(prev => ({ ...prev, paymentMethod: value }));
+                          // Extract account ID if it's an account payment
+                          if (value.startsWith('account_')) {
+                            const accountId = parseInt(value.replace('account_', ''));
+                            setPaymentFormData(prev => ({ ...prev, accountId: accountId.toString() }));
+                            // If paid with cheque, verify account has chequebook
+                            const account = accounts.find(a => a.id === accountId);
+                            if (paidWithCheque && !account?.has_chequebook) {
+                              showToast('Selected account does not have chequebook facility', 'error');
+                              setPaidWithCheque(false);
+                              setChequeNumber('');
+                            }
+                          } else {
+                            // Cash selected - reset account-related fields
+                            setPaymentFormData(prev => ({ ...prev, accountId: '' }));
+                            setPaidWithCheque(false);
+                            setChequeNumber('');
+                            setTransactionId('');
+                          }
+                        }}
                         required
                         MenuProps={selectMenuProps}
                       >
-                        <MenuItem value="cash">Cash</MenuItem>
-                        <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
-                        <MenuItem value="cheque">Cheque</MenuItem>
-                        <MenuItem value="card">Card</MenuItem>
-                        <MenuItem value="online">Online</MenuItem>
-                        <MenuItem value="other">Other</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Account</InputLabel>
-                      <Select
-                        value={paymentFormData.accountId ? paymentFormData.accountId.toString() : ''}
-                        label="Account"
-                        onChange={(e) => setPaymentFormData(prev => ({ ...prev, accountId: e.target.value }))}
-                        MenuProps={selectMenuProps}
-                      >
-                        <MenuItem value="">Select Account</MenuItem>
-                        {accounts.map(acc => (
-                          <MenuItem key={acc.id} value={acc.id.toString()}>
-                            {acc.name}
+                        {paymentMethodOptions.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {option.icon && <Box sx={{ display: 'flex', alignItems: 'center' }}>{option.icon}</Box>}
+                              {option.label}
+                            </Box>
                           </MenuItem>
                         ))}
                       </Select>
                     </FormControl>
                   </Grid>
+
+                  {/* Show checkbox only when bank account is selected AND has chequebook */}
+                  {paymentFormData.paymentMethod.startsWith('account_') && (() => {
+                    const accountId = parseInt(paymentFormData.paymentMethod.replace('account_', ''));
+                    const selectedAccount = accounts.find(a => a.id === accountId);
+                    return selectedAccount?.has_chequebook ? (
+                      <Grid item xs={12}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={paidWithCheque}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setPaidWithCheque(checked);
+                                if (checked) {
+                                  setChequeNumber('');
+                                  setTransactionId('');
+                                } else {
+                                  setChequeNumber('');
+                                }
+                              }}
+                            />
+                          }
+                          label="Paid with Cheque"
+                        />
+                      </Grid>
+                    ) : null;
+                  })()}
+
+                  {/* Show Transaction ID / Cheque No. field when bank account is selected */}
+                  {paymentFormData.paymentMethod.startsWith('account_') && (
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label={paidWithCheque ? "Cheque No. *" : "Transaction ID"}
+                        value={paidWithCheque ? chequeNumber : transactionId}
+                        onChange={(e) => {
+                          if (paidWithCheque) {
+                            setChequeNumber(e.target.value);
+                          } else {
+                            setTransactionId(e.target.value);
+                          }
+                        }}
+                        required={paidWithCheque}
+                      />
+                    </Grid>
+                  )}
 
                   <Grid item xs={12}>
                     <TextField

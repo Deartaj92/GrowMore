@@ -28,6 +28,7 @@ import {
 } from '../../styles';
 import { formatCurrency } from '../../utils/dashboardUtils';
 import { AccountsData } from '../../services/accountsService';
+import CashFlowComponent from './CashFlowComponent';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
@@ -159,7 +160,7 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
   const theme = useTheme() as any;
   const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
 
-  const { summary, cashAccounts, incomeVsExpenses, monthlyData, balanceSheet, assetsLiabilities } = accountsData;
+  const { summary, cashAccounts, incomeVsExpenses, monthlyData, balanceSheet, assetsLiabilities, cashFlow } = accountsData;
 
   // Prepare data for donut chart
   const donutChartData = [
@@ -694,6 +695,11 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
             )}
           </ContentCard>
         </ContentGrid>
+      )}
+
+      {/* Cash Flow Statement */}
+      {cashFlow && (
+        <CashFlowComponent cashFlow={cashFlow} loading={accountsLoading} />
       )}
     </Container>
   );
