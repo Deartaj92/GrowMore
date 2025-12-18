@@ -737,10 +737,12 @@ export const menuStructure: MainMenuItem[] = [
     hasDropdown: true,
     menuItems: [
       { title: 'Employee Management', items: employeeMenuItems },
-      { title: 'Attendance', items: employeeAttendanceMenuItems },
-      { title: 'Reports', items: employeeReportsMenuItems }
+      { 
+        title: 'Attendance & Reports', 
+        items: [...employeeAttendanceMenuItems, ...employeeReportsMenuItems]
+      }
     ],
-    columns: 3
+    columns: 2
   },
   {
     icon: React.createElement(AccountBalanceIcon),
@@ -768,9 +770,13 @@ export const menuStructure: MainMenuItem[] = [
     label: 'Accounts',
     hasDropdown: true,
     menuItems: [
-      { title: 'Account Management', items: accountsMenuItems }
+      { title: 'Account Management', items: accountsMenuItems },
+      { 
+        title: 'Payroll Management', 
+        items: payrollMenuItems
+      }
     ],
-    columns: 1
+    columns: 2
   },
   {
     icon: React.createElement(AssessmentIcon),

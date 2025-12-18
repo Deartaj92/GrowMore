@@ -15,12 +15,10 @@ import {
   useMediaQuery,
   styled as muiStyled,
   SelectChangeEvent,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormLabel
+  Typography,
+  Divider
 } from '@mui/material';
-import { Close as CloseIcon, AccountCircle } from '@mui/icons-material';
+import { Close as CloseIcon, AccountCircle, CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 import { supabase } from '../../supabaseClient';
 import { useToast } from '../useToast';
 import imageCompression from 'browser-image-compression';
@@ -31,43 +29,37 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown
 const RELIGIONS = ['Muslim', 'Christianity', 'Hinduism', 'Sikhism', 'Other'];
 const NATIONALITIES = ['Pakistani', 'Indian', 'Afghan', 'Bangladeshi', 'Other'];
 
-// Styled components
+// Styled components - Compact Design
 const StyledDialog = muiStyled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
-    borderRadius: '16px',
+    borderRadius: '12px',
     background: theme.palette.mode === 'dark' 
       ? theme.palette.background.paper 
       : theme.palette.background.paper,
-    maxWidth: '900px',
-    width: '90%',
-    margin: '60px 16px 16px',
+    maxWidth: '800px',
+    width: '95%',
+    maxHeight: '90vh',
+    margin: '32px auto',
     overflow: 'hidden',
     boxShadow: theme.palette.mode === 'dark'
-      ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
-      : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)',
+      ? '0 4px 16px rgba(0, 0, 0, 0.3)'
+      : '0 4px 16px rgba(0, 0, 0, 0.1)',
     border: theme.palette.mode === 'dark'
       ? '1px solid rgba(255, 255, 255, 0.05)'
       : '1px solid rgba(0, 0, 0, 0.05)',
-    transform: 'translateY(0)',
-    transition: 'all 0.3s ease-in-out',
-    position: 'relative',
-    zIndex: 1301,
+    display: 'flex',
+    flexDirection: 'column',
     [theme.breakpoints.down('sm')]: {
-      width: 'calc(100% - 32px)',
-      height: 'calc(100% - 96px)',
-      margin: '76px 16px 20px',
-      borderRadius: '16px',
-      maxHeight: 'calc(100% - 96px)'
+      width: 'calc(100% - 16px)',
+      maxHeight: '95vh',
+      margin: '16px auto',
+      borderRadius: '12px'
     }
   },
   '& .MuiBackdrop-root': {
-    backgroundColor: theme.palette.mode === 'dark'
-      ? 'rgba(0, 0, 0, 0.5)'
-      : 'rgba(255, 255, 255, 0.5)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    position: 'fixed',
-    zIndex: 1300
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)'
   }
 }));
 
@@ -75,97 +67,100 @@ const DialogHeader = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '8px 16px',
+  padding: '12px 16px',
   borderBottom: `1px solid ${theme.palette.mode === 'dark' 
     ? 'rgba(255, 255, 255, 0.05)' 
     : 'rgba(0, 0, 0, 0.05)'}`,
-  background: theme.palette.mode === 'dark'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
-  backdropFilter: 'blur(8px)',
-  position: 'relative',
-  zIndex: 1
+  flexShrink: 0
 }));
 
 const DialogTitle = muiStyled(Box)(({ theme }) => ({
-  fontSize: '1.25rem',
+  fontSize: '1rem',
   fontWeight: 600,
-  background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
+  color: theme.palette.text.primary,
   display: 'flex',
   alignItems: 'center',
-  gap: '12px',
-  textShadow: theme.palette.mode === 'dark'
-    ? '0 2px 4px rgba(0, 0, 0, 0.5)'
-    : 'none'
+  gap: '8px'
 }));
 
 const StyledDialogContent = muiStyled(DialogContent)(({ theme }) => ({
+  padding: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  flex: 1,
+  minHeight: 0,
+  overflow: 'hidden'
+}));
+
+const FormContent = muiStyled(Box)(({ theme }) => ({
+  flex: 1,
+  overflowY: 'auto',
+  minHeight: 0,
   padding: '16px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '16px',
-  maxHeight: 'calc(100vh - 160px)',
-  overflowY: 'auto',
-  background: theme.palette.mode === 'dark'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)',
-  '& .MuiFormControl-root': {
-    transition: 'background-color 0.2s ease',
+  gap: '12px',
+  '&::-webkit-scrollbar': {
+    width: '6px'
   },
-  '& .MuiInputBase-root': {
-    background: theme.palette.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(255, 255, 255, 0.8)',
-    backdropFilter: 'blur(8px)',
-    borderRadius: '8px',
-    border: theme.palette.mode === 'dark'
-      ? '1px solid rgba(255, 255, 255, 0.05)'
-      : '1px solid rgba(0, 0, 0, 0.05)',
-    transition: 'background-color 0.2s ease',
-    height: '48px',
-    '&:hover, &.Mui-focused': {
-      background: theme.palette.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(255, 255, 255, 0.9)',
-    },
-    '& .MuiSelect-select, & .MuiInputBase-input': {
-      padding: '10px 12px',
-      fontSize: '0.9rem',
-      '&::placeholder': {
-        color: theme.palette.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.3)'
-          : 'rgba(0, 0, 0, 0.3)',
-        opacity: 1
-      }
-    },
-    '& .MuiOutlinedInput-notchedOutline': {
-      border: 'none'
+  '&::-webkit-scrollbar-track': {
+    background: 'transparent'
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: '3px',
+    '&:hover': {
+      background: 'rgba(0, 0, 0, 0.3)'
     }
+  }
+}));
+
+const CompactTextField = muiStyled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    '& input': {
+      padding: '10px 12px'
+    }
+  },
+  '& .MuiInputLabel-root': {
+    fontSize: '0.875rem'
+  }
+}));
+
+const CompactSelect = muiStyled(FormControl)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    '& .MuiSelect-select': {
+      padding: '10px 12px'
+    }
+  },
+  '& .MuiInputLabel-root': {
+    fontSize: '0.875rem'
   }
 }));
 
 const FormActions = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'flex-end',
-  gap: '12px',
-  padding: '8px 16px',
+  gap: '6px',
+  padding: '8px 12px',
   borderTop: `1px solid ${theme.palette.mode === 'dark'
     ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(0, 0, 0, 0.05)'}`,
-  background: theme.palette.mode === 'dark'
-    ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)',
+  flexShrink: 0,
   position: 'sticky',
   bottom: 0,
+  background: theme.palette.background.paper,
   zIndex: 10,
   '& .MuiButton-root': {
-    borderRadius: '8px',
+    borderRadius: '6px',
     textTransform: 'none',
-    padding: '6px 16px',
+    padding: '6px 12px',
+    fontSize: '0.75rem',
     fontWeight: 500,
-    transition: 'background-color 0.2s ease'
+    minWidth: 'auto'
   }
 }));
 
@@ -173,22 +168,37 @@ const SectionContainer = muiStyled(Box)({
   marginBottom: '16px'
 });
 
-const SectionTitle = muiStyled(Box)(({ theme }) => ({
-  fontSize: '1.2rem',
-  fontWeight: 700,
-  color: theme.palette.primary.main,
-  marginBottom: '12px',
+const SectionHeader = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: '8px'
+  gap: '8px',
+  marginBottom: '12px',
+  paddingBottom: '8px',
+  borderBottom: `1px solid ${theme.palette.divider}`
 }));
 
-const AvatarUpload = muiStyled(Box)(({ theme }) => ({
-  width: '60px',
-  height: '60px',
-  borderRadius: '50%',
+const SectionBadge = muiStyled(Box)(({ theme }) => ({
+  width: '20px',
+  height: '20px',
+  borderRadius: '6px',
+  background: theme.palette.primary.main,
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  flexShrink: 0
+}));
+
+const ImageBox = muiStyled(Box)(({ theme }) => ({
+  width: '80px',
+  height: '80px',
+  borderRadius: '8px',
+  border: `2px solid ${theme.palette.mode === 'dark' 
+    ? 'rgba(255, 255, 255, 0.1)' 
+    : 'rgba(0, 0, 0, 0.1)'}`,
   background: theme.palette.mode === 'dark' ? '#2d3340' : '#f3f4f6',
-  border: `2px solid ${theme.palette.primary.main}`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -196,31 +206,33 @@ const AvatarUpload = muiStyled(Box)(({ theme }) => ({
   position: 'relative',
   cursor: 'pointer',
   transition: 'all 0.2s',
+  flexShrink: 0,
   '&:hover': {
-    boxShadow: `0 0 0 3px ${theme.palette.primary.main}99`,
+    borderColor: theme.palette.primary.main,
     transform: 'scale(1.02)'
+  },
+  '& img': {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
   }
 }));
 
-const AvatarImg = muiStyled('img')({
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover'
-});
-
-const RemoveButton = muiStyled(IconButton)(({ theme }) => ({
+const RemoveButton = muiStyled(IconButton)({
   position: 'absolute',
   top: 4,
   right: 4,
-  width: 16,
-  height: 16,
+  width: 20,
+  height: 20,
   backgroundColor: '#ef4444',
   color: '#fff',
-  border: '1px solid #fff',
   '&:hover': {
     backgroundColor: '#dc2626'
+  },
+  '& svg': {
+    fontSize: '14px'
   }
-}));
+});
 
 interface StudentFormData {
   id?: string;
@@ -228,7 +240,6 @@ interface StudentFormData {
   class_id: string;
   section_id: string;
   admission_date: string;
-  discount_in_fee?: string;
   phone?: string;
   picture_url?: string | null;
   dob?: string;
@@ -285,7 +296,6 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     class_id: '',
     section_id: '',
     admission_date: '',
-    discount_in_fee: '',
     phone: '',
     picture_url: '',
     dob: '',
@@ -324,6 +334,7 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const avatarFileRef = useRef<File | null>(null); // Store File object in ref to preserve it
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
 
@@ -332,6 +343,8 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     if (initialData && Object.keys(initialData).length > 0) {
       setFormData(initialData);
       setEditAvatar(initialData.picture_url || null);
+      // Clear ref when form is reset
+      avatarFileRef.current = null;
     }
   }, [initialData]);
 
@@ -340,6 +353,8 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     if (open && initialData && Object.keys(initialData).length > 0) {
       setFormData(initialData);
       setEditAvatar(initialData.picture_url || null);
+      // Clear ref when modal opens
+      avatarFileRef.current = null;
     }
   }, [open, initialData]);
 
@@ -400,8 +415,20 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (!e.target.files || !e.target.files[0]) {
+      return;
+    }
+
+    try {
       let file = e.target.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select a valid image file', 'error');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
       // If file is larger than 100KB, compress it
       if (file.size > 100 * 1024) {
         try {
@@ -412,22 +439,42 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
           });
         } catch (err) {
           showToast('Failed to compress image', 'error');
+          if (fileInputRef.current) fileInputRef.current.value = '';
           return;
         }
       }
-      // Log the file size for debugging
+
       // For preview
       const reader = new FileReader();
-      reader.onload = (ev) => setEditAvatar(ev.target?.result as string);
+      
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          setEditAvatar(ev.target.result as string);
+        }
+      };
+      
+      reader.onerror = () => {
+        showToast('Failed to read image file', 'error');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      
       reader.readAsDataURL(file);
-      // Store the file for upload
-      setFormData(prev => ({ ...prev, _newAvatarFile: file }));
+      
+      // Store the file in ref to preserve File object (avoids serialization issues)
+      avatarFileRef.current = file;
+      
+      // Store file reference in formData for tracking
+      setFormData(prev => ({ ...prev, _newAvatarFile: file as any })); // Store marker, actual file is in ref
+    } catch (error: any) {
+      showToast('Error processing image: ' + (error?.message || 'Unknown error'), 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleRemoveAvatar = (e: React.MouseEvent) => {
     e.stopPropagation();
     setEditAvatar(null);
+    avatarFileRef.current = null; // Clear ref
     setFormData(prev => ({ ...prev, picture_url: null, _newAvatarFile: null }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -438,7 +485,14 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     
     try {
       setIsSubmitting(true);
-      await onSubmit(formData);
+      
+      // Get the actual File object from ref (preserves File instance)
+      const submitData = {
+        ...formData,
+        _newAvatarFile: avatarFileRef.current || formData._newAvatarFile
+      };
+      
+      await onSubmit(submitData);
       setTimeout(() => {
         onCancel();
       }, 1500);
@@ -459,16 +513,16 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
           maxWidth="lg"
         >
       <DialogHeader>
-        <DialogTitle>
-          <AvatarUpload onClick={() => fileInputRef.current?.click()}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <ImageBox onClick={() => fileInputRef.current?.click()}>
             {(editAvatar || formData.picture_url) ? (
-              <AvatarImg src={editAvatar || formData.picture_url || ''} alt="Student" />
+              <img src={editAvatar || formData.picture_url || ''} alt="Student" />
             ) : (
-              <AccountCircle sx={{ fontSize: '2.5rem', color: '#bbb' }} />
+              <AccountCircle sx={{ fontSize: '3rem', color: 'text.secondary' }} />
             )}
             {(editAvatar || formData.picture_url) && (
-              <RemoveButton onClick={handleRemoveAvatar}>
-                <CloseIcon fontSize="small" />
+              <RemoveButton onClick={handleRemoveAvatar} size="small">
+                <CloseIcon />
               </RemoveButton>
             )}
             <input
@@ -478,55 +532,57 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
               onChange={handleAvatarChange}
               style={{ display: 'none' }}
             />
-          </AvatarUpload>
-          Edit Student
-        </DialogTitle>
+          </ImageBox>
+          <DialogTitle>Edit Student</DialogTitle>
+        </Box>
         <IconButton onClick={onCancel} size="small">
-          <CloseIcon fontSize="small" />
+          <CloseIcon />
         </IconButton>
       </DialogHeader>
 
       <StyledDialogContent>
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <FormContent>
           <SectionContainer>
-            <SectionTitle>
-              <span style={{ fontSize: '1.1em', marginRight: 6 }}>①</span>
-              Student Information
-            </SectionTitle>
-            <Grid container spacing={2}>
+            <SectionHeader>
+              <SectionBadge>1</SectionBadge>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                Student Information
+              </Typography>
+            </SectionHeader>
+            <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="name"
-                    value={formData.name}
-                    onChange={handleTextChange}
-                    required
-                    label="Name*"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="name"
+                  value={formData.name}
+                  onChange={handleTextChange}
+                  required
+                  label="Name"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel id="class-label">Class*</InputLabel>
+                <CompactSelect fullWidth size="small">
+                  <InputLabel id="class-label">Class</InputLabel>
                   <Select
                     labelId="class-label"
                     name="class_id"
                     value={formData.class_id || ''}
                     onChange={handleSelectChange}
                     required
-                    label="Class*"
+                    label="Class"
                   >
                     {classOptions.map(c => (
                       <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
                     ))}
                   </Select>
-                </FormControl>
+                </CompactSelect>
               </Grid>
               {selectedClassHasSections && (
                 <Grid item xs={12} sm={6} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel id="section-label">Section*</InputLabel>
+                  <CompactSelect fullWidth size="small">
+                    <InputLabel id="section-label">Section</InputLabel>
                     <Select
                       labelId="section-label"
                       name="section_id"
@@ -534,104 +590,89 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                       onChange={handleSelectChange}
                       required
                       disabled={!formData.class_id}
-                      label="Section*"
+                      label="Section"
                     >
                       {sectionOptions.map(s => (
                         <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
                       ))}
                     </Select>
-                  </FormControl>
+                  </CompactSelect>
                 </Grid>
               )}
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="admission_date"
-                    type="date"
-                    value={formData.admission_date}
-                    onChange={handleTextChange}
-                    required
-                    label="Date of Admission*"
-                    variant="outlined"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="admission_date"
+                  type="date"
+                  value={formData.admission_date}
+                  onChange={handleTextChange}
+                  required
+                  label="Date of Admission"
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="discount_in_fee"
-                    type="number"
-                    value={formData.discount_in_fee}
-                    onChange={handleTextChange}
-                    label="Discount in Fee"
-                    variant="outlined"
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleTextChange}
+                  label="Mobile No. for SMS/WhatsApp"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleTextChange}
-                    label="Mobile No. for SMS/WhatsApp"
-                    variant="outlined"
-                  />
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <FormLabel component="legend">Notification Channel</FormLabel>
-                  <RadioGroup
-                    row
+                <CompactSelect fullWidth size="small">
+                  <InputLabel id="notification-channel-label">Notification Channel</InputLabel>
+                  <Select
+                    labelId="notification-channel-label"
+                    name="notification_channel"
                     value={formData.notification_channel || 'whatsapp'}
                     onChange={(e) => setFormData(prev => ({ ...prev, notification_channel: (e.target.value as 'whatsapp' | 'sms') }))}
-                    name="notification_channel"
+                    label="Notification Channel"
                   >
-                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
-                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
-                  </RadioGroup>
-                </FormControl>
+                    <MenuItem value="whatsapp">WhatsApp</MenuItem>
+                    <MenuItem value="sms">SMS</MenuItem>
+                  </Select>
+                </CompactSelect>
               </Grid>
             </Grid>
           </SectionContainer>
 
+          <Divider sx={{ my: 1 }} />
           <SectionContainer>
-            <SectionTitle>
-              <span style={{ fontSize: '1.1em', marginRight: 6 }}>②</span>
-              Other Information
-            </SectionTitle>
-            <Grid container spacing={2}>
+            <SectionHeader>
+              <SectionBadge>2</SectionBadge>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                Other Information
+              </Typography>
+            </SectionHeader>
+            <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="dob"
-                    type="date"
-                    value={formData.dob}
-                    onChange={handleTextChange}
-                    label="Date of Birth"
-                    variant="outlined"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="dob"
+                  type="date"
+                  value={formData.dob}
+                  onChange={handleTextChange}
+                  label="Date of Birth"
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="form_b"
-                    value={formData.form_b}
-                    onChange={handleTextChange}
-                    label="Student Birth Form ID / NIC"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="form_b"
+                  value={formData.form_b}
+                  onChange={handleTextChange}
+                  label="Student Birth Form ID / NIC"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
+                <CompactSelect fullWidth size="small">
                   <InputLabel id="gender-label">Gender</InputLabel>
                   <Select
                     labelId="gender-label"
@@ -644,54 +685,50 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                     <MenuItem value="Female">Female</MenuItem>
                     <MenuItem value="Other">Other</MenuItem>
                   </Select>
-                </FormControl>
+                </CompactSelect>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="cast"
-                    value={formData.cast}
-                    onChange={handleTextChange}
-                    label="Cast"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="cast"
+                  value={formData.cast}
+                  onChange={handleTextChange}
+                  label="Cast"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="orphan"
-                    value={formData.orphan}
-                    onChange={handleTextChange}
-                    label="Orphan Student"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="orphan"
+                  value={formData.orphan}
+                  onChange={handleTextChange}
+                  label="Orphan Student"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="osc"
-                    value={formData.osc}
-                    onChange={handleTextChange}
-                    label="OSC Number"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="osc"
+                  value={formData.osc}
+                  onChange={handleTextChange}
+                  label="OSC Number"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="id_mark"
-                    value={formData.id_mark}
-                    onChange={handleTextChange}
-                    label="Identification Mark"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="id_mark"
+                  value={formData.id_mark}
+                  onChange={handleTextChange}
+                  label="Identification Mark"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
+                <CompactSelect fullWidth size="small">
                   <InputLabel id="blood-group-label">Blood Group</InputLabel>
                   <Select
                     labelId="blood-group-label"
@@ -704,32 +741,30 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                       <MenuItem key={bg} value={bg}>{bg}</MenuItem>
                     ))}
                   </Select>
-                </FormControl>
+                </CompactSelect>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="previous_school"
-                    value={formData.previous_school}
-                    onChange={handleTextChange}
-                    label="Previous School"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="previous_school"
+                  value={formData.previous_school}
+                  onChange={handleTextChange}
+                  label="Previous School"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="previous_id"
-                    value={formData.previous_id}
-                    onChange={handleTextChange}
-                    label="Previous ID / Board Roll No"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="previous_id"
+                  value={formData.previous_id}
+                  onChange={handleTextChange}
+                  label="Previous ID / Board Roll No"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
+                <CompactSelect fullWidth size="small">
                   <InputLabel id="religion-label">Religion</InputLabel>
                   <Select
                     labelId="religion-label"
@@ -742,10 +777,10 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                       <MenuItem key={r} value={r}>{r}</MenuItem>
                     ))}
                   </Select>
-                </FormControl>
+                </CompactSelect>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
+                <CompactSelect fullWidth size="small">
                   <InputLabel id="nationality-label">Nationality</InputLabel>
                   <Select
                     labelId="nationality-label"
@@ -758,216 +793,207 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                       <MenuItem key={n} value={n}>{n}</MenuItem>
                     ))}
                   </Select>
-                </FormControl>
+                </CompactSelect>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="total_siblings"
-                    type="number"
-                    value={formData.total_siblings}
-                    onChange={handleTextChange}
-                    label="Total Siblings"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="total_siblings"
+                  type="number"
+                  value={formData.total_siblings}
+                  onChange={handleTextChange}
+                  label="Total Siblings"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="disease"
-                    value={formData.disease}
-                    onChange={handleTextChange}
-                    label="Disease If Any?"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="disease"
+                  value={formData.disease}
+                  onChange={handleTextChange}
+                  label="Disease If Any?"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="additional_note"
-                    value={formData.additional_note}
-                    onChange={handleTextChange}
-                    label="Additional Note"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="additional_note"
+                  value={formData.additional_note}
+                  onChange={handleTextChange}
+                  label="Additional Note"
+                  size="small"
+                />
               </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="address"
-                    value={formData.address}
-                    onChange={handleTextChange}
-                    label="Address"
-                    variant="outlined"
-                  />
-                </FormControl>
+              <Grid item xs={12}>
+                <CompactTextField
+                  fullWidth
+                  name="address"
+                  value={formData.address}
+                  onChange={handleTextChange}
+                  label="Address"
+                  size="small"
+                  multiline
+                  rows={2}
+                />
               </Grid>
             </Grid>
           </SectionContainer>
 
+          <Divider sx={{ my: 1 }} />
           <SectionContainer>
-            <SectionTitle>
-              <span style={{ fontSize: '1.1em', marginRight: 6 }}>③</span>
-              Father/Guardian Information
-            </SectionTitle>
-            <Grid container spacing={2}>
+            <SectionHeader>
+              <SectionBadge>3</SectionBadge>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                Father/Guardian Information
+              </Typography>
+            </SectionHeader>
+            <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="father_name"
-                    value={formData.father_name}
-                    onChange={handleTextChange}
-                    required
-                    label="Father Name*"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="father_name"
+                  value={formData.father_name}
+                  onChange={handleTextChange}
+                  required
+                  label="Father Name"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="father_national_id"
-                    value={formData.father_national_id}
-                    onChange={handleTextChange}
-                    label="Father National ID"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="father_national_id"
+                  value={formData.father_national_id}
+                  onChange={handleTextChange}
+                  label="Father National ID"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="father_education"
-                    value={formData.father_education}
-                    onChange={handleTextChange}
-                    label="Education"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="father_education"
+                  value={formData.father_education}
+                  onChange={handleTextChange}
+                  label="Education"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="father_mobile"
-                    value={formData.father_mobile}
-                    onChange={handleTextChange}
-                    label="Mobile No"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="father_mobile"
+                  value={formData.father_mobile}
+                  onChange={handleTextChange}
+                  label="Mobile No"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="father_occupation"
-                    value={formData.father_occupation}
-                    onChange={handleTextChange}
-                    label="Occupation"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="father_occupation"
+                  value={formData.father_occupation}
+                  onChange={handleTextChange}
+                  label="Occupation"
+                  size="small"
+                />
               </Grid>
-
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="father_income"
-                    type="number"
-                    value={formData.father_income}
-                    onChange={handleTextChange}
-                    label="Income"
-                    variant="outlined"
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="father_income"
+                  type="number"
+                  value={formData.father_income}
+                  onChange={handleTextChange}
+                  label="Income"
+                  size="small"
+                  InputProps={{
+                    startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
+                  }}
+                />
               </Grid>
             </Grid>
           </SectionContainer>
 
+          <Divider sx={{ my: 1 }} />
           <SectionContainer>
-            <SectionTitle>
-              <span style={{ fontSize: '1.1em', marginRight: 6 }}>④</span>
-              Mother Information
-            </SectionTitle>
-            <Grid container spacing={2}>
+            <SectionHeader>
+              <SectionBadge>4</SectionBadge>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                Mother Information
+              </Typography>
+            </SectionHeader>
+            <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="mother_name"
-                    value={formData.mother_name}
-                    onChange={handleTextChange}
-                    label="Mother Name"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="mother_name"
+                  value={formData.mother_name}
+                  onChange={handleTextChange}
+                  label="Mother Name"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="mother_national_id"
-                    value={formData.mother_national_id}
-                    onChange={handleTextChange}
-                    label="Mother National ID"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="mother_national_id"
+                  value={formData.mother_national_id}
+                  onChange={handleTextChange}
+                  label="Mother National ID"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="mother_education"
-                    value={formData.mother_education}
-                    onChange={handleTextChange}
-                    label="Education"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="mother_education"
+                  value={formData.mother_education}
+                  onChange={handleTextChange}
+                  label="Education"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="mother_mobile"
-                    value={formData.mother_mobile}
-                    onChange={handleTextChange}
-                    label="Mobile No"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="mother_mobile"
+                  value={formData.mother_mobile}
+                  onChange={handleTextChange}
+                  label="Mobile No"
+                  size="small"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="mother_occupation"
-                    value={formData.mother_occupation}
-                    onChange={handleTextChange}
-                    label="Occupation"
-                    variant="outlined"
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="mother_occupation"
+                  value={formData.mother_occupation}
+                  onChange={handleTextChange}
+                  label="Occupation"
+                  size="small"
+                />
               </Grid>
-
               <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <TextField
-                    name="mother_income"
-                    type="number"
-                    value={formData.mother_income}
-                    onChange={handleTextChange}
-                    label="Income"
-                    variant="outlined"
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-                </FormControl>
+                <CompactTextField
+                  fullWidth
+                  name="mother_income"
+                  type="number"
+                  value={formData.mother_income}
+                  onChange={handleTextChange}
+                  label="Income"
+                  size="small"
+                  InputProps={{
+                    startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
+                  }}
+                />
               </Grid>
             </Grid>
           </SectionContainer>
+          </FormContent>
           
           <FormActions>
             <Button 
@@ -984,7 +1010,7 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
               size="small"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
+              {isSubmitting ? 'Saving...' : 'Save'}
             </Button>
           </FormActions>
         </form>

@@ -255,13 +255,13 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
   position: fixed;
   background: ${props => props.theme.CARD};
   border: 1px solid ${props => props.theme.BORDER};
-  border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 3px 6px rgba(0, 0, 0, 0.08);
-  padding: 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+  padding: 10px;
   z-index: 100001;
   opacity: ${props => props.$isOpen ? 1 : 0};
   visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
-  transform: ${props => props.$isOpen ? 'translateY(0)' : 'translateY(-8px)'};
+  transform: ${props => props.$isOpen ? 'translateY(0)' : 'translateY(-6px)'};
   transition: all 0.2s ease;
   display: ${props => props.$isOpen ? ((props.$actualColumns || props.$columns || 1) === 1 ? 'block' : 'grid') : 'none'};
   grid-template-columns: ${props => {
@@ -271,23 +271,53 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
     if (cols === 3) return 'repeat(3, 1fr)';
     return `repeat(${cols}, 1fr)`;
   }};
-  gap: 16px;
+  gap: 12px;
   pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
   width: fit-content;
   min-width: ${props => {
     const cols = props.$actualColumns || props.$columns || 1;
-    if (cols === 1) return '280px';
-    if (cols === 2) return '480px';
-    if (cols === 3) return '720px';
+    if (cols === 1) return '240px';
+    if (cols === 2) return '420px';
+    if (cols === 3) return '640px';
     return 'auto';
   }};
   max-width: ${props => {
     const cols = props.$actualColumns || props.$columns || 1;
-    if (cols === 1) return '400px';
-    if (cols === 2) return '600px';
-    if (cols === 3) return '1000px';
+    if (cols === 1) return '360px';
+    if (cols === 2) return '540px';
+    if (cols === 3) return '900px';
     return 'auto';
   }};
+  max-height: 430px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+      ? 'rgba(255, 255, 255, 0.2)' 
+      : 'rgba(0, 0, 0, 0.2)'};
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+      ? 'rgba(255, 255, 255, 0.3)' 
+      : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  scrollbar-width: thin;
+  scrollbar-color: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' 
+    ? 'rgba(255, 255, 255, 0.2) transparent' 
+    : 'rgba(0, 0, 0, 0.2) transparent'};
   
   @media (max-width: 1400px) {
     ${props => {
@@ -295,8 +325,22 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
       if (cols >= 3) {
         return `
           grid-template-columns: repeat(2, 1fr);
-          min-width: 480px;
-          max-width: 600px;
+          min-width: 420px;
+          max-width: 540px;
+        `;
+      }
+      return '';
+    }}
+  }
+  
+  @media (max-width: 1200px) {
+    ${props => {
+      const cols = props.$actualColumns || props.$columns || 1;
+      if (cols >= 3) {
+        return `
+          grid-template-columns: repeat(2, 1fr);
+          min-width: 400px;
+          max-width: 520px;
         `;
       }
       return '';
@@ -309,15 +353,15 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
       if (cols >= 3) {
         return `
           grid-template-columns: repeat(2, 1fr);
-          min-width: 480px;
-          max-width: 600px;
+          min-width: 380px;
+          max-width: 500px;
         `;
       }
       if (cols === 2) {
         return `
           grid-template-columns: 1fr;
-          min-width: 280px;
-          max-width: 400px;
+          min-width: 240px;
+          max-width: 360px;
         `;
       }
       return '';
@@ -325,11 +369,20 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
   }
   
   @media (max-width: 768px) {
+    min-width: 85vw;
+    max-width: 85vw;
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    padding: 10px;
+    max-height: 70vh;
+  }
+  
+  @media (max-width: 480px) {
     min-width: 90vw;
     max-width: 90vw;
-    grid-template-columns: 1fr !important;
-    gap: 12px;
-    padding: 12px;
+    padding: 8px;
+    gap: 8px;
+    max-height: 75vh;
   }
 `;
 
@@ -354,7 +407,7 @@ const ColumnSeparator = styled.div`
   width: 100%;
   height: 1px;
   background: ${props => props.theme.BORDER};
-  margin: 8px 0;
+  margin: 6px 0;
 `;
 
 const ColumnTitle = styled.h3`
@@ -369,7 +422,7 @@ const ColumnTitle = styled.h3`
 `;
 
 const Badge = styled.span`
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   min-width: 18px;
@@ -385,16 +438,19 @@ const Badge = styled.span`
   flex-shrink: 0;
   position: relative;
   box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 3;
 `;
 
 const DropdownMenuItem = styled.button<{ $color: string }>`
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px;
+  gap: 8px;
+  padding: 6px;
   border: none;
   background: ${props => props.theme.CARD};
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -403,23 +459,23 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   
   &:hover {
     background: ${props => props.theme.BG};
-    transform: translateX(3px);
+    transform: translateX(2px);
   }
   
   .menu-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
     background: linear-gradient(135deg, ${props => props.$color} 0%, ${props => props.$color}dd 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     flex-shrink: 0;
-    box-shadow: 0 2px 6px ${props => props.$color}40;
+    box-shadow: 0 2px 4px ${props => props.$color}40;
     
     svg {
-      font-size: 18px;
+      font-size: 16px;
     }
   }
   
@@ -430,22 +486,44 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   }
   
   .menu-title {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: ${props => props.theme.TEXT_PRIMARY};
-    margin: 0 0 3px 0;
+    margin: 0 0 2px 0;
     line-height: 1.2;
   }
   
   .menu-description {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: ${props => props.theme.TEXT_SECONDARY};
     margin: 0;
-    line-height: 1.3;
+    line-height: 1.25;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    gap: 10px;
+    
+    .menu-icon {
+      width: 26px;
+      height: 26px;
+      
+      svg {
+        font-size: 17px;
+      }
+    }
+    
+    .menu-title {
+      font-size: 0.8rem;
+    }
+    
+    .menu-description {
+      font-size: 0.7rem;
+    }
   }
 `;
 
@@ -541,6 +619,13 @@ const MobileMenuSection = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 2;
+  
+  * {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
   
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
@@ -578,12 +663,21 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
   padding: 12px 12px;
   background: none;
   border: none;
-  color: ${props => props.theme.TEXT_PRIMARY};
+  color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
   transition: background 0.2s ease;
+  position: relative;
+  z-index: 2;
+  opacity: 1 !important;
+  visibility: visible !important;
+  
+  * {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
   
   &:hover {
     background: ${props => props.theme.BG};
@@ -591,23 +685,38 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
   
   .menu-icon {
     margin-right: 12px;
-    display: flex;
+    display: flex !important;
     align-items: center;
-    color: ${props => props.theme.TEXT_SECONDARY};
+    color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
+    flex-shrink: 0;
+    opacity: 1 !important;
+    visibility: visible !important;
     
     svg {
       font-size: 20px;
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      color: inherit !important;
+      fill: currentColor !important;
     }
   }
   
   .menu-label {
     flex: 1;
+    color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
   }
   
   .menu-arrow {
-    color: ${props => props.theme.TEXT_SECONDARY};
+    color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
     transition: transform 0.2s ease;
     transform: ${props => props.$hasSubmenu ? 'rotate(0deg)' : 'rotate(-90deg)'};
+    flex-shrink: 0;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 `;
 
@@ -616,63 +725,101 @@ const MobileSubmenu = styled.div<{ $isOpen: boolean }>`
   overflow: hidden;
   transition: max-height 0.3s ease;
   background: ${props => props.theme.BG};
+  opacity: 1 !important;
+  visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
+  
+  > * {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  
+  /* Force immediate visibility when open - override transition delay */
+  ${props => props.$isOpen && `
+    max-height: 5000px !important;
+    overflow: visible !important;
+  `}
 `;
 
 const MobileSubmenuItem = styled.button`
   position: relative;
   width: 100%;
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 12px;
   padding: 10px 16px 10px 32px;
   background: none;
   border: none;
-  color: ${props => props.theme.TEXT_SECONDARY};
+  color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
   font-size: 0.85rem;
   cursor: pointer;
   text-align: left;
   transition: background 0.2s ease;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 2;
+  min-height: 48px;
+  
+  > * {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
   
   &:hover {
     background: ${props => props.theme.CARD};
-    color: ${props => props.theme.TEXT_PRIMARY};
+    color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
   }
   
   .submenu-icon {
-    width: 24px;
-    height: 24px;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
     border-radius: 4px;
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    opacity: 1 !important;
+    visibility: visible !important;
     
     svg {
-      font-size: 16px;
-      color: white;
+      font-size: 16px !important;
+      color: white !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      fill: currentColor !important;
+      display: block !important;
     }
   }
   
   .submenu-content {
     flex: 1;
     min-width: 0;
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     gap: 2px;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
   
   .submenu-title {
     font-weight: 500;
-    color: ${props => props.theme.TEXT_PRIMARY};
+    color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
     font-size: 0.85rem;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    line-height: 1.2;
   }
   
   .submenu-description {
     font-size: 0.7rem;
-    color: ${props => props.theme.TEXT_SECONDARY};
-    opacity: 0.85;
+    color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
+    opacity: 0.85 !important;
     line-height: 1.3;
-    display: block;
+    display: block !important;
+    visibility: visible !important;
   }
 `;
 
@@ -1041,8 +1188,55 @@ const Header: React.FC<HeaderProps> = ({
     const updatePosition = (buttonRef: React.RefObject<HTMLButtonElement>, dropdownRef: React.RefObject<HTMLDivElement>) => {
       if (buttonRef.current && dropdownRef.current) {
         const buttonRect = buttonRef.current.getBoundingClientRect();
-        dropdownRef.current.style.top = `${buttonRect.bottom + 4}px`;
-        dropdownRef.current.style.left = `${buttonRect.left}px`;
+        const dropdown = dropdownRef.current;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const padding = 8; // Padding from viewport edges
+        
+        // Get dropdown dimensions - use offsetWidth/offsetHeight as fallback
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const dropdownWidth = dropdownRect.width || dropdown.offsetWidth || 0;
+        const dropdownHeight = dropdownRect.height || dropdown.offsetHeight || 0;
+        
+        // If dimensions are still 0, use a reasonable default or skip adjustment
+        if (dropdownWidth === 0 || dropdownHeight === 0) {
+          // Set initial position and let it adjust on next frame
+          dropdown.style.top = `${buttonRect.bottom + 4}px`;
+          dropdown.style.left = `${buttonRect.left}px`;
+          return;
+        }
+        
+        let top = buttonRect.bottom + 4;
+        let left = buttonRect.left;
+        
+        // Check if dropdown would overflow bottom edge
+        if (top + dropdownHeight > viewportHeight - padding) {
+          // Try positioning above the button
+          const spaceAbove = buttonRect.top;
+          const spaceBelow = viewportHeight - buttonRect.bottom;
+          
+          if (spaceAbove > spaceBelow && spaceAbove >= dropdownHeight) {
+            // Position above button if there's more space above
+            top = buttonRect.top - dropdownHeight - 4;
+          } else {
+            // Otherwise, position at bottom of viewport with padding
+            top = viewportHeight - dropdownHeight - padding;
+          }
+        }
+        
+        // Check if dropdown would overflow right edge
+        if (left + dropdownWidth > viewportWidth - padding) {
+          // Align to right edge of viewport with padding
+          left = viewportWidth - dropdownWidth - padding;
+        }
+        
+        // Check if dropdown would overflow left edge
+        if (left < padding) {
+          left = padding;
+        }
+        
+        dropdown.style.top = `${top}px`;
+        dropdown.style.left = `${left}px`;
       }
     };
 
@@ -1059,7 +1253,14 @@ const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     if (studentMenuOpen || employeeMenuOpen || financeMenuOpen || accountsMenuOpen ||
         communicationMenuOpen || academicsMenuOpen || settingsMenuOpen) {
+      // Initial positioning
       updateDropdownPositions();
+      
+      // Reposition after a short delay to ensure dropdown is fully rendered
+      const delayedUpdate = setTimeout(() => {
+        updateDropdownPositions();
+      }, 10);
+      
       const handleScroll = () => updateDropdownPositions();
       const handleResize = () => updateDropdownPositions();
       
@@ -1067,6 +1268,7 @@ const Header: React.FC<HeaderProps> = ({
       window.addEventListener('resize', handleResize);
       
       return () => {
+        clearTimeout(delayedUpdate);
         window.removeEventListener('scroll', handleScroll, true);
         window.removeEventListener('resize', handleResize);
       };
@@ -1289,13 +1491,6 @@ const Header: React.FC<HeaderProps> = ({
       icon: <ListAltIcon />,
       path: '/fee-audit-logs',
       color: '#6b7280'
-    },
-    {
-      title: 'Payroll Management',
-      description: 'Manage employee salaries, payments, and payroll operations',
-      icon: <CalculateIcon />,
-      path: '/payroll',
-      color: '#3b82f6'
     }
   ];
 
@@ -1346,6 +1541,28 @@ const Header: React.FC<HeaderProps> = ({
       path: '/expense-analytics',
       color: '#3b82f6'
     },
+    {
+      title: 'Other Incomes',
+      description: 'Record and track non-fee income sources',
+      icon: <AttachMoneyIcon />,
+      path: '/other-income-manager',
+      color: '#16a34a'
+    }
+  ];
+
+  // Payroll menu items
+  const payrollMenuItems = [
+    {
+      title: 'Payroll Management',
+      description: 'Manage employee salaries, payments, and payroll operations',
+      icon: <CalculateIcon />,
+      path: '/payroll',
+      color: '#3b82f6'
+    }
+  ];
+
+  // Other Income menu items
+  const otherIncomeMenuItems = [
     {
       title: 'Other Incomes',
       description: 'Record and track non-fee income sources',
@@ -1781,10 +1998,12 @@ const Header: React.FC<HeaderProps> = ({
       hasDropdown: true,
       menuItems: [
         { title: 'Student Management', items: studentMenuItems },
-        { title: 'Attendance', items: attendanceMenuItems },
-        { title: 'Reports', items: studentReportsMenuItems }
+        { 
+          title: 'Attendance & Reports', 
+          items: [...attendanceMenuItems, ...studentReportsMenuItems]
+        }
       ],
-      columns: 3
+      columns: 2
     },
     {
       icon: <SchoolIcon />,
@@ -1793,10 +2012,12 @@ const Header: React.FC<HeaderProps> = ({
       hasDropdown: true,
       menuItems: [
         { title: 'Employee Management', items: employeeMenuItems },
-        { title: 'Attendance', items: employeeAttendanceMenuItems },
-        { title: 'Reports', items: employeeReportsMenuItems }
+        { 
+          title: 'Attendance & Reports', 
+          items: [...employeeAttendanceMenuItems, ...employeeReportsMenuItems]
+        }
       ],
-      columns: 3
+      columns: 2
     },
     {
       icon: <AccountBalanceIcon />,
@@ -1823,9 +2044,13 @@ const Header: React.FC<HeaderProps> = ({
       label: 'Accounts',
       hasDropdown: true,
       menuItems: [
-        { title: 'Account Management', items: accountsMenuItems }
+        { title: 'Account Management', items: accountsMenuItems },
+        { 
+          title: 'Payroll & Income', 
+          items: [...payrollMenuItems, ...otherIncomeMenuItems]
+        }
       ],
-      columns: 1
+      columns: 2
     },
     {
       icon: <AssessmentIcon />,
@@ -1975,8 +2200,8 @@ const Header: React.FC<HeaderProps> = ({
                     }
                   }}
                 >
-                  <span className="menu-icon">{item.icon}</span>
-                  <span className="menu-label">{item.label}</span>
+                  <span className="menu-icon" style={{ color: 'inherit' }}>{item.icon}</span>
+                  <span className="menu-label" style={{ color: 'inherit' }}>{item.label}</span>
                   {item.label === 'Communication' && (() => {
                     const totalUnread = unreadCounts.leaveRequests + unreadCounts.complaints + unreadCounts.suggestions;
                     return totalUnread > 0 ? (
@@ -2000,7 +2225,14 @@ const Header: React.FC<HeaderProps> = ({
                         return firstItem?.title && 'items' in firstItem && firstItem.items;
                       })() ? (
                         // Multi-column structure (Students, Employees, Finance, Academics, Communication)
-                        item.menuItems.map((section: any, sectionIdx: number) => (
+                        item.menuItems
+                          .filter((section: any) => {
+                            // Only show section if it has visible items
+                            const hasItems = section.items && section.items.length > 0;
+                            const hasExpenseItems = section.expenseItems && section.expenseItems.length > 0;
+                            return hasItems || hasExpenseItems;
+                          })
+                          .map((section: any, sectionIdx: number) => (
                           <React.Fragment key={sectionIdx}>
                             <MobileMenuItem
                               style={{
@@ -2033,9 +2265,9 @@ const Header: React.FC<HeaderProps> = ({
                                   <div className="submenu-title">{menuItem.title}</div>
                                   <div className="submenu-description">{menuItem.description}</div>
                                 </div>
-                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
-                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
-                              )}
+                                {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                  <Badge style={{ marginLeft: 'auto', flexShrink: 0 }}>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                                )}
                               </MobileSubmenuItem>
                             ))}
                             {section.expenseItems && (
@@ -2056,9 +2288,9 @@ const Header: React.FC<HeaderProps> = ({
                                       <div className="submenu-title">{menuItem.title}</div>
                                       <div className="submenu-description">{menuItem.description}</div>
                                     </div>
-                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
-                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
-                              )}
+                                    {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                      <Badge style={{ marginLeft: 'auto', flexShrink: 0 }}>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                                    )}
                                   </MobileSubmenuItem>
                                 ))}
                               </>
@@ -2083,9 +2315,9 @@ const Header: React.FC<HeaderProps> = ({
                               <div className="submenu-title">{menuItem.title}</div>
                               <div className="submenu-description">{menuItem.description}</div>
                             </div>
-                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
-                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
-                              )}
+                            {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                              <Badge style={{ marginLeft: 'auto', flexShrink: 0 }}>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                            )}
                           </MobileSubmenuItem>
                         ))
                       )
@@ -2168,14 +2400,62 @@ const Header: React.FC<HeaderProps> = ({
                     });
                     
                     menuState?.setOpen(true);
-                    // Update position immediately
+                    // Update position immediately with viewport boundary checks
                     setTimeout(() => {
                       if (menuState?.buttonRef.current && menuState?.dropdownRef.current) {
                         const buttonRect = menuState.buttonRef.current.getBoundingClientRect();
-                        if (menuState.dropdownRef.current) {
-                          menuState.dropdownRef.current.style.top = `${buttonRect.bottom + 4}px`;
-                          menuState.dropdownRef.current.style.left = `${buttonRect.left}px`;
+                        const dropdown = menuState.dropdownRef.current;
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+                        const padding = 8; // Padding from viewport edges
+                        
+                        // Get dropdown dimensions - use offsetWidth/offsetHeight as fallback
+                        const dropdownRect = dropdown.getBoundingClientRect();
+                        const dropdownWidth = dropdownRect.width || dropdown.offsetWidth || 0;
+                        const dropdownHeight = dropdownRect.height || dropdown.offsetHeight || 0;
+                        
+                        // If dimensions are still 0, set initial position and adjust on next frame
+                        if (dropdownWidth === 0 || dropdownHeight === 0) {
+                          dropdown.style.top = `${buttonRect.bottom + 4}px`;
+                          dropdown.style.left = `${buttonRect.left}px`;
+                          // Schedule another update after render
+                          requestAnimationFrame(() => {
+                            updateDropdownPositions();
+                          });
+                          return;
                         }
+                        
+                        let top = buttonRect.bottom + 4;
+                        let left = buttonRect.left;
+                        
+                        // Check if dropdown would overflow bottom edge
+                        if (top + dropdownHeight > viewportHeight - padding) {
+                          // Try positioning above the button
+                          const spaceAbove = buttonRect.top;
+                          const spaceBelow = viewportHeight - buttonRect.bottom;
+                          
+                          if (spaceAbove > spaceBelow && spaceAbove >= dropdownHeight) {
+                            // Position above button if there's more space above
+                            top = buttonRect.top - dropdownHeight - 4;
+                          } else {
+                            // Otherwise, position at bottom of viewport with padding
+                            top = viewportHeight - dropdownHeight - padding;
+                          }
+                        }
+                        
+                        // Check if dropdown would overflow right edge
+                        if (left + dropdownWidth > viewportWidth - padding) {
+                          // Align to right edge of viewport with padding
+                          left = viewportWidth - dropdownWidth - padding;
+                        }
+                        
+                        // Check if dropdown would overflow left edge
+                        if (left < padding) {
+                          left = padding;
+                        }
+                        
+                        dropdown.style.top = `${top}px`;
+                        dropdown.style.left = `${left}px`;
                       }
                     }, 0);
                   }}
@@ -2291,30 +2571,40 @@ const Header: React.FC<HeaderProps> = ({
                           )}
                         </DropdownColumn>
                       ))
-                    ) : isStudents || isEmployees || item.label === 'Academics' || item.label === 'Communication' || item.label === 'Settings' ? (
-                      // Students, Employees, and Academics have 3 columns, Communication and Settings have 2 columns - all with titles
+                    ) : isStudents || isEmployees || item.label === 'Academics' || item.label === 'Communication' || item.label === 'Settings' || item.label === 'Accounts' ? (
+                      // Students, Employees, and Academics have 3 columns, Communication, Settings, and Accounts have 2 columns - all with titles
                       item.menuItems?.map((section: any, sectionIdx: number) => (
                         <DropdownColumn key={sectionIdx}>
                           <ColumnTitle>{section.title}</ColumnTitle>
-                          {section.items.map((menuItem: any, idx: number) => (
-                            <DropdownMenuItem
-                              key={idx}
-                              $color={menuItem.color}
-                              onClick={() => {
-                                navigate(menuItem.path);
-                                menuState?.setOpen(false);
-                              }}
-                            >
-                              <div className="menu-icon">{menuItem.icon}</div>
-                              <div className="menu-content">
-                                <div className="menu-title">{menuItem.title}</div>
-                                <div className="menu-description">{menuItem.description}</div>
-                              </div>
-                              {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
-                                <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
-                              )}
-                            </DropdownMenuItem>
-                          ))}
+                          {section.items.map((menuItem: any, idx: number) => {
+                            // Add separator before Reports items in Students and Employees menus
+                            const isStudentReports = isStudents && sectionIdx === 1 && menuItem.path === '/reports';
+                            const isEmployeeReports = isEmployees && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
+                            // Add separator before Teacher Subject Assignment in Employee Management section
+                            const isTeacherSubject = isEmployees && sectionIdx === 0 && menuItem.path === '/teacher-subjects';
+                            const shouldShowSeparator = isStudentReports || isEmployeeReports || isTeacherSubject;
+                            return (
+                              <React.Fragment key={idx}>
+                                {shouldShowSeparator && <ColumnSeparator />}
+                                <DropdownMenuItem
+                                  $color={menuItem.color}
+                                  onClick={() => {
+                                    navigate(menuItem.path);
+                                    menuState?.setOpen(false);
+                                  }}
+                                >
+                                  <div className="menu-icon">{menuItem.icon}</div>
+                                  <div className="menu-content">
+                                    <div className="menu-title">{menuItem.title}</div>
+                                    <div className="menu-description">{menuItem.description}</div>
+                                  </div>
+                                  {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
+                                    <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
+                                  )}
+                                </DropdownMenuItem>
+                              </React.Fragment>
+                            );
+                          })}
                         </DropdownColumn>
                       ))
                     ) : (

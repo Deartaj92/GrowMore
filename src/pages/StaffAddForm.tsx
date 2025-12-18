@@ -1,6 +1,27 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import styled, { ThemeProvider, keyframes } from 'styled-components';
-import { AccountCircle } from '@mui/icons-material';
+import styled, { ThemeProvider } from 'styled-components';
+import {
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  IconButton,
+  Box,
+  Typography,
+  Grid,
+} from '@mui/material';
+import {
+  AccountCircle,
+  CloudUpload,
+  Close,
+  Save,
+  Refresh,
+} from '@mui/icons-material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
@@ -8,311 +29,277 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import imageCompression from 'browser-image-compression';
 import NoSessionsFound from '../components/NoSessionsFound';
-import { Radio, RadioGroup, FormControlLabel, FormLabel } from '@mui/material';
 import Loader from '../components/Loader';
 
-const ModernForm = styled.form`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 0;
-  box-shadow: none;
-  border: none;
+const FormWrapper = styled.form`
   width: 100%;
   height: 100%;
-  flex: 1;
-  min-height: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
-  padding: 24px;
-  position: relative;
+  padding: 16px 20px;
   overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 100vh;
+  background: ${({ theme }) => theme.BG};
+  
+  @media (min-width: 1200px) {
+    padding: 20px 32px;
+  }
 `;
 
-const LargeAvatarCircle = styled.div`
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border: 4px solid ${({ theme }) => theme.FIELD_BORDER};
+const Container = styled(Box)`
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+`;
+
+const MainCard = styled(Box)`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  min-width: 0;
+  min-height: fit-content;
+  display: flex;
+  flex-direction: column;
+  
+  @media (min-width: 960px) {
+    padding: 24px;
+    min-height: calc(100vh - 120px);
+  }
+  
+  @media (max-width: 959px) {
+    min-height: auto;
+  }
+`;
+
+const SidebarCard = styled(Box)`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 16px;
+  height: fit-content;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  
+  @media (min-width: 960px) {
+    min-height: calc(100vh - 120px);
+    align-items: stretch;
+  }
+  
+  @media (max-width: 959px) {
+    position: relative;
+    top: 0;
+    margin-bottom: 16px;
+    max-height: none;
+    min-height: auto;
+  }
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+`;
+
+const ButtonRow = styled(Box)`
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+  margin: 12px auto 0 auto;
+  align-items: center;
+  justify-content: center;
+  
+  button {
+    flex: 1;
+  }
+  
+  @media (max-width: 959px) {
+    max-width: 200px;
+  }
+  
+  @media (min-width: 960px) and (max-width: 1279px) {
+    max-width: 240px;
+  }
+`;
+
+const ActionButtonsContainer = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+  width: 100%;
+`;
+
+const AvatarWrapper = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%;
+`;
+
+const ImageBox = styled(Box)`
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.FIELD_BG || theme.BG};
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
   overflow: hidden;
   position: relative;
-  cursor: pointer;
-  margin-bottom: 32px;
-  transition: box-shadow 0.18s;
-  &:hover {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.FIELD_BORDER}99;
-  }
-`;
-
-const AvatarImg = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const AvatarIcon = styled(AccountCircle)`
-  font-size: 2.8rem !important;
-  color: #bbb;
-`;
-
-const HiddenFileInput = styled.input`
-  display: none;
-`;
-
-const RemoveButton = styled.button`
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background:rgb(127, 6, 0);
-  color: #fff;
-  border: 1.2px solid #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.92rem;
-  opacity: 1;
-  z-index: 2;
-  cursor: pointer;
-  box-shadow: 0 2px 8px #0002;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-  &:hover {
-    background: #e0483e;
-    color: #fff;
-    border: 1.2px solid #fff;
-    box-shadow: 0 4px 16px #ff5f5633;
-  }
-`;
-
-const FormHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 32px 24px 8px 24px;
-  position: relative;
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 24px 8px 6px 8px;
-  }
-`;
-
-const FormTitle = styled.h2`
-  font-size: 1.18rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 auto 24px auto;
-  text-align: center;
-  width: 100%;
-`;
-
-const PillButton = styled.button`
-  padding: 7px 18px;
-  border-radius: 999px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.ACCENT_INPUT};
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: none;
-  transition: background 0.18s, color 0.18s, border 0.18s;
-  width: 100%;
-  max-width: 260px;
   margin: 0 auto;
-  &:hover, &:focus {
-    background: ${({ theme }) => theme.ACCENT_INPUT};
-    color: #fff;
+  
+  &:hover {
     border-color: ${({ theme }) => theme.ACCENT_INPUT};
+    transform: scale(1.01);
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  @media (max-width: 959px) {
+    max-width: 200px;
+  }
+  
+  @media (min-width: 960px) and (max-width: 1279px) {
+    max-width: 240px;
   }
 `;
 
-const ThemedCancelButton = styled(PillButton)`
-  background: ${({ theme }) => theme.CANCEL_BG};
-  color: ${({ theme }) => theme.CANCEL_COLOR};
-  &:hover, &:focus {
-    background: ${({ theme }) => theme.ACCENT_INPUT};
-    color: #fff;
-    border-color: ${({ theme }) => theme.ACCENT_INPUT};
-  }
-`;
-
-const ModernGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px 16px;
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-  padding: 0 24px;
-  box-sizing: border-box;
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr 1fr;
-  }
-  @media (max-width: 700px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 0 8px;
-  }
-`;
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-`;
-
-const Label = styled.label`
-  font-size: 0.92rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-weight: 500;
-`;
-
-const Input = styled.input`
-  padding: 7px 10px;
+const RemoveBtn = styled(Button)`
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
   border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.98rem;
-  outline: none;
-  transition: border 0.18s, box-shadow 0.18s;
-  &:focus {
-    border: 1.2px solid ${({ theme }) => theme.ACCENT_INPUT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT_INPUT}33;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  text-transform: none;
+  min-width: auto;
+  flex: 0 0 auto;
+  
+  &:hover {
+    background: rgba(239, 68, 68, 1);
   }
-  width: 100%;
-  box-sizing: border-box;
-`;
-
-const Select = styled.select`
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.98rem;
-  outline: none;
-  transition: border 0.18s, box-shadow 0.18s;
-  &:focus {
-    border: 1.2px solid ${({ theme }) => theme.ACCENT_INPUT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT_INPUT}33;
+  
+  svg {
+    font-size: 16px;
   }
-  width: 100%;
-  box-sizing: border-box;
 `;
 
-const Textarea = styled.textarea`
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.98rem;
-  outline: none;
-  min-height: 48px;
-  transition: border 0.18s, box-shadow 0.18s;
-  &:focus {
-    border: 1.2px solid ${({ theme }) => theme.ACCENT_INPUT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT_INPUT}33;
-  }
-  width: 100%;
-  box-sizing: border-box;
-`;
-
-const SectionContainer = styled.div`
-  margin-bottom: 32px;
-  position: relative;
-  z-index: 1;
-`;
-
-const FormBlocks = styled.div`
+const SectionHeader = styled(Box)`
   display: flex;
-  flex-direction: row;
-  gap: 32px;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  @media (max-width: 900px) {
-    flex-direction: column;
-    gap: 18px;
-  }
-`;
-
-const CardBlock = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 18px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  padding: 32px 24px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  min-width: 220px;
-  max-width: 340px;
-  flex: 0 0 260px;
-  @media (max-width: 900px) {
-    width: 100%;
-    max-width: 100vw;
-    min-width: 0;
-    padding: 18px 8px;
-    margin-bottom: 0;
-  }
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
 `;
 
-const FieldsCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 18px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  padding: 32px 24px;
-  flex: 1 1 0;
+const SectionBadge = styled(Box)`
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: ${({ theme }) => theme.ACCENT_INPUT};
+  color: white;
   display: flex;
-  flex-direction: column;
-  min-width: 0;
-  z-index: 1;
-  @media (max-width: 900px) {
-    width: 100%;
-    padding: 18px 8px;
-    border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+`;
+
+const CompactTextField = styled(TextField)`
+  & .MuiOutlinedInput-root {
+    border-radius: 8px;
+    font-size: 0.875rem;
+    
+    input {
+      padding: 10px 12px;
+    }
+  }
+  
+  & .MuiInputLabel-root {
+    font-size: 0.875rem;
   }
 `;
 
-const ActionsBlock = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  margin-top: 24px;
-  width: 100%;
-  @media (max-width: 900px) {
-    flex-direction: column;
-    align-items: center;
-    margin-top: 18px;
-    gap: 10px;
-    width: 100%;
+const CompactSelect = styled(FormControl)`
+  & .MuiOutlinedInput-root {
+    border-radius: 8px;
+    font-size: 0.875rem;
+    
+    .MuiSelect-select {
+      padding: 10px 12px;
+    }
+  }
+  
+  & .MuiInputLabel-root {
+    font-size: 0.875rem;
   }
 `;
 
-const RsPrefix = styled.span`
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #888;
-  font-size: 0.98rem;
-  pointer-events: none;
+const ActionButton = styled(Button)`
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  text-transform: none;
+  font-size: 0.875rem;
+  min-width: 120px;
 `;
-const RsInputWrapper = styled.div`
-  position: relative;
-  width: 100%;
+
+const PrimaryButton = styled(ActionButton)`
+  background: ${({ theme }) => theme.ACCENT_INPUT};
+  color: white;
+  
+  &:hover {
+    background: ${({ theme }) => theme.ACCENT_INPUT};
+    opacity: 0.9;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+  }
+`;
+
+const SecondaryButton = styled(ActionButton)`
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG};
+    border-color: ${({ theme }) => theme.ACCENT_INPUT};
+  }
 `;
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
@@ -334,29 +321,6 @@ const StaffAddForm: React.FC = () => {
   const editId = queryParams.get('edit');
   const { user } = useAuth();
   
-  // Check if user has school_id
-  if (!user?.school_id) {
-    return (
-      <ThemeProvider theme={themeObj}>
-        <ModernForm>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: '2rem', 
-            gap: 16,
-            color: '#888',
-            fontSize: '1.1rem',
-            fontWeight: 600
-          }}>
-            <span style={{ fontSize: '1.5rem' }}>⚠️</span>
-            No school context found. Please contact your administrator.
-          </div>
-        </ModernForm>
-      </ThemeProvider>
-    );
-  }
-
   const [form, setForm] = useState({
     name: '',
     mobile: '',
@@ -364,7 +328,6 @@ const StaffAddForm: React.FC = () => {
     picture: null as string | null,
     pictureFile: null as File | null,
     joiningDate: getToday(),
-    salary: '',
     fatherName: '',
     gender: 'Male',
     experience: '',
@@ -384,7 +347,6 @@ const StaffAddForm: React.FC = () => {
   const [sessions, setSessions] = useState<Array<{ id: number; name: string }>>([]);
   const [roles, setRoles] = useState<Array<{ id: number; name: string }>>([]);
 
-  // Fetch all initial data
   useEffect(() => {
     const fetchInitialData = async () => {
       if (!user?.school_id) {
@@ -393,7 +355,6 @@ const StaffAddForm: React.FC = () => {
       }
 
       try {
-        // Fetch all data in parallel
         const [sessionsResult, rolesResult, employeeResult] = await Promise.all([
           supabase
             .from('sessions')
@@ -415,19 +376,16 @@ const StaffAddForm: React.FC = () => {
             : Promise.resolve({ data: null, error: null })
         ]);
 
-        // Set sessions
         if (!sessionsResult.error && sessionsResult.data) {
           setSessions(sessionsResult.data);
         }
 
-        // Set roles
         if (!rolesResult.error && rolesResult.data) {
           setRoles(rolesResult.data);
         } else if (rolesResult.error) {
           console.error('Error fetching roles:', rolesResult.error);
         }
 
-        // Set employee data if editing
         if (editId && !employeeResult.error && employeeResult.data) {
           const data = employeeResult.data;
           setForm({
@@ -437,7 +395,6 @@ const StaffAddForm: React.FC = () => {
             picture: null,
             pictureFile: null,
             joiningDate: data.joining_date || getToday(),
-            salary: data.salary ? String(data.salary) : '',
             fatherName: data.father_name || '',
             gender: data.gender || '',
             experience: data.experience || '',
@@ -462,19 +419,22 @@ const StaffAddForm: React.FC = () => {
     fetchInitialData();
   }, [editId, user?.school_id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setForm({ ...form, [name]: value });
   };
 
   const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       let file = e.target.files[0];
-      // If file is larger than 100KB, compress it
       if (file.size > 100 * 1024) {
         try {
           file = await imageCompression(file, {
-            maxSizeMB: 0.09, // Stricter: target < 100KB
-            maxWidthOrHeight: 400, // Stricter: smaller dimensions
+            maxSizeMB: 0.09,
+            maxWidthOrHeight: 400,
             useWebWorker: true,
           });
         } catch (err) {
@@ -482,12 +442,9 @@ const StaffAddForm: React.FC = () => {
           return;
         }
       }
-      // Log the file size for debugging
-      // For preview
       const reader = new FileReader();
       reader.onload = ev => setImage(ev.target?.result as string);
       reader.readAsDataURL(file);
-      // Store the file for upload
       setForm(prev => ({ ...prev, pictureFile: file }));
     }
   };
@@ -511,7 +468,6 @@ const StaffAddForm: React.FC = () => {
       picture: null,
       pictureFile: null,
       joiningDate: getToday(),
-      salary: '',
       fatherName: '',
       gender: 'Male',
       experience: '',
@@ -537,7 +493,6 @@ const StaffAddForm: React.FC = () => {
     setLoading(true);
     try {
       let picture_url = image;
-      // If a new image is uploaded, upload it
       if (form.pictureFile) {
         const fileExt = form.pictureFile.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -558,7 +513,6 @@ const StaffAddForm: React.FC = () => {
         mobile: form.mobile.trim(),
         picture_url,
         joining_date: form.joiningDate,
-        salary: form.salary ? parseFloat(form.salary) : null,
         father_name: form.fatherName.trim() || null,
         gender: form.gender || null,
         experience: form.experience.trim() || null,
@@ -575,7 +529,6 @@ const StaffAddForm: React.FC = () => {
 
       let result;
       if (editId) {
-        // Update existing staff member
         const { data, error: updateError } = await supabase
           .from('staff')
           .update(staffData)
@@ -584,22 +537,17 @@ const StaffAddForm: React.FC = () => {
           .select()
           .single();
         
-        if (updateError) {
-          throw updateError;
-        }
+        if (updateError) throw updateError;
         result = data;
         showToast('Staff member updated successfully', 'success');
       } else {
-        // Insert new staff member
         const { data, error: insertError } = await supabase
           .from('staff')
           .insert([staffData])
           .select()
           .single();
 
-        if (insertError) {
-          throw insertError;
-        }
+        if (insertError) throw insertError;
         result = data;
         showToast('Staff member added successfully', 'success');
       }
@@ -612,86 +560,314 @@ const StaffAddForm: React.FC = () => {
     }
   };
 
-  // Show loader during initial data fetch
   if (initialLoading) {
     return <Loader />;
   }
 
-  // Show NoSessionsFound if there are no sessions
+  if (!user?.school_id) {
+    return (
+      <ThemeProvider theme={themeObj}>
+        <FormWrapper>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: 2 }}>
+            <Typography variant="body1" color="text.secondary">
+              ⚠️ No school context found. Please contact your administrator.
+            </Typography>
+          </Box>
+        </FormWrapper>
+      </ThemeProvider>
+    );
+  }
+
   if (sessions.length === 0) {
     return <NoSessionsFound />;
   }
 
   return (
     <ThemeProvider theme={themeObj}>
-      <ModernForm onSubmit={handleSubmit}>
-        <FormBlocks>
-          <CardBlock>
-            <LargeAvatarCircle onClick={handleAvatarClick} title="Click to upload/change photo">
-              {image ? <AvatarImg src={image} alt="Preview" /> : <AvatarIcon />}
-              {image && (
-                <RemoveButton type="button" onClick={handleRemoveImage} title="Remove photo">×</RemoveButton>
-              )}
-              <HiddenFileInput
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImage}
-              />
-            </LargeAvatarCircle>
-            <ActionsBlock>
-              <PillButton type="submit" disabled={loading}>{loading ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save')}</PillButton>
-              <PillButton type="button" onClick={handleReset}>Reset</PillButton>
-            </ActionsBlock>
-          </CardBlock>
-          <FieldsCard>
-            <FormTitle>{editId ? 'Edit Staff Member' : 'Add Staff Member'}</FormTitle>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>①</span> Basic Information
-              </div>
-              <ModernGrid>
-                <Field><Label>Employee Name*</Label><Input name="name" value={form.name} onChange={handleChange} required /></Field>
-                <Field><Label>Mobile No for SMS/WhatsApp*</Label><Input name="mobile" value={form.mobile} onChange={handleChange} placeholder="e.g +92xxxxxxxxxx" /></Field>
-                <Field>
-                  <FormLabel component="legend" style={{ fontSize: '0.92rem', color: themeObj.TEXT_SECONDARY, fontWeight: 500, marginBottom: '4px' }}>Notification Channel</FormLabel>
-                  <RadioGroup
-                    row
-                    value={form.notificationChannel}
-                    onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
-                    name="notificationChannel"
+      <FormWrapper onSubmit={handleSubmit}>
+        <Container>
+          <Grid container spacing={2} sx={{ alignItems: 'flex-start' }}>
+            {/* Main Form */}
+            <Grid item xs={12} md={8} lg={9}>
+              <MainCard>
+                <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, fontSize: '1.25rem' }}>
+                  {editId ? 'Edit Staff Member' : 'Add Staff Member'}
+                </Typography>
+
+                {/* Basic Information */}
+                <SectionHeader>
+                  <SectionBadge>1</SectionBadge>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Basic Information
+                  </Typography>
+                </SectionHeader>
+
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Employee Name"
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      required
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Mobile No for SMS/WhatsApp"
+                      name="mobile"
+                      value={form.mobile}
+                      onChange={handleChange}
+                      required
+                      placeholder="e.g +92xxxxxxxxxx"
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactSelect fullWidth size="small">
+                      <InputLabel>Notification Channel</InputLabel>
+                      <Select
+                        value={form.notificationChannel}
+                        onChange={(e) => handleSelectChange('notificationChannel', e.target.value)}
+                        label="Notification Channel"
+                      >
+                        <MenuItem value="whatsapp">WhatsApp</MenuItem>
+                        <MenuItem value="sms">SMS</MenuItem>
+                      </Select>
+                    </CompactSelect>
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactSelect fullWidth size="small">
+                      <InputLabel>Employee Role *</InputLabel>
+                      <Select
+                        value={form.role}
+                        onChange={(e) => handleSelectChange('role', e.target.value)}
+                        label="Employee Role *"
+                        required
+                      >
+                        <MenuItem value="">Select Role</MenuItem>
+                        {roles.map(r => (
+                          <MenuItem key={r.id} value={r.name}>{r.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </CompactSelect>
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Date of Joining"
+                      name="joiningDate"
+                      type="date"
+                      value={form.joiningDate}
+                      onChange={handleChange}
+                      required
+                      InputLabelProps={{ shrink: true }}
+                      size="small"
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Other Information */}
+                <SectionHeader>
+                  <SectionBadge>2</SectionBadge>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Other Information
+                  </Typography>
+                </SectionHeader>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Father / Husband Name"
+                      name="fatherName"
+                      value={form.fatherName}
+                      onChange={handleChange}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactSelect fullWidth size="small">
+                      <InputLabel>Gender</InputLabel>
+                      <Select
+                        value={form.gender}
+                        onChange={(e) => handleSelectChange('gender', e.target.value)}
+                        label="Gender"
+                      >
+                        {GENDER_OPTIONS.map(g => (
+                          <MenuItem key={g} value={g}>{g}</MenuItem>
+                        ))}
+                      </Select>
+                    </CompactSelect>
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Experience"
+                      name="experience"
+                      value={form.experience}
+                      onChange={handleChange}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="National ID"
+                      name="nationalId"
+                      value={form.nationalId}
+                      onChange={handleChange}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Education"
+                      name="education"
+                      value={form.education}
+                      onChange={handleChange}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactSelect fullWidth size="small">
+                      <InputLabel>Religion</InputLabel>
+                      <Select
+                        value={form.religion}
+                        onChange={(e) => handleSelectChange('religion', e.target.value)}
+                        label="Religion"
+                      >
+                        {RELIGION_OPTIONS.map(r => (
+                          <MenuItem key={r} value={r}>{r}</MenuItem>
+                        ))}
+                      </Select>
+                    </CompactSelect>
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactSelect fullWidth size="small">
+                      <InputLabel>Blood Group</InputLabel>
+                      <Select
+                        value={form.bloodGroup}
+                        onChange={(e) => handleSelectChange('bloodGroup', e.target.value)}
+                        label="Blood Group"
+                      >
+                        {BLOOD_GROUPS.map(bg => (
+                          <MenuItem key={bg} value={bg}>{bg}</MenuItem>
+                        ))}
+                      </Select>
+                    </CompactSelect>
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Email Address"
+                      name="email"
+                      type="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} lg={4}>
+                    <CompactTextField
+                      fullWidth
+                      label="Date of Birth"
+                      name="dob"
+                      type="date"
+                      value={form.dob}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <CompactTextField
+                      fullWidth
+                      label="Home Address"
+                      name="address"
+                      value={form.address}
+                      onChange={handleChange}
+                      multiline
+                      rows={2}
+                      size="small"
+                    />
+                  </Grid>
+                </Grid>
+              </MainCard>
+            </Grid>
+
+            {/* Sidebar - Right Side */}
+            <Grid item xs={12} md={4} lg={3}>
+              <SidebarCard>
+                <AvatarWrapper>
+                  <Box sx={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                    <ImageBox onClick={handleAvatarClick}>
+                      {image ? (
+                        <img src={image} alt="Profile preview" />
+                      ) : (
+                        <AccountCircle sx={{ fontSize: 80, color: 'text.secondary' }} />
+                      )}
+                    </ImageBox>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImage}
+                      style={{ display: 'none' }}
+                    />
+                  </Box>
+                  <ButtonRow>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<CloudUpload />}
+                      onClick={handleAvatarClick}
+                      sx={{ fontSize: '0.75rem', textTransform: 'none', flex: 1 }}
+                    >
+                      Upload Photo
+                    </Button>
+                    {image && (
+                      <RemoveBtn
+                        variant="contained"
+                        size="small"
+                        startIcon={<Close />}
+                        onClick={handleRemoveImage}
+                      >
+                        Remove
+                      </RemoveBtn>
+                    )}
+                  </ButtonRow>
+                </AvatarWrapper>
+                <ActionButtonsContainer>
+                  <PrimaryButton
+                    type="submit"
+                    variant="contained"
+                    startIcon={<Save />}
+                    disabled={loading}
+                    fullWidth
                   >
-                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
-                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
-                  </RadioGroup>
-                </Field>
-                <Field><Label>Employee Role*</Label><Select name="role" value={form.role} onChange={handleChange} required><option value="">Select*</option>{roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}</Select></Field>
-                <Field><Label>Date of Joining*</Label><Input name="joiningDate" type="date" value={form.joiningDate} onChange={handleChange} /></Field>
-                <Field><Label>Monthly Salary*</Label><RsInputWrapper><RsPrefix>Rs.</RsPrefix><Input name="salary" type="number" min="0" value={form.salary} onChange={handleChange} style={{ paddingLeft: 38 }} /></RsInputWrapper></Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>②</span> Other Information
-              </div>
-              <ModernGrid>
-                <Field><Label>Father / Husband Name</Label><Input name="fatherName" value={form.fatherName} onChange={handleChange} /></Field>
-                <Field><Label>Gender</Label><Select name="gender" value={form.gender} onChange={handleChange}><option value="">Select</option>{GENDER_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}</Select></Field>
-                <Field><Label>Experience</Label><Input name="experience" value={form.experience} onChange={handleChange} /></Field>
-                <Field><Label>National ID</Label><Input name="nationalId" value={form.nationalId} onChange={handleChange} /></Field>
-                <Field><Label>Education</Label><Input name="education" value={form.education} onChange={handleChange} /></Field>
-                <Field><Label>Religion</Label><Select name="religion" value={form.religion} onChange={handleChange}><option value="">Select</option>{RELIGION_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}</Select></Field>
-                <Field><Label>Blood Group</Label><Select name="bloodGroup" value={form.bloodGroup} onChange={handleChange}><option value="">Select</option>{BLOOD_GROUPS.map(bg => <option key={bg} value={bg}>{bg}</option>)}</Select></Field>
-                <Field><Label>Email Address</Label><Input name="email" type="email" value={form.email} onChange={handleChange} /></Field>
-                <Field><Label>Date of Birth</Label><Input name="dob" type="date" value={form.dob} onChange={handleChange} /></Field>
-                <Field style={{ gridColumn: '1 / -1' }}><Label>Home Address</Label><Textarea name="address" value={form.address} onChange={handleChange} /></Field>
-              </ModernGrid>
-            </SectionContainer>
-          </FieldsCard>
-        </FormBlocks>
-      </ModernForm>
+                    {loading ? (editId ? 'Updating...' : 'Saving...') : (editId ? 'Update' : 'Save')}
+                  </PrimaryButton>
+                  <SecondaryButton
+                    variant="outlined"
+                    startIcon={<Refresh />}
+                    onClick={handleReset}
+                    fullWidth
+                  >
+                    Reset
+                  </SecondaryButton>
+                </ActionButtonsContainer>
+              </SidebarCard>
+            </Grid>
+          </Grid>
+        </Container>
+      </FormWrapper>
     </ThemeProvider>
   );
 };
 
-export default StaffAddForm; 
+export default StaffAddForm;

@@ -926,10 +926,10 @@ const LiabilitiesTab: React.FC = () => {
       // Fetch both accounts and account types (same as ExpenseManager)
       const [accountsData, accountTypesData] = await Promise.all([
         supabase
-          .from('accounts')
-          .select('*')
-          .eq('school_id', user.school_id)
-          .eq('is_active', true)
+        .from('accounts')
+        .select('*')
+        .eq('school_id', user.school_id)
+        .eq('is_active', true)
           .order('name'),
         supabase
           .from('account_types')
@@ -2122,7 +2122,7 @@ const LiabilitiesTab: React.FC = () => {
                     const accountId = parseInt(paymentFormData.paymentMethod.replace('account_', ''));
                     const selectedAccount = accounts.find(a => a.id === accountId);
                     return selectedAccount?.has_chequebook ? (
-                      <Grid item xs={12}>
+                  <Grid item xs={12}>
                         <FormControlLabel
                           control={
                             <Checkbox
@@ -2141,7 +2141,7 @@ const LiabilitiesTab: React.FC = () => {
                           }
                           label="Paid with Cheque"
                         />
-                      </Grid>
+                  </Grid>
                     ) : null;
                   })()}
 

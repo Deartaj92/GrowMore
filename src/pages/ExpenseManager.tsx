@@ -1626,16 +1626,16 @@ const ExpenseManager: React.FC = () => {
                           const accountId = parseInt(value.replace('account_', ''));
                           setSelectedAccountId(accountId);
                           // If paid with cheque, verify account has chequebook
-                          const account = accounts.find(a => a.id === accountId);
+                            const account = accounts.find(a => a.id === accountId);
                           if (paidWithCheque && !account?.has_chequebook) {
-                            showToast('Selected account does not have chequebook facility', 'error');
-                            setPaidWithCheque(false);
-                            setChequeNumber('');
+                              showToast('Selected account does not have chequebook facility', 'error');
+                              setPaidWithCheque(false);
+                              setChequeNumber('');
                           }
                         } else {
                           // Cash selected - reset account-related fields
                           setSelectedAccountId(null);
-                          setPaidWithCheque(false);
+                            setPaidWithCheque(false);
                           setChequeNumber('');
                           setTransactionId('');
                         }

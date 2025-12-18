@@ -2448,7 +2448,15 @@ const StudentList: React.FC = () => {
             }
           }
         }
+        
         const file = formData._newAvatarFile;
+        
+        if (!(file instanceof File)) {
+          showToast('File object was lost. Please select the image again.', 'error');
+          setEditLoading(false);
+          return;
+        }
+        
         const fileExt = file.name.split('.').pop();
         const fileName = `student_${editingStudent.id}_${Date.now()}.${fileExt}`;
         const { data: uploadData, error: uploadError } = await supabase.storage

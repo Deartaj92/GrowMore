@@ -1052,36 +1052,44 @@ const RoleManagement: React.FC = () => {
                           {section.items.map((menuItem, itemIdx) => {
                             const isChecked = isMenuItemChecked(menuItem);
                             const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
+                            // Add separator before Reports items in Students and Employees menus
+                            const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
+                            const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
+                            // Add separator before Timetable in Employee Management section
+                            const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
+                            const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable;
                             return (
-                              <DropdownMenuItem
-                                key={itemIdx}
-                                $color={menuItem.color}
-                                $checked={isChecked}
-                                htmlFor={checkboxId}
-                              >
-                                <input
-                                  type="checkbox"
-                                  id={checkboxId}
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    toggleMenuItemPermission(menuItem);
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                />
-                                <div className="checkbox-indicator">
-                                  {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                </div>
-                                <div className="menu-icon">
-                                  {menuItem.icon}
-                                </div>
-                                <div className="menu-content">
-                                  <div className="menu-title">{menuItem.title}</div>
-                                  <div className="menu-description">{menuItem.description}</div>
-                                </div>
-                              </DropdownMenuItem>
+                              <React.Fragment key={itemIdx}>
+                                {shouldShowSeparator && <ColumnSeparator />}
+                                <DropdownMenuItem
+                                  $color={menuItem.color}
+                                  $checked={isChecked}
+                                  htmlFor={checkboxId}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    id={checkboxId}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      toggleMenuItemPermission(menuItem);
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                  />
+                                  <div className="checkbox-indicator">
+                                    {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                  </div>
+                                  <div className="menu-icon">
+                                    {menuItem.icon}
+                                  </div>
+                                  <div className="menu-content">
+                                    <div className="menu-title">{menuItem.title}</div>
+                                    <div className="menu-description">{menuItem.description}</div>
+                                  </div>
+                                </DropdownMenuItem>
+                              </React.Fragment>
                             );
                           })}
                           {section.expenseItems && (

@@ -29,9 +29,12 @@ import {
   Grid,
   Typography,
   Avatar,
+  Button,
   Button as MuiButton,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Chip,
+  Divider
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import imageCompression from 'browser-image-compression';
@@ -47,27 +50,276 @@ import { feeService } from '../services/feeService';
 
 import Loader from '../components/Loader';
 // --- Modern Compact Form Layout ---
-const ModernForm = styled.form`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 0;
-  box-shadow: none;
-  border: none;
+const FormWrapper = styled.form`
   width: 100%;
   height: 100%;
-  flex: 1;
-  min-height: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
-  position: relative;
+  padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  @media (max-width: 700px) {
-    flex: 1;
-    min-height: 0;
+  min-height: 100%;
+  background: ${({ theme }) => theme.BG};
+`;
+
+const Container = styled(Box)`
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  min-height: 100%;
+`;
+
+const MainCard = styled(Box)`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  min-width: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  
+  @media (min-width: 960px) {
+    padding: 24px;
+    min-height: calc(100vh - 32px);
+  }
+  
+  @media (max-width: 959px) {
+    min-height: calc(100vh - 32px);
   }
 `;
+
+const SidebarCard = styled(Box)`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 16px;
+  height: fit-content;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  
+  @media (min-width: 960px) {
+    min-height: calc(100vh - 120px);
+    align-items: stretch;
+  }
+  
+  @media (max-width: 959px) {
+    position: relative;
+    top: 0;
+    margin-bottom: 16px;
+    max-height: none;
+    min-height: auto;
+  }
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+`;
+
+const AvatarWrapper = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%;
+`;
+
+const ImageBox = styled(Box)`
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.FIELD_BG || theme.BG};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  position: relative;
+  margin: 0 auto;
+  
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT_INPUT};
+    transform: scale(1.01);
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  @media (max-width: 959px) {
+    max-width: 200px;
+  }
+  
+  @media (min-width: 960px) and (max-width: 1279px) {
+    max-width: 240px;
+  }
+`;
+
+const ButtonRow = styled(Box)`
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+  margin: 12px auto 0 auto;
+  align-items: center;
+  justify-content: center;
+  
+  button {
+    flex: 1;
+  }
+  
+  @media (max-width: 959px) {
+    max-width: 200px;
+  }
+  
+  @media (min-width: 960px) and (max-width: 1279px) {
+    max-width: 240px;
+  }
+`;
+
+const ActionButtonsContainer = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+  width: 100%;
+`;
+
+const RemoveBtn = styled(Button)`
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  text-transform: none;
+  min-width: auto;
+  flex: 0 0 auto;
+  
+  &:hover {
+    background: rgba(239, 68, 68, 1);
+  }
+  
+  svg {
+    font-size: 16px;
+  }
+`;
+
+const SectionHeader = styled(Box)`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const SectionBadge = styled(Box)`
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: ${({ theme }) => theme.ACCENT_INPUT};
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+`;
+
+const CompactTextField = styled(TextField)`
+  & .MuiOutlinedInput-root {
+    border-radius: 8px;
+    font-size: 0.875rem;
+    
+    input {
+      padding: 10px 12px;
+    }
+  }
+  
+  & .MuiInputLabel-root {
+    font-size: 0.875rem;
+  }
+`;
+
+const CompactSelect = styled(FormControl)`
+  & .MuiOutlinedInput-root {
+    border-radius: 8px;
+    font-size: 0.875rem;
+    
+    .MuiSelect-select {
+      padding: 10px 12px;
+    }
+  }
+  
+  & .MuiInputLabel-root {
+    font-size: 0.875rem;
+  }
+`;
+
+const ActionButton = styled(Button)`
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  text-transform: none;
+  font-size: 0.875rem;
+  min-width: 120px;
+`;
+
+const PrimaryButton = styled(ActionButton)`
+  background: ${({ theme }) => theme.ACCENT_INPUT};
+  color: white;
+  
+  &:hover {
+    background: ${({ theme }) => theme.ACCENT_INPUT};
+    opacity: 0.9;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+  }
+`;
+
+const SecondaryButton = styled(ActionButton)`
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  
+  &:hover {
+    background: ${({ theme }) => theme.BG};
+    border-color: ${({ theme }) => theme.ACCENT_INPUT};
+  }
+`;
+
+const ModernForm = FormWrapper;
 
 const StickyHeader = styled.div`
   position: sticky;
@@ -79,397 +331,59 @@ const StickyHeader = styled.div`
   justify-content: space-between;
   width: 100%;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 1px 6px #0001;
-  border-radius: 10px;
-  padding: 8px 18px 8px 18px;
-  min-height: 36px;
-`;
-
-const OverlapAvatar = styled.div`
-  position: absolute;
-  left: 24px;
-  top: -32px;
-  z-index: 2;
-  @media (max-width: 700px) {
-    position: static;
-    margin: 0 auto 8px auto;
-  display: flex;
-  justify-content: center;
-  }
-`;
-
-const CardBlock = styled.div`
-  background: ${({ theme }) => theme.BG};
-  border-radius: 24px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  padding: 48px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 280px;
-  max-width: 340px;
-  flex: 0 0 300px;
-  position: relative;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  backdrop-filter: blur(8px);
-  @media (max-width: 900px) {
-    width: 100%;
-    max-width: 100vw;
-    min-width: 0;
-    padding: 32px 16px;
-    margin-bottom: 0;
-    border-radius: 16px;
-  }
-  @media (max-width: 700px) {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border-radius: 0;
-  }
-`;
-
-const LargeAvatarCircle = styled.div`
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border: 2px solid ${({ theme }) => theme.ACCENT_INPUT};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  position: relative;
-  cursor: pointer;
-  margin: 0 auto;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
-
-  &:hover {
-    transform: scale(1.04);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.13);
-    border-color: ${({ theme }) => theme.ACCENT_INPUT};
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      rgba(0, 0, 0, 0.2) 60%,
-      rgba(0, 0, 0, 0.3) 100%
-    );
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  &:hover::before {
-    opacity: 1;
-  }
-
-  @media (max-width: 900px) {
-    width: 72px;
-    height: 72px;
-  }
-  @media (max-width: 700px) {
-    width: 120px;
-    height: 120px;
-  }
-`;
-
-const AvatarIcon = styled(AccountCircle)`
-  font-size: 2.7rem !important;
-  color: ${({ theme }) => theme.ACCENT_INPUT}66;
-  transition: color 0.3s ease;
-  ${LargeAvatarCircle}:hover & {
-    color: ${({ theme }) => theme.ACCENT_INPUT};
-  }
-`;
-
-const AvatarImg = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-
-  ${LargeAvatarCircle}:hover & {
-    transform: scale(1.05);
-  }
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 12px 20px;
+  min-height: 48px;
 `;
 
 const HiddenFileInput = styled.input`
   display: none;
 `;
 
-const RemoveButton = styled.button`
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(229, 57, 53, 0.9);
-  color: #fff;
-  border: none;
-  font-size: 20px;
-  opacity: 0;
-  z-index: 3;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-
-  ${LargeAvatarCircle}:hover & {
-  opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  &:hover {
-    background: #d32f2f;
-    box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3);
-  }
-`;
-
-const CameraIcon = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) translateY(10px);
-    color: #fff;
-  font-size: 24px;
-  opacity: 0;
-  transition: all 0.3s ease;
-  z-index: 3;
-  
-  ${LargeAvatarCircle}:hover & {
-    opacity: 1;
-    transform: translate(-50%, -50%) translateY(0);
-  }
-`;
-
-const UploadHint = styled.div`
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  color: #fff;
-  font-size: 0.9rem;
-  font-weight: 500;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s ease;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  padding: 0 8px;
-  pointer-events: none;
-  z-index: 3;
-
-  ${LargeAvatarCircle}:hover & {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-const FormHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 32px 24px 8px 24px;
-  position: relative;
-  @media (max-width: 700px) {
-  flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 24px 8px 6px 8px;
-  }
-`;
-
-const FormTitle = styled.h2`
-  font-size: 1.18rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 auto 24px auto;
-  text-align: center;
-  width: 100%;
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  gap: 8px;
-  @media (max-width: 700px) {
-    width: 100%;
-    justify-content: center;
-    margin-top: 6px;
-    gap: 6px;
-  }
-`;
-
-const PillButton = styled.button`
-  padding: 12px 24px;
-  border-radius: 12px;
-  border: none;
-  background: ${({ theme }) => theme.ACCENT_INPUT};
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px ${({ theme }) => `${theme.ACCENT_INPUT}33`};
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px ${({ theme }) => `${theme.ACCENT_INPUT}66`};
-    background: ${({ theme }) => theme.ACCENT_INPUT}ee;
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px ${({ theme }) => `${theme.ACCENT_INPUT}33`};
-  }
-
-  @media (max-width: 900px) {
-    max-width: 200px;
-  }
-`;
-
-const ThemedCancelButton = styled(PillButton)`
-  background: ${({ theme }) => theme.CANCEL_BG};
-  color: ${({ theme }) => theme.CANCEL_COLOR};
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    background: ${({ theme }) => theme.ACCENT_INPUT};
-    color: #fff;
-    box-shadow: 0 6px 16px ${({ theme }) => `${theme.ACCENT_INPUT}66`};
-  }
-`;
-
-const ThreeDBackground = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: linear-gradient(135deg, #232a3b 0%, #232a3b 60%, #2d3a5a 100%),
-    radial-gradient(circle at 80% 20%, #4a6cf7 0%, transparent 60%),
-    radial-gradient(circle at 20% 80%, #43a04755 0%, transparent 70%);
-  filter: blur(0.5px) brightness(1.08);
-  opacity: 0.85;
-`;
-
 const SectionContainer = styled.div`
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   position: relative;
   z-index: 1;
+  
   @media (max-width: 700px) {
-    margin-bottom: 12px;
-    padding: 0;
+    margin-bottom: 16px;
   }
 `;
 
 const ModernGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 24px 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  padding: 0 24px;
+  padding: 0;
   box-sizing: border-box;
-  overflow-x: hidden;
-  @media (max-width: 1200px) {
-    grid-template-columns: 1fr 1fr 1fr;
+  
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(3, 1fr);
   }
+  
   @media (max-width: 900px) {
-    grid-template-columns: 1fr 1fr;
-  }
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 0;
-    width: 100%;
-  }
-  @media (max-width: 700px) {
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    padding: 0;
+  }
+  
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 `;
 
-const Field = muiStyled(FormControl)(({ theme }) => ({
-  width: '100%',
-  '& .MuiInputBase-root': {
-    background: theme.palette.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.03)'
-      : '#fff',
-    backdropFilter: 'blur(8px)',
-    borderRadius: '8px',
-    border: theme.palette.mode === 'dark'
-      ? '1px solid rgba(255, 255, 255, 0.05)'
-      : '1px solid rgba(0, 0, 0, 0.15)',
-    transition: 'all 0.2s ease',
-    height: '48px',
-
-    '&:hover, &.Mui-focused': {
-      background: theme.palette.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.05)'
-        : '#fff',
-      border: `1px solid ${theme.palette.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.1)' 
-        : theme.palette.primary.main}`,
-      boxShadow: theme.palette.mode === 'dark'
-        ? 'none'
-        : '0 2px 4px rgba(0,0,0,0.05)',
-    },
-
-    '& .MuiSelect-select, & .MuiInputBase-input': {
-      padding: '12px 14px',
-      fontSize: '0.95rem',
-      color: theme.palette.mode === 'dark' 
-        ? '#fff' 
-        : 'rgba(0, 0, 0, 0.87)',
-      '&::placeholder': {
-        color: theme.palette.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.3)'
-          : 'rgba(0, 0, 0, 0.4)',
-        opacity: 1
-      }
-    },
-
-    '& .MuiOutlinedInput-notchedOutline': {
-      border: 'none'
-    }
-  },
-
-  '& .MuiInputLabel-root': {
-    color: theme.palette.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.7)'
-      : 'rgba(0, 0, 0, 0.7)',
-    '&.Mui-focused': {
-      color: theme.palette.primary.main
-    }
-  },
-
-  '& .MuiFormLabel-asterisk': {
-    color: theme.palette.error.main
-  }
-}));
+const Field = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+`;
 
 const Label = styled.label`
   font-size: 0.92rem;
@@ -629,68 +543,6 @@ const getToday = () => {
   return d.toISOString().slice(0, 10);
 };
 
-const FormBlocks = styled.div`
-  display: flex;
-  flex-direction: row;
-  gap: 32px;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  flex: 1;
-  min-height: 0;
-  @media (max-width: 900px) {
-    flex-direction: column;
-    gap: 18px;
-    flex: 1;
-    min-height: 0;
-  }
-`;
-
-const FieldsCard = styled.div`
-  background: ${({ theme }) => theme.BG};
-  border-radius: 18px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  padding: 32px 24px;
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  z-index: 1;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  @media (max-width: 900px) {
-    width: 100%;
-    padding: 18px 8px;
-    border-radius: 12px;
-    flex: 1;
-    min-height: 0;
-  }
-  @media (max-width: 700px) {
-    padding: 12px 4px;
-    border-radius: 8px;
-    flex: 1;
-    min-height: 0;
-  }
-`;
-
-const ActionsBlock = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 16px;
-  margin-top: 32px;
-  width: 100%;
-  
-  @media (max-width: 900px) {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-  }
-`;
 
 const TwoColRow = styled.div`
   display: grid;
@@ -1011,7 +863,7 @@ const LastInsertedFeed = styled.div`
   font-size: 0.75rem;
   color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#4a5568'};
   font-weight: 500;
-  max-width: 280px;
+  max-width: 450px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1186,85 +1038,19 @@ const StandaloneFeePlanButton = styled.button`
 // --- Layout and Section Styles copied from StudentList.tsx ---
 const PageContainer = styled.div`
   width: 100%;
-  height: 100%;
+  height: calc(100vh - 64px);
   margin: 0;
-  padding: 0 12px 6px 12px;
+  padding: 0;
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
-  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
-  min-height: 0; /* Critical for flex children */
-  display: flex;
-  flex-direction: column;
-  transform: translateZ(0);
-  will-change: transform;
-  @media (max-width: 700px) {
-    padding: 0 4px 6px 4px;
-  }
-`;
-
-const Header = styled.div`
-  flex-shrink: 0; /* Don't shrink */
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 16px 0 18px 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 4px 16px #0002;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 16px;
-  padding: 12px 24px 10px 24px;
-  min-height: 36px;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  width: 100%;
-  @media (max-width: 700px) {
-    padding: 8px 12px 6px 12px;
-    margin: 12px 0 12px 0;
-    border-radius: 12px;
-  }
-  h2 {
-    font-size: 1.05rem;
-    font-weight: 800;
-    letter-spacing: 1px;
-    color: ${({ theme }) => theme.ACCENT};
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    @media (max-width: 700px) {
-      font-size: 0.525rem;
-    }
-  }
-`;
-
-const MainCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 4px 16px #0002;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 18px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  flex: 1;
+  overflow: hidden;
   min-height: 0;
-  @media (max-width: 700px) {
-    padding: 12px 8px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    flex: 1;
-    min-height: 0;
-  }
+  display: flex;
+  flex-direction: column;
 `;
+
+const Header = StickyHeader;
 
 const FooterCard = styled.div`
   background: ${({ theme }) => theme.CARD};
@@ -1277,35 +1063,32 @@ const FooterCard = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1; /* Fill remaining space */
-  min-height: 0; /* Critical - allows flex child to shrink below content size */
+  flex: 1;
+  min-height: 0;
+  height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 0 32px 0;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y proximity;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  @media (max-width: 700px) {
-    scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
+  padding: 16px 20px;
+  
+  @media (min-width: 1200px) {
+    padding: 20px 32px;
   }
+  
   &::-webkit-scrollbar {
     width: 8px;
   }
+  
   &::-webkit-scrollbar-track {
     background: transparent;
   }
+  
   &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
-    transition: background 0.2s;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
   }
 `;
 
@@ -1344,7 +1127,6 @@ const StudentAdmissionForm: React.FC = () => {
     class: '',
     section: '',
     admissionDate: getToday(),
-    discountInFee: '',
     phone: '',
     notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
     picture: null as string | null,
@@ -1833,7 +1615,6 @@ const StudentAdmissionForm: React.FC = () => {
       class: '',
       section: '',
       admissionDate: getToday(),
-      discountInFee: '',
       phone: '',
       picture: null,
       pictureFile: null,
@@ -2131,7 +1912,6 @@ const StudentAdmissionForm: React.FC = () => {
             class_id: Number(form.class),
             section_id: selectedClassHasSections ? Number(form.section) : null,
             admission_date: form.admissionDate,
-            discount_in_fee: form.discountInFee || null,
             phone: form.phone || null,
             picture_url: avatar_url,
             dob: form.dob || null,
@@ -2362,586 +2142,659 @@ const StudentAdmissionForm: React.FC = () => {
         </div>
       )}
       <PageContainer theme={theme === 'dark' ? darkTheme : lightTheme}>
-        <Header theme={theme === 'dark' ? darkTheme : lightTheme}>
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', gap: 8 }}>
-            {/* Only show header text on desktop */}
-            {window.innerWidth > 700 && (
-              <h2 style={{
-                fontSize: '1.05rem',
-                fontWeight: 800,
-                letterSpacing: 1,
-                color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT,
-                margin: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                flex: 1
-              }}>
-                Student Admission Form
-              </h2>
-            )}
-            <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: isMobile ? 'center' : (window.innerWidth > 700 ? 'flex-end' : 'center'), gap: isMobile ? 8 : 0 }}>
-              <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
-                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="submit" form="admission-form" first>
-                  <SaveIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
-                  <span className="seg-btn-text">Save</span>
-                </SegmentedButton>
-                {!isMobile && (
-                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
-                  <DescriptionIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
-                  <span className="seg-btn-text">Save & Fee Plan</span>
-                </SegmentedButton>
-                )}
-                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleReset}>
-                  <RefreshIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
-                  <span className="seg-btn-text">Reset</span>
-                </SegmentedButton>
-                <SegmentedButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleCancel} last>
-                  <CloseIcon style={{ fontSize: 17, marginRight: 4, marginBottom: -2 }} />
-                  <span className="seg-btn-text">Cancel</span>
-                </SegmentedButton>
-              </SegmentedGroup>
-              {isMobile && (
-                <StandaloneFeePlanButton theme={theme === 'dark' ? darkTheme : lightTheme} type="button" onClick={handleSaveAndCreateFeePlan}>
-                  <DescriptionIcon style={{ fontSize: 13, marginRight: 4, marginBottom: -2 }} />
-                  <span className="seg-btn-text">Save & Fee Plan</span>
-                </StandaloneFeePlanButton>
-              )}
-            </div>
-          </div>
-        </Header>
         <MainContent>
-          <MainCard>
-            <ModernForm id="admission-form" onSubmit={handleSubmit} style={showConfirm ? { pointerEvents: 'none', userSelect: 'none', opacity: 0.7 } : {}}>
-              <FormBlocks>
-                <FieldsCard>
-                  {lastInsertedStudent && (
-                    <LastInsertedFeed theme={theme === 'dark' ? darkTheme : lightTheme}>
-                      <span className="feed-label">Last Added:</span>
-                      <span className="student-id">#{getStudentDisplayId(lastInsertedStudent)}</span>
-                      <span className="student-name">{lastInsertedStudent.name}</span>
-                      <span className="student-father">({lastInsertedStudent.fatherName})</span>
-                      <span className="student-class">- {lastInsertedStudent.className}({lastInsertedStudent.sectionName})</span>
-                    </LastInsertedFeed>
-                  )}
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>①</span> Student Information
-              </div>
-              <ModernGrid>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="name"
-                    label="Name*"
-                    value={form.name}
-                    onChange={handleInputChange}
-                    inputRef={nameRef}
-                    variant="outlined"
-                  />
-            </Field>
-                <Field>
-                  <InputLabel id="class-label">Class*</InputLabel>
-                  <Select
-                    labelId="class-label"
-                    name="class"
-                    value={form.class}
-                    onChange={handleSelectChange}
-                    label="Class*"
-                  >
-                    <MenuItem value="">Select Class</MenuItem>
-                    {loadingClasses ? (
-                      <MenuItem disabled>Loading...</MenuItem>
-                    ) : (
-                      classes.map(c => (
-                        <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-                      ))
+          <FormWrapper id="admission-form" onSubmit={handleSubmit} style={showConfirm ? { pointerEvents: 'none', userSelect: 'none', opacity: 0.7 } : {}}>
+            <Container>
+              <Grid container spacing={2} sx={{ alignItems: 'flex-start' }}>
+                {/* Main Form */}
+                <Grid item xs={12} md={8} lg={9}>
+                  <MainCard>
+                    {lastInsertedStudent && (
+                      <LastInsertedFeed theme={theme === 'dark' ? darkTheme : lightTheme}>
+                        <span className="feed-label">Last Added:</span>
+                        <span className="student-id">#{getStudentDisplayId(lastInsertedStudent)}</span>
+                        <span className="student-name">{lastInsertedStudent.name}</span>
+                        <span className="student-father">({lastInsertedStudent.fatherName})</span>
+                        <span className="student-class">- {lastInsertedStudent.className}({lastInsertedStudent.sectionName})</span>
+                      </LastInsertedFeed>
                     )}
-                  </Select>
-                </Field>
-                {selectedClassHasSections && (
-                  <Field>
-                    <InputLabel id="section-label">Section*</InputLabel>
-                    <Select
-                      labelId="section-label"
-                      name="section"
-                      value={form.section}
-                      onChange={handleSelectChange}
-                      label="Section*"
-                      disabled={!form.class}
-                    >
-                      <MenuItem value="">Select Section</MenuItem>
-                      {loadingSections ? (
-                        <MenuItem disabled>Loading...</MenuItem>
-                      ) : (
-                        sections.map(s => (
-                          <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-                        ))
-                      )}
-                    </Select>
-                  </Field>
-                )}
-                      <Field
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gridRow: '1 / span 2',
-                          gridColumn: 4,
-                          ...(window.innerWidth <= 700 ? {
-                            gridColumn: '1 / -1',
-                            gridRow: '1',
-                            marginBottom: 8,
-                          } : {})
-                        }}
-                      >
-                        <LargeAvatarCircle onClick={handleAvatarClick}>
-                          {image ? <AvatarImg src={image} alt="Preview" /> : <AvatarIcon />}
-                          {image ? (
-                            <RemoveButton type="button" onClick={handleRemoveImage}>
-                              ×
-                            </RemoveButton>
-                          ) : (
-                            <UploadHint>Select picture</UploadHint>
-                          )}
-                          <HiddenFileInput
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImage}
+                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, fontSize: '1.25rem' }}>
+                      Student Admission Form
+                    </Typography>
+
+                    {/* Student Information Section */}
+                    <SectionContainer>
+                      <SectionHeader>
+                        <SectionBadge>1</SectionBadge>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          Student Information
+                        </Typography>
+                      </SectionHeader>
+                      <ModernGrid>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="name"
+                            label="Name"
+                            value={form.name}
+                            onChange={handleInputChange}
+                            inputRef={nameRef}
+                            size="small"
+                            required
                           />
-                        </LargeAvatarCircle>
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="admissionDate"
-                    label="Date of Admission*"
-                    type="date"
-                    value={form.admissionDate}
-                    onChange={handleInputChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="discountInFee"
-                    label="Discount in Fee"
-                    type="number"
-                    value={form.discountInFee}
-                    onChange={handleInputChange}
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="phone" 
-                    label="Mobile No. for SMS/WhatsApp"
-                    value={form.phone} 
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '');
-                      setForm(prev => ({ ...prev, phone: value }));
-                    }}
-                    inputProps={{
-                      maxLength: 11,
-                      minLength: 10,
-                      pattern: '[0-9]*'
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <FormLabel component="legend">Notification Channel</FormLabel>
-                  <RadioGroup
-                    row
-                    value={form.notificationChannel}
-                    onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
-                    name="notificationChannel"
-                  >
-                    <FormControlLabel value="whatsapp" control={<Radio />} label="WhatsApp" />
-                    <FormControlLabel value="sms" control={<Radio />} label="SMS" />
-                  </RadioGroup>
-                </Field>
-                <Field style={{ gridColumn: '1 / -1' }}>
-                  <InputLabel id="family-label" style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
-                    <FamilyRestroom style={{ fontSize: '1.2rem', verticalAlign: 'middle', marginRight: '8px' }} />
-                    Family*
-                  </InputLabel>
-                  <Select
-                    labelId="family-label"
-                    name="family"
-                    value={form.family}
-                    onChange={handleFamilyChange}
-                    label="Family*"
-                    fullWidth
-                    required
-                    error={invalidField === 'family'}
-                    sx={{
-                      '& .MuiSelect-select': {
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>Select Family</em>
-                    </MenuItem>
-                    {loadingFamilies ? (
-                      <MenuItem disabled>Loading families...</MenuItem>
-                    ) : (
-                      families.map(family => (
-                        <MenuItem key={family.id} value={String(family.id)}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            <FamilyRestroom sx={{ fontSize: '1.1rem', opacity: 0.7 }} />
-                            <Box sx={{ flex: 1 }}>
-                              <Box component="span" sx={{ fontWeight: 600, color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
-                                F{family.id}
-                              </Box>
-                              {' - '}
-                              <Box component="span">{family.name}</Box>
-                              {family.contact_number && (
-                                <Box component="span" sx={{ fontSize: '0.85rem', opacity: 0.7, ml: 1 }}>
-                                  ({family.contact_number})
-                                </Box>
+                        </Field>
+                        <Field>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="class-label">Class*</InputLabel>
+                            <Select
+                              labelId="class-label"
+                              name="class"
+                              value={form.class}
+                              onChange={handleSelectChange}
+                              label="Class*"
+                              inputRef={classRef}
+                            >
+                              <MenuItem value="">Select Class</MenuItem>
+                              {loadingClasses ? (
+                                <MenuItem disabled>Loading...</MenuItem>
+                              ) : (
+                                classes.map(c => (
+                                  <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                                ))
                               )}
-                            </Box>
-                          </Box>
-                        </MenuItem>
-                      ))
-                    )}
-                    <MenuItem value="new" sx={{ borderTop: '1px solid', borderColor: 'divider', mt: 0.5, pt: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
-                        <AddIcon />
-                        <Box component="span" sx={{ fontWeight: 600 }}>Create New Family</Box>
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                        {selectedClassHasSections && (
+                          <Field>
+                            <CompactSelect fullWidth size="small">
+                              <InputLabel id="section-label">Section*</InputLabel>
+                              <Select
+                                labelId="section-label"
+                                name="section"
+                                value={form.section}
+                                onChange={handleSelectChange}
+                                label="Section*"
+                                disabled={!form.class}
+                                inputRef={sectionRef}
+                              >
+                                <MenuItem value="">Select Section</MenuItem>
+                                {loadingSections ? (
+                                  <MenuItem disabled>Loading...</MenuItem>
+                                ) : (
+                                  sections.map(s => (
+                                    <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                                  ))
+                                )}
+                              </Select>
+                            </CompactSelect>
+                          </Field>
+                        )}
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="admissionDate"
+                            label="Date of Admission"
+                            type="date"
+                            value={form.admissionDate}
+                            onChange={handleInputChange}
+                            InputLabelProps={{ shrink: true }}
+                            size="small"
+                            required
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="phone" 
+                            label="Mobile No. for SMS/WhatsApp"
+                            value={form.phone} 
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9]/g, '');
+                              setForm(prev => ({ ...prev, phone: value }));
+                            }}
+                            size="small"
+                            inputProps={{
+                              maxLength: 11,
+                              minLength: 10,
+                              pattern: '[0-9]*'
+                            }}
+                          />
+                        </Field>
+                        <Field>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="notification-channel-label">Notification Channel</InputLabel>
+                            <Select
+                              labelId="notification-channel-label"
+                              name="notificationChannel"
+                              value={form.notificationChannel}
+                              onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
+                              label="Notification Channel"
+                            >
+                              <MenuItem value="whatsapp">WhatsApp</MenuItem>
+                              <MenuItem value="sms">SMS</MenuItem>
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                        <Field sx={{ gridColumn: { xs: '1 / -1', lg: 'span 2' } }}>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="family-label">Family*</InputLabel>
+                            <Select
+                              labelId="family-label"
+                              name="family"
+                              value={form.family}
+                              onChange={handleFamilyChange}
+                              label="Family*"
+                              required
+                              error={invalidField === 'family'}
+                            >
+                              <MenuItem value="">Select Family</MenuItem>
+                              {loadingFamilies ? (
+                                <MenuItem disabled>Loading families...</MenuItem>
+                              ) : (
+                                families.map(family => (
+                                  <MenuItem key={family.id} value={String(family.id)}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                      <FamilyRestroom sx={{ fontSize: '1.1rem', opacity: 0.7 }} />
+                                      <Box sx={{ flex: 1 }}>
+                                        <Box component="span" sx={{ fontWeight: 600, color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
+                                          F{family.id}
+                                        </Box>
+                                        {' - '}
+                                        <Box component="span">{family.name}</Box>
+                                        {family.contact_number && (
+                                          <Box component="span" sx={{ fontSize: '0.85rem', opacity: 0.7, ml: 1 }}>
+                                            ({family.contact_number})
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    </Box>
+                                  </MenuItem>
+                                ))
+                              )}
+                              <MenuItem value="new" sx={{ borderTop: '1px solid', borderColor: 'divider', mt: 0.5, pt: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT }}>
+                                  <AddIcon />
+                                  <Box component="span" sx={{ fontWeight: 600 }}>Create New Family</Box>
+                                </Box>
+                              </MenuItem>
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                      </ModernGrid>
+                    </SectionContainer>
+
+                    <Divider sx={{ my: 3 }} />
+
+                    {/* Other Information Section */}
+                    <SectionContainer>
+                      <SectionHeader>
+                        <SectionBadge>2</SectionBadge>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          Other Information
+                        </Typography>
+                      </SectionHeader>
+                      <ModernGrid>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="dob"
+                            label="Date of Birth"
+                            type="date"
+                            value={form.dob}
+                            onChange={handleInputChange}
+                            InputLabelProps={{ shrink: true }}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="studentId"
+                            label="Student Birth Form ID / NIC"
+                            value={form.studentId}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="gender-label">Gender</InputLabel>
+                            <Select
+                              labelId="gender-label"
+                              name="gender"
+                              value={form.gender}
+                              onChange={handleSelectChange}
+                              label="Gender"
+                            >
+                              <MenuItem value="Male">Male</MenuItem>
+                              <MenuItem value="Female">Female</MenuItem>
+                              <MenuItem value="Other">Other</MenuItem>
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="cast"
+                            label="Cast"
+                            value={form.cast}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="orphan"
+                            label="Orphan Student"
+                            value={form.orphan}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="osc" 
+                            label="OSC Number"
+                            value={form.osc} 
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="idMark"
+                            label="Identification Mark"
+                            value={form.idMark}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="blood-group-label">Blood Group</InputLabel>
+                            <Select
+                              labelId="blood-group-label"
+                              name="bloodGroup"
+                              value={form.bloodGroup || ''}
+                              onChange={handleSelectChange}
+                              label="Blood Group"
+                            >
+                              <MenuItem value="">Select</MenuItem>
+                              {BLOOD_GROUPS.map(bg => (
+                                <MenuItem key={bg} value={bg}>{bg}</MenuItem>
+                              ))}
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="previousSchool"
+                            label="Previous School"
+                            value={form.previousSchool}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="previousId"
+                            label="Previous ID / Board Roll No"
+                            value={form.previousId}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="religion-label">Religion</InputLabel>
+                            <Select
+                              labelId="religion-label"
+                              name="religion"
+                              value={form.religion}
+                              onChange={handleSelectChange}
+                              label="Religion"
+                            >
+                              {RELIGIONS.map(r => (
+                                <MenuItem key={r} value={r}>{r}</MenuItem>
+                              ))}
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                        <Field>
+                          <CompactSelect fullWidth size="small">
+                            <InputLabel id="nationality-label">Nationality</InputLabel>
+                            <Select
+                              labelId="nationality-label"
+                              name="nationality"
+                              value={form.nationality}
+                              onChange={handleSelectChange}
+                              label="Nationality"
+                            >
+                              {NATIONALITIES.map(n => (
+                                <MenuItem key={n} value={n}>{n}</MenuItem>
+                              ))}
+                            </Select>
+                          </CompactSelect>
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="totalSiblings"
+                            label="Total Siblings"
+                            type="number"
+                            value={form.totalSiblings}
+                            onChange={handleInputChange}
+                            inputProps={{ min: 0 }}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="disease"
+                            label="Disease If Any?"
+                            value={form.disease}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="additionalNote"
+                            label="Additional Note"
+                            value={form.additionalNote}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field sx={{ gridColumn: '1 / -1' }}>
+                          <CompactTextField
+                            fullWidth
+                            name="address"
+                            label="Address"
+                            value={form.address}
+                            onChange={handleInputChange}
+                            multiline
+                            rows={2}
+                            size="small"
+                          />
+                        </Field>
+                      </ModernGrid>
+                    </SectionContainer>
+
+                    <Divider sx={{ my: 3 }} />
+
+                    {/* Father/Guardian Information Section */}
+                    <SectionContainer>
+                      <SectionHeader>
+                        <SectionBadge>3</SectionBadge>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          Father/Guardian Information
+                        </Typography>
+                      </SectionHeader>
+                      <ModernGrid>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="fatherName"
+                            label="Father Name"
+                            value={form.fatherName}
+                            onChange={handleInputChange}
+                            inputRef={fatherRef}
+                            size="small"
+                            required
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="fatherNationalId"
+                            label="Father National ID"
+                            value={form.fatherNationalId}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="fatherEducation"
+                            label="Education"
+                            value={form.fatherEducation}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="fatherMobile"
+                            label="Mobile No"
+                            value={form.fatherMobile}
+                            onChange={handleInputChange}
+                            size="small"
+                            inputProps={{
+                              pattern: '[0-9]*',
+                              inputMode: 'numeric'
+                            }}
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="fatherOccupation"
+                            label="Occupation"
+                            value={form.fatherOccupation}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="fatherIncome"
+                            label="Income"
+                            type="number"
+                            value={form.fatherIncome}
+                            onChange={handleInputChange}
+                            size="small"
+                            InputProps={{
+                              startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
+                            }}
+                          />
+                        </Field>
+                      </ModernGrid>
+                    </SectionContainer>
+
+                    <Divider sx={{ my: 3 }} />
+
+                    {/* Mother Information Section */}
+                    <SectionContainer>
+                      <SectionHeader>
+                        <SectionBadge>4</SectionBadge>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          Mother Information
+                        </Typography>
+                      </SectionHeader>
+                      <ModernGrid>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="motherName"
+                            label="Mother Name"
+                            value={form.motherName}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="motherNationalId"
+                            label="Mother National ID"
+                            value={form.motherNationalId}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="motherEducation"
+                            label="Education"
+                            value={form.motherEducation}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="motherMobile"
+                            label="Mobile No"
+                            value={form.motherMobile}
+                            onChange={handleInputChange}
+                            size="small"
+                            inputProps={{
+                              pattern: '[0-9]*',
+                              inputMode: 'numeric'
+                            }}
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="motherOccupation"
+                            label="Occupation"
+                            value={form.motherOccupation}
+                            onChange={handleInputChange}
+                            size="small"
+                          />
+                        </Field>
+                        <Field>
+                          <CompactTextField
+                            fullWidth
+                            name="motherIncome"
+                            label="Income"
+                            type="number"
+                            value={form.motherIncome}
+                            onChange={handleInputChange}
+                            size="small"
+                            InputProps={{
+                              startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, fontSize: '0.875rem' }}>Rs.</Box>
+                            }}
+                          />
+                        </Field>
+                      </ModernGrid>
+                    </SectionContainer>
+                  </MainCard>
+                </Grid>
+
+                {/* Sidebar - Right Side */}
+                <Grid item xs={12} md={4} lg={3}>
+                  <SidebarCard>
+                    <AvatarWrapper>
+                      <Box sx={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        <ImageBox onClick={handleAvatarClick}>
+                          {image ? (
+                            <img src={image} alt="Profile preview" />
+                          ) : (
+                            <AccountCircle sx={{ fontSize: 80, color: 'text.secondary' }} />
+                          )}
+                        </ImageBox>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImage}
+                          style={{ display: 'none' }}
+                        />
                       </Box>
-                    </MenuItem>
-                  </Select>
-                </Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>②</span> Other Information
-              </div>
-              <ModernGrid>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="dob"
-                    label="Date of Birth"
-                    type="date"
-                    value={form.dob}
-                    onChange={handleInputChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="studentId"
-                    label="Student Birth Form ID / NIC"
-                    value={form.studentId}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <InputLabel id="gender-label">Gender</InputLabel>
-                  <Select
-                    labelId="gender-label"
-                    name="gender"
-                    value={form.gender}
-                    onChange={handleSelectChange}
-                    label="Gender"
-                  >
-                    <MenuItem value="Male">Male</MenuItem>
-                    <MenuItem value="Female">Female</MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
-                  </Select>
-                </Field>
-            <Field>
-                  <TextField
-                    fullWidth
-                    name="cast"
-                    label="Cast"
-                    value={form.cast}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="orphan"
-                    label="Orphan Student"
-                    value={form.orphan}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="osc" 
-                    label="OSC Number"
-                    value={form.osc} 
-                    onChange={handleInputChange}
-                  />
-            </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="idMark"
-                    label="Identification Mark"
-                    value={form.idMark}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <InputLabel id="blood-group-label">Blood Group</InputLabel>
-                  <Select
-                    labelId="blood-group-label"
-                    name="bloodGroup"
-                    value={form.bloodGroup || ''}
-                    onChange={handleSelectChange}
-                    label="Blood Group"
-                  >
-                    <MenuItem value="">Select</MenuItem>
-                    {BLOOD_GROUPS.map(bg => (
-                      <MenuItem key={bg} value={bg}>{bg}</MenuItem>
-                    ))}
-              </Select>
-            </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="previousSchool"
-                    label="Previous School"
-                    value={form.previousSchool}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="previousId"
-                    label="Previous ID / Board Roll No"
-                    value={form.previousId}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <InputLabel id="religion-label">Religion</InputLabel>
-                  <Select
-                    labelId="religion-label"
-                    name="religion"
-                    value={form.religion}
-                    onChange={handleSelectChange}
-                    label="Religion"
-                  >
-                    {RELIGIONS.map(r => (
-                      <MenuItem key={r} value={r}>{r}</MenuItem>
-                    ))}
-                  </Select>
-                </Field>
-                <Field>
-                  <InputLabel id="nationality-label">Nationality</InputLabel>
-                  <Select
-                    labelId="nationality-label"
-                    name="nationality"
-                    value={form.nationality}
-                    onChange={handleSelectChange}
-                    label="Nationality"
-                  >
-                    {NATIONALITIES.map(n => (
-                      <MenuItem key={n} value={n}>{n}</MenuItem>
-                    ))}
-                  </Select>
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="totalSiblings"
-                    label="Total Siblings"
-                    type="number"
-                    value={form.totalSiblings}
-                    onChange={handleInputChange}
-                    inputProps={{ min: 0 }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="disease"
-                    label="Disease If Any?"
-                    value={form.disease}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="additionalNote"
-                    label="Additional Note"
-                    value={form.additionalNote}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field style={{ gridColumn: '1 / -1' }}>
-                  <TextField
-                    fullWidth
-                    name="address"
-                    label="Address"
-                    value={form.address}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>③</span> Father/Guardian Information
-              </div>
-              <ModernGrid>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="fatherName"
-                    label="Father Name*"
-                    value={form.fatherName}
-                    onChange={handleInputChange}
-                    inputRef={fatherRef}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="fatherNationalId"
-                    label="Father National ID"
-                    value={form.fatherNationalId}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="fatherEducation"
-                    label="Education"
-                    value={form.fatherEducation}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="fatherMobile"
-                    label="Mobile No"
-                    value={form.fatherMobile}
-                    onChange={handleInputChange}
-                    inputProps={{
-                      pattern: '[0-9]*',
-                      inputMode: 'numeric'
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="fatherOccupation"
-                    label="Occupation"
-                    value={form.fatherOccupation}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="fatherIncome"
-                    label="Income"
-                    type="number"
-                    value={form.fatherIncome}
-                    onChange={handleInputChange}
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-                  </Field>
-              </ModernGrid>
-            </SectionContainer>
-            <SectionContainer>
-              <div style={{ fontWeight: 700, fontSize: '1.18rem', margin: '18px 0 8px 0', display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.3em', marginRight: 8 }}>④</span> Mother Information
-              </div>
-              <ModernGrid>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="motherName"
-                    label="Mother Name"
-                    value={form.motherName}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="motherNationalId"
-                    label="Mother National ID"
-                    value={form.motherNationalId}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="motherEducation"
-                    label="Education"
-                    value={form.motherEducation}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="motherMobile"
-                    label="Mobile No"
-                    value={form.motherMobile}
-                    onChange={handleInputChange}
-                    inputProps={{
-                      pattern: '[0-9]*',
-                      inputMode: 'numeric'
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="motherOccupation"
-                    label="Occupation"
-                    value={form.motherOccupation}
-                    onChange={handleInputChange}
-                  />
-                </Field>
-                <Field>
-                  <TextField
-                    fullWidth
-                    name="motherIncome"
-                    label="Income"
-                    type="number"
-                    value={form.motherIncome}
-                    onChange={handleInputChange}
-                    InputProps={{
-                      startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Rs.</Box>
-                    }}
-                  />
-            </Field>
-              </ModernGrid>
-            </SectionContainer>
-          </FieldsCard>
-        </FormBlocks>
-      </ModernForm>
-          </MainCard>
+                      <ButtonRow>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<CloudUploadIcon />}
+                          onClick={handleAvatarClick}
+                          sx={{ fontSize: '0.75rem', textTransform: 'none', flex: 1 }}
+                        >
+                          Upload Photo
+                        </Button>
+                        {image && (
+                          <RemoveBtn
+                            variant="contained"
+                            size="small"
+                            startIcon={<CloseIcon />}
+                            onClick={handleRemoveImage}
+                          >
+                            Remove
+                          </RemoveBtn>
+                        )}
+                      </ButtonRow>
+                    </AvatarWrapper>
+                    <ActionButtonsContainer>
+                      <PrimaryButton
+                        type="submit"
+                        variant="contained"
+                        startIcon={<SaveIcon />}
+                        disabled={submitting}
+                        fullWidth
+                      >
+                        {submitting ? 'Saving...' : 'Save'}
+                      </PrimaryButton>
+                      {!isMobile && (
+                        <PrimaryButton
+                          type="button"
+                          variant="contained"
+                          startIcon={<DescriptionIcon />}
+                          onClick={handleSaveAndCreateFeePlan}
+                          disabled={submitting}
+                          fullWidth
+                        >
+                          Save & Fee Plan
+                        </PrimaryButton>
+                      )}
+                      <SecondaryButton
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleReset}
+                        fullWidth
+                      >
+                        Reset
+                      </SecondaryButton>
+                      <SecondaryButton
+                        variant="outlined"
+                        startIcon={<CloseIcon />}
+                        onClick={handleCancel}
+                        fullWidth
+                      >
+                        Cancel
+                      </SecondaryButton>
+                      {isMobile && (
+                        <PrimaryButton
+                          type="button"
+                          variant="contained"
+                          startIcon={<DescriptionIcon />}
+                          onClick={handleSaveAndCreateFeePlan}
+                          disabled={submitting}
+                          fullWidth
+                        >
+                          Save & Fee Plan
+                        </PrimaryButton>
+                      )}
+                    </ActionButtonsContainer>
+                  </SidebarCard>
+                </Grid>
+              </Grid>
+            </Container>
+          </FormWrapper>
         </MainContent>
       </PageContainer>
       {/* New Family Modal */}

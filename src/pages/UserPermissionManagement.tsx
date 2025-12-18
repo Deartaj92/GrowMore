@@ -1282,72 +1282,80 @@ const UserPermissionManagement: React.FC = () => {
                             const isGranted = isMenuItemGranted(menuItem);
                             const fromRole = isMenuItemFromRole(menuItem);
                             const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
+                            // Add separator before Reports items in Students and Employees menus
+                            const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
+                            const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
+                            // Add separator before Timetable in Employee Management section
+                            const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
+                            const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable;
                             return (
-                              <DropdownMenuItem
-                                key={itemIdx}
-                                $color={menuItem.color}
-                                $checked={isGranted}
-                                $inherited={fromRole}
-                                htmlFor={checkboxId}
-                              >
-                                <input
-                                  type="checkbox"
-                                  id={checkboxId}
-                                  checked={isGranted}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    toggleMenuItemPermission(menuItem);
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                />
-                                <div className="checkbox-indicator">
-                                  {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                </div>
-                                <div className="menu-icon">
-                                  {menuItem.icon}
-                                </div>
-                                <div className="menu-content">
-                                  <div className="menu-title">
-                                    {menuItem.title}
-                                    {fromRole && (
-                                      <span style={{ 
-                                        fontSize: '0.65rem', 
-                                        fontWeight: 400, 
-                                        color: 'inherit', 
-                                        opacity: 0.7, 
-                                        marginLeft: '0.5rem' 
-                                      }}>
-                                        (default from role)
-                                      </span>
-                                    )}
-                                    {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
-                                      <span style={{ 
-                                        fontSize: '0.65rem', 
-                                        fontWeight: 400, 
-                                        color: '#6366f1', 
-                                        opacity: 0.8, 
-                                        marginLeft: '0.5rem' 
-                                      }}>
-                                        (user override - granted)
-                                      </span>
-                                    )}
-                                    {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
-                                      <span style={{ 
-                                        fontSize: '0.65rem', 
-                                        fontWeight: 400, 
-                                        color: '#ef4444', 
-                                        opacity: 0.8, 
-                                        marginLeft: '0.5rem' 
-                                      }}>
-                                        (user override - denied)
-                                      </span>
-                                    )}
+                              <React.Fragment key={itemIdx}>
+                                {shouldShowSeparator && <ColumnSeparator />}
+                                <DropdownMenuItem
+                                  $color={menuItem.color}
+                                  $checked={isGranted}
+                                  $inherited={fromRole}
+                                  htmlFor={checkboxId}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    id={checkboxId}
+                                    checked={isGranted}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      toggleMenuItemPermission(menuItem);
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                  />
+                                  <div className="checkbox-indicator">
+                                    {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
                                   </div>
-                                  <div className="menu-description">{menuItem.description}</div>
-                                </div>
-                              </DropdownMenuItem>
+                                  <div className="menu-icon">
+                                    {menuItem.icon}
+                                  </div>
+                                  <div className="menu-content">
+                                    <div className="menu-title">
+                                      {menuItem.title}
+                                      {fromRole && (
+                                        <span style={{ 
+                                          fontSize: '0.65rem', 
+                                          fontWeight: 400, 
+                                          color: 'inherit', 
+                                          opacity: 0.7, 
+                                          marginLeft: '0.5rem' 
+                                        }}>
+                                          (default from role)
+                                        </span>
+                                      )}
+                                      {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
+                                        <span style={{ 
+                                          fontSize: '0.65rem', 
+                                          fontWeight: 400, 
+                                          color: '#6366f1', 
+                                          opacity: 0.8, 
+                                          marginLeft: '0.5rem' 
+                                        }}>
+                                          (user override - granted)
+                                        </span>
+                                      )}
+                                      {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
+                                        <span style={{ 
+                                          fontSize: '0.65rem', 
+                                          fontWeight: 400, 
+                                          color: '#ef4444', 
+                                          opacity: 0.8, 
+                                          marginLeft: '0.5rem' 
+                                        }}>
+                                          (user override - denied)
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="menu-description">{menuItem.description}</div>
+                                  </div>
+                                </DropdownMenuItem>
+                              </React.Fragment>
                             );
                           })}
                           {section.expenseItems && (
