@@ -303,6 +303,13 @@ export const accountsMenuItems: MenuItem[] = [
     icon: React.createElement(AccountBalanceIcon),
     path: '/balance-sheet',
     color: '#10b981'
+  },
+  {
+    title: 'Assets & Liabilities',
+    description: 'Manage school assets and liabilities',
+    icon: React.createElement(AccountBalanceIcon),
+    path: '/assets-liabilities',
+    color: '#8b5cf6'
   }
 ];
 
@@ -444,6 +451,17 @@ export const fineMenuItems: MenuItem[] = [
     icon: React.createElement(PieChartIcon),
     path: '/fines/statistics',
     color: '#8b5cf6'
+  }
+];
+
+// Assets & Liabilities menu items
+export const assetsLiabilitiesMenuItems: MenuItem[] = [
+  {
+    title: 'Assets & Liabilities',
+    description: 'Manage school assets and liabilities',
+    icon: React.createElement(AccountBalanceIcon),
+    path: '/assets-liabilities',
+    color: '#3b82f6'
   }
 ];
 
@@ -735,7 +753,7 @@ export const menuStructure: MainMenuItem[] = [
       { title: 'Fine Management', items: fineMenuItems },
       { title: 'Payroll Management', items: payrollMenuItems }
     ],
-    columns: 4
+    columns: 3
   },
   {
     icon: React.createElement(AccountBalanceWalletIcon),

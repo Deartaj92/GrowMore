@@ -108,6 +108,9 @@ export const pathToPermissionKey: Record<string, string> = {
   // Payroll Management
   '/payroll': 'payroll-view',
   
+  // Assets & Liabilities Management
+  '/assets-liabilities': 'assets-liabilities-view',
+  
   // User Dashboard
   '/user': 'dashboard', // User dashboard uses dashboard permission
   

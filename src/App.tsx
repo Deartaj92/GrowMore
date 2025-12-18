@@ -108,6 +108,8 @@ import ExpenseDashboard from './components/ExpenseDashboard';
 import ExpenseManager from './pages/ExpenseManager';
 import ExpenseAnalyticsPage from './pages/ExpenseAnalyticsPage';
 import OtherIncomeManager from './pages/OtherIncomeManager';
+// Assets & Liabilities Management Components
+import AssetsLiabilitiesManager from './pages/AssetsLiabilities/AssetsLiabilitiesManager';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
 // Communication Management Components
@@ -795,6 +797,16 @@ const App: React.FC = () => {
                               <ProtectedRoute
                                 requiredPermission="expense-analytics">
                                 <ExpenseAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Assets & Liabilities Management */}
+                          <Route
+                            path="assets-liabilities"
+                            element={
+                              <ProtectedRoute requiredPermission="assets-liabilities-view">
+                                <AssetsLiabilitiesManager />
                               </ProtectedRoute>
                             }
                           />

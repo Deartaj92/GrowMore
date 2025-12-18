@@ -130,110 +130,258 @@ export const TabContainer = styled.div`
   }
 `;
 
-export const TabsWrapper = styled.div`
+export const TabsContainer = styled.div`
   display: flex;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.5rem;
   flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
+  position: relative;
+  min-width: 0;
   
-  &::-webkit-scrollbar {
-    height: 4px;
+  @media (max-width: 768px) {
+    width: 100%;
   }
+`;
+
+export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?: boolean; $preventScroll?: boolean }>`
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
   
-  &::-webkit-scrollbar-track {
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.05)'};
-    border-radius: 2px;
-  }
+  /* Prevent scrolling when $preventScroll is true */
+  ${({ $preventScroll }) => $preventScroll 
+    ? 'overflow: hidden;'
+    : `
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    `}
   
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
-    border-radius: 2px;
-    
-    &:hover {
-      background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
-    }
+  /* Desktop: Hide scrollbar when $hideScrollbar is true */
+  @media (min-width: 769px) {
+    ${({ $preventScroll, $hideScrollbar, theme }) => {
+      if ($preventScroll) return '';
+      
+      const scrollbarStyles = $hideScrollbar 
+        ? `
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          &::-webkit-scrollbar {
+            display: none;
+            height: 0;
+          }
+        `
+        : `
+          scrollbar-width: thin;
+          -ms-overflow-style: auto;
+          scrollbar-color: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
+            ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
+            : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
+          
+          &::-webkit-scrollbar {
+            display: block;
+            height: 4px;
+          }
+          
+          &::-webkit-scrollbar-track {
+            background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
+              ? 'rgba(255, 255, 255, 0.05)'
+              : 'rgba(0, 0, 0, 0.05)'};
+            border-radius: 2px;
+          }
+          
+          &::-webkit-scrollbar-thumb {
+            background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
+              ? 'rgba(255, 255, 255, 0.2)'
+              : 'rgba(0, 0, 0, 0.2)'};
+            border-radius: 2px;
+            
+            &:hover {
+              background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
+                ? 'rgba(255, 255, 255, 0.3)'
+                : 'rgba(0, 0, 0, 0.3)'};
+            }
+          }
+        `;
+      return scrollbarStyles;
+    }}
   }
   
   @media (max-width: 768px) {
     width: 100%;
-    gap: 0.5rem;
+    gap: 0.375rem;
     padding-bottom: 0.25rem;
+    /* Allow scrolling on mobile */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar on mobile by default */
+    scrollbar-width: ${({ $isScrolling }) => $isScrolling ? 'thin' : 'none'};
+    -ms-overflow-style: ${({ $isScrolling }) => $isScrolling ? 'auto' : 'none'};
+    
+    &::-webkit-scrollbar {
+      display: ${({ $isScrolling }) => $isScrolling ? 'block' : 'none'};
+      height: 4px;
+    }
+  }
+`;
+
+export const OverflowButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: none;
+  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(0, 0, 0, 0.05)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  min-width: 36px;
+  height: 36px;
+  
+  &:hover {
+    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.1)'};
+  }
+  
+  svg {
+    font-size: 20px;
+  }
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+export const DropdownMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: ${({ theme }) => theme.CARD || theme.BG};
+  border: 1px solid ${({ theme }) => theme.BORDER || (theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)')};
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  z-index: 1000;
+  padding: 0.25rem 0;
+  overflow: hidden;
+`;
+
+export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border: none;
+  background: ${({ $active, theme }) => $active
+    ? 'rgba(99, 102, 241, 0.1)'
+    : 'transparent'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  
+  svg {
+    font-size: 18px;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+  
+  &:hover {
+    background: ${({ $active, theme }) => $active
+      ? 'rgba(99, 102, 241, 0.15)'
+      : (theme.BG === '#252525' || theme.BG === '#181c2a')
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(0, 0, 0, 0.05)'};
+  }
+  
+  &:active {
+    background: ${({ $active, theme }) => $active
+      ? 'rgba(99, 102, 241, 0.2)'
+      : (theme.BG === '#252525' || theme.BG === '#181c2a')
+        ? 'rgba(255, 255, 255, 0.08)'
+        : 'rgba(0, 0, 0, 0.08)'};
   }
 `;
 
 export const TabButton = styled.button<{ active: boolean }>`
-  padding: 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
   border: none;
-  border-bottom: ${({ active, theme }) =>
-    active
-      ? `2px solid ${theme.ACCENT || '#6366f1'}`
-      : '2px solid transparent'};
-  background: transparent;
-  color: ${({ active, theme }) =>
-    active
-      ? (theme.ACCENT || '#6366f1')
-      : theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#888' : '#666')};
-  font-size: 0.9rem;
+  background: ${({ active, theme }) => active
+    ? theme.ACCENT || '#6366f1'
+    : (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(0, 0, 0, 0.05)'};
+  color: ${({ active, theme }) => active
+    ? '#ffffff'
+    : theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
   font-weight: ${({ active }) => active ? 600 : 500};
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
   white-space: nowrap;
-  position: relative;
-  margin-bottom: -1px;
   flex-shrink: 0;
   
-  &:hover {
-    color: ${({ theme }) => theme.ACCENT || '#6366f1'};
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.02)'
-    : 'rgba(0, 0, 0, 0.02)'};
+  svg {
+    font-size: 18px;
+    flex-shrink: 0;
   }
   
-  &:active {
-    transform: scale(0.98);
+  &:hover {
+    background: ${({ active, theme }) => active
+      ? theme.ACCENT || '#6366f1'
+      : (theme.BG === '#252525' || theme.BG === '#181c2a')
+        ? 'rgba(255, 255, 255, 0.08)'
+        : 'rgba(0, 0, 0, 0.08)'};
   }
   
   @media (max-width: 768px) {
-    padding: 0.625rem 1rem;
-    font-size: 0.85rem;
-    border-bottom: ${({ active, theme }) =>
-      active
-        ? `3px solid ${theme.ACCENT || '#6366f1'}`
-        : '3px solid transparent'};
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8rem;
+    gap: 0.3rem;
+    
+    svg {
+      font-size: 16px;
+    }
   }
   
   @media (max-width: 480px) {
-    padding: 0.5rem 0.875rem;
-    font-size: 0.8rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+    
+    svg {
+      font-size: 14px;
+    }
   }
 `;
 
 export const DashboardDateInput = styled.input`
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.75rem;
   border: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
     ? 'rgba(255, 255, 255, 0.2)'
     : 'rgba(0, 0, 0, 0.2)'};
-  border-radius: 6px;
+  border-radius: 8px;
   background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
     ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.02)'};
+    : 'rgba(0, 0, 0, 0.05)'};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
   min-width: 140px;
   flex-shrink: 0;
   
@@ -241,7 +389,7 @@ export const DashboardDateInput = styled.input`
     border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
     ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(0, 0, 0, 0.04)'};
+    : 'rgba(0, 0, 0, 0.08)'};
   }
   
   &:focus {
@@ -254,9 +402,14 @@ export const DashboardDateInput = styled.input`
     flex: 1;
     min-width: 0;
     max-width: calc(50% - 0.2rem);
-    padding: 0.4rem 0.5rem;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.35rem 0.5rem;
     font-size: 0.75rem;
-    border-radius: 6px;
   }
 `;
 

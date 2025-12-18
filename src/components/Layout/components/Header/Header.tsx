@@ -1274,6 +1274,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <AccountBalanceIcon />,
       path: '/balance-sheet',
       color: '#10b981'
+    },
+    {
+      title: 'Assets & Liabilities',
+      description: 'Manage school assets and liabilities',
+      icon: <AccountBalanceIcon />,
+      path: '/assets-liabilities',
+      color: '#8b5cf6'
     }
   ];
 
