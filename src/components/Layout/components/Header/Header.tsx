@@ -952,7 +952,6 @@ const Header: React.FC<HeaderProps> = ({
           filter: `school_id=eq.${schoolId}`
         },
         (payload) => {
-          console.log('Leave request change detected:', payload.eventType, payload.new?.id || payload.old?.id);
           // Reload counts when leave requests change (debounced)
           debouncedLoadUnreadCounts();
         }
