@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useMemo, useCallback, memo, use
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
-import { format, parseISO, isAfter, setHours, setMinutes } from 'date-fns';
+import { format, isAfter, setHours, setMinutes } from 'date-fns';
 
 // Responsive grid component for single line layout
 const SingleLineGrid = styled.div`
@@ -506,83 +506,54 @@ const TestRecordManager: React.FC = () => {
   const [focusedStudentId, setFocusedStudentId] = useState<number | null>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number, studentId: number) => {
-    // Shortcuts for attendance statuses
+    // 1. Attendance status shortcuts (Single press only)
+    if (e.repeat) {
+      if (['a', 'A', 'h', 'H', 'l', 'L', 'Enter', 'Tab'].includes(e.key)) {
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // A/a for Absent
     if (e.key === 'A' || e.key === 'a') {
       e.preventDefault();
       handleMarksInput(studentId, 'A', maxMarks);
       return;
     }
 
+    // H/h or L/l for Half Leave
     if (e.key === 'H' || e.key === 'h' || e.key === 'L' || e.key === 'l') {
       e.preventDefault();
       handleMarksInput(studentId, 'HL', maxMarks);
       return;
     }
 
-    // Handle arrow keys for navigation
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < students.length) {
-        const nextInput = document.querySelector(`input[data-student-index="${nextIndex}"]`) as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-          setTimeout(() => {
-            nextInput.select();
-          }, 0);
-          scrollToKeepVisible(nextInput);
-        }
-      }
-      return;
-    }
+    // 2. Navigation Logic
+    let targetIndex = -1;
 
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prevIndex = currentIndex - 1;
-      if (prevIndex >= 0) {
-        const prevInput = document.querySelector(`input[data-student-index="${prevIndex}"]`) as HTMLInputElement;
-        if (prevInput) {
-          prevInput.focus();
-          setTimeout(() => {
-            prevInput.select();
-          }, 0);
-          scrollToKeepVisible(prevInput);
-        }
-      }
-      return;
-    }
-
-    // Handle Enter key to move to next student
     if (e.key === 'Enter') {
       e.preventDefault();
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < students.length) {
-        const nextInput = document.querySelector(`input[data-student-index="${nextIndex}"]`) as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-          setTimeout(() => {
-            nextInput.select();
-          }, 0);
-          scrollToKeepVisible(nextInput);
-        }
+      if (currentIndex < students.length - 1) {
+        targetIndex = currentIndex + 1;
       } else {
-        setShowSaveModal(true);
+        // Last student + Enter = Save
+        if (!showSaveModal) setShowSaveModal(true);
       }
-    }
-
-    // Handle Tab key for navigation
-    if (e.key === 'Tab') {
+    } else if (e.key === 'Tab') {
       e.preventDefault();
       const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
       if (nextIndex >= 0 && nextIndex < students.length) {
-        const targetInput = document.querySelector(`input[data-student-index="${nextIndex}"]`) as HTMLInputElement;
-        if (targetInput) {
-          targetInput.focus();
-          setTimeout(() => {
-            targetInput.select();
-          }, 0);
-          scrollToKeepVisible(targetInput);
-        }
+        targetIndex = nextIndex;
+      }
+    }
+
+    // 3. Perform focus shift if target found
+    if (targetIndex !== -1) {
+      const targetInput = document.querySelector(`input[data-student-index="${targetIndex}"]`) as HTMLInputElement;
+      if (targetInput) {
+        targetInput.focus();
+        targetInput.setSelectionRange(0, targetInput.value.length);
+        scrollToKeepVisible(targetInput);
       }
     }
   };
@@ -652,7 +623,6 @@ const TestRecordManager: React.FC = () => {
 
   const handleDeselectAll = () => {
     setSelectedStudents(new Set());
-    setMarksData({});
   };
 
   const handleToggleAll = () => {
@@ -1211,138 +1181,155 @@ const TestRecordManager: React.FC = () => {
     setSelectedStudents(new Set());
   }, []);
 
-  // Set footer content for global footer
-  useEffect(() => {
-    const shouldShowFooter = selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedSubject && students.length > 0 && testCreated && !checkingExistingMarks;
+  // Memoize footer content for better performance
+  const memoizedFooter = useMemo(() => {
+    const shouldShowFooter = !!(selectedClass && (selectedClass.has_sections ? selectedSection : true) && selectedSubject && students.length > 0 && testCreated && !checkingExistingMarks);
 
-    if (shouldShowFooter) {
-      const footerContentElement = (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          gap: isMobile ? '6px' : '8px',
-          flexWrap: 'nowrap',
-          pointerEvents: 'auto'
-        }}>
-          <button
+    if (!shouldShowFooter) return null;
+
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        gap: isMobile ? '6px' : '8px',
+        flexWrap: 'nowrap',
+        pointerEvents: 'auto'
+      }}>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleAbsentButton(e as any);
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleAbsentButton(e as any);
+          }}
+          style={{
+            padding: isMobile ? '6px 10px' : '6px 12px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            border: '1px solid #f59e0b',
+            backgroundColor: '#f59e0b',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: isMobile ? '0.85rem' : '0.9rem',
+            flexShrink: 0,
+            pointerEvents: 'auto',
+            userSelect: 'none'
+          }}
+        >
+          A
+        </button>
+        <FooterButtonGroup style={{ marginLeft: 'auto', pointerEvents: 'auto' }}>
+          <FooterButton
             type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleAbsentButton(e);
-            }}
+            variant="secondary"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              handleAbsentButton(e);
+              handleResetMarks();
             }}
-            style={{
-              padding: isMobile ? '6px 10px' : '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              border: '1px solid #f59e0b',
-              backgroundColor: '#f59e0b',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: isMobile ? '0.85rem' : '0.9rem',
-              flexShrink: 0,
-              pointerEvents: 'auto',
-              userSelect: 'none'
-            }}
+            style={{ minWidth: isMobile ? '50px' : '60px', fontSize: isMobile ? '0.75rem' : '0.8rem', pointerEvents: 'auto' }}
           >
-            A
-          </button>
-          <FooterButtonGroup style={{ marginLeft: 'auto', pointerEvents: 'auto' }}>
+            Reset
+          </FooterButton>
+          {hasExistingRecords && (
             <FooterButton
               type="button"
               variant="secondary"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleResetMarks();
-              }}
-              style={{ minWidth: isMobile ? '50px' : '60px', fontSize: isMobile ? '0.75rem' : '0.8rem', pointerEvents: 'auto' }}
-            >
-              Reset
-            </FooterButton>
-            {hasExistingRecords && (
-              <FooterButton
-                type="button"
-                variant="secondary"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!deleting && selectedStudents.size > 0) {
-                    handleDeleteClick();
-                  }
-                }}
-                disabled={deleting || selectedStudents.size === 0}
-                style={{
-                  opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
-                  cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  border: '1px solid #ef4444',
-                  fontSize: isMobile ? '0.75rem' : '0.8rem',
-                  pointerEvents: (deleting || selectedStudents.size === 0) ? 'none' : 'auto'
-                }}
-              >
-                {deleting ? (
-                  <>
-                    <Spinner />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </FooterButton>
-            )}
-            <FooterButton
-              type="button"
-              variant="primary"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!saving && !deleting && selectedStudents.size > 0) {
-                  handleSaveTest();
+                if (!deleting && selectedStudents.size > 0) {
+                  handleDeleteClick();
                 }
               }}
-              disabled={saving || deleting || selectedStudents.size === 0}
+              disabled={deleting || selectedStudents.size === 0}
               style={{
-                opacity: (saving || deleting || selectedStudents.size === 0) ? 0.7 : 1,
-                cursor: (saving || deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
+                cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: '1px solid #ef4444',
                 fontSize: isMobile ? '0.75rem' : '0.8rem',
-                pointerEvents: (saving || deleting || selectedStudents.size === 0) ? 'none' : 'auto'
+                pointerEvents: (deleting || selectedStudents.size === 0) ? 'none' : 'auto'
               }}
             >
-              {saving ? (
+              {deleting ? (
                 <>
                   <Spinner />
-                  Saving...
+                  {isMobile ? '...' : 'Deleting...'}
                 </>
               ) : (
-                'Save Test'
+                'Delete'
               )}
             </FooterButton>
-          </FooterButtonGroup>
-        </div>
-      );
+          )}
+          <FooterButton
+            type="button"
+            variant="primary"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!saving && !deleting && selectedStudents.size > 0) {
+                handleSaveTest();
+              }
+            }}
+            disabled={saving || deleting || selectedStudents.size === 0}
+            style={{
+              opacity: (saving || deleting || selectedStudents.size === 0) ? 0.7 : 1,
+              cursor: (saving || deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
+              fontSize: isMobile ? '0.75rem' : '0.8rem',
+              pointerEvents: (saving || deleting || selectedStudents.size === 0) ? 'none' : 'auto'
+            }}
+          >
+            {saving ? (
+              <>
+                <Spinner />
+                {isMobile ? '...' : 'Saving...'}
+              </>
+            ) : (
+              'Save Test'
+            )}
+          </FooterButton>
+        </FooterButtonGroup>
+      </div>
+    );
+  }, [
+    selectedClass,
+    selectedSection,
+    selectedSubject,
+    students.length,
+    testCreated,
+    checkingExistingMarks,
+    isMobile,
+    handleAbsentButton,
+    handleResetMarks,
+    hasExistingRecords,
+    deleting,
+    selectedStudents.size,
+    handleDeleteClick,
+    saving,
+    handleSaveTest
+  ]);
 
+  // Set footer content effect - optimized to only run when memoized footer changes
+  useEffect(() => {
+    if (memoizedFooter) {
       setFooterContent({
         visible: true,
-        content: footerContentElement
+        content: memoizedFooter
       });
-
-      return () => {
-        setFooterContent(null);
-      };
     } else {
       setFooterContent(null);
     }
-  }, [selectedClass, selectedSection, selectedSubject, students.length, testCreated, checkingExistingMarks, selectedStudents.size, saving, deleting, isMobile, theme, setFooterContent, handleAbsentButton, handleDeleteClick, handleSaveTest, handleResetMarks, hasExistingRecords]);
+  }, [memoizedFooter, setFooterContent]);
 
   // Create test and show students
   const handleCreateTest = () => {
