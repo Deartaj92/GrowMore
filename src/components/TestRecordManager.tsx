@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo, useCallback, memo, use
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { format, parseISO, isAfter, setHours, setMinutes } from 'date-fns';
 
 // Responsive grid component for single line layout
 const SingleLineGrid = styled.div`
@@ -455,48 +456,48 @@ const TestRecordManager: React.FC = () => {
   const navigate = useNavigate();
   const { logTestMarksActivity } = useActivityTracking();
   const { setFooterContent } = usePageFooter();
-  
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-  
+
   // State for form fields
   const [classes, setClasses] = useState<Class[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  
+
   // Selected values
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  
+
   // Test record data
   const [testName, setTestName] = useState('');
   const [testType] = useState<'Quiz' | 'Test' | 'Assignment' | 'Practice'>('Test');
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
   const [maxMarks, setMaxMarks] = useState<number | ''>('');
   const [passingMarks, setPassingMarks] = useState<number | ''>('');
-  
+
   // Test creation state
   const [testCreated, setTestCreated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
-  
+
   // Session state
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [hasActiveSession, setHasActiveSession] = useState(false);
-  
+
   // Loading states
   const [loadingExistingMarks, setLoadingExistingMarks] = useState(false);
   const [checkingExistingMarks, setCheckingExistingMarks] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  
+
   // Marks data
   const [marksData, setMarksData] = useState<{ [studentId: number]: number | string }>({});
   const [hasExistingRecords, setHasExistingRecords] = useState(false);
-  
+
   const [showToTop, setShowToTop] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -505,16 +506,49 @@ const TestRecordManager: React.FC = () => {
   const [focusedStudentId, setFocusedStudentId] = useState<number | null>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number, studentId: number) => {
-    // Allow "A" key for absent students (even with numeric input mode)
+    // Shortcuts for attendance statuses
     if (e.key === 'A' || e.key === 'a') {
       e.preventDefault();
       handleMarksInput(studentId, 'A', maxMarks);
       return;
     }
 
-    // Prevent arrow keys from changing the value
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    if (e.key === 'H' || e.key === 'h' || e.key === 'L' || e.key === 'l') {
       e.preventDefault();
+      handleMarksInput(studentId, 'HL', maxMarks);
+      return;
+    }
+
+    // Handle arrow keys for navigation
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < students.length) {
+        const nextInput = document.querySelector(`input[data-student-index="${nextIndex}"]`) as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+          setTimeout(() => {
+            nextInput.select();
+          }, 0);
+          scrollToKeepVisible(nextInput);
+        }
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = currentIndex - 1;
+      if (prevIndex >= 0) {
+        const prevInput = document.querySelector(`input[data-student-index="${prevIndex}"]`) as HTMLInputElement;
+        if (prevInput) {
+          prevInput.focus();
+          setTimeout(() => {
+            prevInput.select();
+          }, 0);
+          scrollToKeepVisible(prevInput);
+        }
+      }
       return;
     }
 
@@ -555,13 +589,13 @@ const TestRecordManager: React.FC = () => {
 
   const scrollToKeepVisible = (inputElement: HTMLInputElement) => {
     if (!mainContentRef.current) return;
-    
+
     const container = mainContentRef.current;
     const containerRect = container.getBoundingClientRect();
     const inputRect = inputElement.getBoundingClientRect();
-    
+
     const distanceFromBottom = containerRect.bottom - inputRect.bottom;
-    
+
     if (distanceFromBottom < 100) {
       const scrollAmount = Math.min(150, container.scrollHeight - container.scrollTop - container.clientHeight);
       container.scrollBy({
@@ -569,9 +603,9 @@ const TestRecordManager: React.FC = () => {
         behavior: 'smooth'
       });
     }
-    
+
     const distanceFromTop = inputRect.top - containerRect.top;
-    
+
     if (distanceFromTop < 50) {
       container.scrollBy({
         top: -100,
@@ -644,35 +678,35 @@ const TestRecordManager: React.FC = () => {
   const handleAbsentButton = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Find the currently focused input
     const focusedInput = document.querySelector('input[data-student-index]:focus') as HTMLInputElement;
-    
+
     if (focusedInput) {
       // Get the student index from the data attribute
       const studentIndex = parseInt(focusedInput.getAttribute('data-student-index') || '0');
       const studentId = students[studentIndex]?.id;
-      
+
       if (studentId) {
         // Update React state directly
         setMarksData(prev => ({
           ...prev,
           [studentId]: 'A'
         }));
-        
+
         // Select student when "A" is entered
         setSelectedStudents(prev => new Set(prev).add(studentId));
-        
+
         // Clear any error state
         setInputErrors(prev => {
           const newErrors = { ...prev };
           delete newErrors[studentId];
           return newErrors;
         });
-        
+
         // Update the input value directly to show "A" immediately
         focusedInput.value = 'A';
-        
+
         // Keep focus on the input
         setTimeout(() => {
           focusedInput.focus();
@@ -685,14 +719,14 @@ const TestRecordManager: React.FC = () => {
   // Handle marks input with validation and error feedback
   const handleMarksInput = (studentId: number, inputValue: string, maxMarks: number | '') => {
     const existingMarks = marksData[studentId];
-    
-    if (inputValue === 'A' || inputValue === '') {
+
+    if (inputValue === 'A' || inputValue === 'HL' || inputValue === '') {
       setMarksData(prev => ({
         ...prev,
         [studentId]: inputValue
       }));
-      
-      if (inputValue === 'A') {
+
+      if (inputValue === 'A' || inputValue === 'HL') {
         setSelectedStudents(prev => new Set(prev).add(studentId));
       } else {
         setSelectedStudents(prev => {
@@ -701,7 +735,7 @@ const TestRecordManager: React.FC = () => {
           return newSet;
         });
       }
-      
+
       setInputErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[studentId];
@@ -712,16 +746,16 @@ const TestRecordManager: React.FC = () => {
 
     if (!isNaN(Number(inputValue)) && inputValue !== '') {
       const value = Number(inputValue);
-      
+
       if (typeof maxMarks === 'number' && value > maxMarks) {
         setInputErrors(prev => ({ ...prev, [studentId]: true }));
         showToast(`Marks cannot exceed ${maxMarks}.`, 'error');
-        
+
         setMarksData(prev => ({
           ...prev,
           [studentId]: existingMarks !== undefined ? existingMarks : ''
         }));
-        
+
         setTimeout(() => {
           setInputErrors(prev => {
             const newErrors = { ...prev };
@@ -729,17 +763,17 @@ const TestRecordManager: React.FC = () => {
             return newErrors;
           });
         }, 1000);
-        
+
         return;
       }
-      
+
       setMarksData(prev => ({
         ...prev,
         [studentId]: value
       }));
-      
+
       setSelectedStudents(prev => new Set(prev).add(studentId));
-      
+
       setInputErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[studentId];
@@ -791,16 +825,16 @@ const TestRecordManager: React.FC = () => {
       }, 1, 1, user?.school_id!);
 
       // Filter by test date to find exact matches
-      const existingRecords = existingTestRecord.data?.filter(record => 
+      const existingRecords = existingTestRecord.data?.filter(record =>
         record.test_date === testDate
       ) || [];
 
       let testRecord: TestRecord;
-      
+
       if (existingRecords.length > 0) {
         // Found existing test record with same subject, class/section, and date
         const existingRecord = existingRecords[0];
-        
+
         // Check if there are existing marks for this test
         const { data: existingResults, error: resultsError } = await supabase
           .from('test_results')
@@ -818,7 +852,7 @@ const TestRecordManager: React.FC = () => {
           const existingStudents = existingResults.map(r => r.student_id);
           const selectedStudentIds = Array.from(selectedStudents);
           const overlappingStudents = selectedStudentIds.filter(id => existingStudents.includes(id));
-          
+
           if (overlappingStudents.length > 0) {
             showToast(`Warning: ${overlappingStudents.length} students already have marks for ${selectedSubject?.subject?.name} on ${testDate}. Marks will be updated.`, 'error');
           }
@@ -856,15 +890,15 @@ const TestRecordManager: React.FC = () => {
         test_id: testRecord.id,
         student_id: parseInt(studentId),
         session_id: activeSessionId!,
-        obtained_marks: marks === 'A' ? 0 : marks as number,
+        obtained_marks: (marks === 'A' || marks === 'HL') ? 0 : marks as number,
         max_marks: typeof maxMarks === 'number' ? maxMarks : 100,
-        remarks: marks === 'A' ? 'Absent' : undefined
+        remarks: marks === 'A' ? 'Absent' : (marks === 'HL' ? 'Half Leave' : undefined)
       }));
 
       await testRecordService.createBulkTestResults(resultsData, user?.school_id!);
 
       showToast(`Successfully saved test "${testName}" with ${resultsData.length} student results`, 'success');
-      
+
       // Log test marks activity
       try {
         await logTestMarksActivity(
@@ -878,7 +912,7 @@ const TestRecordManager: React.FC = () => {
       } catch (activityError) {
         // Don't fail the save operation if activity logging fails
       }
-      
+
       // Reset form
       setTestName('');
       setMarksData({});
@@ -1000,7 +1034,7 @@ const TestRecordManager: React.FC = () => {
           setMarksData({});
           setSelectedStudents(new Set());
           setHasExistingRecords(false);
-          
+
           // Log test marks activity (test record deleted)
           try {
             await logTestMarksActivity(
@@ -1014,7 +1048,7 @@ const TestRecordManager: React.FC = () => {
           } catch (activityError) {
             // Don't fail the delete operation if activity logging fails
           }
-          
+
           showToast(`Successfully deleted marks and test record for ${selectedStudents.size} selected student${selectedStudents.size !== 1 ? 's' : ''}`, 'success');
           return; // Exit early since we've reset everything
         }
@@ -1072,7 +1106,7 @@ const TestRecordManager: React.FC = () => {
         setHasActiveSession(false);
         return;
       }
-      
+
       try {
         setLoadingSessions(true);
         const { data, error } = await supabase
@@ -1081,14 +1115,14 @@ const TestRecordManager: React.FC = () => {
           .eq('is_active', true)
           .eq('school_id', user.school_id)
           .single();
-        
+
         if (data) {
           setActiveSessionId(data.id);
           setHasActiveSession(true);
         } else {
           setHasActiveSession(false);
         }
-        
+
         if (error && !(
           error.code === 'PGRST116' ||
           error.message?.includes('multiple (or no) rows returned') ||
@@ -1102,7 +1136,7 @@ const TestRecordManager: React.FC = () => {
         setLoadingSessions(false);
       }
     };
-    
+
     fetchActiveSession();
   }, [user?.school_id]);
 
@@ -1180,7 +1214,7 @@ const TestRecordManager: React.FC = () => {
   // Set footer content for global footer
   useEffect(() => {
     const shouldShowFooter = selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedSubject && students.length > 0 && testCreated && !checkingExistingMarks;
-    
+
     if (shouldShowFooter) {
       const footerContentElement = (
         <div style={{
@@ -1246,7 +1280,7 @@ const TestRecordManager: React.FC = () => {
                   }
                 }}
                 disabled={deleting || selectedStudents.size === 0}
-                style={{ 
+                style={{
                   opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
                   cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
                   backgroundColor: '#ef4444',
@@ -1277,7 +1311,7 @@ const TestRecordManager: React.FC = () => {
                 }
               }}
               disabled={saving || deleting || selectedStudents.size === 0}
-              style={{ 
+              style={{
                 opacity: (saving || deleting || selectedStudents.size === 0) ? 0.7 : 1,
                 cursor: (saving || deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
                 fontSize: isMobile ? '0.75rem' : '0.8rem',
@@ -1354,7 +1388,7 @@ const TestRecordManager: React.FC = () => {
   const loadClasses = async () => {
     try {
       setLoading(true);
-      
+
       if (user?.role === 'Teacher' && user?.staff_id) {
         // For teachers, get classes where they have assigned subjects
         const { data, error } = await supabase
@@ -1368,9 +1402,9 @@ const TestRecordManager: React.FC = () => {
           `)
           .eq('teacher_id', user.staff_id)
           .eq('school_id', user?.school_id);
-        
+
         if (error) throw error;
-        
+
         // Extract unique classes from the nested structure
         const uniqueClasses = new Map();
         data?.forEach(item => {
@@ -1379,7 +1413,7 @@ const TestRecordManager: React.FC = () => {
             uniqueClasses.set(classData.id, classData);
           }
         });
-        
+
         const teacherClasses = Array.from(uniqueClasses.values());
         const sortedClasses = sortClasses(teacherClasses);
         setClasses(sortedClasses);
@@ -1389,9 +1423,9 @@ const TestRecordManager: React.FC = () => {
           .from('classes')
           .select('id, name, school_id, has_sections')
           .eq('school_id', user?.school_id);
-        
+
         if (error) throw error;
-        
+
         const sortedClasses = sortClasses(data || []);
         setClasses(sortedClasses);
       }
@@ -1418,9 +1452,9 @@ const TestRecordManager: React.FC = () => {
           .eq('teacher_id', user.staff_id)
           .eq('school_id', user?.school_id)
           .eq('class_subjects.class_id', classId);
-        
+
         if (error) throw error;
-        
+
         // Extract unique sections from the nested structure
         const uniqueSections = new Map();
         data?.forEach(item => {
@@ -1432,7 +1466,7 @@ const TestRecordManager: React.FC = () => {
             }
           }
         });
-        
+
         // Fetch full section details for the unique section IDs
         if (uniqueSections.size > 0) {
           const sectionIds = Array.from(uniqueSections.keys());
@@ -1442,7 +1476,7 @@ const TestRecordManager: React.FC = () => {
             .in('id', sectionIds)
             .eq('school_id', user?.school_id)
             .order('name');
-          
+
           if (sectionsError) throw sectionsError;
           setSections(sectionsData || []);
         } else {
@@ -1456,7 +1490,7 @@ const TestRecordManager: React.FC = () => {
           .eq('class_id', classId)
           .eq('school_id', user?.school_id)
           .order('name');
-        
+
         if (error) throw error;
         setSections(data || []);
       }
@@ -1480,11 +1514,11 @@ const TestRecordManager: React.FC = () => {
           .eq('teacher_id', user.staff_id)
           .eq('school_id', user?.school_id)
           .eq('class_subjects.class_id', classId);
-        
+
         if (error) {
           throw error;
         }
-        
+
         if (data && data.length > 0) {
           // Extract class_subjects data from the nested structure
           const subjects = data.map(item => item.class_subjects).filter(Boolean) as any[];
@@ -1503,11 +1537,11 @@ const TestRecordManager: React.FC = () => {
           `)
           .eq('class_id', classId)
           .eq('school_id', user?.school_id);
-        
+
         if (error) {
           throw error;
         }
-        
+
         if (data && data.length > 0) {
           setSubjects(data);
         } else {
@@ -1548,10 +1582,10 @@ const TestRecordManager: React.FC = () => {
       }
 
       if (!schData || schData.length === 0) {
-          setStudents([]);
-          return;
-        }
-        
+        setStudents([]);
+        return;
+      }
+
       // Get student IDs from student_class_history
       const studentIds = schData.map(sch => sch.student_id);
 
@@ -1562,14 +1596,14 @@ const TestRecordManager: React.FC = () => {
         .eq('school_id', user?.school_id)
         .eq('status', 'active')
         .in('id', studentIds);
-      
+
       if (studentsError) {
         throw studentsError;
       }
 
       const formattedStudents = (studentsData || []).sort((a, b) => a.id - b.id);
       setStudents(formattedStudents);
-      
+
       // View activities are not logged - only create, update, and delete
       try {
         // No activity logging for view actions
@@ -1590,10 +1624,57 @@ const TestRecordManager: React.FC = () => {
     try {
       setLoadingExistingMarks(true);
       setCheckingExistingMarks(true);
-      
+
       // Get the test date for today or the selected test date
       const currentTestDate = testDate;
-      
+
+      // Fetch attendance for the selected date to pre-mark absent students
+      const { data: attendanceData } = await supabase
+        .from('attendance_records')
+        .select('student_id, status')
+        .eq('date', currentTestDate)
+        .eq('session_id', activeSessionId)
+        .eq('school_id', user?.school_id)
+        .in('student_id', students.map(s => s.id))
+        .or('status.eq.absent,status.eq.leave');
+
+      const attendanceMap = new Map();
+      attendanceData?.forEach(record => {
+        attendanceMap.set(record.student_id, record.status);
+      });
+
+      // Fetch half leaves for the selected date
+      const { data: halfLeavesData } = await supabase
+        .from('half_leaves')
+        .select('person_id, departure_time')
+        .eq('date', currentTestDate)
+        .eq('session_id', activeSessionId)
+        .eq('school_id', user?.school_id)
+        .eq('person_type', 'student')
+        .in('person_id', students.map(s => s.id));
+
+      const halfLeavesMap = new Map();
+      const now = new Date();
+      const todayStr = format(now, 'yyyy-MM-dd');
+
+      halfLeavesData?.forEach(hl => {
+        let shouldApplyHL = false;
+        if (currentTestDate < todayStr) {
+          shouldApplyHL = true; // For past dates, always apply half leaves
+        } else if (currentTestDate === todayStr) {
+          if (hl.departure_time) {
+            const [hours, minutes] = hl.departure_time.split(':').map(Number);
+            const departureTime = setMinutes(setHours(now, hours), minutes);
+            if (isAfter(now, departureTime)) {
+              shouldApplyHL = true;
+            }
+          }
+        }
+        if (shouldApplyHL) {
+          halfLeavesMap.set(hl.person_id, 'HL');
+        }
+      });
+
       // Find existing test records for this class, section, subject, and date
       let trQuery = supabase
         .from('test_records')
@@ -1622,9 +1703,22 @@ const TestRecordManager: React.FC = () => {
       }
 
       if (!existingTestRecords || existingTestRecords.length === 0) {
-        // No existing test records found - clear marks and reset form
-        setMarksData({});
-        setSelectedStudents(new Set());
+        // No existing test records found - pre-populate with attendance data
+        const preliminaryMarks: { [studentId: number]: number | string } = {};
+        const preliminarySelected = new Set<number>();
+
+        students.forEach(student => {
+          if (attendanceMap.has(student.id)) {
+            preliminaryMarks[student.id] = 'A';
+            preliminarySelected.add(student.id);
+          } else if (halfLeavesMap.has(student.id)) {
+            preliminaryMarks[student.id] = 'HL';
+            preliminarySelected.add(student.id);
+          }
+        });
+
+        setMarksData(preliminaryMarks);
+        setSelectedStudents(preliminarySelected);
         setTestName('');
         setMaxMarks('');
         setPassingMarks('');
@@ -1635,7 +1729,7 @@ const TestRecordManager: React.FC = () => {
 
       // Get the most recent test record (in case there are multiple)
       const testRecord = existingTestRecords[0];
-      
+
       // Load existing test results for this test record
       const { data: existingResults, error: resultsError } = await supabase
         .from('test_results')
@@ -1651,28 +1745,47 @@ const TestRecordManager: React.FC = () => {
       // Convert to marksData format
       const marksData: { [studentId: number]: number | string } = {};
       const studentsWithMarks = new Set<number>();
-      
+
       existingResults?.forEach(result => {
-        // If remarks is "Absent", show "A", otherwise show the obtained marks
-        marksData[result.student_id] = result.remarks === 'Absent' ? 'A' : result.obtained_marks;
-        // Select students who have marks (including 0 and A)
+        // If remarks is "Absent", show "A", if "Half Leave", show "HL", otherwise show the obtained marks
+        if (result.remarks === 'Absent') {
+          marksData[result.student_id] = 'A';
+        } else if (result.remarks === 'Half Leave') {
+          marksData[result.student_id] = 'HL';
+        } else {
+          marksData[result.student_id] = result.obtained_marks;
+        }
+        // Select students who have marks (including 0, A, and HL)
         studentsWithMarks.add(result.student_id);
+      });
+
+      // Also add attendance-based 'A' or 'HL' for students who don't have existing test results
+      students.forEach(student => {
+        if (!studentsWithMarks.has(student.id)) {
+          if (attendanceMap.has(student.id)) {
+            marksData[student.id] = 'A';
+            studentsWithMarks.add(student.id);
+          } else if (halfLeavesMap.has(student.id)) {
+            marksData[student.id] = 'HL';
+            studentsWithMarks.add(student.id);
+          }
+        }
       });
 
       setMarksData(marksData);
       setSelectedStudents(studentsWithMarks);
-      
+
       // Update test name, max marks, and passing marks from existing record
       setTestName(testRecord.name);
       setMaxMarks(testRecord.max_marks);
       setPassingMarks(testRecord.passing_marks);
-      
+
       // Set test as created so students section appears
       setTestCreated(true);
-      
+
       // Track if there are existing records
       setHasExistingRecords(existingResults && existingResults.length > 0);
-      
+
       if (existingResults && existingResults.length > 0) {
         showToast(`Loaded existing marks for ${existingResults.length} students`, 'success');
       } else {
@@ -1696,8 +1809,8 @@ const TestRecordManager: React.FC = () => {
         <Header>
           <HeaderTopRow>
             <Title>Test Record Management</Title>
-            
-            
+
+
             <DesktopSegmentedGroup>
               <SegmentedGroup>
                 <SegmentedSelect
@@ -1760,7 +1873,7 @@ const TestRecordManager: React.FC = () => {
               </SegmentedGroup>
             </DesktopSegmentedGroup>
           </HeaderTopRow>
-          
+
           <HeaderBottomRow>
             <MobileHeaderLayout>
               <MobileRow>
@@ -1865,7 +1978,7 @@ const TestRecordManager: React.FC = () => {
                     }}
                   />
                 </div>
-                
+
                 <div style={{ minWidth: '100px' }}>
                   <input
                     type="date"
@@ -1882,7 +1995,7 @@ const TestRecordManager: React.FC = () => {
                     }}
                   />
                 </div>
-                
+
                 <div style={{ width: '160px' }}>
                   <input
                     type="number"
@@ -1908,7 +2021,7 @@ const TestRecordManager: React.FC = () => {
                     }}
                   />
                 </div>
-                
+
                 <div style={{ width: '160px' }}>
                   <input
                     type="number"
@@ -1935,22 +2048,22 @@ const TestRecordManager: React.FC = () => {
                     }}
                   />
                 </div>
-                
+
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                   {!testCreated ? (
-                  <button
-                    onClick={handleCreateTest}
-                    style={{
+                    <button
+                      onClick={handleCreateTest}
+                      style={{
                         padding: '0.4rem 0.75rem',
                         borderRadius: '4px',
-                      fontWeight: '600',
+                        fontWeight: '600',
                         fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      border: 'none',
-                      background: '#4a6cf7',
-                      color: 'white',
-                      transition: 'all 0.2s ease',
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: '#4a6cf7',
+                        color: 'white',
+                        transition: 'all 0.2s ease',
                         whiteSpace: 'nowrap'
                       }}
                     >
@@ -1977,7 +2090,7 @@ const TestRecordManager: React.FC = () => {
                   )}
                 </div>
               </DesktopLayout>
-              
+
               {/* Mobile: Two Line Layout */}
               <MobileLayout>
                 {/* First Row: Test Name and Date */}
@@ -2016,7 +2129,7 @@ const TestRecordManager: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 {/* Second Row: Max Marks, Passing Marks, and Action Button */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <div style={{ width: '160px' }}>
@@ -2085,33 +2198,33 @@ const TestRecordManager: React.FC = () => {
                           background: '#4a6cf7',
                           color: 'white',
                           transition: 'all 0.2s ease'
-                    }}
-                  >
-                    Create Test
-                  </button>
+                        }}
+                      >
+                        Create Test
+                      </button>
                     ) : (
-                  <button
-                    onClick={handleResetTest}
-                    style={{
+                      <button
+                        onClick={handleResetTest}
+                        style={{
                           width: '100%',
                           padding: '0.4rem 0.75rem',
                           borderRadius: '4px',
-                      fontWeight: '600',
+                          fontWeight: '600',
                           fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      border: `1px solid ${theme.palette?.mode === 'dark' ? '#3a3f4b' : '#b6c2d9'}`,
-                      background: 'transparent',
-                      color: theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    Reset
-                  </button>
+                          cursor: 'pointer',
+                          border: `1px solid ${theme.palette?.mode === 'dark' ? '#3a3f4b' : '#b6c2d9'}`,
+                          background: 'transparent',
+                          color: theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        Reset
+                      </button>
                     )}
                   </div>
                 </div>
               </MobileLayout>
-              
+
               {/* Loading Existing Marks Indicator */}
               {loadingExistingMarks && (
                 <div style={{
@@ -2218,19 +2331,19 @@ const TestRecordManager: React.FC = () => {
                   {selectedStudents.size === students.length && students.length > 0 ? '✓' : '○'}
                 </div>
                 <span>
-                  {selectedStudents.size === 0 
-                    ? 'Select students to save marks' 
+                  {selectedStudents.size === 0
+                    ? 'Select students to save marks'
                     : `${selectedStudents.size} of ${students.length} students selected`
                   }
                 </span>
               </div>
-              
+
               {students.map((student, index) => {
                 const marksValue = marksData[student.id];
                 const obtainedMarks = marksValue === 'A' ? 0 : (marksValue !== undefined && marksValue !== null ? parseFloat(String(marksValue)) : 0);
                 const percentage = (typeof maxMarks === 'number' && maxMarks > 0) ? (obtainedMarks / maxMarks) * 100 : 0;
                 const isSelected = selectedStudents.has(student.id);
-                
+
                 return (
                   <div key={student.id} style={{
                     display: 'flex',
@@ -2262,24 +2375,24 @@ const TestRecordManager: React.FC = () => {
                     >
                       {index + 1}
                     </div>
-                    
+
                     <StudentAvatar>
                       {student.picture_url ? (
-                        <img 
-                          src={student.picture_url} 
+                        <img
+                          src={student.picture_url}
                           alt={student.name}
-                          style={{ 
-                            width: '100%', 
-                            height: '100%', 
-                            objectFit: 'cover', 
-                            borderRadius: '50%' 
-                          }} 
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '50%'
+                          }}
                         />
                       ) : (
                         student.name.charAt(0).toUpperCase()
                       )}
                     </StudentAvatar>
-                    
+
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
                         fontWeight: '600',
@@ -2309,11 +2422,15 @@ const TestRecordManager: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     <input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       value={marksData[student.id] !== undefined ? marksData[student.id] : ''}
                       onChange={(e) => {
                         const inputValue = e.target.value.toUpperCase();
@@ -2338,15 +2455,16 @@ const TestRecordManager: React.FC = () => {
                         transition: 'all 0.2s ease'
                       }}
                     />
-                    
-                    <StudentPercentage 
-                      color={percentage >= 80 ? '#16a34a' : 
-                             percentage >= 60 ? '#f59e0b' : 
-                             percentage >= 40 ? '#f97316' : '#dc2626'}
+
+                    <StudentPercentage
+                      color={percentage >= 80 ? '#16a34a' :
+                        percentage >= 60 ? '#f59e0b' :
+                          percentage >= 40 ? '#f97316' : '#dc2626'}
                     >
-                      {marksData[student.id] === 'A' ? 'Absent' : 
-                       marksData[student.id] === 0 ? '0%' :
-                       isNaN(percentage) ? '0%' : `${percentage.toFixed(1)}%`}
+                      {marksData[student.id] === 'A' ? 'Absent' :
+                        marksData[student.id] === 'HL' ? 'Half Leave' :
+                          marksData[student.id] === 0 ? '0%' :
+                            isNaN(percentage) ? '0%' : `${percentage.toFixed(1)}%`}
                     </StudentPercentage>
                   </div>
                 );
