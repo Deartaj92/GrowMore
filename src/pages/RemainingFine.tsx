@@ -12,6 +12,7 @@ import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 import Loader from '../components/Loader';
 const Container = styled.div`
@@ -545,66 +546,60 @@ const RemainingFine: React.FC = () => {
       startProgress(false);
       setProgress(10);
       
-      // Helper function to fetch all rows with pagination (handles 1000 row limit)
-      const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
-        const allData: any[] = [];
-        let from = 0;
-        let hasMore = true;
-
-        while (hasMore) {
-          const to = from + pageSize - 1;
-          const { data, error } = await queryBuilder.range(from, to);
-          if (error) throw error;
-          if (data && data.length > 0) {
-            allData.push(...data);
-            hasMore = data.length === pageSize;
-            from += pageSize;
-          } else {
-            hasMore = false;
-          }
-        }
-        return allData;
-      };
-
-      const [
-        { data: studentsData },
-        { data: classesData },
-        { data: sectionsData },
-        { data: finesData },
-      ] = await Promise.all([
-        supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
-        supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
-        supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
-        supabase.from('fines').select('class_id, absent_fine, late_fine, effective_from').eq('school_id', user.school_id).order('effective_from', { ascending: true }),
+      const [studentsData, classesData, sectionsData, finesData, attendanceData, paymentsData] = await Promise.all([
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('students')
+            .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
+            .eq('status', 'active')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('sections')
+            .select('id, name, class_id')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('fines')
+            .select('class_id, absent_fine, late_fine, effective_from')
+            .eq('school_id', user.school_id)
+            .order('effective_from', { ascending: true })
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('attendance_records')
+            .select('student_id, class_id, date, status')
+            .eq('school_id', user.school_id)
+            .in('status', ['absent', 'late'])
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fine_payments')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
       ]);
       
       setProgress(50);
       
-      // Fetch all attendance records with pagination to handle 1000+ rows
-      const attendanceQuery = supabase
-        .from('attendance_records')
-        .select('student_id, class_id, date, status')
-        .eq('school_id', user.school_id)
-        .in('status', ['absent', 'late']);
-      
-      const attendanceData = await fetchAllRows(attendanceQuery);
-      
-      // Fetch all fine payments with pagination to handle 1000+ rows
-      const paymentsQuery = supabase
-        .from('fine_payments')
-        .select('*')
-        .eq('school_id', user.school_id);
-      
-      const paymentsData = await fetchAllRows(paymentsQuery);
-      
       setProgress(70);
-      setStudents(studentsData || []);
-      const sortedClasses = sortClasses(classesData || []);
+      setStudents(studentsData);
+      const sortedClasses = sortClasses(classesData);
       setClasses(sortedClasses);
-      setSections(sectionsData || []);
-      setFines(finesData || []);
-      setPayments(paymentsData || []);
-      setAttendanceRecords(attendanceData || []);
+      setSections(sectionsData);
+      setFines(finesData);
+      setPayments(paymentsData);
+      setAttendanceRecords(attendanceData);
       setProgress(100);
       const elapsed = Date.now() - start;
       if (elapsed < minDuration) {

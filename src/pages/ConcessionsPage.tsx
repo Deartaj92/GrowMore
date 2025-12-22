@@ -7,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import { feeService } from '../services/feeService';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 import {
   Loyalty,
   Add as AddIcon,
@@ -1317,18 +1318,38 @@ const ConcessionsPage: React.FC = () => {
         const sectionIds = Array.from(new Set(data.map((s: any) => s.section_id).filter(Boolean)));
         
         // Fetch all classes and sections in bulk
-        const [classesResult, sectionsResult] = await Promise.all([
-          classIds.length > 0 
-            ? supabase.from('classes').select('id, name').in('id', classIds)
-            : Promise.resolve({ data: [], error: null }),
-          sectionIds.length > 0
-            ? supabase.from('sections').select('id, name').in('id', sectionIds)
-            : Promise.resolve({ data: [], error: null })
-        ]);
+        // Fetch classes and sections with chunking for .in() limit
+        let allClasses: any[] = [];
+        if (classIds.length > 0) {
+          for (let i = 0; i < classIds.length; i += 1000) {
+            const chunk = classIds.slice(i, i + 1000);
+            const chunkClasses = await fetchAllRows(async (from, to) => {
+              return await supabase.from('classes')
+                .select('id, name')
+                .in('id', chunk)
+                .range(from, to);
+            });
+            allClasses.push(...chunkClasses);
+          }
+        }
+        
+        let allSections: any[] = [];
+        if (sectionIds.length > 0) {
+          for (let i = 0; i < sectionIds.length; i += 1000) {
+            const chunk = sectionIds.slice(i, i + 1000);
+            const chunkSections = await fetchAllRows(async (from, to) => {
+              return await supabase.from('sections')
+                .select('id, name')
+                .in('id', chunk)
+                .range(from, to);
+            });
+            allSections.push(...chunkSections);
+          }
+        }
         
         // Create lookup maps
-        const classesMap = new Map((classesResult.data || []).map((c: any) => [c.id, c]));
-        const sectionsMap = new Map((sectionsResult.data || []).map((s: any) => [s.id, s]));
+        const classesMap = new Map(allClasses.map((c: any) => [c.id, c]));
+        const sectionsMap = new Map(allSections.map((s: any) => [s.id, s]));
         
         // Enrich student data
         const enrichedData = data.map((student: any) => {
@@ -1384,7 +1405,7 @@ const ConcessionsPage: React.FC = () => {
       if (activeSessionId) {
         try {
           // Fetch all fee structures for the session
-          const structures = await feeService.getFeeStructures(user.school_id, { sessionId: activeSessionId });
+          const structures = await feeService.getFeeStructures(user.school_id);
           allFeeStructures = structures || [];
           
           // Fetch all student fee plans for the session (we'll filter by student later)
@@ -1437,20 +1458,54 @@ const ConcessionsPage: React.FC = () => {
           const classIds = Array.from(new Set(studentsData?.map((s: any) => s.class_id).filter(Boolean) || []));
           const sectionIds = Array.from(new Set(studentsData?.map((s: any) => s.section_id).filter(Boolean) || []));
           
-          const [classesResult, sectionsResult, feeHeadsResult] = await Promise.all([
-            classIds.length > 0 
-              ? supabase.from('classes').select('id, name').in('id', classIds)
-              : Promise.resolve({ data: [], error: null }),
-            sectionIds.length > 0
-              ? supabase.from('sections').select('id, name').in('id', sectionIds)
-              : Promise.resolve({ data: [], error: null }),
-            supabase.from('fee_heads').select('id, name').in('id', Array.from(new Set(data.map((c: any) => c.fee_head_id))))
-          ]);
+          // Fetch classes, sections, and fee_heads with chunking for .in() limit
+          let allClasses: any[] = [];
+          if (classIds.length > 0) {
+            for (let i = 0; i < classIds.length; i += 1000) {
+              const chunk = classIds.slice(i, i + 1000);
+              const chunkClasses = await fetchAllRows(async (from, to) => {
+                return await supabase.from('classes')
+                  .select('id, name')
+                  .in('id', chunk)
+                  .range(from, to);
+              });
+              allClasses.push(...chunkClasses);
+            }
+          }
+          
+          let allSections: any[] = [];
+          if (sectionIds.length > 0) {
+            for (let i = 0; i < sectionIds.length; i += 1000) {
+              const chunk = sectionIds.slice(i, i + 1000);
+              const chunkSections = await fetchAllRows(async (from, to) => {
+                return await supabase.from('sections')
+                  .select('id, name')
+                  .in('id', chunk)
+                  .range(from, to);
+              });
+              allSections.push(...chunkSections);
+            }
+          }
+          
+          const feeHeadIds = Array.from(new Set(data.map((c: any) => c.fee_head_id)));
+          let allFeeHeads: any[] = [];
+          if (feeHeadIds.length > 0) {
+            for (let i = 0; i < feeHeadIds.length; i += 1000) {
+              const chunk = feeHeadIds.slice(i, i + 1000);
+              const chunkFeeHeads = await fetchAllRows(async (from, to) => {
+                return await supabase.from('fee_heads')
+                  .select('id, name')
+                  .in('id', chunk)
+                  .range(from, to);
+              });
+              allFeeHeads.push(...chunkFeeHeads);
+            }
+          }
           
           // Create lookup maps
-          const classesMap = new Map((classesResult.data || []).map((c: any) => [c.id, c]));
-          const sectionsMap = new Map((sectionsResult.data || []).map((s: any) => [s.id, s]));
-          const feeHeadsMap = new Map((feeHeadsResult.data || []).map((fh: any) => [fh.id, fh]));
+          const classesMap = new Map(allClasses.map((c: any) => [c.id, c]));
+          const sectionsMap = new Map(allSections.map((s: any) => [s.id, s]));
+          const feeHeadsMap = new Map(allFeeHeads.map((fh: any) => [fh.id, fh]));
           const studentsMap = new Map((studentsData || []).map((s: any) => [s.id, s]));
           
           // Create lookup maps for fee amounts

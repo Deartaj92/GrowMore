@@ -12,6 +12,7 @@ import { Add as AddIcon, CheckCircle, ErrorOutline, Person, Group, CalendarMonth
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { feeService } from '../services/feeService';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { FeePlanWithItems } from '../types/fee';
 import { alpha } from '@mui/material/styles';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -1062,25 +1063,46 @@ export default function LoadFeePage() {
     if (!schoolId) return;
     (async () => {
       const [cls, sec, ses, stu, fh] = await Promise.all([
-        supabase.from('classes').select('id, name, has_sections').eq('school_id', schoolId),
-        supabase.from('sections').select('id, name, class_id').eq('school_id', schoolId),
-        supabase.from('sessions').select('id, name, is_active').eq('school_id', schoolId),
-        supabase.from('students').select('id, name, class_id, section_id, father_name, picture_url, roll_number').eq('school_id', schoolId).order('name', { ascending: true }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', schoolId)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('sections')
+            .select('id, name, class_id')
+            .eq('school_id', schoolId)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('sessions')
+            .select('id, name, is_active')
+            .eq('school_id', schoolId)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('students')
+            .select('id, name, class_id, section_id, father_name, picture_url, roll_number')
+            .eq('school_id', schoolId)
+            .order('name', { ascending: true })
+            .range(from, to);
+        }),
         feeService.getFeeHeads(schoolId),
       ]);
-      setClasses(sortClassesLocal(cls.data || []));
-      setSections(sec.data || []);
-      setSessions(ses.data || []);
+      setClasses(sortClassesLocal(cls));
+      setSections(sec);
+      setSessions(ses);
       
       // Merge current class from student_class_history
-      const studentsWithCurrentClass = await mergeCurrentClassFromHistory(stu.data || []);
+      const studentsWithCurrentClass = await mergeCurrentClassFromHistory(stu);
       setStudents(studentsWithCurrentClass);
       setFeeHeads(fh || []);
 
       // Set default session (active session or latest)
-      if (ses.data && ses.data.length > 0) {
-        const activeSession = ses.data.find((s: any) => s.is_active);
-        const defaultSession = activeSession ? activeSession.id : Math.max(...ses.data.map((s: any) => s.id));
+      if (ses && ses.length > 0) {
+        const activeSession = ses.find((s: any) => s.is_active);
+        const defaultSession = activeSession ? activeSession.id : Math.max(...ses.map((s: any) => s.id));
         setSelectedSession(defaultSession);
         setSingleSession(defaultSession);
       }
@@ -1236,7 +1258,7 @@ export default function LoadFeePage() {
     (async () => {
       try {
         setFeeStructuresLoading(true);
-        const structures = await feeService.getFeeStructures(schoolId, { sessionId: Number(selectedSession) });
+        const structures = await feeService.getFeeStructures(schoolId);
         setFeeStructures(structures);
       } catch (error) {
       } finally {
@@ -1258,12 +1280,12 @@ export default function LoadFeePage() {
 
       try {
         // Fetch all fee plans for the session at once (much faster than individual calls)
-        const allPlans = await feeService.getAllFeePlans(schoolId, undefined, Number(selectedSession));
+        const allPlans = await feeService.getAllFeePlans(schoolId);
         
-        // Convert to Map for quick lookup
+        // Convert to Map for quick lookup (using studentId as key since plans are session-independent)
         const plansMap = new Map<string, FeePlanWithItems>();
         allPlans.forEach(plan => {
-          plansMap.set(`${plan.studentId}_${plan.sessionId}`, plan);
+          plansMap.set(`${plan.studentId}`, plan);
         });
 
         setFeePlans(plansMap);
@@ -1289,12 +1311,12 @@ export default function LoadFeePage() {
 
       try {
         // Use getAllFeePlans for consistency and better performance
-        const allPlans = await feeService.getAllFeePlans(schoolId, singleStudent.id, Number(singleSession));
-        
+        const allPlans = await feeService.getAllFeePlans(schoolId, singleStudent.id);
+
         const plansMap = new Map<string, FeePlanWithItems>();
         if (allPlans.length > 0) {
           const plan = allPlans[0]; // Should only be one plan for a single student
-          plansMap.set(`${singleStudent.id}_${singleSession}`, plan);
+          plansMap.set(`${singleStudent.id}`, plan);
         }
         setFeePlans(plansMap);
       } catch (error) {
@@ -1318,8 +1340,8 @@ export default function LoadFeePage() {
       }
 
       try {
-        // Fetch all fee plans for the session at once (much faster)
-        const allPlans = await feeService.getAllFeePlans(schoolId, undefined, Number(familySession));
+        // Fetch all fee plans (session-independent now)
+        const allPlans = await feeService.getAllFeePlans(schoolId);
         
         const studentIds = selectedFamily.family_members
           ?.map((member: any) => member.student?.id)
@@ -1329,7 +1351,7 @@ export default function LoadFeePage() {
         const plansMap = new Map<string, FeePlanWithItems>();
         allPlans.forEach(plan => {
           if (studentIds.includes(plan.studentId)) {
-            plansMap.set(`${plan.studentId}_${plan.sessionId}`, plan);
+            plansMap.set(`${plan.studentId}`, plan);
           }
         });
 
@@ -1721,7 +1743,7 @@ export default function LoadFeePage() {
             .eq('new_class_id', selectedClass)
             .eq('school_id', schoolId),
           // Fetch fee plans for the session in parallel
-          feeService.getAllFeePlans(schoolId, undefined, Number(selectedSession)).catch(() => [])
+          feeService.getAllFeePlans(schoolId).catch(() => [])
         ]);
 
         const { data: schData, error: schError } = schResult;
@@ -1740,7 +1762,7 @@ export default function LoadFeePage() {
         // Update fee plans immediately
         const plansMap = new Map<string, FeePlanWithItems>();
         feePlansResult.forEach(plan => {
-          plansMap.set(`${plan.studentId}_${plan.sessionId}`, plan);
+          plansMap.set(`${plan.studentId}`, plan);
         });
         setFeePlans(plansMap);
 
@@ -3315,28 +3337,36 @@ export default function LoadFeePage() {
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {selectedFeeHeads.map(fhId => {
-                                    const feeHead = feeHeads.find(fh => fh.id === fhId);
-                                    return (
-                                      <Box key={fhId} sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                      }}>
-                                        <Typography sx={{
-                                          fontSize: '0.7rem',
-                                          color: 'text.secondary',
-                                          fontWeight: 500,
-                                          whiteSpace: 'nowrap',
+                                  {selectedFeeHeads
+                                    .filter(fhId => {
+                                      // Filter out fee heads with 0 amount for this student
+                                      const amount = amountGrid[stu.id]?.[fhId] ?? '';
+                                      const finalAmount = calculateFinalAmount(stu.id, fhId, Number(stu.class_id), selectedSession, selectedMonth, selectedYear);
+                                      const amountValue = parseFloat(finalAmount || amount || '0');
+                                      return amountValue > 0;
+                                    })
+                                    .map(fhId => {
+                                      const feeHead = feeHeads.find(fh => fh.id === fhId);
+                                      return (
+                                        <Box key={fhId} sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
                                         }}>
-                                          {feeHead?.name}:
-                                        </Typography>
-                                        <Box sx={{ minWidth: '70px' }}>
-                                          {renderAmount(stu.id, fhId, amountGrid[stu.id]?.[fhId] ?? '')}
+                                          <Typography sx={{
+                                            fontSize: '0.7rem',
+                                            color: 'text.secondary',
+                                            fontWeight: 500,
+                                            whiteSpace: 'nowrap',
+                                          }}>
+                                            {feeHead?.name}:
+                                          </Typography>
+                                          <Box sx={{ minWidth: '70px' }}>
+                                            {renderAmount(stu.id, fhId, amountGrid[stu.id]?.[fhId] ?? '')}
+                                          </Box>
                                         </Box>
-                                      </Box>
-                                    );
-                                  })}
+                                      );
+                                    })}
                                 </Box>
                               </Box>
                             </Box>

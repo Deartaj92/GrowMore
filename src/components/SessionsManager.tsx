@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import styled, { css } from 'styled-components';
 import { supabase } from '../supabaseClient';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { 
   Add as AddIcon, 
   Edit as EditIcon, 
@@ -919,12 +920,27 @@ const SessionsManager: React.FC = () => {
     (async () => {
       setLoadingClasses(true);
       setLoadingSections(true);
-      const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
-          supabase.from('students').select('id, session_id, class_id, section_id').eq('school_id', currentSchoolId),
-          supabase.from('classes').select('id, name').eq('school_id', currentSchoolId),
-          supabase.from('sections').select('id, name, class_id, session_id').eq('school_id', currentSchoolId),
+      const [studentsData, classesData, sectionsData] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('students')
+              .select('id, session_id, class_id, section_id')
+              .eq('school_id', currentSchoolId)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', currentSchoolId)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sections')
+              .select('id, name, class_id, session_id')
+              .eq('school_id', currentSchoolId)
+              .range(from, to);
+          }),
       ]);
-      setStudents((studentsData as Student[]) || []);
+      setStudents(studentsData as Student[]);
       setClasses((classesData as Class[]) || []);
       setSections((sectionsData as Section[]) || []);
       setLoadingClasses(false);

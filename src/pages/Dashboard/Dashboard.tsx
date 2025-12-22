@@ -49,9 +49,9 @@ import {
   fetchFeeSummary as fetchFeeSummaryService,
   fetchCollectionChartsData as fetchCollectionChartsDataService,
   fetchFeeCollectionDetails as fetchFeeCollectionDetailsService,
-  fetchDefaultersData as fetchDefaultersDataService,
-  fetchAllRows
+  fetchDefaultersData as fetchDefaultersDataService
 } from './services/feeService';
+import { fetchAllRows } from '../../utils/paginationHelper';
 import { fetchAdmissionsData as fetchAdmissionsDataService } from './services/admissionsService';
 import { fetchHomeworkDiary as fetchHomeworkDiaryService } from './services/homeworkService';
 import { fetchAbsentees as fetchAbsenteesService } from './services/attendanceService';
@@ -504,32 +504,50 @@ const Dashboard: React.FC = () => {
     const studentIds = schData.map(sch => sch.student_id);
     setProgress(60);
 
-    const limitedStudentIds = studentIds.slice(0, 5000);
-    const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: attendanceData }, { data: staffData }] = await Promise.all([
-      supabase.from('students')
-        .select('id, name, father_name, gender, status, class_id, section_id')
-        .eq('school_id', user.school_id)
-        .eq('status', 'active')
-        .in('id', limitedStudentIds),
-      supabase.from('classes').select('id, name').eq('school_id', user.school_id),
-      supabase.from('sections').select('id, name').eq('school_id', user.school_id),
-      supabase.from('attendance_records')
-        .select('student_id, status, date')
-        .eq('date', today)
-        .eq('session_id', sessionDataResult.id)
-        .eq('school_id', user.school_id),
-      supabase.from('staff')
-        .select('id, name, role')
-        .eq('school_id', user.school_id),
+    // Use fetchAllRows for all queries to handle 1000+ records
+    const [studentsData, classesData, sectionsData, attendanceData, staffData] = await Promise.all([
+      fetchAllRows(async (from, to) => {
+        return await supabase.from('students')
+          .select('id, name, father_name, gender, status, class_id, section_id')
+          .eq('school_id', user.school_id)
+          .eq('status', 'active')
+          .range(from, to);
+      }),
+      fetchAllRows(async (from, to) => {
+        return await supabase.from('classes')
+          .select('id, name')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+      }),
+      fetchAllRows(async (from, to) => {
+        return await supabase.from('sections')
+          .select('id, name')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+      }),
+      fetchAllRows(async (from, to) => {
+        return await supabase.from('attendance_records')
+          .select('student_id, status, date')
+          .eq('date', today)
+          .eq('session_id', sessionDataResult.id)
+          .eq('school_id', user.school_id)
+          .range(from, to);
+      }),
+      fetchAllRows(async (from, to) => {
+        return await supabase.from('staff')
+          .select('id, name, role')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+      }),
     ]);
 
     setProgress(80);
-    setStudents(studentsData || []);
+    setStudents(studentsData);
     setStudentClassHistory(schData || []);
-    setClasses(classesData || []);
-    setSections(sectionsData || []);
-    setAttendanceToday(attendanceData || []);
-    setStaff(staffData || []);
+    setClasses(classesData);
+    setSections(sectionsData);
+    setAttendanceToday(attendanceData);
+    setStaff(staffData);
 
     setProgress(90);
     setLoadingStudents(false);

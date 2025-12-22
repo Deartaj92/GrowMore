@@ -12,37 +12,91 @@ import {
   FeePlanItem,
   FeePlanWithItems
 } from '../types/fee';
+import { fetchAllRows } from '../utils/paginationHelper';
+
+// Helper function to retry operations with exponential backoff
+async function retryOperation<T>(
+  operation: () => Promise<{ data: T | null; error: any }>,
+  maxRetries: number = 5,
+  baseDelay: number = 1000
+): Promise<{ data: T | null; error: any }> {
+  let lastError: any = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await operation();
+      // If it's a network error (Failed to fetch), retry
+      if (result.error && (
+        result.error.message?.includes('Failed to fetch') ||
+        result.error.message?.includes('TypeError') ||
+        result.error.message?.includes('NetworkError') ||
+        result.error.code === 'PGRST301' || // PostgREST connection error
+        result.error.code === 'PGRST116' || // PostgREST timeout
+        !result.error.code // Sometimes network errors don't have codes
+      )) {
+        lastError = result.error;
+        if (attempt < maxRetries - 1) {
+          // Exponential backoff with jitter: baseDelay * 2^attempt + random(0-500ms)
+          const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+          console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      // If no error or non-retryable error, return immediately
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      const isNetworkError = error.message?.includes('Failed to fetch') ||
+        error.message?.includes('TypeError') ||
+        error.message?.includes('NetworkError') ||
+        error.name === 'TypeError';
+      
+      if (attempt < maxRetries - 1 && isNetworkError) {
+        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+        console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms (catch)`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      return { data: null, error };
+    }
+  }
+  
+  return { data: null, error: lastError };
+}
 
 // Helper function to set current user for audit logging
 const setAuditUser = async (userId: number) => {
-  // Set a unique session identifier for this browser session
-  const sessionId = `browser_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  // Set the session name first
-  await supabase.rpc('set_config', { 
-    setting_name: 'application_name', 
-    new_value: sessionId, 
-    is_local: false 
-  });
-  
-  // Then set the user context
-  const { error } = await supabase.rpc('set_audit_user_id', { user_id: userId });
-  if (error) {
-    // Error setting audit user context
+  try {
+    // Note: set_config RPC call removed as it doesn't exist in all databases
+    // and was causing 404 errors. The session identifier is not critical for functionality.
+    
+    // Set the user context for audit logging
+    const { error } = await supabase.rpc('set_audit_user_id', { user_id: userId });
+    if (error) {
+      // Error setting audit user context - log but don't throw
+      // This is non-critical, so we continue even if it fails
+      console.debug('Error setting audit user context:', error);
+    }
+  } catch (err) {
+    // Don't throw errors from audit setup - just log and continue
+    console.debug('Error in setAuditUser:', err);
   }
 };
 
 export const feeService = {
   // Fee Heads
   async getFeeHeads(schoolId: number): Promise<FeeHead[]> {
-    const { data, error } = await supabase
-      .from('fee_heads')
-      .select('*')
-      .eq('school_id', schoolId);
-    if (error) throw error;
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('fee_heads')
+        .select('*')
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
     
     // Convert snake_case to camelCase
-    return (data || []).map(item => ({
+    return data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       name: item.name,
@@ -57,25 +111,24 @@ export const feeService = {
   },
 
   // Fee Structures
-  async getFeeStructures(schoolId: number, filters: Partial<{ classId: number; sectionId: number; sessionId: number; feeHeadId: number }> = {}): Promise<FeeStructure[]> {
-    let query = supabase
-      .from('fee_structures')
-      .select('*')
-      .eq('school_id', schoolId);
-    if (filters.classId) query = query.eq('class_id', filters.classId);
-    if (filters.sectionId) query = query.eq('section_id', filters.sectionId);
-    if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
-    if (filters.feeHeadId) query = query.eq('fee_head_id', filters.feeHeadId);
-    const { data, error } = await query;
-    if (error) throw error;
+  async getFeeStructures(schoolId: number, filters: Partial<{ classId: number; sectionId: number; feeHeadId: number }> = {}): Promise<FeeStructure[]> {
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('fee_structures')
+        .select('*')
+        .eq('school_id', schoolId);
+      if (filters.classId) query = query.eq('class_id', filters.classId);
+      if (filters.sectionId) query = query.eq('section_id', filters.sectionId);
+      if (filters.feeHeadId) query = query.eq('fee_head_id', filters.feeHeadId);
+      return await query.range(from, to);
+    });
     
     // Convert snake_case to camelCase
-    return (data || []).map(item => ({
+    return data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       classId: item.class_id,
       sectionId: item.section_id,
-      sessionId: item.session_id,
       feeHeadId: item.fee_head_id,
       amount: item.amount,
       months: item.months || [],
@@ -87,31 +140,33 @@ export const feeService = {
 
   // Student Fee Plans
   async getStudentFeePlans(schoolId: number, studentId: number, sessionId?: number): Promise<StudentFeePlan[]> {
-    let query = supabase
-      .from('student_fee_plans')
-      .select('*')
-      .eq('school_id', schoolId)
-      .eq('student_id', studentId);
-    if (sessionId) query = query.eq('session_id', sessionId);
-    const { data, error } = await query;
-    if (error) throw error;
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('student_fee_plans')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('student_id', studentId);
+      if (sessionId) query = query.eq('session_id', sessionId);
+      return await query.range(from, to);
+    });
     return data;
   },
 
   // Fee Invoices
   async getFeeInvoices(schoolId: number, filters: Partial<{ studentId: number; sessionId: number; status: string }> = {}): Promise<FeeInvoice[]> {
-    let query = supabase
-      .from('fee_invoices')
-      .select('*')
-      .eq('school_id', schoolId);
-    if (filters.studentId) query = query.eq('student_id', filters.studentId);
-    if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
-    if (filters.status) query = query.eq('status', filters.status);
-    const { data, error } = await query;
-    if (error) throw error;
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('fee_invoices')
+        .select('*')
+        .eq('school_id', schoolId);
+      if (filters.studentId) query = query.eq('student_id', filters.studentId);
+      if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
+      if (filters.status) query = query.eq('status', filters.status);
+      return await query.range(from, to);
+    });
     
     // Convert snake_case to camelCase
-    return (data || []).map(item => ({
+    return data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       studentId: item.student_id,
@@ -130,15 +185,17 @@ export const feeService = {
 
   // Fee Invoice Items
   async getFeeInvoiceItems(schoolId: number, invoiceId: number): Promise<FeeInvoiceItem[]> {
-    const { data, error } = await supabase
-      .from('fee_invoice_items')
-      .select('*')
-      .eq('school_id', schoolId)
-      .eq('invoice_id', invoiceId);
-    if (error) throw error;
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('fee_invoice_items')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('invoice_id', invoiceId)
+        .range(from, to);
+    });
     
     // Convert snake_case to camelCase
-    return (data || []).map(item => ({
+    return data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       invoiceId: item.invoice_id,
@@ -154,16 +211,17 @@ export const feeService = {
 
   // Fee Payments
   async getFeePayments(schoolId: number, invoiceId?: number): Promise<FeePayment[]> {
-    let query = supabase
-      .from('fee_payments')
-      .select('*')
-      .eq('school_id', schoolId);
-    if (invoiceId) query = query.eq('invoice_id', invoiceId);
-    const { data, error } = await query;
-    if (error) throw error;
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('fee_payments')
+        .select('*')
+        .eq('school_id', schoolId);
+      if (invoiceId) query = query.eq('invoice_id', invoiceId);
+      return await query.range(from, to);
+    });
     
     // Convert snake_case to camelCase
-    return (data || []).map(item => ({
+    return data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       invoiceId: item.invoice_id,
@@ -238,7 +296,7 @@ export const feeService = {
     // Set user context for audit logging
     if (userId) await setAuditUser(userId);
     
-    const { classId, sectionId, sessionId, feeHeadId, schoolId, ...rest } = structure;
+    const { classId, sectionId, feeHeadId, schoolId, ...rest } = structure;
     const { data, error } = await supabase
       .from('fee_structures')
       .insert({
@@ -246,7 +304,6 @@ export const feeService = {
         school_id: schoolId,
         class_id: classId,
         section_id: sectionId,
-        session_id: sessionId,
         fee_head_id: feeHeadId,
       })
       .select('*')
@@ -260,7 +317,7 @@ export const feeService = {
     // Set user context for audit logging
     if (userId) await setAuditUser(userId);
     
-    const { classId, sectionId, sessionId, feeHeadId, ...rest } = updates;
+    const { classId, sectionId, feeHeadId, ...rest } = updates;
     const { data, error } = await supabase
       .from('fee_structures')
       .update({
@@ -268,7 +325,6 @@ export const feeService = {
         ...(schoolId !== undefined ? { school_id: schoolId } : {}),
         ...(classId !== undefined ? { class_id: classId } : {}),
         ...(sectionId !== undefined ? { section_id: sectionId } : {}),
-        ...(sessionId !== undefined ? { session_id: sessionId } : {}),
         ...(feeHeadId !== undefined ? { fee_head_id: feeHeadId } : {}),
       })
       .eq('id', id)
@@ -294,11 +350,24 @@ export const feeService = {
     // Set user context for audit logging
     if (userId) await setAuditUser(userId);
     
+    // Check if a fee head with this name already exists for this school
+    const trimmedName = name.trim();
+    const { data: existing } = await supabase
+      .from('fee_heads')
+      .select('id, name')
+      .eq('school_id', schoolId)
+      .eq('name', trimmedName)
+      .maybeSingle();
+    
+    if (existing) {
+      throw new Error(`A fee head with the name "${trimmedName}" already exists for this school. Please use a different name.`);
+    }
+    
     const { data, error } = await supabase
       .from('fee_heads')
       .insert({ 
         school_id: schoolId, 
-        name, 
+        name: trimmedName, 
         description, 
         default_amount: defaultAmount || 0,
         frequency: frequency || 'monthly',
@@ -306,7 +375,14 @@ export const feeService = {
       })
       .select('*')
       .single();
-    if (error) throw error;
+    
+    if (error) {
+      // Provide a more user-friendly error message for unique constraint violations
+      if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate') || error.message?.includes('Conflict')) {
+        throw new Error(`A fee head with the name "${trimmedName}" already exists for this school. Please use a different name.`);
+      }
+      throw error;
+    }
     
     // Convert snake_case to camelCase
     return {
@@ -324,25 +400,163 @@ export const feeService = {
   },
 
   // Bulk upsert fee structures
-  async bulkUpsertFeeStructures(schoolId: number, sessionId: number, items: { classId: number; feeHeadId: number; amount: number; months?: number[]; firstTime?: boolean }[], userId?: number): Promise<void> {
+  async bulkUpsertFeeStructures(schoolId: number, items: { classId: number; sectionId?: number | null; feeHeadId: number; amount: number; months?: number[]; firstTime?: boolean }[], userId?: number): Promise<void> {
     if (!items.length) return;
     
     // Set user context for audit logging
     if (userId) await setAuditUser(userId);
-    const upsertPayload = items.map(item => ({
-      school_id: schoolId,
-      session_id: sessionId,
-      class_id: item.classId,
-      section_id: null,
-      fee_head_id: item.feeHeadId,
-      amount: item.amount,
-      months: item.months || [],
-      first_time: item.firstTime || false,
-    }));
-    const { error } = await supabase
-      .from('fee_structures')
-      .upsert(upsertPayload, { onConflict: 'class_id,section_id,session_id,fee_head_id,school_id' });
-    if (error) throw error;
+    
+    // Split items into sectioned and non-sectioned
+    const sectionedItems: typeof items = [];
+    const nonSectionedItems: typeof items = [];
+    
+    for (const item of items) {
+      if (item.sectionId !== null && item.sectionId !== undefined) {
+        sectionedItems.push(item);
+      } else {
+        nonSectionedItems.push(item);
+      }
+    }
+    
+    // Process sectioned items
+    if (sectionedItems.length > 0) {
+      // Get all existing sectioned records
+      const sectionedKeys = sectionedItems.map(item => ({
+        classId: item.classId,
+        sectionId: item.sectionId!,
+        feeHeadId: item.feeHeadId,
+      }));
+      
+      const { data: existingSectioned, error: selectError } = await supabase
+        .from('fee_structures')
+        .select('id, class_id, section_id, fee_head_id')
+        .eq('school_id', schoolId)
+        .not('section_id', 'is', null)
+        .in('class_id', Array.from(new Set(sectionedItems.map(i => i.classId))))
+        .in('fee_head_id', Array.from(new Set(sectionedItems.map(i => i.feeHeadId))));
+      
+      if (selectError) throw selectError;
+      
+      const existingMap = new Map<string, number>();
+      existingSectioned?.forEach(record => {
+        const key = `${record.class_id}_${record.section_id}_${record.fee_head_id}`;
+        existingMap.set(key, record.id);
+      });
+      
+      const toUpdate: any[] = [];
+      const toInsert: any[] = [];
+      
+      for (const item of sectionedItems) {
+        const key = `${item.classId}_${item.sectionId}_${item.feeHeadId}`;
+        const existingId = existingMap.get(key);
+        
+        const payload = {
+          school_id: schoolId,
+          class_id: item.classId,
+          section_id: item.sectionId,
+          fee_head_id: item.feeHeadId,
+          amount: item.amount,
+          months: item.months || [],
+          first_time: item.firstTime || false,
+        };
+        
+        if (existingId) {
+          toUpdate.push({ ...payload, id: existingId });
+        } else {
+          toInsert.push(payload);
+        }
+      }
+      
+      // Batch update existing records
+      if (toUpdate.length > 0) {
+        for (const record of toUpdate) {
+          const { id, ...updateData } = record;
+          const { error: updateError } = await supabase
+            .from('fee_structures')
+            .update(updateData)
+            .eq('id', id)
+            .eq('school_id', schoolId);
+          
+          if (updateError) throw updateError;
+        }
+      }
+      
+      // Batch insert new records
+      if (toInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('fee_structures')
+          .insert(toInsert);
+        
+        if (insertError) throw insertError;
+      }
+    }
+    
+    // Process non-sectioned items
+    if (nonSectionedItems.length > 0) {
+      // Get all existing non-sectioned records
+      const { data: existingNonSectioned, error: selectError2 } = await supabase
+        .from('fee_structures')
+        .select('id, class_id, fee_head_id')
+        .eq('school_id', schoolId)
+        .is('section_id', null)
+        .in('class_id', Array.from(new Set(nonSectionedItems.map(i => i.classId))))
+        .in('fee_head_id', Array.from(new Set(nonSectionedItems.map(i => i.feeHeadId))));
+      
+      if (selectError2) throw selectError2;
+      
+      const existingMap2 = new Map<string, number>();
+      existingNonSectioned?.forEach(record => {
+        const key = `${record.class_id}_${record.fee_head_id}`;
+        existingMap2.set(key, record.id);
+      });
+      
+      const toUpdate2: any[] = [];
+      const toInsert2: any[] = [];
+      
+      for (const item of nonSectionedItems) {
+        const key = `${item.classId}_${item.feeHeadId}`;
+        const existingId = existingMap2.get(key);
+        
+        const payload = {
+          school_id: schoolId,
+          class_id: item.classId,
+          section_id: null,
+          fee_head_id: item.feeHeadId,
+          amount: item.amount,
+          months: item.months || [],
+          first_time: item.firstTime || false,
+        };
+        
+        if (existingId) {
+          toUpdate2.push({ ...payload, id: existingId });
+        } else {
+          toInsert2.push(payload);
+        }
+      }
+      
+      // Batch update existing records
+      if (toUpdate2.length > 0) {
+        for (const record of toUpdate2) {
+          const { id, ...updateData } = record;
+          const { error: updateError } = await supabase
+            .from('fee_structures')
+            .update(updateData)
+            .eq('id', id)
+            .eq('school_id', schoolId);
+          
+          if (updateError) throw updateError;
+        }
+      }
+      
+      // Batch insert new records
+      if (toInsert2.length > 0) {
+        const { error: insertError } = await supabase
+          .from('fee_structures')
+          .insert(toInsert2);
+        
+        if (insertError) throw insertError;
+      }
+    }
   },
 
   // Add deleteFeeHead
@@ -1010,15 +1224,22 @@ export const feeService = {
   async getStudentConcessionsForStudents(schoolId: number, studentIds: number[]): Promise<Map<number, StudentFeeConcession[]>> {
     if (studentIds.length === 0) return new Map();
 
-    const { data, error } = await supabase
-        .from('student_fee_concessions')
-        .select('*')
-        .eq('school_id', schoolId)
-        .in('student_id', studentIds);
-
-    if (error) {
-        throw error;
+    // Chunk studentIds if more than 1000 (Supabase .in() limit)
+    const allData: any[] = [];
+    for (let i = 0; i < studentIds.length; i += 1000) {
+      const chunk = studentIds.slice(i, i + 1000);
+      const chunkData = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('student_fee_concessions')
+          .select('*')
+          .eq('school_id', schoolId)
+          .in('student_id', chunk)
+          .range(from, to);
+      });
+      allData.push(...chunkData);
     }
+    
+    const data = allData;
 
     const concessionsMap = new Map<number, StudentFeeConcession[]>();
     for (const concession of data) {
@@ -1258,13 +1479,12 @@ export const feeService = {
   },
 
   // Fee Plans
-  async getFeePlan(schoolId: number, studentId: number, sessionId: number): Promise<FeePlanWithItems | null> {
+  async getFeePlan(schoolId: number, studentId: number): Promise<FeePlanWithItems | null> {
     const { data: planData, error: planError } = await supabase
       .from('fee_plans')
       .select('*')
       .eq('school_id', schoolId)
       .eq('student_id', studentId)
-      .eq('session_id', sessionId)
       .maybeSingle();
 
     if (planError) {
@@ -1276,24 +1496,22 @@ export const feeService = {
 
     if (!planData) return null;
 
-    // Fetch fee plan items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('fee_plan_items')
-      .select('*')
-      .eq('fee_plan_id', planData.id)
-      .eq('school_id', schoolId);
-
-    if (itemsError) throw itemsError;
+    // Fetch fee plan items with pagination
+    const itemsData = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('fee_plan_items')
+        .select('*')
+        .eq('fee_plan_id', planData.id)
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
 
     // Convert to camelCase
     const plan: FeePlan = {
       id: planData.id,
       schoolId: planData.school_id,
       studentId: planData.student_id,
-      sessionId: planData.session_id,
       effectiveFrom: planData.effective_from,
-      discountType: planData.discount_type,
-      discountReason: planData.discount_reason,
       notes: planData.notes,
       createdAt: planData.created_at,
       updatedAt: planData.updated_at,
@@ -1301,7 +1519,7 @@ export const feeService = {
       updatedBy: planData.updated_by,
     };
 
-    const items: FeePlanItem[] = (itemsData || []).map(item => ({
+    const items: FeePlanItem[] = itemsData.map(item => ({
       id: item.id,
       feePlanId: item.fee_plan_id,
       schoolId: item.school_id,
@@ -1320,11 +1538,8 @@ export const feeService = {
   async createOrUpdateFeePlan(
     schoolId: number,
     studentId: number,
-    sessionId: number,
     planData: {
       effectiveFrom: string;
-      discountType?: string;
-      discountReason?: string;
       notes?: string;
       items: Omit<FeePlanItem, 'id' | 'feePlanId' | 'schoolId' | 'createdAt' | 'updatedAt'>[];
     },
@@ -1334,7 +1549,7 @@ export const feeService = {
     if (userId) await setAuditUser(userId);
 
     // Check if fee plan exists
-    const existing = await this.getFeePlan(schoolId, studentId, sessionId);
+    const existing = await this.getFeePlan(schoolId, studentId);
 
     let feePlanId: number;
 
@@ -1344,8 +1559,6 @@ export const feeService = {
         .from('fee_plans')
         .update({
           effective_from: planData.effectiveFrom,
-          discount_type: planData.discountType || null,
-          discount_reason: planData.discountReason || null,
           notes: planData.notes || null,
           updated_by: userId || null,
         })
@@ -1372,10 +1585,7 @@ export const feeService = {
         .insert({
           school_id: schoolId,
           student_id: studentId,
-          session_id: sessionId,
           effective_from: planData.effectiveFrom,
-          discount_type: planData.discountType || null,
-          discount_reason: planData.discountReason || null,
           notes: planData.notes || null,
           created_by: userId || null,
         })
@@ -1397,6 +1607,8 @@ export const feeService = {
         discount_amount: item.discountAmount || 0,
         discount_percent: item.discountPercent || 0,
         fee_after_discount: item.feeAfterDiscount || 0,
+        discount_type: item.discountType || null,
+        discount_reason: item.discountReason || null,
       }));
 
       const { error: itemsError } = await supabase
@@ -1407,23 +1619,173 @@ export const feeService = {
     }
 
     // Return the complete fee plan
-    const result = await this.getFeePlan(schoolId, studentId, sessionId);
+    const result = await this.getFeePlan(schoolId, studentId);
     if (!result) throw new Error('Failed to retrieve created fee plan');
     return result;
   },
 
-  async deleteFeePlan(schoolId: number, studentId: number, sessionId: number): Promise<void> {
+  async deleteFeePlan(schoolId: number, studentId: number): Promise<void> {
     const { error } = await supabase
       .from('fee_plans')
       .delete()
       .eq('school_id', schoolId)
-      .eq('student_id', studentId)
-      .eq('session_id', sessionId);
+      .eq('student_id', studentId);
 
     if (error) throw error;
   },
 
-  async getAllFeePlans(schoolId: number, studentId?: number, sessionId?: number): Promise<FeePlanWithItems[]> {
+
+  async batchCreateFeePlans(
+    schoolId: number,
+    plans: Array<{
+      studentId: number;
+      effectiveFrom: string;
+      items: Omit<FeePlanItem, 'id' | 'feePlanId' | 'schoolId' | 'createdAt' | 'updatedAt'>[];
+    }>,
+    userId?: number
+  ): Promise<{ successCount: number; errorCount: number }> {
+    if (plans.length === 0) return { successCount: 0, errorCount: 0 };
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Process in smaller batches to avoid overwhelming the network
+    // Reduced to 50 plans per batch for better reliability
+    const chunkSize = 50;
+    for (let i = 0; i < plans.length; i += chunkSize) {
+      const chunk = plans.slice(i, i + chunkSize);
+      const batchNum = Math.floor(i / chunkSize) + 1;
+      
+      try {
+        // Prepare fee plans for batch insert
+        const feePlansToInsert = chunk.map(plan => ({
+          school_id: schoolId,
+          student_id: plan.studentId,
+          effective_from: plan.effectiveFrom,
+          notes: null,
+          created_by: userId || null,
+        }));
+
+        // Batch insert fee plans with retry (5 retries, 1.5s base delay)
+        const plansResult = await retryOperation(async () => {
+          return await supabase
+            .from('fee_plans')
+            .insert(feePlansToInsert)
+            .select('id, student_id');
+        }, 5, 1500);
+
+        if (plansResult.error) {
+          console.error(`Error inserting fee plans (batch ${batchNum}):`, plansResult.error);
+          errorCount += chunk.length;
+          // Add delay before next batch to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+        
+        const insertedPlans = plansResult.data;
+        if (!insertedPlans || insertedPlans.length === 0) {
+          console.error(`No plans inserted for batch ${batchNum}`);
+          errorCount += chunk.length;
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+
+        // Create a map of student_id to fee_plan_id
+        const studentToPlanMap = new Map(insertedPlans.map(p => [p.student_id, p.id]));
+
+        // Process items per plan to ensure transactional-like behavior
+        // This approach is more reliable than batching all items together
+        for (const plan of chunk) {
+          const feePlanId = studentToPlanMap.get(plan.studentId);
+          if (!feePlanId) {
+            errorCount++;
+            continue;
+          }
+
+          if (plan.items.length === 0) {
+            // No items to insert, delete the plan and count as error
+            await retryOperation(async () => {
+              return await supabase
+                .from('fee_plans')
+                .delete()
+                .eq('id', feePlanId);
+            }, 3, 1000);
+            errorCount++;
+            continue;
+          }
+
+          // Prepare items for this plan
+          const planItems = plan.items.map(item => ({
+            fee_plan_id: feePlanId,
+            school_id: schoolId,
+            fee_head_id: item.feeHeadId,
+            arrears: 0,
+            actual_fee: item.actualFee || 0,
+            discount_amount: item.discountAmount || 0,
+            discount_percent: item.discountPercent || 0,
+            fee_after_discount: item.feeAfterDiscount || 0,
+            discount_type: item.discountType || null,
+            discount_reason: item.discountReason || null,
+          }));
+
+          // Insert items for this plan with retry
+          // Process items in smaller chunks (50 at a time) to avoid payload size issues
+          const itemsChunkSize = 50;
+          let planItemsSuccess = true;
+          
+          for (let j = 0; j < planItems.length; j += itemsChunkSize) {
+            const itemsChunk = planItems.slice(j, j + itemsChunkSize);
+            
+            const itemsResult = await retryOperation(async () => {
+              return await supabase
+                .from('fee_plan_items')
+                .insert(itemsChunk);
+            }, 5, 1500);
+
+            if (itemsResult.error) {
+              console.error(`Error inserting items for plan ${feePlanId} (student ${plan.studentId}):`, itemsResult.error);
+              planItemsSuccess = false;
+              break;
+            }
+            
+            // Small delay between item chunks to avoid rate limiting
+            if (j + itemsChunkSize < planItems.length) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          }
+
+          if (planItemsSuccess) {
+            successCount++;
+          } else {
+            // If items failed, delete the plan and count as error
+            await retryOperation(async () => {
+              return await supabase
+                .from('fee_plans')
+                .delete()
+                .eq('id', feePlanId);
+            }, 3, 1000);
+            errorCount++;
+          }
+        }
+
+        // Add delay between batches to avoid overwhelming the network
+        if (i + chunkSize < plans.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      } catch (error: any) {
+        console.error(`Unexpected error in batchCreateFeePlans (batch ${batchNum}):`, error);
+        errorCount += chunk.length;
+        // Delay before next batch
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    return { successCount, errorCount };
+  },
+
+  async getAllFeePlans(schoolId: number, studentId?: number): Promise<FeePlanWithItems[]> {
+    // Fetch all fee plans with pagination
+    const plansData = await fetchAllRows(async (from, to) => {
     let query = supabase
       .from('fee_plans')
       .select('*')
@@ -1433,28 +1795,31 @@ export const feeService = {
       query = query.eq('student_id', studentId);
     }
 
-    if (sessionId) {
-      query = query.eq('session_id', sessionId);
-    }
+      return await query.order('created_at', { ascending: false }).range(from, to);
+    });
 
-    const { data: plansData, error: plansError } = await query.order('created_at', { ascending: false });
-
-    if (plansError) throw plansError;
     if (!plansData || plansData.length === 0) return [];
 
-    // Fetch all fee plan items for all plans
+    // Fetch all fee plan items for all plans (chunked to avoid .in() limit)
     const planIds = plansData.map(p => p.id);
-    const { data: itemsData, error: itemsError } = await supabase
+    const itemsData: any[] = [];
+    const chunkSize = 1000;
+    for (let i = 0; i < planIds.length; i += chunkSize) {
+      const chunk = planIds.slice(i, i + chunkSize);
+      const chunkItems = await fetchAllRows(async (from, to) => {
+        return await supabase
       .from('fee_plan_items')
       .select('*')
-      .in('fee_plan_id', planIds)
-      .eq('school_id', schoolId);
-
-    if (itemsError) throw itemsError;
+          .in('fee_plan_id', chunk)
+          .eq('school_id', schoolId)
+          .range(from, to);
+      });
+      itemsData.push(...chunkItems);
+    }
 
     // Group items by fee_plan_id
     const itemsByPlanId = new Map<number, any[]>();
-    (itemsData || []).forEach(item => {
+    itemsData.forEach(item => {
       const items = itemsByPlanId.get(item.fee_plan_id) || [];
       items.push(item);
       itemsByPlanId.set(item.fee_plan_id, items);
@@ -1466,10 +1831,7 @@ export const feeService = {
         id: planData.id,
         schoolId: planData.school_id,
         studentId: planData.student_id,
-        sessionId: planData.session_id,
         effectiveFrom: planData.effective_from,
-        discountType: planData.discount_type,
-        discountReason: planData.discount_reason,
         notes: planData.notes,
         createdAt: planData.created_at,
         updatedAt: planData.updated_at,
@@ -1486,6 +1848,8 @@ export const feeService = {
         discountAmount: Number(item.discount_amount) || 0,
         discountPercent: Number(item.discount_percent) || 0,
         feeAfterDiscount: Number(item.fee_after_discount) || 0,
+        discountType: item.discount_type || undefined,
+        discountReason: item.discount_reason || undefined,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
       }));
@@ -1497,7 +1861,6 @@ export const feeService = {
   // Fee Increments - Apply increment to fee plans (does NOT affect existing invoices)
   async applyIncrementToFeePlans(
     schoolId: number,
-    sessionId: number,
     incrementType: 'percentage' | 'fixed',
     incrementValue: number,
     options: {
@@ -1511,8 +1874,8 @@ export const feeService = {
     // Set user context for audit logging
     if (userId) await setAuditUser(userId);
 
-    // Fetch all fee plans for the session
-    const feePlans = await this.getAllFeePlans(schoolId, undefined, sessionId);
+    // Fetch all fee plans (session-independent now)
+    const feePlans = await this.getAllFeePlans(schoolId);
     
     // Filter by studentIds if provided
     let plansToUpdate = feePlans;
@@ -1614,7 +1977,6 @@ export const feeService = {
         .from('fee_increment_history')
         .insert({
           school_id: schoolId,
-          session_id: sessionId,
           increment_type: incrementType,
           increment_value: incrementValue,
           target_type: 'fee_plans',
@@ -1930,7 +2292,6 @@ export const feeService = {
       // Apply to fee plans
       const result = await this.applyIncrementToFeePlans(
         schoolId,
-        sessionId,
         newIncrementType,
         newIncrementValue,
         {
@@ -1993,5 +2354,252 @@ export const feeService = {
     newHistoryId = historyData?.id;
     
     return { updatedCount, affectedStudents, historyId: newHistoryId! };
+  },
+
+  // Sync a new fee head to existing fee plans
+  async syncFeeHeadToFeePlans(
+    schoolId: number,
+    feeHeadId: number,
+    sessionId: number,
+    options: {
+      feePlanIds?: number[]; // If provided, only sync to these plans; otherwise sync to all
+      useFeeStructureAmount?: boolean; // If true, use fee structure amount; otherwise use default amount
+    } = {},
+    userId?: number
+  ): Promise<{ updatedCount: number; affectedStudents: number }> {
+    // Set user context for audit logging
+    if (userId) await setAuditUser(userId);
+
+    // Get the fee head to get default amount
+    const feeHeads = await this.getFeeHeads(schoolId);
+    const feeHead = feeHeads.find(fh => fh.id === feeHeadId);
+    if (!feeHead) throw new Error('Fee head not found');
+
+    // Get all fee plans (no session filter - plans are session-independent now)
+    let feePlans = await this.getAllFeePlans(schoolId);
+
+    // Filter by feePlanIds if provided
+    if (options.feePlanIds && options.feePlanIds.length > 0) {
+      feePlans = feePlans.filter(p => options.feePlanIds!.includes(p.id));
+    }
+
+    // Filter out plans that already have this fee head
+    feePlans = feePlans.filter(plan => 
+      !plan.items.some(item => item.feeHeadId === feeHeadId)
+    );
+
+    if (feePlans.length === 0) {
+      return { updatedCount: 0, affectedStudents: 0 };
+    }
+
+    // Get all fee structures for this fee head (no session filter - structures are session-independent now)
+    const feeStructures = await this.getFeeStructures(schoolId, {
+      feeHeadId
+    });
+
+    // Get student class information for all students with fee plans
+    const studentIds = Array.from(new Set(feePlans.map(p => p.studentId)));
+    
+    // Chunk student IDs to avoid Supabase .in() limit (1000 items)
+    const studentClassData: any[] = [];
+    const chunkSize = 1000;
+    for (let i = 0; i < studentIds.length; i += chunkSize) {
+      const chunk = studentIds.slice(i, i + chunkSize);
+      const chunkData = await fetchAllRows(async (from, to) => {
+        return await supabase
+      .from('student_class_history')
+      .select('student_id, new_class_id, new_section_id')
+      .eq('school_id', schoolId)
+      .eq('session_id', sessionId)
+          .in('student_id', chunk)
+          .range(from, to);
+      });
+      studentClassData.push(...chunkData);
+    }
+
+    // Create a map of student to class/section
+    const studentClassMap = new Map<number, { classId: number; sectionId?: number }>();
+    studentClassData?.forEach(record => {
+      studentClassMap.set(record.student_id, {
+        classId: record.new_class_id,
+        sectionId: record.new_section_id || undefined
+      });
+    });
+
+    // Prepare items to insert
+    const itemsToInsert: any[] = [];
+    const affectedStudents = new Set<number>();
+
+    for (const plan of feePlans) {
+      // Determine the amount to use
+      let amount = feeHead.defaultAmount || 0;
+
+      if (options.useFeeStructureAmount) {
+        const studentClass = studentClassMap.get(plan.studentId);
+        if (studentClass) {
+          // Try to find matching fee structure
+          const structure = feeStructures.find(s => 
+            s.classId === studentClass.classId &&
+            (s.sectionId === null || s.sectionId === studentClass.sectionId)
+          );
+          if (structure) {
+            amount = structure.amount;
+          }
+        }
+      }
+
+      // Add fee plan item
+      itemsToInsert.push({
+        fee_plan_id: plan.id,
+        school_id: schoolId,
+        fee_head_id: feeHeadId,
+        arrears: 0,
+        actual_fee: amount,
+        discount_amount: 0,
+        discount_percent: 0,
+        fee_after_discount: amount,
+      });
+
+      affectedStudents.add(plan.studentId);
+    }
+
+    // Insert all items in chunks to avoid Supabase limits
+    if (itemsToInsert.length > 0) {
+      const chunkSize = 1000;
+      for (let i = 0; i < itemsToInsert.length; i += chunkSize) {
+        const chunk = itemsToInsert.slice(i, i + chunkSize);
+      const { error: insertError } = await supabase
+        .from('fee_plan_items')
+          .insert(chunk);
+
+      if (insertError) throw insertError;
+      }
+    }
+
+    return {
+      updatedCount: itemsToInsert.length,
+      affectedStudents: affectedStudents.size
+    };
+  },
+
+  // Sync all missing fee heads to all fee plans for a session
+  async syncAllMissingFeeHeadsToFeePlans(
+    schoolId: number,
+    sessionId: number,
+    options: {
+      feePlanIds?: number[]; // If provided, only sync to these plans; otherwise sync to all
+      useFeeStructureAmount?: boolean; // If true, use fee structure amount; otherwise use default amount
+    } = {},
+    userId?: number
+  ): Promise<{ updatedCount: number; affectedStudents: number; syncedFeeHeads: number }> {
+    // Set user context for audit logging
+    if (userId) await setAuditUser(userId);
+
+    // Get all fee heads
+    const feeHeads = await this.getFeeHeads(schoolId);
+    if (feeHeads.length === 0) {
+      return { updatedCount: 0, affectedStudents: 0, syncedFeeHeads: 0 };
+    }
+
+    // Get all fee plans (session-independent now)
+    let feePlans = await this.getAllFeePlans(schoolId);
+
+    // Filter by feePlanIds if provided
+    if (options.feePlanIds && options.feePlanIds.length > 0) {
+      feePlans = feePlans.filter(p => options.feePlanIds!.includes(p.id));
+    }
+
+    if (feePlans.length === 0) {
+      return { updatedCount: 0, affectedStudents: 0, syncedFeeHeads: 0 };
+    }
+
+    // Get all fee structures (session-independent now)
+    const feeStructures = await this.getFeeStructures(schoolId);
+
+    // Get student class information for all students with fee plans
+    const studentIds = Array.from(new Set(feePlans.map(p => p.studentId)));
+    const { data: studentClassData, error: classError } = await supabase
+      .from('student_class_history')
+      .select('student_id, new_class_id, new_section_id')
+      .eq('school_id', schoolId)
+      .eq('session_id', sessionId)
+      .in('student_id', studentIds);
+
+    if (classError) throw classError;
+
+    // Create a map of student to class/section
+    const studentClassMap = new Map<number, { classId: number; sectionId?: number }>();
+    studentClassData?.forEach(record => {
+      studentClassMap.set(record.student_id, {
+        classId: record.new_class_id,
+        sectionId: record.new_section_id || undefined
+      });
+    });
+
+    // Prepare items to insert
+    const itemsToInsert: any[] = [];
+    const affectedStudents = new Set<number>();
+    const syncedFeeHeadIds = new Set<number>();
+
+    for (const plan of feePlans) {
+      for (const feeHead of feeHeads) {
+        // Skip if plan already has this fee head
+        if (plan.items.some(item => item.feeHeadId === feeHead.id)) {
+          continue;
+        }
+
+        // Determine the amount to use
+        let amount = feeHead.defaultAmount || 0;
+
+        if (options.useFeeStructureAmount) {
+          const studentClass = studentClassMap.get(plan.studentId);
+          if (studentClass) {
+            // Try to find matching fee structure
+            const structure = feeStructures.find(s => 
+              s.classId === studentClass.classId &&
+              (s.sectionId === null || s.sectionId === studentClass.sectionId) &&
+              s.feeHeadId === feeHead.id
+            );
+            if (structure) {
+              amount = structure.amount;
+            }
+          }
+        }
+
+        // Add fee plan item
+        itemsToInsert.push({
+          fee_plan_id: plan.id,
+          school_id: schoolId,
+          fee_head_id: feeHead.id,
+          arrears: 0,
+          actual_fee: amount,
+          discount_amount: 0,
+          discount_percent: 0,
+          fee_after_discount: amount,
+        });
+
+        affectedStudents.add(plan.studentId);
+        syncedFeeHeadIds.add(feeHead.id);
+      }
+    }
+
+    // Insert all items in chunks to avoid Supabase limits
+    if (itemsToInsert.length > 0) {
+      const chunkSize = 1000;
+      for (let i = 0; i < itemsToInsert.length; i += chunkSize) {
+        const chunk = itemsToInsert.slice(i, i + chunkSize);
+      const { error: insertError } = await supabase
+        .from('fee_plan_items')
+          .insert(chunk);
+
+      if (insertError) throw insertError;
+      }
+    }
+
+    return {
+      updatedCount: itemsToInsert.length,
+      affectedStudents: affectedStudents.size,
+      syncedFeeHeads: syncedFeeHeadIds.size
+    };
   },
 }; 

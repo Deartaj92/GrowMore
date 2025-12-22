@@ -7,6 +7,7 @@ import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 import {
   AccountBalance,
   Search as SearchIcon,
@@ -860,50 +861,54 @@ export default function LedgerPage() {
     setLoading(true);
     setIsLoadingData(true);
     try {
-      // Fetch students
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('id, name, roll_number, class_id, section_id')
-        .eq('school_id', user.school_id)
-        .order('name', { ascending: true });
-
-      if (studentsError) throw studentsError;
-
-      // Fetch classes and sections
-      const { data: classesData } = await supabase
-        .from('classes')
-        .select('id, name, has_sections')
-        .eq('school_id', user.school_id)
-        .order('name', { ascending: true });
-
-      const { data: sectionsData } = await supabase
-        .from('sections')
-        .select('id, name, class_id')
-        .eq('school_id', user.school_id)
-        .order('name', { ascending: true });
-
-      // Fetch invoices
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('fee_invoices')
-        .select('*')
-        .eq('school_id', user.school_id)
-        .order('invoice_date', { ascending: false });
-
-      if (invoicesError) throw invoicesError;
-
-      // Fetch payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('fee_payments')
-        .select('*')
-        .eq('school_id', user.school_id)
-        .order('payment_date', { ascending: false });
-
-      if (paymentsError) throw paymentsError;
+      // Fetch students, classes, sections, invoices, and payments with pagination
+      const [studentsData, classesData, sectionsData, invoicesData, paymentsData] = await Promise.all([
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('students')
+            .select('id, name, roll_number, class_id, section_id')
+            .eq('school_id', user.school_id)
+            .order('name', { ascending: true })
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', user.school_id)
+            .order('name', { ascending: true })
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('sections')
+            .select('id, name, class_id')
+            .eq('school_id', user.school_id)
+            .order('name', { ascending: true })
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_invoices')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .order('invoice_date', { ascending: false })
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_payments')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .order('payment_date', { ascending: false })
+            .range(from, to);
+        }),
+      ]);
 
       // Build ledger entries
-      const entries: LedgerEntry[] = (studentsData || []).map(student => {
-        const studentInvoices = (invoicesData || []).filter(inv => inv.student_id === student.id);
-        const studentPayments = (paymentsData || []).filter(pay => 
+      const entries: LedgerEntry[] = studentsData.map(student => {
+        const studentInvoices = invoicesData.filter(inv => inv.student_id === student.id);
+        const studentPayments = paymentsData.filter(pay => 
           studentInvoices.some(inv => inv.id === pay.invoice_id)
         );
 

@@ -12,7 +12,7 @@ const FormContainer = styled.div`
 
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
+  grid-template-columns: 1fr 2fr;
   gap: 12px;
   
   @media (max-width: 768px) {
@@ -89,16 +89,6 @@ interface FeePlanFormProps {
   onChange: (data: Partial<FeePlanFormData>) => void;
 }
 
-const DISCOUNT_TYPES = [
-  'Siblings',
-  'Merit',
-  'Need-based',
-  'Staff',
-  'Early Payment',
-  'Bulk Payment',
-  'Other'
-];
-
 export const FeePlanForm: React.FC<FeePlanFormProps> = ({ formData, onChange }) => {
   return (
     <FormContainer>
@@ -110,18 +100,6 @@ export const FeePlanForm: React.FC<FeePlanFormProps> = ({ formData, onChange }) 
             value={formData.effectiveFrom}
             onChange={(e) => onChange({ effectiveFrom: e.target.value })}
           />
-        </FormGroup>
-        <FormGroup>
-          <Label>Discount Type or Reason</Label>
-          <Select
-            value={formData.discountType || ''}
-            onChange={(e) => onChange({ discountType: e.target.value || undefined })}
-          >
-            <option value="">Select discount type</option>
-            {DISCOUNT_TYPES.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </Select>
         </FormGroup>
         <FormGroup>
           <Label>Notes</Label>

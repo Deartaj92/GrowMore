@@ -14,6 +14,7 @@ import {
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { useLoading } from '../contexts/LoadingContext';
 import { useProgress } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
@@ -2577,14 +2578,30 @@ const FeeDefaultersList: React.FC = () => {
       setLoading(true);
       
       try {
-        const [{ data: studentsData }, { data: classesData }, { data: allSectionsData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
-          supabase.from('classes').select('id, name').eq('school_id', user.school_id),
-          supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
+        const [studentsData, classesData, allSectionsData] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('students')
+              .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
+              .eq('status', 'active')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sections')
+              .select('id, name, class_id')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
         ]);
         
         
-        if (studentsData) setStudents(studentsData);
+        setStudents(studentsData);
         if (classesData) {
           // Sort classes using the utility function
           const sortedClasses = sortClasses(classesData);

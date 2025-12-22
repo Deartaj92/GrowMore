@@ -65,6 +65,16 @@ export interface AssetsLiabilitiesData {
   netWorth: number;
 }
 
+export interface CashFlowTransaction {
+  id: string | number;
+  type: 'credit' | 'debit';
+  category: 'fee_payment' | 'other_income' | 'expense' | 'asset_purchase' | 'liability_payment';
+  description: string;
+  amount: number;
+  date: string;
+  paymentMethod?: string;
+}
+
 export interface CashFlowData {
   openingBalance: number;
   inflows: {
@@ -86,6 +96,7 @@ export interface CashFlowData {
     outflows: number;
     netFlow: number;
   }>;
+  transactions: CashFlowTransaction[];
 }
 
 export interface AccountsData {
@@ -116,6 +127,7 @@ export const fetchAccountsData = async (
     const sessionData = await getCachedSession();
     
     // Helper function to fetch all rows with pagination
+    // This handles Supabase's 1000 row limit by automatically paginating
     const fetchAllRows = async <T,>(
       queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>
     ): Promise<T[]> => {
@@ -123,17 +135,31 @@ export const fetchAccountsData = async (
       let from = 0;
       const pageSize = 1000;
       let hasMore = true;
+      let consecutiveEmptyPages = 0;
+      const maxEmptyPages = 2; // Safety check to prevent infinite loops
 
-      while (hasMore) {
+      while (hasMore && consecutiveEmptyPages < maxEmptyPages) {
         const { data, error } = await queryFn(from, from + pageSize - 1);
-        if (error) throw error;
+        if (error) {
+          console.error('Error in fetchAllRows:', error);
+          throw error;
+        }
 
         if (data && data.length > 0) {
           allResults.push(...data);
           from += pageSize;
+          // Continue if we got a full page (might be more data)
           hasMore = data.length === pageSize;
+          consecutiveEmptyPages = 0; // Reset counter on successful fetch
         } else {
-          hasMore = false;
+          // No data returned - check if we should continue
+          // If we've fetched some data before, this might be the end
+          // If this is the first page and it's empty, there's no data
+          if (allResults.length > 0 || from === 0) {
+            hasMore = false;
+          } else {
+            consecutiveEmptyPages++;
+          }
         }
       }
 
@@ -144,7 +170,7 @@ export const fetchAccountsData = async (
     const feePayments = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('fee_payments')
-        .select('amount, payment_mode, payment_date, account_id')
+        .select('id, amount, payment_mode, payment_date, account_id')
         .eq('school_id', schoolId)
         .gte('payment_date', dateFrom)
         .lte('payment_date', dateTo)
@@ -155,7 +181,7 @@ export const fetchAccountsData = async (
     const otherIncomes = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('other_incomes')
-        .select('amount, payment_method, income_date, status')
+        .select('id, amount, payment_method, income_date, status, title, description, account_id')
         .eq('school_id', schoolId)
         .gte('income_date', dateFrom)
         .lte('income_date', dateTo)
@@ -172,7 +198,7 @@ export const fetchAccountsData = async (
     const expensesData = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('expenses')
-        .select('amount, payment_method, expense_date, status, account_id')
+        .select('id, amount, payment_method, expense_date, status, account_id, title, description')
         .eq('school_id', schoolId)
         .gte('expense_date', dateFrom)
         .lte('expense_date', dateTo)
@@ -517,39 +543,39 @@ export const fetchAccountsData = async (
       // This represents the actual cash position at the start of the selected period
       // Calculated using the same logic as cash accounts but for all transactions before dateFrom
       
-      // Fetch all fee payments before dateFrom
+      // Fetch all fee payments before dateFrom - using pagination
       const openingFeePayments = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('fee_payments')
           .select('amount, payment_mode, account_id')
-          .eq('school_id', schoolIdNum)
+          .eq('school_id', schoolId) // Use string schoolId for consistency
           .lt('payment_date', dateFrom)
           .range(from, to);
       });
       
-      // Fetch all other incomes before dateFrom (only received status)
+      // Fetch all other incomes before dateFrom (only received status) - using pagination
       const openingOtherIncomes = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('other_incomes')
           .select('amount, payment_method, status, account_id')
-          .eq('school_id', schoolIdNum)
+          .eq('school_id', schoolId) // Use string schoolId for consistency
           .eq('status', 'received') // Only received (actual cash received)
           .lt('income_date', dateFrom)
           .range(from, to);
       });
       
-      // Fetch all expenses before dateFrom (only paid status)
+      // Fetch all expenses before dateFrom (only paid status) - using pagination
       const openingExpenses = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('expenses')
           .select('amount, payment_method, status, account_id')
-          .eq('school_id', schoolIdNum)
+          .eq('school_id', schoolId) // Use string schoolId for consistency
           .eq('status', 'paid') // Only paid expenses (actual cash paid out)
           .lt('expense_date', dateFrom)
           .range(from, to);
       });
       
-      // Fetch all asset purchases before dateFrom
+      // Fetch all asset purchases before dateFrom - using pagination
       // Fetch asset purchases before dateFrom (now with payment_method and account_id)
       const openingAssetPurchases = await fetchAllRows(async (from, to) => {
         return await supabase
@@ -560,7 +586,7 @@ export const fetchAccountsData = async (
           .range(from, to);
       });
       
-      // Fetch all liability payments before dateFrom
+      // Fetch all liability payments before dateFrom - using pagination
       // Filter same as expenses: only cash-based, exclude account-based
       const openingLiabilityPayments = await fetchAllRows(async (from, to) => {
         return await supabase
@@ -587,13 +613,10 @@ export const fetchAccountsData = async (
         openingBalance += Number(payment.amount) || 0;
       });
       
-      // Add cash inflows from other incomes (exclude account-based)
+      // Add inflows from other incomes (include all received, any payment method)
       openingOtherIncomes.forEach(income => {
-        // Exclude if it has an account_id (paid to account, not cash)
-        if (income.account_id) return;
-        
-        // Only count cash-based payment methods
-        if (!isCashBased(income.payment_method)) return;
+        // Only count received status
+        if (income.status !== 'received') return;
         
         openingBalance += Number(income.amount) || 0;
       });
@@ -646,11 +669,9 @@ export const fetchAccountsData = async (
       });
       const cashFeeIncome = cashFeePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
       
-      // Other incomes: only received status and cash-based
+      // Other incomes: include all received status (any payment method)
       const cashOtherIncomes = otherIncomes.filter(i => {
-        // Exclude if it has an account_id (paid to account, not cash)
-        if ((i as any).account_id) return false;
-        return i.status === 'received' && isCashBased(i.payment_method);
+        return i.status === 'received';
       });
       const cashOtherIncome = cashOtherIncomes.reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
       const cashIncome = cashFeeIncome + cashOtherIncome;
@@ -666,25 +687,25 @@ export const fetchAccountsData = async (
       });
       const cashExpenses = cashExpensesData.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
       
-      // Fetch asset purchases in date range
+      // Fetch asset purchases in date range - using pagination
       // Fetch asset purchases in date range (now with payment_method and account_id)
       const assetPurchases = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('assets')
-          .select('purchase_cost, purchase_date, payment_method, account_id')
+          .select('id, purchase_cost, purchase_date, payment_method, account_id, name')
           .eq('school_id', schoolIdNum)
           .gte('purchase_date', dateFrom)
           .lte('purchase_date', dateTo)
           .range(from, to);
       });
       
-      // Fetch liability payments in date range
+      // Fetch liability payments in date range - using pagination
       // Filter same as expenses: only cash-based, exclude account-based
       // Liability payments use same approach as expenses - accounts from SetupAccounts can be selected
       const liabilityPayments = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('liability_payments')
-          .select('payment_amount, payment_date, payment_method, account_id')
+          .select('id, payment_amount, payment_date, payment_method, account_id, liability_id, notes, liabilities(name)')
           .eq('school_id', schoolIdNum)
           .gte('payment_date', dateFrom)
           .lte('payment_date', dateTo)
@@ -797,6 +818,131 @@ export const fetchAccountsData = async (
           netFlow: item.netFlow
         }));
       
+      // Build transactions array from all cash-based transactions
+      const transactions: CashFlowTransaction[] = [];
+      
+      try {
+        // Debug: Log counts before filtering
+        console.log('[Cash Flow] Transaction counts before filtering:', {
+          feePayments: feePayments?.length || 0,
+          otherIncomes: otherIncomes?.length || 0,
+          expensesData: expensesData?.length || 0,
+          assetPurchases: assetPurchases?.length || 0,
+          liabilityPayments: liabilityPayments?.length || 0
+        });
+        
+        // Add fee payments (credits)
+        if (cashFeePayments && Array.isArray(cashFeePayments)) {
+          console.log('[Cash Flow] Adding fee payments:', cashFeePayments.length);
+          cashFeePayments.forEach((payment: any) => {
+            if (!payment || !payment.payment_date) return;
+            transactions.push({
+              id: payment.id || `fee_${payment.payment_date}_${payment.amount}`,
+              type: 'credit',
+              category: 'fee_payment',
+              description: 'Fee Payment',
+              amount: Number(payment.amount) || 0,
+              date: payment.payment_date,
+              paymentMethod: payment.payment_mode || null
+            });
+          });
+        }
+        
+        // Add other incomes (credits)
+        if (cashOtherIncomes && Array.isArray(cashOtherIncomes)) {
+          console.log('[Cash Flow] Adding other incomes:', cashOtherIncomes.length);
+          cashOtherIncomes.forEach((income: any) => {
+            if (!income || !income.income_date) return;
+            transactions.push({
+              id: income.id || `income_${income.income_date}_${income.amount}`,
+              type: 'credit',
+              category: 'other_income',
+              description: income.title || income.description || 'Other Income',
+              amount: Number(income.amount) || 0,
+              date: income.income_date,
+              paymentMethod: income.payment_method || null
+            });
+          });
+        }
+        
+        // Add expenses (debits)
+        if (cashExpensesData && Array.isArray(cashExpensesData)) {
+          console.log('[Cash Flow] Adding expenses:', cashExpensesData.length);
+          cashExpensesData.forEach((expense: any) => {
+            if (!expense || !expense.expense_date) return;
+            transactions.push({
+              id: expense.id || `expense_${expense.expense_date}_${expense.amount}`,
+              type: 'debit',
+              category: 'expense',
+              description: expense.title || expense.description || 'Expense',
+              amount: Number(expense.amount) || 0,
+              date: expense.expense_date,
+              paymentMethod: expense.payment_method || null
+            });
+          });
+        }
+        
+        // Add asset purchases (debits)
+        if (cashAssetPurchases && Array.isArray(cashAssetPurchases)) {
+          console.log('[Cash Flow] Adding asset purchases:', cashAssetPurchases.length);
+          cashAssetPurchases.forEach((asset: any) => {
+            if (!asset || !asset.purchase_date) return;
+            transactions.push({
+              id: asset.id || `asset_${asset.purchase_date}_${asset.purchase_cost}`,
+              type: 'debit',
+              category: 'asset_purchase',
+              description: asset.name || 'Asset Purchase',
+              amount: Number(asset.purchase_cost) || 0,
+              date: asset.purchase_date,
+              paymentMethod: asset.payment_method || null
+            });
+          });
+        }
+        
+        // Add liability payments (debits)
+        if (cashLiabilityPaymentsData && Array.isArray(cashLiabilityPaymentsData)) {
+          console.log('[Cash Flow] Adding liability payments:', cashLiabilityPaymentsData.length);
+          cashLiabilityPaymentsData.forEach((payment: any) => {
+            if (!payment || !payment.payment_date) return;
+            // Handle joined liability data - could be object or array
+            let liabilityName = 'Liability Payment';
+            if (payment.liabilities) {
+              if (Array.isArray(payment.liabilities) && payment.liabilities.length > 0) {
+                liabilityName = payment.liabilities[0].name || liabilityName;
+              } else if (payment.liabilities.name) {
+                liabilityName = payment.liabilities.name;
+              }
+            }
+            transactions.push({
+              id: payment.id || `liability_${payment.payment_date}_${payment.payment_amount}`,
+              type: 'debit',
+              category: 'liability_payment',
+              description: liabilityName,
+              amount: Number(payment.payment_amount) || 0,
+              date: payment.payment_date,
+              paymentMethod: payment.payment_method || null
+            });
+          });
+        }
+        
+        console.log('[Cash Flow] Total transactions after building:', transactions.length);
+        
+        // Sort transactions by date (newest first)
+        transactions.sort((a, b) => {
+          try {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            if (isNaN(dateA) || isNaN(dateB)) return 0;
+            return dateB - dateA;
+          } catch {
+            return 0;
+          }
+        });
+      } catch (transactionError) {
+        console.error('Error building transactions array:', transactionError);
+        // Continue with empty transactions array if there's an error
+      }
+      
       cashFlowData = {
         openingBalance,
         inflows: {
@@ -812,10 +958,15 @@ export const fetchAccountsData = async (
         },
         netCashFlow: cashIncome - (cashExpenses + totalAssetPurchases + totalLiabilityPayments),
         closingBalance: openingBalance + cashIncome - (cashExpenses + totalAssetPurchases + totalLiabilityPayments),
-        monthlyCashFlow
+        monthlyCashFlow,
+        transactions
       };
     } catch (error) {
       console.error('Error fetching cash flow data:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
     }
 
     const accountsData: AccountsData = {

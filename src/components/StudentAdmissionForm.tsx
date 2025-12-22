@@ -2963,7 +2963,6 @@ const StudentAdmissionForm: React.FC = () => {
             handleReset();
           }}
           schoolId={user?.school_id || 0}
-          sessionId={activeSession.id}
           feeHeads={feeHeads}
           initialStudent={newStudentForFeePlan}
         />

@@ -111,50 +111,89 @@ export const liabilitiesService = {
 
   // Liabilities
   async getLiabilities(schoolId: number, filters: LiabilityFilters = {}): Promise<Liability[]> {
-    let query = supabase
-      .from('liabilities')
-      .select(`
-        *,
-        liability_categories (
-          id,
-          name,
-          description,
-          color,
-          is_active
-        )
-      `)
-      .eq('school_id', schoolId)
-      .order('start_date', { ascending: false })
-      .order('created_at', { ascending: false });
-    
-    if (filters.categoryId) {
-      query = query.eq('category_id', filters.categoryId);
-    }
-    
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
-    
-    if (filters.startDate) {
-      query = query.gte('start_date', filters.startDate);
-    }
-    
-    if (filters.endDate) {
-      query = query.lte('start_date', filters.endDate);
-    }
-    
-    if (filters.hasInterest !== undefined) {
-      if (filters.hasInterest) {
-        query = query.not('interest_rate', 'is', null);
-      } else {
-        query = query.is('interest_rate', null);
+    // Helper function to handle Supabase's 1000 row limit by automatically paginating
+    const fetchAllRows = async <T,>(
+      queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>
+    ): Promise<T[]> => {
+      const allResults: T[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      let consecutiveEmptyPages = 0;
+      const maxEmptyPages = 2; // Safety check to prevent infinite loops
+
+      while (hasMore && consecutiveEmptyPages < maxEmptyPages) {
+        const { data, error } = await queryFn(from, from + pageSize - 1);
+        if (error) {
+          console.error('Error in fetchAllRows:', error);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allResults.push(...data);
+          from += pageSize;
+          // Continue if we got a full page (might be more data)
+          hasMore = data.length === pageSize;
+          consecutiveEmptyPages = 0; // Reset counter on successful fetch
+        } else {
+          // No data returned - check if we should continue
+          if (allResults.length > 0 || from === 0) {
+            hasMore = false;
+          } else {
+            consecutiveEmptyPages++;
+          }
+        }
       }
-    }
+
+      return allResults;
+    };
+
+    // Fetch all liabilities with pagination
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('liabilities')
+        .select(`
+          *,
+          liability_categories (
+            id,
+            name,
+            description,
+            color,
+            is_active
+          )
+        `)
+        .eq('school_id', schoolId)
+        .order('start_date', { ascending: false })
+        .order('created_at', { ascending: false });
+      
+      if (filters.categoryId) {
+        query = query.eq('category_id', filters.categoryId);
+      }
+      
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      if (filters.startDate) {
+        query = query.gte('start_date', filters.startDate);
+      }
+      
+      if (filters.endDate) {
+        query = query.lte('start_date', filters.endDate);
+      }
+      
+      if (filters.hasInterest !== undefined) {
+        if (filters.hasInterest) {
+          query = query.not('interest_rate', 'is', null);
+        } else {
+          query = query.is('interest_rate', null);
+        }
+      }
+      
+      return await query.range(from, to);
+    });
     
-    const { data, error } = await query;
-    if (error) throw error;
-    
-    let liabilities = (data || []).map(item => ({
+    let liabilities = data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       categoryId: item.category_id,

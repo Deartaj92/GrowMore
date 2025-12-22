@@ -22,6 +22,7 @@ import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 import Loader from '../components/Loader';
 
 const Container = styled.div`
@@ -964,17 +965,47 @@ const UserAnnouncements: React.FC = () => {
     const loadTargetingData = async () => {
       if (!user?.school_id) return;
       try {
-        const [{ data: classData }, { data: sectionData }, { data: studentData }, { data: staffData }, { data: familiesData }] = await Promise.all([
-          supabase.from('classes').select('id, name').eq('school_id', user.school_id).order('name'),
-          supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id).order('name'),
-          supabase.from('students').select('id, name, father_name, class_id, section_id').eq('school_id', user.school_id).order('id'),
-          supabase.from('staff').select('id, name, role').eq('school_id', user.school_id).order('name'),
-          supabase.from('families').select('id, name, contact_person, contact_number').eq('school_id', user.school_id).order('name')
+        const [classData, sectionData, studentData, staffData, familiesData] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .order('name')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sections')
+              .select('id, name, class_id')
+              .eq('school_id', user.school_id)
+              .order('name')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('students')
+              .select('id, name, father_name, class_id, section_id')
+              .eq('school_id', user.school_id)
+              .order('id')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('staff')
+              .select('id, name, role')
+              .eq('school_id', user.school_id)
+              .order('name')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('families')
+              .select('id, name, contact_person, contact_number')
+              .eq('school_id', user.school_id)
+              .order('name')
+              .range(from, to);
+          }),
         ]);
-        if (classData) setClasses(classData);
-        if (sectionData) setSections(sectionData);
-        if (studentData) setStudents(studentData);
-        if (staffData) setStaffMembers(staffData);
+        setClasses(classData);
+        setSections(sectionData);
+        setStudents(studentData);
+        setStaffMembers(staffData);
         if (familiesData) setFamilies(familiesData);
       } catch (error) {
       }

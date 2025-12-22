@@ -31,6 +31,7 @@ import {
 import * as Icons from '@mui/icons-material';
 import { FormControl, InputLabel, Select, MenuItem, Box, TextField, SelectChangeEvent, Dialog, DialogContent, DialogActions, Typography, Grid, IconButton, Button, Checkbox, FormControlLabel } from '@mui/material';
 import { supabase } from '../supabaseClient';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { expenseService } from '../services/expenseService';
 import { Expense, ExpenseCategory, ExpenseFilters } from '../types/expense';
 import { useAuth } from '../contexts/AuthContext';
@@ -725,16 +726,30 @@ const ExpenseManager: React.FC = () => {
       const [categoriesData, expensesData, accountsData, accountTypesData] = await Promise.all([
         expenseService.getExpenseCategories(user.school_id),
         expenseService.getExpenses(user.school_id, { ...filters, searchQuery }),
-        supabase.from('accounts').select('*').eq('school_id', user.school_id).eq('is_active', true).order('name'),
-        supabase.from('account_types').select('*').or(`school_id.eq.1,school_id.eq.${user.school_id}`).eq('is_active', true).order('display_name'),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('accounts')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .eq('is_active', true)
+            .order('name')
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('account_types')
+            .select('*')
+            .or(`school_id.eq.1,school_id.eq.${user.school_id}`)
+            .eq('is_active', true)
+            .order('display_name')
+            .range(from, to);
+        }),
       ]);
       setCategories(categoriesData);
       setExpenses(expensesData);
-      if (accountsData.data) setAccounts(accountsData.data);
-      if (accountTypesData.data) {
+      if (accountsData && accountsData.length > 0) setAccounts(accountsData);
+      if (accountTypesData && accountTypesData.length > 0) {
         // Deduplicate account types (prefer system types)
         const uniqueTypes = new Map();
-        accountTypesData.data.forEach((type: any) => {
+        accountTypesData.forEach((type: any) => {
           if (!uniqueTypes.has(type.name) || type.school_id === 1) {
             uniqueTypes.set(type.name, type);
           }

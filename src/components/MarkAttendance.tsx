@@ -3,6 +3,7 @@ import styled, { css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { ThemeContext, useProgress, darkTheme, lightTheme } from './Layout';
 import { useToast } from './useToast';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { format, isSunday, parseISO } from 'date-fns';
 import { sortClasses } from '../utils/classUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -1668,10 +1669,14 @@ const MarkAttendance: React.FC = () => {
     if (!user?.school_id) return;
     try {
       setLoadingClasses(true);
-      const query = supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id);
+      const data = await fetchAllRows(async (from, to) => {
+        return await supabase.from('classes')
+          .select('id, name, has_sections')
+          .eq('school_id', user.school_id)
+          .range(from, to);
+      });
       
-      const { data, error } = await query;
-      if (error) {
+      if (!data) {
         toast.showToast('Failed to fetch classes (see console)', 'error');
       }
       const sortedClasses = sortClasses(data || []);

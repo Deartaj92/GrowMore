@@ -7,6 +7,7 @@ import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 import {
   History,
   Search as SearchIcon,
@@ -1196,17 +1197,37 @@ const PaymentHistoryPage: React.FC = () => {
           const classIds = Array.from(new Set(studentsData?.map((s: any) => s.class_id).filter(Boolean) || []));
           const sectionIds = Array.from(new Set(studentsData?.map((s: any) => s.section_id).filter(Boolean) || []));
           
-          const [classesResult, sectionsResult] = await Promise.all([
-            classIds.length > 0 
-              ? supabase.from('classes').select('id, name').in('id', classIds)
-              : Promise.resolve({ data: [], error: null }),
-            sectionIds.length > 0
-              ? supabase.from('sections').select('id, name').in('id', sectionIds)
-              : Promise.resolve({ data: [], error: null })
-          ]);
+          // Fetch classes and sections with chunking for .in() limit
+          let allClasses: any[] = [];
+          if (classIds.length > 0) {
+            for (let i = 0; i < classIds.length; i += 1000) {
+              const chunk = classIds.slice(i, i + 1000);
+              const chunkClasses = await fetchAllRows(async (from, to) => {
+                return await supabase.from('classes')
+                  .select('id, name')
+                  .in('id', chunk)
+                  .range(from, to);
+              });
+              allClasses.push(...chunkClasses);
+            }
+          }
           
-          const classesMap = new Map((classesResult.data || []).map((c: any) => [c.id, c]));
-          const sectionsMap = new Map((sectionsResult.data || []).map((s: any) => [s.id, s]));
+          let allSections: any[] = [];
+          if (sectionIds.length > 0) {
+            for (let i = 0; i < sectionIds.length; i += 1000) {
+              const chunk = sectionIds.slice(i, i + 1000);
+              const chunkSections = await fetchAllRows(async (from, to) => {
+                return await supabase.from('sections')
+                  .select('id, name')
+                  .in('id', chunk)
+                  .range(from, to);
+              });
+              allSections.push(...chunkSections);
+            }
+          }
+          
+          const classesMap = new Map(allClasses.map((c: any) => [c.id, c]));
+          const sectionsMap = new Map(allSections.map((s: any) => [s.id, s]));
           const studentsMap = new Map((studentsData || []).map((s: any) => [s.id, s]));
           const invoicesMap = new Map((invoicesData || []).map((inv: any) => [inv.id, inv]));
           

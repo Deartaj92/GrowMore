@@ -13,49 +13,46 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { getUser } from './auth';
 import { sortClasses } from './classUtils';
+import { fetchAllRows } from './paginationHelper';
 
 export const reportService = {
     // Categories
     async getCategories(type?: string, schoolId?: number): Promise<ReportCategory[]> {
-        let query = supabase
-            .from('report_categories')
-            .select('*');
-        
-        if (type) {
-            query = query.eq('type', type);
-        }
-        
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) {
-            throw error;
-        }
-        
-        // If no categories found for the specific school_id, try to get default categories (school_id = 1)
-        if ((!data || data.length === 0) && schoolId && schoolId !== 1) {
-            let fallbackQuery = supabase
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
                 .from('report_categories')
-                .select('*')
-                .eq('school_id', 1);
+                .select('*');
             
             if (type) {
-                fallbackQuery = fallbackQuery.eq('type', type);
+                query = query.eq('type', type);
             }
             
-            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-            
-            if (fallbackError) {
-                return [];
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
             }
             
-            return fallbackData || [];
+            return await query.range(from, to);
+        });
+        
+        // If no categories found for the specific school_id, try to get default categories (school_id = 1)
+        if (data.length === 0 && schoolId && schoolId !== 1) {
+            const fallbackData = await fetchAllRows(async (from, to) => {
+                let fallbackQuery = supabase
+                    .from('report_categories')
+                    .select('*')
+                    .eq('school_id', 1);
+                
+                if (type) {
+                    fallbackQuery = fallbackQuery.eq('type', type);
+                }
+                
+                return await fallbackQuery.range(from, to);
+            });
+            
+            return fallbackData;
         }
 
-        return data || [];
+        return data;
     },
 
     // Helper function to get ordinal suffix
@@ -101,26 +98,29 @@ export const reportService = {
             if (!activeSession) return [];
 
             // 2. Get classes that have students in student_class_history for active session
-            const { data, error } = await supabase
-                .from('student_class_history')
-                .select(`
-                    new_class_id,
-                    adm_class_id,
-                    new_classes:new_class_id (
-                        id,
-                        name,
-                        has_sections
-                    ),
-                    adm_classes:adm_class_id (
-                        id,
-                        name,
-                        has_sections
-                    )
-                `)
-                .eq('session_id', activeSession.id)
-                .eq('status', 'active');
+            const data = await fetchAllRows(async (from, to) => {
+                return await supabase
+                    .from('student_class_history')
+                    .select(`
+                        new_class_id,
+                        adm_class_id,
+                        new_classes:new_class_id (
+                            id,
+                            name,
+                            has_sections
+                        ),
+                        adm_classes:adm_class_id (
+                            id,
+                            name,
+                            has_sections
+                        )
+                    `)
+                    .eq('session_id', activeSession.id)
+                    .eq('status', 'active')
+                    .range(from, to);
+            });
 
-            if (error) {
+            if (!data) {
                 return [];
             }
 
@@ -157,34 +157,33 @@ export const reportService = {
             if (!activeSession) return [];
 
             // 2. Get sections that have students in student_class_history for active session and specific class
-            const { data, error } = await supabase
-                .from('student_class_history')
-                .select(`
-                    new_section_id,
-                    adm_section_id,
-                    new_sections:new_section_id (
-                        id,
-                        name,
-                        class_id
-                    ),
-                    adm_sections:adm_section_id (
-                        id,
-                        name,
-                        class_id
-                    )
-                `)
-                .eq('session_id', activeSession.id)
-            .eq('new_class_id', classId)
-                .eq('status', 'active');
-            
-            if (error) {
-                return [];
-            }
+            const data = await fetchAllRows(async (from, to) => {
+                return await supabase
+                    .from('student_class_history')
+                    .select(`
+                        new_section_id,
+                        adm_section_id,
+                        new_sections:new_section_id (
+                            id,
+                            name,
+                            class_id
+                        ),
+                        adm_sections:adm_section_id (
+                            id,
+                            name,
+                            class_id
+                        )
+                    `)
+                    .eq('session_id', activeSession.id)
+                    .eq('new_class_id', classId)
+                    .eq('status', 'active')
+                    .range(from, to);
+            });
 
             // 3. Extract unique sections and remove nulls
             // Use new_section_id sections first, fallback to adm_section_id sections
             const uniqueSections = Array.from(
-                new Set(data?.map(item => {
+                new Set(data.map(item => {
                     const sectionObj = item.new_sections || item.adm_sections;
                     return JSON.stringify(sectionObj);
                 }))
@@ -273,23 +272,24 @@ export const reportService = {
 
     // Staff members
     async getStaff(schoolId?: number): Promise<any[]> {
-        let query = supabase
-            .from('staff')
-            .select(`
-                id,
-                name,
-                role,
-                father_name,
-                mobile
-            `)
-            .order('name');
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('staff')
+                .select(`
+                    id,
+                    name,
+                    role,
+                    father_name,
+                    mobile
+                `)
+                .order('name');
+                
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
             
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
+            return await query.range(from, to);
+        });
         return data;
     },
 
@@ -339,35 +339,36 @@ export const reportService = {
 
     // Employee Reports
     async getEmployeeReports(filters?: { category_id?: string; status?: string; subject_type?: string }, schoolId?: number): Promise<Report[]> {
-        let query = supabase
-            .from('employee_reports')
-            .select(`
-                *,
-                category:report_categories(*),
-                reporter:staff!employee_reports_reported_by_fkey(*),
-                staff:staff!employee_reports_staff_id_fkey(*),
-                updates:employee_reports_updates(
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('employee_reports')
+                .select(`
                     *,
-                    staff:staff!employee_reports_updates_updated_by_fkey(*)
-                )
-            `)
-            .order('created_at', { ascending: false });
+                    category:report_categories(*),
+                    reporter:staff!employee_reports_reported_by_fkey(*),
+                    staff:staff!employee_reports_staff_id_fkey(*),
+                    updates:employee_reports_updates(
+                        *,
+                        staff:staff!employee_reports_updates_updated_by_fkey(*)
+                    )
+                `)
+                .order('created_at', { ascending: false });
 
-        if (filters?.category_id) {
-            query = query.eq('category_id', filters.category_id);
-        }
-        if (filters?.status) {
-            query = query.eq('status', filters.status);
-        }
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
+            if (filters?.category_id) {
+                query = query.eq('category_id', filters.category_id);
+            }
+            if (filters?.status) {
+                query = query.eq('status', filters.status);
+            }
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
 
-        const { data, error } = await query;
+            return await query.range(from, to);
+        });
 
-        if (error) throw error;
         // Transform to match Report interface
-        return (data || []).map((report: any) => ({
+        return data.map((report: any) => ({
             ...report,
             subject_type: 'staff' as const,
             student_id: undefined
@@ -459,16 +460,19 @@ export const reportService = {
                 .select('id, name, role, picture_url')
                 .eq('id', reportData.staff_id)
                 .single() : Promise.resolve({ data: null, error: null }),
-            // Updates - use the correct updates table
-            supabase
-                .from(updatesTable as any)
-                .select('*')
-                .eq('report_id', reportData.id)
-                .order('created_at', { ascending: false })
+            // Updates - use the correct updates table with pagination
+            fetchAllRows(async (from, to) => {
+                return await supabase
+                    .from(updatesTable as any)
+                    .select('*')
+                    .eq('report_id', reportData.id)
+                    .order('created_at', { ascending: false })
+                    .range(from, to);
+            })
         ]);
         
         // Fetch staff details for each update
-        let updates = updatesResult.data || [];
+        let updates = updatesResult || [];
         if (updates.length > 0) {
             const updatesWithStaff = await Promise.all(
                 updates.map(async (update: any) => {
@@ -800,22 +804,23 @@ export const reportService = {
     },
 
     async getReportActions(reportId: string, schoolId?: number): Promise<ReportAction[]> {
-        let query = supabase
-            .from('report_actions')
-            .select(`
-                *,
-                taken_by_user:taken_by(id, username, name, role)
-            `)
-            .eq('report_id', reportId)
-            .order('created_at', { ascending: false });
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('report_actions')
+                .select(`
+                    *,
+                    taken_by_user:taken_by(id, username, name, role)
+                `)
+                .eq('report_id', reportId)
+                .order('created_at', { ascending: false });
+                
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
             
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
-        
-        const { data, error } = await query;
+            return await query.range(from, to);
+        });
 
-        if (error) throw error;
         return data;
     },
 

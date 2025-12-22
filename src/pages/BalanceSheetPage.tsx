@@ -5,6 +5,7 @@ import { ThemeProvider } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { useLoading } from '../contexts/LoadingContext';
 import Loader from '../components/Loader';
 import { incomeService } from '../services/incomeService';
@@ -386,15 +387,29 @@ const BalanceSheetPage: React.FC = () => {
       
       // Fetch accounts and account types
       const [accountsData, accountTypesData] = await Promise.all([
-        supabase.from('accounts').select('*').eq('school_id', user.school_id).eq('is_active', true).order('name'),
-        supabase.from('account_types').select('*').or(`school_id.eq.1,school_id.eq.${user.school_id}`).eq('is_active', true).order('display_name'),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('accounts')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .eq('is_active', true)
+            .order('name')
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('account_types')
+            .select('*')
+            .or(`school_id.eq.1,school_id.eq.${user.school_id}`)
+            .eq('is_active', true)
+            .order('display_name')
+            .range(from, to);
+        }),
       ]);
 
-      if (accountsData.data) setAccounts(accountsData.data);
-      if (accountTypesData.data) {
+      setAccounts(accountsData);
+      if (accountTypesData && accountTypesData.length > 0) {
         // Deduplicate account types
         const uniqueTypes = new Map();
-        accountTypesData.data.forEach((type: any) => {
+        accountTypesData.forEach((type: any) => {
           if (!uniqueTypes.has(type.name) || type.school_id === 1) {
             uniqueTypes.set(type.name, type);
           }
@@ -469,8 +484,8 @@ const BalanceSheetPage: React.FC = () => {
       });
 
       // Calculate balances for each account
-      const balances: AccountBalance[] = accountsData.data?.map((account: any) => {
-        const accountType = accountTypesData.data?.find((t: any) => t.name === account.type);
+      const balances: AccountBalance[] = accountsData?.map((account: any) => {
+        const accountType = accountTypesData?.find((t: any) => t.name === account.type);
         const displayName = accountType?.display_name || account.type;
         
         // Calculate income from fee payments

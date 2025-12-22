@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { ExpandMore, ExpandLess, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { ExpandMore, ExpandLess, Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { feeService } from '../../../services/feeService';
 import { FeePlanWithItems } from '../../../types/fee';
 import { FeeHead } from '../../../types/fee';
@@ -177,6 +177,7 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
   const [editingPlan, setEditingPlan] = useState<FeePlanWithItems | null>(null);
   const [formData, setFormData] = useState<FeePlanFormData | null>(null);
   const [studentsMap, setStudentsMap] = useState<Map<number, { name: string; rollNumber?: string; className?: string; sectionName?: string }>>(new Map());
+  const [saving, setSaving] = useState(false);
 
   const loadPlans = useCallback(async () => {
     if (!schoolId) {
@@ -187,7 +188,7 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
     setLoading(true);
     try {
       console.log('Loading fee plans:', { schoolId, studentId, sessionId });
-      const fetchedPlans = await feeService.getAllFeePlans(schoolId, studentId, sessionId);
+      const fetchedPlans = await feeService.getAllFeePlans(schoolId, studentId);
       console.log('Fetched fee plans:', fetchedPlans);
       setPlans(fetchedPlans);
 
@@ -254,15 +255,15 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
     setEditingPlan(plan);
     setFormData({
       effectiveFrom: plan.effectiveFrom,
-      discountType: plan.discountType,
-      discountReason: plan.discountReason,
       notes: plan.notes,
       items: plan.items.map(item => ({
         feeHeadId: item.feeHeadId,
         actualFee: item.actualFee,
         discountAmount: item.discountAmount,
         discountPercent: item.discountPercent,
-        feeAfterDiscount: item.feeAfterDiscount
+        feeAfterDiscount: item.feeAfterDiscount,
+        discountType: item.discountType,
+        discountReason: item.discountReason
       }))
     });
     if (!expandedPlans.has(plan.id)) {
@@ -271,13 +272,13 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
   };
 
   const handleSave = async () => {
-    if (!editingPlan || !formData) return;
+    if (!editingPlan || !formData || saving) return;
 
+    setSaving(true);
     try {
       await feeService.createOrUpdateFeePlan(
         schoolId,
         editingPlan.studentId,
-        editingPlan.sessionId,
         formData,
         undefined // userId - you may want to pass this
       );
@@ -289,6 +290,8 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
     } catch (error: any) {
       console.error('Error saving fee plan:', error);
       toast.showToast(error.message || 'Failed to save fee plan', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -296,7 +299,7 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
     if (!window.confirm('Are you sure you want to delete this fee plan?')) return;
 
     try {
-      await feeService.deleteFeePlan(schoolId, plan.studentId, plan.sessionId);
+      await feeService.deleteFeePlan(schoolId, plan.studentId);
       toast.showToast('Fee plan deleted successfully!', 'success');
       await loadPlans();
       onRefresh?.();
@@ -355,18 +358,6 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
                       ({studentsMap.get(plan.studentId)?.rollNumber})
                     </span>
                   )}
-                  {plan.discountType && (
-                    <span style={{ 
-                      fontSize: '0.75rem', 
-                      padding: '2px 8px', 
-                      borderRadius: '4px',
-                      background: '#6366f1',
-                      color: 'white',
-                      marginLeft: '8px'
-                    }}>
-                      {plan.discountType}
-                    </span>
-                  )}
                 </PlanRowTitle>
                 <PlanRowSubtitle>
                   {studentsMap.get(plan.studentId)?.className && (
@@ -382,15 +373,28 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
                 </PlanRowSubtitle>
               </PlanRowInfo>
               <PlanRowActions onClick={(e) => e.stopPropagation()}>
-                <ActionButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(plan);
-                  }}
-                  title="Edit"
-                >
-                  <EditIcon style={{ fontSize: '18px' }} />
-                </ActionButton>
+                {isEditing ? (
+                  <ActionButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingPlan(null);
+                      setFormData(null);
+                    }}
+                    title="Cancel Edit"
+                  >
+                    <CloseIcon style={{ fontSize: '18px' }} />
+                  </ActionButton>
+                ) : (
+                  <ActionButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(plan);
+                    }}
+                    title="Edit"
+                  >
+                    <EditIcon style={{ fontSize: '18px' }} />
+                  </ActionButton>
+                )}
                 <ActionButton
                   onClick={(e) => {
                     e.stopPropagation();
@@ -425,60 +429,63 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
                         } : null);
                       }}
                       onRemoveItem={(index) => {
-                        setFormData(prev => prev ? {
-                          ...prev,
-                          items: prev.items.filter((_, i) => i !== index)
-                        } : null);
+                        if (!formData) return;
+                        const itemToRemove = formData.items[index];
+                        const feeHead = feeHeads.find(fh => fh.id === itemToRemove.feeHeadId);
+                        const confirmMessage = feeHead 
+                          ? `Are you sure you want to remove "${feeHead.name}" from this fee plan?`
+                          : 'Are you sure you want to remove this fee head from the fee plan?';
+                        
+                        if (window.confirm(confirmMessage)) {
+                          setFormData(prev => prev ? {
+                            ...prev,
+                            items: prev.items.filter((_, i) => i !== index)
+                          } : null);
+                        }
                       }}
                     />
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                       <button
                         onClick={() => {
-                          setEditingPlan(null);
-                          setFormData(null);
+                          if (!saving) {
+                            setEditingPlan(null);
+                            setFormData(null);
+                          }
                         }}
+                        disabled={saving}
                         style={{
                           padding: '10px 20px',
                           borderRadius: '8px',
                           border: '1px solid #ddd',
                           background: 'transparent',
-                          cursor: 'pointer'
+                          cursor: saving ? 'not-allowed' : 'pointer',
+                          opacity: saving ? 0.5 : 1,
+                          transition: 'all 0.2s'
                         }}
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSave}
+                        disabled={saving}
                         style={{
                           padding: '10px 20px',
                           borderRadius: '8px',
                           border: 'none',
-                          background: '#6366f1',
+                          background: saving ? '#9ca3af' : '#6366f1',
                           color: 'white',
-                          cursor: 'pointer',
-                          fontWeight: 600
+                          cursor: saving ? 'not-allowed' : 'pointer',
+                          fontWeight: 600,
+                          opacity: saving ? 0.7 : 1,
+                          transition: 'all 0.2s'
                         }}
                       >
-                        Save Changes
+                        {saving ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <SummaryRow>
-                      <SummaryItem>
-                        <SummaryLabel>Total Actual Fee</SummaryLabel>
-                        <SummaryValue>Rs. {totals.actualFee.toFixed(2)}</SummaryValue>
-                      </SummaryItem>
-                      <SummaryItem>
-                        <SummaryLabel>Total Discount</SummaryLabel>
-                        <SummaryValue>Rs. {totals.discountAmount.toFixed(2)}</SummaryValue>
-                      </SummaryItem>
-                      <SummaryItem>
-                        <SummaryLabel>Total After Discount</SummaryLabel>
-                        <SummaryValue>Rs. {totals.feeAfterDiscount.toFixed(2)}</SummaryValue>
-                      </SummaryItem>
-                    </SummaryRow>
                     {plan.notes && (
                       <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '6px' }}>
                         <strong>Notes:</strong> {plan.notes}
@@ -491,10 +498,11 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
                         actualFee: item.actualFee,
                         discountAmount: item.discountAmount,
                         discountPercent: item.discountPercent,
-                        feeAfterDiscount: item.feeAfterDiscount
+                        feeAfterDiscount: item.feeAfterDiscount,
+                        discountType: item.discountType,
+                        discountReason: item.discountReason
                       }))}
                       onChange={() => {}}
-                      onRemoveItem={() => {}}
                     />
                   </>
                 )}

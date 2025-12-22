@@ -18,7 +18,6 @@ export interface FeeStructure {
   schoolId: number;
   classId: number;
   sectionId?: number;
-  sessionId: number;
   feeHeadId: number;
   amount: number;
   months?: number[]; // Array of month numbers (1-12) when fees should be collected
@@ -113,10 +112,7 @@ export interface FeePlan {
   id: number;
   schoolId: number;
   studentId: number;
-  sessionId: number;
   effectiveFrom: string;
-  discountType?: string;
-  discountReason?: string;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -133,6 +129,8 @@ export interface FeePlanItem {
   discountAmount: number;
   discountPercent: number;
   feeAfterDiscount: number;
+  discountType?: string;
+  discountReason?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -110,58 +110,97 @@ export const expenseService = {
 
   // Expenses
   async getExpenses(schoolId: number, filters: ExpenseFilters = {}): Promise<Expense[]> {
-    let query = supabase
-      .from('expenses')
-      .select(`
-        *,
-        expense_categories (
-          id,
-          name,
-          description,
-          color,
-          is_active
-        ),
-        accounts (
-          id,
-          name,
-          type,
-          bank_name,
-          account_number,
-          wallet_number,
-          mobile_number,
-          iban,
-          swift_code,
-          raast_id
-        )
-      `)
-      .eq('school_id', schoolId)
-      .order('expense_date', { ascending: false })
-      .order('created_at', { ascending: false });
+    // Helper function to handle Supabase's 1000 row limit by automatically paginating
+    const fetchAllRows = async <T,>(
+      queryFn: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>
+    ): Promise<T[]> => {
+      const allResults: T[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      let consecutiveEmptyPages = 0;
+      const maxEmptyPages = 2; // Safety check to prevent infinite loops
+
+      while (hasMore && consecutiveEmptyPages < maxEmptyPages) {
+        const { data, error } = await queryFn(from, from + pageSize - 1);
+        if (error) {
+          console.error('Error in fetchAllRows:', error);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allResults.push(...data);
+          from += pageSize;
+          // Continue if we got a full page (might be more data)
+          hasMore = data.length === pageSize;
+          consecutiveEmptyPages = 0; // Reset counter on successful fetch
+        } else {
+          // No data returned - check if we should continue
+          if (allResults.length > 0 || from === 0) {
+            hasMore = false;
+          } else {
+            consecutiveEmptyPages++;
+          }
+        }
+      }
+
+      return allResults;
+    };
+
+    // Fetch all expenses with pagination
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('expenses')
+        .select(`
+          *,
+          expense_categories (
+            id,
+            name,
+            description,
+            color,
+            is_active
+          ),
+          accounts (
+            id,
+            name,
+            type,
+            bank_name,
+            account_number,
+            wallet_number,
+            mobile_number,
+            iban,
+            swift_code,
+            raast_id
+          )
+        `)
+        .eq('school_id', schoolId)
+        .order('expense_date', { ascending: false })
+        .order('created_at', { ascending: false });
+      
+      if (filters.categoryId) {
+        query = query.eq('category_id', filters.categoryId);
+      }
+      
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      if (filters.startDate) {
+        query = query.gte('expense_date', filters.startDate);
+      }
+      
+      if (filters.endDate) {
+        query = query.lte('expense_date', filters.endDate);
+      }
+      
+      if (filters.paymentMethod) {
+        query = query.eq('payment_method', filters.paymentMethod);
+      }
+      
+      return await query.range(from, to);
+    });
     
-    if (filters.categoryId) {
-      query = query.eq('category_id', filters.categoryId);
-    }
-    
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
-    
-    if (filters.startDate) {
-      query = query.gte('expense_date', filters.startDate);
-    }
-    
-    if (filters.endDate) {
-      query = query.lte('expense_date', filters.endDate);
-    }
-    
-    if (filters.paymentMethod) {
-      query = query.eq('payment_method', filters.paymentMethod);
-    }
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    
-    let expenses = (data || []).map(item => ({
+    let expenses = data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       categoryId: item.category_id,

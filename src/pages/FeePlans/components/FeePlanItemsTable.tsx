@@ -4,6 +4,16 @@ import { FeePlanItemFormData } from '../types';
 import { FeeHead } from '../../../types/fee';
 import { Delete as DeleteIcon } from '@mui/icons-material';
 
+const DISCOUNT_TYPES = [
+  'Siblings',
+  'Merit',
+  'Need-based',
+  'Staff',
+  'Early Payment',
+  'Bulk Payment',
+  'Other'
+];
+
 const TableContainer = styled.div`
   background: ${({ theme }) => theme.CARD};
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -17,7 +27,7 @@ const TableContainer = styled.div`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  table-layout: fixed;
 `;
 
 const TableHeader = styled.thead`
@@ -59,17 +69,18 @@ const BodyCell = styled.td`
   vertical-align: middle;
 `;
 
-const Input = styled.input`
+const Input = styled.input<{ $color?: string }>`
   width: 100%;
   padding: 8px 10px;
   border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
   border-radius: 6px;
   background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  color: ${({ theme, $color }) => $color || theme.TEXT_PRIMARY};
   font-size: 0.9rem;
   outline: none;
   transition: all 0.2s;
   text-align: right;
+  font-weight: ${({ $color }) => $color ? '600' : 'normal'};
   
   /* Hide spinner controls for number inputs */
   &[type="number"] {
@@ -90,8 +101,91 @@ const Input = styled.input`
   &[readonly] {
     background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'};
     cursor: not-allowed;
-    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    color: ${({ theme, $color }) => $color || theme.TEXT_SECONDARY};
   }
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 6px;
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}20;
+  }
+  
+  &:disabled {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'};
+    cursor: not-allowed;
+    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    opacity: 0.8;
+  }
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 6px;
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s;
+  resize: none;
+  height: 38px;
+  font-family: inherit;
+  line-height: 1.4;
+  overflow-y: auto;
+  
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}20;
+  }
+`;
+
+const ReadOnlyText = styled.div<{ $color?: string }>`
+  padding: 8px 10px;
+  color: ${({ theme, $color }) => $color || theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  text-align: right;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-weight: ${({ $color }) => $color ? '600' : 'normal'};
+`;
+
+const ReadOnlyTextLeft = styled.div`
+  padding: 8px 10px;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  text-align: left;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+`;
+
+const ReadOnlyTextArea = styled.div`
+  padding: 8px 10px;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  text-align: left;
+  min-height: 38px;
+  height: 38px;
+  overflow-y: auto;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  display: flex;
+  align-items: center;
 `;
 
 const FeeHeadName = styled.div`
@@ -145,6 +239,8 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
   const handleRemoveItem = (index: number) => {
     if (onRemoveItem) {
       onRemoveItem(index);
+    } else {
+      console.warn('onRemoveItem callback is not provided');
     }
   };
   const totals = useMemo(() => {
@@ -155,7 +251,7 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
     }), { actualFee: 0, discountAmount: 0, feeAfterDiscount: 0 });
   }, [items]);
 
-  const handleItemChange = (index: number, field: keyof FeePlanItemFormData, value: number) => {
+  const handleItemChange = (index: number, field: keyof FeePlanItemFormData, value: number | string | undefined) => {
     const item = items[index];
     let updates: Partial<FeePlanItemFormData> = { [field]: value };
 
@@ -165,13 +261,13 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
       let discountAmount = item.discountAmount;
       let feeAfterDiscount = item.feeAfterDiscount;
 
-      if (field === 'actualFee') {
+      if (field === 'actualFee' && typeof value === 'number') {
         actualFee = value;
         feeAfterDiscount = actualFee - discountAmount;
-      } else if (field === 'discountAmount') {
+      } else if (field === 'discountAmount' && typeof value === 'number') {
         discountAmount = value;
         feeAfterDiscount = actualFee - discountAmount;
-      } else if (field === 'feeAfterDiscount') {
+      } else if (field === 'feeAfterDiscount' && typeof value === 'number') {
         feeAfterDiscount = value;
         discountAmount = actualFee - feeAfterDiscount;
       }
@@ -196,13 +292,15 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
       <Table>
         <TableHeader>
           <HeaderRow>
-            <HeaderCell style={{ width: '40px' }}>#</HeaderCell>
-            <HeaderCell>Fee Particulars</HeaderCell>
-            <HeaderCell style={{ textAlign: 'right', minWidth: '120px' }}>Actual Fee</HeaderCell>
-            <HeaderCell style={{ textAlign: 'right', minWidth: '120px' }}>Discount Amount</HeaderCell>
-            <HeaderCell style={{ textAlign: 'right', minWidth: '100px' }}>Discount %</HeaderCell>
-            <HeaderCell style={{ textAlign: 'right', minWidth: '140px' }}>Fee After Discount</HeaderCell>
-            {onRemoveItem && <HeaderCell style={{ width: '60px', textAlign: 'center' }}>Action</HeaderCell>}
+            <HeaderCell style={{ width: '20px' }}>#</HeaderCell>
+            <HeaderCell style={{ width: '20%' }}>Fee Particulars</HeaderCell>
+            <HeaderCell style={{ textAlign: 'right', width: '10%' }}>Actual Fee</HeaderCell>
+            <HeaderCell style={{ textAlign: 'right', width: '10%' }}>Discount Amount</HeaderCell>
+            <HeaderCell style={{ textAlign: 'right', width: '8%' }}>Discount %</HeaderCell>
+            <HeaderCell style={{ width: '12%' }}>Discount Type</HeaderCell>
+            <HeaderCell style={{ width: '20%' }}>Discount Reason</HeaderCell>
+            <HeaderCell style={{ textAlign: 'right', width: '12%' }}>Fee After Discount</HeaderCell>
+            {onRemoveItem && <HeaderCell style={{ width: '8%', textAlign: 'center' }}>Action</HeaderCell>}
           </HeaderRow>
         </TableHeader>
         <TableBody>
@@ -220,56 +318,103 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
                   )}
                 </BodyCell>
                 <BodyCell>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.actualFee || 0}
-                    onChange={(e) => handleItemChange(index, 'actualFee', parseFloat(e.target.value) || 0)}
-                  />
+                  {onRemoveItem ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.actualFee || 0}
+                      onChange={(e) => handleItemChange(index, 'actualFee', parseFloat(e.target.value) || 0)}
+                      onWheel={(e) => {
+                        e.currentTarget.blur();
+                      }}
+                    />
+                  ) : (
+                    <ReadOnlyText>{item.actualFee?.toFixed(2) || '0.00'}</ReadOnlyText>
+                  )}
                 </BodyCell>
                 <BodyCell>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.discountAmount || 0}
-                    onChange={(e) => handleItemChange(index, 'discountAmount', parseFloat(e.target.value) || 0)}
-                  />
+                  {onRemoveItem ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.discountAmount || 0}
+                      onChange={(e) => handleItemChange(index, 'discountAmount', parseFloat(e.target.value) || 0)}
+                      onWheel={(e) => {
+                        e.currentTarget.blur();
+                      }}
+                      $color="#22c55e"
+                    />
+                  ) : (
+                    <ReadOnlyText $color="#22c55e">{item.discountAmount?.toFixed(2) || '0.00'}</ReadOnlyText>
+                  )}
                 </BodyCell>
                 <BodyCell>
-                  <Input
-                    type="text"
-                    value={(() => {
+                  <ReadOnlyText $color="#22c55e">
+                    {(() => {
                       const actualFee = item.actualFee || 0;
                       const discountAmount = item.discountAmount || 0;
-                      if (actualFee === 0 && discountAmount > 0) {
-                        return '-Infinity%';
-                      }
                       if (actualFee === 0) {
                         return '0%';
                       }
                       const percent = (discountAmount / actualFee) * 100;
                       return `${percent.toFixed(2)}%`;
                     })()}
-                    readOnly
-                    style={{ textAlign: 'right' }}
-                  />
+                  </ReadOnlyText>
                 </BodyCell>
                 <BodyCell>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.feeAfterDiscount || 0}
-                    onChange={(e) => handleItemChange(index, 'feeAfterDiscount', parseFloat(e.target.value) || 0)}
-                  />
+                  {onRemoveItem ? (
+                    <Select
+                      value={item.discountType || ''}
+                      onChange={(e) => handleItemChange(index, 'discountType', e.target.value || undefined)}
+                    >
+                      <option value="">Select discount type</option>
+                      {DISCOUNT_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <ReadOnlyTextLeft>{item.discountType ? item.discountType : '-'}</ReadOnlyTextLeft>
+                  )}
+                </BodyCell>
+                <BodyCell>
+                  {onRemoveItem ? (
+                    <TextArea
+                      value={item.discountReason || ''}
+                      onChange={(e) => handleItemChange(index, 'discountReason', e.target.value || undefined)}
+                      placeholder="Enter discount reason..."
+                    />
+                  ) : (
+                    <ReadOnlyTextArea>{item.discountReason ? item.discountReason : '-'}</ReadOnlyTextArea>
+                  )}
+                </BodyCell>
+                <BodyCell>
+                  {onRemoveItem ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.feeAfterDiscount || 0}
+                      onChange={(e) => handleItemChange(index, 'feeAfterDiscount', parseFloat(e.target.value) || 0)}
+                      onWheel={(e) => {
+                        e.currentTarget.blur();
+                      }}
+                    />
+                  ) : (
+                    <ReadOnlyText>{item.feeAfterDiscount?.toFixed(2) || '0.00'}</ReadOnlyText>
+                  )}
                 </BodyCell>
                 {onRemoveItem && (
                   <ActionCell>
                     <DeleteButton
-                      onClick={() => handleRemoveItem(index)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleRemoveItem(index);
+                      }}
                       title="Remove this fee head"
+                      type="button"
                     >
                       <DeleteIcon style={{ fontSize: '18px' }} />
                     </DeleteButton>
@@ -294,6 +439,7 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
                 type="text"
                 value={totals.discountAmount.toFixed(2)}
                 readOnly
+                $color="#22c55e"
               />
             </BodyCell>
             <BodyCell>
@@ -301,17 +447,21 @@ export const FeePlanItemsTable: React.FC<FeePlanItemsTableProps> = ({
                 type="text"
                 value={totals.actualFee > 0 
                   ? `${((totals.discountAmount / totals.actualFee) * 100).toFixed(2)}%`
-                  : '-Infinity%'}
+                  : '0%'}
                 readOnly
+                $color="#22c55e"
               />
             </BodyCell>
+            <BodyCell colSpan={2}></BodyCell>
             <BodyCell>
               <Input
                 type="text"
                 value={totals.feeAfterDiscount.toFixed(2)}
                 readOnly
+                $color="#eab308"
               />
             </BodyCell>
+            {onRemoveItem && <BodyCell></BodyCell>}
           </BodyRow>
         </TableBody>
       </Table>

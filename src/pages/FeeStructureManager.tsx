@@ -5,11 +5,12 @@ import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { ThemeProvider } from 'styled-components';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon, AttachMoney, School, Commute, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, Info as InfoIcon, Warning as WarningIcon } from '@mui/icons-material';
 import { feeService } from '../services/feeService';
-import { FeeStructure, FeeHead } from '../types/fee';
+import { FeeStructure, FeeHead, FeePlanWithItems } from '../types/fee';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useLoading } from '../contexts/LoadingContext';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import NoSessionsFound from '../components/NoSessionsFound';
 import NoClassesFound from '../components/NoClassesFound';
@@ -477,25 +478,28 @@ const StyledDialogContent = styled.div`
 const FormActions = styled.div`
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 12px;
-  padding: 12px 20px;
+  padding: 16px 20px;
   border-top: ${({ theme }) => theme.palette?.mode === 'dark'
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.08)'
+    : '1px solid rgba(0, 0, 0, 0.08)'};
   background: ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.7) 100%)'};
   flex-shrink: 0;
   
   @media (max-width: 768px) {
     padding: 12px 16px;
-    gap: 12px;
+    gap: 10px;
     justify-content: flex-end;
+    flex-wrap: wrap;
     
     button {
-      min-width: 80px;
-      min-height: 36px;
-      font-size: 0.9rem;
+      min-width: 90px;
+      min-height: 40px;
+      font-size: 0.85rem;
+      padding: 8px 16px;
     }
   }
 `;
@@ -637,10 +641,12 @@ const LeftColumn = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0px;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  text-align: left;
+  vertical-align: top;
   
   /* Custom scrollbar styling */
   scrollbar-width: thin;
@@ -750,16 +756,25 @@ const FeeHeadsTable = styled.div`
 `;
 
 const TableHeader = styled.div`
-  display: flex;
+  display: grid;
   align-items: center;
-  padding: 12px 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 18px;
+  padding-right: 18px;
+  margin-left: 0px;
+  margin-right: 0px;
   background: ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(0, 0, 0, 0.05)'};
   border-bottom: 1px solid ${({ theme }) => theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
   font-weight: 600;
   font-size: 0.9rem;
-  gap: 12px;
+  gap: 0px;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(1, 1fr);
+  row-gap: 0px;
+  column-gap: 131px;
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -809,17 +824,23 @@ const FeeHeadAmount = styled.div`
   font-weight: 600;
   font-size: 0.85rem;
   color: ${({ theme }) => theme.palette?.primary?.main || theme.ACCENT};
-  min-width: 70px;
-  text-align: right;
-  margin-right: 20px;
+  width: 110px;
+  text-align: center;
+  margin-right: 0px;
   background: ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'rgba(74, 108, 247, 0.1)'
     : 'rgba(74, 108, 247, 0.05)'};
-  padding: 0.25rem 0.5rem;
+  padding: 1px 0px;
   border-radius: 4px;
   border: 1px solid ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'rgba(74, 108, 247, 0.2)'
     : 'rgba(74, 108, 247, 0.1)'};
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0px;
+  vertical-align: middle;
 `;
 
 const FeeHeadFrequency = styled.div`
@@ -909,6 +930,17 @@ const Input = styled.input`
       : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
   }
+  
+  /* Hide spinner arrows for number inputs */
+  &[type="number"] {
+    -moz-appearance: textfield;
+    
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
 `;
 
 const TextArea = styled.textarea`
@@ -995,16 +1027,20 @@ const Select = styled.select`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 20px;
-  border-radius: 8px;
+  padding: 10px 24px;
+  border-radius: 10px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
   outline: none;
   text-transform: none;
-  min-width: 80px;
+  min-width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   
   ${({ variant, theme }) => {
     if (variant === 'primary') {
@@ -1017,7 +1053,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
           ? '0 2px 8px rgba(25, 118, 210, 0.3)'
           : '0 2px 8px rgba(25, 118, 210, 0.2)'};
         
-        &:hover {
+        &:hover:not(:disabled) {
           background: ${theme.palette?.mode === 'dark'
             ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'
             : 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'};
@@ -1027,7 +1063,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
           transform: translateY(-1px);
         }
         
-        &:active {
+        &:active:not(:disabled) {
           transform: translateY(0);
           box-shadow: ${theme.palette?.mode === 'dark'
             ? '0 2px 6px rgba(25, 118, 210, 0.3)'
@@ -1044,7 +1080,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
           ? '0 2px 8px rgba(239, 68, 68, 0.3)'
           : '0 2px 8px rgba(239, 68, 68, 0.2)'};
         
-        &:hover {
+        &:hover:not(:disabled) {
           background: ${theme.palette?.mode === 'dark'
             ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
             : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'};
@@ -1054,7 +1090,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
           transform: translateY(-1px);
         }
         
-        &:active {
+        &:active:not(:disabled) {
           transform: translateY(0);
           box-shadow: ${theme.palette?.mode === 'dark'
             ? '0 2px 6px rgba(239, 68, 68, 0.3)'
@@ -1064,36 +1100,40 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
     } else {
       return `
         background: ${theme.palette?.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.05)'
-          : 'rgba(0, 0, 0, 0.05)'};
+          ? 'rgba(255, 255, 255, 0.08)'
+          : 'rgba(0, 0, 0, 0.06)'};
         color: ${theme.palette?.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.8)'
-          : 'rgba(0, 0, 0, 0.8)'};
+          ? 'rgba(255, 255, 255, 0.9)'
+          : 'rgba(0, 0, 0, 0.9)'};
         border: 1px solid ${theme.palette?.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.1)'};
+          ? 'rgba(255, 255, 255, 0.15)'
+          : 'rgba(0, 0, 0, 0.15)'};
         
-        &:hover {
+        &:hover:not(:disabled) {
           background: ${theme.palette?.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.08)'
+            ? 'rgba(255, 255, 255, 0.12)'
             : 'rgba(0, 0, 0, 0.08)'};
           border-color: ${theme.palette?.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.2)'
-            : 'rgba(0, 0, 0, 0.2)'};
+            ? 'rgba(255, 255, 255, 0.25)'
+            : 'rgba(0, 0, 0, 0.25)'};
           transform: translateY(-1px);
         }
         
-        &:active {
+        &:active:not(:disabled) {
           transform: translateY(0);
+          background: ${theme.palette?.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.1)'
+            : 'rgba(0, 0, 0, 0.1)'};
         }
       `;
     }
   }}
   
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
+    box-shadow: none !important;
   }
 `;
 
@@ -1352,11 +1392,36 @@ const FrequencyCell = styled.div`
   flex-wrap: wrap;
 `;
 
-const OneTimeButton = styled.button<{ active: boolean; disabled?: boolean }>`
+// Array of different accent colors for different classes
+const CLASS_ACCENT_COLORS = [
+
+  '#f97316', // Orange
+  '#6366f1', // Indigo
+  '#14b8a6', // Teal
+  '#a855f7', // Violet
+  '#eab308', // Yellow
+  '#84cc16', // Lime
+  '#22c55e', // Green
+  '#06b6d4', // Sky
+  '#3b82f6', // Blue
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#f59e0b', // Amber
+  '#10b981', // Emerald
+  '#ef4444', // Red
+  '#06b6d4', // Cyan
+];
+
+// Function to get accent color for a class based on its ID
+const getClassAccentColor = (classId: number): string => {
+  return CLASS_ACCENT_COLORS[classId % CLASS_ACCENT_COLORS.length];
+};
+
+const OneTimeButton = styled.button<{ active: boolean; disabled?: boolean; classAccentColor?: string }>`
   padding: 8px 16px;
   border-radius: 6px;
-  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
-  background: ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BG};
+  border: 1.5px solid ${({ active, theme, classAccentColor }) => active ? (classAccentColor || theme.ACCENT) : theme.FIELD_BORDER};
+  background: ${({ active, theme, classAccentColor }) => active ? (classAccentColor || theme.ACCENT) : theme.FIELD_BG};
   color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
   font-size: 0.85rem;
   font-weight: 600;
@@ -1366,8 +1431,8 @@ const OneTimeButton = styled.button<{ active: boolean; disabled?: boolean }>`
   opacity: ${({ disabled }) => disabled ? 0.5 : 1};
   
   &:hover:not(:disabled) {
-    border-color: ${({ theme }) => theme.ACCENT};
-    background: ${({ active, theme }) => active ? theme.ACCENT : theme.ACCENT}20;
+    border-color: ${({ classAccentColor, theme }) => classAccentColor || theme.ACCENT};
+    background: ${({ active, classAccentColor, theme }) => active ? (classAccentColor || theme.ACCENT) : `${classAccentColor || theme.ACCENT}20`};
   }
   
   &:disabled {
@@ -1381,11 +1446,11 @@ const MonthsContainer = styled.div`
   gap: 6px;
 `;
 
-const MonthButton = styled.button<{ active: boolean; disabled?: boolean }>`
+const MonthButton = styled.button<{ active: boolean; disabled?: boolean; classAccentColor?: string }>`
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
-  background: ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BG};
+  border: 1.5px solid ${({ active, theme, classAccentColor }) => active ? (classAccentColor || theme.ACCENT) : theme.FIELD_BORDER};
+  background: ${({ active, theme, classAccentColor }) => active ? (classAccentColor || theme.ACCENT) : theme.FIELD_BG};
   color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
   font-size: 0.75rem;
   font-weight: 600;
@@ -1395,8 +1460,8 @@ const MonthButton = styled.button<{ active: boolean; disabled?: boolean }>`
   opacity: ${({ disabled }) => disabled ? 0.5 : 1};
   
   &:hover:not(:disabled) {
-    border-color: ${({ theme }) => theme.ACCENT};
-    background: ${({ active, theme }) => active ? theme.ACCENT : theme.ACCENT}20;
+    border-color: ${({ classAccentColor, theme }) => classAccentColor || theme.ACCENT};
+    background: ${({ active, classAccentColor, theme }) => active ? (classAccentColor || theme.ACCENT) : `${classAccentColor || theme.ACCENT}20`};
   }
   
   &:disabled {
@@ -1514,6 +1579,20 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [selectedClassesForFeeHead, setSelectedClassesForFeeHead] = useState<Set<number>>(new Set());
+  const [newFeeHeadFirstTime, setNewFeeHeadFirstTime] = useState(false);
+  const [newFeeHeadMonths, setNewFeeHeadMonths] = useState<number[]>([]);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncFeeHeadData, setSyncFeeHeadData] = useState<{
+    feeHeadId: number;
+    feeHeadName: string;
+    selectedClasses: Set<number>;
+    isUpdate: boolean;
+    affectedPlansCount?: number;
+    affectedStudentsCount?: number;
+    selectedClassNames?: string;
+  } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [loadingSyncInfo, setLoadingSyncInfo] = useState(false);
   
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1528,15 +1607,25 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
       try {
         const [feeHeadsRes, classesRes, sessionsRes] = await Promise.all([
           feeService.getFeeHeads(schoolId),
-          supabase.from('classes').select('id, name').eq('school_id', schoolId),
-          supabase.from('sessions').select('id, name').eq('school_id', schoolId),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', schoolId)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sessions')
+              .select('id, name')
+              .eq('school_id', schoolId)
+              .range(from, to);
+          }),
         ]);
         setFeeHeads(feeHeadsRes);
-        setClasses(classesRes.data || []);
-        setSessions(sessionsRes.data || []);
+        setClasses(classesRes);
+        setSessions(sessionsRes || []);
         // Load existing structures for the selected session
         if (sessionId) {
-          const data = await feeService.getFeeStructures(schoolId, { sessionId });
+          const data = await feeService.getFeeStructures(schoolId);
           setStructures(data);
           // Pre-fill amounts, months, and firstTime
           const amt: { [key: string]: string } = {};
@@ -1622,7 +1711,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     try {
       const amount = amounts[key];
       if (amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-        await feeService.bulkUpsertFeeStructures(schoolId, sessionId, [{
+        await feeService.bulkUpsertFeeStructures(schoolId, [{
           classId,
           feeHeadId,
           amount: Number(amount),
@@ -1653,7 +1742,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     try {
       const amount = amounts[key];
       if (amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-        await feeService.bulkUpsertFeeStructures(schoolId, sessionId, [{
+        await feeService.bulkUpsertFeeStructures(schoolId, [{
           classId,
           feeHeadId,
           amount: Number(amount),
@@ -1688,7 +1777,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
           }
         }
       }
-      await feeService.bulkUpsertFeeStructures(schoolId, sessionId, payload, user?.id);
+      await feeService.bulkUpsertFeeStructures(schoolId, payload, user?.id);
       setError(null);
       showToast('Fee structure saved!', 'success');
     } catch (err: any) {
@@ -1750,11 +1839,15 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     setNewFeeHeadDesc('');
     setNewFeeHeadAmount('');
     setNewFeeHeadAutoGenerate(false);
+    setNewFeeHeadFirstTime(false);
+    setNewFeeHeadMonths([]);
     // Don't pre-select any classes - user must explicitly select
     setSelectedClassesForFeeHead(new Set());
   };
 
   const handleCloseFeeHeadModal = () => {
+    setNewFeeHeadFirstTime(false);
+    setNewFeeHeadMonths([]);
     setShowFeeHeadModal(false);
     setNewFeeHeadName('');
     setNewFeeHeadDesc('');
@@ -1762,6 +1855,168 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     setNewFeeHeadAutoGenerate(false);
     setEditFeeHead(null);
     setSelectedClassesForFeeHead(new Set());
+  };
+
+  const handleSyncFeeHead = async () => {
+    if (!syncFeeHeadData || !schoolId) return;
+    
+    setSyncing(true);
+    try {
+      // Get all fee plans (session-independent now)
+      const allPlans = await feeService.getAllFeePlans(schoolId);
+      
+      if (allPlans.length === 0) {
+        showToast('No fee plans found. Please create fee plans for students first.', 'error');
+        setShowSyncModal(false);
+        setSyncFeeHeadData(null);
+        handleCloseFeeHeadModal();
+        return;
+      }
+      
+      // Get students in the selected classes from student_class_history (use active session)
+      const { data: activeSession } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (!activeSession) {
+        showToast('No active session found. Please activate a session first.', 'error');
+        setShowSyncModal(false);
+        setSyncFeeHeadData(null);
+        handleCloseFeeHeadModal();
+        return;
+      }
+      
+      const { data: classHistoryData, error: classHistoryError } = await supabase
+        .from('student_class_history')
+        .select('student_id, new_class_id')
+        .eq('session_id', activeSession.id)
+        .eq('school_id', schoolId)
+        .in('new_class_id', Array.from(syncFeeHeadData.selectedClasses));
+      
+      if (classHistoryError) {
+        console.error('Error fetching class history:', classHistoryError);
+        throw classHistoryError;
+      }
+      
+      if (!classHistoryData || classHistoryData.length === 0) {
+        showToast('No students found in the selected classes.', 'error');
+        setShowSyncModal(false);
+        setSyncFeeHeadData(null);
+        handleCloseFeeHeadModal();
+        return;
+      }
+      
+      const studentIdsInClasses = new Set(classHistoryData.map(ch => ch.student_id));
+      
+      // Filter plans to only those students in the selected classes
+      const plansToSync = allPlans.filter(plan => 
+        studentIdsInClasses.has(plan.studentId) &&
+        !plan.items.some(item => item.feeHeadId === syncFeeHeadData.feeHeadId)
+      );
+      
+      if (plansToSync.length === 0) {
+        showToast('All students in the selected classes already have this fee head in their fee plans.', 'error');
+        setShowSyncModal(false);
+        setSyncFeeHeadData(null);
+        handleCloseFeeHeadModal();
+        return;
+      }
+      
+      // Sync to all relevant fee plans
+      const result = await feeService.syncFeeHeadToFeePlans(
+        schoolId,
+        syncFeeHeadData.feeHeadId,
+        activeSession.id,
+        {
+          feePlanIds: plansToSync.map(p => p.id),
+          useFeeStructureAmount: true
+        },
+        user?.id
+      );
+      
+      const planText = result.updatedCount !== 1 ? 'plans' : 'plan';
+      const studentText = result.affectedStudents !== 1 ? 'students' : 'student';
+      showToast(`Fee head synced to ${result.updatedCount} fee ${planText} (${result.affectedStudents} ${studentText})`, 'success');
+      
+      setShowSyncModal(false);
+      setSyncFeeHeadData(null);
+      handleCloseFeeHeadModal();
+    } catch (err: any) {
+      console.error('Error syncing fee head:', err);
+      showToast('Failed to sync fee head: ' + (err.message || 'Unknown error'), 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const loadSyncInfo = async (feeHeadId: number, feeHeadName: string, selectedClasses: Set<number>, isUpdate: boolean) => {
+    if (!schoolId) return;
+    
+    setLoadingSyncInfo(true);
+    try {
+      // Get all fee plans
+      const allPlans = await feeService.getAllFeePlans(schoolId);
+      
+      // Get active session
+      const { data: activeSession } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      let affectedPlansCount = 0;
+      let affectedStudentsCount = 0;
+      
+      if (activeSession && allPlans.length > 0) {
+        const { data: classHistoryData } = await supabase
+          .from('student_class_history')
+          .select('student_id')
+          .eq('session_id', activeSession.id)
+          .eq('school_id', schoolId)
+          .in('new_class_id', Array.from(selectedClasses));
+        
+        if (classHistoryData && classHistoryData.length > 0) {
+          const studentIds = new Set(classHistoryData.map(ch => ch.student_id));
+          const plansToSync = allPlans.filter(plan => 
+            studentIds.has(plan.studentId) &&
+            !plan.items.some(item => item.feeHeadId === feeHeadId)
+          );
+          affectedPlansCount = plansToSync.length;
+          affectedStudentsCount = new Set(plansToSync.map(p => p.studentId)).size;
+        }
+      }
+      
+      const selectedClassNames = sortClasses(classes)
+        .filter(c => selectedClasses.has(c.id))
+        .map(c => c.name)
+        .join(', ');
+      
+      setSyncFeeHeadData({
+        feeHeadId,
+        feeHeadName,
+        selectedClasses: new Set(selectedClasses),
+        isUpdate,
+        affectedPlansCount,
+        affectedStudentsCount,
+        selectedClassNames,
+      });
+      setShowSyncModal(true);
+    } catch (err: any) {
+      console.error('Error loading sync info:', err);
+      showToast('Failed to load sync information', 'error');
+    } finally {
+      setLoadingSyncInfo(false);
+    }
+  };
+
+  const handleCancelSync = () => {
+    setShowSyncModal(false);
+    setSyncFeeHeadData(null);
+    handleCloseFeeHeadModal();
   };
 
   const handleEditFeeHead = async (fh: FeeHead) => {
@@ -1774,9 +2029,8 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     // Load existing classes that have this fee head
     if (schoolId && sessionId) {
       try {
-        const existingStructures = await feeService.getFeeStructures(schoolId, { 
-          sessionId,
-          feeHeadId: fh.id 
+        const existingStructures = await feeService.getFeeStructures(schoolId, {
+          feeHeadId: fh.id
         });
         const existingClassIds = new Set(existingStructures.map(s => s.classId));
         setSelectedClassesForFeeHead(existingClassIds);
@@ -2029,8 +2283,10 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0);
-        doc.text(`Printed: ${format(new Date(), 'dd-MM-yyyy')}`, 10, pageHeight - 10);
-        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 10, pageHeight - 10, { align: 'right' });
+        const printedDate = 'Printed: ' + format(new Date(), 'dd-MM-yyyy');
+        doc.text(printedDate, 10, pageHeight - 10);
+        const pageText = 'Page ' + i + ' of ' + totalPages;
+        doc.text(pageText, pageWidth - 10, pageHeight - 10, { align: 'right' });
       }
 
       // Save PDF
@@ -2044,8 +2300,9 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
     }
   };
 
+
   const handleCreateFeeHead = async () => {
-    if (!schoolId || !newFeeHeadName.trim() || !sessionId) return;
+    if (!schoolId || !newFeeHeadName.trim()) return;
     setFeeHeadLoading(true);
     try {
       if (editFeeHead) {
@@ -2061,9 +2318,8 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
           const amount = Number(newFeeHeadAmount);
           if (!isNaN(amount) && amount > 0) {
             // Get existing structures for this fee head
-            const existingStructures = await feeService.getFeeStructures(schoolId, { 
-              sessionId,
-              feeHeadId: editFeeHead.id 
+            const existingStructures = await feeService.getFeeStructures(schoolId, {
+              feeHeadId: editFeeHead.id
             });
             const existingClassIds = new Set(existingStructures.map(s => s.classId));
             const selectedClassIds = selectedClassesForFeeHead;
@@ -2072,6 +2328,20 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
             const classesToAdd = Array.from(selectedClassIds).filter(id => !existingClassIds.has(id));
             // Classes to remove
             const classesToRemove = Array.from(existingClassIds).filter(id => !selectedClassIds.has(id));
+            // Classes to update (existing and still selected)
+            const classesToUpdate = Array.from(selectedClassIds).filter(id => existingClassIds.has(id));
+            
+            // Update existing fee structures with new frequency
+            if (classesToUpdate.length > 0) {
+              const updatePayload = classesToUpdate.map(classId => ({
+                classId,
+                feeHeadId: editFeeHead.id,
+                amount,
+                months: newFeeHeadFirstTime ? [] : newFeeHeadMonths,
+                firstTime: newFeeHeadFirstTime,
+              }));
+              await feeService.bulkUpsertFeeStructures(schoolId, updatePayload, user?.id);
+            }
             
             // Add new fee structures
             if (classesToAdd.length > 0) {
@@ -2079,10 +2349,10 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                 classId,
                 feeHeadId: editFeeHead.id,
                 amount,
-                months: [],
-                firstTime: false,
+                months: newFeeHeadFirstTime ? [] : newFeeHeadMonths,
+                firstTime: newFeeHeadFirstTime,
               }));
-              await feeService.bulkUpsertFeeStructures(schoolId, sessionId, addPayload, user?.id);
+              await feeService.bulkUpsertFeeStructures(schoolId, addPayload, user?.id);
             }
             
             // Remove fee structures for deselected classes
@@ -2102,27 +2372,10 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                 }
               }
             }
-            
-            // Update amounts for existing classes that are still selected
-            const classesToUpdate = Array.from(selectedClassIds).filter(id => existingClassIds.has(id));
-            if (classesToUpdate.length > 0) {
-              const updatePayload = classesToUpdate.map(classId => {
-                const existing = existingStructures.find(s => s.classId === classId);
-                return {
-                  classId,
-                  feeHeadId: editFeeHead.id,
-                  amount,
-                  months: existing?.months || [],
-                  firstTime: existing?.firstTime || false,
-                };
-              });
-              await feeService.bulkUpsertFeeStructures(schoolId, sessionId, updatePayload, user?.id);
-            }
           }
         } else if (selectedClassesForFeeHead.size === 0) {
           // Remove all fee structures if no classes selected
           const existingStructures = await feeService.getFeeStructures(schoolId, { 
-            sessionId,
             feeHeadId: editFeeHead.id 
           });
           for (const structure of existingStructures) {
@@ -2131,6 +2384,11 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
         }
         
         showToast('Fee head updated!', 'success');
+        
+        // Show sync confirmation modal if classes are selected
+        if (selectedClassesForFeeHead.size > 0) {
+          await loadSyncInfo(editFeeHead.id, newFeeHeadName.trim(), selectedClassesForFeeHead, true);
+        }
       } else {
         // Create the fee head
         const newFeeHead = await feeService.createFeeHead({
@@ -2150,50 +2408,59 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
               classId,
               feeHeadId: newFeeHead.id,
               amount,
-              months: [],
-              firstTime: false,
+              months: newFeeHeadFirstTime ? [] : newFeeHeadMonths,
+              firstTime: newFeeHeadFirstTime,
             }));
             
-            await feeService.bulkUpsertFeeStructures(schoolId, sessionId, payload, user?.id);
+            await feeService.bulkUpsertFeeStructures(schoolId, payload, user?.id);
           }
         }
         
         showToast('Fee head added!', 'success');
+        
+        // Show sync confirmation modal if classes are selected
+        if (selectedClassesForFeeHead.size > 0) {
+          await loadSyncInfo(newFeeHead.id, newFeeHeadName.trim(), selectedClassesForFeeHead, false);
+        }
       }
       
       // Reload data
       const heads = await feeService.getFeeHeads(schoolId);
       setFeeHeads(heads);
       
-      // Reload structures if session is selected
-      if (sessionId) {
-        const data = await feeService.getFeeStructures(schoolId, { sessionId });
-        setStructures(data);
-        // Update amounts, months, and firstTime
-        const amt: { [key: string]: string } = {};
-        const mths: { [key: string]: number[] } = {};
-        const ft: { [key: string]: boolean } = {};
-        
-        data.forEach(s => {
-          const key = `${s.classId}_${s.feeHeadId}`;
-          amt[key] = String(s.amount);
-          mths[key] = s.months || [];
-          ft[key] = s.firstTime || false;
-        });
-        
-        setAmounts(prev => ({ ...prev, ...amt }));
-        setMonths(prev => ({ ...prev, ...mths }));
-        setFirstTime(prev => ({ ...prev, ...ft }));
-      }
+      // Reload structures (no session filter needed)
+      const data = await feeService.getFeeStructures(schoolId);
+      setStructures(data);
+      // Update amounts, months, and firstTime
+      const amt: { [key: string]: string } = {};
+      const mths: { [key: string]: number[] } = {};
+      const ft: { [key: string]: boolean } = {};
       
-      // Don't close modal on save - removed handleCloseFeeHeadModal() call
-      // Reset form for new entry if not editing
-      if (!editFeeHead) {
-        setNewFeeHeadName('');
-        setNewFeeHeadDesc('');
-        setNewFeeHeadAmount('');
-        setNewFeeHeadAutoGenerate(false);
-        setSelectedClassesForFeeHead(new Set());
+      data.forEach(s => {
+        const key = s.classId + '_' + s.feeHeadId;
+        amt[key] = String(s.amount);
+        mths[key] = s.months || [];
+        ft[key] = s.firstTime || false;
+      });
+      
+      setAmounts(prev => ({ ...prev, ...amt }));
+      setMonths(prev => ({ ...prev, ...mths }));
+      setFirstTime(prev => ({ ...prev, ...ft }));
+      
+      // Close fee head modal only if sync modal won't be shown
+      if (selectedClassesForFeeHead.size === 0) {
+        handleCloseFeeHeadModal();
+        
+        // Reset form for new entry if not editing
+        if (!editFeeHead) {
+          setNewFeeHeadName('');
+          setNewFeeHeadDesc('');
+          setNewFeeHeadAmount('');
+          setNewFeeHeadAutoGenerate(false);
+          setSelectedClassesForFeeHead(new Set());
+          setNewFeeHeadFirstTime(false);
+          setNewFeeHeadMonths([]);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create fee head');
@@ -2230,20 +2497,33 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
             disabled={saving || !schoolId || !sessionId}
             style={{
               background: saving 
-                ? (muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6')
-                : (muiTheme.palette.mode === 'dark' ? '#4a6cf7' : '#4a6cf7'),
-              border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                ? (muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)')
+                : (muiTheme.palette.mode === 'dark' 
+                  ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
+                  : 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'),
+              border: saving 
+                ? `1px solid ${muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)'}`
+                : 'none',
               color: saving 
-                ? (muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444')
+                ? (muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)')
                 : '#fff',
-              fontWeight: 700,
-              fontSize: isMobile ? '0.7rem' : '0.8rem',
-              padding: isMobile ? '3px 6px' : '4px 10px',
-              borderRadius: '6px',
-              minWidth: isMobile ? '65px' : '90px',
-              cursor: saving || !schoolId || !sessionId ? 'not-allowed' : 'pointer',
-              opacity: saving || !schoolId || !sessionId ? 0.6 : 1,
-              transition: 'all 0.2s',
+              fontWeight: 600,
+              fontSize: isMobile ? '0.75rem' : '0.85rem',
+              padding: isMobile ? '6px 12px' : '8px 16px',
+              borderRadius: '10px',
+              cursor: (saving || !schoolId || !sessionId) ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: saving 
+                ? 'none'
+                : (muiTheme.palette.mode === 'dark'
+                  ? '0 2px 8px rgba(25, 118, 210, 0.3)'
+                  : '0 2px 8px rgba(25, 118, 210, 0.2)'),
+              opacity: (saving || !schoolId || !sessionId) ? 0.6 : 1,
+              minWidth: isMobile ? '70px' : '90px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              whiteSpace: 'nowrap',
             }}
           >
             {saving ? 'Saving...' : 'Save All'}
@@ -2358,7 +2638,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                     justifyContent: 'center',
                     gap: 6,
                     background: muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
-                    border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                    border: muiTheme.palette.mode === 'dark' ? '1.5px solid #555' : '1.5px solid #e5e7eb',
                     color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
                     fontWeight: 700,
                     fontSize: '0.85rem',
@@ -2384,7 +2664,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                     justifyContent: 'center',
                     gap: 6,
                     background: muiTheme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
-                    border: `1.5px solid ${muiTheme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                    border: muiTheme.palette.mode === 'dark' ? '1.5px solid #555' : '1.5px solid #e5e7eb',
                     color: muiTheme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
                     fontWeight: 700,
                     fontSize: '0.85rem',
@@ -2462,7 +2742,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                     if (feeHeadsForClass.length === 0) return null;
                     
                     return feeHeadsForClass.map((fh, feeHeadIndex: number) => {
-                      const key = `${c.id}_${fh.id}`;
+                      const key = c.id + '_' + fh.id;
                       const currentMonths = months[key] || [];
                       const isFirstTime = firstTime[key] || false;
                       const isFirstFeeHead = feeHeadIndex === 0;
@@ -2474,7 +2754,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                           key={`${c.id}_${fh.id}`}
                           style={{
                             borderBottom: isLastFeeHead && !isLastClass 
-                              ? `2px solid ${customTheme.BG === '#252525' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+                              ? (customTheme.BG === '#252525' ? '2px solid rgba(255, 255, 255, 0.1)' : '2px solid rgba(0, 0, 0, 0.1)')
                               : undefined
                           }}
                         >
@@ -2518,6 +2798,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                               <OneTimeButton
                                 active={isFirstTime}
                                 disabled={false}
+                                classAccentColor={getClassAccentColor(c.id)}
                                 onClick={() => handleFirstTimeToggle(c.id, fh.id)}
                               >
                                 One Time
@@ -2531,6 +2812,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                                       key={monthNum}
                                       active={isActive}
                                       disabled={isFirstTime}
+                                      classAccentColor={getClassAccentColor(c.id)}
                                       onClick={() => handleMonthToggle(c.id, fh.id, monthNum)}
                                     >
                                       {monthName}
@@ -2591,8 +2873,11 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                 </label>
                 <Input
                   type="number"
-              value={newFeeHeadAmount}
-              onChange={e => setNewFeeHeadAmount(e.target.value)}
+                  value={newFeeHeadAmount}
+                  onChange={e => setNewFeeHeadAmount(e.target.value)}
+                  onWheel={(e) => {
+                    e.currentTarget.blur();
+                  }}
                   placeholder="Enter default amount"
                   min={0}
                   step={0.01}
@@ -2601,17 +2886,69 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                   Default amount for this fee head
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <input
                   type="checkbox"
                 checked={newFeeHeadAutoGenerate}
                 onChange={(e) => setNewFeeHeadAutoGenerate(e.target.checked)}
                   style={{ margin: 0 }}
               />
-                <label style={{ color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
+                <label style={{ color: muiTheme.palette.mode === 'dark' ? 'rgba(238, 255, 0, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
                   Auto Generate Invoices
                 </label>
               </div>
+              
+              {/* Default Frequency Selection */}
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.85rem' }}>
+                  Default Frequency
+                </label>
+                <FrequencyCell style={{ gap: '8px' }}>
+                  <OneTimeButton
+                    active={newFeeHeadFirstTime}
+                    disabled={false}
+                    onClick={() => {
+                      setNewFeeHeadFirstTime(!newFeeHeadFirstTime);
+                      if (!newFeeHeadFirstTime) {
+                        setNewFeeHeadMonths([]);
+                      }
+                    }}
+                    style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+                  >
+                    One Time
+                  </OneTimeButton>
+                  <MonthsContainer style={{ gap: '4px' }}>
+                    {MONTHS.map((monthName, index) => {
+                      const monthNum = index + 1;
+                      const isActive = newFeeHeadMonths.includes(monthNum);
+                      return (
+                        <MonthButton
+                          key={monthNum}
+                          active={isActive}
+                          disabled={newFeeHeadFirstTime}
+                          onClick={() => {
+                            if (newFeeHeadFirstTime) return;
+                            setNewFeeHeadMonths(prev => {
+                              if (prev.includes(monthNum)) {
+                                return prev.filter(m => m !== monthNum);
+                              } else {
+                                return [...prev, monthNum].sort((a, b) => a - b);
+                              }
+                            });
+                          }}
+                          style={{ fontSize: '0.7rem', padding: '4px 8px', minWidth: '40px' }}
+                        >
+                          {monthName}
+                        </MonthButton>
+                      );
+                    })}
+                  </MonthsContainer>
+                </FrequencyCell>
+                <div style={{ fontSize: '0.75rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', marginTop: '0.25rem' }}>
+                  This will be the default for all selected classes
+                </div>
+              </div>
+              
               <div style={{ marginTop: '1rem', marginBottom: '0.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                     <label style={{ color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)', fontWeight: 500, fontSize: '0.9rem' }}>
@@ -2647,11 +2984,17 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                     </button>
                   </div>
                   <div style={{ 
-                    maxHeight: '200px', 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gridTemplateRows: 'repeat(1, 1fr)',
+                    maxHeight: '257px', 
                     overflowY: 'auto', 
-                    border: `1px solid ${muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`, 
+                    border: muiTheme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)', 
                     borderRadius: '8px',
-                    padding: '8px',
+                    paddingTop: '0px',
+                    paddingBottom: '0px',
+                    paddingLeft: '8px',
+                    paddingRight: '8px',
                     background: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'
                   }}>
                     {sortClasses(classes).map((c: any) => (
@@ -2722,7 +3065,11 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                   </div>
                   <div style={{ fontSize: '0.75rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', marginTop: '0.5rem' }}>
                     {selectedClassesForFeeHead.size > 0 
-                      ? `Selected ${selectedClassesForFeeHead.size} class${selectedClassesForFeeHead.size > 1 ? 'es' : ''}. Fee structures will be created automatically.`
+                      ? (() => {
+                          const classCount = selectedClassesForFeeHead.size;
+                          const classText = classCount > 1 ? 'classes' : 'class';
+                          return 'Selected ' + classCount + ' ' + classText + '. Fee structures will be created automatically.';
+                        })()
                       : 'No classes selected. Fee head will be created but you can add fee structures manually later.'}
                   </div>
                 </div>
@@ -2751,7 +3098,7 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
               <TableHeader>
                 <FeeHeadModalName>Name</FeeHeadModalName>
                 <FeeHeadAmount>Default Amount</FeeHeadAmount>
-                <div style={{ minWidth: '24px' }}></div>
+                <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}>Actions</div>
               </TableHeader>
               <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 {feeHeads.length === 0 ? (
@@ -2809,14 +3156,17 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
                         )}
                       </FeeHeadNameContainer>
                       <FeeHeadAmount>
-                        {fh.defaultAmount ? `Rs. ${fh.defaultAmount.toFixed(2)}` : '-'}
+                        {fh.defaultAmount ? ('Rs. ' + fh.defaultAmount.toFixed(2)) : '-'}
                       </FeeHeadAmount>
-                      <DeleteIconButton
-                        onClick={(e) => handleDeleteFeeHeadFromTable(e, fh)}
-                        className="delete-icon"
-                      >
-                        <DeleteIcon style={{ fontSize: '0.9rem' }} />
-                      </DeleteIconButton>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                        <DeleteIconButton
+                          onClick={(e) => handleDeleteFeeHeadFromTable(e, fh)}
+                          className="delete-icon"
+                          title="Delete fee head"
+                        >
+                          <DeleteIcon style={{ fontSize: '0.9rem' }} />
+                        </DeleteIconButton>
+                      </div>
                     </TableRowWithHover>
                   ))
                 )}
@@ -2868,6 +3218,106 @@ const FeeStructureManagerContent: React.FC<{ theme: typeof darkTheme }> = ({ the
             {deleteLoading ? 'Deleting...' : 'Delete'}
             </Button>
         </FormActions>
+        </DialogPaper>
+      </StyledDialog>
+      
+      {/* Sync Confirmation Modal */}
+      <StyledDialog open={showSyncModal}>
+        <DialogPaper onClick={e => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <InfoIcon style={{ fontSize: '1.5rem', color: customTheme.ACCENT }} />
+              Sync Fee Head to Student Fee Plans
+            </DialogTitle>
+            <CloseButton onClick={handleCancelSync}>
+              <CloseIcon />
+            </CloseButton>
+          </DialogHeader>
+          
+          <StyledDialogContent>
+            {loadingSyncInfo ? (
+              <div style={{ padding: '2rem', textAlign: 'center' }}>
+                <Loader />
+                <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                  Loading sync information...
+                </div>
+              </div>
+            ) : syncFeeHeadData ? (
+              <div style={{ padding: '0.5rem 0' }}>
+                <div style={{ 
+                  fontSize: '1rem', 
+                  color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)',
+                  marginBottom: '1rem',
+                  lineHeight: 1.6
+                }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontWeight: 500 }}>
+                    Would you like to sync the fee head <strong>"{syncFeeHeadData.feeHeadName}"</strong> to student fee plans?
+                  </p>
+                  
+                  <div style={{ 
+                    background: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600 }}>
+                      What will happen:
+                    </div>
+                    <ul style={{ 
+                      margin: 0, 
+                      paddingLeft: '1.25rem',
+                      fontSize: '0.9rem',
+                      color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
+                      lineHeight: 1.8
+                    }}>
+                      <li>The fee head will be added to fee plans for students in the selected classes</li>
+                      <li>Fee amounts will be based on the fee structure defined for each class</li>
+                      <li>Only students who don't already have this fee head will be affected</li>
+                    </ul>
+                  </div>
+                  
+                  <div style={{ 
+                    background: muiTheme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                    border: `1px solid ${muiTheme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem'
+                  }}>
+                    <div style={{ marginBottom: '0.25rem', fontWeight: 600 }}>
+                      Selected Classes: <span style={{ fontWeight: 400 }}>{syncFeeHeadData.selectedClassNames || 'None'}</span>
+                    </div>
+                    {syncFeeHeadData.affectedPlansCount !== undefined && syncFeeHeadData.affectedPlansCount > 0 ? (
+                      <>
+                        <div style={{ marginBottom: '0.25rem' }}>
+                          Fee Plans to Update: <strong>{syncFeeHeadData.affectedPlansCount}</strong>
+                        </div>
+                        <div>
+                          Students Affected: <strong>{syncFeeHeadData.affectedStudentsCount || 0}</strong>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ color: muiTheme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }}>
+                        No fee plans found for students in the selected classes, or all students already have this fee head.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </StyledDialogContent>
+          
+          <FormActions>
+            <Button variant="secondary" onClick={handleCancelSync} disabled={syncing}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleSyncFeeHead} 
+              disabled={syncing || !syncFeeHeadData}
+            >
+              {syncing ? 'Syncing...' : 'Yes, Sync to Fee Plans'}
+            </Button>
+          </FormActions>
         </DialogPaper>
       </StyledDialog>
     </PageContainer>

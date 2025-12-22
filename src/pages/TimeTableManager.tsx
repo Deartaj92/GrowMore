@@ -5,6 +5,7 @@ import { Box, Button, useMediaQuery, Tooltip } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
 import { useToast } from '../contexts/ToastContext';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import jsPDF from 'jspdf';
 import autoTable, { CellHookData } from 'jspdf-autotable';
@@ -620,27 +621,55 @@ const TimeTableManager: React.FC = () => {
       setLoading(true);
       try {
         const [cls, subs, tchs, tcs, secs] = await Promise.all([
-          supabase.from('classes').select('id, name').eq('school_id', user?.school_id || '').order('name'),
-          supabase.from('subjects').select('id, name').eq('school_id', user?.school_id || ''),
-          supabase.from('staff').select('id, name, role, gender').eq('role', 'Teacher').eq('school_id', user?.school_id || '').order('name'),
-          supabase.from('teacher_class_subjects').select('id, teacher_id, class_subject_id, class_subjects (class_id, subject_id)').eq('school_id', user?.school_id || ''),
-          supabase.from('sections').select('id, class_id, teacher_id').eq('school_id', user?.school_id || ''),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', user?.school_id || '')
+              .order('name')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('subjects')
+              .select('id, name')
+              .eq('school_id', user?.school_id || '')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('staff')
+              .select('id, name, role, gender')
+              .eq('role', 'Teacher')
+              .eq('school_id', user?.school_id || '')
+              .order('name')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('teacher_class_subjects')
+              .select('id, teacher_id, class_subject_id, class_subjects (class_id, subject_id)')
+              .eq('school_id', user?.school_id || '')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sections')
+              .select('id, class_id, teacher_id')
+              .eq('school_id', user?.school_id || '')
+              .range(from, to);
+          }),
         ]);
-        setClasses(cls.data || []);
-        setSubjects(subs.data || []);
-        setTeachers(tchs.data || []);
-        setTeacherClassSubjects(tcs.data || []);
-        setSections(secs.data || []);
+        setClasses(cls);
+        setSubjects(subs);
+        setTeachers(tchs);
+        setTeacherClassSubjects(tcs);
+        setSections(secs || []);
 
         // Build classAssignments map
         const assignments: ClassAssignment = {};
-        tcs.data?.forEach((tcs: any) => {
-          if (tcs.class_subjects && tcs.class_subjects.class_id && tcs.class_subjects.subject_id) {
-            const classId = tcs.class_subjects.class_id;
+        tcs?.forEach((tcsItem: any) => {
+          if (tcsItem.class_subjects && tcsItem.class_subjects.class_id && tcsItem.class_subjects.subject_id) {
+            const classId = tcsItem.class_subjects.class_id;
             if (!assignments[classId]) assignments[classId] = [];
             assignments[classId].push({
-              subjectId: tcs.class_subjects.subject_id,
-              teacherId: tcs.teacher_id
+              subjectId: tcsItem.class_subjects.subject_id,
+              teacherId: tcsItem.teacher_id
             });
           }
         });

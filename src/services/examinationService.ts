@@ -30,6 +30,7 @@ import {
     MasterSheetExportDTO,
     DMCExportDTO
 } from '../types/examinations';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 // Helper function to enrich examination data with related information
 const enrichExaminationData = async (examinations: any[]): Promise<Examination[]> => {
@@ -66,28 +67,29 @@ const enrichExaminationData = async (examinations: any[]): Promise<Examination[]
 export const examinationService = {
     // Examination CRUD Operations
     async getExaminations(filters: ExaminationFilters = {}, schoolId?: number): Promise<Examination[]> {
-        let query = supabase
-            .from('examinations')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('examinations')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
-
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== '') {
-                if (key === 'search_query') {
-                    query = query.or(`name.ilike.%${value}%,description.ilike.%${value}%`);
-                } else {
-                    query = query.eq(key, value);
-                }
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
             }
-        });
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return await enrichExaminationData(data || []);
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (key === 'search_query') {
+                        query = query.or(`name.ilike.%${value}%,description.ilike.%${value}%`);
+                    } else {
+                        query = query.eq(key, value);
+                    }
+                }
+            });
+
+            return await query.range(from, to);
+        });
+        return await enrichExaminationData(data);
     },
 
     async getExaminationById(id: number, schoolId?: number): Promise<Examination> {
@@ -150,22 +152,23 @@ export const examinationService = {
 
     // Exam Subjects Management
     async getExamSubjects(examId: number, schoolId?: number): Promise<ExamSubject[]> {
-        let query = supabase
-            .from('exam_subjects')
-            .select(`
-                *,
-                subject:subjects(name, code),
-                class:classes(name)
-            `)
-            .eq('exam_id', examId);
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('exam_subjects')
+                .select(`
+                    *,
+                    subject:subjects(name, code),
+                    class:classes(name)
+                `)
+                .eq('exam_id', examId);
 
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+            return await query.range(from, to);
+        });
+        return data;
     },
 
     async createExamSubject(examSubject: CreateExamSubjectDTO): Promise<ExamSubject> {
@@ -213,34 +216,35 @@ export const examinationService = {
 
     // Exam Results Management
     async getExamResults(filters: ExamResultFilters = {}, schoolId?: number): Promise<ExamResult[]> {
-        let query = supabase
-            .from('exam_results')
-            .select(`
-                *,
-                subject:subjects(name, code),
-                class:classes(name),
-                section:sections(name),
-                entered_by_user:users!exam_results_entered_by_fkey(name)
-            `)
-            .order('created_at', { ascending: false });
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('exam_results')
+                .select(`
+                    *,
+                    subject:subjects(name, code),
+                    class:classes(name),
+                    section:sections(name),
+                    entered_by_user:users!exam_results_entered_by_fkey(name)
+                `)
+                .order('created_at', { ascending: false });
 
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
-
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== '') {
-                if (key === 'search_query') {
-                    query = query.or(`student.name.ilike.%${value}%,student.father_name.ilike.%${value}%`);
-                } else {
-                    query = query.eq(key, value);
-                }
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
             }
-        });
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (key === 'search_query') {
+                        query = query.or(`student.name.ilike.%${value}%,student.father_name.ilike.%${value}%`);
+                    } else {
+                        query = query.eq(key, value);
+                    }
+                }
+            });
+
+            return await query.range(from, to);
+        });
+        return data;
     },
 
     async createExamResult(examResult: CreateExamResultDTO): Promise<ExamResult> {
@@ -339,33 +343,34 @@ export const examinationService = {
 
     // Master Sheet Operations
     async getMasterSheets(examId: number, classId?: number, sectionId?: number, schoolId?: number): Promise<ExamMasterSheet[]> {
-        let query = supabase
-            .from('exam_master_sheets')
-            .select(`
-                *,
-                student:students(name, father_name, picture_url),
-                class:classes(name),
-                section:sections(name),
-                exam:examinations(name, exam_type)
-            `)
-            .eq('exam_id', examId)
-            .order('position');
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('exam_master_sheets')
+                .select(`
+                    *,
+                    student:students(name, father_name, picture_url),
+                    class:classes(name),
+                    section:sections(name),
+                    exam:examinations(name, exam_type)
+                `)
+                .eq('exam_id', examId)
+                .order('position');
 
-        if (classId) {
-            query = query.eq('class_id', classId);
-        }
+            if (classId) {
+                query = query.eq('class_id', classId);
+            }
 
-        if (sectionId) {
-            query = query.eq('section_id', sectionId);
-        }
+            if (sectionId) {
+                query = query.eq('section_id', sectionId);
+            }
 
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+            return await query.range(from, to);
+        });
+        return data;
     },
 
     async generateMasterSheet(examId: number, classId: number, sectionId?: number, schoolId?: number): Promise<void> {
@@ -381,21 +386,22 @@ export const examinationService = {
 
     // DMC Template Management
     async getDMCTemplates(schoolId?: number): Promise<DMCTemplate[]> {
-        let query = supabase
-            .from('dmc_templates')
-            .select(`
-                *,
-                created_by_user:users!dmc_templates_created_by_fkey(name)
-            `)
-            .order('created_at', { ascending: false });
+        const data = await fetchAllRows(async (from, to) => {
+            let query = supabase
+                .from('dmc_templates')
+                .select(`
+                    *,
+                    created_by_user:users!dmc_templates_created_by_fkey(name)
+                `)
+                .order('created_at', { ascending: false });
 
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+            return await query.range(from, to);
+        });
+        return data;
     },
 
     async createDMCTemplate(template: CreateDMCTemplateDTO): Promise<DMCTemplate> {

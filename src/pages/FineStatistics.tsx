@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, ComposedChart } from 'recharts';
 import { MonetizationOn, TrendingUp, TrendingDown, PieChart as PieChartIcon, Leaderboard, CalendarToday, Info } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
@@ -151,23 +152,53 @@ const FineStatistics: React.FC = () => {
       startProgress(false);
       setProgress(10);
       const [
-        { data: studentsData },
-        { data: classesData },
-        { data: sectionsData },
-        { data: finesData },
-        { data: paymentsData },
-        { data: attendanceData },
+        studentsData,
+        classesData,
+        sectionsData,
+        finesData,
+        paymentsData,
+        attendanceData,
       ] = await Promise.all([
-        supabase.from('students').select('id, name, father_name, class_id, section_id').eq('school_id', user.school_id),
-        supabase.from('classes').select('id, name').eq('school_id', user.school_id),
-        supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id),
-        supabase.from('fines').select('*').eq('school_id', user.school_id),
-        supabase.from('fine_payments').select('*').eq('school_id', user.school_id),
-        supabase.from('attendance_records').select('*').eq('school_id', user.school_id),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('students')
+            .select('id, name, father_name, class_id, section_id')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('classes')
+            .select('id, name')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('sections')
+            .select('id, name, class_id')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('fines')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('fine_payments')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('attendance_records')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
       ]);
       setProgress(70);
-      setStudents(studentsData || []);
-      setClasses(classesData || []);
+      setStudents(studentsData);
+      setClasses(classesData);
       setSections(sectionsData || []);
       setFines(finesData || []);
       setPayments(paymentsData || []);

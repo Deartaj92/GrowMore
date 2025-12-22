@@ -1,7 +1,7 @@
 import { supabase } from '../../../supabaseClient';
 import { USE_DUMMY_DATA } from '../constants';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
-import { fetchAllRows } from './feeService';
+import { fetchAllRows } from '../../../utils/paginationHelper';
 
 export const fetchEmployeeAbsentees = async (
   schoolId: string,
@@ -85,20 +85,26 @@ export const fetchEmployeeAbsentees = async (
       return;
     }
 
-    const { data: staffData, error: staffError } = await supabase
-      .from('staff')
-      .select(`
-        id,
-        name,
-        role,
-        picture_url
-      `)
-      .in('id', staffIds)
-      .eq('school_id', schoolId);
-
-    if (staffError) {
-      throw staffError;
+    // Fetch staff with chunking for .in() limit
+    let allStaff: any[] = [];
+    for (let i = 0; i < staffIds.length; i += 1000) {
+      const chunk = staffIds.slice(i, i + 1000);
+      const chunkStaff = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('staff')
+          .select(`
+            id,
+            name,
+            role,
+            picture_url
+          `)
+          .in('id', chunk)
+          .eq('school_id', schoolId)
+          .range(from, to);
+      });
+      allStaff.push(...chunkStaff);
     }
+    const staffData = allStaff;
 
     // Get attendance statistics for each staff member for the current month
     const monthStart = format(startOfMonth(parseISO(absentDate)), 'yyyy-MM-dd');
@@ -155,13 +161,17 @@ export const fetchEmployeeAbsentees = async (
     });
 
     setStaffDetails(details);
-    setAbsentees(attendanceData || []);
+    setAbsentees(attendanceData);
   } catch (error) {
     console.error('Error fetching employee absentees:', error);
     setStaffDetails({});
     setAbsentees([]);
   }
 };
+
+
+
+
 
 
 

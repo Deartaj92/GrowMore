@@ -2,7 +2,7 @@ import { supabase } from '../../../supabaseClient';
 import { generateDummyAbsentees } from '../utils/dummyData';
 import { USE_DUMMY_DATA } from '../constants';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
-import { fetchAllRows } from './feeService';
+import { fetchAllRows } from '../../../utils/paginationHelper';
 
 // Attendance service functions will be extracted here
 // fetchAbsentees, fetchAttendanceForDate, fetchAttendanceTrend, fetchClassAttendance, fetchConsecutiveAbsent, etc.
@@ -56,25 +56,24 @@ export const fetchAbsentees = async (
       return;
     }
 
-    const { data: attendanceData, error: attendanceError } = await supabase
-      .from('attendance_records')
-      .select(`
-        id,
-        student_id,
-        status,
-        remarks,
-        date,
-        class_id,
-        section_id
-      `)
-      .eq('date', absentDate)
-      .eq('session_id', sessionData.id)
-      .eq('school_id', schoolId)
-      .or('status.eq.absent,status.eq.leave');
-
-    if (attendanceError) {
-      throw attendanceError;
-    }
+    const attendanceData = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('attendance_records')
+        .select(`
+          id,
+          student_id,
+          status,
+          remarks,
+          date,
+          class_id,
+          section_id
+        `)
+        .eq('date', absentDate)
+        .eq('session_id', sessionData.id)
+        .eq('school_id', schoolId)
+        .or('status.eq.absent,status.eq.leave')
+        .range(from, to);
+    });
 
     const studentIds = attendanceData
       .map(record => record.student_id)
@@ -86,25 +85,31 @@ export const fetchAbsentees = async (
       return;
     }
 
-    const { data: studentsData, error: studentsError } = await supabase
-      .from('students')
-      .select(`
-        id,
-        name,
-        father_name,
-        picture_url,
-        roll_number,
-        class_id,
-        section_id,
-        classes:class_id(id, name),
-        sections:section_id(id, name)
-      `)
-      .in('id', studentIds)
-      .eq('school_id', schoolId);
-
-    if (studentsError) {
-      throw studentsError;
+    // Fetch students with chunking for .in() limit
+    let allStudents: any[] = [];
+    for (let i = 0; i < studentIds.length; i += 1000) {
+      const chunk = studentIds.slice(i, i + 1000);
+      const chunkStudents = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('students')
+          .select(`
+            id,
+            name,
+            father_name,
+            picture_url,
+            roll_number,
+            class_id,
+            section_id,
+            classes:class_id(id, name),
+            sections:section_id(id, name)
+          `)
+          .in('id', chunk)
+          .eq('school_id', schoolId)
+          .range(from, to);
+      });
+      allStudents.push(...chunkStudents);
     }
+    const studentsData = allStudents;
 
     // Get attendance statistics for each student for the current month
     const monthStart = format(startOfMonth(parseISO(absentDate)), 'yyyy-MM-dd');
@@ -163,7 +168,7 @@ export const fetchAbsentees = async (
     });
 
     setStudentDetails(details);
-    setAbsentees(attendanceData || []);
+    setAbsentees(attendanceData);
   } catch (error) {
     console.error('Error fetching absentees:', error);
     setStudentDetails({});

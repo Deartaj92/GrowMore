@@ -10,30 +10,33 @@ import {
   EnquiryStats,
   EnquiryDashboardData
 } from '../types/enquiry';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 export const enquiryService = {
   // Enquiry Types (global, no school_id filter)
   async getEnquiryTypes(schoolId?: number): Promise<EnquiryType[]> {
-    const { data, error } = await supabase
-      .from('enquiry_types')
-      .select('*')
-      .eq('is_active', true)
-      .order('name');
-
-    if (error) throw error;
-    return data || [];
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiry_types')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+        .range(from, to);
+    });
+    return data;
   },
 
   // Enquiry Statuses (global, no school_id filter)
   async getEnquiryStatuses(schoolId?: number): Promise<EnquiryStatus[]> {
-    const { data, error } = await supabase
-      .from('enquiry_statuses')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order');
-
-    if (error) throw error;
-    return data || [];
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiry_statuses')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+        .range(from, to);
+    });
+    return data;
   },
 
   // Enquiries
@@ -304,22 +307,23 @@ export const enquiryService = {
 
   // Attachments
   async getEnquiryAttachments(schoolId: number, enquiryId: number): Promise<EnquiryAttachment[]> {
-    const { data, error } = await supabase
-      .from('enquiry_attachments')
-      .select(`
-        *,
-        uploaded_user:users!uploaded_by (
-          id,
-          name,
-          email
-        )
-      `)
-      .eq('school_id', schoolId)
-      .eq('enquiry_id', enquiryId)
-      .order('uploaded_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiry_attachments')
+        .select(`
+          *,
+          uploaded_user:users!uploaded_by (
+            id,
+            name,
+            email
+          )
+        `)
+        .eq('school_id', schoolId)
+        .eq('enquiry_id', enquiryId)
+        .order('uploaded_at', { ascending: false })
+        .range(from, to);
+    });
+    return data;
   },
 
   async uploadAttachment(
@@ -415,13 +419,16 @@ export const enquiryService = {
     ]);
 
     // Get enquiries by type
-    const { data: enquiriesByType } = await supabase
-      .from('enquiries')
-      .select(`
-        enquiry_type_id,
-        enquiry_types!inner (name)
-      `)
-      .eq('school_id', schoolId);
+    const enquiriesByType = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiries')
+        .select(`
+          enquiry_type_id,
+          enquiry_types!inner (name)
+        `)
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
 
     const typeCounts = enquiriesByType?.reduce((acc: any, item: any) => {
       const typeName = item.enquiry_types.name;
@@ -430,13 +437,16 @@ export const enquiryService = {
     }, {}) || {};
 
     // Get enquiries by status
-    const { data: enquiriesByStatus } = await supabase
-      .from('enquiries')
-      .select(`
-        status_id,
-        enquiry_statuses!inner (name, color)
-      `)
-      .eq('school_id', schoolId);
+    const enquiriesByStatus = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiries')
+        .select(`
+          status_id,
+          enquiry_statuses!inner (name, color)
+        `)
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
 
     const statusCounts = enquiriesByStatus?.reduce((acc: any, item: any) => {
       const statusName = item.enquiry_statuses.name;
@@ -446,10 +456,13 @@ export const enquiryService = {
     }, {}) || {};
 
     // Get enquiries by priority
-    const { data: enquiriesByPriority } = await supabase
-      .from('enquiries')
-      .select('priority')
-      .eq('school_id', schoolId);
+    const enquiriesByPriority = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiries')
+        .select('priority')
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
 
     const priorityCounts = enquiriesByPriority?.reduce((acc: any, item: any) => {
       acc[item.priority] = (acc[item.priority] || 0) + 1;
@@ -543,10 +556,13 @@ export const enquiryService = {
     ]);
 
     // Get top enquiry sources
-    const { data: sourceData } = await supabase
-      .from('enquiries')
-      .select('source')
-      .eq('school_id', schoolId);
+    const sourceData = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('enquiries')
+        .select('source')
+        .eq('school_id', schoolId)
+        .range(from, to);
+    });
 
     const sourceCounts = sourceData?.reduce((acc: any, item: any) => {
       acc[item.source] = (acc[item.source] || 0) + 1;

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { Schedule as ScheduleIcon } from '@mui/icons-material';
 import Loader from '../components/Loader';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 const Container = styled.div`
   padding: 20px;
@@ -275,12 +276,22 @@ const MyTimetable: React.FC = () => {
 
         // Fetch subjects and classes first
         const [subjectsResult, classesResult] = await Promise.all([
-          supabase.from('subjects').select('id, name').eq('school_id', user.school_id),
-          supabase.from('classes').select('id, name').eq('school_id', user.school_id)
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('subjects')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
         ]);
 
-        if (subjectsResult.data) setSubjects(subjectsResult.data);
-        if (classesResult.data) setClasses(classesResult.data);
+        setSubjects(subjectsResult);
+        if (classesResult && classesResult.length > 0) setClasses(classesResult);
 
         // Get active session
         const { data: session } = await supabase

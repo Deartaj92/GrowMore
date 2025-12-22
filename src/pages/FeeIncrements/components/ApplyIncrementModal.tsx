@@ -724,7 +724,7 @@ export const ApplyIncrementModal: React.FC<ApplyIncrementModalProps> = ({
       const previewItems: IncrementPreviewItem[] = [];
 
       if (formData.targetType === 'plans' || formData.targetType === 'both') {
-        const feePlans = await feeService.getAllFeePlans(schoolId, undefined, sessionId);
+        const feePlans = await feeService.getAllFeePlans(schoolId);
         let plansToProcess = feePlans;
         
         if (formData.studentIds && formData.studentIds.length > 0) {
@@ -858,7 +858,6 @@ export const ApplyIncrementModal: React.FC<ApplyIncrementModalProps> = ({
       if (formData.targetType === 'plans' || formData.targetType === 'both') {
         const result = await feeService.applyIncrementToFeePlans(
           schoolId,
-          sessionId,
           formData.incrementType,
           formData.incrementValue,
           {

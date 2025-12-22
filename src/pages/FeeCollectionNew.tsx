@@ -3,6 +3,7 @@ import styled, { useTheme } from 'styled-components';
 import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Info, School, Class, Receipt, Add as AddIcon, Edit as EditIcon, Delete as DeleteIconMUI, Search as SearchIcon, FilterList as FilterIcon, People as PeopleIcon, School as SchoolIcon, Close as CloseIcon, MoreVert as MoreIcon, Check as CheckIcon, Warning as WarningIcon, Info as InfoIcon, RemoveCircleOutline as UnlinkIcon, Assessment as AssessmentIcon, CalendarToday as CalendarIcon, KeyboardArrowUp as KeyboardArrowUpIcon, Print as PrintIcon, AccountBalance, AccountBalanceWallet, CreditCard, AttachMoney, Description } from '@mui/icons-material';
 import * as Icons from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { useToast } from '../components/useToast';
 import { useLocation } from 'react-router-dom';
 import ReactDOM from 'react-dom';
@@ -646,7 +647,7 @@ const FeeCollectionNew: React.FC = () => {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   // Fee-related state
-  const [feeInvoices, setFeeInvoices] = useState<any[]>([]);
+  const [feeChallans, setFeeChallans] = useState<any[]>([]);
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeError, setFeeError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -743,17 +744,58 @@ const FeeCollectionNew: React.FC = () => {
       const start = Date.now();
 
       const dataPromise = (async () => {
-        const [{ data: studentsData }, { data: classesData }, { data: sectionsData }, { data: sessionsData }, { data: usersData }, { data: accountsData }, { data: accountTypesData }] = await Promise.all([
-          supabase.from('students').select('id, name, father_name, class_id, section_id, picture_url, roll_number').eq('status', 'active').eq('school_id', user.school_id),
-          supabase.from('classes').select('id, name').eq('school_id', user.school_id),
-          supabase.from('sections').select('id, name').eq('school_id', user.school_id),
-          supabase.from('sessions').select('id, name, is_active').eq('school_id', user.school_id).order('is_active', { ascending: false }),
-          supabase.from('users').select('id, name, email').eq('school_id', user.school_id),
-          supabase.from('accounts').select('*').eq('school_id', user.school_id).eq('is_active', true).order('name'),
-          supabase.from('account_types').select('*').or(`school_id.eq.1,school_id.eq.${user.school_id}`).eq('is_active', true).order('display_name'),
+        const [studentsData, classesData, sectionsData, sessionsData, usersData, accountsData, accountTypesData] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('students')
+              .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
+              .eq('status', 'active')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sections')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sessions')
+              .select('id, name, is_active')
+              .eq('school_id', user.school_id)
+              .order('is_active', { ascending: false })
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('users')
+              .select('id, name, email')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('accounts')
+              .select('*')
+              .eq('school_id', user.school_id)
+              .eq('is_active', true)
+              .order('name')
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('account_types')
+              .select('*')
+              .or(`school_id.eq.1,school_id.eq.${user.school_id}`)
+              .eq('is_active', true)
+              .order('display_name')
+              .range(from, to);
+          }),
         ]);
-        if (studentsData) setStudents(studentsData);
-        if (classesData) setClasses(classesData);
+        setStudents(studentsData);
+        setClasses(classesData);
         if (sectionsData) setSections(sectionsData);
         if (sessionsData) {
           setSessions(sessionsData);
@@ -948,8 +990,8 @@ const FeeCollectionNew: React.FC = () => {
 
   // Calculate totals
   const totalFeeAmount = useMemo(() => {
-    return feeInvoices.reduce((sum: number, invoice: any) => sum + Number(invoice.total_amount || 0), 0);
-  }, [feeInvoices]);
+    return feeChallans.reduce((sum: number, challan: any) => sum + Number(challan.total_amount || 0), 0);
+  }, [feeChallans]);
 
   const totalPaidAmount = useMemo(() => {
     return paymentHistory.reduce((sum: number, payment: any) => sum + Number(payment.amount || 0), 0);
@@ -994,7 +1036,7 @@ const FeeCollectionNew: React.FC = () => {
     paymentDate: string;
     paymentRemarks: string;
     receivedBy: number;
-    feeInvoicesOverride?: any[]; // Optional override for fee invoices (for past payments)
+    feeChallansOverride?: any[]; // Optional override for fee challans (for past payments)
     transactionId?: string; // Transaction ID when payment is made through account
     chequeNumber?: string; // Cheque number when payment is made via cheque
   }) => {
@@ -1018,39 +1060,40 @@ const FeeCollectionNew: React.FC = () => {
       if (paymentData.paymentId) {
         // Fetch ALL items from fee_payment_items table using payment_id
         // This includes items with paid_amount = 0 to show what items were available at payment time
-        const { data: paymentItemsData, error: paymentItemsError } = await supabase
-          .from('fee_payment_items')
-          .select(`
-            id,
-            fee_item_id,
-            amount,
-            paid_amount,
-            fee_invoice_items!inner(
+        const paymentItemsData = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_payment_items')
+            .select(`
               id,
-              fee_head_id,
-              invoice_id,
-              fee_heads(id, name),
-              fee_invoices(id, month, year)
-            )
-          `)
-          .eq('payment_id', paymentData.paymentId)
-          .eq('school_id', user.school_id)
-          .order('id', { ascending: true }); // Order by id to maintain consistent order
+              fee_item_id,
+              amount,
+              paid_amount,
+              fee_challans_items!inner(
+                id,
+                fee_head_id,
+                challan_id,
+                fee_heads(id, name),
+                fee_challans(id, month, year)
+              )
+            `)
+            .eq('payment_id', paymentData.paymentId)
+            .eq('school_id', user.school_id)
+            .order('id', { ascending: true })
+            .range(from, to);
+        });
 
-        if (paymentItemsError) throw paymentItemsError;
-
-        if (paymentItemsData) {
+        if (paymentItemsData && paymentItemsData.length > 0) {
           allFeeItems = paymentItemsData.map((item: any) => {
-            const feeInvoiceItem = item.fee_invoice_items;
+            const feeChallanItem = item.fee_challans_items;
             return {
               id: item.fee_item_id,
               amount: Number(item.amount || 0), // Full amount from page/UI (stored in DB)
               paid_amount: Number(item.paid_amount || 0), // Paid amount
-              fee_head_id: feeInvoiceItem?.fee_head_id,
-              fee_head_name: feeInvoiceItem?.fee_heads?.name || 'Unknown Fee Head',
-              invoice_id: feeInvoiceItem?.invoice_id,
-              month: feeInvoiceItem?.fee_invoices?.month,
-              year: feeInvoiceItem?.fee_invoices?.year
+              fee_head_id: feeChallanItem?.fee_head_id,
+              fee_head_name: feeChallanItem?.fee_heads?.name || 'Unknown Fee Head',
+              challan_id: feeChallanItem?.challan_id,
+              month: feeChallanItem?.fee_challans?.month,
+              year: feeChallanItem?.fee_challans?.year
             };
           });
         }
@@ -1060,48 +1103,64 @@ const FeeCollectionNew: React.FC = () => {
 
         const fetchPromises = feeItemIds.map(id =>
           supabase
-            .from('fee_invoice_items')
-            .select('id, amount, fee_head_id, invoice_id, fee_heads(id, name)')
+            .from('fee_challans_items')
+            .select('id, amount, fee_head_id, challan_id, fee_heads(id, name)')
             .eq('id', id)
             .eq('school_id', user.school_id)
             .maybeSingle()
         );
 
         const results = await Promise.all(fetchPromises);
-        const feeInvoiceItems = results
+        const feeChallanItems = results
           .map(r => r.data)
           .filter(Boolean) as any[];
 
         const feeItemsError = results.find(r => r.error)?.error;
         if (feeItemsError) throw feeItemsError;
 
-        // Fetch invoices separately to get month and year
-        const invoiceIds = Array.from(new Set(feeInvoiceItems.map((item: any) => item.invoice_id).filter(Boolean)));
-        const { data: invoices } = invoiceIds.length > 0 ? await supabase
-          .from('fee_invoices')
-          .select('id, month, year')
-          .in('id', invoiceIds)
-          .eq('school_id', user.school_id) : { data: [] };
+        // Fetch challans separately to get month and year
+        const challanIds = Array.from(new Set(feeChallanItems.map((item: any) => item.challan_id).filter(Boolean)));
+        let challans: any[] = [];
+        if (challanIds.length > 0) {
+          // Split into chunks to avoid URL length limits
+          const chunkSize = 1000;
+          const chunks: number[][] = [];
+          for (let i = 0; i < challanIds.length; i += chunkSize) {
+            chunks.push(challanIds.slice(i, i + chunkSize));
+          }
+          
+          for (const chunk of chunks) {
+            const chunkData = await fetchAllRows(async (from, to) => {
+              return await supabase
+                .from('fee_challans')
+                .select('id, month, year')
+                .in('id', chunk)
+                .eq('school_id', user.school_id)
+                .range(from, to);
+            });
+            challans.push(...chunkData);
+          }
+        }
 
-        const invoicesMap = new Map();
-        if (invoices) {
-          invoices.forEach((inv: any) => {
-            invoicesMap.set(inv.id, inv);
+        const challansMap = new Map();
+        if (challans) {
+          challans.forEach((ch: any) => {
+            challansMap.set(ch.id, ch);
           });
         }
 
         // Build fee items list from payment items
-        feeInvoiceItems.forEach((item: any) => {
-          const invoice = invoicesMap.get(item.invoice_id);
+        feeChallanItems.forEach((item: any) => {
+          const challan = challansMap.get(item.challan_id);
           const paymentItem = paymentData.paymentItems?.find(pi => pi.fee_item_id === item.id.toString());
           allFeeItems.push({
             id: item.id,
             amount: Number(paymentItem?.amount || item.amount || 0),
             fee_head_id: item.fee_head_id,
             fee_head_name: item.fee_heads?.name || 'Unknown Fee Head',
-            invoice_id: item.invoice_id,
-            month: invoice?.month,
-            year: invoice?.year
+            challan_id: item.challan_id,
+            month: challan?.month,
+            year: challan?.year
           });
         });
       }
@@ -1110,11 +1169,11 @@ const FeeCollectionNew: React.FC = () => {
       const totalRemaining = allFeeItems.reduce((sum, item) => sum + item.amount, 0);
 
       // For remaining amount calculation, we still need all fee items to get the overall remaining
-      // Use provided fee invoices or fall back to state
-      const invoicesToUse = paymentData.feeInvoicesOverride || feeInvoices;
+      // Use provided fee challans or fall back to state
+      const challansToUse = paymentData.feeChallansOverride || feeChallans;
       const allStudentFeeItems: any[] = [];
-      invoicesToUse.forEach((invoice: any) => {
-        invoice.fee_invoice_items?.forEach((item: any) => {
+      challansToUse.forEach((challan: any) => {
+        challan.fee_challans_items?.forEach((item: any) => {
           allStudentFeeItems.push({
             amount: Number(item.amount || 0)
           });
@@ -1133,7 +1192,7 @@ const FeeCollectionNew: React.FC = () => {
               id,
               amount,
               discount_amount,
-              fee_invoices!inner (
+              fee_challans!inner (
                 student_id,
                 session_id
               ),
@@ -1141,8 +1200,8 @@ const FeeCollectionNew: React.FC = () => {
                 amount
               )
             `)
-            .eq('fee_invoices.student_id', selectedStudent.id)
-            .eq('fee_invoices.session_id', currentSession.id)
+            .eq('fee_challans.student_id', selectedStudent.id)
+            .eq('fee_challans.session_id', currentSession.id)
             .eq('school_id', user.school_id);
 
           if (allPaymentsData) {
@@ -1506,7 +1565,7 @@ const FeeCollectionNew: React.FC = () => {
     paymentDate: string;
     paymentRemarks: string;
     receivedBy: number;
-    feeInvoicesOverride?: any[];
+    feeChallansOverride?: any[];
     transactionId?: string; // Transaction ID when payment is made through account
     chequeNumber?: string; // Cheque number when payment is made via cheque
   }) => {
@@ -1531,39 +1590,45 @@ const FeeCollectionNew: React.FC = () => {
       // Fetch payment items if paymentId is provided (same approach as invoice)
       let paymentItems: any[] = [];
       if (paymentData.paymentId) {
-        const { data: paymentItemsData, error: paymentItemsError } = await supabase
-          .from('fee_payment_items')
-          .select(`
-            id,
-            fee_item_id,
-            amount,
-            paid_amount,
-            fee_invoice_items!inner(
+        const paymentItemsData = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_payment_items')
+            .select(`
               id,
-              fee_head_id,
-              invoice_id,
-              fee_heads(id, name),
-              fee_invoices(id, month, year)
-            )
-          `)
-          .eq('payment_id', paymentData.paymentId)
-          .eq('school_id', user.school_id)
-          .order('id', { ascending: true });
+              fee_item_id,
+              amount,
+              paid_amount,
+              fee_challans_items!inner(
+                id,
+                fee_head_id,
+                challan_id,
+                fee_heads(id, name),
+                fee_challans(id, month, year)
+              )
+            `)
+            .eq('payment_id', paymentData.paymentId)
+            .eq('school_id', user.school_id)
+            .order('id', { ascending: true })
+            .range(from, to);
+        });
 
-        if (paymentItemsError) {
-          console.error('Error fetching payment items:', paymentItemsError);
-          throw paymentItemsError;
-        } else if (paymentItemsData) {
+        if (paymentItemsData && paymentItemsData.length > 0) {
           paymentItems = paymentItemsData.map((item: any) => {
-            const feeInvoiceItem = item.fee_invoice_items;
-            const monthYear = feeInvoiceItem?.fee_invoices?.month && feeInvoiceItem?.fee_invoices?.year
-              ? new Date(feeInvoiceItem.fee_invoices.month + '/01/' + feeInvoiceItem.fee_invoices.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-              : '';
+            const feeChallanItem = item.fee_challans_items;
+            let monthYear = '';
+            if (feeChallanItem?.fee_challans?.month && feeChallanItem?.fee_challans?.year) {
+              const monthStr = String(feeChallanItem.fee_challans.month).toLowerCase();
+              if (monthStr === 'one-time' || monthStr === 'one time') {
+                monthYear = 'One Time';
+              } else {
+                monthYear = new Date(feeChallanItem.fee_challans.month + '/01/' + feeChallanItem.fee_challans.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+              }
+            }
             return {
               fee_item_id: item.fee_item_id,
               amount: Number(item.amount || 0),
               paid_amount: Number(item.paid_amount || 0),
-              fee_head_name: feeInvoiceItem?.fee_heads?.name || 'Unknown',
+              fee_head_name: feeChallanItem?.fee_heads?.name || 'Unknown',
               monthYear: monthYear
             };
           });
@@ -1859,17 +1924,17 @@ const FeeCollectionNew: React.FC = () => {
   // Fetch fee invoices when student is selected
   useEffect(() => {
     if (!selectedStudent || !currentSession) {
-      setFeeInvoices([]);
+      setFeeChallans([]);
       setFeeError(null);
       return;
     }
 
-    const fetchFeeInvoices = async () => {
+    const fetchFeeChallans = async () => {
       setFeeLoading(true);
       setFeeError(null);
       try {
-        const { data: invoicesData, error } = await supabase
-          .from('fee_invoices')
+        const { data: challansData, error } = await supabase
+          .from('fee_challans')
           .select(`
             id,
             student_id,
@@ -1880,7 +1945,7 @@ const FeeCollectionNew: React.FC = () => {
             status,
             due_date,
             created_at,
-            fee_invoice_items (
+            fee_challans_items (
               id,
               fee_head_id,
               amount,
@@ -1898,16 +1963,16 @@ const FeeCollectionNew: React.FC = () => {
           .order('month', { ascending: false });
 
         if (error) throw error;
-        setFeeInvoices(invoicesData || []);
+        setFeeChallans(challansData || []);
       } catch (err: any) {
-        setFeeError('Failed to fetch fee invoices: ' + (err.message || 'Unknown error'));
-        setFeeInvoices([]);
+        setFeeError('Failed to fetch fee challans: ' + (err.message || 'Unknown error'));
+        setFeeChallans([]);
       } finally {
         setFeeLoading(false);
       }
     };
 
-    fetchFeeInvoices();
+    fetchFeeChallans();
   }, [selectedStudent, currentSession, user?.school_id]);
 
   // Fetch payment history when student is selected
@@ -1922,35 +1987,37 @@ const FeeCollectionNew: React.FC = () => {
       setPaymentHistoryLoading(true);
       setPaymentHistoryError(null);
       try {
-        const { data, error } = await supabase
-          .from('fee_payments')
-          .select(`
-            *,
-            fee_invoices!inner (
-              student_id
-            ),
-            fee_payment_items (
-              id,
-              fee_item_id,
-              amount,
-              paid_amount
-            ),
-            accounts (
-              id,
-              name,
-              type,
-              bank_name,
-              account_number,
-              mobile_number,
-              wallet_number
-            )
-          `)
-          .eq('fee_invoices.student_id', selectedStudent.id)
-          .eq('school_id', user.school_id)
-          .order('payment_date', { ascending: false })
-          .order('created_at', { ascending: false });
+        const data = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_payments')
+            .select(`
+              *,
+              fee_challans!inner (
+                student_id
+              ),
+              fee_payment_items (
+                id,
+                fee_item_id,
+                amount,
+                paid_amount
+              ),
+              accounts (
+                id,
+                name,
+                type,
+                bank_name,
+                account_number,
+                mobile_number,
+                wallet_number
+              )
+            `)
+            .eq('fee_challans.student_id', selectedStudent.id)
+            .eq('school_id', user.school_id)
+            .order('payment_date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .range(from, to);
+        });
 
-        if (error) throw error;
         setPaymentHistory(data || []);
       } catch (err: any) {
         setPaymentHistoryError('Failed to fetch payment history: ' + (err.message || 'Unknown error'));
@@ -1965,7 +2032,7 @@ const FeeCollectionNew: React.FC = () => {
 
   // Function to distribute payment amount across fee rows
   const distributePaymentAmount = (amount: number, discount: number = 0) => {
-    if (!feeInvoices.length) return;
+    if (!feeChallans.length) return;
 
     const newDistributedAmounts: { [key: string]: number } = {};
     const netAmount = amount + discount;
@@ -1973,8 +2040,8 @@ const FeeCollectionNew: React.FC = () => {
 
     // Get only unpaid items (same logic as display)
     const unpaidItems: any[] = [];
-    feeInvoices.forEach((invoice: any, invoiceIndex: number) => {
-      invoice.fee_invoice_items?.forEach((item: any, itemIndex: number) => {
+    feeChallans.forEach((challan: any, challanIndex: number) => {
+      challan.fee_challans_items?.forEach((item: any, itemIndex: number) => {
         const itemAmount = Number(item.amount || 0);
 
         // Calculate already paid amount for this specific fee item
@@ -1999,8 +2066,8 @@ const FeeCollectionNew: React.FC = () => {
         if (remainingItemAmount > 0) {
           unpaidItems.push({
             ...item,
-            invoice,
-            key: `${invoice.id}-${item.id}`,
+            challan,
+            key: `${challan.id}-${item.id}`,
             remainingAmount: remainingItemAmount
           });
         }
@@ -2062,7 +2129,7 @@ const FeeCollectionNew: React.FC = () => {
     } else {
       setDistributedAmounts({});
     }
-  }, [paymentAmount, discountAmount, feeInvoices, paymentHistory]);
+  }, [paymentAmount, discountAmount, feeChallans, paymentHistory]);
 
   // Check if amount exceeds total remaining
   const isAmountExceeded = useMemo(() => {
@@ -2098,10 +2165,10 @@ const FeeCollectionNew: React.FC = () => {
       // Get ONLY the items that are shown in the fee summary section (unpaid items)
       // Store: amount (remaining amount from fee summary table), paid_amount (distributed amount)
       const paymentItems: any[] = [];
-      const invoicePaymentItems: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }> = [];
+      const challanPaymentItems: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }> = [];
 
-      feeInvoices.forEach((invoice: any, invoiceIndex: number) => {
-        invoice.fee_invoice_items?.forEach((item: any, itemIndex: number) => {
+      feeChallans.forEach((challan: any, challanIndex: number) => {
+        challan.fee_challans_items?.forEach((item: any, itemIndex: number) => {
           const itemAmount = Number(item.amount || 0);
 
           // Calculate already paid amount for this specific fee item (same logic as fee summary)
@@ -2124,7 +2191,7 @@ const FeeCollectionNew: React.FC = () => {
 
           // Only record items that are shown in fee summary (items with remaining amount > 0)
           if (remainingItemAmount > 0) {
-            const key = `${invoice.id}-${item.id}`;
+            const key = `${challan.id}-${item.id}`;
             const distributedAmount = distributedAmounts[key] || 0;
 
             // Store the remaining amount (what's shown in fee summary) and paid amount
@@ -2136,8 +2203,8 @@ const FeeCollectionNew: React.FC = () => {
 
             // Build invoice items with fee head info
             const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
-            const monthYear = new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-            invoicePaymentItems.push({
+            const monthYear = new Date(challan.month + '/01/' + challan.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            challanPaymentItems.push({
               fee_item_id: item.id,
               amount: remainingItemAmount, // Remaining amount for invoice display
               fee_head_name: feeHeadName,
@@ -2158,7 +2225,7 @@ const FeeCollectionNew: React.FC = () => {
 
       // Create main payment record
       const paymentRecord: any = {
-        invoice_id: feeInvoices[0].id, // Use first invoice for now
+        challan_id: feeChallans[0].id, // Use first challan for now
         amount: amount,
         payment_mode: paymentMethod,
         remarks: paymentRemarks,
@@ -2213,80 +2280,82 @@ const FeeCollectionNew: React.FC = () => {
         // Refresh all data to update the summary
         const refreshAllData = async () => {
           try {
-            // Refresh fee invoices
-            const { data: invoicesData, error: invoicesError } = await supabase
-              .from('fee_invoices')
-              .select(`
-                id,
-                student_id,
-                session_id,
-                month,
-                year,
-                total_amount,
-                status,
-                due_date,
-                created_at,
-                fee_invoice_items (
+            // Refresh fee challans
+            const challansData = await fetchAllRows(async (from, to) => {
+              return await supabase
+                .from('fee_challans')
+                .select(`
                   id,
-                  fee_head_id,
-                  amount,
-                  fee_heads (
+                  student_id,
+                  session_id,
+                  month,
+                  year,
+                  total_amount,
+                  status,
+                  due_date,
+                  created_at,
+                  fee_challans_items (
                     id,
-                    name,
-                    description
+                    fee_head_id,
+                    amount,
+                    fee_heads (
+                      id,
+                      name,
+                      description
+                    )
                   )
-                )
-              `)
-              .eq('student_id', selectedStudent.id)
-              .eq('session_id', currentSession.id)
-              .eq('school_id', user.school_id)
-              .order('year', { ascending: false })
-              .order('month', { ascending: false });
-
-            if (invoicesError) throw invoicesError;
+                `)
+                .eq('student_id', selectedStudent.id)
+                .eq('session_id', currentSession.id)
+                .eq('school_id', user.school_id)
+                .order('year', { ascending: false })
+                .order('month', { ascending: false })
+                .range(from, to);
+            });
 
             // Refresh payment history with items and account information
-            const { data: paymentData, error: paymentError } = await supabase
-              .from('fee_payments')
-              .select(`
-                *,
-                fee_invoices!inner (
-                  student_id
-                ),
-                fee_payment_items (
-                  id,
-                  fee_item_id,
-                  amount,
-                  paid_amount
-                ),
-                accounts (
-                  id,
-                  name,
-                  type,
-                  bank_name,
-                  account_number,
-                  mobile_number,
-                  wallet_number
-                )
-              `)
-              .eq('fee_invoices.student_id', selectedStudent.id)
-              .eq('school_id', user.school_id)
-              .order('payment_date', { ascending: false });
-
-            if (paymentError) throw paymentError;
+            const paymentData = await fetchAllRows(async (from, to) => {
+              return await supabase
+                .from('fee_payments')
+                .select(`
+                  *,
+                  fee_challans!inner (
+                    student_id
+                  ),
+                  fee_payment_items (
+                    id,
+                    fee_item_id,
+                    amount,
+                    paid_amount
+                  ),
+                  accounts (
+                    id,
+                    name,
+                    type,
+                    bank_name,
+                    account_number,
+                    mobile_number,
+                    wallet_number
+                  )
+                `)
+                .eq('fee_challans.student_id', selectedStudent.id)
+                .eq('school_id', user.school_id)
+                .order('payment_date', { ascending: false })
+                .range(from, to);
+            });
 
             // Update both states
-            if (invoicesData) setFeeInvoices(invoicesData);
+            if (challansData) setFeeChallans(challansData);
             if (paymentData) setPaymentHistory(paymentData);
 
-            return invoicesData; // Return fresh invoices data
+            return challansData; // Return fresh challans data
           } catch (err) {
             showToast("Payment collected but failed to refresh data. Please refresh the page.", 'error');
             return null;
           }
         };
 
-        const freshInvoicesData = await refreshAllData();
+        const freshChallansData = await refreshAllData();
 
         showToast("Payment collected successfully!", 'success');
 
@@ -2311,7 +2380,7 @@ const FeeCollectionNew: React.FC = () => {
           paymentDate: paymentDate,
           paymentRemarks: paymentRemarks,
           receivedBy: user.id,
-          feeInvoicesOverride: freshInvoicesData || undefined,
+          feeChallansOverride: freshChallansData || undefined,
           transactionId: transactionId && transactionId.trim() ? transactionId.trim() : undefined,
           chequeNumber: chequeNumber && chequeNumber.trim() ? chequeNumber.trim() : undefined
         };
@@ -2384,25 +2453,26 @@ const FeeCollectionNew: React.FC = () => {
       const refreshAllData = async () => {
         try {
           // Refresh payment history with items
-          const { data: paymentData, error: paymentError } = await supabase
-            .from('fee_payments')
-            .select(`
-              *,
-              fee_invoices!inner (
-                student_id
-              ),
-              fee_payment_items (
-                id,
-                fee_item_id,
-                amount,
-                paid_amount
-              )
-            `)
-            .eq('fee_invoices.student_id', selectedStudent.id)
-            .eq('school_id', user.school_id)
-            .order('payment_date', { ascending: false });
-
-          if (paymentError) throw paymentError;
+          const paymentData = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_payments')
+              .select(`
+                *,
+                fee_challans!inner (
+                  student_id
+                ),
+                fee_payment_items (
+                  id,
+                  fee_item_id,
+                  amount,
+                  paid_amount
+                )
+              `)
+              .eq('fee_challans.student_id', selectedStudent.id)
+              .eq('school_id', user.school_id)
+              .order('payment_date', { ascending: false })
+              .range(from, to);
+          });
 
           // Update payment history
           if (paymentData) setPaymentHistory(paymentData);
@@ -2548,7 +2618,7 @@ const FeeCollectionNew: React.FC = () => {
               {selectedStudent ? (
                 feeLoading ? (
                   <Loader />
-                ) : feeInvoices.length > 0 ? (
+                ) : feeChallans.length > 0 ? (
                   <>
                     <TableWrapper style={{
                       overflowY: 'scroll',
@@ -2566,8 +2636,8 @@ const FeeCollectionNew: React.FC = () => {
                         <tbody>
                           {(() => {
                             let globalIndex = 0;
-                            return feeInvoices.flatMap((invoice: any, invoiceIndex: number) =>
-                              invoice.fee_invoice_items?.map((item: any, itemIndex: number) => {
+                            return feeChallans.flatMap((challan: any, challanIndex: number) =>
+                              challan.fee_challans_items?.map((item: any, itemIndex: number) => {
                                 const itemAmount = Number(item.amount || 0);
 
                                 // Calculate already paid amount for this specific fee item
@@ -2593,14 +2663,24 @@ const FeeCollectionNew: React.FC = () => {
 
                                 globalIndex++;
                                 return (
-                                  <TableRow key={`${invoice.id}-${item.id}`}>
+                                  <TableRow key={`${challan.id}-${item.id}`}>
                                     <TableCell>{globalIndex}</TableCell>
                                     <TableCell>
                                       <div style={{ fontWeight: '500', marginBottom: '0.25rem' }}>
                                         {item.fee_heads?.name || 'Unknown Fee Head'}
                                       </div>
                                       <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY }}>
-                                        {new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                                        {(() => {
+                                          if (challan.month && challan.year) {
+                                            const monthStr = String(challan.month).toLowerCase();
+                                            if (monthStr === 'one-time' || monthStr === 'one time') {
+                                              return 'One Time';
+                                            } else {
+                                              return new Date(challan.month + '/01/' + challan.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                                            }
+                                          }
+                                          return '';
+                                        })()}
                                       </div>
                                     </TableCell>
                                     <TableCell style={{ textAlign: 'right', fontWeight: '600' }}>
@@ -2610,11 +2690,11 @@ const FeeCollectionNew: React.FC = () => {
                                       <AmountInput
                                         type="number"
                                         placeholder="0"
-                                        value={distributedAmounts[`${invoice.id}-${item.id}`] || ''}
+                                        value={distributedAmounts[`${challan.id}-${item.id}`] || ''}
                                         readOnly
                                         style={{
-                                          backgroundColor: distributedAmounts[`${invoice.id}-${item.id}`] ? '#e8f5e8' : 'transparent',
-                                          color: distributedAmounts[`${invoice.id}-${item.id}`] ? '#16a34a' : 'inherit'
+                                          backgroundColor: distributedAmounts[`${challan.id}-${item.id}`] ? '#e8f5e8' : 'transparent',
+                                          color: distributedAmounts[`${challan.id}-${item.id}`] ? '#16a34a' : 'inherit'
                                         }}
                                       />
                                     </TableCell>
@@ -2691,7 +2771,7 @@ const FeeCollectionNew: React.FC = () => {
                 ) : (
                   <EmptyState>
                     <Receipt style={{ fontSize: '3rem', marginBottom: '1rem', color: (theme as any).TEXT_SECONDARY }} />
-                    No fee invoices found for this student
+                    No fee challans found for this student
                   </EmptyState>
                 )
               ) : (

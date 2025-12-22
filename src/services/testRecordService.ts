@@ -12,6 +12,7 @@ import {
   TestRecordResponse,
   TestResultResponse
 } from '../types/testRecords';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 class TestRecordService {
   // Test Records CRUD
@@ -153,18 +154,19 @@ class TestRecordService {
 
   // Test Results CRUD
   async getTestResults(testId: number, schoolId: number): Promise<TestResultResponse> {
-    const { data, error } = await supabase
-      .from('test_results')
-      .select('*')
-      .eq('test_id', testId)
-      .eq('school_id', schoolId)
-      .order('obtained_marks', { ascending: false });
-
-    if (error) throw error;
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('test_results')
+        .select('*')
+        .eq('test_id', testId)
+        .eq('school_id', schoolId)
+        .order('obtained_marks', { ascending: false })
+        .range(from, to);
+    });
 
     return {
-      data: data || [],
-      total: data?.length || 0
+      data: data,
+      total: data.length
     };
   }
 

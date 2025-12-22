@@ -366,6 +366,13 @@ const feeManagementItems = [
     color: '#f59e0b' // Orange
   },
   {
+    title: 'Generate Challans',
+    description: 'Generate fee challans for students based on fee plans and frequency settings',
+    icon: <ReceiptIcon />,
+    path: '/generate-challans',
+    color: '#3b82f6' // Blue
+  },
+  {
     title: 'Fee Collection',
     description: 'Enhanced fee collection interface with improved responsive design, better payment tracking, and modern UI',
     icon: <PaymentIcon />,
@@ -459,6 +466,7 @@ const FeeManagementDashboard: React.FC = () => {
       case 'Fee Plans': return 'fee_dash_plans';
       case 'Fee Increments': return 'fee_dash_increments';
       case 'Load Fee': return 'fee_dash_load_fee';
+      case 'Generate Challans': return 'fee_dash_generate_challans';
       case 'Fee Collection': return 'fee_dash_collection';
       case 'Fee Defaulters': return 'fee_dash_defaulters';
       case 'Fee Audit Logs': return 'fee_dash_audit_logs';

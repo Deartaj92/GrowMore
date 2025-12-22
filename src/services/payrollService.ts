@@ -25,6 +25,7 @@ import {
   getAttendanceSummary,
 } from '../utils/payrollCalculations';
 import { expenseService } from './expenseService';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 // Helper function to set current user for audit logging
 const setAuditUser = async (userId?: number) => {
@@ -120,37 +121,6 @@ const logAudit = async (
   if (error) console.error('Audit log error:', error);
 };
 
-// Helper function to fetch all rows with pagination (handles Supabase 1000 row limit)
-// Note: Supabase query builders are immutable, so calling .range() returns a new builder
-const fetchAllRows = async <T = any>(
-  queryBuilder: any,
-  pageSize: number = 1000
-): Promise<T[]> => {
-  const allData: T[] = [];
-  let from = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const to = from + pageSize - 1;
-    // Apply range to create a new query builder for this page
-    // Since query builders are immutable, this creates a new builder each time
-    const pageQuery = queryBuilder.range(from, to);
-    const { data, error } = await pageQuery;
-
-    if (error) throw error;
-
-    if (data && data.length > 0) {
-      allData.push(...(data as T[]));
-      // If we got less than pageSize, we've reached the end
-      hasMore = data.length === pageSize;
-      from += pageSize;
-    } else {
-      hasMore = false;
-    }
-  }
-
-  return allData;
-};
 
 export const payrollService = {
   // Payroll Settings
@@ -285,9 +255,11 @@ export const payrollService = {
     
     query = query.order('created_at', { ascending: false });
     
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      return await query.range(from, to);
+    });
     
-    const plans: PayrollPlan[] = data.map(item => ({
+    const plans: PayrollPlan[] = data.map((item: any) => ({
       id: item.id,
       schoolId: item.school_id,
       staffId: item.staff_id,
@@ -545,14 +517,15 @@ export const payrollService = {
   },
 
   async getPayrollPlanItems(schoolId: number, planId: number): Promise<PayrollPlanItem[]> {
-    const query = supabase
-      .from('payroll_plan_items')
-      .select('*')
-      .eq('school_id', schoolId)
-      .eq('plan_id', planId)
-      .order('display_order', { ascending: true });
-    
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('payroll_plan_items')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('plan_id', planId)
+        .order('display_order', { ascending: true })
+        .range(from, to);
+    });
     
     return data.map(item => ({
       id: item.id,
@@ -672,25 +645,24 @@ export const payrollService = {
     schoolId: number,
     staffId?: number
   ): Promise<EmployeePayrollPlan[]> {
-    let query = supabase
-      .from('employee_payroll_plans')
-      .select(`
-        *,
-        payroll_plans (*),
-        staff (id, name, role)
-      `)
-      .eq('school_id', schoolId);
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('employee_payroll_plans')
+        .select(`
+          *,
+          payroll_plans (*),
+          staff (id, name, role)
+        `)
+        .eq('school_id', schoolId);
+      
+      if (staffId) {
+        query = query.eq('staff_id', staffId);
+      }
+      
+      return await query.order('effective_from', { ascending: false }).range(from, to);
+    });
     
-    if (staffId) {
-      query = query.eq('staff_id', staffId);
-    }
-    
-    query = query.order('effective_from', { ascending: false });
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    
-    return (data || []).map(item => ({
+    return data.map(item => ({
       id: item.id,
       schoolId: item.school_id,
       staffId: item.staff_id,
@@ -775,26 +747,27 @@ export const payrollService = {
     schoolId: number,
     filters: PayrollFilters = {}
   ): Promise<PayrollGeneration[]> {
-    let query = supabase
-      .from('payroll_generations')
-      .select(`
-        *,
-        staff (id, name, role),
-        approved_by_user:users!payroll_generations_approved_by_fkey (id, name, email),
-        generated_by_user:users!payroll_generations_generated_by_fkey (id, name, email)
-      `)
-      .eq('school_id', schoolId);
-    
-    if (filters.staffId) query = query.eq('staff_id', filters.staffId);
-    if (filters.payrollMonth) query = query.eq('payroll_month', filters.payrollMonth);
-    if (filters.payrollYear) query = query.eq('payroll_year', filters.payrollYear);
-    if (filters.status) query = query.eq('status', filters.status);
-    
-    query = query.order('payroll_year', { ascending: false })
-      .order('payroll_month', { ascending: false })
-      .order('created_at', { ascending: false });
-    
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('payroll_generations')
+        .select(`
+          *,
+          staff (id, name, role),
+          approved_by_user:users!payroll_generations_approved_by_fkey (id, name, email),
+          generated_by_user:users!payroll_generations_generated_by_fkey (id, name, email)
+        `)
+        .eq('school_id', schoolId);
+      
+      if (filters.staffId) query = query.eq('staff_id', filters.staffId);
+      if (filters.payrollMonth) query = query.eq('payroll_month', filters.payrollMonth);
+      if (filters.payrollYear) query = query.eq('payroll_year', filters.payrollYear);
+      if (filters.status) query = query.eq('status', filters.status);
+      
+      return await query.order('payroll_year', { ascending: false })
+        .order('payroll_month', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+    });
     
     const generations: PayrollGeneration[] = data.map(item => ({
       id: item.id,
@@ -1372,15 +1345,16 @@ export const payrollService = {
     schoolId: number,
     generationId: number
   ): Promise<PayrollGenerationItem[]> {
-    const query = supabase
-      .from('payroll_generation_items')
-      .select('*')
-      .eq('school_id', schoolId)
-      .eq('generation_id', generationId)
-      .order('item_type', { ascending: true })
-      .order('id', { ascending: true });
-    
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('payroll_generation_items')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('generation_id', generationId)
+        .order('item_type', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to);
+    });
     
     return data.map(item => ({
       id: item.id,
@@ -1477,23 +1451,24 @@ export const payrollService = {
     schoolId: number,
     filters: PayrollFilters = {}
   ): Promise<PayrollPayment[]> {
-    let query = supabase
-      .from('payroll_payments')
-      .select(`
-        *,
-        payroll_generations (*, staff (id, name, role)),
-        users!payroll_payments_received_by_fkey (id, name, email)
-      `)
-      .eq('school_id', schoolId);
-    
-    if (filters.staffId) {
-      query = query.eq('payroll_generations.staff_id', filters.staffId);
-    }
-    
-    query = query.order('payment_date', { ascending: false })
-      .order('created_at', { ascending: false });
-    
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('payroll_payments')
+        .select(`
+          *,
+          payroll_generations (*, staff (id, name, role)),
+          users!payroll_payments_received_by_fkey (id, name, email)
+        `)
+        .eq('school_id', schoolId);
+      
+      if (filters.staffId) {
+        query = query.eq('payroll_generations.staff_id', filters.staffId);
+      }
+      
+      return await query.order('payment_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+    });
     
     return data.map(item => ({
       id: item.id,
@@ -1807,9 +1782,11 @@ export const payrollService = {
     
     query = query.order('advance_date', { ascending: false });
     
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      return await query.range(from, to);
+    });
     
-    return data.map(item => ({
+    return data.map((item: any) => ({
       id: item.id,
       schoolId: item.school_id,
       staffId: item.staff_id,
@@ -1898,23 +1875,23 @@ export const payrollService = {
     schoolId: number,
     filters: PayrollFilters = {}
   ): Promise<PayrollAdjustment[]> {
-    let query = supabase
-      .from('payroll_adjustments')
-      .select(`
-        *,
-        staff (id, name, role),
-        payroll_generations (id, payroll_month, payroll_year),
-        users!payroll_adjustments_created_by_fkey (id, name, email)
-      `)
-      .eq('school_id', schoolId);
-    
-    if (filters.staffId) query = query.eq('staff_id', filters.staffId);
-    if (filters.payrollMonth) query = query.eq('payroll_month', filters.payrollMonth);
-    if (filters.payrollYear) query = query.eq('payroll_year', filters.payrollYear);
-    
-    query = query.order('created_at', { ascending: false });
-    
-    const data = await fetchAllRows(query);
+    const data = await fetchAllRows(async (from, to) => {
+      let query = supabase
+        .from('payroll_adjustments')
+        .select(`
+          *,
+          staff (id, name, role),
+          payroll_generations (id, payroll_month, payroll_year),
+          users!payroll_adjustments_created_by_fkey (id, name, email)
+        `)
+        .eq('school_id', schoolId);
+      
+      if (filters.staffId) query = query.eq('staff_id', filters.staffId);
+      if (filters.payrollMonth) query = query.eq('payroll_month', filters.payrollMonth);
+      if (filters.payrollYear) query = query.eq('payroll_year', filters.payrollYear);
+      
+      return await query.order('created_at', { ascending: false }).range(from, to);
+    });
     
     return data.map(item => ({
       id: item.id,
@@ -2166,7 +2143,9 @@ export const payrollService = {
       .eq('school_id', schoolId)
       .eq('status', 'active');
     
-    const plansData = await fetchAllRows(query);
+    const plansData = await fetchAllRows(async (from, to) => {
+      return await query.range(from, to);
+    });
     
     // Get unique staff
     const staffMap = new Map<number, { id: number; name: string; role: string }>();
@@ -2213,11 +2192,13 @@ export const payrollService = {
       .eq('school_id', schoolId)
       .eq('status', 'active');
     
-    const plansData = await fetchAllRows(query);
+    const plansData = await fetchAllRows(async (from, to) => {
+      return await query.range(from, to);
+    });
     
     // Filter plans that are effective for the selected month/year
     const currentDate = new Date(payrollYear, payrollMonth - 1, 1);
-    const activePlans = plansData.filter(plan => {
+    const activePlans = plansData.filter((plan: any) => {
       const effectiveFrom = plan.effective_from ? new Date(plan.effective_from) : null;
       const effectiveTo = plan.effective_to ? new Date(plan.effective_to) : null;
       
@@ -2241,7 +2222,7 @@ export const payrollService = {
     );
     
     // Map to eligible staff format
-    return activePlans.map(plan => {
+    return activePlans.map((plan: any) => {
       // Handle staff as array (Supabase returns related data as arrays)
       const staff = Array.isArray(plan.staff) ? plan.staff[0] : plan.staff;
       const mapKey = `${plan.staff_id}-${plan.id}`;

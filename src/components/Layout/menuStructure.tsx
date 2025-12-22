@@ -351,6 +351,20 @@ export const feeMenuItems1: MenuItem[] = [
     color: '#f59e0b'
   },
   {
+    title: 'Generate Challans',
+    description: 'Generate fee challans for students based on fee plans',
+    icon: React.createElement(ReceiptIcon),
+    path: '/generate-challans',
+    color: '#3b82f6'
+  },
+  {
+    title: 'Challans List',
+    description: 'View and manage all generated challans',
+    icon: React.createElement(ListIcon),
+    path: '/challans',
+    color: '#6366f1'
+  },
+  {
     title: 'Fee Collection',
     description: 'Enhanced fee collection interface',
     icon: React.createElement(AttachMoneyIcon),

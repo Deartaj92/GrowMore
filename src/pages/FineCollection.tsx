@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 import Loader from '../components/Loader';
 import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier, getSequenceNumber } from '../utils/studentUtils';
@@ -1117,16 +1118,30 @@ const FineCollection: React.FC = () => {
       const minDuration = 2000;
       const start = Date.now();
       setLoading(true);
-      const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
-        supabase.from('students').select('*').eq('status', 'active').eq('school_id', user.school_id),
-        supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
-        supabase.from('sections').select('id, name').eq('school_id', user.school_id),
+      const [studentsData, classesData, sectionsData] = await Promise.all([
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('students')
+            .select('*')
+            .eq('status', 'active')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('sections')
+            .select('id, name')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
       ]);
-      if (studentsData) {
-        setStudents(studentsData);
-      }
-      if (classesData) setClasses(classesData);
-      if (sectionsData) setSections(sectionsData);
+      setStudents(studentsData);
+      setClasses(classesData);
+      setSections(sectionsData);
       const elapsed = Date.now() - start;
       if (elapsed < minDuration) {
         setTimeout(() => setLoading(false), minDuration - elapsed);
@@ -1328,7 +1343,6 @@ const FineCollection: React.FC = () => {
         // This ensures "20" comes before "200", "201", etc.
         return a!.rollNumberNum - b!.rollNumberNum;
       })
-      .slice(0, 8)
       .map(item => item!.student);
 
     setSuggestions(scoredStudents);
@@ -1427,46 +1441,27 @@ const FineCollection: React.FC = () => {
       setAttendanceLoading(true);
       setAttendanceError(null);
       try {
-        // Helper function to fetch all rows with pagination (handles 1000 row limit)
-        const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
-          const allData: any[] = [];
-          let from = 0;
-          let hasMore = true;
-
-          while (hasMore) {
-            const to = from + pageSize - 1;
-            const { data, error } = await queryBuilder.range(from, to);
-            if (error) throw error;
-            if (data && data.length > 0) {
-              allData.push(...data);
-              hasMore = data.length === pageSize;
-              from += pageSize;
-            } else {
-              hasMore = false;
-            }
-          }
-          return allData;
-        };
-
         // 1. Fetch attendance records (absent/late) with pagination
-        const attendanceQuery = supabase
-          .from('attendance_records')
-          .select('date, status, session_id, class_id')
-          .eq('student_id', selectedStudent.id)
-          .eq('school_id', user.school_id)
-          .in('status', ['absent', 'late'])
-          .order('date', { ascending: false });
-        
-        const attData = await fetchAllRows(attendanceQuery);
+        const attData = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('attendance_records')
+            .select('date, status, session_id, class_id')
+            .eq('student_id', selectedStudent.id)
+            .eq('school_id', user.school_id)
+            .in('status', ['absent', 'late'])
+            .order('date', { ascending: false })
+            .range(from, to);
+        });
         
         // 2. Fetch all fine settings for the school with pagination
-        const finesQuery = supabase
-          .from('fines')
-          .select('class_id, absent_fine, late_fine, effective_from')
-          .eq('school_id', user.school_id)
-          .order('effective_from', { ascending: true });
-        
-        const fineData = await fetchAllRows(finesQuery);
+        const fineData = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fines')
+            .select('class_id, absent_fine, late_fine, effective_from')
+            .eq('school_id', user.school_id)
+            .order('effective_from', { ascending: true })
+            .range(from, to);
+        });
         // 3. For each attendance record, find the fine in effect on that date using the class from the record
         const rows = (attData || []).map((rec: any) => {
           // Use the class_id directly from the attendance record (this is the class the student was in when attendance was marked)

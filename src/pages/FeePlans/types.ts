@@ -1,7 +1,5 @@
 export interface FeePlanFormData {
   effectiveFrom: string;
-  discountType?: string;
-  discountReason?: string;
   notes?: string;
   items: FeePlanItemFormData[];
 }
@@ -12,6 +10,8 @@ export interface FeePlanItemFormData {
   discountAmount: number;
   discountPercent: number;
   feeAfterDiscount: number;
+  discountType?: string;
+  discountReason?: string;
 }
 
 export interface StudentInfo {

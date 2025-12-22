@@ -1472,6 +1472,20 @@ const Header: React.FC<HeaderProps> = ({
       color: '#f59e0b'
     },
     {
+      title: 'Generate Challans',
+      description: 'Generate fee challans for students based on fee plans',
+      icon: <ReceiptIcon />,
+      path: '/generate-challans',
+      color: '#3b82f6'
+    },
+    {
+      title: 'Challans List',
+      description: 'View and manage all generated challans',
+      icon: <ListIcon />,
+      path: '/challans',
+      color: '#6366f1'
+    },
+    {
       title: 'Fee Collection',
       description: 'Enhanced fee collection interface',
       icon: <AttachMoneyIcon />,

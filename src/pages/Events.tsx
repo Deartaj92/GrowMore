@@ -17,6 +17,7 @@ import {
   Error as ErrorIcon,
   CheckCircle as SuccessIcon,
 } from '@mui/icons-material';
+import { fetchAllRows } from '../utils/paginationHelper';
 import {
   Box,
   Button,
@@ -442,24 +443,59 @@ const Events: React.FC = () => {
     if (!user?.school_id) return;
     try {
       const [
-        { data: classData },
-        { data: sectionData },
-        { data: studentData },
-        { data: staffData },
-        { data: familiesData }
+        classData,
+        sectionData,
+        studentData,
+        staffData,
+        familiesData
       ] = await Promise.all([
-        supabase.from('classes').select('id, name').eq('school_id', user.school_id).order('name'),
-        supabase.from('sections').select('id, name, class_id').eq('school_id', user.school_id).order('name'),
-        supabase.from('students').select('id, name, father_name, class_id, section_id, roll_number').eq('school_id', user.school_id).order('id'),
-        supabase.from('staff').select('id, name, role').eq('school_id', user.school_id).order('name'),
-        supabase.from('families').select('id, name, contact_person, contact_number').eq('school_id', user.school_id).order('name')
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('classes')
+            .select('id, name')
+            .eq('school_id', user.school_id)
+            .order('name')
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('sections')
+            .select('id, name, class_id')
+            .eq('school_id', user.school_id)
+            .order('name')
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('students')
+            .select('id, name, father_name, class_id, section_id, roll_number')
+            .eq('school_id', user.school_id)
+            .order('id')
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('staff')
+            .select('id, name, role')
+            .eq('school_id', user.school_id)
+            .order('name')
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('families')
+            .select('id, name, contact_person, contact_number')
+            .eq('school_id', user.school_id)
+            .order('name')
+            .range(from, to);
+        }),
       ]);
       
       // Fetch users separately with error handling
       let usersResult: { data: any[] | null; error: any } = { data: null, error: null };
       try {
-        const result = await supabase.from('users').select('id, staff_id, family_id').eq('school_id', user.school_id);
-        usersResult = { data: result.data, error: result.error };
+        const usersData = await fetchAllRows(async (from, to) => {
+          return await supabase.from('users')
+            .select('id, staff_id, family_id')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        });
+        usersResult = { data: usersData, error: null };
       } catch (err) {
         usersResult = { data: null, error: err };
         console.warn('Could not load users mapping (this is optional):', err);

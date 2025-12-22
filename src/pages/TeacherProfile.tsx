@@ -62,6 +62,7 @@ import AttachMoney from '@mui/icons-material/AttachMoney';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useProgress } from '../components/Layout';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { PageHeaderContext } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { format, parseISO, getDaysInMonth, startOfMonth, endOfMonth } from 'date-fns';
@@ -2156,33 +2157,49 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
         // Parallel fetch: sections, subjects, classes, timetable
         setProgress(35);
-        const [sectionsResult, subjectsResult, classesResult, timetableResult] = await Promise.all([
+        const [sectionsData, subjectsData, classesData, timetableResult] = await Promise.all([
           // Fetch sections linked to teacher (teacher_id is at section level, not session-specific)
-          supabase
-            .from('sections')
-            .select(`
-              id,
-              name,
-              class_id,
-              classes!inner(id, name)
-            `)
-            .eq('teacher_id', parseInt(staffId))
-            .eq('school_id', user.school_id),
-          supabase.from('subjects').select('id, name').eq('school_id', user.school_id),
-          supabase.from('classes').select('id, name').eq('school_id', user.school_id),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('sections')
+              .select(`
+                id,
+                name,
+                class_id,
+                classes!inner(id, name)
+              `)
+              .eq('teacher_id', parseInt(staffId))
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('subjects')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
           sessionData
-            ? supabase
-                .from('timetable')
-                .select('period_index, subject_id, class_id, day_of_week')
-                .eq('teacher_id', parseInt(staffId))
-                .eq('session_id', sessionData.id)
-                .eq('school_id', user.school_id)
-                .eq('day_of_week', 1)
-            : Promise.resolve({ data: null, error: null })
+            ? fetchAllRows(async (from, to) => {
+                return await supabase
+                  .from('timetable')
+                  .select('period_index, subject_id, class_id, day_of_week')
+                  .eq('teacher_id', parseInt(staffId))
+                  .eq('session_id', sessionData.id)
+                  .eq('school_id', user.school_id)
+                  .eq('day_of_week', 1)
+                  .range(from, to);
+              })
+            : Promise.resolve([])
         ]);
 
-        if (!sectionsResult.error && sectionsResult.data) {
-          const formattedSections = sectionsResult.data.map((sec: any) => ({
+        if (sectionsData && sectionsData.length > 0) {
+          const formattedSections = sectionsData.map((sec: any) => ({
             id: sec.id,
             name: sec.name,
             class_id: sec.class_id,
@@ -2191,12 +2208,12 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           setAssignedSections(formattedSections);
         }
 
-        if (subjectsResult.data) setSubjects(subjectsResult.data);
-        if (classesResult.data) setClasses(classesResult.data);
+        setSubjects(subjectsData);
+        setClasses(classesData);
 
-        if (!timetableResult.error && timetableResult.data) {
-          setTimetableData(timetableResult.data || []);
-          const uniquePeriods = new Set(timetableResult.data.map((t: any) => t.period_index + 1));
+        if (timetableResult && timetableResult.length > 0) {
+          setTimetableData(timetableResult || []);
+          const uniquePeriods = new Set(timetableResult.map((t: any) => t.period_index + 1));
           setTimetablePeriods(uniquePeriods.size);
         }
 
@@ -2410,38 +2427,59 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   const subjectIds = Array.from(new Set(testRecords?.map(r => r.subject_id).filter(Boolean) || []));
                   const classIds = Array.from(new Set(testRecords?.map(r => r.class_id).filter(Boolean) || []));
 
-                  // Fetch subjects and classes separately
-                  const [subjectsResult, classesResult] = await Promise.all([
-                    subjectIds.length > 0
-                      ? supabase
+                  // Fetch subjects and classes separately with chunking for .in() limit
+                  let allSubjects: any[] = [];
+                  if (subjectIds.length > 0) {
+                    for (let i = 0; i < subjectIds.length; i += 1000) {
+                      const chunk = subjectIds.slice(i, i + 1000);
+                      const chunkSubjects = await fetchAllRows(async (from, to) => {
+                        return await supabase
                           .from('subjects')
                           .select('id, name')
-                          .in('id', subjectIds)
+                          .in('id', chunk)
                           .eq('school_id', user.school_id)
-                      : { data: [] },
-                    classIds.length > 0
-                      ? supabase
+                          .range(from, to);
+                      });
+                      allSubjects.push(...chunkSubjects);
+                    }
+                  }
+                  
+                  let allClasses: any[] = [];
+                  if (classIds.length > 0) {
+                    for (let i = 0; i < classIds.length; i += 1000) {
+                      const chunk = classIds.slice(i, i + 1000);
+                      const chunkClasses = await fetchAllRows(async (from, to) => {
+                        return await supabase
                           .from('classes')
                           .select('id, name')
-                          .in('id', classIds)
+                          .in('id', chunk)
                           .eq('school_id', user.school_id)
-                      : { data: [] },
-                  ]);
-
-                  const subjectsMap = new Map((subjectsResult.data || []).map(s => [s.id, s.name]));
-                  const classesMap = new Map((classesResult.data || []).map(c => [c.id, c.name]));
-
-                  // Get test results for these test records
-                  const { data: testResults, error: testResultsError } = await supabase
-                    .from('test_results')
-                    .select('student_id, obtained_marks, max_marks')
-                    .in('test_id', testRecordIds)
-                    .eq('school_id', user.school_id);
-
-                  if (testResultsError) {
+                          .range(from, to);
+                      });
+                      allClasses.push(...chunkClasses);
+                    }
                   }
 
-                  const uniqueStudents = new Set(testResults?.map(r => r.student_id) || []);
+                  const subjectsMap = new Map(allSubjects.map(s => [s.id, s.name]));
+                  const classesMap = new Map(allClasses.map(c => [c.id, c.name]));
+
+                  // Get test results for these test records with chunking for .in() limit
+                  let allTestResults: any[] = [];
+                  for (let i = 0; i < testRecordIds.length; i += 1000) {
+                    const chunk = testRecordIds.slice(i, i + 1000);
+                    const chunkResults = await fetchAllRows(async (from, to) => {
+                      return await supabase
+                        .from('test_results')
+                        .select('student_id, obtained_marks, max_marks')
+                        .in('test_id', chunk)
+                        .eq('school_id', user.school_id)
+                        .range(from, to);
+                    });
+                    allTestResults.push(...chunkResults);
+                  }
+                  const testResults = allTestResults;
+
+                  const uniqueStudents = new Set(testResults.map(r => r.student_id));
                   const totalStudents = uniqueStudents.size;
 
                   let averagePercentage = 0;
@@ -2608,18 +2646,39 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         const classIds = Array.from(new Set(testRecordsForMonthly?.map(r => r.class_id).filter(Boolean) || []));
         const sectionIds = Array.from(new Set(testRecordsForMonthly?.map(r => r.section_id).filter(Boolean) || []));
 
-        // Fetch classes and sections
-        const [classesResult, sectionsResult] = await Promise.all([
-          classIds.length > 0
-            ? supabase.from('classes').select('id, name').in('id', classIds).eq('school_id', user.school_id)
-            : { data: [] },
-          sectionIds.length > 0
-            ? supabase.from('sections').select('id, name').in('id', sectionIds).eq('school_id', user.school_id)
-            : { data: [] },
-        ]);
+        // Fetch classes and sections with chunking for .in() limit
+        let allClasses: any[] = [];
+        if (classIds.length > 0) {
+          for (let i = 0; i < classIds.length; i += 1000) {
+            const chunk = classIds.slice(i, i + 1000);
+            const chunkClasses = await fetchAllRows(async (from, to) => {
+              return await supabase.from('classes')
+                .select('id, name')
+                .in('id', chunk)
+                .eq('school_id', user.school_id)
+                .range(from, to);
+            });
+            allClasses.push(...chunkClasses);
+          }
+        }
+        
+        let allSections: any[] = [];
+        if (sectionIds.length > 0) {
+          for (let i = 0; i < sectionIds.length; i += 1000) {
+            const chunk = sectionIds.slice(i, i + 1000);
+            const chunkSections = await fetchAllRows(async (from, to) => {
+              return await supabase.from('sections')
+                .select('id, name')
+                .in('id', chunk)
+                .eq('school_id', user.school_id)
+                .range(from, to);
+            });
+            allSections.push(...chunkSections);
+          }
+        }
 
-        const classesMap = new Map((classesResult.data || []).map(c => [c.id, c.name]));
-        const sectionsMap = new Map((sectionsResult.data || []).map(s => [s.id, s.name]));
+        const classesMap = new Map(allClasses.map(c => [c.id, c.name]));
+        const sectionsMap = new Map(allSections.map(s => [s.id, s.name]));
 
         // Calculate monthly/weekly test distribution
         if (testRecordsForMonthly && testRecordsForMonthly.length > 0) {
@@ -2929,21 +2988,55 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         const sectionIds = Array.from(new Set(homeworkEntries.map((e: any) => e.section_id).filter(Boolean)));
         const subjectIds = Array.from(new Set(homeworkEntries.map((e: any) => e.subject_id).filter(Boolean)));
 
-        const [classesResult, sectionsResult, subjectsResult] = await Promise.all([
-          classIds.length > 0
-            ? supabase.from('classes').select('id, name').in('id', classIds).eq('school_id', user.school_id)
-            : { data: [] },
-          sectionIds.length > 0
-            ? supabase.from('sections').select('id, name').in('id', sectionIds).eq('school_id', user.school_id)
-            : { data: [] },
-          subjectIds.length > 0
-            ? supabase.from('subjects').select('id, name').in('id', subjectIds).eq('school_id', user.school_id)
-            : { data: [] },
-        ]);
+        // Fetch classes, sections, and subjects with chunking for .in() limit
+        let allClasses: any[] = [];
+        if (classIds.length > 0) {
+          for (let i = 0; i < classIds.length; i += 1000) {
+            const chunk = classIds.slice(i, i + 1000);
+            const chunkClasses = await fetchAllRows(async (from, to) => {
+              return await supabase.from('classes')
+                .select('id, name')
+                .in('id', chunk)
+                .eq('school_id', user.school_id)
+                .range(from, to);
+            });
+            allClasses.push(...chunkClasses);
+          }
+        }
+        
+        let allSections: any[] = [];
+        if (sectionIds.length > 0) {
+          for (let i = 0; i < sectionIds.length; i += 1000) {
+            const chunk = sectionIds.slice(i, i + 1000);
+            const chunkSections = await fetchAllRows(async (from, to) => {
+              return await supabase.from('sections')
+                .select('id, name')
+                .in('id', chunk)
+                .eq('school_id', user.school_id)
+                .range(from, to);
+            });
+            allSections.push(...chunkSections);
+          }
+        }
+        
+        let allSubjects: any[] = [];
+        if (subjectIds.length > 0) {
+          for (let i = 0; i < subjectIds.length; i += 1000) {
+            const chunk = subjectIds.slice(i, i + 1000);
+            const chunkSubjects = await fetchAllRows(async (from, to) => {
+              return await supabase.from('subjects')
+                .select('id, name')
+                .in('id', chunk)
+                .eq('school_id', user.school_id)
+                .range(from, to);
+            });
+            allSubjects.push(...chunkSubjects);
+          }
+        }
 
-        const classesMap = new Map((classesResult.data || []).map(c => [c.id, c.name]));
-        const sectionsMap = new Map((sectionsResult.data || []).map(s => [s.id, s.name]));
-        const subjectsMap = new Map((subjectsResult.data || []).map(s => [s.id, s.name]));
+        const classesMap = new Map(allClasses.map(c => [c.id, c.name]));
+        const sectionsMap = new Map(allSections.map(s => [s.id, s.name]));
+        const subjectsMap = new Map(allSubjects.map(s => [s.id, s.name]));
 
         // Calculate monthly/weekly diary distribution
         const monthlyMap = new Map<string, {

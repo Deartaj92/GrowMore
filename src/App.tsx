@@ -69,6 +69,8 @@ import LoadFeePage from './pages/LoadFeePage';
 import FeeCollection from './pages/FeeCollectionNew';
 import FeeDefaultersList from './pages/FeeDefaultersList';
 import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
+import ChallanGenerationPage from './pages/ChallanGenerationPage';
+import ChallansListPage from './pages/ChallansListPage';
 import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
 import ConcessionsPage from './pages/ConcessionsPage';
 import FeeSettings from './pages/FeeSettings';
@@ -667,6 +669,24 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="load-fee">
                                 <LoadFeePage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="generate-challans"
+                            element={
+                              <ProtectedRoute requiredPermission="generate-challans">
+                                <ChallanGenerationPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="challans"
+                            element={
+                              <ProtectedRoute requiredPermission="view-challans">
+                                <ChallansListPage />
                               </ProtectedRoute>
                             }
                           />
