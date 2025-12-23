@@ -143,6 +143,48 @@ export const GlobalStyles = createGlobalStyle`
   input, textarea, select {
     font-family: inherit;
     outline: none;
+    /* Prevent payment toolbar on mobile */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  /* Prevent payment toolbar - hide browser payment UI */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  
+  /* Additional mobile-specific rules to prevent payment toolbar */
+  @media (max-width: 700px) {
+    input, textarea, select {
+      /* Force autocomplete off via CSS (though HTML attribute is more reliable) */
+      -webkit-autofill: none;
+    }
+    
+    /* Hide payment toolbar if it appears */
+    input::-webkit-credentials-auto-fill-button,
+    input::-webkit-strong-password-auto-fill-button {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  }
+  
+  /* Hide any payment-related browser UI */
+  input[autocomplete="off"]::-webkit-credentials-auto-fill-button,
+  input[autocomplete="one-time-code"]::-webkit-credentials-auto-fill-button,
+  input[data-form-type="other"]::-webkit-credentials-auto-fill-button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* Global link styles */

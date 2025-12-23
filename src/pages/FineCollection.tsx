@@ -164,7 +164,7 @@ const Card = styled.div`
   box-sizing: border-box;
   width: 100%;
   @media (max-width: 700px) {
-    padding: 1.1rem 0;
+    padding: 0.7rem 0.8rem;
     border-radius: 12px;
     min-width: 0;
     width: 100%;
@@ -181,6 +181,11 @@ const CardTitle = styled.h3`
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  @media (max-width: 700px) {
+    font-size: 1.1rem;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
 `;
 
 const CardPlaceholder = styled.div`
@@ -409,10 +414,10 @@ const StudentInfoRow = styled.div`
   border-radius: 10px;
   width: 100%;
   @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 0.7rem;
-    padding: 10px 6px;
+    padding: 10px 8px;
     margin-bottom: 1rem;
   }
 `;
@@ -436,6 +441,11 @@ const StudentInfoTextCol = styled.div`
   flex-direction: column;
   gap: 0.2rem;
   min-width: 0;
+  
+  @media (max-width: 700px) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 `;
 
 const StudentName = styled.span`
@@ -455,17 +465,34 @@ const StudentInfoMetaCol = styled.div`
   align-items: flex-end;
   gap: 0.2rem;
   min-width: 0;
+  
+  @media (max-width: 700px) {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
 `;
 
 const StudentInfoClass = styled.span`
   color: ${({ theme }) => theme.ACCENT};
   font-size: 0.92rem;
   font-weight: 600;
+  white-space: nowrap;
+  
+  @media (max-width: 700px) {
+    font-size: 0.85rem;
+  }
 `;
 
 const StudentInfoId = styled.span`
   color: #7c8597;
   font-size: 0.9rem;
+  white-space: nowrap;
+  
+  @media (max-width: 700px) {
+    font-size: 0.8rem;
+  }
 `;
 
 const StudentInfoMain = styled.div`
@@ -473,6 +500,12 @@ const StudentInfoMain = styled.div`
   align-items: center;
   gap: 0.8rem;
   min-width: 0;
+  
+  @media (max-width: 700px) {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 0.6rem;
+  }
 `;
 
 const HeaderFlexRow = styled.div`
@@ -518,10 +551,11 @@ const CollectFormGrid = styled.div`
     gap: 0.7rem;
   }
   @media (max-width: 700px) {
-    grid-template-columns: 1fr;
-    gap: 0.7rem;
-    padding: 0.7rem 0 0.2rem 0;
-    margin-top: 0.2rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    padding: 0.3rem 0 0 0;
+    margin-top: 0;
+    align-items: start;
   }
 `;
 
@@ -538,6 +572,24 @@ const CollectField = styled.div`
   &:last-child {
     margin-top: 2.25rem;
   }
+
+  @media (max-width: 700px) {
+    gap: 0.2rem;
+    margin: 0;
+    
+    &:nth-child(n+4) {
+      margin-top: 0;
+    }
+
+    &:nth-child(5) {
+      grid-column: 1 / -1;
+    }
+
+    &:last-child {
+      margin-top: 0.3rem;
+      grid-column: 1 / -1;
+    }
+  }
 `;
 
 const CollectLabel = styled.label`
@@ -545,6 +597,11 @@ const CollectLabel = styled.label`
   color: #7c8597;
   font-weight: 500;
   margin-bottom: 0.2rem;
+  @media (max-width: 700px) {
+    font-size: 0.75rem;
+    margin-bottom: 0.05rem;
+    line-height: 1.2;
+  }
 `;
 
 const CollectInput = styled.input`
@@ -560,6 +617,13 @@ const CollectInput = styled.input`
   height: 38px;
   &:focus {
     border-color: ${({ theme }) => theme.ACCENT};
+  }
+  @media (max-width: 700px) {
+    padding: 4px 6px;
+    font-size: 0.85rem;
+    height: 30px;
+    border-radius: 4px;
+    border-width: 1px;
   }
 `;
 
@@ -616,11 +680,25 @@ const CollectButton = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
   }
+  
+  @media (max-width: 700px) {
+    font-size: 0.85rem;
+    height: 30px;
+    border-radius: 4px;
+    gap: 0.3rem;
+    box-shadow: 0 1px 2px #0000001a;
+  }
 `;
 
 const InputWithPrefixWrapper = styled.div`
   position: relative;
   width: 100%;
+  
+  input {
+    @media (max-width: 700px) {
+      padding-left: 2rem !important;
+    }
+  }
 `;
 
 const InputPrefix = styled.span`
@@ -631,6 +709,10 @@ const InputPrefix = styled.span`
   color: #7c8597;
   pointer-events: none;
   font-size: 1.05rem;
+  @media (max-width: 700px) {
+    left: 6px;
+    font-size: 0.8rem;
+  }
 `;
 
 const StyledSelect = styled.select`
@@ -646,6 +728,13 @@ const StyledSelect = styled.select`
   transition: border 0.15s;
   &:focus {
     border-color: ${({ theme }) => theme.ACCENT};
+  }
+  @media (max-width: 700px) {
+    padding: 4px 6px;
+    font-size: 0.85rem;
+    height: 30px;
+    border-radius: 4px;
+    border-width: 1px;
   }
 `;
 
@@ -735,6 +824,24 @@ const ModalButton = styled.button<{ primary?: boolean }>`
   `}
 `;
 
+const FineDetailsContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  
+  @media (max-width: 700px) {
+    .fine-summary {
+      order: 2;
+      margin-top: 0.5rem;
+      margin-bottom: 0;
+    }
+    
+    .fine-table {
+      order: 1;
+    }
+  }
+`;
+
 const FineSummaryRow = styled.div`
   display: flex;
   flex-direction: column;
@@ -742,6 +849,11 @@ const FineSummaryRow = styled.div`
   gap: 0.5rem;
   margin-bottom: 0.7rem;
   width: 100%;
+  
+  @media (max-width: 700px) {
+    gap: 0.3rem;
+    margin-bottom: 0;
+  }
 `;
 
 const FineSummaryCard = styled.div`
@@ -756,6 +868,13 @@ const FineSummaryCard = styled.div`
   align-items: center;
   justify-content: space-between;
   min-height: 34px;
+  
+  @media (max-width: 700px) {
+    padding: 0.25rem 0.5rem;
+    min-height: 28px;
+    border-radius: 5px;
+    border-width: 1px;
+  }
 `;
 
 const FineSummaryLabel = styled.div`
@@ -763,6 +882,11 @@ const FineSummaryLabel = styled.div`
   font-size: 0.87rem;
   font-weight: 500;
   line-height: 1.1;
+  
+  @media (max-width: 700px) {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
 `;
 
 const FineSummaryValue = styled.div<{ color?: string }>`
@@ -772,6 +896,29 @@ const FineSummaryValue = styled.div<{ color?: string }>`
   line-height: 1.1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  
+  @media (max-width: 700px) {
+    font-size: 0.85rem;
+    font-weight: 700;
+    gap: 0.15rem;
+    
+    svg {
+      font-size: 15px !important;
+      margin-right: 3px !important;
+    }
+    
+    span {
+      font-size: 0.7rem !important;
+      margin-right: 3px !important;
+    }
+    
+    .remission-text {
+      font-size: 0.7rem !important;
+      margin-right: 4px !important;
+    }
+  }
 `;
 
 const AttendanceTable = styled.table`
@@ -1912,8 +2059,8 @@ const FineCollection: React.FC = () => {
               <CardTitle><Calculate style={{ color: (theme as any).ACCENT }} /> Fine Details</CardTitle>
               
               {selectedStudent ? (
-                <>
-                  <FineSummaryRow>
+                <FineDetailsContent>
+                  <FineSummaryRow className="fine-summary">
                     <FineSummaryCard>
                       <FineSummaryLabel>Total Fine</FineSummaryLabel>
                       <FineSummaryValue color="#6366f1">
@@ -1925,7 +2072,7 @@ const FineCollection: React.FC = () => {
                       <FineSummaryLabel>Paid Amount</FineSummaryLabel>
                       <FineSummaryValue color="#22c55e">
                         {totalGivenRemission > 0 && (
-                          <span style={{ color: '#5a6478', fontWeight: 500, fontSize: '0.97em', marginRight: 8 }}>
+                          <span className="remission-text" style={{ color: '#5a6478', fontWeight: 500, fontSize: '0.97em', marginRight: 8 }}>
                             (Remission: Rs. {formatCurrency(totalGivenRemission)})
                           </span>
                         )}
@@ -1941,7 +2088,7 @@ const FineCollection: React.FC = () => {
                       </FineSummaryValue>
                     </FineSummaryCard>
                   </FineSummaryRow>
-                  <TableWrapper className="attendance-table-wrapper">
+                  <TableWrapper className="attendance-table-wrapper fine-table">
                   <AttendanceTable>
                     <thead>
                       <tr>
@@ -2156,7 +2303,7 @@ const FineCollection: React.FC = () => {
                     </tbody>
                   </AttendanceTable>
                   </TableWrapper>
-                </>
+                </FineDetailsContent>
               ) : (
                 <CardPlaceholder>
                   <CardIcon><MonetizationOn style={{ fontSize: '3.2rem' }} /></CardIcon>
@@ -2179,10 +2326,13 @@ const FineCollection: React.FC = () => {
                     <InputPrefix>Rs.</InputPrefix>
                     <CollectInput
                       ref={amountInputRef}
-                      type="number"
+                      type="tel"
                       value={amount}
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      autoComplete="off"
+                      name="amount-input"
+                      data-form-type="other"
                       onChange={e => {
                         // Only allow integers
                         const val = e.target.value.replace(/[^0-9]/g, '');
@@ -2218,10 +2368,13 @@ const FineCollection: React.FC = () => {
                   <InputWithPrefixWrapper>
                     <InputPrefix>Rs.</InputPrefix>
                     <CollectInput
-                      type="number"
+                      type="tel"
                       value={remission}
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      autoComplete="off"
+                      name="remission-input"
+                      data-form-type="other"
                       onChange={e => {
                         // Only allow integers
                         const val = e.target.value.replace(/[^0-9]/g, '');
