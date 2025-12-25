@@ -68,6 +68,7 @@ import FeeIncrements from './pages/FeeIncrements';
 import LoadFeePage from './pages/LoadFeePage';
 import FeeCollection from './pages/FeeCollectionNew';
 import FeeDefaultersList from './pages/FeeDefaultersList';
+import FeeArrearsManager from './pages/FeeArrearsManager';
 import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
 import ChallanGenerationPage from './pages/ChallanGenerationPage';
 import ChallansListPage from './pages/ChallansListPage';
@@ -705,6 +706,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="fee-defaulters">
                                 <FeeDefaultersList />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fee-arrears"
+                            element={
+                              <ProtectedRoute requiredPermission="fee-arrears">
+                                <FeeArrearsManager />
                               </ProtectedRoute>
                             }
                           />

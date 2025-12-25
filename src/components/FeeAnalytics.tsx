@@ -28,6 +28,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell, Legend } from 'recharts';
 import Loader from './Loader';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -348,7 +349,8 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [challans, setChallans] = useState<any[]>([]);
+  const [arrears, setArrears] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
@@ -432,32 +434,74 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         setSessions(sessionsData);
       }
 
-      // Fetch invoices (filtered by selected session if one is selected)
-      let invoicesQuery = supabase
-        .from('fee_invoices')
-        .select('*')
+      // Get active session (use selected session or find active one)
+      const activeSessionId = selectedSession && selectedSession !== '' 
+        ? parseInt(selectedSession) 
+        : sessionsData?.find(s => s.is_active)?.id;
+
+      // Fetch fee challans (filtered by selected session if one is selected)
+      let challansQuery = supabase
+        .from('fee_challans')
+        .select('id, student_id, session_id, total_amount')
         .eq('school_id', user.school_id);
       
       if (selectedSession && selectedSession !== '') {
-        invoicesQuery = invoicesQuery.eq('session_id', parseInt(selectedSession));
+        challansQuery = challansQuery.eq('session_id', parseInt(selectedSession));
       }
       
-      const { data: invoicesData, error: invoicesError } = await invoicesQuery
-        .order('invoice_date', { ascending: false });
+      const challansData = await fetchAllRows(async (from, to) => {
+        return await challansQuery
+          .order('year', { ascending: false })
+          .order('month', { ascending: false })
+          .range(from, to);
+      });
 
-      if (invoicesError) throw invoicesError;
-
-      // Fetch all payments (for analytics)
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('fee_payments')
-        .select('*')
+      // Fetch fee arrears (filtered by selected session if one is selected, otherwise all sessions)
+      let arrearsData: any[] = [];
+      let arrearsQuery = supabase
+        .from('fee_arrears')
+        .select('id, student_id, session_id, amount')
         .eq('school_id', user.school_id)
-        .order('payment_date', { ascending: false });
+        .in('status', ['unpaid', 'partial']);
+      
+      // If a specific session is selected, filter by that session
+      // If "All Sessions" is selected, fetch arrears from all sessions
+      if (selectedSession && selectedSession !== '') {
+        arrearsQuery = arrearsQuery.eq('session_id', parseInt(selectedSession));
+      }
+      // Otherwise, if we have an active session, use it (for consistency with FeeCollectionNew)
+      // But for analytics with "All Sessions", we want all arrears, so we don't filter by session
+      
+      arrearsData = await fetchAllRows(async (from, to) => {
+        return await arrearsQuery
+          .order('due_date', { ascending: true })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+      });
 
-      if (paymentsError) throw paymentsError;
+      // Fetch all payments with payment items (for analytics, same as FeeCollectionNew)
+      const paymentsData = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('fee_payments')
+          .select(`
+            *,
+            fee_payment_items (
+              id,
+              fee_challan_item_id,
+              fee_arrear_id,
+              amount,
+              paid_amount
+            )
+          `)
+          .eq('school_id', user.school_id)
+          .order('payment_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+      });
 
       setStudents(studentsData || []);
-      setInvoices(invoicesData || []);
+      setChallans(challansData || []);
+      setArrears(arrearsData || []);
       setPayments(paymentsData || []);
       setClasses(classesData || []);
       setSections(sectionsData || []);
@@ -484,33 +528,47 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
     fetchAnalyticsData();
   }, [fetchAnalyticsData]);
 
-  // Process analytics data
+  // Process analytics data (using same logic as FeeCollectionNew and FeeDefaultersList)
   const analyticsData = useMemo(() => {
-    if (!students.length || !invoices.length) {
+    if (!students.length || (challans.length === 0 && arrears.length === 0)) {
       return null;
     }
 
-    // Calculate totals (matching ledger calculation)
-    const totalFeeAmount = invoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
-    // Match payments to invoices (like ledger does)
-    const matchedPayments = payments.filter(pay => 
-      invoices.some(inv => inv.id === pay.invoice_id)
-    );
-    const totalPaidAmount = matchedPayments.reduce((sum, pay) => sum + Number(pay.net_amount || pay.amount || 0), 0);
-    const totalReceived = matchedPayments.reduce((sum, pay) => sum + Number(pay.amount || 0), 0);
-    const totalDiscount = matchedPayments.reduce((sum, pay) => sum + Number(pay.discount_amount || 0), 0);
+    // Calculate totals (matching FeeCollectionNew: challanTotal + arrearTotal)
+    const challanTotal = challans.reduce((sum, challan) => sum + Number(challan.total_amount || 0), 0);
+    const arrearTotal = arrears.reduce((sum, arrear) => sum + Number(arrear.amount || 0), 0);
+    const totalFeeAmount = challanTotal + arrearTotal;
+    
+    // Calculate paid amounts from payments (using net_amount, same as FeeCollectionNew)
+    const totalPaidAmount = payments.reduce((sum, pay) => sum + Number(pay.net_amount || pay.amount || 0), 0);
+    const totalReceived = payments.reduce((sum, pay) => sum + Number(pay.amount || 0), 0);
+    const totalDiscount = payments.reduce((sum, pay) => sum + Number(pay.discount_amount || 0), 0);
     const totalRemaining = totalFeeAmount - totalPaidAmount;
     const collectionRate = totalFeeAmount > 0 ? (totalPaidAmount / totalFeeAmount) * 100 : 0;
 
-    // Top defaulters
+    // Top defaulters (using same logic as FeeDefaultersList)
     const studentRemainingFees = students.map(student => {
-      const studentInvoices = invoices.filter(inv => inv.student_id === student.id);
-      const studentPayments = matchedPayments.filter(pay => 
-        studentInvoices.some(inv => inv.id === pay.invoice_id)
+      // Get challans for this student
+      const studentChallans = challans.filter(ch => ch.student_id === student.id);
+      
+      // Get arrears for this student
+      const studentArrears = arrears.filter(ar => ar.student_id === student.id);
+      
+      // Calculate total fee amount (challanTotal + arrearTotal, same as FeeCollectionNew)
+      const challanTotal = studentChallans.reduce((sum, challan) => 
+        sum + Number(challan.total_amount || 0), 0
+      );
+      const arrearTotal = studentArrears.reduce((sum, arrear) => 
+        sum + Number(arrear.amount || 0), 0
+      );
+      const studentTotalFee = challanTotal + arrearTotal;
+      
+      // Get payments for this student (using student_id, same as FeeDefaultersList)
+      const studentPayments = payments.filter(pay => pay.student_id === student.id);
+      const studentTotalPaid = studentPayments.reduce((sum, pay) => 
+        sum + Number(pay.net_amount || 0), 0
       );
       
-      const studentTotalFee = studentInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
-      const studentTotalPaid = studentPayments.reduce((sum, pay) => sum + Number(pay.net_amount || pay.amount || 0), 0);
       const remaining = studentTotalFee - studentTotalPaid;
       
       return {
@@ -525,13 +583,16 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       .sort((a, b) => b.remaining - a.remaining)
       .slice(0, 10);
 
-    // Recent payments
-    const recentPaymentsData = matchedPayments
-      .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+    // Recent payments (using student_id directly, same as FeeCollectionNew)
+    const recentPaymentsData = payments
+      .sort((a, b) => {
+        const aDate = a.payment_date || a.created_at;
+        const bDate = b.payment_date || b.created_at;
+        return new Date(bDate).getTime() - new Date(aDate).getTime();
+      })
       .slice(0, 10)
       .map(payment => {
-        const invoice = invoices.find(inv => inv.id === payment.invoice_id);
-        const student = students.find(s => s.id === invoice?.student_id);
+        const student = students.find(s => s.id === payment.student_id);
         return {
           ...payment,
           studentName: student?.name || 'Unknown',
@@ -539,18 +600,32 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         };
       });
 
-    // Class-wise data
+    // Class-wise data (using same logic as FeeDefaultersList)
     const classWiseData = classes.map(cls => {
       const classStudents = students.filter(s => s.class_id === cls.id);
-      const classInvoices = invoices.filter(inv => 
-        classStudents.some(s => s.id === inv.student_id)
+      const classStudentIds = classStudents.map(s => s.id);
+      
+      // Get challans for class students
+      const classChallans = challans.filter(ch => classStudentIds.includes(ch.student_id));
+      
+      // Get arrears for class students
+      const classArrears = arrears.filter(ar => classStudentIds.includes(ar.student_id));
+      
+      // Calculate total fee (challanTotal + arrearTotal)
+      const challanTotal = classChallans.reduce((sum, challan) => 
+        sum + Number(challan.total_amount || 0), 0
       );
-      const classPayments = matchedPayments.filter(pay =>
-        classInvoices.some(inv => inv.id === pay.invoice_id)
+      const arrearTotal = classArrears.reduce((sum, arrear) => 
+        sum + Number(arrear.amount || 0), 0
+      );
+      const classTotalFee = challanTotal + arrearTotal;
+      
+      // Get payments for class students (using student_id)
+      const classPayments = payments.filter(pay => classStudentIds.includes(pay.student_id));
+      const classTotalPaid = classPayments.reduce((sum, pay) => 
+        sum + Number(pay.net_amount || 0), 0
       );
       
-      const classTotalFee = classInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
-      const classTotalPaid = classPayments.reduce((sum, pay) => sum + Number(pay.net_amount || pay.amount || 0), 0);
       const classRemaining = classTotalFee - classTotalPaid;
       const classCollectionRate = classTotalFee > 0 ? (classTotalPaid / classTotalFee) * 100 : 0;
       
@@ -667,15 +742,16 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       totalRemaining,
       collectionRate,
       totalStudents: students.length,
-      totalInvoices: invoices.length,
-      totalPayments: matchedPayments.length,
+      totalChallans: challans.length,
+      totalArrears: arrears.length,
+      totalPayments: payments.length,
       topDefaulters: studentRemainingFees,
       recentPayments: recentPaymentsData,
       classWiseData,
       monthlyTrends,
       paymentMethodStats
     };
-  }, [students, invoices, payments, classes, sections, selectedSession, sessions]);
+  }, [students, challans, arrears, payments, classes, sections, selectedSession, sessions]);
 
   // Check scroll position on mount and when data changes
   useEffect(() => {

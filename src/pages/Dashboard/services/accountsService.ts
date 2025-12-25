@@ -167,6 +167,7 @@ export const fetchAccountsData = async (
     };
     
     // Fetch income (from fee payments in date range) - with pagination
+    // Use amount only (exclude discounts from accounts)
     const feePayments = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('fee_payments')
@@ -189,7 +190,8 @@ export const fetchAccountsData = async (
         .range(from, to);
     });
 
-    const feeIncome = feePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+    // Use amount only (exclude discounts from accounts)
+    const feeIncome = feePayments.reduce((sum, pay) => sum + (Number((pay as any).amount) || 0), 0);
     const otherIncome = otherIncomes.reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
     const income = feeIncome + otherIncome;
 
@@ -244,7 +246,9 @@ export const fetchAccountsData = async (
       }
 
       const currentBalance = cashAccountsMap.get(accountName) || 0;
-      cashAccountsMap.set(accountName, currentBalance + (Number(payment.amount) || 0));
+      // Use amount only (exclude discounts from accounts)
+      const paymentAmount = Number((payment as any).amount) || 0;
+      cashAccountsMap.set(accountName, currentBalance + paymentAmount);
     });
 
     // Calculate cash from other incomes (income adds to cash)
@@ -329,7 +333,9 @@ export const fetchAccountsData = async (
       const paymentDate = parseISO(payment.payment_date);
       const monthKey = `${monthNames[paymentDate.getMonth()]}-${paymentDate.getFullYear()}`;
       const current = monthlyMap.get(monthKey) || { income: 0, expenses: 0 };
-      current.income += Number(payment.amount) || 0;
+      // Use amount only (exclude discounts from accounts)
+      const paymentAmount = Number((payment as any).amount) || 0;
+      current.income += paymentAmount;
       monthlyMap.set(monthKey, current);
     });
 
@@ -399,6 +405,7 @@ export const fetchAccountsData = async (
         const dateFilter = endDate.toISOString().split('T')[0];
 
         // Fetch fee payments (income) with account_id, filtered by date
+        // Use amount only (exclude discounts from accounts)
         const feePayments = await fetchAllRows(async (from, to) => {
           return await supabase
             .from('fee_payments')
@@ -444,9 +451,10 @@ export const fetchAccountsData = async (
           const displayName = accountType?.display_name || account.type;
           
           // Calculate income from fee payments
+          // Use amount only (exclude discounts from accounts)
           const feeIncome = feePayments
             .filter(p => p.account_id === account.id)
-            .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+            .reduce((sum, p) => sum + parseFloat((p as any).amount || 0), 0);
           
           // Calculate income from other incomes
           const otherIncome = otherIncomes
@@ -474,9 +482,10 @@ export const fetchAccountsData = async (
         });
 
         // Calculate Cash in Hand
+        // Use amount only (exclude discounts from accounts)
         const cashFeeIncome = feePayments
           .filter(p => p.payment_mode === 'Cash' && !p.account_id)
-          .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+          .reduce((sum, p) => sum + parseFloat((p as any).amount || 0), 0);
         
         const cashOtherIncome = otherIncomes
           .filter(oi => (oi.payment_method === 'cash' || oi.payment_method === 'cheque') && !oi.account_id)
@@ -544,6 +553,7 @@ export const fetchAccountsData = async (
       // Calculated using the same logic as cash accounts but for all transactions before dateFrom
       
       // Fetch all fee payments before dateFrom - using pagination
+      // Use amount only (exclude discounts from accounts)
       const openingFeePayments = await fetchAllRows(async (from, to) => {
         return await supabase
           .from('fee_payments')
@@ -610,7 +620,8 @@ export const fetchAccountsData = async (
         // Exclude account-based payments
         if (mode === 'account' || mode.includes('account')) return;
         
-        openingBalance += Number(payment.amount) || 0;
+        // Use amount only (exclude discounts from accounts)
+        openingBalance += Number((payment as any).amount) || 0;
       });
       
       // Add inflows from other incomes (include all received, any payment method)
@@ -667,7 +678,8 @@ export const fetchAccountsData = async (
         const mode = p.payment_mode?.toLowerCase() || '';
         return mode !== 'account' && !p.payment_mode?.toLowerCase().includes('account');
       });
-      const cashFeeIncome = cashFeePayments.reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+      // Use amount only (exclude discounts from accounts)
+      const cashFeeIncome = cashFeePayments.reduce((sum, pay) => sum + (Number((pay as any).amount) || 0), 0);
       
       // Other incomes: include all received status (any payment method)
       const cashOtherIncomes = otherIncomes.filter(i => {
@@ -759,7 +771,8 @@ export const fetchAccountsData = async (
         const paymentDate = parseISO(payment.payment_date);
         const monthKey = `${monthNames[paymentDate.getMonth()]}-${paymentDate.getFullYear()}`;
         const current = monthlyCashFlowMap.get(monthKey) || { inflows: 0, outflows: 0 };
-        current.inflows += Number(payment.amount) || 0;
+        // Use amount only (exclude discounts from accounts)
+        current.inflows += Number((payment as any).amount) || 0;
         monthlyCashFlowMap.set(monthKey, current);
       });
       
@@ -841,7 +854,8 @@ export const fetchAccountsData = async (
               type: 'credit',
               category: 'fee_payment',
               description: 'Fee Payment',
-              amount: Number(payment.amount) || 0,
+              // Use amount only (exclude discounts from accounts)
+              amount: Number((payment as any).amount) || 0,
               date: payment.payment_date,
               paymentMethod: payment.payment_mode || null
             });

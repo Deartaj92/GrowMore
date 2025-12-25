@@ -604,6 +604,205 @@ const ModalButton = styled.button<{ primary?: boolean }>`
   `}
 `;
 
+// Success Modal Components
+const SuccessModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  box-sizing: border-box;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const SuccessModalDialog = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 450px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  position: relative;
+  animation: slideUp 0.3s ease;
+  
+  @keyframes slideUp {
+    from { 
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to { 
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @media (max-width: 700px) {
+    padding: 1.25rem;
+    max-width: 95vw;
+  }
+`;
+
+const SuccessModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  position: relative;
+`;
+
+const SuccessIcon = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  margin: 0 auto;
+`;
+
+const SuccessModalTitle = styled.h3`
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem 0;
+  text-align: center;
+  
+  @media (max-width: 700px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const SuccessModalSubtitle = styled.p`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+`;
+
+const SuccessModalContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const SuccessInfoRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border-radius: 8px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const SuccessInfoLabel = styled.span`
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+`;
+
+const SuccessInfoValue = styled.span`
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-weight: 600;
+  text-align: right;
+`;
+
+const SuccessInfoValueHighlight = styled(SuccessInfoValue)`
+  color: #22c55e;
+  font-size: 1.1rem;
+  font-weight: 700;
+`;
+
+const SuccessModalActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  
+  @media (max-width: 700px) {
+    flex-direction: column;
+  }
+`;
+
+const SuccessModalButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  
+  ${({ $variant, theme }) => $variant === 'primary' ? `
+    background: ${theme.ACCENT || '#4a6cf7'};
+    color: #fff;
+    &:hover {
+      background: ${theme.ACCENT_DARK || '#3b5ae6'};
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(74, 108, 247, 0.3);
+    }
+  ` : `
+    background: ${theme.BUTTON_SECONDARY_BG || theme.FIELD_BG};
+    color: ${theme.TEXT_PRIMARY};
+    border: 1px solid ${theme.BUTTON_SECONDARY_BORDER || theme.BORDER};
+    &:hover {
+      background: ${theme.BUTTON_SECONDARY_HOVER_BG || theme.HOVER_BG};
+      border-color: ${theme.ACCENT};
+    }
+  `}
+  
+  @media (max-width: 700px) {
+    width: 100%;
+  }
+`;
+
+const SuccessCloseButton = styled.button`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${({ theme }) => theme.BORDER};
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+  }
+`;
+
 const ErrorContainer = styled.div`
   display: flex;
   align-items: center;
@@ -648,6 +847,7 @@ const FeeCollectionNew: React.FC = () => {
 
   // Fee-related state
   const [feeChallans, setFeeChallans] = useState<any[]>([]);
+  const [feeArrears, setFeeArrears] = useState<any[]>([]);
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeError, setFeeError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -678,6 +878,10 @@ const FeeCollectionNew: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successPaymentData, setSuccessPaymentData] = useState<any>(null);
 
   // Helper function to get icon component from account type
   const getAccountTypeIcon = (iconName: string) => {
@@ -719,22 +923,10 @@ const FeeCollectionNew: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // Check if user has school_id
-  if (!user?.school_id) {
-    return (
-      <ThemeProvider theme={theme}>
-        <PageContainer>
-          <ErrorContainer>
-            <Info style={{ marginRight: '0.5rem' }} />
-            No school context found. Please contact your administrator.
-          </ErrorContainer>
-        </PageContainer>
-      </ThemeProvider>
-    );
-  }
-
   // Load initial data
   useEffect(() => {
+    if (!user?.school_id) return; // Early return if no school_id, but AFTER hook is declared
+    
     let isMounted = true;
     const loadAll = async () => {
       startProgress(false);
@@ -934,7 +1126,7 @@ const FeeCollectionNew: React.FC = () => {
   const getClassName = (classId: number) => classes.find((c: any) => String(c.id) === String(classId))?.name || '-';
   const getSectionName = (sectionId: number) => sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
   const getUserName = (userId: number) => users.find((u: any) => u.id === userId)?.name || 'Unknown User';
-  const getPaymentDisplayId = (paymentId: number) => `S${user.school_id}-${paymentId}`;
+  const getPaymentDisplayId = (paymentId: number) => `S${user?.school_id || 0}-${paymentId}`;
 
   // Get default print type from settings
   const getDefaultPrintType = (): 'invoice' | 'thermal' => {
@@ -990,8 +1182,10 @@ const FeeCollectionNew: React.FC = () => {
 
   // Calculate totals
   const totalFeeAmount = useMemo(() => {
-    return feeChallans.reduce((sum: number, challan: any) => sum + Number(challan.total_amount || 0), 0);
-  }, [feeChallans]);
+    const challanTotal = feeChallans.reduce((sum: number, challan: any) => sum + Number(challan.total_amount || 0), 0);
+    const arrearTotal = feeArrears.reduce((sum: number, arrear: any) => sum + Number(arrear.amount || 0), 0);
+    return challanTotal + arrearTotal;
+  }, [feeChallans, feeArrears]);
 
   const totalPaidAmount = useMemo(() => {
     return paymentHistory.reduce((sum: number, payment: any) => sum + Number(payment.amount || 0), 0);
@@ -1028,7 +1222,7 @@ const FeeCollectionNew: React.FC = () => {
   // Generate fee invoice print preview
   const generateInvoicePDF = async (paymentData: {
     paymentId?: number; // Payment ID to fetch items from fee_payment_items
-    paymentItems?: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }>; // Legacy: for backward compatibility
+    paymentItems?: Array<{ fee_challan_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }>; // Legacy: for backward compatibility
     amount: number;
     discount: number;
     netAmount: number;
@@ -1040,6 +1234,11 @@ const FeeCollectionNew: React.FC = () => {
     transactionId?: string; // Transaction ID when payment is made through account
     chequeNumber?: string; // Cheque number when payment is made via cheque
   }) => {
+    if (!user?.school_id) {
+      showToast('No school context found', 'error');
+      return;
+    }
+    
     try {
       // Fetch school information
       const [{ data: profileData }, { data: schoolData }] = await Promise.all([
@@ -1065,7 +1264,7 @@ const FeeCollectionNew: React.FC = () => {
             .from('fee_payment_items')
             .select(`
               id,
-              fee_item_id,
+              fee_challan_item_id,
               amount,
               paid_amount,
               fee_challans_items!inner(
@@ -1077,7 +1276,7 @@ const FeeCollectionNew: React.FC = () => {
               )
             `)
             .eq('payment_id', paymentData.paymentId)
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id || 0)
             .order('id', { ascending: true })
             .range(from, to);
         });
@@ -1086,7 +1285,7 @@ const FeeCollectionNew: React.FC = () => {
           allFeeItems = paymentItemsData.map((item: any) => {
             const feeChallanItem = item.fee_challans_items;
             return {
-              id: item.fee_item_id,
+              id: item.fee_challan_item_id,
               amount: Number(item.amount || 0), // Full amount from page/UI (stored in DB)
               paid_amount: Number(item.paid_amount || 0), // Paid amount
               fee_head_id: feeChallanItem?.fee_head_id,
@@ -1099,14 +1298,14 @@ const FeeCollectionNew: React.FC = () => {
         }
       } else if (paymentData.paymentItems && paymentData.paymentItems.length > 0) {
         // Legacy: Fallback to using paymentItems (for backward compatibility)
-        const feeItemIds = paymentData.paymentItems.map(item => item.fee_item_id).filter(Boolean);
+        const feeItemIds = paymentData.paymentItems.map(item => item.fee_challan_item_id).filter(Boolean);
 
         const fetchPromises = feeItemIds.map(id =>
           supabase
             .from('fee_challans_items')
             .select('id, amount, fee_head_id, challan_id, fee_heads(id, name)')
             .eq('id', id)
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id || 0)
             .maybeSingle()
         );
 
@@ -1135,7 +1334,7 @@ const FeeCollectionNew: React.FC = () => {
                 .from('fee_challans')
                 .select('id, month, year')
                 .in('id', chunk)
-                .eq('school_id', user.school_id)
+                .eq('school_id', user?.school_id || 0)
                 .range(from, to);
             });
             challans.push(...chunkData);
@@ -1152,7 +1351,7 @@ const FeeCollectionNew: React.FC = () => {
         // Build fee items list from payment items
         feeChallanItems.forEach((item: any) => {
           const challan = challansMap.get(item.challan_id);
-          const paymentItem = paymentData.paymentItems?.find(pi => pi.fee_item_id === item.id.toString());
+          const paymentItem = paymentData.paymentItems?.find(pi => pi.fee_challan_item_id === item.id.toString());
           allFeeItems.push({
             id: item.id,
             amount: Number(paymentItem?.amount || item.amount || 0),
@@ -1186,25 +1385,57 @@ const FeeCollectionNew: React.FC = () => {
       let totalPaidAllPayments = 0;
       if (selectedStudent && currentSession) {
         try {
-          const { data: allPaymentsData } = await supabase
-            .from('fee_payments')
-            .select(`
-              id,
-              amount,
-              discount_amount,
-              fee_challans!inner (
-                student_id,
-                session_id
-              ),
-              fee_payment_items (
-                amount
-              )
-            `)
-            .eq('fee_challans.student_id', selectedStudent.id)
-            .eq('fee_challans.session_id', currentSession.id)
-            .eq('school_id', user.school_id);
+          // First, get all challans for this student and session
+          const { data: challansData } = await supabase
+            .from('fee_challans')
+            .select('id')
+            .eq('student_id', selectedStudent.id)
+            .eq('session_id', currentSession.id)
+            .eq('school_id', user?.school_id || 0);
 
-          if (allPaymentsData) {
+          const challanIds = challansData?.map(c => c.id) || [];
+
+          let challanItemIds: number[] = [];
+          if (challanIds.length > 0) {
+            // Then get all challan item IDs from those challans
+            const { data: challanItemsData } = await supabase
+              .from('fee_challans_items')
+              .select('id')
+              .in('challan_id', challanIds);
+
+            challanItemIds = challanItemsData?.map(item => item.id) || [];
+          }
+
+          let allPaymentsData: any[] = [];
+          if (challanItemIds.length > 0) {
+            // Get payment item IDs that reference these challan items
+            const { data: paymentItemsData } = await supabase
+              .from('fee_payment_items')
+              .select('payment_id')
+              .in('fee_challan_item_id', challanItemIds);
+
+            const paymentIds = Array.from(new Set(paymentItemsData?.map(item => item.payment_id) || []));
+
+            if (paymentIds.length > 0) {
+              // Now fetch payments with their items
+              const { data: paymentsData } = await supabase
+                .from('fee_payments')
+                .select(`
+                  id,
+                  amount,
+                  discount_amount,
+                  fee_payment_items (
+                    amount
+                  )
+                `)
+                .in('id', paymentIds)
+                .eq('school_id', user?.school_id || 0);
+
+              allPaymentsData = paymentsData || [];
+            }
+          }
+
+          if (allPaymentsData && allPaymentsData.length > 0) {
             // Sum all payment amounts (including discounts)
             totalPaidAllPayments = allPaymentsData.reduce((sum, payment) => {
               const paymentAmount = Number(payment.amount || 0);
@@ -1236,9 +1467,27 @@ const FeeCollectionNew: React.FC = () => {
       // Ensure at least 11 rows, add empty rows if needed
       const minRows = 11;
       const itemsRows = allFeeItems.map((feeItem, index) => {
-        const monthYear = feeItem.month && feeItem.year
-          ? new Date(feeItem.month + '/01/' + feeItem.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-          : '';
+        // Handle One Time fees (no month/year) vs recurring fees
+        let monthYear = '';
+        if (feeItem.month && feeItem.year) {
+          try {
+            const monthStr = String(feeItem.month).toLowerCase();
+            if (monthStr === 'one-time' || monthStr === 'one time') {
+              monthYear = 'One Time';
+            } else {
+              const date = new Date(feeItem.month + '/01/' + feeItem.year);
+              if (!isNaN(date.getTime())) {
+                monthYear = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+              } else {
+                monthYear = 'One Time';
+              }
+            }
+          } catch (e) {
+            monthYear = 'One Time';
+          }
+        } else {
+          monthYear = 'One Time';
+        }
         return `
           <tr>
             <td style="text-align: center; padding: 8px; border: 1px solid #000;">${index + 1}</td>
@@ -1545,7 +1794,7 @@ const FeeCollectionNew: React.FC = () => {
         paymentMethod: paymentMethodDisplay,
         paymentDate: payment.payment_date || payment.created_at,
         paymentRemarks: payment.remarks || '',
-        receivedBy: payment.received_by || user.id,
+        receivedBy: payment.received_by || user?.id || 0,
         transactionId: payment.transaction_id || undefined,
         chequeNumber: payment.cheque_number || undefined
       });
@@ -1557,7 +1806,7 @@ const FeeCollectionNew: React.FC = () => {
   // Generate thermal printer receipt
   const generateThermalReceipt = async (paymentData: {
     paymentId?: number;
-    paymentItems?: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }>;
+    paymentItems?: Array<{ fee_challan_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }>;
     amount: number;
     discount: number;
     netAmount: number;
@@ -1572,6 +1821,11 @@ const FeeCollectionNew: React.FC = () => {
     try {
       if (!selectedStudent) {
         showToast('No student selected', 'error');
+        return;
+      }
+
+      if (!user?.school_id) {
+        showToast('No school context found', 'error');
         return;
       }
 
@@ -1595,7 +1849,7 @@ const FeeCollectionNew: React.FC = () => {
             .from('fee_payment_items')
             .select(`
               id,
-              fee_item_id,
+              fee_challan_item_id,
               amount,
               paid_amount,
               fee_challans_items!inner(
@@ -1607,7 +1861,7 @@ const FeeCollectionNew: React.FC = () => {
               )
             `)
             .eq('payment_id', paymentData.paymentId)
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id || 0)
             .order('id', { ascending: true })
             .range(from, to);
         });
@@ -1615,17 +1869,26 @@ const FeeCollectionNew: React.FC = () => {
         if (paymentItemsData && paymentItemsData.length > 0) {
           paymentItems = paymentItemsData.map((item: any) => {
             const feeChallanItem = item.fee_challans_items;
-            let monthYear = '';
+            let monthYear = 'One Time';
             if (feeChallanItem?.fee_challans?.month && feeChallanItem?.fee_challans?.year) {
-              const monthStr = String(feeChallanItem.fee_challans.month).toLowerCase();
-              if (monthStr === 'one-time' || monthStr === 'one time') {
+              try {
+                const monthStr = String(feeChallanItem.fee_challans.month).toLowerCase();
+                if (monthStr === 'one-time' || monthStr === 'one time') {
+                  monthYear = 'One Time';
+                } else {
+                  const date = new Date(feeChallanItem.fee_challans.month + '/01/' + feeChallanItem.fee_challans.year);
+                  if (!isNaN(date.getTime())) {
+                    monthYear = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                  } else {
+                    monthYear = 'One Time';
+                  }
+                }
+              } catch (e) {
                 monthYear = 'One Time';
-              } else {
-                monthYear = new Date(feeChallanItem.fee_challans.month + '/01/' + feeChallanItem.fee_challans.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
               }
             }
             return {
-              fee_item_id: item.fee_item_id,
+              fee_challan_item_id: item.fee_challan_item_id,
               amount: Number(item.amount || 0),
               paid_amount: Number(item.paid_amount || 0),
               fee_head_name: feeChallanItem?.fee_heads?.name || 'Unknown',
@@ -1912,7 +2175,7 @@ const FeeCollectionNew: React.FC = () => {
         paymentMethod: paymentMethodDisplay,
         paymentDate: payment.payment_date || payment.created_at,
         paymentRemarks: payment.remarks || '',
-        receivedBy: payment.received_by || user.id,
+        receivedBy: payment.received_by || user?.id || 0,
         transactionId: payment.transaction_id || undefined,
         chequeNumber: payment.cheque_number || undefined
       });
@@ -1923,7 +2186,7 @@ const FeeCollectionNew: React.FC = () => {
 
   // Fetch fee invoices when student is selected
   useEffect(() => {
-    if (!selectedStudent || !currentSession) {
+    if (!user?.school_id || !selectedStudent || !currentSession) {
       setFeeChallans([]);
       setFeeError(null);
       return;
@@ -1975,9 +2238,54 @@ const FeeCollectionNew: React.FC = () => {
     fetchFeeChallans();
   }, [selectedStudent, currentSession, user?.school_id]);
 
+  // Fetch fee arrears when student is selected
+  useEffect(() => {
+    if (!user?.school_id || !selectedStudent || !currentSession) {
+      setFeeArrears([]);
+      return;
+    }
+
+    const fetchFeeArrears = async () => {
+      try {
+        const { data: arrearsData, error } = await supabase
+          .from('fee_arrears')
+          .select(`
+            id,
+            student_id,
+            session_id,
+            fee_head_id,
+            amount,
+            due_date,
+            remarks,
+            status,
+            created_at,
+            fee_heads (
+              id,
+              name,
+              description
+            )
+          `)
+          .eq('student_id', selectedStudent.id)
+          .eq('session_id', currentSession.id)
+          .eq('school_id', user.school_id)
+          .in('status', ['unpaid', 'partial'])
+          .order('due_date', { ascending: true })
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setFeeArrears(arrearsData || []);
+      } catch (err: any) {
+        console.error('Failed to fetch fee arrears:', err);
+        setFeeArrears([]);
+      }
+    };
+
+    fetchFeeArrears();
+  }, [selectedStudent, currentSession, user?.school_id]);
+
   // Fetch payment history when student is selected
   useEffect(() => {
-    if (!selectedStudent) {
+    if (!user?.school_id || !selectedStudent) {
       setPaymentHistory([]);
       setPaymentHistoryError(null);
       return;
@@ -1987,17 +2295,31 @@ const FeeCollectionNew: React.FC = () => {
       setPaymentHistoryLoading(true);
       setPaymentHistoryError(null);
       try {
+        // Get all payment IDs for this student (using student_id column)
+        const { data: paymentsData } = await supabase
+          .from('fee_payments')
+          .select('id')
+          .eq('student_id', selectedStudent.id)
+          .eq('school_id', user?.school_id || 0);
+
+        const paymentIds = paymentsData?.map(p => p.id) || [];
+
+        if (paymentIds.length === 0) {
+          setPaymentHistory([]);
+          setPaymentHistoryLoading(false);
+          return;
+        }
+
+        // Now fetch payments with their items and accounts
         const data = await fetchAllRows(async (from, to) => {
           return await supabase
             .from('fee_payments')
             .select(`
               *,
-              fee_challans!inner (
-                student_id
-              ),
               fee_payment_items (
                 id,
-                fee_item_id,
+                fee_challan_item_id,
+                fee_arrear_id,
                 amount,
                 paid_amount
               ),
@@ -2011,8 +2333,8 @@ const FeeCollectionNew: React.FC = () => {
                 wallet_number
               )
             `)
-            .eq('fee_challans.student_id', selectedStudent.id)
-            .eq('school_id', user.school_id)
+            .in('id', paymentIds)
+            .eq('school_id', user?.school_id || 0)
             .order('payment_date', { ascending: false })
             .order('created_at', { ascending: false })
             .range(from, to);
@@ -2032,7 +2354,7 @@ const FeeCollectionNew: React.FC = () => {
 
   // Function to distribute payment amount across fee rows
   const distributePaymentAmount = (amount: number, discount: number = 0) => {
-    if (!feeChallans.length) return;
+    if (!feeChallans.length && !feeArrears.length) return;
 
     const newDistributedAmounts: { [key: string]: number } = {};
     const netAmount = amount + discount;
@@ -2040,6 +2362,8 @@ const FeeCollectionNew: React.FC = () => {
 
     // Get only unpaid items (same logic as display)
     const unpaidItems: any[] = [];
+    
+    // Process challan items
     feeChallans.forEach((challan: any, challanIndex: number) => {
       challan.fee_challans_items?.forEach((item: any, itemIndex: number) => {
         const itemAmount = Number(item.amount || 0);
@@ -2048,7 +2372,7 @@ const FeeCollectionNew: React.FC = () => {
         const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
           if (payment.fee_payment_items) {
             const itemPayment = payment.fee_payment_items.find(
-              (paymentItem: any) => paymentItem.fee_item_id === item.id
+              (paymentItem: any) => paymentItem.fee_challan_item_id === item.id
             );
             // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
             if (itemPayment) {
@@ -2067,11 +2391,45 @@ const FeeCollectionNew: React.FC = () => {
           unpaidItems.push({
             ...item,
             challan,
-            key: `${challan.id}-${item.id}`,
-            remainingAmount: remainingItemAmount
+            key: `challan-${challan.id}-${item.id}`,
+            remainingAmount: remainingItemAmount,
+            type: 'challan'
           });
         }
       });
+    });
+
+    // Process arrear items
+    feeArrears.forEach((arrear: any) => {
+      const itemAmount = Number(arrear.amount || 0);
+
+      // Calculate already paid amount for this specific arrear
+      const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
+        if (payment.fee_payment_items) {
+          const itemPayment = payment.fee_payment_items.find(
+            (paymentItem: any) => paymentItem.fee_arrear_id === arrear.id
+          );
+          // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
+          if (itemPayment) {
+            const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+            return sum + Number(paidAmt);
+          }
+          return sum;
+        }
+        return sum;
+      }, 0);
+
+      const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+
+      // Only include items that still need payment
+      if (remainingItemAmount > 0) {
+        unpaidItems.push({
+          ...arrear,
+          key: `arrear-${arrear.id}`,
+          remainingAmount: remainingItemAmount,
+          type: 'arrear'
+        });
+      }
     });
 
     // Distribute amount across unpaid items only
@@ -2129,7 +2487,7 @@ const FeeCollectionNew: React.FC = () => {
     } else {
       setDistributedAmounts({});
     }
-  }, [paymentAmount, discountAmount, feeChallans, paymentHistory]);
+  }, [paymentAmount, discountAmount, feeChallans, feeArrears, paymentHistory]);
 
   // Check if amount exceeds total remaining
   const isAmountExceeded = useMemo(() => {
@@ -2165,8 +2523,9 @@ const FeeCollectionNew: React.FC = () => {
       // Get ONLY the items that are shown in the fee summary section (unpaid items)
       // Store: amount (remaining amount from fee summary table), paid_amount (distributed amount)
       const paymentItems: any[] = [];
-      const challanPaymentItems: Array<{ fee_item_id: string; amount: number; fee_head_name?: string; monthYear?: string }> = [];
+      const challanPaymentItems: Array<{ fee_challan_item_id?: string; fee_arrear_id?: number; amount: number; fee_head_name?: string; monthYear?: string }> = [];
 
+      // Process challan items
       feeChallans.forEach((challan: any, challanIndex: number) => {
         challan.fee_challans_items?.forEach((item: any, itemIndex: number) => {
           const itemAmount = Number(item.amount || 0);
@@ -2175,7 +2534,7 @@ const FeeCollectionNew: React.FC = () => {
           const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
             if (payment.fee_payment_items) {
               const itemPayment = payment.fee_payment_items.find(
-                (paymentItem: any) => paymentItem.fee_item_id === item.id
+                (paymentItem: any) => paymentItem.fee_challan_item_id === item.id
               );
               // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
               if (itemPayment) {
@@ -2191,27 +2550,90 @@ const FeeCollectionNew: React.FC = () => {
 
           // Only record items that are shown in fee summary (items with remaining amount > 0)
           if (remainingItemAmount > 0) {
-            const key = `${challan.id}-${item.id}`;
+            const key = `challan-${challan.id}-${item.id}`;
             const distributedAmount = distributedAmounts[key] || 0;
 
             // Store the remaining amount (what's shown in fee summary) and paid amount
             paymentItems.push({
-              fee_item_id: item.id,
+              fee_challan_item_id: item.id,
               amount: remainingItemAmount, // Remaining amount from fee summary table (not full amount)
               paid_amount: distributedAmount // Paid amount for this payment
             });
 
             // Build invoice items with fee head info
             const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
-            const monthYear = new Date(challan.month + '/01/' + challan.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            // Handle One Time fees (no month/year) vs recurring fees
+            let monthYear = 'One Time';
+            if (challan.month && challan.year) {
+              try {
+                const monthStr = String(challan.month).toLowerCase();
+                if (monthStr === 'one-time' || monthStr === 'one time') {
+                  monthYear = 'One Time';
+                } else {
+                  const date = new Date(challan.month + '/01/' + challan.year);
+                  if (!isNaN(date.getTime())) {
+                    monthYear = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                  } else {
+                    monthYear = 'One Time';
+                  }
+                }
+              } catch (e) {
+                monthYear = 'One Time';
+              }
+            }
             challanPaymentItems.push({
-              fee_item_id: item.id,
+              fee_challan_item_id: item.id,
               amount: remainingItemAmount, // Remaining amount for invoice display
               fee_head_name: feeHeadName,
               monthYear: monthYear
             });
           }
         });
+      });
+
+      // Process arrear items
+      feeArrears.forEach((arrear: any) => {
+        const itemAmount = Number(arrear.amount || 0);
+
+        // Calculate already paid amount for this specific arrear (same logic as fee summary)
+        const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
+          if (payment.fee_payment_items) {
+            const itemPayment = payment.fee_payment_items.find(
+              (paymentItem: any) => paymentItem.fee_arrear_id === arrear.id
+            );
+            // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
+            if (itemPayment) {
+              const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+              return sum + Number(paidAmt);
+            }
+            return sum;
+          }
+          return sum;
+        }, 0);
+
+        const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+
+        // Only record items that are shown in fee summary (items with remaining amount > 0)
+        if (remainingItemAmount > 0) {
+          const key = `arrear-${arrear.id}`;
+          const distributedAmount = distributedAmounts[key] || 0;
+
+          // Store the remaining amount (what's shown in fee summary) and paid amount
+          paymentItems.push({
+            fee_arrear_id: arrear.id,
+            amount: remainingItemAmount, // Remaining amount from fee summary table (not full amount)
+            paid_amount: distributedAmount // Paid amount for this payment
+          });
+
+          // Build invoice items with fee head info
+          const feeHeadName = arrear.fee_heads?.name || 'Unknown Fee Head';
+          challanPaymentItems.push({
+            fee_arrear_id: arrear.id,
+            amount: remainingItemAmount, // Remaining amount for invoice display
+            fee_head_name: feeHeadName,
+            monthYear: 'Other Fee'
+          });
+        }
       });
 
       if (paymentItems.length === 0) {
@@ -2225,15 +2647,15 @@ const FeeCollectionNew: React.FC = () => {
 
       // Create main payment record
       const paymentRecord: any = {
-        challan_id: feeChallans[0].id, // Use first challan for now
         amount: amount,
         payment_mode: paymentMethod,
         remarks: paymentRemarks,
         payment_date: paymentDate,
-        school_id: user.school_id,
-        received_by: user.id, // Store the user ID who collected the payment
+        school_id: user?.school_id || 0,
+        received_by: user?.id || 0, // Store the user ID who collected the payment
         discount_amount: discount,
-        net_amount: netAmount
+        net_amount: netAmount,
+        student_id: selectedStudent.id // Direct reference to student for simplified queries
       };
 
       // Add account_id if an account is selected (not Cash)
@@ -2265,10 +2687,11 @@ const FeeCollectionNew: React.FC = () => {
         // Create payment items for ALL items (including those with paid_amount = 0)
         const paymentItemsWithPaymentId = paymentItems.map(item => ({
           payment_id: paymentId,
-          fee_item_id: item.fee_item_id,
+          fee_challan_item_id: item.fee_challan_item_id || null,
+          fee_arrear_id: item.fee_arrear_id || null,
           amount: item.amount, // Full amount from page/UI
           paid_amount: item.paid_amount, // Paid amount (0 if not paid)
-          school_id: user.school_id
+          school_id: user?.school_id || 0
         }));
 
         const { error: itemsError } = await supabase
@@ -2307,45 +2730,82 @@ const FeeCollectionNew: React.FC = () => {
                 `)
                 .eq('student_id', selectedStudent.id)
                 .eq('session_id', currentSession.id)
-                .eq('school_id', user.school_id)
+                .eq('school_id', user?.school_id || 0)
                 .order('year', { ascending: false })
                 .order('month', { ascending: false })
                 .range(from, to);
             });
 
-            // Refresh payment history with items and account information
-            const paymentData = await fetchAllRows(async (from, to) => {
-              return await supabase
-                .from('fee_payments')
-                .select(`
-                  *,
-                  fee_challans!inner (
-                    student_id
-                  ),
-                  fee_payment_items (
-                    id,
-                    fee_item_id,
-                    amount,
-                    paid_amount
-                  ),
-                  accounts (
-                    id,
-                    name,
-                    type,
-                    bank_name,
-                    account_number,
-                    mobile_number,
-                    wallet_number
-                  )
-                `)
-                .eq('fee_challans.student_id', selectedStudent.id)
-                .eq('school_id', user.school_id)
-                .order('payment_date', { ascending: false })
-                .range(from, to);
-            });
+            // Refresh fee arrears
+            const { data: arrearsData, error: arrearsError } = await supabase
+              .from('fee_arrears')
+              .select(`
+                id,
+                student_id,
+                session_id,
+                fee_head_id,
+                amount,
+                due_date,
+                remarks,
+                status,
+                created_at,
+                fee_heads (
+                  id,
+                  name,
+                  description
+                )
+              `)
+              .eq('student_id', selectedStudent.id)
+              .eq('session_id', currentSession.id)
+              .eq('school_id', user?.school_id || 0)
+              .in('status', ['unpaid', 'partial'])
+              .order('due_date', { ascending: true })
+              .order('created_at', { ascending: false });
 
-            // Update both states
+            // Refresh payment history using student_id (simplified approach)
+            const { data: paymentsData } = await supabase
+              .from('fee_payments')
+              .select('id')
+              .eq('student_id', selectedStudent.id)
+              .eq('school_id', user?.school_id || 0);
+
+            const paymentIds = paymentsData?.map(p => p.id) || [];
+
+            let paymentData: any[] = [];
+            if (paymentIds.length > 0) {
+              // Fetch payments with their items and accounts
+              paymentData = await fetchAllRows(async (from, to) => {
+                return await supabase
+                  .from('fee_payments')
+                  .select(`
+                    *,
+                    fee_payment_items (
+                      id,
+                      fee_challan_item_id,
+                      fee_arrear_id,
+                      amount,
+                      paid_amount
+                    ),
+                    accounts (
+                      id,
+                      name,
+                      type,
+                      bank_name,
+                      account_number,
+                      mobile_number,
+                      wallet_number
+                    )
+                  `)
+                  .in('id', paymentIds)
+                  .eq('school_id', user?.school_id || 0)
+                  .order('payment_date', { ascending: false })
+                  .range(from, to);
+              });
+            }
+
+            // Update all states
             if (challansData) setFeeChallans(challansData);
+            if (arrearsData) setFeeArrears(arrearsData);
             if (paymentData) setPaymentHistory(paymentData);
 
             return challansData; // Return fresh challans data
@@ -2357,10 +2817,6 @@ const FeeCollectionNew: React.FC = () => {
 
         const freshChallansData = await refreshAllData();
 
-        showToast("Payment collected successfully!", 'success');
-
-        // Generate default print type based on settings
-        const defaultPrintType = getDefaultPrintType();
         // Get account name for display
         let paymentMethodDisplay = paymentMethod;
         if (selectedAccountId) {
@@ -2379,39 +2835,25 @@ const FeeCollectionNew: React.FC = () => {
           paymentMethod: paymentMethodDisplay,
           paymentDate: paymentDate,
           paymentRemarks: paymentRemarks,
-          receivedBy: user.id,
+          receivedBy: user?.id || 0,
           feeChallansOverride: freshChallansData || undefined,
           transactionId: transactionId && transactionId.trim() ? transactionId.trim() : undefined,
           chequeNumber: chequeNumber && chequeNumber.trim() ? chequeNumber.trim() : undefined
         };
 
-        if (defaultPrintType === 'invoice') {
-          // Generate invoice as default
-          await generateInvoicePDF(paymentData);
-        } else {
-          // Generate thermal receipt as default
-          try {
-            await generateThermalReceipt(paymentData);
-          } catch (thermalError) {
-            // Fallback to invoice if thermal receipt fails
-            console.log('Thermal receipt generation failed, falling back to invoice:', thermalError);
-            await generateInvoicePDF(paymentData);
-          }
-        }
+        // Show success modal instead of directly printing
+        setSuccessPaymentData(paymentData);
+        setShowSuccessModal(true);
 
+        // Reset form fields
         setPaymentAmount('');
         setPaymentRemarks('');
         setDiscountAmount('');
         setPaymentDate(new Date().toISOString().slice(0, 10));
         setDistributedAmounts({});
 
-        // Focus back on search and select its content
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-            searchInputRef.current.select?.();
-          }
-        }, 100);
+        // Focus back on search and select its content after modal closes
+        // This will be handled in the modal close handler
       }
     } catch (err: any) {
       showToast("Failed to collect payment: " + (err.message || 'Unknown error'), 'error');
@@ -2452,29 +2894,111 @@ const FeeCollectionNew: React.FC = () => {
       // Refresh all data to update the summary
       const refreshAllData = async () => {
         try {
-          // Refresh payment history with items
-          const paymentData = await fetchAllRows(async (from, to) => {
+          if (!selectedStudent) return;
+
+          // Refresh fee challans
+          const challansData = await fetchAllRows(async (from, to) => {
             return await supabase
-              .from('fee_payments')
+              .from('fee_challans')
               .select(`
-                *,
-                fee_challans!inner (
-                  student_id
-                ),
-                fee_payment_items (
+                id,
+                student_id,
+                session_id,
+                month,
+                year,
+                total_amount,
+                status,
+                due_date,
+                created_at,
+                fee_challans_items (
                   id,
-                  fee_item_id,
+                  fee_head_id,
                   amount,
-                  paid_amount
+                  fee_heads (
+                    id,
+                    name,
+                    description
+                  )
                 )
               `)
-              .eq('fee_challans.student_id', selectedStudent.id)
-              .eq('school_id', user.school_id)
-              .order('payment_date', { ascending: false })
+              .eq('student_id', selectedStudent.id)
+              .eq('session_id', currentSession.id)
+              .eq('school_id', user?.school_id || 0)
+              .order('year', { ascending: false })
+              .order('month', { ascending: false })
               .range(from, to);
           });
 
-          // Update payment history
+          // Refresh fee arrears
+          const { data: arrearsData } = await supabase
+            .from('fee_arrears')
+            .select(`
+              id,
+              student_id,
+              session_id,
+              fee_head_id,
+              amount,
+              due_date,
+              remarks,
+              status,
+              created_at,
+              fee_heads (
+                id,
+                name,
+                description
+              )
+            `)
+            .eq('student_id', selectedStudent.id)
+            .eq('session_id', currentSession.id)
+            .eq('school_id', user?.school_id || 0)
+            .in('status', ['unpaid', 'partial'])
+            .order('due_date', { ascending: true })
+            .order('created_at', { ascending: false });
+
+          // Refresh payment history using student_id (simplified approach)
+          const { data: paymentsData } = await supabase
+            .from('fee_payments')
+            .select('id')
+            .eq('student_id', selectedStudent.id)
+            .eq('school_id', user?.school_id || 0);
+
+          const paymentIds = paymentsData?.map(p => p.id) || [];
+
+          let paymentData: any[] = [];
+          if (paymentIds.length > 0) {
+            // Fetch payments with their items and accounts
+            paymentData = await fetchAllRows(async (from, to) => {
+              return await supabase
+                .from('fee_payments')
+                .select(`
+                  *,
+                  fee_payment_items (
+                    id,
+                    fee_challan_item_id,
+                    fee_arrear_id,
+                    amount,
+                    paid_amount
+                  ),
+                  accounts (
+                    id,
+                    name,
+                    type,
+                    bank_name,
+                    account_number,
+                    mobile_number,
+                    wallet_number
+                  )
+                `)
+                .in('id', paymentIds)
+                .eq('school_id', user?.school_id || 0)
+                .order('payment_date', { ascending: false })
+                .range(from, to);
+            });
+          }
+
+          // Update all states
+          if (challansData) setFeeChallans(challansData);
+          if (arrearsData) setFeeArrears(arrearsData);
           if (paymentData) setPaymentHistory(paymentData);
         } catch (err) {
           showToast("Payment deleted but failed to refresh data. Please refresh the page.", 'error');
@@ -2618,7 +3142,7 @@ const FeeCollectionNew: React.FC = () => {
               {selectedStudent ? (
                 feeLoading ? (
                   <Loader />
-                ) : feeChallans.length > 0 ? (
+                ) : (feeChallans.length > 0 || feeArrears.length > 0) ? (
                   <>
                     <TableWrapper style={{
                       overflowY: 'scroll',
@@ -2636,15 +3160,18 @@ const FeeCollectionNew: React.FC = () => {
                         <tbody>
                           {(() => {
                             let globalIndex = 0;
-                            return feeChallans.flatMap((challan: any, challanIndex: number) =>
-                              challan.fee_challans_items?.map((item: any, itemIndex: number) => {
+                            const allItems: any[] = [];
+
+                            // Add challan items
+                            feeChallans.forEach((challan: any) => {
+                              challan.fee_challans_items?.forEach((item: any) => {
                                 const itemAmount = Number(item.amount || 0);
 
                                 // Calculate already paid amount for this specific fee item
                                 const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
                                   if (payment.fee_payment_items) {
                                     const itemPayment = payment.fee_payment_items.find(
-                                      (paymentItem: any) => paymentItem.fee_item_id === item.id
+                                      (paymentItem: any) => paymentItem.fee_challan_item_id === item.id
                                     );
                                     // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
                                     if (itemPayment) {
@@ -2659,49 +3186,105 @@ const FeeCollectionNew: React.FC = () => {
                                 const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
 
                                 // Only show items that still need payment
-                                if (remainingItemAmount <= 0) return null;
-
-                                globalIndex++;
-                                return (
-                                  <TableRow key={`${challan.id}-${item.id}`}>
-                                    <TableCell>{globalIndex}</TableCell>
-                                    <TableCell>
-                                      <div style={{ fontWeight: '500', marginBottom: '0.25rem' }}>
-                                        {item.fee_heads?.name || 'Unknown Fee Head'}
-                                      </div>
-                                      <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY }}>
-                                        {(() => {
-                                          if (challan.month && challan.year) {
-                                            const monthStr = String(challan.month).toLowerCase();
-                                            if (monthStr === 'one-time' || monthStr === 'one time') {
-                                              return 'One Time';
+                                if (remainingItemAmount > 0) {
+                                  allItems.push({
+                                    key: `challan-${challan.id}-${item.id}`,
+                                    type: 'challan',
+                                    challan,
+                                    item,
+                                    remainingAmount: remainingItemAmount,
+                                    feeHeadName: item.fee_heads?.name || 'Unknown Fee Head',
+                                    monthYear: (() => {
+                                      if (challan.month && challan.year) {
+                                        try {
+                                          const monthStr = String(challan.month).toLowerCase();
+                                          if (monthStr === 'one-time' || monthStr === 'one time') {
+                                            return 'One Time';
+                                          } else {
+                                            const date = new Date(challan.month + '/01/' + challan.year);
+                                            if (!isNaN(date.getTime())) {
+                                              return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
                                             } else {
-                                              return new Date(challan.month + '/01/' + challan.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                                              return 'One Time';
                                             }
                                           }
-                                          return '';
-                                        })()}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell style={{ textAlign: 'right', fontWeight: '600' }}>
-                                      Rs. {formatCurrency(remainingItemAmount)}
-                                    </TableCell>
-                                    <TableCell>
-                                      <AmountInput
-                                        type="number"
-                                        placeholder="0"
-                                        value={distributedAmounts[`${challan.id}-${item.id}`] || ''}
-                                        readOnly
-                                        style={{
-                                          backgroundColor: distributedAmounts[`${challan.id}-${item.id}`] ? '#e8f5e8' : 'transparent',
-                                          color: distributedAmounts[`${challan.id}-${item.id}`] ? '#16a34a' : 'inherit'
-                                        }}
-                                      />
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              }).filter(Boolean) || []
-                            );
+                                        } catch (e) {
+                                          return 'One Time';
+                                        }
+                                      }
+                                      return 'One Time';
+                                    })()
+                                  });
+                                }
+                              });
+                            });
+
+                            // Add arrear items
+                            feeArrears.forEach((arrear: any) => {
+                              const itemAmount = Number(arrear.amount || 0);
+
+                              // Calculate already paid amount for this specific arrear
+                              const alreadyPaid = paymentHistory.reduce((sum: number, payment: any) => {
+                                if (payment.fee_payment_items) {
+                                  const itemPayment = payment.fee_payment_items.find(
+                                    (paymentItem: any) => paymentItem.fee_arrear_id === arrear.id
+                                  );
+                                  // Use paid_amount if available (new records), otherwise use amount (old records for backward compatibility)
+                                  if (itemPayment) {
+                                    const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                                    return sum + Number(paidAmt);
+                                  }
+                                  return sum;
+                                }
+                                return sum;
+                              }, 0);
+
+                              const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+
+                              // Only show items that still need payment
+                              if (remainingItemAmount > 0) {
+                                allItems.push({
+                                  key: `arrear-${arrear.id}`,
+                                  type: 'arrear',
+                                  arrear,
+                                  remainingAmount: remainingItemAmount,
+                                  feeHeadName: arrear.fee_heads?.name || 'Unknown Fee Head',
+                                  monthYear: 'Other Fee'
+                                });
+                              }
+                            });
+
+                            return allItems.map((rowItem) => {
+                              globalIndex++;
+                              return (
+                                <TableRow key={rowItem.key}>
+                                  <TableCell>{globalIndex}</TableCell>
+                                  <TableCell>
+                                    <div style={{ fontWeight: '500', marginBottom: '0.25rem' }}>
+                                      {rowItem.feeHeadName}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY }}>
+                                      {rowItem.monthYear}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell style={{ textAlign: 'right', fontWeight: '600' }}>
+                                    Rs. {formatCurrency(rowItem.remainingAmount)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <AmountInput
+                                      type="number"
+                                      placeholder="0"
+                                      value={distributedAmounts[rowItem.key] || ''}
+                                      readOnly
+                                      style={{
+                                        backgroundColor: distributedAmounts[rowItem.key] ? '#e8f5e8' : 'transparent',
+                                        color: distributedAmounts[rowItem.key] ? '#16a34a' : 'inherit'
+                                      }}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            });
                           })()}
                         </tbody>
                       </Table>
@@ -2771,7 +3354,7 @@ const FeeCollectionNew: React.FC = () => {
                 ) : (
                   <EmptyState>
                     <Receipt style={{ fontSize: '3rem', marginBottom: '1rem', color: (theme as any).TEXT_SECONDARY }} />
-                    No fee challans found for this student
+                    No fee items found for this student
                   </EmptyState>
                 )
               ) : (
@@ -2989,6 +3572,7 @@ const FeeCollectionNew: React.FC = () => {
                         fullWidth
                         size="small"
                         required
+                        disabled
                         InputLabelProps={{ shrink: true }}
                       />
                     </FormRow>
@@ -3181,6 +3765,150 @@ const FeeCollectionNew: React.FC = () => {
               )}
             </PaymentHistoryCard>
           </PaymentHistorySection>
+        )}
+
+        {/* Success Modal */}
+        {showSuccessModal && successPaymentData && ReactDOM.createPortal(
+          <SuccessModalOverlay onClick={() => {
+            setShowSuccessModal(false);
+            setTimeout(() => {
+              if (searchInputRef.current) {
+                searchInputRef.current.focus();
+                searchInputRef.current.select?.();
+              }
+            }, 100);
+          }}>
+            <SuccessModalDialog onClick={(e) => e.stopPropagation()}>
+              <SuccessCloseButton onClick={() => {
+                setShowSuccessModal(false);
+                setTimeout(() => {
+                  if (searchInputRef.current) {
+                    searchInputRef.current.focus();
+                    searchInputRef.current.select?.();
+                  }
+                }, 100);
+              }}>
+                <CloseIcon />
+              </SuccessCloseButton>
+              
+              <SuccessModalHeader>
+                <div>
+                  <SuccessIcon>
+                    <CheckIcon style={{ fontSize: '2rem' }} />
+                  </SuccessIcon>
+                  <SuccessModalTitle>Payment Collected Successfully!</SuccessModalTitle>
+                  <SuccessModalSubtitle>Payment has been recorded and saved</SuccessModalSubtitle>
+                </div>
+              </SuccessModalHeader>
+
+              <SuccessModalContent>
+                <SuccessInfoRow>
+                  <SuccessInfoLabel>Payment ID</SuccessInfoLabel>
+                  <SuccessInfoValue>{getPaymentDisplayId(successPaymentData.paymentId)}</SuccessInfoValue>
+                </SuccessInfoRow>
+                
+                <SuccessInfoRow>
+                  <SuccessInfoLabel>Student</SuccessInfoLabel>
+                  <SuccessInfoValue>{getStudentDisplayId(selectedStudent)} - {selectedStudent.name}</SuccessInfoValue>
+                </SuccessInfoRow>
+                
+                <SuccessInfoRow>
+                  <SuccessInfoLabel>Payment Date</SuccessInfoLabel>
+                  <SuccessInfoValue>{formatDate(successPaymentData.paymentDate)}</SuccessInfoValue>
+                </SuccessInfoRow>
+                
+                <SuccessInfoRow>
+                  <SuccessInfoLabel>Payment Method</SuccessInfoLabel>
+                  <SuccessInfoValue>{successPaymentData.paymentMethod}</SuccessInfoValue>
+                </SuccessInfoRow>
+                
+                <SuccessInfoRow>
+                  <SuccessInfoLabel>Amount</SuccessInfoLabel>
+                  <SuccessInfoValue>Rs. {formatCurrency(successPaymentData.amount)}</SuccessInfoValue>
+                </SuccessInfoRow>
+                
+                {Number(successPaymentData.discount) > 0 && (
+                  <SuccessInfoRow>
+                    <SuccessInfoLabel>Discount</SuccessInfoLabel>
+                    <SuccessInfoValue style={{ color: '#f59e0b' }}>Rs. {formatCurrency(successPaymentData.discount)}</SuccessInfoValue>
+                  </SuccessInfoRow>
+                )}
+                
+                <SuccessInfoRow style={{ background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%)', borderColor: '#22c55e' }}>
+                  <SuccessInfoLabel>Net Amount</SuccessInfoLabel>
+                  <SuccessInfoValueHighlight>Rs. {formatCurrency(successPaymentData.netAmount)}</SuccessInfoValueHighlight>
+                </SuccessInfoRow>
+                
+                {successPaymentData.transactionId && (
+                  <SuccessInfoRow>
+                    <SuccessInfoLabel>Transaction ID</SuccessInfoLabel>
+                    <SuccessInfoValue style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>{successPaymentData.transactionId}</SuccessInfoValue>
+                  </SuccessInfoRow>
+                )}
+                
+                {successPaymentData.chequeNumber && (
+                  <SuccessInfoRow>
+                    <SuccessInfoLabel>Cheque Number</SuccessInfoLabel>
+                    <SuccessInfoValue>{successPaymentData.chequeNumber}</SuccessInfoValue>
+                  </SuccessInfoRow>
+                )}
+                
+                {successPaymentData.paymentRemarks && (
+                  <SuccessInfoRow>
+                    <SuccessInfoLabel>Remarks</SuccessInfoLabel>
+                    <SuccessInfoValue style={{ fontSize: '0.85rem', textAlign: 'right', maxWidth: '60%' }}>{successPaymentData.paymentRemarks}</SuccessInfoValue>
+                  </SuccessInfoRow>
+                )}
+              </SuccessModalContent>
+
+              <SuccessModalActions>
+                <SuccessModalButton 
+                  $variant="secondary" 
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    // Focus back on search after closing
+                    setTimeout(() => {
+                      if (searchInputRef.current) {
+                        searchInputRef.current.focus();
+                        searchInputRef.current.select?.();
+                      }
+                    }, 100);
+                  }}
+                >
+                  <CloseIcon style={{ fontSize: '1.1rem' }} />
+                  Close
+                </SuccessModalButton>
+                <SuccessModalButton 
+                  $variant="primary" 
+                  onClick={async () => {
+                    const defaultPrintType = getDefaultPrintType();
+                    if (defaultPrintType === 'invoice') {
+                      await generateInvoicePDF(successPaymentData);
+                    } else {
+                      try {
+                        await generateThermalReceipt(successPaymentData);
+                      } catch (thermalError) {
+                        console.log('Thermal receipt generation failed, falling back to invoice:', thermalError);
+                        await generateInvoicePDF(successPaymentData);
+                      }
+                    }
+                    setShowSuccessModal(false);
+                    // Focus back on search after printing
+                    setTimeout(() => {
+                      if (searchInputRef.current) {
+                        searchInputRef.current.focus();
+                        searchInputRef.current.select?.();
+                      }
+                    }, 100);
+                  }}
+                >
+                  <PrintIcon style={{ fontSize: '1.1rem' }} />
+                  Print Receipt
+                </SuccessModalButton>
+              </SuccessModalActions>
+            </SuccessModalDialog>
+          </SuccessModalOverlay>,
+          document.body
         )}
 
         {/* Delete Confirmation Modal */}

@@ -52,6 +52,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/challans': 'view-challans',
   '/fee-collection': 'fee-collection',
   '/fee-defaulters': 'fee-defaulters',
+  '/fee-arrears': 'fee-arrears',
   '/fee-audit-logs': 'fee-audit-logs',
   '/fee-analytics': 'fee-analytics',
   '/concessions': 'fee-concessions',

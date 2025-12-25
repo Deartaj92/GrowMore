@@ -906,13 +906,12 @@ const ChallanGenerationPage: React.FC = () => {
             .order('id', { ascending: false })
             .range(from, to);
         }),
-        // Load all challans for selected students
+        // Load all challans for selected students (check all sessions to catch one-time fees)
         fetchAllRows(async (from, to) => {
           return await supabase
             .from('fee_challans')
-            .select('id, student_id, month, year')
+            .select('id, student_id, month, year, session_id')
             .eq('school_id', schoolId)
-            .eq('session_id', activeSession.id)
             .in('student_id', studentIds)
             .range(from, to);
         })
@@ -962,10 +961,18 @@ const ChallanGenerationPage: React.FC = () => {
       });
       
       // Create sets for fast lookup: student_id + fee_head_id -> already generated
-      // For one-time: check if any challan for student has this fee_head
+      // For one-time: check if any challan for student has this fee_head (regardless of challan type)
       // For monthly: check if challan for student + month + year has this fee_head
-      const oneTimeGenerated = new Set<string>(); // "studentId-feeHeadId"
+      const oneTimeGenerated = new Set<string>(); // "studentId-feeHeadId" - tracks if one-time fee head exists in ANY challan
       const monthlyGenerated = new Set<string>(); // "studentId-month-year-feeHeadId"
+      
+      // First, we need to identify which fee heads are one-time by checking fee structures
+      const oneTimeFeeHeads = new Set<number>(); // fee_head_id that are marked as one-time
+      feeStructures.forEach((structure: any) => {
+        if (structure.firstTime === true) {
+          oneTimeFeeHeads.add(structure.feeHeadId);
+        }
+      });
       
       allChallanItems?.forEach((item: any) => {
         const studentId = challanStudentMap.get(item.challan_id);
@@ -975,11 +982,20 @@ const ChallanGenerationPage: React.FC = () => {
         if (!challan) return;
         
         const key = `${studentId}-${item.fee_head_id}`;
-        if (challan.month === 'one-time') {
+        
+        // If this fee head is marked as one-time, add it to oneTimeGenerated regardless of challan type or session
+        // One-time fees should only be generated once per student ever, across all sessions
+        if (oneTimeFeeHeads.has(item.fee_head_id)) {
+          oneTimeGenerated.add(key);
+        } else if (challan.month === 'one-time') {
+          // Also check one-time challans (for backward compatibility)
           oneTimeGenerated.add(key);
         } else {
-          const monthlyKey = `${studentId}-${challan.month}-${challan.year}-${item.fee_head_id}`;
-          monthlyGenerated.add(monthlyKey);
+          // Regular monthly challans - only check current session
+          if (challan.session_id === activeSession.id) {
+            const monthlyKey = `${studentId}-${challan.month}-${challan.year}-${item.fee_head_id}`;
+            monthlyGenerated.add(monthlyKey);
+          }
         }
       });
       
@@ -1014,9 +1030,14 @@ const ChallanGenerationPage: React.FC = () => {
           let alreadyGenerated = false;
           
           if (structure.firstTime) {
-            // One-time fee - exclude from monthly previews
-            // One-time fees are not tied to a specific month/year, so don't show in monthly previews
-            shouldInclude = false;
+            // One-time fee - include in preview regardless of selected month
+            // One-time fees can be generated for any month, but only once per student
+            // Check if one-time challan already exists for this student and fee head
+            const oneTimeKey = `${studentId}-${planItem.feeHeadId}`;
+            alreadyGenerated = oneTimeGenerated.has(oneTimeKey);
+            
+            // Only include if NOT already generated
+            shouldInclude = !alreadyGenerated;
             frequency = 'One-time';
           } else if (structure.months && structure.months.length > 0) {
             // Monthly fees - only include if selected month is in the months list
@@ -1043,7 +1064,9 @@ const ChallanGenerationPage: React.FC = () => {
           }
           
           // Skip if amount is zero, should not be included, or already generated
-          if (!shouldInclude || planItem.feeAfterDiscount <= 0) {
+          // For one-time fees, alreadyGenerated is checked above and shouldInclude is set accordingly
+          // For monthly fees, alreadyGenerated is checked separately
+          if (!shouldInclude || planItem.feeAfterDiscount <= 0 || alreadyGenerated) {
             continue;
           }
           

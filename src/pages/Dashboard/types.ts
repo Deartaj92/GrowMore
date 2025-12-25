@@ -24,6 +24,7 @@ export interface FeeSummary {
   totalCollected: number;
   totalOutstanding: number;
   collectionRate: number;
+  totalDiscount: number;
 }
 
 export interface FeeCollectionPeriod {
@@ -34,6 +35,7 @@ export interface FeeCollectionPeriod {
   discount: number;
   droppedOut: number;
   remaining: number;
+  balance: number;
 }
 
 export interface FeeCollectionDetails {
@@ -44,9 +46,19 @@ export interface FeeCollectionDetails {
 }
 
 export interface DefaulterData {
-  month: string;
-  challan: number;
-  amount: number;
+  studentId: number;
+  studentName: string;
+  fatherName: string | null;
+  rollNumber: string | null;
+  className: string;
+  sectionName: string;
+  outstandingAmount: number;
+  challanCount: number;
+  arrearCount: number;
+  totalChallans: number;
+  totalArrears: number;
+  totalPaid: number;
+  totalDiscount: number;
 }
 
 export interface AdmissionsData {

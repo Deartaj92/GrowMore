@@ -22,7 +22,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Import extracted components, types, styles, utils, hooks, and services
-import { DashboardTab, FineToDelete, FeeSummary, FeeCollectionDetails } from './types';
+import { DashboardTab, FineToDelete, FeeSummary, FeeCollectionDetails, DefaulterData } from './types';
 import { USE_DUMMY_DATA } from './constants';
 import { DashboardContainer } from './styles';
 import { useExpandedState } from './hooks/useExpandedState';
@@ -235,6 +235,7 @@ const Dashboard: React.FC = () => {
     totalInvoiced: 0,
     totalCollected: 0,
     totalOutstanding: 0,
+    totalDiscount: 0,
     collectionRate: 0
   });
   const [feeSummaryLoading, setFeeSummaryLoading] = useState(false);
@@ -249,7 +250,8 @@ const Dashboard: React.FC = () => {
       paid: 0,
       discount: 0,
       droppedOut: 0,
-      remaining: 0
+      remaining: 0,
+      balance: 0
     },
     currentMonth: {
       oldStudents: 0,
@@ -258,7 +260,8 @@ const Dashboard: React.FC = () => {
       paid: 0,
       discount: 0,
       droppedOut: 0,
-      remaining: 0
+      remaining: 0,
+      balance: 0
     },
     nextMonths: {
       oldStudents: 0,
@@ -267,7 +270,8 @@ const Dashboard: React.FC = () => {
       paid: 0,
       discount: 0,
       droppedOut: 0,
-      remaining: 0
+      remaining: 0,
+      balance: 0
     },
     total: {
       oldStudents: 0,
@@ -276,11 +280,12 @@ const Dashboard: React.FC = () => {
       paid: 0,
       discount: 0,
       droppedOut: 0,
-      remaining: 0
+      remaining: 0,
+      balance: 0
     }
   });
   const [feeCollectionDetailsLoading, setFeeCollectionDetailsLoading] = useState(false);
-  const [defaultersData, setDefaultersData] = useState<Array<{ month: string; challan: number; amount: number }>>([]);
+  const [defaultersData, setDefaultersData] = useState<DefaulterData[]>([]);
   const [defaultersLoading, setDefaultersLoading] = useState(false);
 
   // Admissions state
@@ -1209,11 +1214,12 @@ const Dashboard: React.FC = () => {
     setFeeSummaryLoading(true);
     fetchFeeSummaryService(
       String(user.school_id),
+      dashboardDate,
       setFeeSummary,
       setFeeSummaryLoading,
       getCachedSession
     );
-  }, [activeTab, user?.school_id, getCachedSession]);
+  }, [activeTab, dashboardDate, user?.school_id, getCachedSession]);
 
   // Fetch collection charts
   useEffect(() => {

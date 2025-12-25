@@ -2330,9 +2330,12 @@ const FineCollection: React.FC = () => {
                       value={amount}
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      autoComplete="off"
+                      autoComplete="new-password"
                       name="amount-input"
                       data-form-type="other"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      spellCheck="false"
                       onChange={e => {
                         // Only allow integers
                         const val = e.target.value.replace(/[^0-9]/g, '');
@@ -2372,9 +2375,12 @@ const FineCollection: React.FC = () => {
                       value={remission}
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      autoComplete="off"
+                      autoComplete="new-password"
                       name="remission-input"
                       data-form-type="other"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      spellCheck="false"
                       onChange={e => {
                         // Only allow integers
                         const val = e.target.value.replace(/[^0-9]/g, '');
@@ -2400,6 +2406,10 @@ const FineCollection: React.FC = () => {
                     className="standalone" 
                     type="date"
                     value={collectDate}
+                    autoComplete="new-password"
+                    data-form-type="other"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     onChange={e => setCollectDate(e.target.value)}
                     onKeyDown={handleFormKeyDown}
                     disabled={isCollectionDisabled}
@@ -2411,6 +2421,10 @@ const FineCollection: React.FC = () => {
                   <CollectLabel>Payment Method</CollectLabel>
                   <StyledSelect 
                     value={paymentMethod} 
+                    autoComplete="new-password"
+                    data-form-type="other"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     onChange={e => setPaymentMethod(e.target.value)}
                     disabled={isCollectionDisabled}
                   >
@@ -2428,6 +2442,11 @@ const FineCollection: React.FC = () => {
                     className="standalone" 
                     type="text"
                     value={remarks}
+                    autoComplete="new-password"
+                    data-form-type="other"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    spellCheck="false"
                     onChange={e => setRemarks(e.target.value)}
                     placeholder="Optional notes"
                     onKeyDown={handleFormKeyDown}

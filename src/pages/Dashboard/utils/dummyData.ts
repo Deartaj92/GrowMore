@@ -79,6 +79,7 @@ export const generateDummyFeeSummary = () => ({
   totalCollected: 3500000,
   totalOutstanding: 1500000,
   collectionRate: 70,
+  totalDiscount: 150000,
 });
 
 export const generateDummyFeeCollectionCharts = () => {
@@ -116,6 +117,7 @@ export const generateDummyFeeCollectionDetails = () => ({
     discount: 20000,
     droppedOut: 30000,
     remaining: 150000,
+    balance: 50000,
   },
   currentMonth: {
     oldStudents: 800000,
@@ -125,6 +127,7 @@ export const generateDummyFeeCollectionDetails = () => ({
     discount: 50000,
     droppedOut: 0,
     remaining: 250000,
+    balance: 150000,
   },
   nextMonths: {
     oldStudents: 600000,
@@ -134,6 +137,7 @@ export const generateDummyFeeCollectionDetails = () => ({
     discount: 0,
     droppedOut: 0,
     remaining: 650000,
+    balance: 250000,
   },
   total: {
     oldStudents: 1900000,
@@ -143,6 +147,7 @@ export const generateDummyFeeCollectionDetails = () => ({
     discount: 70000,
     droppedOut: 30000,
     remaining: 1050000,
+    balance: 450000,
   },
 });
 

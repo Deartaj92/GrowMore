@@ -379,6 +379,13 @@ export const feeMenuItems1: MenuItem[] = [
     color: '#ef4444'
   },
   {
+    title: 'Fee Arrears',
+    description: 'Add and manage other payments/arrears without challans',
+    icon: React.createElement(ReceiptIcon),
+    path: '/fee-arrears',
+    color: '#f59e0b'
+  },
+  {
     title: 'Fee Audit Logs',
     description: 'Track all fee-related changes',
     icon: React.createElement(ListAltIcon),

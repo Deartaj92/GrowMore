@@ -3319,7 +3319,7 @@ const CustomLandingPage: React.FC = () => {
       if (paymentIds.length > 0) {
         const { data: paymentItems, error: paymentItemsError } = await supabase
           .from('fee_payment_items')
-          .select('id, payment_id, fee_item_id, amount, paid_amount')
+          .select('id, payment_id, fee_challan_item_id, amount, paid_amount')
           .in('payment_id', paymentIds);
 
         if (!paymentItemsError && paymentItems) {

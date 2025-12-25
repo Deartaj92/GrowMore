@@ -31,6 +31,7 @@ import {
 } from '../../styles';
 import { formatCurrency } from '../../utils/dashboardUtils';
 import { FeeSummary, FeeCollectionDetails } from '../../types';
+import { getStudentDisplayId } from '../../../../utils/studentUtils';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
@@ -185,6 +186,12 @@ const FeeTab: React.FC<FeeTabProps> = ({
           </StatValue>
         </StatCard>
         <StatCard theme={theme}>
+          <StatLabel theme={theme}>Discount</StatLabel>
+          <StatValue theme={theme} style={{ color: '#3b82f6' }}>
+            {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalDiscount || 0)}
+          </StatValue>
+        </StatCard>
+        <StatCard theme={theme}>
           <StatLabel theme={theme}>Outstanding</StatLabel>
           <StatValue theme={theme} style={{ color: '#ef4444' }}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalOutstanding || 0)}
@@ -333,6 +340,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableHeaderCell>Category</FeeCollectionTableHeaderCell>
                 <FeeCollectionTableHeaderCell>Old students</FeeCollectionTableHeaderCell>
                 <FeeCollectionTableHeaderCell>New admissions</FeeCollectionTableHeaderCell>
+                <FeeCollectionTableHeaderCell>Balance</FeeCollectionTableHeaderCell>
                 <FeeCollectionTableHeaderCell>Total payable</FeeCollectionTableHeaderCell>
                 <FeeCollectionTableHeaderCell>Paid</FeeCollectionTableHeaderCell>
                 <FeeCollectionTableHeaderCell>Discount</FeeCollectionTableHeaderCell>
@@ -345,6 +353,14 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>Previous arrears</FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.oldStudents || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>
+                  <StatusBadge
+                    color="#f59e0b"
+                    bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                  >
+                    {formatCurrency(feeCollectionDetails?.previousArrears?.balance || 0)}
+                  </StatusBadge>
+                </FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.previousArrears?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
@@ -377,6 +393,14 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>Current month</FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.oldStudents || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>
+                  <StatusBadge
+                    color="#f59e0b"
+                    bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                  >
+                    {formatCurrency(feeCollectionDetails?.currentMonth?.balance || 0)}
+                  </StatusBadge>
+                </FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.currentMonth?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
@@ -409,6 +433,14 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>Next months</FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.oldStudents || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.newAdmissions || 0)}</FeeCollectionTableCell>
+                <FeeCollectionTableCell>
+                  <StatusBadge
+                    color="#f59e0b"
+                    bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                  >
+                    {formatCurrency(feeCollectionDetails?.nextMonths?.balance || 0)}
+                  </StatusBadge>
+                </FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.totalPayable || 0)}</FeeCollectionTableCell>
                 <FeeCollectionTableCell>
                   <StatusBadge
@@ -436,38 +468,6 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 </FeeCollectionTableCell>
                 <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.nextMonths?.remaining || 0)}</FeeCollectionTableCell>
               </FeeCollectionTableRow>
-
-              <FeeCollectionTableRow isTotal>
-                <FeeCollectionTableCell>Total</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.oldStudents || 0)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.newAdmissions || 0)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.totalPayable || 0)}</FeeCollectionTableCell>
-                <FeeCollectionTableCell>
-                  <StatusBadge
-                    color="#16a34a"
-                    bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
-                  >
-                    {formatCurrency(feeCollectionDetails?.total?.paid || 0)}
-                  </StatusBadge>
-                </FeeCollectionTableCell>
-                <FeeCollectionTableCell>
-                  <StatusBadge
-                    color="#3b82f6"
-                    bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
-                  >
-                    {formatCurrency(feeCollectionDetails?.total?.discount || 0)}
-                  </StatusBadge>
-                </FeeCollectionTableCell>
-                <FeeCollectionTableCell>
-                  <StatusBadge
-                    color="#ef4444"
-                    bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
-                  >
-                    {formatCurrency(feeCollectionDetails?.total?.droppedOut || 0)}
-                  </StatusBadge>
-                </FeeCollectionTableCell>
-                <FeeCollectionTableCell>{formatCurrency(feeCollectionDetails?.total?.remaining || 0)}</FeeCollectionTableCell>
-              </FeeCollectionTableRow>
             </FeeCollectionTableBody>
           </FeeCollectionTable>
         )}
@@ -476,40 +476,79 @@ const FeeTab: React.FC<FeeTabProps> = ({
       {/* Defaulters Card */}
       <ContentCard theme={theme}>
         <CardTitle theme={theme}>
-          Defaulters (Last 6 Months Data)
+          Top Defaulters (Students with Outstanding Fees)
         </CardTitle>
         {defaultersLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
             <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
           </div>
+        ) : defaultersData && defaultersData.length > 0 ? (
+          <div style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
+            <DefaultersTable>
+              <DefaultersTableHeader>
+                <tr>
+                  <DefaultersTableHeaderCell style={{ minWidth: '80px' }}>#</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell style={{ minWidth: '120px' }}>Student ID</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell style={{ minWidth: '150px' }}>Student Name</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell style={{ minWidth: '150px' }}>Father Name</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell style={{ minWidth: '120px' }}>Class</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="center" style={{ minWidth: '80px' }}>Challans</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="center" style={{ minWidth: '80px' }}>Arrears</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="right" style={{ minWidth: '120px' }}>Total Paid</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="right" style={{ minWidth: '100px' }}>Discount</DefaultersTableHeaderCell>
+                  <DefaultersTableHeaderCell align="right" style={{ minWidth: '120px' }}>Outstanding</DefaultersTableHeaderCell>
+                </tr>
+              </DefaultersTableHeader>
+              <DefaultersTableBody>
+                {defaultersData.map((row, index) => (
+                  <DefaultersTableRow key={row.studentId}>
+                    <DefaultersTableCell>{index + 1}</DefaultersTableCell>
+                    <DefaultersTableCell style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                      {getStudentDisplayId({ id: row.studentId, roll_number: row.rollNumber })}
+                    </DefaultersTableCell>
+                    <DefaultersTableCell style={{ fontWeight: 600 }}>{row.studentName}</DefaultersTableCell>
+                    <DefaultersTableCell>{row.fatherName || '-'}</DefaultersTableCell>
+                    <DefaultersTableCell>
+                      {row.sectionName ? `${row.className} (${row.sectionName})` : row.className}
+                    </DefaultersTableCell>
+                    <DefaultersTableCell align="center">
+                      <StatusBadge
+                        color="#3b82f6"
+                        bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                      >
+                        {row.challanCount}
+                      </StatusBadge>
+                    </DefaultersTableCell>
+                    <DefaultersTableCell align="center">
+                      {row.arrearCount > 0 ? (
+                        <StatusBadge
+                          color="#f59e0b"
+                          bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                        >
+                          {row.arrearCount}
+                        </StatusBadge>
+                      ) : (
+                        '-'
+                      )}
+                    </DefaultersTableCell>
+                    <DefaultersTableCell align="right" style={{ color: '#22c55e', fontWeight: 600 }}>
+                      {formatCurrency(row.totalPaid)}
+                    </DefaultersTableCell>
+                    <DefaultersTableCell align="right" style={{ color: '#f59e0b', fontWeight: 500 }}>
+                      {row.totalDiscount > 0 ? formatCurrency(row.totalDiscount) : '-'}
+                    </DefaultersTableCell>
+                    <DefaultersTableCell align="right" style={{ color: '#ef4444', fontWeight: 700 }}>
+                      {formatCurrency(row.outstandingAmount)}
+                    </DefaultersTableCell>
+                  </DefaultersTableRow>
+                ))}
+              </DefaultersTableBody>
+            </DefaultersTable>
+          </div>
         ) : (
-          <DefaultersTable>
-            <DefaultersTableHeader>
-              <tr>
-                <DefaultersTableHeaderCell>Month</DefaultersTableHeaderCell>
-                <DefaultersTableHeaderCell align="center">Challan</DefaultersTableHeaderCell>
-                <DefaultersTableHeaderCell align="right">Amount</DefaultersTableHeaderCell>
-              </tr>
-            </DefaultersTableHeader>
-            <DefaultersTableBody>
-              {(defaultersData || []).map((row, index) => (
-                <DefaultersTableRow key={index}>
-                  <DefaultersTableCell isMonth>{row.month}</DefaultersTableCell>
-                  <DefaultersTableCell align="center">{row.challan || 0}</DefaultersTableCell>
-                  <DefaultersTableCell align="right">{formatCurrency(row.amount || 0)}</DefaultersTableCell>
-                </DefaultersTableRow>
-              ))}
-              <DefaultersTableRow isTotal>
-                <DefaultersTableCell>Total</DefaultersTableCell>
-                <DefaultersTableCell align="center">
-                  {(defaultersData || []).reduce((sum, row) => sum + (row.challan || 0), 0)}
-                </DefaultersTableCell>
-                <DefaultersTableCell align="right">
-                  {formatCurrency((defaultersData || []).reduce((sum, row) => sum + (row.amount || 0), 0))}
-                </DefaultersTableCell>
-              </DefaultersTableRow>
-            </DefaultersTableBody>
-          </DefaultersTable>
+          <EmptyState theme={theme}>
+            <div style={{ fontSize: '0.9rem' }}>No defaulters found</div>
+          </EmptyState>
         )}
       </ContentCard>
     </Container>

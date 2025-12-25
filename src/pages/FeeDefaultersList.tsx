@@ -627,6 +627,97 @@ const StatLabel = styled.span`
   }
 `;
 
+// Pagination Components
+const PaginationInfo = styled.div`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  
+  @media (max-width: 768px) {
+    text-align: center;
+    width: 100%;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+`;
+
+const PaginationControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+    gap: 0.375rem;
+  }
+`;
+
+const PaginationButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: ${({ theme }) => theme.BG === '#252525' 
+    ? '1px solid rgba(255, 255, 255, 0.1)' 
+    : '1px solid rgba(0, 0, 0, 0.1)'};
+  background: ${({ theme }) => theme.BG === '#252525' 
+    ? 'rgba(255, 255, 255, 0.05)' 
+    : 'rgba(0, 0, 0, 0.03)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  
+  &:hover:not(:disabled) {
+    background: ${({ theme }) => theme.BG === '#252525' 
+      ? 'rgba(255, 255, 255, 0.08)' 
+      : 'rgba(0, 0, 0, 0.05)'};
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+    min-width: 32px;
+    font-size: 0.8rem;
+  }
+`;
+
+const PageInput = styled.input`
+  width: 60px;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: ${({ theme }) => theme.BG === '#252525' 
+    ? '1px solid rgba(255, 255, 255, 0.1)' 
+    : '1px solid rgba(0, 0, 0, 0.1)'};
+  background: ${({ theme }) => theme.BG === '#252525' 
+    ? 'rgba(255, 255, 255, 0.05)' 
+    : 'rgba(255, 255, 255, 0.8)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  text-align: center;
+  outline: none;
+  
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+  }
+  
+  @media (max-width: 768px) {
+    width: 50px;
+    padding: 0.4rem;
+    font-size: 0.8rem;
+  }
+`;
+
 const DetailsButton = styled.button`
   display: flex;
   align-items: center;
@@ -1130,20 +1221,10 @@ const FeeDefaultersList: React.FC = () => {
   const [panelLoading, setPanelLoading] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
-
-  // Check if user has school_id
-  if (!user?.school_id) {
-    return (
-      <PageContainer>
-        <TableArea>
-          <ErrorContainer>
-            <Info style={{ marginRight: '0.5rem' }} />
-            No school context found. Please contact your administrator.
-          </ErrorContainer>
-        </TableArea>
-      </PageContainer>
-    );
-  }
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   // Helper functions
   const getClassName = (classId: any) => 
@@ -1166,9 +1247,9 @@ const FeeDefaultersList: React.FC = () => {
     setPanelLoading(true);
     
     try {
-      // Fetch fee details for the student
-      const { data: feeInvoices, error: invoicesError } = await supabase
-        .from('fee_invoices')
+      // Fetch fee challans for the student
+      const { data: feeChallans, error: challansError } = await supabase
+        .from('fee_challans')
         .select(`
           id,
           student_id,
@@ -1179,7 +1260,7 @@ const FeeDefaultersList: React.FC = () => {
           status,
           due_date,
           created_at,
-          fee_invoice_items (
+          fee_challans_items (
             id,
             fee_head_id,
             amount,
@@ -1191,55 +1272,114 @@ const FeeDefaultersList: React.FC = () => {
           )
         `)
         .eq('student_id', student.id)
-        .eq('school_id', user.school_id)
+        .eq('school_id', user?.school_id || 0)
         .order('year', { ascending: false })
         .order('month', { ascending: false });
 
-      if (invoicesError) throw invoicesError;
+      if (challansError) throw challansError;
 
-        // Fetch payment history for the student through fee_invoices
-        const { data: paymentHistory, error: paymentError } = await supabase
-          .from('fee_payments')
+      // Get active session for arrears filtering
+      const { data: sessionsData } = await supabase
+        .from('sessions')
+        .select('id, name, is_active')
+        .eq('school_id', user?.school_id || 0)
+        .order('is_active', { ascending: false })
+        .limit(1);
+      const activeSession = sessionsData?.[0];
+
+      // Fetch fee arrears for the student (same as FeeCollectionNew)
+      let feeArrears: any[] = [];
+      if (activeSession) {
+        const { data: arrearsData, error: arrearsError } = await supabase
+          .from('fee_arrears')
           .select(`
             id,
+            student_id,
+            session_id,
+            fee_head_id,
             amount,
-            payment_date,
-            payment_mode,
+            due_date,
             remarks,
-            fee_invoices!inner (
-              student_id
-            ),
-            fee_payment_items (
+            status,
+            created_at,
+            fee_heads (
               id,
-              fee_item_id,
-              amount
+              name,
+              description
             )
           `)
-          .eq('fee_invoices.student_id', student.id)
-          .eq('school_id', user.school_id)
-          .order('payment_date', { ascending: false });
+          .eq('student_id', student.id)
+          .eq('session_id', activeSession.id)
+          .eq('school_id', user?.school_id || 0)
+          .in('status', ['unpaid', 'partial'])
+          .order('due_date', { ascending: true })
+          .order('created_at', { ascending: false });
 
-      if (paymentError) throw paymentError;
+        if (arrearsError) {
+          console.error('Error fetching arrears:', arrearsError);
+        } else {
+          feeArrears = arrearsData || [];
+        }
+      }
 
-      // Calculate remaining fee items
+      // Fetch payment history for the student using direct student_id query
+      // This is much simpler now that student_id is stored directly in fee_payments
+      const paymentHistoryData = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('fee_payments')
+          .select(`
+            *,
+            fee_payment_items (
+              id,
+              fee_challan_item_id,
+              fee_arrear_id,
+              amount,
+              paid_amount
+            ),
+            accounts (
+              id,
+              name,
+              type,
+              bank_name,
+              account_number,
+              mobile_number,
+              wallet_number
+            )
+          `)
+          .eq('student_id', student.id)
+          .eq('school_id', user?.school_id || 0)
+          .order('payment_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+      });
+
+      const paymentHistory = paymentHistoryData || [];
+
+      // Calculate remaining fee items (matching FeeCollectionNew logic, including arrears)
       let remainingFeeItems: any[] = [];
       let totalRemaining = 0;
 
-      if (feeInvoices && feeInvoices.length > 0) {
+      if (feeChallans && feeChallans.length > 0) {
         const feeItems: any[] = [];
         
-        // Process each fee item individually to calculate remaining amounts
-        feeInvoices.forEach((invoice) => {
-          invoice.fee_invoice_items?.forEach((item: any) => {
+        // Process each challan item individually to calculate remaining amounts
+        // This matches how FeeCollectionNew displays items in the fee summary table
+        feeChallans.forEach((challan) => {
+          challan.fee_challans_items?.forEach((item: any) => {
             const itemAmount = Number(item.amount || 0);
             
-            // Calculate already paid amount for this specific fee item
+            // Calculate already paid amount for this specific challan item
+            // Match FeeCollectionNew logic: sum paid_amount from payment items
             const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
               if (payment.fee_payment_items) {
                 const itemPayment = payment.fee_payment_items.find(
-                  (paymentItem: any) => paymentItem.fee_item_id === item.id
+                  (paymentItem: any) => paymentItem.fee_challan_item_id === item.id
                 );
-                return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
+                if (itemPayment) {
+                  // Use paid_amount if available (new records), otherwise use amount (old records)
+                  const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                  return sum + Number(paidAmt);
+                }
               }
               return sum;
             }, 0) || 0;
@@ -1249,12 +1389,24 @@ const FeeDefaultersList: React.FC = () => {
             // Only include items that still need payment
             if (remainingItemAmount > 0) {
               const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
-              const monthYear = new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+              // Handle One Time fees (no month/year) vs recurring fees
+              let monthYear = 'One Time';
+              if (challan.month && challan.year) {
+                try {
+                  const date = new Date(challan.month + '/01/' + challan.year);
+                  if (!isNaN(date.getTime())) {
+                    monthYear = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                  }
+                } catch (e) {
+                  // If date parsing fails, keep as "One Time"
+                  monthYear = 'One Time';
+                }
+              }
               
               feeItems.push({
                 name: `${feeHeadName} (${monthYear})`,
                 amount: remainingItemAmount,
-                dueDate: invoice.due_date
+                dueDate: challan.due_date
               });
               totalRemaining += remainingItemAmount;
             }
@@ -1262,6 +1414,46 @@ const FeeDefaultersList: React.FC = () => {
         });
         
         remainingFeeItems = feeItems;
+      }
+      
+      // Process arrears (same as FeeCollectionNew)
+      if (feeArrears && feeArrears.length > 0) {
+        const arrearItems: any[] = [];
+        
+        feeArrears.forEach((arrear: any) => {
+          const itemAmount = Number(arrear.amount || 0);
+          
+          // Calculate already paid amount for this specific arrear
+          const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
+            if (payment.fee_payment_items) {
+              const itemPayment = payment.fee_payment_items.find(
+                (paymentItem: any) => paymentItem.fee_arrear_id === arrear.id
+              );
+              if (itemPayment) {
+                // Use paid_amount if available (new records), otherwise use amount (old records)
+                const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                return sum + Number(paidAmt);
+              }
+            }
+            return sum;
+          }, 0) || 0;
+          
+          const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+          
+          // Only include items that still need payment
+          if (remainingItemAmount > 0) {
+            const feeHeadName = arrear.fee_heads?.name || 'Unknown Fee Head';
+            arrearItems.push({
+              name: `${feeHeadName} (Other Fee)`,
+              amount: remainingItemAmount,
+              dueDate: arrear.due_date
+            });
+            totalRemaining += remainingItemAmount;
+          }
+        });
+        
+        // Merge arrear items with challan items
+        remainingFeeItems = [...remainingFeeItems, ...arrearItems];
       }
 
       setStudentFeeDetails({
@@ -1285,6 +1477,12 @@ const FeeDefaultersList: React.FC = () => {
 
   // Handle PDF export
   const handleExportPDF = async () => {
+    if (!user?.school_id) {
+      showToast('No school context found', 'error');
+      setExportLoading(false);
+      return;
+    }
+    
     setExportLoading(true);
     
     try {
@@ -1339,9 +1537,18 @@ const FeeDefaultersList: React.FC = () => {
       for (const key of sortedClassKeys) {
         const defaulters = defaultersByClassSection[key];
         const processedDefaulters = await Promise.all(defaulters.map(async (defaulter, idx) => {
-          // Fetch fee invoices for this student to get fee items
-          const { data: feeInvoices, error: invoicesError } = await supabase
-            .from('fee_invoices')
+          // Get active session for arrears filtering
+          const { data: sessionsData } = await supabase
+            .from('sessions')
+            .select('id, name, is_active')
+            .eq('school_id', user.school_id)
+            .order('is_active', { ascending: false })
+            .limit(1);
+          const activeSession = sessionsData?.[0];
+          
+          // Fetch fee challans for this student to get fee items
+          const { data: feeChallans, error: challansError } = await supabase
+            .from('fee_challans')
             .select(`
               id,
               student_id,
@@ -1352,7 +1559,7 @@ const FeeDefaultersList: React.FC = () => {
               status,
               due_date,
               created_at,
-              fee_invoice_items (
+              fee_challans_items (
                 id,
                 fee_head_id,
                 amount,
@@ -1367,43 +1574,249 @@ const FeeDefaultersList: React.FC = () => {
             .eq('school_id', user.school_id)
             .order('year', { ascending: false })
             .order('month', { ascending: false });
-
-          // Fetch payment history for this student
-          const { data: paymentHistory, error: paymentError } = await supabase
-            .from('fee_payments')
-            .select(`
-              *,
-              fee_invoices!inner (
-                student_id
-              ),
-              fee_payment_items (
+          
+          // Fetch fee arrears for this student (same as FeeCollectionNew)
+          let feeArrears: any[] = [];
+          if (activeSession) {
+            const { data: arrearsData } = await supabase
+              .from('fee_arrears')
+              .select(`
                 id,
-                fee_item_id,
-                amount
-              )
-            `)
-            .eq('fee_invoices.student_id', defaulter.id)
-            .eq('school_id', user.school_id)
-            .order('payment_date', { ascending: false });
+                student_id,
+                session_id,
+                fee_head_id,
+                amount,
+                due_date,
+                remarks,
+                status,
+                created_at,
+                fee_heads (
+                  id,
+                  name,
+                  description
+                )
+              `)
+              .eq('student_id', defaulter.id)
+              .eq('session_id', activeSession.id)
+              .eq('school_id', user.school_id)
+              .in('status', ['unpaid', 'partial'])
+              .order('due_date', { ascending: true })
+              .order('created_at', { ascending: false });
+            
+            feeArrears = arrearsData || [];
+          }
 
-          // Calculate fee items like in FeeCollectionNew.tsx
+          // Get challan item IDs for this student
+          const challanIds = feeChallans?.map(ch => ch.id) || [];
+          let challanItemIds: number[] = [];
+          
+          if (challanIds.length > 0) {
+            // Chunk challan IDs to avoid URL length limits
+            const chunkSize = 500;
+            let allChallanItems: any[] = [];
+            
+            for (let i = 0; i < challanIds.length; i += chunkSize) {
+              const chunk = challanIds.slice(i, i + chunkSize);
+              const { data: chunkData } = await supabase
+                .from('fee_challans_items')
+                .select('id')
+                .eq('school_id', user.school_id)
+                .in('challan_id', chunk);
+              
+              if (chunkData) {
+                allChallanItems = allChallanItems.concat(chunkData);
+              }
+            }
+            
+            challanItemIds = allChallanItems.map(item => item.id);
+          }
+
+          // Fetch payment history for this student through payment items (both challan items and arrears)
+          let paymentHistory: any[] = [];
+          const paymentsMap = new Map();
+          
+          // Fetch payment items for challan items
+          if (challanItemIds.length > 0) {
+            // Chunk challan item IDs to avoid URL length limits
+            const chunkSize = 500;
+            let allPaymentItems: any[] = [];
+            
+            for (let i = 0; i < challanItemIds.length; i += chunkSize) {
+              const chunk = challanItemIds.slice(i, i + chunkSize);
+              const { data: chunkData } = await supabase
+                .from('fee_payment_items')
+                .select(`
+                  payment_id,
+                  fee_challan_item_id,
+                  fee_arrear_id,
+                  amount,
+                  paid_amount,
+                  fee_payments (
+                    id,
+                    amount,
+                    payment_date,
+                    payment_mode,
+                    remarks,
+                    fee_payment_items (
+                      id,
+                      fee_challan_item_id,
+                      fee_arrear_id,
+                      amount,
+                      paid_amount
+                    )
+                  )
+                `)
+                .eq('school_id', user.school_id)
+                .in('fee_challan_item_id', chunk);
+              
+              if (chunkData) {
+                allPaymentItems = allPaymentItems.concat(chunkData);
+              }
+            }
+            
+            const paymentItems = allPaymentItems;
+
+            if (paymentItems) {
+              // Group payment items by payment_id and build payment objects with fee_payment_items array
+              paymentItems.forEach((item: any) => {
+                if (item.fee_payments) {
+                  const paymentId = item.fee_payments.id;
+                  if (!paymentsMap.has(paymentId)) {
+                    paymentsMap.set(paymentId, {
+                      ...item.fee_payments,
+                      fee_payment_items: []
+                    });
+                  }
+                  
+                  // Add payment item to the payment's fee_payment_items array
+                  const paymentItem = {
+                    id: item.payment_id || item.fee_payments.id,
+                    fee_challan_item_id: item.fee_challan_item_id,
+                    fee_arrear_id: item.fee_arrear_id,
+                    amount: item.amount,
+                    paid_amount: item.paid_amount ?? item.amount ?? 0 // Use paid_amount if available, fallback to amount
+                  };
+                  
+                  // Check if this payment item already exists (avoid duplicates)
+                  const existingItem = paymentsMap.get(paymentId).fee_payment_items.find(
+                    (pi: any) => 
+                      (paymentItem.fee_challan_item_id && pi.fee_challan_item_id === paymentItem.fee_challan_item_id) ||
+                      (paymentItem.fee_arrear_id && pi.fee_arrear_id === paymentItem.fee_arrear_id)
+                  );
+                  
+                  if (!existingItem) {
+                    paymentsMap.get(paymentId).fee_payment_items.push(paymentItem);
+                  }
+                }
+              });
+            }
+          }
+          
+          // Fetch payment items for arrears
+          const arrearIds = feeArrears?.map(ar => ar.id) || [];
+          if (arrearIds.length > 0) {
+            // Chunk arrear IDs to avoid URL length limits
+            const chunkSize = 500;
+            let allArrearPaymentItems: any[] = [];
+            
+            for (let i = 0; i < arrearIds.length; i += chunkSize) {
+              const chunk = arrearIds.slice(i, i + chunkSize);
+              const { data: chunkData } = await supabase
+                .from('fee_payment_items')
+                .select(`
+                  payment_id,
+                  fee_challan_item_id,
+                  fee_arrear_id,
+                  amount,
+                  paid_amount,
+                  fee_payments (
+                    id,
+                    amount,
+                    payment_date,
+                    payment_mode,
+                    remarks,
+                    fee_payment_items (
+                      id,
+                      fee_challan_item_id,
+                      fee_arrear_id,
+                      amount,
+                      paid_amount
+                    )
+                  )
+                `)
+                .eq('school_id', user.school_id)
+                .in('fee_arrear_id', chunk);
+              
+              if (chunkData) {
+                allArrearPaymentItems = allArrearPaymentItems.concat(chunkData);
+              }
+            }
+            
+            const arrearPaymentItems = allArrearPaymentItems;
+
+            if (arrearPaymentItems) {
+              // Group payment items by payment_id and merge with existing payments
+              arrearPaymentItems.forEach((item: any) => {
+                if (item.fee_payments) {
+                  const paymentId = item.fee_payments.id;
+                  if (!paymentsMap.has(paymentId)) {
+                    paymentsMap.set(paymentId, {
+                      ...item.fee_payments,
+                      fee_payment_items: []
+                    });
+                  }
+                  
+                  // Add payment item to the payment's fee_payment_items array
+                  const paymentItem = {
+                    id: item.payment_id || item.fee_payments.id,
+                    fee_challan_item_id: item.fee_challan_item_id,
+                    fee_arrear_id: item.fee_arrear_id,
+                    amount: item.amount,
+                    paid_amount: item.paid_amount ?? item.amount ?? 0 // Use paid_amount if available, fallback to amount
+                  };
+                  
+                  // Check if this payment item already exists (avoid duplicates)
+                  const existingItem = paymentsMap.get(paymentId).fee_payment_items.find(
+                    (pi: any) => 
+                      (paymentItem.fee_challan_item_id && pi.fee_challan_item_id === paymentItem.fee_challan_item_id) ||
+                      (paymentItem.fee_arrear_id && pi.fee_arrear_id === paymentItem.fee_arrear_id)
+                  );
+                  
+                  if (!existingItem) {
+                    paymentsMap.get(paymentId).fee_payment_items.push(paymentItem);
+                  }
+                }
+              });
+            }
+          }
+          
+          // Convert map to array and sort
+          paymentHistory = Array.from(paymentsMap.values());
+          paymentHistory.sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
+
+          // Calculate fee items like in FeeCollectionNew.tsx (including arrears)
           let particularsText = '';
           let totalFeeAmount = 0;
 
-          if (feeInvoices && feeInvoices.length > 0) {
+          if (feeChallans && feeChallans.length > 0) {
             const feeItems: string[] = [];
             
-            feeInvoices.forEach((invoice) => {
-              invoice.fee_invoice_items?.forEach((item: any) => {
+            feeChallans.forEach((challan) => {
+              challan.fee_challans_items?.forEach((item: any) => {
                 const itemAmount = Number(item.amount || 0);
                 
-                // Calculate already paid amount for this specific fee item
+                // Calculate already paid amount for this specific challan item
+                // Match the exact logic from handleViewDetails (drawer) which works correctly
                 const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
-                  if (payment.fee_payment_items) {
+                  if (payment.fee_payment_items && Array.isArray(payment.fee_payment_items)) {
                     const itemPayment = payment.fee_payment_items.find(
-                      (paymentItem: any) => paymentItem.fee_item_id === item.id
+                      (paymentItem: any) => paymentItem.fee_challan_item_id === item.id
                     );
-                    return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
+                    if (itemPayment) {
+                      // Use paid_amount if available (new records), otherwise use amount (old records)
+                      const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                      return sum + Number(paidAmt);
+                    }
                   }
                   return sum;
                 }, 0) || 0;
@@ -1413,7 +1826,19 @@ const FeeDefaultersList: React.FC = () => {
                 // Only include items that still need payment
                 if (remainingItemAmount > 0) {
                   const feeHeadName = item.fee_heads?.name || 'Unknown Fee Head';
-                  const monthYear = new Date(invoice.month + '/01/' + invoice.year).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                  // Handle One Time fees (no month/year) vs recurring fees
+                  let monthYear = 'One Time';
+                  if (challan.month && challan.year) {
+                    try {
+                      const date = new Date(challan.month + '/01/' + challan.year);
+                      if (!isNaN(date.getTime())) {
+                        monthYear = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                      }
+                    } catch (e) {
+                      // If date parsing fails, keep as "One Time"
+                      monthYear = 'One Time';
+                    }
+                  }
                   feeItems.push(`${feeHeadName} (${monthYear}) - Rs.${remainingItemAmount}`);
                   totalFeeAmount += remainingItemAmount;
                 }
@@ -1421,6 +1846,45 @@ const FeeDefaultersList: React.FC = () => {
             });
             
             particularsText = feeItems.join(', ');
+          }
+          
+          // Process arrears (same as FeeCollectionNew)
+          if (feeArrears && feeArrears.length > 0) {
+            const arrearItems: string[] = [];
+            
+            feeArrears.forEach((arrear: any) => {
+              const itemAmount = Number(arrear.amount || 0);
+              
+              // Calculate already paid amount for this specific arrear
+              const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
+                if (payment.fee_payment_items && Array.isArray(payment.fee_payment_items)) {
+                  const itemPayment = payment.fee_payment_items.find(
+                    (paymentItem: any) => paymentItem.fee_arrear_id === arrear.id
+                  );
+                  if (itemPayment) {
+                    // Use paid_amount if available (new records), otherwise use amount (old records)
+                    const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                    return sum + Number(paidAmt);
+                  }
+                }
+                return sum;
+              }, 0) || 0;
+              
+              const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+              
+              // Only include items that still need payment
+              if (remainingItemAmount > 0) {
+                const feeHeadName = arrear.fee_heads?.name || 'Unknown Fee Head';
+                arrearItems.push(`${feeHeadName} (Other Fee) - Rs.${remainingItemAmount}`);
+                totalFeeAmount += remainingItemAmount;
+              }
+            });
+            
+            if (arrearItems.length > 0) {
+              particularsText = particularsText 
+                ? `${particularsText}, ${arrearItems.join(', ')}`
+                : arrearItems.join(', ');
+            }
           }
 
           // Find last payment date
@@ -1941,6 +2405,11 @@ const FeeDefaultersList: React.FC = () => {
       
       setSlipProgress({ current: 0, total: defaultersForSlips.length, message: 'Fetching school information...' });
 
+      if (!user?.school_id) {
+        showToast('No school context found', 'error');
+        return;
+      }
+
       // Fetch school information
       const [{ data: profileData }, { data: schoolData }] = await Promise.all([
         supabase.from('institute_profile').select('*').eq('school_id', user.school_id).single(),
@@ -1958,7 +2427,7 @@ const FeeDefaultersList: React.FC = () => {
       const { data: sessionsData } = await supabase
         .from('sessions')
         .select('id, name, is_active')
-        .eq('school_id', user.school_id)
+        .eq('school_id', user?.school_id || 0)
         .order('is_active', { ascending: false })
         .limit(1);
 
@@ -1980,90 +2449,346 @@ const FeeDefaultersList: React.FC = () => {
         }
       }
 
-      // OPTIMIZATION: Fetch all invoice and payment data in bulk upfront
+      // OPTIMIZATION: Fetch all challan and payment data in bulk upfront
       setSlipProgress({ current: 0, total: defaultersForSlips.length, message: 'Fetching fee data in bulk...' });
         
       const studentIds = defaultersForSlips.map(d => d.id);
 
-      // Fetch all invoices for all students at once
-      const { data: allInvoices, error: invoicesError } = await supabase
-          .from('fee_invoices')
-          .select(`
-            id,
-            student_id,
-            session_id,
-            month,
-            year,
-            total_amount,
-            status,
-            due_date,
-            fee_invoice_items (
+      // Fetch all challans for all students using pagination
+      // Chunk studentIds to avoid URL length limits
+      const chunkSize = 500;
+      let allChallans: any[] = [];
+      
+      for (let i = 0; i < studentIds.length; i += chunkSize) {
+        const studentIdChunk = studentIds.slice(i, i + chunkSize);
+        
+        const challansData = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_challans')
+            .select(`
               id,
-              fee_head_id,
-              amount,
-              fee_heads (
+              student_id,
+              session_id,
+              month,
+              year,
+              total_amount,
+              status,
+              due_date,
+              fee_challans_items (
                 id,
-                name,
-                description
+                fee_head_id,
+                amount,
+                fee_heads (
+                  id,
+                  name,
+                  description
+                )
               )
-            )
-          `)
-          .eq('school_id', user.school_id)
-        .in('student_id', studentIds)
-          .order('year', { ascending: false })
-          .order('month', { ascending: false });
-
-        if (invoicesError) {
-        throw invoicesError;
+            `)
+            .eq('school_id', user?.school_id || 0)
+            .in('student_id', studentIdChunk)
+            .order('year', { ascending: false })
+            .order('month', { ascending: false })
+            .range(from, to);
+        });
+        
+        if (challansData) {
+          allChallans = allChallans.concat(challansData);
+        }
       }
 
-      // Group invoices by student_id
-      const invoicesByStudent: { [key: number]: any[] } = {};
-      if (allInvoices) {
-        for (const invoice of allInvoices) {
-          if (!invoicesByStudent[invoice.student_id]) {
-            invoicesByStudent[invoice.student_id] = [];
-          }
-          invoicesByStudent[invoice.student_id].push(invoice);
-        }
-        }
-
-      // Fetch all payments for all students at once
-      const invoiceIds = allInvoices?.map(inv => inv.id) || [];
-      let paymentsByStudent: { [key: number]: any[] } = {};
-      
-      if (invoiceIds.length > 0) {
-        const { data: allPayments, error: paymentsError } = await supabase
-          .from('fee_payments')
-          .select(`
-            id,
-            amount,
-            invoice_id,
-            fee_invoices!inner (
-              student_id
-            ),
-            fee_payment_items (
-              id,
-              fee_item_id,
-              amount
-            )
-          `)
-          .eq('school_id', user.school_id)
-          .in('invoice_id', invoiceIds);
-
-        if (!paymentsError && allPayments) {
-          for (const payment of allPayments) {
-            // Handle both array and object types from Supabase
-            const studentId = Array.isArray(payment.fee_invoices) 
-              ? payment.fee_invoices[0]?.student_id 
-              : (payment.fee_invoices as any)?.student_id;
+      // Fetch all fee arrears for all students (same as FeeCollectionNew)
+      let allArrears: any[] = [];
+      if (activeSession && studentIds.length > 0) {
+        try {
+          // Chunk student IDs to avoid URL length limits
+          const chunkSize = 500;
+          
+          for (let i = 0; i < studentIds.length; i += chunkSize) {
+            const studentIdChunk = studentIds.slice(i, i + chunkSize);
             
-            if (studentId) {
-              if (!paymentsByStudent[studentId]) {
-                paymentsByStudent[studentId] = [];
-              }
-              paymentsByStudent[studentId].push(payment);
+            const arrearsData = await fetchAllRows(async (from, to) => {
+              return await supabase
+                .from('fee_arrears')
+                .select(`
+                  id,
+                  student_id,
+                  session_id,
+                  fee_head_id,
+                  amount,
+                  due_date,
+                  remarks,
+                  status,
+                  created_at,
+                  fee_heads (
+                    id,
+                    name,
+                    description
+                  )
+                `)
+                .eq('school_id', user?.school_id || 0)
+                .eq('session_id', activeSession.id)
+                .in('student_id', studentIdChunk)
+                .in('status', ['unpaid', 'partial'])
+                .order('due_date', { ascending: true })
+                .order('created_at', { ascending: false })
+                .range(from, to);
+            });
+            
+            if (arrearsData) {
+              allArrears = allArrears.concat(arrearsData);
             }
+          }
+        } catch (arrearsError) {
+          console.error('Error fetching arrears:', arrearsError);
+          // Continue with empty arrears array
+        }
+      }
+      
+      // Group challans by student_id
+      const challansByStudent: { [key: number]: any[] } = {};
+      if (allChallans) {
+        for (const challan of allChallans) {
+          if (!challansByStudent[challan.student_id]) {
+            challansByStudent[challan.student_id] = [];
+          }
+          challansByStudent[challan.student_id].push(challan);
+        }
+      }
+      
+      // Group arrears by student_id
+      const arrearsByStudent: { [key: number]: any[] } = {};
+      if (allArrears) {
+        for (const arrear of allArrears) {
+          if (!arrearsByStudent[arrear.student_id]) {
+            arrearsByStudent[arrear.student_id] = [];
+          }
+          arrearsByStudent[arrear.student_id].push(arrear);
+        }
+      }
+
+      // Get all challan item IDs using pagination
+      const challanIds = allChallans?.map(ch => ch.id) || [];
+      let allChallanItemIds: number[] = [];
+      let allChallanItems: any[] = [];
+      
+      if (challanIds.length > 0) {
+        // Chunk challan IDs to avoid URL length limits
+        for (let i = 0; i < challanIds.length; i += chunkSize) {
+          const challanIdChunk = challanIds.slice(i, i + chunkSize);
+          
+          const challanItemsData = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_challans_items')
+              .select('id, challan_id')
+              .eq('school_id', user?.school_id || 0)
+              .in('challan_id', challanIdChunk)
+              .range(from, to);
+          });
+          
+          if (challanItemsData) {
+            allChallanItems = allChallanItems.concat(challanItemsData);
+            allChallanItemIds = allChallanItemIds.concat(challanItemsData.map(item => item.id));
+          }
+        }
+      }
+
+      // Get all arrear IDs
+      const allArrearIds = allArrears?.map(ar => ar.id) || [];
+      
+      // Fetch all payment items for all challan items and arrears using pagination
+      let paymentsByStudent: { [key: number]: any[] } = {};
+      // Use a shared paymentMap across all chunks to properly merge payments with both challan and arrear items
+      const globalPaymentMap = new Map();
+      
+      // Fetch payment items for challan items
+      if (allChallanItemIds.length > 0) {
+        // Split into chunks to avoid URL length limits
+        const paymentChunkSize = 1000;
+        const chunks: number[][] = [];
+        for (let i = 0; i < allChallanItemIds.length; i += paymentChunkSize) {
+          chunks.push(allChallanItemIds.slice(i, i + paymentChunkSize));
+        }
+
+        for (const chunk of chunks) {
+          // Use fetchAllRows for each chunk to handle pagination
+          const paymentItemsData = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_payment_items')
+              .select(`
+                payment_id,
+                fee_challan_item_id,
+                fee_arrear_id,
+                amount,
+                paid_amount,
+                fee_payments (
+                  id,
+                  amount,
+                  payment_date,
+                  payment_mode,
+                  remarks
+                )
+              `)
+              .eq('school_id', user?.school_id || 0)
+              .in('fee_challan_item_id', chunk)
+              .range(from, to);
+          });
+
+          if (paymentItemsData && paymentItemsData.length > 0) {
+            const paymentItems = paymentItemsData;
+            // Group payment items by payment and student
+            const challanItemToChallanMap = new Map();
+            
+            // Build map from challan item to challan (to get student_id)
+            allChallanItems.forEach((item: any) => {
+              challanItemToChallanMap.set(item.id, item.challan_id);
+            });
+            
+            const challanToStudentMap = new Map();
+            if (allChallans) {
+              allChallans.forEach((ch: any) => {
+                challanToStudentMap.set(ch.id, ch.student_id);
+              });
+            }
+
+            paymentItems.forEach((item: any) => {
+              if (item.fee_payments) {
+                const paymentId = item.fee_payments.id;
+                const challanItemId = item.fee_challan_item_id;
+                const challanId = challanItemToChallanMap.get(challanItemId);
+                const studentId = challanToStudentMap.get(challanId);
+                
+                if (studentId) {
+                  if (!globalPaymentMap.has(paymentId)) {
+                    globalPaymentMap.set(paymentId, {
+                      ...item.fee_payments,
+                      fee_payment_items: []
+                    });
+                  }
+                  
+                  // Add payment item to the payment's fee_payment_items array
+                  const paymentItem = {
+                    id: item.payment_id || item.fee_payments.id,
+                    fee_challan_item_id: item.fee_challan_item_id,
+                    fee_arrear_id: item.fee_arrear_id,
+                    amount: item.amount,
+                    paid_amount: item.paid_amount ?? item.amount ?? 0 // Use paid_amount if available, fallback to amount
+                  };
+                  
+                  // Check if this payment item already exists (avoid duplicates)
+                  const existingItem = globalPaymentMap.get(paymentId).fee_payment_items.find(
+                    (pi: any) => 
+                      (paymentItem.fee_challan_item_id && pi.fee_challan_item_id === paymentItem.fee_challan_item_id) ||
+                      (paymentItem.fee_arrear_id && pi.fee_arrear_id === paymentItem.fee_arrear_id)
+                  );
+                  
+                  if (!existingItem) {
+                    globalPaymentMap.get(paymentId).fee_payment_items.push(paymentItem);
+                  }
+                  
+                  if (!paymentsByStudent[studentId]) {
+                    paymentsByStudent[studentId] = [];
+                  }
+                  // Only add payment once per student
+                  if (!paymentsByStudent[studentId].find((p: any) => p.id === paymentId)) {
+                    paymentsByStudent[studentId].push(globalPaymentMap.get(paymentId));
+                  }
+                }
+              }
+            });
+          }
+        }
+      }
+      
+      // Fetch payment items for arrears
+      if (allArrearIds.length > 0) {
+        // Split into chunks to avoid URL length limits
+        const paymentChunkSize = 1000;
+        const chunks: number[][] = [];
+        for (let i = 0; i < allArrearIds.length; i += paymentChunkSize) {
+          chunks.push(allArrearIds.slice(i, i + paymentChunkSize));
+        }
+
+        for (const chunk of chunks) {
+          // Use fetchAllRows for each chunk to handle pagination
+          const paymentItemsData = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_payment_items')
+              .select(`
+                payment_id,
+                fee_challan_item_id,
+                fee_arrear_id,
+                amount,
+                paid_amount,
+                fee_payments (
+                  id,
+                  amount,
+                  payment_date,
+                  payment_mode,
+                  remarks
+                )
+              `)
+              .eq('school_id', user?.school_id || 0)
+              .in('fee_arrear_id', chunk)
+              .range(from, to);
+          });
+
+          if (paymentItemsData && paymentItemsData.length > 0) {
+            const paymentItems = paymentItemsData;
+            
+            // Build map from arrear to student
+            const arrearToStudentMap = new Map();
+            if (allArrears) {
+              allArrears.forEach((ar: any) => {
+                arrearToStudentMap.set(ar.id, ar.student_id);
+              });
+            }
+
+            paymentItems.forEach((item: any) => {
+              if (item.fee_payments) {
+                const paymentId = item.fee_payments.id;
+                const arrearId = item.fee_arrear_id;
+                const studentId = arrearToStudentMap.get(arrearId);
+                
+                if (studentId) {
+                  // Use global paymentMap to merge with existing payments (in case payment has both challan and arrear items)
+                  if (!globalPaymentMap.has(paymentId)) {
+                    globalPaymentMap.set(paymentId, {
+                      ...item.fee_payments,
+                      fee_payment_items: []
+                    });
+                  }
+                  
+                  // Add payment item to the payment's fee_payment_items array
+                  const paymentItem = {
+                    id: item.payment_id || item.fee_payments.id,
+                    fee_challan_item_id: item.fee_challan_item_id,
+                    fee_arrear_id: item.fee_arrear_id,
+                    amount: item.amount,
+                    paid_amount: item.paid_amount ?? item.amount ?? 0 // Use paid_amount if available, fallback to amount
+                  };
+                  
+                  // Check if this payment item already exists (avoid duplicates)
+                  const existingItem = globalPaymentMap.get(paymentId).fee_payment_items.find(
+                    (pi: any) => 
+                      (paymentItem.fee_challan_item_id && pi.fee_challan_item_id === paymentItem.fee_challan_item_id) ||
+                      (paymentItem.fee_arrear_id && pi.fee_arrear_id === paymentItem.fee_arrear_id)
+                  );
+                  
+                  if (!existingItem) {
+                    globalPaymentMap.get(paymentId).fee_payment_items.push(paymentItem);
+                  }
+                  
+                  if (!paymentsByStudent[studentId]) {
+                    paymentsByStudent[studentId] = [];
+                  }
+                  // Only add payment once per student
+                  if (!paymentsByStudent[studentId].find((p: any) => p.id === paymentId)) {
+                    paymentsByStudent[studentId].push(globalPaymentMap.get(paymentId));
+                  }
+                }
+              }
+            });
           }
         }
       }
@@ -2097,25 +2822,31 @@ const FeeDefaultersList: React.FC = () => {
         }
 
         // Get pre-fetched data for this student
-        const feeInvoices = invoicesByStudent[defaulter.id] || [];
+        const feeChallans = challansByStudent[defaulter.id] || [];
+        const feeArrears = arrearsByStudent[defaulter.id] || [];
         const paymentHistory = paymentsByStudent[defaulter.id] || [];
 
         // Calculate remaining items only - ensure only items with remaining > 0
         const remainingFeeItems: any[] = [];
         let totalRemainingAmount = 0;
 
-        if (feeInvoices && feeInvoices.length > 0) {
-          feeInvoices.forEach((invoice) => {
-            invoice.fee_invoice_items?.forEach((item: any) => {
+        if (feeChallans && feeChallans.length > 0) {
+          feeChallans.forEach((challan: any) => {
+            challan.fee_challans_items?.forEach((item: any) => {
               const itemAmount = Number(item.amount || 0);
               
-              // Calculate already paid amount for this specific fee item
+              // Calculate already paid amount for this specific challan item
+              // Match the exact logic from handleViewDetails (drawer) which works correctly
               const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
-                if (payment.fee_payment_items) {
+                if (payment.fee_payment_items && Array.isArray(payment.fee_payment_items)) {
                   const itemPayment = payment.fee_payment_items.find(
-                    (paymentItem: any) => paymentItem.fee_item_id === item.id
+                    (paymentItem: any) => paymentItem.fee_challan_item_id === item.id
                   );
-                  return sum + (itemPayment ? Number(itemPayment.amount || 0) : 0);
+                  if (itemPayment) {
+                    // Use paid_amount if available (new records), otherwise use amount (old records)
+                    const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                    return sum + Number(paidAmt);
+                  }
                 }
                 return sum;
               }, 0) || 0;
@@ -2124,9 +2855,19 @@ const FeeDefaultersList: React.FC = () => {
               
               // Only include items that still need payment (remaining > 0)
               if (remainingItemAmount > 0) {
-                const monthYear = invoice.month && invoice.year
-                  ? `${invoice.month} ${invoice.year}`
-                  : '-';
+                // Handle One Time fees (no month/year) vs recurring fees
+                let monthYear = 'One Time';
+                if (challan.month && challan.year) {
+                  try {
+                    const date = new Date(challan.month + '/01/' + challan.year);
+                    if (!isNaN(date.getTime())) {
+                      monthYear = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    }
+                  } catch (e) {
+                    // If date parsing fails, keep as "One Time"
+                    monthYear = 'One Time';
+                  }
+                }
                 
                 remainingFeeItems.push({
                   name: item.fee_heads?.name || 'Unknown Fee Head',
@@ -2136,6 +2877,40 @@ const FeeDefaultersList: React.FC = () => {
                 totalRemainingAmount += remainingItemAmount;
               }
             });
+          });
+        }
+        
+        // Process arrears (same as FeeCollectionNew)
+        if (feeArrears && feeArrears.length > 0) {
+          feeArrears.forEach((arrear: any) => {
+            const itemAmount = Number(arrear.amount || 0);
+            
+            // Calculate already paid amount for this specific arrear
+            const alreadyPaid = paymentHistory?.reduce((sum, payment) => {
+              if (payment.fee_payment_items && Array.isArray(payment.fee_payment_items)) {
+                const itemPayment = payment.fee_payment_items.find(
+                  (paymentItem: any) => paymentItem.fee_arrear_id === arrear.id
+                );
+                if (itemPayment) {
+                  // Use paid_amount if available (new records), otherwise use amount (old records)
+                  const paidAmt = itemPayment.paid_amount ?? itemPayment.amount ?? 0;
+                  return sum + Number(paidAmt);
+                }
+              }
+              return sum;
+            }, 0) || 0;
+            
+            const remainingItemAmount = Math.max(0, itemAmount - alreadyPaid);
+            
+            // Only include items that still need payment (remaining > 0)
+            if (remainingItemAmount > 0) {
+              remainingFeeItems.push({
+                name: arrear.fee_heads?.name || 'Unknown Fee Head',
+                monthYear: 'Other Fee',
+                amount: remainingItemAmount,
+              });
+              totalRemainingAmount += remainingItemAmount;
+            }
           });
         }
 
@@ -2572,6 +3347,8 @@ const FeeDefaultersList: React.FC = () => {
 
   // Load initial data
   useEffect(() => {
+    if (!user?.school_id) return; // Early return if no school_id, but AFTER hook is declared
+    
     const loadInitialData = async () => {
       startProgress(false);
       setProgress(10);
@@ -2634,9 +3411,9 @@ const FeeDefaultersList: React.FC = () => {
     setSelectedSection('');
   }, [selectedClass]);
 
-  // Load fee defaulters data
+  // Load fee defaulters data (using exact same approach as FeeCollectionNew)
   useEffect(() => {
-    if (students.length === 0) return;
+    if (!user?.school_id || students.length === 0) return; // Early return if no school_id, but AFTER hook is declared
 
     const loadFeeDefaulters = async () => {
       setLoadingData(true);
@@ -2645,100 +3422,189 @@ const FeeDefaultersList: React.FC = () => {
       // Set a timeout to prevent infinite loading
       const timeoutId = setTimeout(() => {
         setLoadingData(false);
-      }, 10000); // 10 seconds timeout (should be much faster now)
+      }, 10000);
       
       try {
         const defaulterData = [];
-        let processedCount = 0;
         
-        // First, let's check if fee_invoices table exists and has data
-        const { data: testInvoices, error: testError } = await supabase
-          .from('fee_invoices')
+        // First, check if fee_challans table exists
+        const { data: testChallans, error: testError } = await supabase
+          .from('fee_challans')
           .select('id, total_amount')
           .limit(1);
         
         if (testError) {
-          // If no fee invoices table, show empty list (no fee system configured)
           setDefaulters([]);
           return;
         }
         
-        
-        // Much more efficient approach: Get all data in bulk queries
-        
-        // Get all fee invoices for all students at once
-        const studentIds = students.map(s => s.id);
-        const { data: allInvoices, error: invoicesError } = await supabase
-          .from('fee_invoices')
-          .select('id, student_id, total_amount')
+        // Get active session (same as FeeCollectionNew)
+        const { data: sessionsData } = await supabase
+          .from('sessions')
+          .select('id, name, is_active')
           .eq('school_id', user.school_id)
-          .in('student_id', studentIds);
+          .order('is_active', { ascending: false })
+          .limit(1);
         
+        const activeSession = sessionsData?.[0];
         
-        // Get all payments for all invoices at once
-        let allPayments: any[] = [];
-        if (allInvoices && allInvoices.length > 0) {
-          const invoiceIds = allInvoices.map(inv => inv.id);
-          const { data: payments, error: paymentsError } = await supabase
-            .from('fee_payments')
-            .select('invoice_id, amount')
+        // Get all fee challans for all students using pagination (same as FeeCollectionNew)
+        const studentIds = students.map(s => s.id);
+        const allChallans = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('fee_challans')
+            .select('id, student_id, total_amount')
             .eq('school_id', user.school_id)
-            .in('invoice_id', invoiceIds);
-          
-          if (!paymentsError) {
-            allPayments = payments || [];
-          }
-        }
+            .in('student_id', studentIds)
+            .range(from, to);
+        });
         
-        // Process the data locally (much faster)
-        
-        // Group invoices by student_id
-        const invoicesByStudent: { [key: string]: any[] } = {};
-        if (allInvoices) {
-          for (const invoice of allInvoices) {
-            if (!invoicesByStudent[String(invoice.student_id)]) {
-              invoicesByStudent[String(invoice.student_id)] = [];
-            }
-            invoicesByStudent[String(invoice.student_id)].push(invoice);
-          }
-        }
-        
-        // Group payments by invoice_id
-        const paymentsByInvoice: { [key: string]: any[] } = {};
-        for (const payment of allPayments) {
-          if (!paymentsByInvoice[String(payment.invoice_id)]) {
-            paymentsByInvoice[String(payment.invoice_id)] = [];
-          }
-          paymentsByInvoice[String(payment.invoice_id)].push(payment);
-        }
-        
-        // Process each student
-        for (const student of students) {
-          const studentInvoices = invoicesByStudent[String(student.id)] || [];
-          
-          if (studentInvoices.length > 0) {
-            let totalFeeAmount = 0;
-            let totalPaidAmount = 0;
+        // Get all fee arrears for all students (same as FeeCollectionNew)
+        let allArrears: any[] = [];
+        if (activeSession && studentIds.length > 0) {
+          try {
+            // Chunk student IDs to avoid URL length limits
+            const chunkSize = 500;
             
-            // Calculate total fee amount
-            for (const invoice of studentInvoices) {
-              totalFeeAmount += Number(invoice.total_amount || 0);
+            for (let i = 0; i < studentIds.length; i += chunkSize) {
+              const studentIdChunk = studentIds.slice(i, i + chunkSize);
               
-              // Calculate payments for this invoice
-              const invoicePayments = paymentsByInvoice[String(invoice.id)] || [];
-              for (const payment of invoicePayments) {
-                totalPaidAmount += Number(payment.amount || 0);
+              const arrearsData = await fetchAllRows(async (from, to) => {
+                return await supabase
+                  .from('fee_arrears')
+                  .select(`
+                    id,
+                    student_id,
+                    session_id,
+                    amount,
+                    status
+                  `)
+                  .eq('school_id', user.school_id)
+                  .eq('session_id', activeSession.id)
+                  .in('student_id', studentIdChunk)
+                  .in('status', ['unpaid', 'partial'])
+                  .range(from, to);
+              });
+              
+              if (arrearsData) {
+                allArrears = allArrears.concat(arrearsData);
+              }
+            }
+          } catch (arrearsError) {
+            console.error('Error fetching arrears:', arrearsError);
+            // Continue with empty arrears array
+          }
+        }
+        
+        if (!allChallans && allArrears.length === 0) {
+          setDefaulters([]);
+          return;
+        }
+        
+        // Fetch all payments for all students using direct student_id query
+        // This is much simpler now that student_id is stored directly in fee_payments
+        const paymentsByStudent: { [key: number]: any[] } = {};
+        
+        if (studentIds.length > 0) {
+          try {
+            // Chunk student IDs to avoid URL length limits
+            const chunkSize = 500;
+            let allPayments: any[] = [];
+            
+            for (let i = 0; i < studentIds.length; i += chunkSize) {
+              const studentIdChunk = studentIds.slice(i, i + chunkSize);
+              
+              const paymentData = await fetchAllRows(async (from, to) => {
+                return await supabase
+                  .from('fee_payments')
+                  .select(`
+                    *,
+                    fee_payment_items (
+                      id,
+                      fee_challan_item_id,
+                      fee_arrear_id,
+                      amount,
+                      paid_amount
+                    )
+                  `)
+                  .in('student_id', studentIdChunk)
+                  .eq('school_id', user.school_id)
+                  .order('payment_date', { ascending: false })
+                  .range(from, to);
+              });
+              
+              if (paymentData) {
+                allPayments = allPayments.concat(paymentData);
               }
             }
             
-            const remainingAmount = totalFeeAmount - totalPaidAmount;
+            // Group payments by student_id (now directly available in payment record)
+            for (const payment of allPayments) {
+              const studentId = payment.student_id;
+              if (studentId) {
+                if (!paymentsByStudent[studentId]) {
+                  paymentsByStudent[studentId] = [];
+                }
+                // Only add the payment once per student
+                if (!paymentsByStudent[studentId].some(p => p.id === payment.id)) {
+                  paymentsByStudent[studentId].push(payment);
+                }
+              }
+            }
+            
+            console.log(`[FeeDefaultersList] Payments grouped:`, Object.keys(paymentsByStudent).map(sid => {
+              const sidNum = Number(sid);
+              const payments = paymentsByStudent[sidNum];
+              const total = payments.reduce((sum, p) => sum + Number(p.net_amount || 0), 0);
+              return `Student ${sidNum}: ${payments.length} payments, total: ${total}`;
+            }).join('; '));
+          } catch (paymentError) {
+            console.error('Error fetching payments:', paymentError);
+            // Continue with empty payments array
+          }
+        }
+        
+        // Process each student (matching FeeCollectionNew calculation logic exactly)
+        for (const student of students) {
+          // Get challans for this student
+          const studentChallans = allChallans?.filter(ch => ch.student_id === student.id) || [];
+          
+          // Get arrears for this student
+          const studentArrears = allArrears?.filter(ar => ar.student_id === student.id) || [];
+          
+          // Calculate totalFeeAmount as sum of challan.total_amount + arrear.amount (same as FeeCollectionNew)
+          const challanTotal = studentChallans.reduce((sum, challan) => 
+            sum + Number(challan.total_amount || 0), 0
+          );
+          const arrearTotal = studentArrears.reduce((sum, arrear) => 
+            sum + Number(arrear.amount || 0), 0
+          );
+          const totalFeeAmount = challanTotal + arrearTotal;
+          
+          // Only process if student has challans or arrears
+          if (totalFeeAmount > 0) {
+            // Calculate totalNetPaidAmount as sum of payment.net_amount (same as FeeCollectionNew)
+            // Get payments for this specific student from the grouped payments
+            const studentPayments = paymentsByStudent[student.id] || [];
+            
+            // Debug: Log if payments are found
+            if (studentPayments.length > 0) {
+              console.log(`Student ${student.id} (${student.name}): Found ${studentPayments.length} payments, total net: ${studentPayments.reduce((sum, p) => sum + Number(p.net_amount || 0), 0)}`);
+            }
+            
+            const totalNetPaidAmount = studentPayments.reduce((sum, payment) => 
+              sum + Number(payment.net_amount || 0), 0
+            );
+            
+            // Calculate remaining (same as FeeCollectionNew: totalFeeAmount - totalNetPaidAmount)
+            const remainingAmount = totalFeeAmount - totalNetPaidAmount;
             
             // Only include students with remaining amount > 0
             if (remainingAmount > 0) {
               defaulterData.push({
                 ...student,
                 totalFeeAmount,
-                totalPaidAmount,
+                totalPaidAmount: totalNetPaidAmount,
                 remainingAmount
               });
             }
@@ -2813,6 +3679,17 @@ const FeeDefaultersList: React.FC = () => {
     return filtered;
   }, [defaulters, search, selectedClass, selectedSection, classes, sections]);
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedClass, selectedSection]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredDefaulters.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedDefaulters = filteredDefaulters.slice(startIndex, endIndex);
+
   // Calculate summary statistics
   const summary = useMemo(() => {
     const totalDefaulters = filteredDefaulters.length;
@@ -2824,11 +3701,14 @@ const FeeDefaultersList: React.FC = () => {
     };
   }, [filteredDefaulters]);
 
-  // Set footer content for global footer
+  // Set footer content for global footer with pagination
   useEffect(() => {
     if (filteredDefaulters.length > 0) {
       const FooterContentComponent = React.memo(() => {
         const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
+        const from = startIndex + 1;
+        const to = Math.min(endIndex, filteredDefaulters.length);
+        const total = filteredDefaulters.length;
         
         return (
           <div style={{
@@ -2850,6 +3730,79 @@ const FeeDefaultersList: React.FC = () => {
                 <StatLabel theme={themeObj}>Total Outstanding</StatLabel>
               </StatItem>
             </SummaryStats>
+            
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMobile ? '0.5rem' : '1rem',
+              marginLeft: isMobile ? '0' : 'auto'
+            }}>
+              <PaginationInfo theme={themeObj} style={{ fontSize: isMobile ? '0.85rem' : '0.9rem' }}>
+                Showing {from} to {to} of {total} defaulters
+              </PaginationInfo>
+              <PaginationControls theme={themeObj} style={{ flex: 'none', width: 'auto' }}>
+                <PaginationButton
+                  theme={themeObj}
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  title="First page"
+                >
+                  ««
+                </PaginationButton>
+                <PaginationButton
+                  theme={themeObj}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  title="Previous page"
+                >
+                  ‹
+                </PaginationButton>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: themeObj.TEXT_SECONDARY }}>Page</span>
+                  <PageInput
+                    theme={themeObj}
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = parseInt(e.target.value);
+                      if (page >= 1 && page <= totalPages) {
+                        setCurrentPage(page);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const page = parseInt(e.target.value);
+                      if (isNaN(page) || page < 1) {
+                        setCurrentPage(1);
+                      } else if (page > totalPages) {
+                        setCurrentPage(totalPages);
+                      }
+                    }}
+                  />
+                  <span style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: themeObj.TEXT_SECONDARY }}>of {totalPages}</span>
+                </div>
+                
+                <PaginationButton
+                  theme={themeObj}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  title="Next page"
+                >
+                  ›
+                </PaginationButton>
+                <PaginationButton
+                  theme={themeObj}
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  title="Last page"
+                >
+                  »»
+                </PaginationButton>
+              </PaginationControls>
+            </div>
           </div>
         );
       });
@@ -2865,7 +3818,21 @@ const FeeDefaultersList: React.FC = () => {
     } else {
       setFooterContent(null);
     }
-  }, [filteredDefaulters, summary, isMobile, theme, setFooterContent]);
+  }, [filteredDefaulters, summary, isMobile, theme, setFooterContent, currentPage, itemsPerPage, startIndex, endIndex, totalPages]);
+
+  // Check if user has school_id - MUST be after all hooks to avoid "Rendered more hooks" error
+  if (!user?.school_id) {
+    return (
+      <PageContainer>
+        <TableArea>
+          <ErrorContainer>
+            <Info style={{ marginRight: '0.5rem' }} />
+            No school context found. Please contact your administrator.
+          </ErrorContainer>
+        </TableArea>
+      </PageContainer>
+    );
+  }
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -3139,7 +4106,7 @@ const FeeDefaultersList: React.FC = () => {
               ) : filteredDefaulters.length === 0 ? (
                 <tr><CenterTd colSpan={7}>No fee defaulters found. All students have paid their fees or have no outstanding amounts.</CenterTd></tr>
               ) : (
-                filteredDefaulters.map((defaulter, idx) => (
+                paginatedDefaulters.map((defaulter, idx) => (
                   <tr 
                     key={defaulter.id}
                     onClick={() => handleViewDetails(defaulter)}
@@ -3147,7 +4114,7 @@ const FeeDefaultersList: React.FC = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    <CenterTd>{idx + 1}</CenterTd>
+                    <CenterTd>{startIndex + idx + 1}</CenterTd>
                     <CenterTd>{getStudentDisplayId(defaulter)}</CenterTd>
                     <LeftTd
                       style={{
@@ -3444,3 +4411,4 @@ const FeeDefaultersList: React.FC = () => {
 };
 
 export default FeeDefaultersList;
+
