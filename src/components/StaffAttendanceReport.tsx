@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { BarChart, CalendarMonth, PictureAsPdf, X, FilterList as FilterIcon } from '@mui/icons-material';
+import { BarChart, CalendarMonth, PictureAsPdf, X, FilterList as FilterIcon, Block } from '@mui/icons-material';
 import { format, getDaysInMonth, parseISO } from 'date-fns';
 import ReactDOM from 'react-dom';
 import { useToast } from './useToast';
@@ -475,6 +475,8 @@ interface Holiday {
   name: string;
   start_date: string;
   end_date: string;
+  isGlobal?: boolean;
+  staffIds?: number[];
 }
 
 
@@ -726,33 +728,65 @@ const StaffAttendanceReport: React.FC = () => {
       const endDate = format(new Date(parseISO(startDate).getFullYear(), parseISO(startDate).getMonth(), daysInMonth), 'yyyy-MM-dd');
 
       try {
-
-        // Fetch all holidays for the period - staff holidays are global (no class/section filtering needed)
+        // Fetch all holidays for the period
         const { data: allHolidaysData, error: allHolidaysError } = await supabase
-        .from('holidays')
+          .from('holidays')
           .select(`
             id,
             name,
             start_date,
             end_date
           `)
-        .eq('session_id', sessionId)
-        .eq('school_id', user.school_id)
-        .lte('start_date', endDate)
-        .gte('end_date', startDate);
+          .eq('session_id', sessionId)
+          .eq('school_id', user.school_id)
+          .lte('start_date', endDate)
+          .gte('end_date', startDate);
 
         if (allHolidaysError) throw allHolidaysError;
 
+        if (!allHolidaysData || allHolidaysData.length === 0) {
+          setHolidays([]);
+          return;
+        }
 
-        // For staff, we include all holidays (global holidays apply to all staff)
-        const relevantHolidays = (allHolidaysData || []).map(h => ({
-          id: h.id,
-          name: h.name,
-          start_date: h.start_date,
-          end_date: h.end_date
-        }));
+        const holidayIds = allHolidaysData.map(h => h.id);
+        
+        // Get holiday class assignments (to check for global holidays)
+        const { data: allHolidayClassAssignments } = await supabase
+          .from('holiday_classes')
+          .select('holiday_id, school_id')
+          .in('holiday_id', holidayIds);
+        
+        // Filter class assignments: include if school_id is null/undefined (legacy) or matches user's school_id
+        const holidayClassAssignments = (allHolidayClassAssignments || []).filter(a => {
+          return a.school_id === null || a.school_id === undefined || Number(a.school_id) === Number(user.school_id);
+        });
 
-        setHolidays(relevantHolidays);
+        // Get holiday staff assignments
+        const { data: holidayStaffAssignments } = await supabase
+          .from('holiday_staff')
+          .select('holiday_id, staff_id')
+          .in('holiday_id', holidayIds);
+
+        // Identify global holidays (no class assignments and no staff assignments)
+        const globalHolidays = allHolidaysData.filter(holiday => {
+          const hasClassAssignments = holidayClassAssignments?.some(a => a.holiday_id === holiday.id) || false;
+          const hasStaffAssignments = (holidayStaffAssignments || []).some(a => a.holiday_id === holiday.id) || false;
+          return !hasClassAssignments && !hasStaffAssignments;
+        });
+
+        // Store holidays with their assignment info for later filtering per staff
+        const holidaysWithAssignments = allHolidaysData.map(holiday => {
+          const isGlobal = globalHolidays.some(h => h.id === holiday.id);
+          const staffAssignments = (holidayStaffAssignments || []).filter(a => a.holiday_id === holiday.id);
+          return {
+            ...holiday,
+            isGlobal,
+            staffIds: staffAssignments.map(a => a.staff_id)
+          };
+        });
+
+        setHolidays(holidaysWithAssignments);
       } catch (error) {
         setHolidays([]);
       }
@@ -778,20 +812,31 @@ const StaffAttendanceReport: React.FC = () => {
 
   const daysInMonth = selectedMonth ? getDaysInMonth(parseISO(selectedMonth + '-01')) : 31;
 
-  // Helper: Get all holiday ranges for the month
-  const holidayRanges = holidays.map(holiday => {
-    const start = parseISO(holiday.start_date);
-    const end = parseISO(holiday.end_date);
-    const monthStart = parseISO(selectedMonth + '-01');
-    const daysInMonth = getDaysInMonth(monthStart);
-    const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-    const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-    return {
-      name: holiday.name,
-      startIdx: firstDayIdx,
-      endIdx: lastDayIdx
-    };
-  });
+  // Helper: Get holiday ranges for a specific staff member
+  const getHolidayRangesForStaff = (staffId: number) => {
+    return holidays
+      .filter(holiday => {
+        // Include holiday if:
+        // 1. It's a global holiday (no assignments), OR
+        // 2. Staff is specifically assigned to this holiday
+        return holiday.isGlobal || (holiday.staffIds && holiday.staffIds.includes(staffId));
+      })
+      .map(holiday => {
+        const start = parseISO(holiday.start_date);
+        const end = parseISO(holiday.end_date);
+        const monthStart = parseISO(selectedMonth + '-01');
+        const daysInMonth = getDaysInMonth(monthStart);
+        const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+        const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+        return {
+          name: holiday.name,
+          startIdx: firstDayIdx,
+          endIdx: lastDayIdx,
+          holidayId: holiday.id
+        };
+      });
+  };
+
 
   // Helper function for dynamic angle and font size
   function getHolidayAngleAndFont(colSpan: number) {
@@ -805,28 +850,31 @@ const StaffAttendanceReport: React.FC = () => {
   }
 
   useEffect(() => {
-    // For each holiday, measure the cell and set angle/fontSize
-    holidays.forEach(holiday => {
-      const key = `${holiday.name}-${holidays.find(hh => hh.name === holiday.name)?.start_date}`;
-      const cell = holidayCellRefs.current[key];
-      if (cell) {
-        const w = cell.offsetWidth;
-        const h = cell.offsetHeight;
-        if (w && h) {
-          // Calculate angle in degrees
-          const angle = -Math.atan(h / w) * (180 / Math.PI);
-          // Estimate font size: fit text in diagonal, but be much more conservative
-          const textLen = holiday.name.length;
-          const diag = Math.sqrt(w * w + h * h);
-          const fontSize = Math.max(10, Math.min(diag / (textLen * 2.2), h * 0.3, w * 0.5, 32)) + 'px';
-          setHolidayTextStyle(prev => ({
-            ...prev,
-            [key]: { angle, fontSize, maxWidth: `${diag * 0.95}px` }
-          }));
+    // For each holiday-staff combination, measure the cell and set angle/fontSize
+    filteredStaff.forEach(staff => {
+      const staffHolidays = getHolidayRangesForStaff(staff.id);
+      staffHolidays.forEach(holiday => {
+        const key = `${holiday.name}-${holiday.holidayId}-${staff.id}`;
+        const cell = holidayCellRefs.current[key];
+        if (cell) {
+          const w = cell.offsetWidth;
+          const h = cell.offsetHeight;
+          if (w && h) {
+            // Calculate angle in degrees
+            const angle = -Math.atan(h / w) * (180 / Math.PI);
+            // Estimate font size: fit text in diagonal, but be much more conservative
+            const textLen = holiday.name.length;
+            const diag = Math.sqrt(w * w + h * h);
+            const fontSize = Math.max(10, Math.min(diag / (textLen * 2.2), h * 0.3, w * 0.5, 32)) + 'px';
+            setHolidayTextStyle(prev => ({
+              ...prev,
+              [key]: { angle, fontSize, maxWidth: `${diag * 0.95}px` }
+            }));
+          }
         }
-      }
+      });
     });
-  }, [holidays, filteredStaff.length]);
+  }, [holidays, filteredStaff, selectedMonth]);
 
   const handleStatusChange = async (
     opt: StatusOption,
@@ -1095,17 +1143,48 @@ const StaffAttendanceReport: React.FC = () => {
       doc.text(`Working Days: ${workingDays}`, 80, 30);
       doc.text(`Average Attendance: ${avgAttendance}%`, 160, 30);
 
-      // Prepare a map of holiday days for quick lookup
-      let holidayDayMap: Record<number, string> = {};
-      holidays.forEach(holiday => {
-        const start = parseISO(holiday.start_date);
-        const end = parseISO(holiday.end_date);
-        const monthStart = parseISO(selectedMonth + '-01');
-        const daysInMonth = getDaysInMonth(monthStart);
-        const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-        const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-        for (let i = firstDayIdx; i <= lastDayIdx; i++) {
-          holidayDayMap[i + 1] = holiday.name;
+      // Prepare a map of holiday days for each staff member for quick lookup
+      const staffHolidayDayMaps: Record<number, Record<number, string>> = {};
+      filteredStaff.forEach(staff => {
+        const staffHolidayRanges = getHolidayRangesForStaff(staff.id);
+        const staffHolidayMap: Record<number, string> = {};
+        staffHolidayRanges.forEach(holidayRange => {
+          // Use the holiday from the holidays array to get dates
+          const holiday = holidays.find(h => h.id === holidayRange.holidayId);
+          if (holiday) {
+            const start = parseISO(holiday.start_date);
+            const end = parseISO(holiday.end_date);
+            const monthStart = parseISO(selectedMonth + '-01');
+            const daysInMonth = getDaysInMonth(monthStart);
+            const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+            const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+            for (let i = firstDayIdx; i <= lastDayIdx; i++) {
+              staffHolidayMap[i + 1] = holiday.name;
+            }
+          }
+        });
+        staffHolidayDayMaps[staff.id] = staffHolidayMap;
+      });
+      
+      // Also prepare a global holiday map for summary row (any holiday affecting any staff)
+      let globalHolidayDayMap: Record<number, string> = {};
+      const allHolidayRanges = new Map<number, { name: string; startIdx: number; endIdx: number }>();
+      filteredStaff.forEach(staffMember => {
+        const staffHolidays = getHolidayRangesForStaff(staffMember.id);
+        staffHolidays.forEach(holiday => {
+          if (!allHolidayRanges.has(holiday.startIdx) || 
+              allHolidayRanges.get(holiday.startIdx)!.endIdx < holiday.endIdx) {
+            allHolidayRanges.set(holiday.startIdx, {
+              name: holiday.name,
+              startIdx: holiday.startIdx,
+              endIdx: holiday.endIdx
+            });
+          }
+        });
+      });
+      allHolidayRanges.forEach((holiday, startIdx) => {
+        for (let i = startIdx; i <= holiday.endIdx; i++) {
+          globalHolidayDayMap[i + 1] = holiday.name;
         }
       });
 
@@ -1123,6 +1202,13 @@ const StaffAttendanceReport: React.FC = () => {
             date.setDate(dayIdx + 1);
             const isSunday = date.getDay() === 0;
             if (isSunday) return '';
+            
+            // Check if this staff member is on holiday for this day
+            const staffHolidayMap = staffHolidayDayMaps[staff.id] || {};
+            if (staffHolidayMap[dayIdx + 1]) {
+              return 'H'; // Holiday indicator
+            }
+            
             const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx] || '-';
             const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
             const halfLeaveKey = `${staff.id}_${dateStr}`;
@@ -1150,16 +1236,23 @@ const StaffAttendanceReport: React.FC = () => {
           const isSunday = date.getDay() === 0;
           if (isSunday) return '';
           
-          // Check for holidays
-          if (holidayDayMap[dayIdx + 1]) return '';
+          // Check for holidays (using global map for summary)
+          if (globalHolidayDayMap[dayIdx + 1]) return '';
           
-          // Count absent and leave staff for this day
+          // Count absent and leave staff for this day (excluding those on holiday)
           let absentCount = 0;
           sortedStaff.forEach((staff) => {
-            const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
-            const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
-            if (status === 'A' || status === 'L') {
-              absentCount++;
+            // Check if this staff member is on holiday for this day
+            const staffHolidayMap = staffHolidayDayMaps[staff.id] || {};
+            const isOnHoliday = !!staffHolidayMap[dayIdx + 1];
+            
+            // Only count if not on holiday
+            if (!isOnHoliday) {
+              const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+              const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
+              if (status === 'A' || status === 'L') {
+                absentCount++;
+              }
             }
           });
           
@@ -1221,15 +1314,30 @@ const StaffAttendanceReport: React.FC = () => {
               data.cell.styles.textColor = [220, 38, 38];
             }
           }
-          // Style for holiday columns
-          if (data.column.index > 3) {
+          // Style for holiday columns (check per staff member)
+          if (data.column.index > 3 && data.row.section !== 'head') {
             const dayIdx = data.column.index - 3;
-            if (holidayDayMap[dayIdx + 1]) {
-              data.cell.styles.fillColor = [234, 247, 255];
-              data.cell.styles.textColor = [74, 108, 247];
-              if (data.row.section !== 'head') {
-                // Remove text from holiday cells
+            // Check if this is the summary row (last row)
+            const isSummaryRow = data.row.index === tableData.length - 1;
+            
+            if (isSummaryRow) {
+              // For summary row, use global holiday map
+              if (globalHolidayDayMap[dayIdx + 1]) {
+                data.cell.styles.fillColor = [234, 247, 255];
+                data.cell.styles.textColor = [74, 108, 247];
                 data.cell.text = [''];
+              }
+            } else {
+              // For regular rows, check staff-specific holidays
+              const staffRowIndex = data.row.index;
+              const staff = sortedStaff[staffRowIndex];
+              if (staff) {
+                const staffHolidayMap = staffHolidayDayMaps[staff.id] || {};
+                if (staffHolidayMap[dayIdx + 1]) {
+                  data.cell.styles.fillColor = [234, 247, 255];
+                  data.cell.styles.textColor = [74, 108, 247];
+                  data.cell.text = ['H']; // Show 'H' for holiday
+                }
               }
             }
           }
@@ -1750,114 +1858,188 @@ const StaffAttendanceReport: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStaff.map((staff, idx) => {
-                  let skipCols = 0;
-                  return (
-                  <tr key={staff.id}>
-                    <NarrowTd>{idx + 1}</NarrowTd>
-                    <NarrowTd>{staff.id}</NarrowTd>
-                    <StaffNameCell>{staff.name}</StaffNameCell>
-                    <Td style={{ textAlign: 'left', fontWeight: 600, color: '#666' }}>{staff.role}</Td>
-                    {Array.from({ length: daysInMonth }, (_, dayIdx) => {
-                      if (skipCols > 0) {
-                        skipCols--;
-                        return null;
+                {(() => {
+                  // Pre-compute holidays for each day to check if ALL staff have the same holiday
+                  const dayHolidayMap = new Map<number, { name: string; holidayId: number; startIdx: number; endIdx: number; allStaffHaveIt: boolean }>();
+                  
+                  for (let dayIdx = 0; dayIdx < daysInMonth; dayIdx++) {
+                    const holidaysForDay = new Map<string, { name: string; holidayId: number; startIdx: number; endIdx: number; staffCount: number }>();
+                    
+                    filteredStaff.forEach((staff, staffIdx) => {
+                      const staffHolidayRanges = getHolidayRangesForStaff(staff.id);
+                      const holidayForDay = staffHolidayRanges.find(h => 
+                        dayIdx >= h.startIdx && dayIdx <= h.endIdx
+                      );
+                      
+                      if (holidayForDay) {
+                        const holidayKey = `${holidayForDay.holidayId}-${holidayForDay.startIdx}-${holidayForDay.endIdx}`;
+                        if (!holidaysForDay.has(holidayKey)) {
+                          holidaysForDay.set(holidayKey, {
+                            name: holidayForDay.name,
+                            holidayId: holidayForDay.holidayId,
+                            startIdx: holidayForDay.startIdx,
+                            endIdx: holidayForDay.endIdx,
+                            staffCount: 0
+                          });
+                        }
+                        const holiday = holidaysForDay.get(holidayKey)!;
+                        holiday.staffCount++;
                       }
-                      // Check if this day is the start of a holiday range
-                      const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
-                      if (holiday) {
-                        if (idx === 0) {
-                          skipCols = holiday.endIdx - holiday.startIdx;
-                          const colSpan = holiday.endIdx - holiday.startIdx + 1;
-                          const key = `${holiday.name}-${holidays.find(hh => hh.name === holiday.name)?.start_date}`;
-                          const styleObj = holidayTextStyle[key] || { angle: -45, fontSize: '1em', maxWidth: '100px' };
-                          return (
-                            <SundayMergedCell
-                              key={`holiday-${holiday.name}-${dayIdx}`}
-                              rowSpan={filteredStaff.length}
-                              colSpan={colSpan}
-                              ref={el => { holidayCellRefs.current[key] = el; }}
-                              style={{
-                                background: isDark(theme) ? '#232a3b' : '#eaf7ff',
-                                color: '#4a6cf7',
-                                verticalAlign: 'middle',
-                                textAlign: 'center',
-                                position: 'relative',
-                                overflow: 'hidden',
-                              }}
-                            >
-                              {colSpan === 1 ? (
-                                <span
+                    });
+                    
+                    // Check if any holiday is shared by ALL staff
+                    for (const [holidayKey, holiday] of Array.from(holidaysForDay.entries())) {
+                      if (holiday.staffCount === filteredStaff.length && dayIdx === holiday.startIdx) {
+                        dayHolidayMap.set(dayIdx, {
+                          ...holiday,
+                          allStaffHaveIt: true
+                        });
+                        break;
+                      }
+                    }
+                  }
+                  
+                  return filteredStaff.map((staff, staffIdx) => {
+                    const staffHolidayRanges = getHolidayRangesForStaff(staff.id);
+                    
+                    return (
+                    <tr key={staff.id}>
+                      <NarrowTd>{staffIdx + 1}</NarrowTd>
+                      <NarrowTd>{staff.id}</NarrowTd>
+                      <StaffNameCell>{staff.name}</StaffNameCell>
+                      <Td style={{ textAlign: 'left', fontWeight: 600, color: '#666' }}>{staff.role}</Td>
+                      {Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                        // Check if this day is a Sunday first (Sundays take priority)
+                        const date = new Date(parseISO(selectedMonth + '-01'));
+                        date.setDate(dayIdx + 1);
+                        const isSunday = date.getDay() === 0;
+                        if (isSunday) {
+                          if (staffIdx === 0) {
+                            return (
+                                <SundayMergedCell
+                                  key={`sunday-${dayIdx}`}
+                                  rowSpan={filteredStaff.length}
                                   style={{
+                                    background: isDark(theme) ? '#232a3b' : '#ffeaea',
+                                    color: '#dc2626',
+                                    verticalAlign: 'middle',
+                                    textAlign: 'center',
                                     writingMode: 'vertical-rl',
                                     textOrientation: 'mixed',
-                                    fontSize: styleObj.fontSize,
-                                    fontWeight: 700,
-                                    letterSpacing: '0.15em',
-                                    color: '#4a6cf7',
-                                    display: 'inline-block',
-                                    maxWidth: styleObj.maxWidth,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
+                                    fontSize: '1.1rem',
+                                    letterSpacing: '0.2em',
                                   }}
                                 >
-                                  {holiday.name.toUpperCase()}
-                                </span>
-                              ) : (
-                                <AngledHolidayName
-                                  style={{
-                                    transform: `translate(-50%, -50%) rotate(${styleObj.angle}deg)` ,
-                                    fontSize: styleObj.fontSize,
-                                    left: '50%',
-                                    top: '50%',
-                                    maxWidth: styleObj.maxWidth,
-                                  }}
-                                >
-                                  {holiday.name.toUpperCase()}
-                                </AngledHolidayName>
-                              )}
-                            </SundayMergedCell>
-                          );
-                        } else {
-                          skipCols = holiday.endIdx - holiday.startIdx;
-                          return null;
+                                  SUNDAY
+                                </SundayMergedCell>
+                            );
+                          } else {
+                            return null;
+                          }
                         }
-                      }
-                      // Check if this day is a Sunday
-                      const date = new Date(parseISO(selectedMonth + '-01'));
-                      date.setDate(dayIdx + 1);
-                      const isSunday = date.getDay() === 0;
-                      if (isSunday) {
-                        if (idx === 0) {
-                          return (
+                        
+                        // Check if ALL staff have the same holiday on this day
+                        const allStaffHoliday = dayHolidayMap.get(dayIdx);
+                        if (allStaffHoliday && allStaffHoliday.allStaffHaveIt) {
+                          // Only render on the start day and first staff member
+                          if (dayIdx === allStaffHoliday.startIdx && staffIdx === 0) {
+                            const colSpan = allStaffHoliday.endIdx - allStaffHoliday.startIdx + 1;
+                            const rowSpan = filteredStaff.length;
+                            const key = `${allStaffHoliday.name}-${allStaffHoliday.holidayId}-all`;
+                            const styleObj = holidayTextStyle[key] || { angle: -45, fontSize: '1em', maxWidth: '100px' };
+                            
+                            return (
                               <SundayMergedCell
-                                key={`sunday-${dayIdx}`}
-                                rowSpan={filteredStaff.length}
+                                key={`holiday-all-${allStaffHoliday.name}-${dayIdx}`}
+                                colSpan={colSpan}
+                                rowSpan={rowSpan}
+                                ref={el => { if (el) holidayCellRefs.current[key] = el; }}
                                 style={{
-                                  background: isDark(theme) ? '#232a3b' : '#ffeaea',
-                                  color: '#dc2626',
+                                  background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                                  color: '#4a6cf7',
                                   verticalAlign: 'middle',
                                   textAlign: 'center',
-                                  writingMode: 'vertical-rl',
-                                  textOrientation: 'mixed',
-                                  fontSize: '1.1rem',
-                                  letterSpacing: '0.2em',
+                                  position: 'relative',
+                                  overflow: 'hidden',
                                 }}
                               >
-                                SUNDAY
+                                {colSpan === 1 ? (
+                                  <span
+                                    style={{
+                                      writingMode: 'vertical-rl',
+                                      textOrientation: 'mixed',
+                                      fontSize: styleObj.fontSize,
+                                      fontWeight: 700,
+                                      letterSpacing: '0.15em',
+                                      color: '#4a6cf7',
+                                      display: 'inline-block',
+                                      maxWidth: styleObj.maxWidth,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {allStaffHoliday.name.toUpperCase()}
+                                  </span>
+                                ) : (
+                                  <AngledHolidayName
+                                    style={{
+                                      transform: `translate(-50%, -50%) rotate(${styleObj.angle}deg)` ,
+                                      fontSize: styleObj.fontSize,
+                                      left: '50%',
+                                      top: '50%',
+                                      maxWidth: styleObj.maxWidth,
+                                    }}
+                                  >
+                                    {allStaffHoliday.name.toUpperCase()}
+                                  </AngledHolidayName>
+                                )}
                               </SundayMergedCell>
-                          );
-                        } else {
-                          return null;
+                            );
+                          } else if (dayIdx >= allStaffHoliday.startIdx && dayIdx <= allStaffHoliday.endIdx) {
+                            // Skip columns for other days in the range
+                            return null;
+                          }
                         }
-                      }
+                        
+                        // Check if this staff member is on holiday for this day (partial holiday)
+                        const holidayForDay = staffHolidayRanges.find(h => 
+                          dayIdx >= h.startIdx && dayIdx <= h.endIdx
+                        );
+                        
+                        // If on holiday, show blocking cross instead of status
+                        if (holidayForDay) {
+                          return (
+                            <StatusCell 
+                              key={dayIdx} 
+                              status="H"
+                              style={{ 
+                                background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                                color: '#dc2626',
+                                fontWeight: 700,
+                                position: 'relative',
+                                cursor: 'help'
+                              }}
+                              title={holidayForDay.name}
+                            >
+                              <Block 
+                                sx={{ 
+                                  fontSize: '1.5rem', 
+                                  color: '#dc2626',
+                                  display: 'block',
+                                  margin: '0 auto'
+                                }} 
+                              />
+                            </StatusCell>
+                          );
+                        }
+                      
                       // Otherwise, render attendance status
-                      const staff = filteredStaff[idx];
-                      const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+                      const staffMember = filteredStaff[staffIdx];
+                      const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staffMember.id);
                       const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx] || '-';
                       const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-                      const halfLeaveKey = staff ? `${staff.id}_${dateStr}` : '';
+                      const halfLeaveKey = staffMember ? `${staffMember.id}_${dateStr}` : '';
                       const halfLeave = halfLeaveKey ? halfLeavesMap.get(halfLeaveKey) : null;
                       
                       return (
@@ -1869,9 +2051,9 @@ const StaffAttendanceReport: React.FC = () => {
                           )}
                           <span
                             ref={el => {
-                              if (openDropdown && openDropdown.row === idx && openDropdown.col === dayIdx && el) {
+                              if (openDropdown && openDropdown.row === staffIdx && openDropdown.col === dayIdx && el) {
                                 if (openDropdown.rect == null) {
-                                  setOpenDropdown({ row: idx, col: dayIdx, rect: el.getBoundingClientRect() });
+                                  setOpenDropdown({ row: staffIdx, col: dayIdx, rect: el.getBoundingClientRect() });
                                 }
                               }
                             }}
@@ -1894,7 +2076,7 @@ const StaffAttendanceReport: React.FC = () => {
                                 const shouldPositionAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
                                 
                                 setOpenDropdown({ 
-                                  row: idx, 
+                                  row: staffIdx, 
                                   col: dayIdx, 
                                   rect,
                                   shouldPositionAbove
@@ -1908,7 +2090,7 @@ const StaffAttendanceReport: React.FC = () => {
                               {status}
                             </StatusBlock>
                           </span>
-                          {openDropdown && openDropdown.rect && openDropdown.row === idx && openDropdown.col === dayIdx && 
+                          {openDropdown && openDropdown.rect && openDropdown.row === staffIdx && openDropdown.col === dayIdx && 
                             ReactDOM.createPortal(
                               <StatusDropdown
                                 ref={dropdownRef}
@@ -1926,7 +2108,7 @@ const StaffAttendanceReport: React.FC = () => {
                                     color={opt.color}
                                     onClick={() => {
                                       if (isUpdatingStatus) return;
-                                      handleStatusChange(opt, idx, dayIdx, staff);
+                                      handleStatusChange(opt, staffIdx, dayIdx, staffMember);
                                     }}
                                     style={{ 
                                       opacity: isUpdatingStatus ? 0.5 : 1,
@@ -1947,7 +2129,7 @@ const StaffAttendanceReport: React.FC = () => {
                                   }}
                                   onClick={() => {
                                     if (isUpdatingStatus) return;
-                                    handleStatusChange(deleteOption, idx, dayIdx, staff);
+                                    handleStatusChange(deleteOption, staffIdx, dayIdx, staffMember);
                                   }}
                                 >
                                   {deleteOption.label}
@@ -1960,13 +2142,31 @@ const StaffAttendanceReport: React.FC = () => {
                       );
                     })}
                   </tr>
-                  );
-                })}
+                    );
+                  });
+                })()}
                 {/* Summary row showing daily absent and leave counts */}
                 <SummaryRow>
                   <SummaryLabelCell colSpan={4}>Absents/Leaves:</SummaryLabelCell>
                   {(() => {
                     let skipCols = 0;
+                    // Get all unique holiday ranges across all staff (computed once before the loop)
+                    const allHolidayRanges = new Map<number, { name: string; startIdx: number; endIdx: number }>();
+                    filteredStaff.forEach(staffMember => {
+                      const staffHolidays = getHolidayRangesForStaff(staffMember.id);
+                      staffHolidays.forEach(holiday => {
+                        // Use startIdx as key to avoid duplicates
+                        if (!allHolidayRanges.has(holiday.startIdx) || 
+                            allHolidayRanges.get(holiday.startIdx)!.endIdx < holiday.endIdx) {
+                          allHolidayRanges.set(holiday.startIdx, {
+                            name: holiday.name,
+                            startIdx: holiday.startIdx,
+                            endIdx: holiday.endIdx
+                          });
+                        }
+                      });
+                    });
+                    
                     return Array.from({ length: daysInMonth }, (_, dayIdx) => {
                       if (skipCols > 0) {
                         skipCols--;
@@ -1977,8 +2177,8 @@ const StaffAttendanceReport: React.FC = () => {
                       date.setDate(dayIdx + 1);
                       const isSunday = date.getDay() === 0;
                       
-                      // Check if this day is the start of a holiday range
-                      const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
+                      // Check if this day is the start of any holiday range (for any staff)
+                      const holiday = allHolidayRanges.get(dayIdx);
                       if (holiday) {
                         skipCols = holiday.endIdx - holiday.startIdx;
                         const colSpan = holiday.endIdx - holiday.startIdx + 1;
@@ -2007,13 +2207,22 @@ const StaffAttendanceReport: React.FC = () => {
                         );
                       }
                       
-                      // Count absent and leave staff for this day
+                      // Count absent and leave staff for this day (excluding those on holiday)
                       let absentCount = 0;
-                      filteredStaff.forEach((staff) => {
-                        const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
-                        const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
-                        if (status === 'A' || status === 'L') {
-                          absentCount++;
+                      filteredStaff.forEach((staffMember) => {
+                        // Check if this staff member is on holiday for this day
+                        const staffHolidays = getHolidayRangesForStaff(staffMember.id);
+                        const isOnHoliday = staffHolidays.some(h => 
+                          dayIdx >= h.startIdx && dayIdx <= h.endIdx
+                        );
+                        
+                        // Only count if not on holiday
+                        if (!isOnHoliday) {
+                          const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staffMember.id);
+                          const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
+                          if (status === 'A' || status === 'L') {
+                            absentCount++;
+                          }
                         }
                       });
                       

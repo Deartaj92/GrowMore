@@ -108,24 +108,29 @@ const MobileStaffList = styled.div`
   padding-bottom: 1rem;
 `;
 
-const MobileStaffCard = styled.div`
+const MobileStaffCard = styled.div<{ $isOnHoliday?: boolean }>`
   display: flex;
   align-items: center;
-  background: ${({ theme }: { theme: any }) => theme.CARD};
+  background: ${({ theme, $isOnHoliday }: { theme: any; $isOnHoliday?: boolean }) => 
+    $isOnHoliday ? `${theme.CARD}80` : theme.CARD};
   border-radius: 12px;
   box-shadow: ${({ theme }: { theme: any }) => theme.SHADOW};
-  border: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
+  border: 1px solid ${({ theme, $isOnHoliday }: { theme: any; $isOnHoliday?: boolean }) => 
+    $isOnHoliday ? `${theme.BORDER}60` : theme.BORDER};
   padding: 0.5rem 0.7rem;
   gap: 0.7rem;
   font-size: 0.93rem;
   width: 100%;
   min-width: 320px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
-  cursor: pointer;
+  cursor: ${({ $isOnHoliday }) => $isOnHoliday ? 'not-allowed' : 'pointer'};
+  opacity: ${({ $isOnHoliday }) => $isOnHoliday ? 0.6 : 1};
   
   &:hover {
-    background: ${({ theme }: { theme: any }) => theme.ACCENT}25;
-    border-color: ${({ theme }: { theme: any }) => theme.ACCENT}40;
+    background: ${({ theme, $isOnHoliday }: { theme: any; $isOnHoliday?: boolean }) => 
+      $isOnHoliday ? `${theme.CARD}80` : `${theme.ACCENT}25`};
+    border-color: ${({ theme, $isOnHoliday }: { theme: any; $isOnHoliday?: boolean }) => 
+      $isOnHoliday ? `${theme.BORDER}60` : `${theme.ACCENT}40`};
   }
 `;
 
@@ -299,6 +304,7 @@ interface StaffMember {
   status?: 'present' | 'absent' | 'leave' | 'late';
   picture_url?: string;
   remarks?: string;
+  isOnHoliday?: boolean;
 }
 
 // Add a hook to detect mobile
@@ -490,6 +496,9 @@ const MarkStaffAttendance: React.FC = () => {
 
   const didSetDefaultStatus = useRef(false);
   const didAutoSelect = useRef(false);
+  const lastCheckedDate = useRef<string | null>(null);
+  const isCheckingHoliday = useRef(false);
+  const isFetchingStaff = useRef(false);
 
   useEffect(() => {
     if (!didSetDefaultStatus.current && staffMembers.length > 0) {
@@ -614,39 +623,25 @@ const MarkStaffAttendance: React.FC = () => {
     if (!date || !user?.school_id || !sessionId) {
       return;
     }
+    // Prevent multiple simultaneous calls using ref (state is async)
+    if (isFetchingStaff.current) {
+      return;
+    }
+    isFetchingStaff.current = true;
     setLoadingStaff(true);
+    isCheckingHoliday.current = true;
     try {
-      // First check if it's a holiday or Sunday
+      // First check if it's a Sunday
       if (isSunday(parseISO(date))) {
         toast.showToast('Selected date is a Sunday', 'error');
         setStaffMembers([]);
         setLoadingStaff(false);
+        isCheckingHoliday.current = false;
+        isFetchingStaff.current = false;
         return;
       }
 
-      // Check for global holidays
-      const { data: globalHolidays } = await supabase
-        .from('holidays')
-        .select('*')
-        .eq('school_id', user.school_id)
-        .lte('start_date', date)
-        .gte('end_date', date);
-
-      // Filter out holidays that have class assignments (keep only global holidays)
-      const globalOnlyHolidays = globalHolidays?.filter(holiday => {
-        // This is a simplified check - in a real implementation you'd check holiday_classes table
-        return true; // For now, treat all holidays as global
-      }) || [];
-
-      if (globalOnlyHolidays && globalOnlyHolidays.length > 0) {
-        const holiday = globalOnlyHolidays[0];
-        toast.showToast(`${date} is a school-wide holiday: ${holiday.name}`, 'success');
-        setStaffMembers([]);
-        setLoadingStaff(false);
-        return;
-      }
-
-      // Fetch all staff members
+      // Fetch all staff members first
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('id, name, role, picture_url')
@@ -656,6 +651,101 @@ const MarkStaffAttendance: React.FC = () => {
         throw staffError;
       }
 
+      if (!staffData || staffData.length === 0) {
+        toast.showToast('No staff members found', 'success');
+        setStaffMembers([]);
+        setLoadingStaff(false);
+        isCheckingHoliday.current = false;
+        isFetchingStaff.current = false;
+        return;
+      }
+
+      // Check for holidays - get all holidays for the date range
+      const { data: allHolidays } = await supabase
+        .from('holidays')
+        .select('id, name, start_date, end_date')
+        .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
+        .lte('start_date', date)
+        .gte('end_date', date);
+
+      // Get holiday assignments if holidays exist
+      let holidayStaffAssignments: any[] = [];
+      let globalHolidays: any[] = [];
+      
+      if (allHolidays && allHolidays.length > 0) {
+        const holidayIds = allHolidays.map(h => h.id);
+        
+        // Get holiday class assignments (to check for global holidays)
+        const { data: allHolidayClassAssignments } = await supabase
+          .from('holiday_classes')
+          .select('holiday_id, school_id')
+          .in('holiday_id', holidayIds);
+        
+        // Filter class assignments: include if school_id is null/undefined (legacy) or matches user's school_id
+        const holidayClassAssignments = (allHolidayClassAssignments || []).filter(a => {
+          return a.school_id === null || a.school_id === undefined || Number(a.school_id) === Number(user.school_id);
+        });
+
+        // Get holiday staff assignments
+        const { data: staffAssignments } = await supabase
+          .from('holiday_staff')
+          .select('holiday_id, staff_id')
+          .in('holiday_id', holidayIds);
+        
+        holidayStaffAssignments = staffAssignments || [];
+
+        // Identify global holidays (no class assignments and no staff assignments)
+        globalHolidays = allHolidays.filter(holiday => {
+          const hasClassAssignments = holidayClassAssignments?.some(a => a.holiday_id === holiday.id) || false;
+          const hasStaffAssignments = holidayStaffAssignments?.some(a => a.holiday_id === holiday.id) || false;
+          return !hasClassAssignments && !hasStaffAssignments;
+        });
+      }
+
+      // Filter staff members: exclude those who are on holiday
+      const staffOnHoliday = new Set<number>();
+      const holidayNames: string[] = [];
+
+      // Check each staff member against holiday assignments
+      staffData.forEach((staff: any) => {
+        let isOnHoliday = false;
+        let holidayName = '';
+
+        // Check if staff is in a global holiday
+        if (globalHolidays.length > 0) {
+          isOnHoliday = true;
+          holidayName = globalHolidays[0].name; // Use first global holiday name
+        } else {
+          // Check if staff is specifically assigned to any holiday
+          const staffHolidayAssignment = holidayStaffAssignments.find(
+            a => a.staff_id === staff.id
+          );
+          if (staffHolidayAssignment) {
+            const holiday = allHolidays?.find(h => h.id === staffHolidayAssignment.holiday_id);
+            if (holiday) {
+              isOnHoliday = true;
+              holidayName = holiday.name;
+            }
+          }
+        }
+
+        if (isOnHoliday) {
+          staffOnHoliday.add(staff.id);
+          if (holidayName && !holidayNames.includes(holidayName)) {
+            holidayNames.push(holidayName);
+          }
+        }
+      });
+
+      // Keep all staff members but mark which ones are on holiday
+      // If ALL staff are on holiday, show toast
+      if (staffOnHoliday.size === staffData.length && staffOnHoliday.size > 0) {
+        const holidayMessage = holidayNames.length > 0 
+          ? `Selected date is a holiday: ${holidayNames.join(', ')}`
+          : 'Selected date is a holiday';
+        toast.showToast(holidayMessage, 'error');
+      }
 
       // Fetch attendance records for this date
       const { data: attendanceData, error: attendanceError } = await supabase
@@ -669,14 +759,15 @@ const MarkStaffAttendance: React.FC = () => {
         // Don't throw error for attendance records as table might not exist yet
       }
 
-      // Merge attendance status into staff
+      // Merge attendance status into all staff (including those on holiday)
       const attendanceMap = new Map();
       (attendanceData || []).forEach((rec: any) => {
         attendanceMap.set(rec.staff_id, { status: rec.status, remarks: rec.remarks });
       });
       
-      const formattedStaff = (staffData || []).map((staff: any) => {
+      const formattedStaff = staffData.map((staff: any) => {
         const att = attendanceMap.get(staff.id);
+        const isOnHoliday = staffOnHoliday.has(staff.id);
         return {
           id: staff.id,
           name: staff.name,
@@ -684,21 +775,27 @@ const MarkStaffAttendance: React.FC = () => {
           status: att ? att.status : undefined,
           picture_url: staff.picture_url,
           remarks: att ? att.remarks || '' : '',
+          isOnHoliday: isOnHoliday,
         };
-      }).sort((a, b) => a.id - b.id);
+      }).sort((a, b) => {
+        // First, sort by holiday status (non-holiday first)
+        if (a.isOnHoliday !== b.isOnHoliday) {
+          return a.isOnHoliday ? 1 : -1;
+        }
+        // Then sort by ID
+        return a.id - b.id;
+      });
       
       setStaffMembers(formattedStaff);
-      if (formattedStaff.length === 0) {
-        toast.showToast('No staff members found', 'success');
-      } else {
-      }
       setHasAttendanceRecords((attendanceData || []).length > 0);
     } catch (error) {
       toast.showToast('Failed to fetch staff', 'error');
     } finally {
       setLoadingStaff(false);
+      isCheckingHoliday.current = false;
+      isFetchingStaff.current = false;
     }
-  }, [date, user?.school_id, sessionId, toast]);
+  }, [date, user?.school_id, sessionId]);
 
   const handleStatusChange = (staffId: number, status: 'present' | 'absent' | 'leave' | 'late') => {
     setStaffMembers(prev =>
@@ -725,24 +822,33 @@ const MarkStaffAttendance: React.FC = () => {
   );
 
   useEffect(() => {
-    if (date && user?.school_id && sessionId) {
+    if (date && user?.school_id && sessionId && !isFetchingStaff.current) {
       fetchStaff();
     }
   }, [date, user?.school_id, sessionId, fetchStaff]);
 
-  const allChecked = filteredStaff.length > 0 && filteredStaff.every(s => selectedRows.includes(s.id));
+  // Only consider staff who are not on holiday for "select all" functionality
+  const availableStaffForSelection = filteredStaff.filter(s => !s.isOnHoliday);
+  const allChecked = availableStaffForSelection.length > 0 && availableStaffForSelection.every(s => selectedRows.includes(s.id));
   
   const handleToggleSelectAll = () => {
+    // Only select/deselect staff who are not on holiday
+    const availableStaff = filteredStaff.filter(s => !s.isOnHoliday);
     if (allChecked) {
-      setSelectedRows(prev => prev.filter(id => !filteredStaff.some(s => s.id === id)));
-      setStaffMembers(prev => prev.map(s => filteredStaff.some(f => f.id === s.id) ? { ...s, status: undefined } : s));
+      setSelectedRows(prev => prev.filter(id => !availableStaff.some(s => s.id === id)));
+      setStaffMembers(prev => prev.map(s => availableStaff.some(f => f.id === s.id) ? { ...s, status: undefined } : s));
     } else {
-      setSelectedRows(prev => Array.from(new Set([...prev, ...filteredStaff.map(s => s.id)])));
-      setStaffMembers(prev => prev.map(s => filteredStaff.some(f => f.id === s.id) ? { ...s, status: 'present' } : s));
+      setSelectedRows(prev => Array.from(new Set([...prev, ...availableStaff.map(s => s.id)])));
+      setStaffMembers(prev => prev.map(s => availableStaff.some(f => f.id === s.id) ? { ...s, status: 'present' } : s));
     }
   };
 
   const handleSelectRow = (staffId: number) => {
+    const staff = staffMembers.find(s => s.id === staffId);
+    // Don't allow selection for staff on holiday
+    if (staff?.isOnHoliday) {
+      return;
+    }
     setSelectedRows(prev => {
       if (prev.includes(staffId)) {
         setStaffMembers(staff => staff.map(s => s.id === staffId ? { ...s, status: undefined } : s));
@@ -898,6 +1004,13 @@ const MarkStaffAttendance: React.FC = () => {
   useEffect(() => {
     const FooterContent = React.memo(() => {
       const themeObj = theme === 'dark' ? darkTheme : lightTheme;
+      // Check if all staff are on holiday
+      const allStaffOnHoliday = staffMembers.length > 0 && staffMembers.every(s => s.isOnHoliday);
+      
+      // Don't show footer if all staff are on holiday
+      if (allStaffOnHoliday) {
+        return null;
+      }
       
       return (
         <div style={{ 
@@ -942,7 +1055,7 @@ const MarkStaffAttendance: React.FC = () => {
               first
               onClick={() => handleBulkMark('present')}
               style={{ minWidth: 70, padding: '0.3rem 0.6em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 28, justifyContent: 'center' }}
-              disabled={staffMembers.length === 0 || selectedRows.length === 0}
+              disabled={allStaffOnHoliday || staffMembers.length === 0 || selectedRows.length === 0}
             >
               {!isMobile && <CheckCircle style={{ fontSize: 16, marginRight: 4 }} />}
               All Present
@@ -951,7 +1064,7 @@ const MarkStaffAttendance: React.FC = () => {
               theme={themeObj}
               onClick={() => handleBulkMark('absent')}
               style={{ minWidth: 70, padding: '0.3rem 0.6em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 28, justifyContent: 'center' }}
-              disabled={staffMembers.length === 0 || selectedRows.length === 0}
+              disabled={allStaffOnHoliday || staffMembers.length === 0 || selectedRows.length === 0}
             >
               {!isMobile && <Cancel style={{ fontSize: 16, marginRight: 4 }} />}
               All Absent
@@ -959,7 +1072,7 @@ const MarkStaffAttendance: React.FC = () => {
             <SegmentedButton
               theme={themeObj}
               onClick={handleDeleteClick}
-              disabled={staffMembers.length === 0 || selectedRows.length === 0 || !date || deleting}
+              disabled={allStaffOnHoliday || staffMembers.length === 0 || selectedRows.length === 0 || !date || deleting}
               style={{ minWidth: 90, padding: '0.3rem 0.6em', fontSize: '0.9em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 28, opacity: 0.93 }}
             >
               {deleting ? <Spinner /> : <><Delete style={{ fontSize: 16, marginRight: 4 }} /> Delete</>}
@@ -968,7 +1081,7 @@ const MarkStaffAttendance: React.FC = () => {
               theme={themeObj}
               last
               onClick={handleSave}
-              disabled={staffMembers.length === 0 || selectedRows.length === 0 || saving}
+              disabled={allStaffOnHoliday || staffMembers.length === 0 || selectedRows.length === 0 || saving}
               style={{ minWidth: 90, padding: '0.3rem 0.6em', fontSize: '0.9em', color: '#fff', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, minHeight: 28, opacity: 0.93 }}
             >
               {saving ? <Spinner /> : <><Save style={{ fontSize: 16, marginRight: 4 }} /> Save</>}
@@ -978,9 +1091,13 @@ const MarkStaffAttendance: React.FC = () => {
       );
     });
 
+    const footerContent = <FooterContent />;
+    // Check if footer should be visible (not all staff on holiday)
+    const allStaffOnHoliday = staffMembers.length > 0 && staffMembers.every(s => s.isOnHoliday);
+    
     setFooterContent({
-      visible: true,
-      content: <FooterContent />
+      visible: !allStaffOnHoliday,
+      content: footerContent
     });
 
     // Cleanup on unmount
@@ -993,6 +1110,7 @@ const MarkStaffAttendance: React.FC = () => {
     absentCount,
     leaveCount,
     lateCount,
+    staffMembers,
     selectedRows.length,
     date,
     deleting,
@@ -1108,12 +1226,14 @@ const MarkStaffAttendance: React.FC = () => {
           ) : (
             filteredStaff.map((staff, idx) => {
               const isSelected = selectedRows.includes(staff.id);
+              const isOnHoliday = staff.isOnHoliday || false;
               return (
-                <MobileStaffCard key={staff.id}>
+                <MobileStaffCard key={staff.id} $isOnHoliday={isOnHoliday}>
                   <SerialCheckbox
                     className={isSelected ? 'checked' : ''}
-                    onClick={() => handleSelectRow(staff.id)}
-                    title={isSelected ? 'Deselect staff' : 'Select staff'}
+                    onClick={() => !isOnHoliday && handleSelectRow(staff.id)}
+                    title={isOnHoliday ? 'On Holiday' : (isSelected ? 'Deselect staff' : 'Select staff')}
+                    style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                   >
                     {idx + 1}
                   </SerialCheckbox>
@@ -1138,44 +1258,52 @@ const MarkStaffAttendance: React.FC = () => {
                     )}
                   </MobileAvatar>
                   <NameBlock>
-                    <StaffName>{staff.name}</StaffName>
-                    <StaffRole>{staff.role}</StaffRole>
+                    <StaffName style={{ opacity: isOnHoliday ? 0.6 : 1 }}>
+                      {staff.name}
+                      {isOnHoliday && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#f59e42', fontWeight: 600 }}>(Holiday)</span>}
+                    </StaffName>
+                    <StaffRole style={{ opacity: isOnHoliday ? 0.6 : 1 }}>{staff.role}</StaffRole>
                   </NameBlock>
                   {isMobile ? (
                     <MobileStatusGrid>
                       <EnhancedStatusButton
                         $active={staff.status === 'present'}
                         $color="#16a34a"
-                        onClick={() => handleStatusChange(staff.id, 'present')}
+                        onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'present')}
+                        style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                       >
                         P
                       </EnhancedStatusButton>
                       <EnhancedStatusButton
                         $active={staff.status === 'absent'}
                         $color="#dc2626"
-                        onClick={() => handleStatusChange(staff.id, 'absent')}
+                        onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'absent')}
+                        style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                       >
                         A
                       </EnhancedStatusButton>
                       <EnhancedStatusButton
                         $active={staff.status === 'leave'}
                         $color="#4a6cf7"
-                        onClick={() => handleStatusChange(staff.id, 'leave')}
+                        onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'leave')}
+                        style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                       >
                         L
                       </EnhancedStatusButton>
                       <EnhancedStatusButton
                         $active={staff.status === 'late'}
                         $color="#f59e42"
-                        onClick={() => handleStatusChange(staff.id, 'late')}
+                        onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'late')}
+                        style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                       >
                         Lt
                       </EnhancedStatusButton>
                       <input
                         type="text"
                         value={staff.remarks || ''}
-                        onChange={e => handleRemarksChange(staff.id, e.target.value)}
+                        onChange={e => !isOnHoliday && handleRemarksChange(staff.id, e.target.value)}
                         placeholder="Remarks"
+                        disabled={isOnHoliday}
                         style={{
                           marginTop: '0.3rem',
                           padding: '0.2rem 0.4rem',
@@ -1185,7 +1313,8 @@ const MarkStaffAttendance: React.FC = () => {
                           background: 'rgba(255,255,255,0.07)',
                           color: '#fff',
                           outline: 'none',
-                          gridColumn: '1 / -1'
+                          gridColumn: '1 / -1',
+                          opacity: isOnHoliday ? 0.5 : 1
                         }}
                       />
                     </MobileStatusGrid>
@@ -1194,8 +1323,9 @@ const MarkStaffAttendance: React.FC = () => {
                       <input
                         type="text"
                         value={staff.remarks || ''}
-                        onChange={e => handleRemarksChange(staff.id, e.target.value)}
+                        onChange={e => !isOnHoliday && handleRemarksChange(staff.id, e.target.value)}
                         placeholder="Remarks"
+                        disabled={isOnHoliday}
                         style={{
                           marginRight: '1rem',
                           padding: '0.4rem 0.7rem',
@@ -1207,34 +1337,39 @@ const MarkStaffAttendance: React.FC = () => {
                           background: 'rgba(255,255,255,0.07)',
                           color: '#fff',
                           outline: 'none',
+                          opacity: isOnHoliday ? 0.5 : 1
                         }}
                       />
                       <DesktopStatusRow>
                         <DesktopStatusButton
                           $active={staff.status === 'present'}
                           $color="#16a34a"
-                          onClick={() => handleStatusChange(staff.id, 'present')}
+                          onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'present')}
+                          style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                         >
                           Present
                         </DesktopStatusButton>
                         <DesktopStatusButton
                           $active={staff.status === 'absent'}
                           $color="#dc2626"
-                          onClick={() => handleStatusChange(staff.id, 'absent')}
+                          onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'absent')}
+                          style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                         >
                           Absent
                         </DesktopStatusButton>
                         <DesktopStatusButton
                           $active={staff.status === 'leave'}
                           $color="#4a6cf7"
-                          onClick={() => handleStatusChange(staff.id, 'leave')}
+                          onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'leave')}
+                          style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                         >
                           Leave
                         </DesktopStatusButton>
                         <DesktopStatusButton
                           $active={staff.status === 'late'}
                           $color="#f59e42"
-                          onClick={() => handleStatusChange(staff.id, 'late')}
+                          onClick={() => !isOnHoliday && handleStatusChange(staff.id, 'late')}
+                          style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                         >
                           Late
                         </DesktopStatusButton>

@@ -1734,41 +1734,107 @@ const MarkAttendance: React.FC = () => {
         return;
       }
 
-      // Check for holidays (simplified approach)
+      // Check for holidays - similar to how Sundays are handled
       // First get all holidays for the date range
       const { data: allHolidays } = await supabase
         .from('holidays')
-        .select('*')
+        .select('id, name, start_date, end_date')
         .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
         .lte('start_date', date)
         .gte('end_date', date);
 
       if (allHolidays && allHolidays.length > 0) {
         // Get holiday assignments for these holidays
         const holidayIds = allHolidays.map(h => h.id);
-        const { data: holidayAssignments } = await supabase
+        const selectedClassId = String(selectedClass);
+        
+        // Get ALL holiday assignments for these holidays
+        // Note: Some assignments may have null school_id (legacy data), so we fetch all and filter manually
+        const { data: allAssignmentsNoFilter } = await supabase
           .from('holiday_classes')
-          .select('holiday_id, class_id, section_id')
+          .select('holiday_id, class_id, section_id, school_id')
           .in('holiday_id', holidayIds);
+        
+        // Filter assignments: include if school_id is null/undefined (legacy) or matches user's school_id
+        const finalAssignments = (allAssignmentsNoFilter || []).filter(a => {
+          return a.school_id === null || a.school_id === undefined || Number(a.school_id) === Number(user.school_id);
+        });
 
         // Check if any holiday applies to this class/section
-        const isHoliday = allHolidays.some(holiday => {
-          const assignments = holidayAssignments?.filter(a => a.holiday_id === holiday.id) || [];
+        const applicableHoliday = allHolidays.find(holiday => {
+          // Get ALL assignments for this holiday (across all classes)
+          const allAssignmentsForHoliday = finalAssignments.filter(a => a.holiday_id === holiday.id);
           
-          // Global holiday (no assignments)
-          if (assignments.length === 0) return true;
+          // CRITICAL: If holiday has no assignments at all, it does NOT apply to any class
+          // Only holidays with explicit class assignments apply
+          if (allAssignmentsForHoliday.length === 0) {
+            return false;
+          }
           
-          // Class-specific holiday (no section specified)
-          if (assignments.some(a => a.class_id === selectedClass && !a.section_id)) return true;
+          // Holiday has assignments - check if any are for THIS specific class
+          const assignmentsForThisClass = allAssignmentsForHoliday.filter(a => 
+            String(a.class_id) === selectedClassId
+          );
           
-          // Section-specific holiday
-          if (hasSections && assignments.some(a => a.class_id === selectedClass && a.section_id === selectedSection)) return true;
+          // CRITICAL: If no assignments for this class, holiday does NOT apply to this class
+          if (assignmentsForThisClass.length === 0) {
+            return false;
+          }
           
+          // We have assignments for this class - now check section logic
+          
+          // Handle non-sectioned classes (has_sections === false)
+          if (!hasSections) {
+            // For non-sectioned classes, only class-wide assignments (section_id is null) apply
+            const classWideAssignments = assignmentsForThisClass.filter(a => 
+              a.section_id === null || 
+              a.section_id === undefined
+            );
+            // Only block if there's a class-wide assignment for this non-sectioned class
+            return classWideAssignments.length > 0;
+          }
+          
+          // Handle sectioned classes (has_sections === true)
+          // Separate class-wide and section-specific assignments
+          const classWideAssignments = assignmentsForThisClass.filter(a => 
+            a.section_id === null || 
+            a.section_id === undefined
+          );
+          const sectionSpecificAssignments = assignmentsForThisClass.filter(a => 
+            a.section_id !== null && 
+            a.section_id !== undefined
+          );
+          
+          // If there are section-specific assignments, holiday ONLY applies to those sections
+          if (sectionSpecificAssignments.length > 0) {
+            // Section-specific holidays require a section to be selected
+            if (!selectedSection) {
+              return false;
+            }
+            
+            // Check if the selected section matches any section-specific assignment
+            const selectedSectionStr = String(selectedSection);
+            const sectionMatches = sectionSpecificAssignments.some(a => {
+              return String(a.section_id) === selectedSectionStr;
+            });
+            
+            // Only block if the selected section matches
+            return sectionMatches;
+          }
+          
+          // If no section-specific assignments, check for class-wide assignment
+          // Class-wide means holiday applies to ALL sections of this class
+          if (classWideAssignments.length > 0) {
+            return true;
+          }
+          
+          // No matching assignments (shouldn't happen, but safety check)
           return false;
         });
 
-        if (isHoliday) {
-          toast.showToast('Selected date is a holiday', 'error');
+        if (applicableHoliday) {
+          toast.showToast(`Selected date is a holiday: ${applicableHoliday.name}`, 'error');
           setStudents([]);
           setLoadingStudents(false);
           return;

@@ -66,6 +66,7 @@ import HomeworkTab from './components/HomeworkTab/HomeworkTab';
 import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAttendanceTab';
 import AccountsTab from './components/AccountsTab/AccountsTab';
 import { Box } from '@mui/material';
+import { Assessment, Groups, Payment, PersonAdd, BarChart, People, AttachMoney, AccountBalanceWallet } from '@mui/icons-material';
 
 // TypeScript declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -1740,7 +1741,35 @@ const Dashboard: React.FC = () => {
     fetchSchoolName();
   }, [user?.school_id]);
 
-  // Set footer content with real-time clock
+  // Set footer content with real-time clock and shortcut buttons
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
+  
+  // Add style to ensure no transitions on footer buttons
+  useEffect(() => {
+    const styleId = 'footer-buttons-no-transition';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .footer-icon-button,
+        .footer-icon-button *,
+        .footer-icon-button svg,
+        .footer-icon-button .MuiSvgIcon-root {
+          transition: none !important;
+          -webkit-transition: none !important;
+          -moz-transition: none !important;
+          -o-transition: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    return () => {
+      const styleEl = document.getElementById(styleId);
+      if (styleEl) styleEl.remove();
+    };
+  }, []);
+  
   useEffect(() => {
     const updateFooter = () => {
       const now = new Date();
@@ -1760,10 +1789,563 @@ const Dashboard: React.FC = () => {
       setFooterContent({
         visible: true,
         content: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', width: '100%' }}>
-            <span>{timeStr}</span>
-            <span style={{ opacity: 0.6 }}>•</span>
-            <span>{dateStr}</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            width: '100%',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>{timeStr}</span>
+              <span style={{ opacity: 0.6 }}>•</span>
+              <span>{dateStr}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {/* Student Attendance Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('student')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/attendance/mark')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'student' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'student' ? '#60a5fa' : 'rgba(59, 130, 246, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <Assessment 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'student' ? '#60a5fa' : '#3b82f6',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'student' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Mark Student Attendance
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Employee Attendance Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('employee')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/attendance/staff')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'employee' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'employee' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <Groups 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'employee' ? '#34d399' : '#10b981',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'employee' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Mark Employee Attendance
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Fee Collection Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('fee')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/fee-collection')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'fee' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'fee' ? '#a78bfa' : 'rgba(139, 92, 246, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <Payment 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'fee' ? '#a78bfa' : '#8b5cf6',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'fee' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Fee Collection
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Add Student Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('addStudent')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/students/add')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'addStudent' ? 'rgba(34, 197, 94, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'addStudent' ? '#4ade80' : 'rgba(34, 197, 94, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <PersonAdd 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'addStudent' ? '#4ade80' : '#22c55e',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'addStudent' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Add Student
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Reports Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('reports')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/reports')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'reports' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'reports' ? '#fbbf24' : 'rgba(234, 179, 8, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <BarChart 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'reports' ? '#fbbf24' : '#eab308',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'reports' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Reports
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Students List Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('students')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/students/list')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'students' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'students' ? '#818cf8' : 'rgba(99, 102, 241, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <People 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'students' ? '#818cf8' : '#6366f1',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'students' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Students List
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Fine Collection Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('fineCollect')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/fines/collect')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'fineCollect' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'fineCollect' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <AttachMoney 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'fineCollect' ? '#34d399' : '#10b981',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'fineCollect' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Fine Collection
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Remaining Fine Button */}
+              <div 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setHoveredButton('remainingFine')}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                <button
+                  onClick={() => navigate('/fines/remaining')}
+                  className="footer-icon-button"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: hoveredButton === 'remainingFine' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                    border: `1.5px solid ${hoveredButton === 'remainingFine' ? '#fbbf24' : 'rgba(245, 158, 11, 0.4)'}`,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'visible',
+                    transition: 'none !important'
+                  }}
+                >
+                  <AccountBalanceWallet 
+                    sx={{ 
+                      fontSize: '16px',
+                      color: hoveredButton === 'remainingFine' ? '#fbbf24' : '#f59e0b',
+                      transition: 'none !important'
+                    }}
+                  />
+                </button>
+                {hoveredButton === 'remainingFine' && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: isDark ? '#1e293b' : '#0f172a',
+                      color: '#fff',
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 10001,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                      maxWidth: 'calc(100vw - 16px)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >
+                    Remaining Fine
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: '3px solid transparent',
+                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                    }} />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )
       });
@@ -1780,7 +2362,7 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       setFooterContent(null);
     };
-  }, [setFooterContent]);
+  }, [setFooterContent, navigate, isDark, hoveredButton]);
 
   // Cleanup
   useEffect(() => {
