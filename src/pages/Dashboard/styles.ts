@@ -119,6 +119,12 @@ export const TabContainer = styled.div`
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
+  }
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
     padding: 0.5rem;
     top: -0.375rem;
     margin-top: -0.375rem;
@@ -401,7 +407,7 @@ export const DashboardDateInput = styled.input`
   @media (max-width: 768px) {
     flex: 1;
     min-width: 0;
-    max-width: calc(50% - 0.2rem);
+    width: 100%;
     padding: 0.375rem 0.625rem;
     font-size: 0.8rem;
     border-radius: 8px;

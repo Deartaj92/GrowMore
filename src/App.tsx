@@ -65,7 +65,6 @@ import SchoolWelcomeScreen from './pages/SchoolWelcomeScreen';
 import FeeStructureManager from './pages/FeeStructureManager';
 import FeePlans from './pages/FeePlans';
 import FeeIncrements from './pages/FeeIncrements';
-import LoadFeePage from './pages/LoadFeePage';
 import FeeCollection from './pages/FeeCollectionNew';
 import FeeDefaultersList from './pages/FeeDefaultersList';
 import FeeArrearsManager from './pages/FeeArrearsManager';
@@ -73,7 +72,6 @@ import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
 import ChallanGenerationPage from './pages/ChallanGenerationPage';
 import ChallansListPage from './pages/ChallansListPage';
 import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
-import ConcessionsPage from './pages/ConcessionsPage';
 import FeeSettings from './pages/FeeSettings';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import LedgerPage from './pages/LedgerPage';
@@ -105,8 +103,6 @@ import GeneralMessagePage from './pages/GeneralMessagePage';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
 // Attendance Management Components
-// Fee Management Components
-import FeeManagementDashboard from './components/FeeManagementDashboard';
 // Expense Management Components
 import ExpenseDashboard from './components/ExpenseDashboard';
 import ExpenseManager from './pages/ExpenseManager';
@@ -523,6 +519,7 @@ const App: React.FC = () => {
                             }
                           />
 
+
                           <Route
                             path="settings/user-announcements"
                             element={
@@ -627,16 +624,6 @@ const App: React.FC = () => {
                             }
                           />
 
-                          {/* Fee Management Dashboard */}
-                          <Route
-                            path="fee-management"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-structure">
-                                <FeeManagementDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
                           {/* Fee Management Routes */}
                           <Route
                             path="fee-structure-management"
@@ -661,15 +648,6 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="fee-increments">
                                 <FeeIncrements />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="load-fee"
-                            element={
-                              <ProtectedRoute requiredPermission="load-fee">
-                                <LoadFeePage />
                               </ProtectedRoute>
                             }
                           />
@@ -735,15 +713,6 @@ const App: React.FC = () => {
                                 requiredPermission="fee-analytics"
                               >
                                 <FeeAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="concessions"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-concessions">
-                                <ConcessionsPage />
                               </ProtectedRoute>
                             }
                           />

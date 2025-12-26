@@ -730,17 +730,17 @@ const StaffAttendanceReport: React.FC = () => {
       try {
         // Fetch all holidays for the period
         const { data: allHolidaysData, error: allHolidaysError } = await supabase
-          .from('holidays')
+        .from('holidays')
           .select(`
             id,
             name,
             start_date,
             end_date
           `)
-          .eq('session_id', sessionId)
-          .eq('school_id', user.school_id)
-          .lte('start_date', endDate)
-          .gte('end_date', startDate);
+        .eq('session_id', sessionId)
+        .eq('school_id', user.school_id)
+        .lte('start_date', endDate)
+        .gte('end_date', startDate);
 
         if (allHolidaysError) throw allHolidaysError;
 
@@ -822,19 +822,19 @@ const StaffAttendanceReport: React.FC = () => {
         return holiday.isGlobal || (holiday.staffIds && holiday.staffIds.includes(staffId));
       })
       .map(holiday => {
-        const start = parseISO(holiday.start_date);
-        const end = parseISO(holiday.end_date);
-        const monthStart = parseISO(selectedMonth + '-01');
-        const daysInMonth = getDaysInMonth(monthStart);
-        const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-        const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-        return {
-          name: holiday.name,
-          startIdx: firstDayIdx,
+    const start = parseISO(holiday.start_date);
+    const end = parseISO(holiday.end_date);
+    const monthStart = parseISO(selectedMonth + '-01');
+    const daysInMonth = getDaysInMonth(monthStart);
+    const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+    const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+    return {
+      name: holiday.name,
+      startIdx: firstDayIdx,
           endIdx: lastDayIdx,
           holidayId: holiday.id
-        };
-      });
+    };
+  });
   };
 
 
@@ -855,24 +855,24 @@ const StaffAttendanceReport: React.FC = () => {
       const staffHolidays = getHolidayRangesForStaff(staff.id);
       staffHolidays.forEach(holiday => {
         const key = `${holiday.name}-${holiday.holidayId}-${staff.id}`;
-        const cell = holidayCellRefs.current[key];
-        if (cell) {
-          const w = cell.offsetWidth;
-          const h = cell.offsetHeight;
-          if (w && h) {
-            // Calculate angle in degrees
-            const angle = -Math.atan(h / w) * (180 / Math.PI);
-            // Estimate font size: fit text in diagonal, but be much more conservative
-            const textLen = holiday.name.length;
-            const diag = Math.sqrt(w * w + h * h);
-            const fontSize = Math.max(10, Math.min(diag / (textLen * 2.2), h * 0.3, w * 0.5, 32)) + 'px';
-            setHolidayTextStyle(prev => ({
-              ...prev,
-              [key]: { angle, fontSize, maxWidth: `${diag * 0.95}px` }
-            }));
-          }
+      const cell = holidayCellRefs.current[key];
+      if (cell) {
+        const w = cell.offsetWidth;
+        const h = cell.offsetHeight;
+        if (w && h) {
+          // Calculate angle in degrees
+          const angle = -Math.atan(h / w) * (180 / Math.PI);
+          // Estimate font size: fit text in diagonal, but be much more conservative
+          const textLen = holiday.name.length;
+          const diag = Math.sqrt(w * w + h * h);
+          const fontSize = Math.max(10, Math.min(diag / (textLen * 2.2), h * 0.3, w * 0.5, 32)) + 'px';
+          setHolidayTextStyle(prev => ({
+            ...prev,
+            [key]: { angle, fontSize, maxWidth: `${diag * 0.95}px` }
+          }));
         }
-      });
+      }
+    });
     });
   }, [holidays, filteredStaff, selectedMonth]);
 
@@ -1152,13 +1152,13 @@ const StaffAttendanceReport: React.FC = () => {
           // Use the holiday from the holidays array to get dates
           const holiday = holidays.find(h => h.id === holidayRange.holidayId);
           if (holiday) {
-            const start = parseISO(holiday.start_date);
-            const end = parseISO(holiday.end_date);
-            const monthStart = parseISO(selectedMonth + '-01');
-            const daysInMonth = getDaysInMonth(monthStart);
-            const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-            const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-            for (let i = firstDayIdx; i <= lastDayIdx; i++) {
+        const start = parseISO(holiday.start_date);
+        const end = parseISO(holiday.end_date);
+        const monthStart = parseISO(selectedMonth + '-01');
+        const daysInMonth = getDaysInMonth(monthStart);
+        const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+        const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+        for (let i = firstDayIdx; i <= lastDayIdx; i++) {
               staffHolidayMap[i + 1] = holiday.name;
             }
           }
@@ -1248,10 +1248,10 @@ const StaffAttendanceReport: React.FC = () => {
             
             // Only count if not on holiday
             if (!isOnHoliday) {
-              const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
-              const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
-              if (status === 'A' || status === 'L') {
-                absentCount++;
+            const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staff.id);
+            const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
+            if (status === 'A' || status === 'L') {
+              absentCount++;
               }
             }
           });
@@ -1323,8 +1323,8 @@ const StaffAttendanceReport: React.FC = () => {
             if (isSummaryRow) {
               // For summary row, use global holiday map
               if (globalHolidayDayMap[dayIdx + 1]) {
-                data.cell.styles.fillColor = [234, 247, 255];
-                data.cell.styles.textColor = [74, 108, 247];
+              data.cell.styles.fillColor = [234, 247, 255];
+              data.cell.styles.textColor = [74, 108, 247];
                 data.cell.text = [''];
               }
             } else {
@@ -1902,13 +1902,13 @@ const StaffAttendanceReport: React.FC = () => {
                   return filteredStaff.map((staff, staffIdx) => {
                     const staffHolidayRanges = getHolidayRangesForStaff(staff.id);
                     
-                    return (
-                    <tr key={staff.id}>
+                  return (
+                  <tr key={staff.id}>
                       <NarrowTd>{staffIdx + 1}</NarrowTd>
-                      <NarrowTd>{staff.id}</NarrowTd>
-                      <StaffNameCell>{staff.name}</StaffNameCell>
-                      <Td style={{ textAlign: 'left', fontWeight: 600, color: '#666' }}>{staff.role}</Td>
-                      {Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                    <NarrowTd>{staff.id}</NarrowTd>
+                    <StaffNameCell>{staff.name}</StaffNameCell>
+                    <Td style={{ textAlign: 'left', fontWeight: 600, color: '#666' }}>{staff.role}</Td>
+                    {Array.from({ length: daysInMonth }, (_, dayIdx) => {
                         // Check if this day is a Sunday first (Sundays take priority)
                         const date = new Date(parseISO(selectedMonth + '-01'));
                         date.setDate(dayIdx + 1);
@@ -1934,8 +1934,8 @@ const StaffAttendanceReport: React.FC = () => {
                                 </SundayMergedCell>
                             );
                           } else {
-                            return null;
-                          }
+                        return null;
+                      }
                         }
                         
                         // Check if ALL staff have the same holiday on this day
@@ -1946,61 +1946,61 @@ const StaffAttendanceReport: React.FC = () => {
                             const colSpan = allStaffHoliday.endIdx - allStaffHoliday.startIdx + 1;
                             const rowSpan = filteredStaff.length;
                             const key = `${allStaffHoliday.name}-${allStaffHoliday.holidayId}-all`;
-                            const styleObj = holidayTextStyle[key] || { angle: -45, fontSize: '1em', maxWidth: '100px' };
+                          const styleObj = holidayTextStyle[key] || { angle: -45, fontSize: '1em', maxWidth: '100px' };
                             
-                            return (
-                              <SundayMergedCell
+                          return (
+                            <SundayMergedCell
                                 key={`holiday-all-${allStaffHoliday.name}-${dayIdx}`}
-                                colSpan={colSpan}
+                              colSpan={colSpan}
                                 rowSpan={rowSpan}
                                 ref={el => { if (el) holidayCellRefs.current[key] = el; }}
-                                style={{
-                                  background: isDark(theme) ? '#232a3b' : '#eaf7ff',
-                                  color: '#4a6cf7',
-                                  verticalAlign: 'middle',
-                                  textAlign: 'center',
-                                  position: 'relative',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                {colSpan === 1 ? (
-                                  <span
-                                    style={{
-                                      writingMode: 'vertical-rl',
-                                      textOrientation: 'mixed',
-                                      fontSize: styleObj.fontSize,
-                                      fontWeight: 700,
-                                      letterSpacing: '0.15em',
-                                      color: '#4a6cf7',
-                                      display: 'inline-block',
-                                      maxWidth: styleObj.maxWidth,
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }}
-                                  >
+                              style={{
+                                background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                                color: '#4a6cf7',
+                                verticalAlign: 'middle',
+                                textAlign: 'center',
+                                position: 'relative',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {colSpan === 1 ? (
+                                <span
+                                  style={{
+                                    writingMode: 'vertical-rl',
+                                    textOrientation: 'mixed',
+                                    fontSize: styleObj.fontSize,
+                                    fontWeight: 700,
+                                    letterSpacing: '0.15em',
+                                    color: '#4a6cf7',
+                                    display: 'inline-block',
+                                    maxWidth: styleObj.maxWidth,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                >
                                     {allStaffHoliday.name.toUpperCase()}
-                                  </span>
-                                ) : (
-                                  <AngledHolidayName
-                                    style={{
-                                      transform: `translate(-50%, -50%) rotate(${styleObj.angle}deg)` ,
-                                      fontSize: styleObj.fontSize,
-                                      left: '50%',
-                                      top: '50%',
-                                      maxWidth: styleObj.maxWidth,
-                                    }}
-                                  >
+                                </span>
+                              ) : (
+                                <AngledHolidayName
+                                  style={{
+                                    transform: `translate(-50%, -50%) rotate(${styleObj.angle}deg)` ,
+                                    fontSize: styleObj.fontSize,
+                                    left: '50%',
+                                    top: '50%',
+                                    maxWidth: styleObj.maxWidth,
+                                  }}
+                                >
                                     {allStaffHoliday.name.toUpperCase()}
-                                  </AngledHolidayName>
-                                )}
-                              </SundayMergedCell>
-                            );
+                                </AngledHolidayName>
+                              )}
+                            </SundayMergedCell>
+                          );
                           } else if (dayIdx >= allStaffHoliday.startIdx && dayIdx <= allStaffHoliday.endIdx) {
                             // Skip columns for other days in the range
-                            return null;
-                          }
+                          return null;
                         }
+                      }
                         
                         // Check if this staff member is on holiday for this day (partial holiday)
                         const holidayForDay = staffHolidayRanges.find(h => 
@@ -2013,9 +2013,9 @@ const StaffAttendanceReport: React.FC = () => {
                             <StatusCell 
                               key={dayIdx} 
                               status="H"
-                              style={{ 
+                                style={{
                                 background: isDark(theme) ? '#232a3b' : '#eaf7ff',
-                                color: '#dc2626',
+                                  color: '#dc2626',
                                 fontWeight: 700,
                                 position: 'relative',
                                 cursor: 'help'
@@ -2142,7 +2142,7 @@ const StaffAttendanceReport: React.FC = () => {
                       );
                     })}
                   </tr>
-                    );
+                  );
                   });
                 })()}
                 {/* Summary row showing daily absent and leave counts */}
@@ -2219,9 +2219,9 @@ const StaffAttendanceReport: React.FC = () => {
                         // Only count if not on holiday
                         if (!isOnHoliday) {
                           const staffIndexInOriginal = staffMembers.findIndex(s => s.id === staffMember.id);
-                          const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
-                          if (status === 'A' || status === 'L') {
-                            absentCount++;
+                        const status = attendanceMatrix[staffIndexInOriginal]?.[dayIdx];
+                        if (status === 'A' || status === 'L') {
+                          absentCount++;
                           }
                         }
                       });

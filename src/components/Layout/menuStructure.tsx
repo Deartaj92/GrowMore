@@ -337,20 +337,6 @@ export const feeMenuItems1: MenuItem[] = [
     color: '#06b6d4'
   },
   {
-    title: 'Fee Increments',
-    description: 'Apply increments to fee plans and structures',
-    icon: React.createElement(TrendingUpIcon),
-    path: '/fee-increments',
-    color: '#f97316'
-  },
-  {
-    title: 'Load Fee',
-    description: 'Import and load fee data',
-    icon: React.createElement(AttachMoneyIcon),
-    path: '/load-fee',
-    color: '#f59e0b'
-  },
-  {
     title: 'Generate Challans',
     description: 'Generate fee challans for students based on fee plans',
     icon: React.createElement(ReceiptIcon),
@@ -384,13 +370,6 @@ export const feeMenuItems1: MenuItem[] = [
     icon: React.createElement(ReceiptIcon),
     path: '/fee-arrears',
     color: '#f59e0b'
-  },
-  {
-    title: 'Fee Audit Logs',
-    description: 'Track all fee-related changes',
-    icon: React.createElement(ListAltIcon),
-    path: '/fee-audit-logs',
-    color: '#6b7280'
   }
 ];
 
@@ -401,13 +380,6 @@ export const feeMenuItems2: MenuItem[] = [
     icon: React.createElement(AssessmentIcon),
     path: '/fee-analytics',
     color: '#059669'
-  },
-  {
-    title: 'Fee Concessions',
-    description: 'Manage student fee concessions',
-    icon: React.createElement(AttachMoneyIcon),
-    path: '/concessions',
-    color: '#ec4899'
   },
   {
     title: 'Payment History',
@@ -422,6 +394,34 @@ export const feeMenuItems2: MenuItem[] = [
     icon: React.createElement(AccountBalanceIcon),
     path: '/ledger',
     color: '#14b8a6'
+  },
+  {
+    title: 'Fee Increments',
+    description: 'Apply increments to fee plans and structures',
+    icon: React.createElement(TrendingUpIcon),
+    path: '/fee-increments',
+    color: '#f97316'
+  },
+  {
+    title: 'Other Incomes',
+    description: 'Record and track non-fee income sources',
+    icon: React.createElement(AttachMoneyIcon),
+    path: '/other-income-manager',
+    color: '#16a34a'
+  },
+  {
+    title: 'Fee Audit Logs',
+    description: 'Track all fee-related changes',
+    icon: React.createElement(ListAltIcon),
+    path: '/fee-audit-logs',
+    color: '#6b7280'
+  },
+  {
+    title: 'Payroll Management',
+    description: 'Manage employee salaries, payments, and payroll operations',
+    icon: React.createElement(CalculateIcon),
+    path: '/payroll',
+    color: '#3b82f6'
   }
 ];
 
@@ -440,13 +440,6 @@ export const expenseMenuItems: MenuItem[] = [
     icon: React.createElement(BarChartIcon),
     path: '/expense-analytics',
     color: '#3b82f6'
-  },
-  {
-    title: 'Other Incomes',
-    description: 'Record and track non-fee income sources',
-    icon: React.createElement(AttachMoneyIcon),
-    path: '/other-income-manager',
-    color: '#16a34a'
   }
 ];
 
@@ -734,7 +727,7 @@ export const settingsColumn2Items: MenuItem[] = [
     icon: React.createElement(NotificationsIcon),
     path: '/settings/notifications',
     color: '#ec4899'
-  }
+  },
 ];
 
 // Main menu structure
@@ -776,12 +769,17 @@ export const menuStructure: MainMenuItem[] = [
         items: feeMenuItems1
       },
       { 
-        title: 'Fee & Expense', 
-        items: feeMenuItems2,
-        expenseItems: expenseMenuItems
+        title: 'Fee Record', 
+        items: feeMenuItems2
       },
-      { title: 'Fine Management', items: fineMenuItems },
-      { title: 'Payroll Management', items: payrollMenuItems }
+      { 
+        title: 'Expense Management', 
+        items: expenseMenuItems
+      },
+      { 
+        title: 'Fine Management', 
+        items: fineMenuItems
+      }
     ],
     columns: 3
   },
@@ -791,13 +789,9 @@ export const menuStructure: MainMenuItem[] = [
     label: 'Accounts',
     hasDropdown: true,
     menuItems: [
-      { title: 'Account Management', items: accountsMenuItems },
-      { 
-        title: 'Payroll Management', 
-        items: payrollMenuItems
-      }
+      { title: 'Account Management', items: accountsMenuItems }
     ],
-    columns: 2
+    columns: 1
   },
   {
     icon: React.createElement(AssessmentIcon),

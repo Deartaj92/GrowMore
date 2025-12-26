@@ -1861,6 +1861,7 @@ export const feeService = {
   // Fee Increments - Apply increment to fee plans (does NOT affect existing invoices)
   async applyIncrementToFeePlans(
     schoolId: number,
+    sessionId: number,
     incrementType: 'percentage' | 'fixed',
     incrementValue: number,
     options: {
@@ -1977,6 +1978,7 @@ export const feeService = {
         .from('fee_increment_history')
         .insert({
           school_id: schoolId,
+          session_id: sessionId,
           increment_type: incrementType,
           increment_value: incrementValue,
           target_type: 'fee_plans',
@@ -2023,8 +2025,7 @@ export const feeService = {
     let query = supabase
       .from('fee_structures')
       .select('*')
-      .eq('school_id', schoolId)
-      .eq('session_id', sessionId);
+      .eq('school_id', schoolId);
     
     if (options.classIds && options.classIds.length > 0) {
       query = query.in('class_id', options.classIds);
@@ -2292,6 +2293,7 @@ export const feeService = {
       // Apply to fee plans
       const result = await this.applyIncrementToFeePlans(
         schoolId,
+        sessionId,
         newIncrementType,
         newIncrementValue,
         {

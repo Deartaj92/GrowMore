@@ -69,6 +69,7 @@ try {
   // Capacitor not available
 }
 
+
 // Main Layout Component
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -341,6 +342,7 @@ const Layout: React.FC = () => {
     }
     fetchStaffProfile();
   }, [user?.id]);
+
 
   // Network connection checking
   useEffect(() => {
@@ -1161,6 +1163,7 @@ const Layout: React.FC = () => {
           isOpen={aboutUsModalOpen}
           onClose={() => setAboutUsModalOpen(false)}
         />
+
       </ThemeProvider>
     </MuiThemeProvider>
   );

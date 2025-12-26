@@ -266,7 +266,7 @@ const pageConfig: Record<string, { route: string; icon: React.ReactNode; color: 
     color: '#ef4444' // Red
   },
   'fee_analytics': {
-    route: '/fee-management',
+    route: '/fee-structure-management',
     icon: <AttachMoneyIcon />,
     color: '#10b981' // Green
   },

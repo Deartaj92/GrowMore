@@ -329,13 +329,6 @@ const CardAction = styled.div<{ $color?: string }>`
 // Finance Management menu items
 const financeManagementItems = [
   {
-    title: 'Fee Management',
-    description: 'Comprehensive fee collection, structure management, payment tracking, and financial reporting',
-    icon: <AttachMoneyIcon />,
-    path: '/fee-management',
-    color: '#10b981' // Green
-  },
-  {
     title: 'Expense Management',
     description: 'Track and manage all school expenditures, categorize expenses, monitor spending, and generate expense reports',
     icon: <ReceiptIcon />,

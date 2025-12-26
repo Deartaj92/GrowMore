@@ -1530,16 +1530,15 @@ const ChallansListPage: React.FC = () => {
                     <CenterTh>Month</CenterTh>
                     <CenterTh>Year</CenterTh>
                     <CenterTh>Amount</CenterTh>
-                    <CenterTh>Status</CenterTh>
                     <CenterTh>Due Date</CenterTh>
                     <CenterTh>Action</CenterTh>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><CenterTd colSpan={10}>Loading challans...</CenterTd></tr>
+                    <tr><CenterTd colSpan={9}>Loading challans...</CenterTd></tr>
                   ) : filteredChallans.length === 0 ? (
-                    <tr><CenterTd colSpan={10}>No challans found. Try adjusting your filters.</CenterTd></tr>
+                    <tr><CenterTd colSpan={9}>No challans found. Try adjusting your filters.</CenterTd></tr>
                   ) : (
                     paginatedChallans.map((challan, idx) => {
                       const student = students.get(challan.student_id);
@@ -1587,22 +1586,6 @@ const ChallansListPage: React.FC = () => {
                           <CenterTd>{challan.year || 'N/A'}</CenterTd>
                           <CenterTd style={{ color: (theme as any).ACCENT, fontWeight: 700, fontSize: '0.7rem' }}>
                             Rs. {formatCurrency(Number(challan.total_amount || 0))}
-                          </CenterTd>
-                          <CenterTd>
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: challan.status === 'paid' ? (theme as any).ACCENT + '20' : 
-                                         challan.status === 'partial' ? '#fbbf24' + '20' :
-                                         challan.status === 'cancelled' ? '#ef4444' + '20' : (theme as any).BORDER,
-                              color: challan.status === 'paid' ? (theme as any).ACCENT :
-                                    challan.status === 'partial' ? '#fbbf24' :
-                                    challan.status === 'cancelled' ? '#ef4444' : (theme as any).TEXT_SECONDARY
-                            }}>
-                              {challan.status.charAt(0).toUpperCase() + challan.status.slice(1)}
-                            </span>
                           </CenterTd>
                           <CenterTd>
                             {challan.due_date ? new Date(challan.due_date).toLocaleDateString() : 'N/A'}

@@ -47,7 +47,6 @@ export const pathToPermissionKey: Record<string, string> = {
   '/fee-structure-management': 'fee-structure',
   '/fee-plans': 'fee-plans',
   '/fee-increments': 'fee-increments',
-  '/load-fee': 'load-fee',
   '/generate-challans': 'generate-challans',
   '/challans': 'view-challans',
   '/fee-collection': 'fee-collection',
@@ -55,7 +54,6 @@ export const pathToPermissionKey: Record<string, string> = {
   '/fee-arrears': 'fee-arrears',
   '/fee-audit-logs': 'fee-audit-logs',
   '/fee-analytics': 'fee-analytics',
-  '/concessions': 'fee-concessions',
   '/setup-accounts': 'setup-accounts',
   '/balance-sheet': 'balance-sheet',
   '/cash-flow': 'cash-flow-view',
@@ -122,7 +120,6 @@ export const pathToPermissionKey: Record<string, string> = {
   '/employees': 'employees-list',
   '/finance': 'fee-structure', // Finance dashboard
   '/fines': 'fine-assign', // Fine dashboard
-  '/fee-management': 'fee-structure', // Fee management dashboard
   '/expense-management': 'expense-manager', // Expense dashboard
   '/communication': 'messages', // Communication dashboard
   '/enquiries': 'enquiry-dashboard', // Enquiry dashboard

@@ -1786,13 +1786,16 @@ const Dashboard: React.FC = () => {
         day: 'numeric' 
       });
       
+      // Check if mobile device
+      const isMobile = window.innerWidth <= 768;
+      
       setFooterContent({
         visible: true,
         content: (
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: 'space-between', 
+            justifyContent: isMobile ? 'center' : 'space-between', 
             width: '100%',
             gap: '1rem'
           }}>
@@ -1801,6 +1804,7 @@ const Dashboard: React.FC = () => {
               <span style={{ opacity: 0.6 }}>•</span>
               <span>{dateStr}</span>
             </div>
+            {!isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {/* Student Attendance Button */}
               <div 
@@ -2346,6 +2350,7 @@ const Dashboard: React.FC = () => {
                 )}
               </div>
             </div>
+            )}
           </div>
         )
       });

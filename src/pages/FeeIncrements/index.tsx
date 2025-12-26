@@ -272,7 +272,7 @@ const FeeIncrementsContent: React.FC<{ theme: typeof darkTheme }> = ({ theme: cu
             <InfoIcon style={{ color: customTheme?.ACCENT, fontSize: '1.5rem', flexShrink: 0, marginTop: '2px' }} />
             <div>
               <strong>Important:</strong> Fee increments only affect fee plans and fee structures. 
-              Already generated invoices in the database will NOT be modified. 
+              Already generated Challans in the database will NOT be modified. 
               New fee generations will automatically use the updated amounts.
             </div>
           </InfoBox>
@@ -300,7 +300,7 @@ const FeeIncrementsContent: React.FC<{ theme: typeof darkTheme }> = ({ theme: cu
               Preview changes before applying to ensure accuracy
             </FeatureItem>
             <FeatureItem>
-              Safe operation - existing invoices remain unchanged, only future fee generations are affected
+              Safe operation - existing Challans remain unchanged, only future fee generations are affected
             </FeatureItem>
           </FeatureList>
 

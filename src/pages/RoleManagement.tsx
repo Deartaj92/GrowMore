@@ -1021,86 +1021,54 @@ const RoleManagement: React.FC = () => {
                       <span>{menu.label}</span>
                     </MenuSectionHeader>
                     <MenuDropdown $isOpen={isOpen} $columns={menu.columns}>
-                      {menu.menuItems.map((section, sectionIdx) => (
-                        <DropdownColumn key={sectionIdx}>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '8px'
-                          }}>
-                            <ColumnTitle>{section.title}</ColumnTitle>
-                            <Button
-                              $variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isSectionAllSelected(section)) {
-                                  handleDeselectSection(section);
-                                } else {
-                                  handleSelectSection(section);
-                                }
-                              }}
-                              style={{ 
-                                fontSize: '0.7rem', 
-                                padding: '0.25rem 0.5rem',
-                                minWidth: 'auto'
-                              }}
-                            >
-                              {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
-                            </Button>
-                          </div>
-                          {section.items.map((menuItem, itemIdx) => {
-                            const isChecked = isMenuItemChecked(menuItem);
-                            const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
-                            // Add separator before Reports items in Students and Employees menus
-                            const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
-                            const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
-                            // Add separator before Timetable in Employee Management section
-                            const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
-                            const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable;
-                            return (
-                              <React.Fragment key={itemIdx}>
-                                {shouldShowSeparator && <ColumnSeparator />}
-                                <DropdownMenuItem
-                                  $color={menuItem.color}
-                                  $checked={isChecked}
-                                  htmlFor={checkboxId}
+                      {menu.menuItems.map((section, sectionIdx) => {
+                        // For Finance menu, combine Expense Management and Fine Management in the same column (3rd column)
+                        const isFinance = menu.label === 'Finance';
+                        const isExpenseManagement = section.title === 'Expense Management';
+                        const isFineManagement = section.title === 'Fine Management';
+                        
+                        // Skip rendering Fine Management as separate column, it will be rendered with Expense Management
+                        if (isFinance && isFineManagement && sectionIdx === 3) {
+                          return null;
+                        }
+                        
+                        // If this is Expense Management in Finance menu, render both Expense and Fine sections together
+                        if (isFinance && isExpenseManagement) {
+                          const fineSection = menu.menuItems.find((s: MenuSection) => s.title === 'Fine Management');
+                          return (
+                            <DropdownColumn key={sectionIdx}>
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '8px'
+                              }}>
+                                <ColumnTitle>{section.title}</ColumnTitle>
+                                <Button
+                                  $variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isSectionAllSelected(section)) {
+                                      handleDeselectSection(section);
+                                    } else {
+                                      handleSelectSection(section);
+                                    }
+                                  }}
+                                  style={{ 
+                                    fontSize: '0.7rem', 
+                                    padding: '0.25rem 0.5rem',
+                                    minWidth: 'auto'
+                                  }}
                                 >
-                                  <input
-                                    type="checkbox"
-                                    id={checkboxId}
-                                    checked={isChecked}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      toggleMenuItemPermission(menuItem);
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                    }}
-                                  />
-                                  <div className="checkbox-indicator">
-                                    {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                  </div>
-                                  <div className="menu-icon">
-                                    {menuItem.icon}
-                                  </div>
-                                  <div className="menu-content">
-                                    <div className="menu-title">{menuItem.title}</div>
-                                    <div className="menu-description">{menuItem.description}</div>
-                                  </div>
-                                </DropdownMenuItem>
-                              </React.Fragment>
-                            );
-                          })}
-                          {section.expenseItems && (
-                            <>
-                              <ColumnSeparator />
-                              {section.expenseItems.map((menuItem, itemIdx) => {
+                                  {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
+                                </Button>
+                              </div>
+                              {section.items.map((menuItem, itemIdx) => {
                                 const isChecked = isMenuItemChecked(menuItem);
-                                const checkboxId = `checkbox-expense-${menuItem.path}-${itemIdx}`;
+                                const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
                                 return (
                                   <DropdownMenuItem
-                                    key={`expense-${itemIdx}`}
+                                    key={itemIdx}
                                     $color={menuItem.color}
                                     $checked={isChecked}
                                     htmlFor={checkboxId}
@@ -1130,10 +1098,197 @@ const RoleManagement: React.FC = () => {
                                   </DropdownMenuItem>
                                 );
                               })}
-                            </>
-                          )}
-                        </DropdownColumn>
-                      ))}
+                              {fineSection && (
+                                <>
+                                  <ColumnSeparator />
+                                  <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '8px',
+                                    marginTop: '8px'
+                                  }}>
+                                    <ColumnTitle>{fineSection.title}</ColumnTitle>
+                                    <Button
+                                      $variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isSectionAllSelected(fineSection)) {
+                                          handleDeselectSection(fineSection);
+                                        } else {
+                                          handleSelectSection(fineSection);
+                                        }
+                                      }}
+                                      style={{ 
+                                        fontSize: '0.7rem', 
+                                        padding: '0.25rem 0.5rem',
+                                        minWidth: 'auto'
+                                      }}
+                                    >
+                                      {isSectionAllSelected(fineSection) ? 'Deselect All' : 'Select All'}
+                                    </Button>
+                                  </div>
+                                  {fineSection.items.map((menuItem, itemIdx) => {
+                                    const isChecked = isMenuItemChecked(menuItem);
+                                    const checkboxId = `checkbox-fine-${menuItem.path}-${itemIdx}`;
+                                    return (
+                                      <DropdownMenuItem
+                                        key={`fine-${itemIdx}`}
+                                        $color={menuItem.color}
+                                        $checked={isChecked}
+                                        htmlFor={checkboxId}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          id={checkboxId}
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            toggleMenuItemPermission(menuItem);
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                          }}
+                                        />
+                                        <div className="checkbox-indicator">
+                                          {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                        </div>
+                                        <div className="menu-icon">
+                                          {menuItem.icon}
+                                        </div>
+                                        <div className="menu-content">
+                                          <div className="menu-title">{menuItem.title}</div>
+                                          <div className="menu-description">{menuItem.description}</div>
+                                        </div>
+                                      </DropdownMenuItem>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </DropdownColumn>
+                          );
+                        }
+                        
+                        // Render other sections normally
+                        return (
+                          <DropdownColumn key={sectionIdx}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '8px'
+                            }}>
+                              <ColumnTitle>{section.title}</ColumnTitle>
+                              <Button
+                                $variant="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isSectionAllSelected(section)) {
+                                    handleDeselectSection(section);
+                                  } else {
+                                    handleSelectSection(section);
+                                  }
+                                }}
+                                style={{ 
+                                  fontSize: '0.7rem', 
+                                  padding: '0.25rem 0.5rem',
+                                  minWidth: 'auto'
+                                }}
+                              >
+                                {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
+                              </Button>
+                            </div>
+                            {section.items.map((menuItem, itemIdx) => {
+                              const isChecked = isMenuItemChecked(menuItem);
+                              const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
+                              // Add separator before Reports items in Students and Employees menus
+                              const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
+                              const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
+                              // Add separator before Timetable in Employee Management section
+                              const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
+                              // Add separator before Payroll in Fee Record section
+                              const isFeeRecordSection = menu.label === 'Finance' && section.title === 'Fee Record';
+                              const isPayrollItem = menuItem.path === '/payroll';
+                              const prevItem = itemIdx > 0 ? section.items[itemIdx - 1] : null;
+                              const isFirstPayrollItem = isFeeRecordSection && isPayrollItem && prevItem && prevItem.path !== '/payroll';
+                              const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable || isFirstPayrollItem;
+                              return (
+                                <React.Fragment key={itemIdx}>
+                                  {shouldShowSeparator && <ColumnSeparator />}
+                                  <DropdownMenuItem
+                                    $color={menuItem.color}
+                                    $checked={isChecked}
+                                    htmlFor={checkboxId}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      id={checkboxId}
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleMenuItemPermission(menuItem);
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                    />
+                                    <div className="checkbox-indicator">
+                                      {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                    </div>
+                                    <div className="menu-icon">
+                                      {menuItem.icon}
+                                    </div>
+                                    <div className="menu-content">
+                                      <div className="menu-title">{menuItem.title}</div>
+                                      <div className="menu-description">{menuItem.description}</div>
+                                    </div>
+                                  </DropdownMenuItem>
+                                </React.Fragment>
+                              );
+                            })}
+                            {section.expenseItems && (
+                              <>
+                                <ColumnSeparator />
+                                {section.expenseItems.map((menuItem, itemIdx) => {
+                                  const isChecked = isMenuItemChecked(menuItem);
+                                  const checkboxId = `checkbox-expense-${menuItem.path}-${itemIdx}`;
+                                  return (
+                                    <DropdownMenuItem
+                                      key={`expense-${itemIdx}`}
+                                      $color={menuItem.color}
+                                      $checked={isChecked}
+                                      htmlFor={checkboxId}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        id={checkboxId}
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleMenuItemPermission(menuItem);
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                        }}
+                                      />
+                                      <div className="checkbox-indicator">
+                                        {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                      </div>
+                                      <div className="menu-icon">
+                                        {menuItem.icon}
+                                      </div>
+                                      <div className="menu-content">
+                                        <div className="menu-title">{menuItem.title}</div>
+                                        <div className="menu-description">{menuItem.description}</div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  );
+                                })}
+                              </>
+                            )}
+                          </DropdownColumn>
+                        );
+                      })}
                     </MenuDropdown>
                   </MenuSectionWrapper>
                 );

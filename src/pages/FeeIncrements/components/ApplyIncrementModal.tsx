@@ -773,8 +773,7 @@ export const ApplyIncrementModal: React.FC<ApplyIncrementModalProps> = ({
         let query = supabase
           .from('fee_structures')
           .select('*')
-          .eq('school_id', schoolId)
-          .eq('session_id', sessionId);
+          .eq('school_id', schoolId);
 
         if (formData.classIds && formData.classIds.length > 0) {
           query = query.in('class_id', formData.classIds);
@@ -858,6 +857,7 @@ export const ApplyIncrementModal: React.FC<ApplyIncrementModalProps> = ({
       if (formData.targetType === 'plans' || formData.targetType === 'both') {
         const result = await feeService.applyIncrementToFeePlans(
           schoolId,
+          sessionId,
           formData.incrementType,
           formData.incrementValue,
           {
@@ -919,7 +919,7 @@ export const ApplyIncrementModal: React.FC<ApplyIncrementModalProps> = ({
             <InfoIcon />
             <div>
               <strong>Important:</strong> Increments only affect fee plans and fee structures. 
-              Already generated invoices will NOT be modified. New fee generations will use the updated amounts.
+              Already generated Challans will NOT be modified. New fee generations will use the updated amounts.
             </div>
           </InfoBox>
 
@@ -973,6 +973,11 @@ export const ApplyIncrementModal: React.FC<ApplyIncrementModalProps> = ({
                 min="0"
                 value={formData.incrementValue || ''}
                 onChange={(e) => setFormData({ ...formData, incrementValue: parseFloat(e.target.value) || 0 })}
+                onWheel={(e) => {
+                  if (document.activeElement === e.currentTarget) {
+                    e.currentTarget.blur();
+                  }
+                }}
                 placeholder={formData.incrementType === 'percentage' ? 'e.g., 10' : 'e.g., 500'}
               />
             </FormGroup>

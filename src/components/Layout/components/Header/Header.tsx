@@ -259,6 +259,7 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
   padding: 10px;
   z-index: 100001;
+  overflow: visible;
   opacity: ${props => props.$isOpen ? 1 : 0};
   visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
   transform: ${props => props.$isOpen ? 'translateY(0)' : 'translateY(-6px)'};
@@ -391,6 +392,7 @@ const DropdownColumn = styled.div`
   flex-direction: column;
   gap: 6px;
   position: relative;
+  overflow: visible;
   
   &:not(:last-child)::after {
     content: '';
@@ -1444,6 +1446,13 @@ const Header: React.FC<HeaderProps> = ({
   // Fee menu items - split into two groups
   const feeMenuItems1 = [
     {
+      title: 'Fee Collection',
+      description: 'Enhanced fee collection interface',
+      icon: <AttachMoneyIcon />,
+      path: '/fee-collection',
+      color: '#8b5cf6'
+    },
+    {
       title: 'Fee Structure',
       description: 'Create and manage fee structures',
       icon: <AccountBalanceIcon />,
@@ -1456,20 +1465,6 @@ const Header: React.FC<HeaderProps> = ({
       icon: <DescriptionIcon />,
       path: '/fee-plans',
       color: '#06b6d4'
-    },
-    {
-      title: 'Fee Increments',
-      description: 'Apply increments to fee plans and structures',
-      icon: <TrendingUpIcon />,
-      path: '/fee-increments',
-      color: '#f97316'
-    },
-    {
-      title: 'Load Fee',
-      description: 'Import and load fee data',
-      icon: <AttachMoneyIcon />,
-      path: '/load-fee',
-      color: '#f59e0b'
     },
     {
       title: 'Generate Challans',
@@ -1486,13 +1481,6 @@ const Header: React.FC<HeaderProps> = ({
       color: '#6366f1'
     },
     {
-      title: 'Fee Collection',
-      description: 'Enhanced fee collection interface',
-      icon: <AttachMoneyIcon />,
-      path: '/fee-collection',
-      color: '#8b5cf6'
-    },
-    {
       title: 'Fee Defaulters',
       description: 'View students with outstanding fees',
       icon: <AttachMoneyIcon />,
@@ -1505,13 +1493,17 @@ const Header: React.FC<HeaderProps> = ({
       icon: <ReceiptIcon />,
       path: '/fee-arrears',
       color: '#f59e0b'
-    },
+    }
+  ];
+
+  // Payroll menu items
+  const payrollMenuItems = [
     {
-      title: 'Fee Audit Logs',
-      description: 'Track all fee-related changes',
-      icon: <ListAltIcon />,
-      path: '/fee-audit-logs',
-      color: '#6b7280'
+      title: 'Payroll Management',
+      description: 'Manage employee salaries, payments, and payroll operations',
+      icon: <CalculateIcon />,
+      path: '/payroll',
+      color: '#3b82f6'
     }
   ];
 
@@ -1522,13 +1514,6 @@ const Header: React.FC<HeaderProps> = ({
       icon: <AssessmentIcon />,
       path: '/fee-analytics',
       color: '#059669'
-    },
-    {
-      title: 'Fee Concessions',
-      description: 'Manage student fee concessions',
-      icon: <AttachMoneyIcon />,
-      path: '/concessions',
-      color: '#ec4899'
     },
     {
       title: 'Payment History',
@@ -1543,7 +1528,29 @@ const Header: React.FC<HeaderProps> = ({
       icon: <AccountBalanceIcon />,
       path: '/ledger',
       color: '#14b8a6'
-    }
+    },
+    {
+      title: 'Fee Increments',
+      description: 'Apply increments to fee plans and structures',
+      icon: <TrendingUpIcon />,
+      path: '/fee-increments',
+      color: '#f97316'
+    },
+    {
+      title: 'Other Incomes',
+      description: 'Record and track non-fee income sources',
+      icon: <AttachMoneyIcon />,
+      path: '/other-income-manager',
+      color: '#16a34a'
+    },
+    {
+      title: 'Fee Audit Logs',
+      description: 'Track all fee-related changes',
+      icon: <ListAltIcon />,
+      path: '/fee-audit-logs',
+      color: '#6b7280'
+    },
+    ...payrollMenuItems
   ];
 
   // Expense menu items
@@ -1560,24 +1567,6 @@ const Header: React.FC<HeaderProps> = ({
       description: 'View comprehensive expense analytics and insights',
       icon: <BarChartIcon />,
       path: '/expense-analytics',
-      color: '#3b82f6'
-    },
-    {
-      title: 'Other Incomes',
-      description: 'Record and track non-fee income sources',
-      icon: <AttachMoneyIcon />,
-      path: '/other-income-manager',
-      color: '#16a34a'
-    }
-  ];
-
-  // Payroll menu items
-  const payrollMenuItems = [
-    {
-      title: 'Payroll Management',
-      description: 'Manage employee salaries, payments, and payroll operations',
-      icon: <CalculateIcon />,
-      path: '/payroll',
       color: '#3b82f6'
     }
   ];
@@ -2051,11 +2040,17 @@ const Header: React.FC<HeaderProps> = ({
           items: feeMenuItems1
         },
         { 
-          title: 'Fee & Expense', 
-          items: feeMenuItems2,
-          expenseItems: expenseMenuItems
+          title: 'Fee Record', 
+          items: feeMenuItems2
         },
-        { title: 'Fine Management', items: fineMenuItems }
+        { 
+          title: 'Expense Management', 
+          items: expenseMenuItems
+        },
+        { 
+          title: 'Fine Management', 
+          items: fineMenuItems
+        }
       ],
       columns: 3
     },
@@ -2065,13 +2060,9 @@ const Header: React.FC<HeaderProps> = ({
       label: 'Accounts',
       hasDropdown: true,
       menuItems: [
-        { title: 'Account Management', items: accountsMenuItems },
-        { 
-          title: 'Payroll & Income', 
-          items: [...payrollMenuItems, ...otherIncomeMenuItems]
-        }
+        { title: 'Account Management', items: accountsMenuItems }
       ],
-      columns: 2
+      columns: 1
     },
     {
       icon: <AssessmentIcon />,
@@ -2506,7 +2497,7 @@ const Header: React.FC<HeaderProps> = ({
                     ref={menuState?.dropdownRef}
                     $isOpen={menuState?.open || false}
                     $columns={item.columns}
-                    $actualColumns={item.menuItems?.length || 0}
+                    $actualColumns={item.label === 'Finance' ? 3 : (item.menuItems?.length || 0)}
                     onMouseEnter={() => {
                       // Clear any pending close timeout when mouse enters dropdown
                       if (menuLeaveTimeoutRef.current[item.path]) {
@@ -2520,22 +2511,30 @@ const Header: React.FC<HeaderProps> = ({
                     }}
                   >
                     {item.label === 'Finance' ? (
-                      // Finance has 3 columns: Fee Management, Fee & Expense, Fine Management
-                      item.menuItems?.map((section: any, sectionIdx: number) => (
-                        <DropdownColumn key={sectionIdx}>
-                          <ColumnTitle>{section.title}</ColumnTitle>
-                          {section.expenseItems ? (
-                            // Column 2: Fee & Expense - show Fee items, separator, then Expense items
-                            <>
+                      // Finance has 3 columns: Fee Management, Fee Record, Expense Management + Fine Management (same column)
+                      item.menuItems?.map((section: any, sectionIdx: number) => {
+                        // For Finance menu, combine Expense Management and Fine Management in the same column (3rd column)
+                        const isExpenseManagement = section.title === 'Expense Management';
+                        const isFineManagement = section.title === 'Fine Management';
+                        
+                        // Skip rendering Fine Management as separate column, it will be rendered with Expense Management
+                        if (isFineManagement && sectionIdx === 3) {
+                          return null;
+                        }
+                        
+                        // If this is Expense Management, render both Expense and Fine sections together
+                        if (isExpenseManagement) {
+                          const fineSection = item.menuItems?.find((s: any) => s.title === 'Fine Management');
+                          return (
+                            <DropdownColumn key={sectionIdx}>
+                              <ColumnTitle>{section.title}</ColumnTitle>
                               {section.items.map((menuItem: any, idx: number) => (
                                 <DropdownMenuItem
                                   key={idx}
                                   $color={menuItem.color}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
+                                  onClick={() => {
+                                    navigate(menuItem.path);
                                     menuState?.setOpen(false);
-                                    navigate(menuItem.path, { replace: false });
                                   }}
                                 >
                                   <div className="menu-icon">{menuItem.icon}</div>
@@ -2543,55 +2542,68 @@ const Header: React.FC<HeaderProps> = ({
                                     <div className="menu-title">{menuItem.title}</div>
                                     <div className="menu-description">{menuItem.description}</div>
                                   </div>
-                                  {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
-                                    <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
-                                  )}
                                 </DropdownMenuItem>
                               ))}
-                              <ColumnSeparator />
-                              {section.expenseItems.map((menuItem: any, idx: number) => (
-                                <DropdownMenuItem
-                                  key={idx}
-                                  $color={menuItem.color}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    menuState?.setOpen(false);
-                                    navigate(menuItem.path, { replace: false });
-                                  }}
-                                >
-                                  <div className="menu-icon">{menuItem.icon}</div>
-                                  <div className="menu-content">
-                                    <div className="menu-title">{menuItem.title}</div>
-                                    <div className="menu-description">{menuItem.description}</div>
-                                  </div>
-                                  {menuItem.badgeCount !== undefined && menuItem.badgeCount > 0 && (
-                                    <Badge>{menuItem.badgeCount > 99 ? '99+' : menuItem.badgeCount}</Badge>
-                                  )}
-                                </DropdownMenuItem>
-                              ))}
-                            </>
-                          ) : (
-                            // Column 1 (Fee Management) or Column 3 (Fine Management) - direct items
-                            section.items.map((menuItem: any, idx: number) => (
-                              <DropdownMenuItem
-                                key={idx}
-                                $color={menuItem.color}
-                                onClick={() => {
-                                  navigate(menuItem.path);
-                                  menuState?.setOpen(false);
-                                }}
-                              >
-                                <div className="menu-icon">{menuItem.icon}</div>
-                                <div className="menu-content">
-                                  <div className="menu-title">{menuItem.title}</div>
-                                  <div className="menu-description">{menuItem.description}</div>
-                                </div>
-                              </DropdownMenuItem>
-                            ))
-                          )}
-                        </DropdownColumn>
-                      ))
+                              {fineSection && (
+                                <>
+                                  <ColumnSeparator />
+                                  <ColumnTitle>{fineSection.title}</ColumnTitle>
+                                  {fineSection.items.map((menuItem: any, idx: number) => (
+                                    <DropdownMenuItem
+                                      key={idx}
+                                      $color={menuItem.color}
+                                      onClick={() => {
+                                        navigate(menuItem.path);
+                                        menuState?.setOpen(false);
+                                      }}
+                                    >
+                                      <div className="menu-icon">{menuItem.icon}</div>
+                                      <div className="menu-content">
+                                        <div className="menu-title">{menuItem.title}</div>
+                                        <div className="menu-description">{menuItem.description}</div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  ))}
+                                </>
+                              )}
+                            </DropdownColumn>
+                          );
+                        }
+                        
+                        // Render other sections normally
+                        return (
+                          <DropdownColumn key={sectionIdx}>
+                            <ColumnTitle>{section.title}</ColumnTitle>
+                            {section.items.map((menuItem: any, idx: number) => {
+                              // Add separator before Payroll in Fee Record section
+                              const isFeeRecordSection = section.title === 'Fee Record';
+                              const isPayrollItem = menuItem.path === '/payroll';
+                              // Check if previous item is not Payroll (to add separator before first Payroll item)
+                              const prevItem = idx > 0 ? section.items[idx - 1] : null;
+                              const isFirstPayrollItem = isFeeRecordSection && isPayrollItem && prevItem && prevItem.path !== '/payroll';
+                              
+                              return (
+                                <React.Fragment key={idx}>
+                                  {isFirstPayrollItem && <ColumnSeparator />}
+                                  <DropdownMenuItem
+                                    $color={menuItem.color}
+                                    onClick={() => {
+                                      navigate(menuItem.path);
+                                      menuState?.setOpen(false);
+                                    }}
+                                  >
+                                    <div className="menu-icon">{menuItem.icon}</div>
+                                    <div className="menu-content">
+                                      <div className="menu-title">{menuItem.title}</div>
+                                      <div className="menu-description">{menuItem.description}</div>
+                                    </div>
+                                  </DropdownMenuItem>
+                                </React.Fragment>
+                              );
+                            })}
+                          </DropdownColumn>
+                        );
+                      })
                     ) : isStudents || isEmployees || item.label === 'Academics' || item.label === 'Communication' || item.label === 'Settings' || item.label === 'Accounts' ? (
                       // Students, Employees, and Academics have 3 columns, Communication, Settings, and Accounts have 2 columns - all with titles
                       item.menuItems?.map((section: any, sectionIdx: number) => (
