@@ -188,7 +188,7 @@ const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean; $isSect
   }
   appearance: none;
   -webkit-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525' 
+  background-image: ${({ theme }) => theme.BG === '#252525'
     ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
     : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
   background-repeat: no-repeat;
@@ -455,12 +455,12 @@ const SelectionGrid = styled.div`
 `;
 
 const SelectionItem = styled.div<{ selected?: boolean }>`
-  background: ${({ selected, theme }) => 
-    selected 
-      ? theme.ACCENT 
+  background: ${({ selected, theme }) =>
+    selected
+      ? theme.ACCENT
       : theme.BG === '#252525' ? '#333' : '#f8f9fa'};
   color: ${({ selected }) => selected ? '#fff' : 'inherit'};
-  border: 2px solid ${({ selected, theme }) => 
+  border: 2px solid ${({ selected, theme }) =>
     selected ? theme.ACCENT : theme.FIELD_BORDER};
   border-radius: 8px;
   padding: 12px 16px;
@@ -562,12 +562,12 @@ const FatherNameCell = styled(Td)`
   text-overflow: ellipsis;
 `;
 
-const SubjectCell = styled(Td)<{ $highlight?: boolean }>`
+const SubjectCell = styled(Td) <{ $highlight?: boolean }>`
   font-weight: 600;
-  color: ${({ $highlight, theme }) => 
+  color: ${({ $highlight, theme }) =>
     $highlight ? theme.ACCENT : theme.TEXT_PRIMARY
   };
-  background: ${({ $highlight }) => 
+  background: ${({ $highlight }) =>
     $highlight ? 'rgba(34, 197, 94, 0.08)' : 'transparent'
   };
 `;
@@ -586,7 +586,7 @@ const PoorScoreCell = styled(Td)`
   text-align: center;
 `;
 
-const PositionCell = styled(Td)<{ $position: number }>`
+const PositionCell = styled(Td) <{ $position: number }>`
   font-weight: 600;
   font-size: 0.8rem;
   color: ${({ $position, theme }) => {
@@ -600,7 +600,7 @@ const PositionCell = styled(Td)<{ $position: number }>`
   padding: 4px 8px;
 `;
 
-const PercentageCell = styled(Td)<{ $percentage: number }>`
+const PercentageCell = styled(Td) <{ $percentage: number }>`
   font-weight: 600;
   color: ${({ $percentage }) => {
     if ($percentage >= 80) return '#10b981';
@@ -747,10 +747,10 @@ const PositionBadge = styled.div<{ $position: number }>`
     return '#f3f4f6';
   }};
   color: ${({ $position }) => $position <= 3 ? '#ffffff' : '#6b7280'};
-  box-shadow: ${({ $position }) => 
+  box-shadow: ${({ $position }) =>
     $position <= 3 ? '0 2px 4px rgba(0, 0, 0, 0.15)' : '0 1px 2px rgba(0, 0, 0, 0.05)'
   };
-  border: ${({ $position }) => 
+  border: ${({ $position }) =>
     $position <= 3 ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid #e5e7eb'
   };
 `;
@@ -785,7 +785,7 @@ const ScoreCell = styled.div<{ $highlight?: boolean }>`
   text-align: center;
   font-weight: 500;
   font-size: 0.7rem;
-  color: ${({ $highlight, theme }) => 
+  color: ${({ $highlight, theme }) =>
     $highlight ? theme.ACCENT : theme.TEXT_PRIMARY
   };
   min-height: 20px;
@@ -1037,37 +1037,37 @@ const ScrollableTableContainer = styled.div`
 // Subject ordering configuration - handles variations in naming
 const getSubjectOrder = (subjectName: string): number => {
   const name = subjectName.toLowerCase().trim();
-  
+
   // English subjects
   if (name.includes('english') && !name.includes('b')) return 1;
   if (name.includes('english') && name.includes('b')) return 2;
-  
+
   // Urdu subjects
   if (name.includes('urdu') && !name.includes('b')) return 3;
   if (name.includes('urdu') && name.includes('b')) return 4;
-  
+
   // Mathematics
   if (name.includes('math') || name.includes('mathematics')) return 5;
-  
+
   // Islamic subjects
   if (name.includes('islam') || name.includes('islamiyat') || name.includes('islamiat')) return 6;
   if (name.includes('pak study') || name.includes('pakistan')) return 7;
   if (name.includes('mutala') || name.includes('quran')) return 8;
-  
+
   // Science subjects
   if (name.includes('biology')) return 9;
   if (name.includes('chemistry')) return 10;
   if (name.includes('physics')) return 11;
-  
+
   // Social subjects
   if (name.includes('social') || name.includes('study')) return 12;
   if (name.includes('general science')) return 13;
   if (name.includes('general knowledge') || name.includes('gk')) return 14;
-  
+
   // Islamic studies
   if (name.includes('nazra') || name.includes('nazira')) return 15;
   if (name.includes('hifz') || name.includes('hifazat')) return 16;
-  
+
   // Default order for other subjects
   return 999;
 };
@@ -1078,28 +1078,28 @@ const MasterSheetManager: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const { setLoading, loading } = useLoading();
   const { setFooterContent } = usePageFooter();
-  
+
   // State for data
   const [classes, setClasses] = useState<Class[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [examinations, setExaminations] = useState<Examination[]>([]);
   const [masterSheetData, setMasterSheetData] = useState<MasterSheetData[]>([]);
   const [subjectsWithResults, setSubjectsWithResults] = useState<any[]>([]);
-  
+
   // Selected values
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [selectedExam, setSelectedExam] = useState<Examination | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
-  
+
   const [generating, setGenerating] = useState(false);
   const [showToTop, setShowToTop] = useState(false);
   const [editingRemarks, setEditingRemarks] = useState<{ [key: number]: string }>({});
   const mainContentRef = useRef<HTMLDivElement>(null);
-  
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-  
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 700);
@@ -1138,12 +1138,12 @@ const MasterSheetManager: React.FC = () => {
         .from('classes')
         .select('id, name, school_id, has_sections')
         .eq('school_id', user?.school_id);
-      
+
       if (error) throw error;
-      
+
       // Sort classes: numbered classes first, then special classes (Play Group, Nursery, K.G)
       const sortedClasses = sortClasses(data || []);
-      
+
       setClasses(sortedClasses);
     } catch (error) {
       showToast('Failed to load classes', 'error');
@@ -1159,7 +1159,7 @@ const MasterSheetManager: React.FC = () => {
         .eq('class_id', classId)
         .eq('school_id', user?.school_id)
         .order('name');
-      
+
       if (error) throw error;
       setSections(data || []);
     } catch (error) {
@@ -1204,18 +1204,18 @@ const MasterSheetManager: React.FC = () => {
 
     try {
       setLoading(true);
-      
+
       // Always calculate the detailed master sheet data
       // The examination summaries are stored for quick access in StudentProfile
       // but MasterSheetManager should always show the full detailed view
-      
+
       // Get all students for the selected class/section (regardless of status)
       const studentQuery = supabase
         .from('students')
         .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('class_id', selectedClass.id);
-      
+
       // Add section filter only if the class has sections
       if (hasSections && selectedSection) {
         studentQuery.eq('section_id', selectedSection.id);
@@ -1223,8 +1223,25 @@ const MasterSheetManager: React.FC = () => {
         studentQuery.is('section_id', null);
       }
 
-      const { data: students, error: studentsError } = await studentQuery;
+      const { data: studentsData, error: studentsError } = await studentQuery;
       if (studentsError) throw studentsError;
+
+      // Check for exclusions if an exam is selected
+      let excludedIds = new Set<number>();
+      if (selectedExam) {
+        const { data: exclusionsData } = await supabase
+          .from('exam_exclusions')
+          .select('student_id')
+          .eq('exam_id', selectedExam.id)
+          .eq('school_id', user?.school_id);
+
+        if (exclusionsData) {
+          excludedIds = new Set(exclusionsData.map(e => e.student_id));
+        }
+      }
+
+      // Filter out excluded students
+      const students = (studentsData || []).filter(student => !excludedIds.has(student.id));
 
       if (!students || students.length === 0) {
         setMasterSheetData([]);
@@ -1305,7 +1322,7 @@ const MasterSheetManager: React.FC = () => {
         const results = studentResults[student.id] || [];
         const obtainedMarks = results.reduce((sum, r) => sum + (r.obtained_marks || 0), 0);
         const percentage = totalExamMarks > 0 ? (obtainedMarks / totalExamMarks) * 100 : 0;
-        
+
         // Determine status using dynamic passing marks from examination
         let status: 'pass' | 'fail' | 'absent' = 'pass';
         if (results.some(r => r.remarks === 'Absent')) {
@@ -1337,7 +1354,7 @@ const MasterSheetManager: React.FC = () => {
         results.forEach(result => {
           const subject = result.subjects as any;
           const subjectCode = subject?.short_name || subject?.name?.substring(0, 3).toUpperCase();
-          
+
           // Check if student was absent for this subject
           if (result.remarks === 'Absent' || result.obtained_marks === 0 && result.remarks?.toLowerCase().includes('absent')) {
             subjectScores[subjectCode] = 'A';
@@ -1369,13 +1386,13 @@ const MasterSheetManager: React.FC = () => {
 
       // First, sort by obtained marks to assign positions
       const sortedByMarks = [...masterSheetData].sort((a, b) => b.obtained_marks - a.obtained_marks);
-      
+
       // Assign positions with proper handling of ties
       let currentPosition = 1;
       for (let i = 0; i < sortedByMarks.length; i++) {
         const student = sortedByMarks[i];
         const currentMarks = student.obtained_marks;
-        
+
         // Count how many students have the same marks as current student
         let sameMarksCount = 1;
         for (let j = i + 1; j < sortedByMarks.length; j++) {
@@ -1385,14 +1402,14 @@ const MasterSheetManager: React.FC = () => {
             break;
           }
         }
-        
+
         // Assign the same position to all students with same marks
         for (let k = 0; k < sameMarksCount; k++) {
           sortedByMarks[i + k].position = currentPosition;
           sortedByMarks[i + k].rank_in_class = currentPosition;
           sortedByMarks[i + k].rank_in_section = currentPosition;
         }
-        
+
         // Move to next position (skip the tied students and increment by 1)
         i += sameMarksCount - 1;
         currentPosition = currentPosition + 1; // Always increment by 1 for next position
@@ -1418,14 +1435,14 @@ const MasterSheetManager: React.FC = () => {
 
     try {
       const hasSections = selectedClass.has_sections ?? true;
-      
+
       // Build filters based on whether class has sections
       const filters: any = {
         examination_id: selectedExam.id,
         class_id: selectedClass.id,
         school_id: user.school_id
       };
-      
+
       // Only add section_id filter if the class has sections
       if (hasSections) {
         if (selectedSection) {
@@ -1468,17 +1485,17 @@ const MasterSheetManager: React.FC = () => {
 
   // Function to store examination summaries in the database
   const storeExaminationSummaries = async (
-    masterSheetData: MasterSheetData[], 
-    selectedExam: Examination, 
-    selectedClass: Class, 
-    selectedSection: Section | null, 
+    masterSheetData: MasterSheetData[],
+    selectedExam: Examination,
+    selectedClass: Class,
+    selectedSection: Section | null,
     schoolId: number | undefined
   ) => {
     if (!schoolId || !selectedExam.session_id) return;
 
     try {
       const hasSections = selectedClass.has_sections ?? true;
-      
+
       // Convert master sheet data to examination summaries
       const examinationSummaries: ExaminationSummary[] = masterSheetData.map(student => ({
         examination_id: selectedExam.id,
@@ -1501,7 +1518,7 @@ const MasterSheetManager: React.FC = () => {
 
       // Bulk upsert examination summaries
       await examinationSummaryService.bulkUpsertExaminationSummaries(examinationSummaries);
-      
+
     } catch (error) {
       // Don't show error to user as this is a background operation
     }
@@ -1525,7 +1542,7 @@ const MasterSheetManager: React.FC = () => {
       const passCount = masterSheetData.filter(ms => ms.status === 'pass').length;
       const failCount = masterSheetData.filter(ms => ms.status === 'fail').length;
       const absentCount = masterSheetData.filter(ms => ms.status === 'absent').length;
-      const averagePercentage = masterSheetData.length > 0 
+      const averagePercentage = masterSheetData.length > 0
         ? (masterSheetData.reduce((sum, ms) => sum + ms.percentage, 0) / masterSheetData.length).toFixed(1)
         : '0.0';
 
@@ -1603,13 +1620,13 @@ const MasterSheetManager: React.FC = () => {
     try {
       setLoading(true);
       showToast('Refreshing examination summaries...', 'success');
-      
+
       // Delete existing summaries for this examination
       await examinationSummaryService.deleteExaminationSummariesByExam(selectedExam.id, user?.school_id || 0);
-      
+
       // Reload master sheet data (which will recalculate and store new summaries)
       await loadMasterSheetData();
-      
+
       showToast('Examination summaries refreshed successfully', 'success');
     } catch (error) {
       showToast('Failed to refresh examination summaries', 'error');
@@ -1622,12 +1639,12 @@ const MasterSheetManager: React.FC = () => {
   const getPositionSuffix = (position: number): string => {
     const lastDigit = position % 10;
     const lastTwoDigits = position % 100;
-    
+
     // Handle special cases for 11th, 12th, 13th
     if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
       return `${position}th`;
     }
-    
+
     // Handle regular cases
     switch (lastDigit) {
       case 1:
@@ -1651,7 +1668,7 @@ const MasterSheetManager: React.FC = () => {
     try {
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         showToast('Generating PDF for mobile... Please wait.', 'success');
@@ -1664,7 +1681,7 @@ const MasterSheetManager: React.FC = () => {
           .select('name')
           .eq('id', selectedExam.session_id)
           .single();
-        
+
         if (!sessionError && sessionData?.name) {
           sessionName = sessionData.name;
         }
@@ -1683,7 +1700,7 @@ const MasterSheetManager: React.FC = () => {
       // Add title
       const title = `Master Sheet - ${selectedExam.name}`;
       doc.text(title, 14, 20);
-      
+
       // Add class/section info to top right
       const hasSections = selectedClass.has_sections ?? true;
       const classSectionStr = `${selectedClass.name}${hasSections && selectedSection ? ` - ${selectedSection.name}` : ''}`;
@@ -1714,11 +1731,11 @@ const MasterSheetManager: React.FC = () => {
           student.student_name, // Name
           student.father_name || 'N/A', // Father
         ];
-        
+
         // Add dynamic subject columns
         subjectsWithResults.forEach((subject) => {
           const subjectCode = subject.short_name || subject.name?.substring(0, 3).toUpperCase();
-          
+
           const score = student.subject_scores?.[subjectCode];
           if (score === undefined || score === null) {
             row.push('-'); // No result recorded
@@ -1728,7 +1745,7 @@ const MasterSheetManager: React.FC = () => {
             row.push(score.toString()); // Actual score
           }
         });
-        
+
         // Add remaining columns
         row.push(
           student.total_marks.toFixed(0), // Total
@@ -1736,48 +1753,48 @@ const MasterSheetManager: React.FC = () => {
           `${student.percentage.toFixed(1)}%`, // Per
           getPositionSuffix(student.position) // PO (Position)
         );
-        
+
         return row;
       });
 
       // Prepare table headers - match on-screen exactly
       const headers = ['ID', 'Name', 'Father'];
-      
+
       // Add dynamic subject headers with max marks
       subjectsWithResults.forEach((subject) => {
         const subjectCode = subject.short_name || subject.name?.substring(0, 3).toUpperCase();
         const maxMarks = subject.max_marks || 0;
         headers.push(`${subjectCode} (${maxMarks})`);
       });
-      
+
       // Add remaining headers
       headers.push('Total', 'Obt', 'Per', 'PO');
 
       // Build columnStyles for proper column widths - match on-screen structure
       const totalWidth = 270;
-      
+
       // Calculate dynamic widths based on number of subjects
       const subjectColumnsCount = subjectsWithResults.length;
       const fixedColumnsWidth = 12 + 35 + 15 + 20 + 15 + 15; // ID + Name (fixed) + Total + Obt + Per + PO
       const subjectColumnsWidth = subjectColumnsCount * 12; // Each subject column is 12mm
       const availableWidth = totalWidth - fixedColumnsWidth - subjectColumnsWidth;
-      
+
       // Dynamic width for Father column only (Name stays fixed at 35mm)
       const fatherWidth = Math.max(20, availableWidth); // Minimum 20mm
-      
+
       const columnStyles: any = {
         0: { cellWidth: 12, halign: 'center', valign: 'middle' }, // ID
         1: { cellWidth: 35, halign: 'left', valign: 'middle' }, // Name (fixed)
         2: { cellWidth: fatherWidth, halign: 'left', valign: 'middle' }, // Father (dynamic)
       };
-      
+
       // Add dynamic subject column styles
       let colIndex = 3;
       subjectsWithResults.forEach((subject) => {
         columnStyles[colIndex] = { cellWidth: 12, halign: 'center', valign: 'middle' }; // Subject columns
         colIndex++;
       });
-      
+
       // Add remaining column styles
       columnStyles[colIndex] = { cellWidth: 15, halign: 'center', valign: 'middle' }; // Total
       columnStyles[colIndex + 1] = { cellWidth: 20, halign: 'center', valign: 'middle' }; // Obt (wider for grade)
@@ -1806,27 +1823,27 @@ const MasterSheetManager: React.FC = () => {
           valign: 'middle'
         },
         columnStyles,
-        didParseCell: function(data) {
+        didParseCell: function (data) {
           // Skip header row - don't apply position highlighting to header
           if (data.row.section === 'head') {
             return;
           }
-          
+
           // Get the student data for this row to check position
           // data.row.index corresponds directly to the tableData array (which is sortedData)
           const student = sortedData[data.row.index];
           const position = student ? student.position : 0;
-          
+
           // Highlight entire row based on position (1st, 2nd, 3rd)
           if (position === 1 || position === 2 || position === 3) {
             // Top 3 places - light yellow background
             data.cell.styles.fillColor = [254, 243, 199]; // Light yellow
           }
-          
+
           // Style for subject cells (absent and poor scores)
           const subjectColumnsStart = 3;
           const subjectColumnsEnd = subjectColumnsStart + subjectsWithResults.length - 1;
-          
+
           if (data.column.index >= subjectColumnsStart && data.column.index <= subjectColumnsEnd) {
             const score = String(data.cell.raw || '');
             if (score === 'A') {
@@ -1843,7 +1860,7 @@ const MasterSheetManager: React.FC = () => {
               const maxMarks = subject?.max_marks || 100;
               const passingMarks = selectedExam.passing_marks || 40;
               const percentage = maxMarks > 0 ? (Number(score) / maxMarks) * 100 : 0;
-              
+
               if (percentage < passingMarks) {
                 // Poor score (including 0 marks) - red text and light red background
                 data.cell.styles.textColor = [220, 38, 38];
@@ -1851,13 +1868,13 @@ const MasterSheetManager: React.FC = () => {
               }
             }
           }
-          
+
           // Style for obtained marks cells (Obt column) - make bold
           const obtColumnIndex = subjectColumnsStart + subjectsWithResults.length + 1; // Total, Obt
           if (data.column.index === obtColumnIndex) {
             data.cell.styles.fontStyle = 'bold';
           }
-          
+
           // Style for percentage cells (Per column)
           const perColumnIndex = subjectColumnsStart + subjectsWithResults.length + 2; // Total, Obt, Per
           if (data.column.index === perColumnIndex) {
@@ -1884,7 +1901,7 @@ const MasterSheetManager: React.FC = () => {
         // Check if we need a new page for position holders
         const currentY = (doc as any).lastAutoTable.finalY + 5;
         const pageHeight = doc.internal.pageSize.height;
-        
+
         if (currentY > pageHeight - 40) {
           doc.addPage();
         }
@@ -1892,7 +1909,7 @@ const MasterSheetManager: React.FC = () => {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text('POSITION HOLDERS (1st, 2nd, 3rd)', 14, currentY > pageHeight - 40 ? 15 : currentY);
-        
+
         // Helper function to calculate grade based on percentage
         const calculateGrade = (percentage: number): string => {
           if (percentage >= 90) return 'A+';
@@ -1936,27 +1953,27 @@ const MasterSheetManager: React.FC = () => {
       const passCount = masterSheetData.filter(s => s.status === 'pass').length;
       const failCount = masterSheetData.filter(s => s.status === 'fail').length;
       const avgPercentage = masterSheetData.reduce((sum, s) => sum + s.percentage, 0) / masterSheetData.length;
-      
+
       // Calculate grade-wise counts
       const gradeCounts = masterSheetData.reduce((acc, student) => {
         const grade = calculateGrade(student.percentage);
         acc[grade] = (acc[grade] || 0) + 1;
         return acc;
       }, {} as { [key: string]: number });
-      
+
       // Add footer with page numbers
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
-        
+
         // Add page number on the right side (moved more to the left)
         doc.text(
           `Page ${i} of ${pageCount}`,
           doc.internal.pageSize.width - 50,
           doc.internal.pageSize.height - 10
         );
-        
+
         // Add summary statistics only on the last page
         if (i === pageCount) {
           // Prepare grade-wise counts
@@ -1967,30 +1984,30 @@ const MasterSheetManager: React.FC = () => {
             })
             .map(([grade, count]) => `${grade}: ${count}`)
             .join(' | ');
-          
+
           // Add summary statistics on the left side of footer (last page only) with larger font and colors
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          
+
           // Set starting position
           let currentX = 14;
           const yPosition = doc.internal.pageSize.height - 10;
-          
+
           // Passed (Green)
           doc.setTextColor(34, 197, 94); // Green color
           doc.text(`Passed: ${passCount}`, currentX, yPosition);
           currentX += doc.getTextWidth(`Passed: ${passCount} | `);
-          
+
           // Failed (Red)
           doc.setTextColor(239, 68, 68); // Red color
           doc.text(`Failed: ${failCount}`, currentX, yPosition);
           currentX += doc.getTextWidth(`Failed: ${failCount} | `);
-          
+
           // Average (Blue)
           doc.setTextColor(59, 130, 246); // Blue color
           doc.text(`Average: ${avgPercentage.toFixed(1)}%`, currentX, yPosition);
           currentX += doc.getTextWidth(`Average: ${avgPercentage.toFixed(1)}% | `);
-          
+
           // Grades (Default black)
           doc.setTextColor(0, 0, 0); // Black color
           doc.text(`Grades: ${gradeText}`, currentX, yPosition);
@@ -2009,13 +2026,13 @@ const MasterSheetManager: React.FC = () => {
       // Save the PDF with mobile-friendly approach
       const sectionPart = selectedSection ? `(${selectedSection.name})` : '';
       const fileName = `MasterSheet_${selectedClass?.name}${sectionPart}_${selectedExam?.name}_${new Date().toLocaleDateString('en-GB')}.pdf`;
-      
+
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach
         try {
           // Generate PDF as base64 string
           const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
+
           // Create unique filename with timestamp to prevent overwriting
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const mobileFileName = `master-sheet-${timestamp}.pdf`;
@@ -2038,11 +2055,11 @@ const MasterSheetManager: React.FC = () => {
 
               // Show success message and trigger native Android "Open with" dialog
               showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-              
+
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
-              
+
             } catch (fsError) {
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
@@ -2053,7 +2070,7 @@ const MasterSheetManager: React.FC = () => {
             try {
               const pdfBlob = doc.output('blob');
               const url = URL.createObjectURL(pdfBlob);
-              
+
               // Create a visible download button for mobile
               const downloadContainer = document.createElement('div');
               downloadContainer.style.cssText = `
@@ -2070,7 +2087,7 @@ const MasterSheetManager: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
+
               downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Master Sheet Report</p>
@@ -2086,9 +2103,9 @@ const MasterSheetManager: React.FC = () => {
                   Close
                 </button>
               `;
-              
+
               document.body.appendChild(downloadContainer);
-              
+
               // Auto-remove after 30 seconds
               setTimeout(() => {
                 if (downloadContainer.parentElement) {
@@ -2096,11 +2113,11 @@ const MasterSheetManager: React.FC = () => {
                 }
                 URL.revokeObjectURL(url);
               }, 30000);
-              
+
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-              
+
             } catch (webError) {
-              
+
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
               const newWindow = window.open('', '_blank');
@@ -2239,8 +2256,8 @@ const MasterSheetManager: React.FC = () => {
       if (!remarks) return;
 
       // Update the master sheet data locally
-      setMasterSheetData(prev => prev.map(student => 
-        student.student_id === studentId 
+      setMasterSheetData(prev => prev.map(student =>
+        student.student_id === studentId
           ? { ...student, remarks: remarks }
           : student
       ));
@@ -2271,7 +2288,7 @@ const MasterSheetManager: React.FC = () => {
               <AssessmentIcon style={{ fontSize: 20 }} />
               Master Sheet Management
             </Title>
-            
+
             {/* Mobile PDF Button - only visible on mobile */}
             <MobilePdfButton
               type="button"
@@ -2280,19 +2297,19 @@ const MasterSheetManager: React.FC = () => {
               title="Generate Master Sheet PDF"
             >
               {exportLoading ? (
-                <div style={{ 
-                  width: 16, 
-                  height: 16, 
-                  border: '2px solid #e0e7ff', 
-                  borderTop: '2px solid #4a6cf7', 
-                  borderRadius: '50%', 
-                  animation: 'spin 1s linear infinite' 
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  border: '2px solid #e0e7ff',
+                  borderTop: '2px solid #4a6cf7',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
                 }} />
               ) : (
                 <PictureAsPdf style={{ fontSize: 18 }} />
               )}
             </MobilePdfButton>
-            
+
             {/* Desktop layout - all fields in one row */}
             <DesktopSegmentedGroup>
               <SegmentedGroup>
@@ -2311,7 +2328,7 @@ const MasterSheetManager: React.FC = () => {
                     </option>
                   ))}
                 </SegmentedSelect>
-                
+
                 <SegmentedSelect
                   value={selectedClass?.id || ''}
                   onChange={(e) => {
@@ -2328,7 +2345,7 @@ const MasterSheetManager: React.FC = () => {
                     </option>
                   ))}
                 </SegmentedSelect>
-                
+
                 {(selectedClass?.has_sections ?? true) && (
                   <SegmentedSelect
                     value={selectedSection?.id || ''}
@@ -2348,7 +2365,7 @@ const MasterSheetManager: React.FC = () => {
                     ))}
                   </SegmentedSelect>
                 )}
-                
+
                 <SegmentedButton
                   type="button"
                   onClick={handleRefreshSummaries}
@@ -2356,20 +2373,20 @@ const MasterSheetManager: React.FC = () => {
                   title="Refresh Examination Summaries"
                 >
                   {loading ? (
-                    <div style={{ 
-                      width: 16, 
-                      height: 16, 
-                      border: '2px solid #e0e7ff', 
-                      borderTop: '2px solid #4a6cf7', 
-                      borderRadius: '50%', 
-                      animation: 'spin 1s linear infinite' 
+                    <div style={{
+                      width: 16,
+                      height: 16,
+                      border: '2px solid #e0e7ff',
+                      borderTop: '2px solid #4a6cf7',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
                     }} />
                   ) : (
                     <RefreshIcon style={{ fontSize: 16 }} />
                   )}
                   {loading ? 'Refreshing...' : 'Refresh'}
                 </SegmentedButton>
-                
+
                 <SegmentedButton
                   type="button"
                   onClick={handleExportMasterSheetPDF}
@@ -2378,13 +2395,13 @@ const MasterSheetManager: React.FC = () => {
                   $isPdf={true}
                 >
                   {exportLoading ? (
-                    <div style={{ 
-                      width: 16, 
-                      height: 16, 
-                      border: '2px solid #e0e7ff', 
-                      borderTop: '2px solid #4a6cf7', 
-                      borderRadius: '50%', 
-                      animation: 'spin 1s linear infinite' 
+                    <div style={{
+                      width: 16,
+                      height: 16,
+                      border: '2px solid #e0e7ff',
+                      borderTop: '2px solid #4a6cf7',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
                     }} />
                   ) : (
                     <PictureAsPdf style={{ fontSize: 16 }} />
@@ -2394,7 +2411,7 @@ const MasterSheetManager: React.FC = () => {
               </SegmentedGroup>
             </DesktopSegmentedGroup>
           </HeaderTopRow>
-          
+
           <HeaderBottomRow>
             {/* Mobile layout - examination takes half, class+section take the other half */}
             <MobileHeaderLayout>
@@ -2459,7 +2476,7 @@ const MasterSheetManager: React.FC = () => {
             </MobileHeaderLayout>
           </HeaderBottomRow>
         </Header>
-        
+
         <MainContent ref={mainContentRef}>
 
 
@@ -2497,7 +2514,7 @@ const MasterSheetManager: React.FC = () => {
                       <div style={{ lineHeight: '1.2' }}>
                         <div>Total</div>
                         <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: '500' }}>
-                          ({masterSheetData.length > 0 ? 
+                          ({masterSheetData.length > 0 ?
                             (masterSheetData[0].total_marks || subjectsWithResults.reduce((sum, sub) => sum + (sub.max_marks || 0), 0)) : 0})
                         </div>
                       </div>
@@ -2514,16 +2531,16 @@ const MasterSheetManager: React.FC = () => {
                       <Td className="id-column">
                         {index + 1}
                       </Td>
-                      
+
                       <StudentNameCell>{student.student_name}</StudentNameCell>
                       <FatherNameCell>{student.father_name}</FatherNameCell>
-                      
+
                       {/* Dynamic subject scores based on subjects with results */}
                       {subjectsWithResults.map((subject) => {
                         const subjectCode = subject.short_name || subject.name?.substring(0, 3).toUpperCase();
-                        
+
                         const score = student.subject_scores?.[subjectCode];
-                        
+
                         if (score === undefined || score === null) {
                           return <SubjectCell key={subject.id}>-</SubjectCell>; // No result recorded
                         } else if (score === 'A') {
@@ -2540,23 +2557,23 @@ const MasterSheetManager: React.FC = () => {
                           );
                         }
                       })}
-                      
+
                       <SubjectCell className="total-column">
                         {student.total_marks.toFixed(0)}
                       </SubjectCell>
-                      
+
                       <SubjectCell>
                         {student.obtained_marks.toFixed(0)} - {(student.grade && student.grade !== 'N/A') ? student.grade : calculateGrade(student.percentage)}
                       </SubjectCell>
-                      
+
                       <PercentageCell $percentage={student.percentage}>
                         {student.percentage.toFixed(1)}%
                       </PercentageCell>
-                      
+
                       <PositionCell $position={student.position}>
                         {getPositionSuffix(student.position)}
                       </PositionCell>
-                      
+
                       <RemarksCell>
                         <RemarksInput
                           type="text"

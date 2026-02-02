@@ -86,6 +86,7 @@ import EnquiryDetailPage from './pages/EnquiryDetailPage';
 import EnquiryFormPage from './pages/EnquiryFormPage';
 // Examination Management Components
 import ExaminationManager from './components/ExaminationManager';
+import StudentExclusionManager from './components/StudentExclusionManager';
 import MarksEntryManager from './components/MarksEntryManager';
 import TestRecordManager from './components/TestRecordManager';
 import TestRecordMasterSheet from './components/TestRecordMasterSheet';
@@ -1002,6 +1003,15 @@ const App: React.FC = () => {
                                 requiredPermission="examinations"
                               >
                                 <ExaminationManager />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="student-exam-exclusion"
+                            element={
+                              <ProtectedRoute requiredPermission="examinations">
+                                <StudentExclusionManager />
                               </ProtectedRoute>
                             }
                           />

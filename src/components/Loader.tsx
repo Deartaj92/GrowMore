@@ -4,11 +4,13 @@ import styled from 'styled-components';
 interface LoaderProps {
   size?: 'small' | 'medium' | 'large';
   centered?: boolean;
+  /** Full-screen splash style with dark background */
+  fullScreenDark?: boolean;
 }
 
-const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true }) => {
+const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullScreenDark = false }) => {
   return (
-    <StyledWrapper $centered={centered} $size={size}>
+    <StyledWrapper $centered={centered} $size={size} $fullScreenDark={fullScreenDark}>
       <LoaderContent $size={size}>
         <div className="book">
           <div className="book__pg-shadow" />
@@ -18,7 +20,7 @@ const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true }) => 
           <div className="book__pg book__pg--4" />
           <div className="book__pg book__pg--5" />
         </div>
-        <LoadingText>
+        <LoadingText $darkBg={fullScreenDark}>
           Loading
           <DotsContainer>
             <Dot $delay={0}>.</Dot>
@@ -31,7 +33,7 @@ const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true }) => 
   );
 }
 
-const StyledWrapper = styled.div<{ $centered: boolean; $size: string }>`
+const StyledWrapper = styled.div<{ $centered: boolean; $size: string; $fullScreenDark?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -39,6 +41,14 @@ const StyledWrapper = styled.div<{ $centered: boolean; $size: string }>`
   height: ${props => props.$centered ? '100%' : 'auto'};
   min-height: ${props => props.$centered ? '60vh' : 'auto'};
   padding: ${props => props.$centered ? '2rem' : '1rem'};
+  ${props => props.$fullScreenDark && `
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #252525;
+    min-height: 100vh;
+    min-height: 100dvh;
+  `}
 `;
 
 const LoaderContent = styled.div<{ $size: string }>`
@@ -391,17 +401,17 @@ const LoaderContent = styled.div<{ $size: string }>`
   }
 `;
 
-const LoadingText = styled.div`
+const LoadingText = styled.div<{ $darkBg?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.9rem;
-  color: hsl(223, 10%, 50%);
+  color: ${props => props.$darkBg ? 'hsl(223, 10%, 75%)' : 'hsl(223, 10%, 50%)'};
   font-weight: 500;
   letter-spacing: 0.5px;
   
   @media (prefers-color-scheme: dark) {
-    color: hsl(223, 10%, 80%);
+    color: ${props => props.$darkBg ? 'hsl(223, 10%, 85%)' : 'hsl(223, 10%, 80%)'};
   }
 `;
 

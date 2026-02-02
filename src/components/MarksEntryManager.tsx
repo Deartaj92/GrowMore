@@ -438,11 +438,11 @@ const StudentRow = styled.div<{ $isActive?: boolean }>`
   `}
 
   &:hover {
-    background: ${({ theme, $isActive }) => 
-      $isActive 
-        ? (theme.palette?.mode === 'dark' ? 'rgba(74, 108, 247, 0.15)' : 'rgba(74, 108, 247, 0.08)')
-        : theme.palette?.mode === 'dark' ? '#252525' : '#f7faff'
-    };
+    background: ${({ theme, $isActive }) =>
+    $isActive
+      ? (theme.palette?.mode === 'dark' ? 'rgba(74, 108, 247, 0.15)' : 'rgba(74, 108, 247, 0.08)')
+      : theme.palette?.mode === 'dark' ? '#252525' : '#f7faff'
+  };
   }
 
   &:last-child {
@@ -575,18 +575,18 @@ const shake = keyframes`
 const MarksInput = styled.input<{ $hasError?: boolean }>`
   width: 80px;
   padding: 8px 12px;
-  border: 1px solid ${({ theme, $hasError }) => 
-    $hasError ? '#ef4444' : 
-    theme.palette?.mode === 'dark' ? '#3a3f4b' : '#b6c2d9'
+  border: 1px solid ${({ theme, $hasError }) =>
+    $hasError ? '#ef4444' :
+      theme.palette?.mode === 'dark' ? '#3a3f4b' : '#b6c2d9'
   };
   border-radius: 8px;
-  background: ${({ theme, $hasError }) => 
-    $hasError ? 
-      (theme.palette?.mode === 'dark' ? '#2d1b1b' : '#fef2f2') : 
+  background: ${({ theme, $hasError }) =>
+    $hasError ?
+      (theme.palette?.mode === 'dark' ? '#2d1b1b' : '#fef2f2') :
       theme.palette?.mode === 'dark' ? '#252525' : '#f7faff'
   };
-  color: ${({ theme, $hasError }) => 
-    $hasError ? 
+  color: ${({ theme, $hasError }) =>
+    $hasError ?
       (theme.palette?.mode === 'dark' ? '#fca5a5' : '#dc2626') :
       theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a'
   };
@@ -599,23 +599,23 @@ const MarksInput = styled.input<{ $hasError?: boolean }>`
   &::placeholder {
     font-size: 0.65rem;
     font-weight: 400;
-    color: ${({ theme, $hasError }) => 
-      $hasError ? 
-        (theme.palette?.mode === 'dark' ? '#fca5a5' : '#dc2626') :
-        theme.palette?.mode === 'dark' ? '#9ca3af' : '#6b7280'
-    };
+    color: ${({ theme, $hasError }) =>
+    $hasError ?
+      (theme.palette?.mode === 'dark' ? '#fca5a5' : '#dc2626') :
+      theme.palette?.mode === 'dark' ? '#9ca3af' : '#6b7280'
+  };
   }
 
   &:focus {
     outline: none;
-    border-color: ${({ theme, $hasError }) => 
-      $hasError ? '#ef4444' : '#4a6cf7'
-    };
-    box-shadow: 0 0 0 2px ${({ theme, $hasError }) => 
-      $hasError ? 
-        (theme.palette?.mode === 'dark' ? '#ef444420' : '#ef444420') :
-        '#4a6cf720'
-    };
+    border-color: ${({ theme, $hasError }) =>
+    $hasError ? '#ef4444' : '#4a6cf7'
+  };
+    box-shadow: 0 0 0 2px ${({ theme, $hasError }) =>
+    $hasError ?
+      (theme.palette?.mode === 'dark' ? '#ef444420' : '#ef444420') :
+      '#4a6cf720'
+  };
   }
 
   &::-webkit-outer-spin-button,
@@ -650,10 +650,10 @@ const PercentageDisplay = styled.div`
 const PercentageValue = styled.div<{ $percentage: number }>`
   font-size: 0.9rem;
   font-weight: 700;
-  color: ${({ $percentage }) => 
-    $percentage >= 80 ? '#16a34a' : 
-    $percentage >= 60 ? '#f59e0b' : 
-    $percentage >= 40 ? '#f97316' : '#dc2626'
+  color: ${({ $percentage }) =>
+    $percentage >= 80 ? '#16a34a' :
+      $percentage >= 60 ? '#f59e0b' :
+        $percentage >= 40 ? '#f97316' : '#dc2626'
   };
 `;
 
@@ -1055,10 +1055,10 @@ const MarksEntryManager: React.FC = () => {
   const location = useLocation();
   const { logExaminationMarksActivity } = useActivityTracking();
   const { setFooterContent } = usePageFooter();
-  
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-  
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 700);
@@ -1066,7 +1066,7 @@ const MarksEntryManager: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   // State for form fields
   const [classes, setClasses] = useState<Class[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -1075,20 +1075,20 @@ const MarksEntryManager: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
-  
+
   // Selected values
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [selectedExam, setSelectedExam] = useState<Examination | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
-  
+
   // Marks data
   const [marksData, setMarksData] = useState<{ [studentId: number]: number | string }>({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
-  
+
   const [showToTop, setShowToTop] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -1152,14 +1152,14 @@ const MarksEntryManager: React.FC = () => {
 
   const scrollToKeepVisible = (inputElement: HTMLInputElement) => {
     if (!mainContentRef.current) return;
-    
+
     const container = mainContentRef.current;
     const containerRect = container.getBoundingClientRect();
     const inputRect = inputElement.getBoundingClientRect();
-    
+
     // Check if input is near the bottom edge (within 100px)
     const distanceFromBottom = containerRect.bottom - inputRect.bottom;
-    
+
     if (distanceFromBottom < 100) {
       // Scroll down to keep the input visible
       const scrollAmount = Math.min(150, container.scrollHeight - container.scrollTop - container.clientHeight);
@@ -1168,10 +1168,10 @@ const MarksEntryManager: React.FC = () => {
         behavior: 'smooth'
       });
     }
-    
+
     // Check if input is near the top edge (within 50px)
     const distanceFromTop = inputRect.top - containerRect.top;
-    
+
     if (distanceFromTop < 50) {
       // Scroll up to keep the input visible
       container.scrollBy({
@@ -1250,25 +1250,25 @@ const MarksEntryManager: React.FC = () => {
   // Handle "A" button click for absent students
   const handleAbsentButton = (e: React.MouseEvent) => {
     e.preventDefault();
-    
+
     // Find the currently focused input
     const focusedInput = document.querySelector('input[data-student-index]:focus') as HTMLInputElement;
-    
+
     if (focusedInput) {
       // Get the student index from the data attribute
       const studentIndex = parseInt(focusedInput.getAttribute('data-student-index') || '0');
       const studentId = students[studentIndex]?.id;
-      
+
       if (studentId) {
         // Update React state directly
         setMarksData(prev => ({
           ...prev,
           [studentId]: 'A'
         }));
-        
+
         // Select student when "A" is entered
         setSelectedStudents(prev => new Set(prev).add(studentId));
-        
+
         // Clear any error state
         setInputErrors(prev => {
           const newErrors = { ...prev };
@@ -1282,14 +1282,14 @@ const MarksEntryManager: React.FC = () => {
   // Handle marks input with validation and error feedback
   const handleMarksInput = (studentId: number, inputValue: string, maxMarks: number) => {
     const existingMarks = marksData[studentId];
-    
+
     // Allow "A" for absent, empty string, or numeric values
     if (inputValue === 'A' || inputValue === '') {
       setMarksData(prev => ({
         ...prev,
         [studentId]: inputValue
       }));
-      
+
       // Update selection based on marks value
       if (inputValue === 'A') {
         // Select student if marks is 'A' (absent)
@@ -1302,7 +1302,7 @@ const MarksEntryManager: React.FC = () => {
           return newSet;
         });
       }
-      
+
       // Clear any error state
       setInputErrors(prev => {
         const newErrors = { ...prev };
@@ -1315,21 +1315,21 @@ const MarksEntryManager: React.FC = () => {
     // Handle numeric input
     if (!isNaN(Number(inputValue)) && inputValue !== '') {
       const value = Number(inputValue);
-      
+
       // Check if value exceeds max marks
       if (value > maxMarks) {
         // Show error animation and revert to existing marks
         setInputErrors(prev => ({ ...prev, [studentId]: true }));
-        
+
         // Show error toast
         showToast(`Marks cannot exceed ${maxMarks}.`, 'error');
-        
+
         // Revert to existing marks immediately
         setMarksData(prev => ({
           ...prev,
           [studentId]: existingMarks !== undefined ? existingMarks : ''
         }));
-        
+
         // Clear error state after animation
         setTimeout(() => {
           setInputErrors(prev => {
@@ -1338,19 +1338,19 @@ const MarksEntryManager: React.FC = () => {
             return newErrors;
           });
         }, 1000);
-        
+
         return;
       }
-      
+
       // Valid input - update marks
       setMarksData(prev => ({
         ...prev,
         [studentId]: value
       }));
-      
+
       // Select student if marks value is entered (including 0)
       setSelectedStudents(prev => new Set(prev).add(studentId));
-      
+
       // Clear any error state
       setInputErrors(prev => {
         const newErrors = { ...prev };
@@ -1364,15 +1364,15 @@ const MarksEntryManager: React.FC = () => {
   const generateMarksSheetPDF = async () => {
     try {
       setPdfLoading(true);
-      
+
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         showToast('Generating PDF for mobile... Please wait.', 'success');
       }
-      
+
       // Fetch active session
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
@@ -1440,15 +1440,46 @@ const MarksEntryManager: React.FC = () => {
 
       // Group students by class and section
       const studentsByClassSection: { [key: string]: any[] } = {};
+
+      // Require an exam to be selected ensures accurate exclusions
+      if (!selectedExam) {
+        showToast('Please select an examination first to generate accurate marks sheets.', 'error');
+        setPdfLoading(false);
+        return;
+      }
+
+      // EXCLUSION LOGIC START
+      let excludedStudentIds = new Set<number>();
+
+      const { data: excludedData } = await supabase
+        .from('exam_exclusions')
+        .select('student_id')
+        .eq('exam_id', selectedExam.id)
+        .eq('school_id', user?.school_id);
+
+      if (excludedData) {
+        excludedStudentIds = new Set(excludedData.map(e => e.student_id));
+      }
+      // EXCLUSION LOGIC END
+
+
+
       schData.forEach(item => {
+        // Access the student data properly - it's a single object, not an array
+        const student = Array.isArray(item.students) ? item.students[0] : item.students;
+
+        // Skip excluded students
+        if (excludedStudentIds.has(student.id)) {
+          return;
+        }
+
         const classId = item.new_class_id || item.adm_class_id;
         const sectionId = item.new_section_id !== null ? item.new_section_id : (item.adm_section_id !== null ? item.adm_section_id : null);
         const key = `${classId}-${sectionId}`;
         if (!studentsByClassSection[key]) {
           studentsByClassSection[key] = [];
         }
-        // Access the student data properly - it's a single object, not an array
-        const student = Array.isArray(item.students) ? item.students[0] : item.students;
+
         studentsByClassSection[key].push({
           id: student.id,
           name: student.name,
@@ -1479,10 +1510,10 @@ const MarksEntryManager: React.FC = () => {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      
+
       let isFirstPage = true;
       let totalStudents = 0;
-      
+
       // Generate pages for each class-section combination in sorted order
       for (const key of sortedKeys) {
         const students = studentsByClassSection[key];
@@ -1491,67 +1522,67 @@ const MarksEntryManager: React.FC = () => {
         const className = classObj?.name || 'Unknown';
         const hasSections = classObj?.has_sections ?? true;
         const sectionName = hasSections ? (sectionsData?.find(s => s.id === sectionId)?.name || 'Unknown') : null;
-        
+
         // Add new page for each class-section (except first)
         if (!isFirstPage) {
           doc.addPage();
         }
-        
+
         // Professional Header Design
         // Main Title with enhanced styling
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.text('MARKS SHEET', pageWidth / 2, 20, { align: 'center' });
-        
+
         // Decorative line under title
         doc.setDrawColor(0, 0, 0);
         doc.setLineWidth(1);
         doc.line(20, 25, pageWidth - 20, 25);
-        
+
         // Header information in a structured box
         const headerBoxY = 30;
         const headerBoxHeight = 15;
-        
+
         // Draw header box background
         doc.setFillColor(248, 249, 250);
         doc.rect(15, headerBoxY, pageWidth - 30, headerBoxHeight, 'F');
-        
+
         // Draw header box border
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.5);
         doc.rect(15, headerBoxY, pageWidth - 30, headerBoxHeight, 'S');
-        
+
         // Header content with better typography
         doc.setFontSize(10);
-        
+
         // Left column
         doc.setFont('helvetica', 'bold');
         doc.text('Subject:', 20, 36);
         doc.setFont('helvetica', 'normal');
         doc.text('____________________________', 35, 36);
-        
+
         doc.setFont('helvetica', 'bold');
         doc.text('Teacher:', 20, 42);
         doc.setFont('helvetica', 'normal');
         doc.text('____________________________', 35, 42);
-        
+
         // Right column
         doc.setFont('helvetica', 'bold');
         doc.text('Class:', 120, 36);
         doc.setFont('helvetica', 'normal');
         const classDisplayName = sectionName ? `${className} - ${sectionName}` : className;
         doc.text(classDisplayName, 140, 36);
-        
+
         doc.setFont('helvetica', 'bold');
-        doc.text('Date:', 120, 42);
+        doc.text('Total Marks:', 120, 42);
         doc.setFont('helvetica', 'normal');
-        doc.text('________________', 140, 42);
-        
+        doc.text('________________', 145, 42);
+
         // Bottom border line
         doc.setDrawColor(0, 0, 0);
         doc.setLineWidth(0.5);
         doc.line(15, 50, pageWidth - 15, 50);
-        
+
         // Table data - sorted by ID
         const sortedStudents = students.sort((a, b) => {
           const aId = getStudentDisplayId(a);
@@ -1566,15 +1597,15 @@ const MarksEntryManager: React.FC = () => {
           getStudentDisplayId(student).toString(),
           student.name,
           student.father_name || '',
-          '', // Total marks (blank for teacher to fill)
-          '', // Obtained marks (blank for teacher to fill)
+          '', // Student Sign (blank for filling)
+          '', // Obtained Marks (blank for teacher to fill)
           ''  // Remarks (blank for teacher to fill)
         ]);
-        
+
         // Create table with professional styling
         autoTable(doc, {
           startY: 55,
-          head: [['S.No', 'ID', 'Student Name', 'Father Name', 'Total Marks', 'Obtained Marks', 'Remarks']],
+          head: [['S.No', 'ID', 'Student Name', 'Father Name', 'Student Sign', 'Obtained Marks', 'Remarks']],
           body: tableData,
           styles: {
             fontSize: 8,
@@ -1595,16 +1626,16 @@ const MarksEntryManager: React.FC = () => {
             1: { halign: 'center', cellWidth: 12 }, // ID
             2: { halign: 'left', cellWidth: 39 },   // Student Name
             3: { halign: 'left', cellWidth: 38 },   // Father Name
-            4: { halign: 'center', cellWidth: 25 }, // Total Marks
+            4: { halign: 'center', cellWidth: 25 }, // Student Sign
             5: { halign: 'center', cellWidth: 25 }, // Obtained Marks
             6: { halign: 'center', cellWidth: 30 }   // Remarks
           },
           margin: { left: 15, right: 15 }
         });
-        
+
         // Professional Footer with signature and date
         const finalY = (doc as any).lastAutoTable.finalY + 15;
-        
+
         // Check if we need to add footer on current page or next page
         if (finalY > pageHeight - 25) {
           doc.addPage();
@@ -1616,21 +1647,21 @@ const MarksEntryManager: React.FC = () => {
           doc.text('Teacher Signature: _________________', 15, finalY);
           doc.text('Returned Date: _________________', pageWidth - 60, finalY);
         }
-        
+
         totalStudents += students.length;
         isFirstPage = false;
       }
-      
-      
+
+
       // Save the PDF with mobile-friendly approach
       const fileName = `Marks Sheets_${new Date().toLocaleDateString('en-GB')}.pdf`;
-      
+
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach (like BWT_Project)
         try {
           // Generate PDF as base64 string
           const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
+
           // Create unique filename with timestamp to prevent overwriting
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const mobileFileName = `marks-sheet-${timestamp}.pdf`;
@@ -1653,11 +1684,11 @@ const MarksEntryManager: React.FC = () => {
 
               // Show success message and trigger native Android "Open with" dialog
               showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-              
+
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
-              
+
             } catch (fsError) {
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
@@ -1668,7 +1699,7 @@ const MarksEntryManager: React.FC = () => {
             try {
               const pdfBlob = doc.output('blob');
               const url = URL.createObjectURL(pdfBlob);
-              
+
               // Create a visible download button for mobile
               const downloadContainer = document.createElement('div');
               downloadContainer.style.cssText = `
@@ -1685,7 +1716,7 @@ const MarksEntryManager: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
+
               downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Total Students: ${totalStudents}</p>
@@ -1701,9 +1732,9 @@ const MarksEntryManager: React.FC = () => {
                   Close
                 </button>
               `;
-              
+
               document.body.appendChild(downloadContainer);
-              
+
               // Auto-remove after 30 seconds
               setTimeout(() => {
                 if (downloadContainer.parentElement) {
@@ -1711,11 +1742,11 @@ const MarksEntryManager: React.FC = () => {
                 }
                 URL.revokeObjectURL(url);
               }, 30000);
-              
+
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-              
+
             } catch (webError) {
-              
+
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
               const newWindow = window.open('', '_blank');
@@ -1801,7 +1832,7 @@ const MarksEntryManager: React.FC = () => {
       // Convert to marksData format
       const marksData: { [studentId: number]: number | string } = {};
       const studentsWithMarks = new Set<number>();
-      
+
       existingMarks?.forEach(mark => {
         // If remarks is "Absent", show "A", otherwise show the obtained marks
         marksData[mark.student_id] = mark.remarks === 'Absent' ? 'A' : mark.obtained_marks;
@@ -1812,7 +1843,7 @@ const MarksEntryManager: React.FC = () => {
       setMarksData(marksData);
       // Set selection based on students who have marks
       setSelectedStudents(studentsWithMarks);
-      
+
       if (existingMarks && existingMarks.length > 0) {
         showToast(`Loaded existing marks for ${existingMarks.length} students`, 'success');
       } else {
@@ -1878,7 +1909,7 @@ const MarksEntryManager: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }));
-      
+
       // First, delete existing marks for selected students
       const studentIds = marksToSave.map(mark => mark.student_id);
       const { error: deleteError } = await supabase
@@ -1891,7 +1922,7 @@ const MarksEntryManager: React.FC = () => {
       if (deleteError) {
         // Continue with insert even if delete fails
       }
-      
+
       // Insert new marks
       const { data, error } = await supabase
         .from('exam_results')
@@ -1903,7 +1934,7 @@ const MarksEntryManager: React.FC = () => {
       }
 
       showToast(`Successfully saved marks for ${marksToSave.length} selected students`, 'success');
-      
+
       // Log examination marks activity
       try {
         await logExaminationMarksActivity(
@@ -1917,7 +1948,7 @@ const MarksEntryManager: React.FC = () => {
       } catch (activityError) {
         // Don't fail the save operation if activity logging fails
       }
-      
+
       // Clear selection after successful save
       setSelectedStudents(new Set());
     } catch (error) {
@@ -2023,7 +2054,7 @@ const MarksEntryManager: React.FC = () => {
     } else if (!hasSections) {
       loadStudents(selectedClass.id, null);
     }
-  }, [selectedClass, selectedSection]);
+  }, [selectedClass, selectedSection, selectedExam]);
 
   // Load subjects when class is selected
   useEffect(() => {
@@ -2050,11 +2081,11 @@ const MarksEntryManager: React.FC = () => {
   // Set footer content for global footer
   useEffect(() => {
     const shouldShowFooter = hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && selectedExam && selectedSubject && students.length > 0;
-    
+
     if (shouldShowFooter) {
       const FooterContentComponent = React.memo(() => {
         const isDark = theme.palette.mode === 'dark';
-        
+
         return (
           <div style={{
             display: 'flex',
@@ -2069,7 +2100,7 @@ const MarksEntryManager: React.FC = () => {
               variant="secondary"
               onClick={handleAbsentButton}
               onMouseDown={(e) => e.preventDefault()}
-              style={{ 
+              style={{
                 backgroundColor: '#f59e0b',
                 color: 'white',
                 border: '1px solid #f59e0b',
@@ -2095,7 +2126,7 @@ const MarksEntryManager: React.FC = () => {
                 variant="secondary"
                 onClick={handleDeleteMarks}
                 disabled={deleting || selectedStudents.size === 0}
-                style={{ 
+                style={{
                   opacity: (deleting || selectedStudents.size === 0) ? 0.7 : 1,
                   cursor: (deleting || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
                   backgroundColor: '#ef4444',
@@ -2120,7 +2151,7 @@ const MarksEntryManager: React.FC = () => {
                 variant="primary"
                 onClick={handleSaveMarks}
                 disabled={saving || selectedStudents.size === 0}
-                style={{ 
+                style={{
                   opacity: (saving || selectedStudents.size === 0) ? 0.7 : 1,
                   cursor: (saving || selectedStudents.size === 0) ? 'not-allowed' : 'pointer',
                   fontSize: isMobile ? '0.75rem' : '0.8rem'
@@ -2163,7 +2194,7 @@ const MarksEntryManager: React.FC = () => {
   const loadClasses = async () => {
     try {
       setLoading(true);
-      
+
       if (user?.role === 'Teacher' && user?.staff_id) {
         // For teachers, get classes where they have assigned subjects
         const { data, error } = await supabase
@@ -2177,9 +2208,9 @@ const MarksEntryManager: React.FC = () => {
           `)
           .eq('teacher_id', user.staff_id)
           .eq('school_id', user?.school_id);
-        
+
         if (error) throw error;
-        
+
         // Extract unique classes from the nested structure
         const uniqueClasses = new Map();
         data?.forEach(item => {
@@ -2188,7 +2219,7 @@ const MarksEntryManager: React.FC = () => {
             uniqueClasses.set(classData.id, classData);
           }
         });
-        
+
         const teacherClasses = Array.from(uniqueClasses.values());
         const sortedClasses = sortClasses(teacherClasses);
         setClasses(sortedClasses);
@@ -2198,12 +2229,12 @@ const MarksEntryManager: React.FC = () => {
           .from('classes')
           .select('id, name, school_id, has_sections')
           .eq('school_id', user?.school_id);
-        
+
         if (error) throw error;
-        
+
         // Sort classes: numbered classes first, then special classes (Play Group, Nursery, K.G)
         const sortedClasses = sortClasses(data || []);
-        
+
         setClasses(sortedClasses);
       }
     } catch (error) {
@@ -2229,9 +2260,9 @@ const MarksEntryManager: React.FC = () => {
           .eq('teacher_id', user.staff_id)
           .eq('school_id', user?.school_id)
           .eq('class_subjects.class_id', classId);
-        
+
         if (error) throw error;
-        
+
         // Extract unique sections from the nested structure
         const uniqueSections = new Map();
         data?.forEach(item => {
@@ -2243,7 +2274,7 @@ const MarksEntryManager: React.FC = () => {
             }
           }
         });
-        
+
         // Fetch full section details for the unique section IDs
         if (uniqueSections.size > 0) {
           const sectionIds = Array.from(uniqueSections.keys());
@@ -2253,7 +2284,7 @@ const MarksEntryManager: React.FC = () => {
             .in('id', sectionIds)
             .eq('school_id', user?.school_id)
             .order('name');
-          
+
           if (sectionsError) throw sectionsError;
           setSections(sectionsData || []);
         } else {
@@ -2267,7 +2298,7 @@ const MarksEntryManager: React.FC = () => {
           .eq('class_id', classId)
           .eq('school_id', user?.school_id)
           .order('name');
-        
+
         if (error) throw error;
         setSections(data || []);
       }
@@ -2302,11 +2333,11 @@ const MarksEntryManager: React.FC = () => {
             .eq('teacher_id', user.staff_id)
             .eq('school_id', user?.school_id)
             .eq('class_subjects.class_id', selectedClass.id);
-          
+
           if (error) {
             throw error;
           }
-          
+
           if (data && data.length > 0) {
             // Extract class_subjects data from the nested structure
             const subjects = data.map(item => item.class_subjects).filter(Boolean) as any[];
@@ -2325,11 +2356,11 @@ const MarksEntryManager: React.FC = () => {
             `)
             .eq('class_id', selectedClass.id)
             .eq('school_id', user?.school_id);
-          
+
           if (error) {
             throw error;
           }
-          
+
           if (data && data.length > 0) {
             setSubjects(data);
           } else {
@@ -2376,6 +2407,8 @@ const MarksEntryManager: React.FC = () => {
         return;
       }
 
+      setLoading(true);
+
       // Fetch students from student_class_history for the active session and selected class/section
       let schQuery = supabase
         .from('student_class_history')
@@ -2398,6 +2431,7 @@ const MarksEntryManager: React.FC = () => {
 
       if (!schData || schData.length === 0) {
         setStudents([]);
+        setLoading(false);
         return;
       }
 
@@ -2411,14 +2445,40 @@ const MarksEntryManager: React.FC = () => {
         .eq('school_id', user?.school_id)
         .eq('status', 'active')
         .in('id', studentIds);
-      
+
       if (studentsError) {
         throw studentsError;
       }
 
-      const formattedStudents = (studentsData || []).sort((a, b) => a.id - b.id);
-      setStudents(formattedStudents);
-      
+      // Check for exclusions if an exam is selected
+      let excludedIds = new Set<number>();
+      if (selectedExam) {
+        const { data: exclusionsData } = await supabase
+          .from('exam_exclusions')
+          .select('student_id')
+          .eq('exam_id', selectedExam.id)
+          .eq('school_id', user?.school_id);
+
+        if (exclusionsData) {
+          excludedIds = new Set(exclusionsData.map(e => e.student_id));
+        }
+      }
+
+      // Filter out excluded students
+      const filteredStudents = (studentsData || []).filter(student => !excludedIds.has(student.id));
+
+      const finalStudents = filteredStudents.sort((a, b) => {
+        // Try to sort by roll number if numeric
+        const rollA = parseInt(a.roll_number);
+        const rollB = parseInt(b.roll_number);
+        if (!isNaN(rollA) && !isNaN(rollB)) {
+          return rollA - rollB;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      setStudents(finalStudents);
+
       // View activities are not logged - only create, update, and delete
       try {
         // No activity logging for view actions
@@ -2426,7 +2486,10 @@ const MarksEntryManager: React.FC = () => {
         // Don't fail the operation if activity logging fails
       }
     } catch (error) {
+      console.error(error);
       showToast('Failed to load students', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2434,12 +2497,12 @@ const MarksEntryManager: React.FC = () => {
   if (loading) {
     return (
       <LoadingContainer>
-        <div style={{ 
-          animation: 'spin 1s linear infinite', 
-          borderRadius: '50%', 
-          height: '128px', 
-          width: '128px', 
-          borderBottom: '2px solid #3b82f6' 
+        <div style={{
+          animation: 'spin 1s linear infinite',
+          borderRadius: '50%',
+          height: '128px',
+          width: '128px',
+          borderBottom: '2px solid #3b82f6'
         }}></div>
       </LoadingContainer>
     );
@@ -2448,143 +2511,27 @@ const MarksEntryManager: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <PageContainer>
-      <Header>
-        <HeaderTopRow>
-          <Title>Marks Entry Management</Title>
-          
-          {/* Mobile PDF Button - only visible on mobile and not for teachers */}
-          {user?.role !== 'Teacher' && (
-            <MobilePdfButton
-              onClick={generateMarksSheetPDF}
-              disabled={pdfLoading}
-              title="Generate Marks Sheet PDF"
-            >
-              {pdfLoading ? (
-                <Spinner />
-              ) : (
-                <PictureAsPdf style={{ fontSize: 18 }} />
-              )}
-            </MobilePdfButton>
-          )}
-          
-          {/* Desktop layout - all fields in one row */}
-          <DesktopSegmentedGroup>
-            <SegmentedGroup >
-              <SegmentedSelect
-                value={selectedClass?.id || ''}
-                onChange={(e) => {
-                  const classId = Number(e.target.value);
-                  const selected = classes.find(c => c.id === classId);
-                  setSelectedClass(selected || null);
-                  setSelectedSection(null);
-                  setSelectedSubject(null);
-                  setStudents([]);
-                  setMarksData({});
-                }}
-                style={{ minWidth: 120 }}
-                first
-              >
-                <option value="">Select Class</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </option>
-                ))}
-              </SegmentedSelect>
-              {(selectedClass?.has_sections ?? true) && (
-                <SegmentedSelect
-                  value={selectedSection?.id || ''}
-                  onChange={(e) => {
-                    const sectionId = Number(e.target.value);
-                    const selected = sections.find(s => s.id === sectionId);
-                    setSelectedSection(selected || null);
-                    setSelectedSubject(null);
-                    setStudents([]);
-                    setMarksData({});
-                  }}
-                  disabled={!selectedClass}
-                  style={{ minWidth: 120 }}
-                >
-                  <option value="">Select Section</option>
-                  {sections.map((section) => (
-                    <option key={section.id} value={section.id}>
-                      {section.name}
-                    </option>
-                  ))}
-                </SegmentedSelect>
-              )}
-              {user?.role !== 'Teacher' && (
-                <SegmentedSelect
-                  value={selectedExam?.id || ''}
-                  onChange={(e) => {
-                    const examId = Number(e.target.value);
-                    const selected = examinations.find(e => e.id === examId);
-                    setSelectedExam(selected || null);
-                    setSelectedSubject(null);
-                  }}
-                  style={{ minWidth: 120 }}
-                >
-                  <option value="">Select Examination</option>
-                  {examinations.map((exam) => (
-                    <option key={exam.id} value={exam.id}>
-                      {exam.name} ({exam.exam_type})
-                    </option>
-                  ))}
-                </SegmentedSelect>
-              )}
-              <SegmentedSelect
-                value={selectedSubject?.id || ''}
-                onChange={(e) => {
-                  const subjectId = Number(e.target.value);
-                  const selected = subjects.find(s => s.id === subjectId);
-                  setSelectedSubject(selected || null);
-                }}
-                disabled={user?.role !== 'Teacher' && !selectedExam}
-                style={{ minWidth: 120 }}
-              >
-                <option value="">Select Subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.subject?.name || subject.name} (Max: {subject.max_marks || subject.total_marks || 100})
-                  </option>
-                ))}
-              </SegmentedSelect>
-              
-              {user?.role !== 'Teacher' && (
-                <Button
-                  variant="secondary"
-                  onClick={generateMarksSheetPDF}
-                  disabled={pdfLoading}
-                  style={{ 
-                    padding: '6px 12px',
-                    fontSize: '0.8rem',
-                    opacity: pdfLoading ? 0.7 : 1,
-                    cursor: pdfLoading ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {pdfLoading ? (
-                    <>
-                      <Spinner />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <PictureAsPdf style={{ fontSize: 14 }} />
-                      Marks Sheet PDF
-                    </>
-                  )}
-                </Button>
-              )}
-            </SegmentedGroup>
-          </DesktopSegmentedGroup>
-        </HeaderTopRow>
-        
-        <HeaderBottomRow>
+        <Header>
+          <HeaderTopRow>
+            <Title>Marks Entry Management</Title>
 
-          {/* Mobile layout - two separate rows */}
-          <MobileHeaderLayout>
-            {/* First row: Class and Section */}
-            <MobileRow>
+            {/* Mobile PDF Button - only visible on mobile and not for teachers */}
+            {user?.role !== 'Teacher' && (
+              <MobilePdfButton
+                onClick={generateMarksSheetPDF}
+                disabled={pdfLoading}
+                title="Generate Marks Sheet PDF"
+              >
+                {pdfLoading ? (
+                  <Spinner />
+                ) : (
+                  <PictureAsPdf style={{ fontSize: 18 }} />
+                )}
+              </MobilePdfButton>
+            )}
+
+            {/* Desktop layout - all fields in one row */}
+            <DesktopSegmentedGroup>
               <SegmentedGroup >
                 <SegmentedSelect
                   value={selectedClass?.id || ''}
@@ -2620,7 +2567,6 @@ const MarksEntryManager: React.FC = () => {
                     }}
                     disabled={!selectedClass}
                     style={{ minWidth: 120 }}
-                    last
                   >
                     <option value="">Select Section</option>
                     {sections.map((section) => (
@@ -2630,12 +2576,6 @@ const MarksEntryManager: React.FC = () => {
                     ))}
                   </SegmentedSelect>
                 )}
-              </SegmentedGroup>
-            </MobileRow>
-
-            {/* Second row: Exam and Subject */}
-            <MobileRow>
-              <SegmentedGroup >
                 {user?.role !== 'Teacher' && (
                   <SegmentedSelect
                     value={selectedExam?.id || ''}
@@ -2646,7 +2586,6 @@ const MarksEntryManager: React.FC = () => {
                       setSelectedSubject(null);
                     }}
                     style={{ minWidth: 120 }}
-                    first
                   >
                     <option value="">Select Examination</option>
                     {examinations.map((exam) => (
@@ -2665,7 +2604,6 @@ const MarksEntryManager: React.FC = () => {
                   }}
                   disabled={user?.role !== 'Teacher' && !selectedExam}
                   style={{ minWidth: 120 }}
-                  last
                 >
                   <option value="">Select Subject</option>
                   {subjects.map((subject) => (
@@ -2674,218 +2612,343 @@ const MarksEntryManager: React.FC = () => {
                     </option>
                   ))}
                 </SegmentedSelect>
-              </SegmentedGroup>
-            </MobileRow>
-          </MobileHeaderLayout>
-        </HeaderBottomRow>
-      </Header>
 
-      <MainContent ref={mainContentRef}>
-
-        {/* Students and Marks Entry */}
-        {hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && (user?.role === 'Teacher' ? selectedSubject : selectedExam && selectedSubject) && students.length > 0 && (
-          <StudentsList>
-            {/* Selection Controls */}
-            <SelectionControls>
-              <SerialCheckbox
-                className={selectedStudents.size === students.length && students.length > 0 ? 'checked' : ''}
-                onClick={handleToggleAll}
-                title={selectedStudents.size === students.length ? 'Deselect all students' : 'Select all students'}
-                style={{ fontSize: '0.6rem', fontWeight: 'bold' }}
-              >
-                {selectedStudents.size === students.length && students.length > 0 ? '✓' : '○'}
-              </SerialCheckbox>
-              <span>
-                {selectedStudents.size === 0 
-                  ? 'Select students to save/delete marks' 
-                  : `${selectedStudents.size} of ${students.length} students selected`
-                }
-              </span>
-            </SelectionControls>
-            
-            {students.map((student, index) => {
-              const marksValue = marksData[student.id];
-              const maxMarks = selectedSubject.max_marks || selectedSubject.total_marks || 100;
-              
-              // Handle "A" for absent students and "0" for zero marks
-              const obtainedMarks = marksValue === 'A' ? 0 : (marksValue !== undefined && marksValue !== null ? parseFloat(String(marksValue)) : 0);
-              const percentage = maxMarks > 0 ? (obtainedMarks / maxMarks) * 100 : 0;
-              const isSelected = selectedStudents.has(student.id);
-              
-              return (
-                <StudentRow key={student.id} $isActive={activeStudentId === student.id}>
-                  <SerialCheckbox
-                    className={isSelected ? 'checked' : ''}
-                    onClick={() => handleSelectStudent(student.id, !isSelected)}
-                    title={isSelected ? 'Deselect student' : 'Select student'}
+                {user?.role !== 'Teacher' && (
+                  <Button
+                    variant="secondary"
+                    onClick={generateMarksSheetPDF}
+                    disabled={pdfLoading}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.8rem',
+                      opacity: pdfLoading ? 0.7 : 1,
+                      cursor: pdfLoading ? 'not-allowed' : 'pointer'
+                    }}
                   >
-                    {index + 1}
-                  </SerialCheckbox>
-                  <Avatar>
-                    {student.picture_url ? (
-                      <img 
-                        src={student.picture_url} 
-                        alt={student.name}
-                        style={{ 
-                          width: '100%', 
-                          height: '100%', 
-                          objectFit: 'cover', 
-                          borderRadius: '50%' 
-                        }} 
-                      />
+                    {pdfLoading ? (
+                      <>
+                        <Spinner />
+                        Generating...
+                      </>
                     ) : (
-                      student.name.charAt(0).toUpperCase()
+                      <>
+                        <PictureAsPdf style={{ fontSize: 14 }} />
+                        Marks Sheet PDF
+                      </>
                     )}
-                  </Avatar>
-                  
-                  <StudentInfo>
-                    {/* Desktop layout - name on top, details below */}
-                    <DesktopLayout>
-                      <StudentName>{student.name}</StudentName>
-                      <StudentDetails>
-                        <span>{student.father_name}</span>
-                        <StudentId>ID: {getStudentDisplayId(student)}</StudentId>
-                      </StudentDetails>
-                    </DesktopLayout>
-                    
-                    {/* Mobile layout - vertical layout */}
-                    <MobileStudentLayout>
-                      <MobileStudentName>
-                        {student.name} - <StudentId>ID: {getStudentDisplayId(student)}</StudentId>
-                      </MobileStudentName>
-                      <MobileFatherName>{student.father_name}</MobileFatherName>
-                    </MobileStudentLayout>
-                  </StudentInfo>
-                  
-                  <MarksInput
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={marksData[student.id] !== undefined ? marksData[student.id] : ''}
-                    onChange={(e) => {
-                      const inputValue = e.target.value.toUpperCase();
-                      handleMarksInput(student.id, inputValue, maxMarks);
-                    }}
-                    onKeyDown={(e) => handleKeyDown(e, students.indexOf(student), student.id)}
-                    onFocus={(e) => handleFocus(student.id, e.target as HTMLInputElement)}
-                    onBlur={handleBlur}
-                    onInput={(e) => {
-                      // Handle mobile keyboard "Next" button and other input events
-                      const input = e.target as HTMLInputElement;
-                      // Check if this is likely a mobile "Next" button press
-                      // by checking if the input loses focus immediately after input
-                      setTimeout(() => {
-                        if (document.activeElement !== input && students.indexOf(student) + 1 < students.length) {
-                          const nextIndex = students.indexOf(student) + 1;
-                          const nextInput = document.querySelector(`input[data-student-index="${nextIndex}"]`) as HTMLInputElement;
-                          if (nextInput) {
-                            nextInput.focus();
-                            setTimeout(() => {
-                              nextInput.select();
-                            }, 0);
-                            scrollToKeepVisible(nextInput);
-                          }
-                        }
-                      }, 100);
-                    }}
-                    placeholder="Obt. Marks"
-                    maxLength={10}
-                    data-student-index={students.indexOf(student)}
-                    $hasError={inputErrors[student.id] || false}
-                  />
-                  
-                  {/* Desktop-only elements */}
-                  <PercentageDisplay>
-                    <PercentageValue $percentage={percentage}>
-                      {marksData[student.id] === 'A' ? 'Absent' : 
-                       marksData[student.id] === 0 ? '0%' :
-                       isNaN(percentage) ? '0%' : `${percentage.toFixed(1)}%`}
-                    </PercentageValue>
-                  </PercentageDisplay>
-                  
-                  <ActionButton
-                    onClick={() => {
-                      showToast('Marks updated for ' + student.name, 'success');
-                    }}
-                    disabled={!marksData[student.id]}
-                    title="Save marks"
-                  >
-                    ✓
-                  </ActionButton>
-                </StudentRow>
-              );
-            })}
-            
-          </StudentsList>
-        )}
-
-        {/* No Students Message */}
-        {hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && students.length === 0 && (
-          <NoResults>
-            No students found in {selectedClass.name}{selectedClass.has_sections && selectedSection ? ` - ${selectedSection.name}` : ''}
-          </NoResults>
-        )}
-
-        {/* No Active Session Warning */}
-        {!hasActiveSession && (
-          <NoResults>
-            <div style={{ 
-              background: '#fef3c7', 
-              border: '1px solid #f59e0b', 
-              borderRadius: '8px', 
-              padding: '16px', 
-              color: '#92400e',
-              textAlign: 'center'
-            }}>
-              <strong>⚠️ No Active Session Found</strong>
-              <br />
-              Please contact your administrator to set up an active academic session.
-              <br />
-              <small>Marks entry requires an active session to maintain proper academic records.</small>
-            </div>
-          </NoResults>
-        )}
-
-        {/* No Selection Message */}
-        {hasActiveSession && (!selectedClass || !(selectedClass.has_sections ? !!selectedSection : true) || (user?.role !== 'Teacher' && !selectedExam) || !selectedSubject) && (
-          <NoResults>
-            Please select Class{selectedClass?.has_sections ? ', Section' : ''}{user?.role !== 'Teacher' ? ', Examination' : ''}, and Subject to view students
-          </NoResults>
-        )}
-      </MainContent>
-
-      {showToTop && (
-        <ToTopButton onClick={() => mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <KeyboardArrowUpIcon />
-        </ToTopButton>
-      )}
-
-      {/* Save Modal */}
-      {showSaveModal && (
-        <ModalOverlay onClick={handleCancelModal}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalTitle>List Completed</ModalTitle>
-            <ModalMessage>
-              You have reached the end of the student list. Would you like to save all the marks you have entered?
-            </ModalMessage>
-            <ModalButtons>
-              <ModalButton variant="secondary" onClick={handleCancelModal}>
-                Cancel
-              </ModalButton>
-              <ModalButton variant="primary" onClick={handleSaveFromModal} disabled={saving}>
-                {saving ? (
-                  <>
-                    <Spinner />
-                    Saving...
-                  </>
-                ) : (
-                  'Save'
+                  </Button>
                 )}
-              </ModalButton>
-            </ModalButtons>
-          </ModalContent>
-        </ModalOverlay>
-      )}
+              </SegmentedGroup>
+            </DesktopSegmentedGroup>
+          </HeaderTopRow>
+
+          <HeaderBottomRow>
+
+            {/* Mobile layout - two separate rows */}
+            <MobileHeaderLayout>
+              {/* First row: Class and Section */}
+              <MobileRow>
+                <SegmentedGroup >
+                  <SegmentedSelect
+                    value={selectedClass?.id || ''}
+                    onChange={(e) => {
+                      const classId = Number(e.target.value);
+                      const selected = classes.find(c => c.id === classId);
+                      setSelectedClass(selected || null);
+                      setSelectedSection(null);
+                      setSelectedSubject(null);
+                      setStudents([]);
+                      setMarksData({});
+                    }}
+                    style={{ minWidth: 120 }}
+                    first
+                  >
+                    <option value="">Select Class</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </SegmentedSelect>
+                  {(selectedClass?.has_sections ?? true) && (
+                    <SegmentedSelect
+                      value={selectedSection?.id || ''}
+                      onChange={(e) => {
+                        const sectionId = Number(e.target.value);
+                        const selected = sections.find(s => s.id === sectionId);
+                        setSelectedSection(selected || null);
+                        setSelectedSubject(null);
+                        setStudents([]);
+                        setMarksData({});
+                      }}
+                      disabled={!selectedClass}
+                      style={{ minWidth: 120 }}
+                      last
+                    >
+                      <option value="">Select Section</option>
+                      {sections.map((section) => (
+                        <option key={section.id} value={section.id}>
+                          {section.name}
+                        </option>
+                      ))}
+                    </SegmentedSelect>
+                  )}
+                </SegmentedGroup>
+              </MobileRow>
+
+              {/* Second row: Exam and Subject */}
+              <MobileRow>
+                <SegmentedGroup >
+                  {user?.role !== 'Teacher' && (
+                    <SegmentedSelect
+                      value={selectedExam?.id || ''}
+                      onChange={(e) => {
+                        const examId = Number(e.target.value);
+                        const selected = examinations.find(e => e.id === examId);
+                        setSelectedExam(selected || null);
+                        setSelectedSubject(null);
+                      }}
+                      style={{ minWidth: 120 }}
+                      first
+                    >
+                      <option value="">Select Examination</option>
+                      {examinations.map((exam) => (
+                        <option key={exam.id} value={exam.id}>
+                          {exam.name} ({exam.exam_type})
+                        </option>
+                      ))}
+                    </SegmentedSelect>
+                  )}
+                  <SegmentedSelect
+                    value={selectedSubject?.id || ''}
+                    onChange={(e) => {
+                      const subjectId = Number(e.target.value);
+                      const selected = subjects.find(s => s.id === subjectId);
+                      setSelectedSubject(selected || null);
+                    }}
+                    disabled={user?.role !== 'Teacher' && !selectedExam}
+                    style={{ minWidth: 120 }}
+                    last
+                  >
+                    <option value="">Select Subject</option>
+                    {subjects.map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.subject?.name || subject.name} (Max: {subject.max_marks || subject.total_marks || 100})
+                      </option>
+                    ))}
+                  </SegmentedSelect>
+                </SegmentedGroup>
+              </MobileRow>
+            </MobileHeaderLayout>
+          </HeaderBottomRow>
+        </Header>
+
+        <MainContent ref={mainContentRef}>
+
+          {/* Students and Marks Entry */}
+          {hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && (user?.role === 'Teacher' ? selectedSubject : selectedExam && selectedSubject) && students.length > 0 && (
+            <StudentsList>
+              {/* Selection Controls */}
+              <SelectionControls>
+                <SerialCheckbox
+                  className={selectedStudents.size === students.length && students.length > 0 ? 'checked' : ''}
+                  onClick={handleToggleAll}
+                  title={selectedStudents.size === students.length ? 'Deselect all students' : 'Select all students'}
+                  style={{ fontSize: '0.6rem', fontWeight: 'bold' }}
+                >
+                  {selectedStudents.size === students.length && students.length > 0 ? '✓' : '○'}
+                </SerialCheckbox>
+                <span>
+                  {selectedStudents.size === 0
+                    ? 'Select students to save/delete marks'
+                    : `${selectedStudents.size} of ${students.length} students selected`
+                  }
+                </span>
+              </SelectionControls>
+
+              {students.map((student, index) => {
+                const marksValue = marksData[student.id];
+                const maxMarks = selectedSubject.max_marks || selectedSubject.total_marks || 100;
+
+                // Handle "A" for absent students and "0" for zero marks
+                const obtainedMarks = marksValue === 'A' ? 0 : (marksValue !== undefined && marksValue !== null ? parseFloat(String(marksValue)) : 0);
+                const percentage = maxMarks > 0 ? (obtainedMarks / maxMarks) * 100 : 0;
+                const isSelected = selectedStudents.has(student.id);
+
+                return (
+                  <StudentRow key={student.id} $isActive={activeStudentId === student.id}>
+                    <SerialCheckbox
+                      className={isSelected ? 'checked' : ''}
+                      onClick={() => handleSelectStudent(student.id, !isSelected)}
+                      title={isSelected ? 'Deselect student' : 'Select student'}
+                    >
+                      {index + 1}
+                    </SerialCheckbox>
+                    <Avatar>
+                      {student.picture_url ? (
+                        <img
+                          src={student.picture_url}
+                          alt={student.name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '50%'
+                          }}
+                        />
+                      ) : (
+                        student.name.charAt(0).toUpperCase()
+                      )}
+                    </Avatar>
+
+                    <StudentInfo>
+                      {/* Desktop layout - name on top, details below */}
+                      <DesktopLayout>
+                        <StudentName>{student.name}</StudentName>
+                        <StudentDetails>
+                          <span>{student.father_name}</span>
+                          <StudentId>ID: {getStudentDisplayId(student)}</StudentId>
+                        </StudentDetails>
+                      </DesktopLayout>
+
+                      {/* Mobile layout - vertical layout */}
+                      <MobileStudentLayout>
+                        <MobileStudentName>
+                          {student.name} - <StudentId>ID: {getStudentDisplayId(student)}</StudentId>
+                        </MobileStudentName>
+                        <MobileFatherName>{student.father_name}</MobileFatherName>
+                      </MobileStudentLayout>
+                    </StudentInfo>
+
+                    <MarksInput
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={marksData[student.id] !== undefined ? marksData[student.id] : ''}
+                      onChange={(e) => {
+                        const inputValue = e.target.value.toUpperCase();
+                        handleMarksInput(student.id, inputValue, maxMarks);
+                      }}
+                      onKeyDown={(e) => handleKeyDown(e, students.indexOf(student), student.id)}
+                      onFocus={(e) => handleFocus(student.id, e.target as HTMLInputElement)}
+                      onBlur={handleBlur}
+                      onInput={(e) => {
+                        // Handle mobile keyboard "Next" button and other input events
+                        const input = e.target as HTMLInputElement;
+                        // Check if this is likely a mobile "Next" button press
+                        // by checking if the input loses focus immediately after input
+                        setTimeout(() => {
+                          if (document.activeElement !== input && students.indexOf(student) + 1 < students.length) {
+                            const nextIndex = students.indexOf(student) + 1;
+                            const nextInput = document.querySelector(`input[data-student-index="${nextIndex}"]`) as HTMLInputElement;
+                            if (nextInput) {
+                              nextInput.focus();
+                              setTimeout(() => {
+                                nextInput.select();
+                              }, 0);
+                              scrollToKeepVisible(nextInput);
+                            }
+                          }
+                        }, 100);
+                      }}
+                      placeholder="Obt. Marks"
+                      maxLength={10}
+                      data-student-index={students.indexOf(student)}
+                      $hasError={inputErrors[student.id] || false}
+                    />
+
+                    {/* Desktop-only elements */}
+                    <PercentageDisplay>
+                      <PercentageValue $percentage={percentage}>
+                        {marksData[student.id] === 'A' ? 'Absent' :
+                          marksData[student.id] === 0 ? '0%' :
+                            isNaN(percentage) ? '0%' : `${percentage.toFixed(1)}%`}
+                      </PercentageValue>
+                    </PercentageDisplay>
+
+                    <ActionButton
+                      onClick={() => {
+                        showToast('Marks updated for ' + student.name, 'success');
+                      }}
+                      disabled={!marksData[student.id]}
+                      title="Save marks"
+                    >
+                      ✓
+                    </ActionButton>
+                  </StudentRow>
+                );
+              })}
+
+            </StudentsList>
+          )}
+
+          {/* No Students Message */}
+          {hasActiveSession && selectedClass && (selectedClass.has_sections ? !!selectedSection : true) && students.length === 0 && (
+            <NoResults>
+              No students found in {selectedClass.name}{selectedClass.has_sections && selectedSection ? ` - ${selectedSection.name}` : ''}
+            </NoResults>
+          )}
+
+          {/* No Active Session Warning */}
+          {!hasActiveSession && (
+            <NoResults>
+              <div style={{
+                background: '#fef3c7',
+                border: '1px solid #f59e0b',
+                borderRadius: '8px',
+                padding: '16px',
+                color: '#92400e',
+                textAlign: 'center'
+              }}>
+                <strong>⚠️ No Active Session Found</strong>
+                <br />
+                Please contact your administrator to set up an active academic session.
+                <br />
+                <small>Marks entry requires an active session to maintain proper academic records.</small>
+              </div>
+            </NoResults>
+          )}
+
+          {/* No Selection Message */}
+          {hasActiveSession && (!selectedClass || !(selectedClass.has_sections ? !!selectedSection : true) || (user?.role !== 'Teacher' && !selectedExam) || !selectedSubject) && (
+            <NoResults>
+              Please select Class{selectedClass?.has_sections ? ', Section' : ''}{user?.role !== 'Teacher' ? ', Examination' : ''}, and Subject to view students
+            </NoResults>
+          )}
+        </MainContent>
+
+        {showToTop && (
+          <ToTopButton onClick={() => mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <KeyboardArrowUpIcon />
+          </ToTopButton>
+        )}
+
+        {/* Save Modal */}
+        {showSaveModal && (
+          <ModalOverlay onClick={handleCancelModal}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalTitle>List Completed</ModalTitle>
+              <ModalMessage>
+                You have reached the end of the student list. Would you like to save all the marks you have entered?
+              </ModalMessage>
+              <ModalButtons>
+                <ModalButton variant="secondary" onClick={handleCancelModal}>
+                  Cancel
+                </ModalButton>
+                <ModalButton variant="primary" onClick={handleSaveFromModal} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Spinner />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save'
+                  )}
+                </ModalButton>
+              </ModalButtons>
+            </ModalContent>
+          </ModalOverlay>
+        )}
       </PageContainer>
     </ThemeProvider>
   );

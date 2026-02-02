@@ -261,7 +261,7 @@ const SegmentedSelect = styled.select<{ first?: boolean; $last?: boolean }>`
   }
   appearance: none;
   -webkit-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525' 
+  background-image: ${({ theme }) => theme.BG === '#252525'
     ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
     : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
   background-repeat: no-repeat;
@@ -798,12 +798,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
   &:hover {
     background: ${({ variant, theme }) => {
-      if (variant === 'primary') {
-        return '#3a5ce5';
-      } else {
-        return theme.BG === '#252525' ? '#444' : '#e5e7eb';
-      }
-    }};
+    if (variant === 'primary') {
+      return '#3a5ce5';
+    } else {
+      return theme.BG === '#252525' ? '#444' : '#e5e7eb';
+    }
+  }};
     transform: translateY(-1px);
   }
 
@@ -959,21 +959,21 @@ const PositionHolders: React.FC = () => {
   const { theme } = useContext(ThemeContext);
   const { setLoading, loading } = useLoading();
   const { setFooterContent } = usePageFooter();
-  
+
   // State for data
   const [examinations, setExaminations] = useState<Examination[]>([]);
   const [positionData, setPositionData] = useState<ClassPositionData[]>([]);
-  
+
   // Selected values
   const [selectedExam, setSelectedExam] = useState<Examination | null>(null);
-  
+
   const [showToTop, setShowToTop] = useState(false);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
-  
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-  
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 700);
@@ -1000,13 +1000,13 @@ const PositionHolders: React.FC = () => {
   useEffect(() => {
     if (selectedExam && positionData.length > 0) {
       const totalStudents = positionData.reduce((sum, classData) => sum + classData.position_holders.length, 0);
-      const firstCount = positionData.reduce((sum, classData) => 
+      const firstCount = positionData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 1).length, 0
       );
-      const secondCount = positionData.reduce((sum, classData) => 
+      const secondCount = positionData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 2).length, 0
       );
-      const thirdCount = positionData.reduce((sum, classData) => 
+      const thirdCount = positionData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 3).length, 0
       );
 
@@ -1037,11 +1037,11 @@ const PositionHolders: React.FC = () => {
               </StatItem>
             </SummaryStats>
           )}
-          
+
           {/* Position Summary - Always Visible */}
           <PositionCounts theme={theme === 'dark' ? darkTheme : lightTheme}>
             {[1, 2, 3].map(position => {
-              const totalCount = positionData.reduce((sum, classData) => 
+              const totalCount = positionData.reduce((sum, classData) =>
                 sum + classData.position_holders.filter(holder => holder.position === position).length, 0
               );
               if (totalCount > 0) {
@@ -1090,7 +1090,7 @@ const PositionHolders: React.FC = () => {
 
     try {
       setLoading(true);
-      
+
       // First, get all classes (both sectioned and non-sectioned)
       const { data: classes, error: classesError } = await supabase
         .from('classes')
@@ -1114,7 +1114,7 @@ const PositionHolders: React.FC = () => {
       const classMap = new Map(classes.map(c => [c.id, c.name]));
       const classHasSectionsMap = new Map(classes.map(c => [c.id, c.has_sections ?? true]));
       const sectionMap = new Map(sections?.map(s => [s.id, s.name]) || []);
-      
+
       // Helper function to get section name for a class-section combination
       const getSectionName = (classId: number, sectionId: number | null): string => {
         if (!sectionId) return '';
@@ -1128,11 +1128,11 @@ const PositionHolders: React.FC = () => {
 
       for (const classInfo of classes) {
         const hasSections = classInfo.has_sections ?? true;
-        
+
         if (hasSections) {
           // For classes with sections, process each section separately
           const classSections = sections?.filter(s => s.class_id === classInfo.id) || [];
-          
+
           for (const section of classSections) {
             const classSectionData = await processClassSection(classInfo, section, hasSections, classHasSectionsMap, sectionMap);
             if (classSectionData) {
@@ -1153,20 +1153,20 @@ const PositionHolders: React.FC = () => {
         // First sort by class number
         const numA = parseInt(a.class_name.match(/\d+/)?.[0] || '0');
         const numB = parseInt(b.class_name.match(/\d+/)?.[0] || '0');
-        
+
         if (numA !== numB) {
           return numA - numB;
         }
-        
+
         // If same class, sort by section (A before B, then C, etc.)
         const sectionA = a.section_name || '';
         const sectionB = b.section_name || '';
-        
+
         // If one has no section and other does, no section comes first
         if (!sectionA && sectionB) return -1;
         if (sectionA && !sectionB) return 1;
         if (!sectionA && !sectionB) return 0;
-        
+
         // Both have sections, sort alphabetically (A, B, C, etc.)
         return sectionA.localeCompare(sectionB);
       });
@@ -1193,7 +1193,7 @@ const PositionHolders: React.FC = () => {
         .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('class_id', classInfo.id);
-      
+
       // Add section filter only if the class has sections
       if (hasSections && section) {
         studentQuery.eq('section_id', section.id);
@@ -1201,8 +1201,25 @@ const PositionHolders: React.FC = () => {
         studentQuery.is('section_id', null);
       }
 
-      const { data: students, error: studentsError } = await studentQuery;
+      const { data: studentsData, error: studentsError } = await studentQuery;
       if (studentsError) throw studentsError;
+
+      // Check for exclusions if an exam is selected
+      let excludedIds = new Set<number>();
+      if (selectedExam) {
+        const { data: exclusionsData } = await supabase
+          .from('exam_exclusions')
+          .select('student_id')
+          .eq('exam_id', selectedExam.id)
+          .eq('school_id', user?.school_id);
+
+        if (exclusionsData) {
+          excludedIds = new Set(exclusionsData.map(e => e.student_id));
+        }
+      }
+
+      // Filter out excluded students
+      const students = (studentsData || []).filter(student => !excludedIds.has(student.id));
 
       if (!students || students.length === 0) {
         return null;
@@ -1279,7 +1296,7 @@ const PositionHolders: React.FC = () => {
         const results = studentResults[student.id] || [];
         const obtainedMarks = results.reduce((sum, r) => sum + (r.obtained_marks || 0), 0);
         const percentage = totalExamMarks > 0 ? (obtainedMarks / totalExamMarks) * 100 : 0;
-        
+
         studentTotals.push({
           student_id: student.id,
           student_name: student.name,
@@ -1299,42 +1316,42 @@ const PositionHolders: React.FC = () => {
 
       // Sort students by obtained marks and assign positions
       const sortedStudents = studentTotals.sort((a, b) => b.obtained_marks - a.obtained_marks);
-        
-        // Assign positions with proper handling of ties
-        let currentPosition = 1;
-        for (let i = 0; i < sortedStudents.length; i++) {
-          const student = sortedStudents[i];
-          const currentMarks = student.obtained_marks;
-          
-          // Count how many students have the same marks as current student
-          let sameMarksCount = 1;
-          for (let j = i + 1; j < sortedStudents.length; j++) {
-            if (sortedStudents[j].obtained_marks === currentMarks) {
-              sameMarksCount++;
-            } else {
-              break;
-            }
+
+      // Assign positions with proper handling of ties
+      let currentPosition = 1;
+      for (let i = 0; i < sortedStudents.length; i++) {
+        const student = sortedStudents[i];
+        const currentMarks = student.obtained_marks;
+
+        // Count how many students have the same marks as current student
+        let sameMarksCount = 1;
+        for (let j = i + 1; j < sortedStudents.length; j++) {
+          if (sortedStudents[j].obtained_marks === currentMarks) {
+            sameMarksCount++;
+          } else {
+            break;
           }
-          
-          // Assign the same position to all students with same marks
-          for (let k = 0; k < sameMarksCount; k++) {
-            sortedStudents[i + k].position = currentPosition;
-          }
-          
-          // Move to next position (skip the tied students and increment by 1)
-          i += sameMarksCount - 1;
-          currentPosition = currentPosition + 1;
         }
 
-        // Only keep top 3 position holders
-        const topThreeStudents = sortedStudents.filter(student => student.position <= 3);
+        // Assign the same position to all students with same marks
+        for (let k = 0; k < sameMarksCount; k++) {
+          sortedStudents[i + k].position = currentPosition;
+        }
+
+        // Move to next position (skip the tied students and increment by 1)
+        i += sameMarksCount - 1;
+        currentPosition = currentPosition + 1;
+      }
+
+      // Only keep top 3 position holders
+      const topThreeStudents = sortedStudents.filter(student => student.position <= 3);
 
       return {
         class_id: classInfo.id,
         class_name: classInfo.name,
         section_id: hasSections ? (section?.id || null) : null,
         section_name: hasSections ? (section?.name || '') : '',
-          position_holders: topThreeStudents
+        position_holders: topThreeStudents
       };
     } catch (error) {
       return null;
@@ -1359,34 +1376,34 @@ const PositionHolders: React.FC = () => {
 
     try {
       setPdfLoading(true);
-      
+
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         showToast('Generating PDF for mobile... Please wait.', 'success');
       }
-      
+
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      
+
       // Add colored background box first
       doc.setFillColor(240, 248, 255); // Light blue background
       doc.rect(15, 15, pageWidth - 30, 15, 'F');
-      
+
       // Professional Header with Color
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(74, 108, 247); // Blue color
       doc.text('POSITION HOLDERS REPORT', pageWidth / 2, 20, { align: 'center' });
-      
+
       // Decorative line with color
       doc.setDrawColor(74, 108, 247);
       doc.setLineWidth(2);
       doc.line(20, 25, pageWidth - 20, 25);
-      
+
       // Header information with colors
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
@@ -1395,20 +1412,20 @@ const PositionHolders: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0); // Black for value
       doc.text(selectedExam.name, 50, 35);
-      
+
       // Summary statistics
       const totalClasses = positionData.length;
       const totalStudents = positionData.reduce((sum, classData) => sum + classData.position_holders.length, 0);
-      const firstCount = positionData.reduce((sum, classData) => 
+      const firstCount = positionData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 1).length, 0
       );
-      const secondCount = positionData.reduce((sum, classData) => 
+      const secondCount = positionData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 2).length, 0
       );
-      const thirdCount = positionData.reduce((sum, classData) => 
+      const thirdCount = positionData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 3).length, 0
       );
-      
+
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(249, 115, 22); // Orange color
       doc.text('Summary:', 20, 45);
@@ -1416,14 +1433,14 @@ const PositionHolders: React.FC = () => {
       doc.setTextColor(0, 0, 0); // Black for values
       doc.text(`Total Classes: ${totalClasses} | Total Students: ${totalStudents}`, 20, 52);
       doc.text(`1st Positions: ${firstCount} | 2nd Positions: ${secondCount} | 3rd Positions: ${thirdCount}`, 20, 59);
-      
+
       // Bottom border with color
       doc.setDrawColor(249, 115, 22);
       doc.setLineWidth(1);
       doc.line(20, 65, pageWidth - 20, 65);
-      
+
       let currentY = 75;
-      
+
       // Generate content for each class
       for (const classData of positionData) {
         // Check if we need a new page
@@ -1431,26 +1448,26 @@ const PositionHolders: React.FC = () => {
           doc.addPage();
           currentY = 20;
         }
-        
+
         // Class header with color
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(74, 108, 247); // Blue color
         const classTitle = classData.section_name ? `${classData.class_name} (${classData.section_name})` : classData.class_name;
         doc.text(classTitle, 20, currentY);
-        
+
         // Position counts for this class with colors
         const classFirstCount = classData.position_holders.filter(holder => holder.position === 1).length;
         const classSecondCount = classData.position_holders.filter(holder => holder.position === 2).length;
         const classThirdCount = classData.position_holders.filter(holder => holder.position === 3).length;
-        
+
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(0, 0, 0); // Black for values
         doc.text(`1st: ${classFirstCount} | 2nd: ${classSecondCount} | 3rd: ${classThirdCount}`, 20, currentY + 6);
-        
+
         currentY += 12;
-        
+
         // Prepare table data
         const tableData = classData.position_holders.map((holder, index) => [
           index + 1,
@@ -1462,7 +1479,7 @@ const PositionHolders: React.FC = () => {
           holder.grade,
           holder.position === 1 ? '1st' : holder.position === 2 ? '2nd' : '3rd'
         ]);
-        
+
         // Create table with colors
         autoTable(doc, {
           startY: currentY,
@@ -1513,10 +1530,10 @@ const PositionHolders: React.FC = () => {
             }
           }
         });
-        
+
         currentY = (doc as any).lastAutoTable.finalY + 8;
       }
-      
+
       // Format date as dd-mmm-yyyy
       const formatDate = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
@@ -1534,7 +1551,7 @@ const PositionHolders: React.FC = () => {
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(74, 108, 247); // Blue color
         doc.text('Generated on: ' + formatDate(new Date()), 20, 30);
-        
+
         // Add colored footer line
         doc.setDrawColor(74, 108, 247);
         doc.setLineWidth(0.5);
@@ -1544,7 +1561,7 @@ const PositionHolders: React.FC = () => {
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(74, 108, 247); // Blue color
         doc.text('Generated on: ' + formatDate(new Date()), 20, finalY);
-        
+
         // Add colored footer line
         doc.setDrawColor(74, 108, 247);
         doc.setLineWidth(0.5);
@@ -1553,13 +1570,13 @@ const PositionHolders: React.FC = () => {
 
       // Save the PDF with mobile-friendly approach
       const fileName = `PositionHolders_${selectedExam?.name}_${new Date().toLocaleDateString('en-GB')}.pdf`;
-      
+
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach
         try {
           // Generate PDF as base64 string
           const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
+
           // Create unique filename with timestamp to prevent overwriting
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const mobileFileName = `position-holders-${timestamp}.pdf`;
@@ -1582,11 +1599,11 @@ const PositionHolders: React.FC = () => {
 
               // Show success message and trigger native Android "Open with" dialog
               showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-              
+
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
-              
+
             } catch (fsError) {
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
@@ -1597,7 +1614,7 @@ const PositionHolders: React.FC = () => {
             try {
               const pdfBlob = doc.output('blob');
               const url = URL.createObjectURL(pdfBlob);
-              
+
               // Create a visible download button for mobile
               const downloadContainer = document.createElement('div');
               downloadContainer.style.cssText = `
@@ -1614,7 +1631,7 @@ const PositionHolders: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
+
               downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Position Holders Report</p>
@@ -1630,9 +1647,9 @@ const PositionHolders: React.FC = () => {
                   Close
                 </button>
               `;
-              
+
               document.body.appendChild(downloadContainer);
-              
+
               // Auto-remove after 30 seconds
               setTimeout(() => {
                 if (downloadContainer.parentElement) {
@@ -1640,11 +1657,11 @@ const PositionHolders: React.FC = () => {
                 }
                 URL.revokeObjectURL(url);
               }, 30000);
-              
+
               showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-              
+
             } catch (webError) {
-              
+
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
               const newWindow = window.open('', '_blank');
@@ -1716,12 +1733,12 @@ const PositionHolders: React.FC = () => {
   const getPositionSuffix = (position: number): string => {
     const lastDigit = position % 10;
     const lastTwoDigits = position % 100;
-    
+
     // Handle special cases for 11th, 12th, 13th
     if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
       return `${position}th`;
     }
-    
+
     // Handle regular cases
     switch (lastDigit) {
       case 1:
@@ -1748,7 +1765,7 @@ const PositionHolders: React.FC = () => {
               <TrophyIcon style={{ fontSize: 20 }} />
               Position Holders
             </Title>
-            
+
             {/* Mobile PDF Button - only visible on mobile */}
             <MobilePdfButton
               onClick={generatePositionHoldersPDF}
@@ -1756,19 +1773,19 @@ const PositionHolders: React.FC = () => {
               title="Generate Position Holders PDF"
             >
               {pdfLoading ? (
-                <div style={{ 
-                  width: 16, 
-                  height: 16, 
-                  border: '2px solid #e0e7ff', 
-                  borderTop: '2px solid #4a6cf7', 
-                  borderRadius: '50%', 
-                  animation: 'spin 1s linear infinite' 
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  border: '2px solid #e0e7ff',
+                  borderTop: '2px solid #4a6cf7',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
                 }} />
               ) : (
                 <PictureAsPdf style={{ fontSize: 18 }} />
               )}
             </MobilePdfButton>
-            
+
             {/* Desktop layout - all fields in one row */}
             <DesktopSegmentedGroup>
               <SegmentedGroup>
@@ -1787,7 +1804,7 @@ const PositionHolders: React.FC = () => {
                     </option>
                   ))}
                 </SegmentedSelect>
-                
+
                 <PdfButton
                   onClick={generatePositionHoldersPDF}
                   disabled={pdfLoading || !selectedExam || positionData.length === 0}
@@ -1795,12 +1812,12 @@ const PositionHolders: React.FC = () => {
                 >
                   {pdfLoading ? (
                     <>
-                      <div style={{ 
-                        width: 12, 
-                        height: 12, 
-                        border: '2px solid #ffffff40', 
-                        borderTop: '2px solid #ffffff', 
-                        borderRadius: '50%', 
+                      <div style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid #ffffff40',
+                        borderTop: '2px solid #ffffff',
+                        borderRadius: '50%',
                         animation: 'spin 1s linear infinite',
                         marginRight: '4px'
                       }} />
@@ -1816,7 +1833,7 @@ const PositionHolders: React.FC = () => {
               </SegmentedGroup>
             </DesktopSegmentedGroup>
           </HeaderTopRow>
-          
+
           <HeaderBottomRow>
             {/* Mobile layout */}
             <MobileHeaderLayout>
@@ -1844,7 +1861,7 @@ const PositionHolders: React.FC = () => {
             </MobileHeaderLayout>
           </HeaderBottomRow>
         </Header>
-        
+
         <MainContent ref={mainContentRef}>
           <ScrollableContainer>
             {selectedExam && positionData.length > 0 && (
@@ -1857,12 +1874,12 @@ const PositionHolders: React.FC = () => {
                           {classData.section_name ? `${classData.class_name} (${classData.section_name})` : classData.class_name}
                         </ClassTitle>
                         <ClassSubtitle>
-                          {classData.position_holders.length > 0 
+                          {classData.position_holders.length > 0
                             ? `Top ${classData.position_holders.length} position holders`
                             : 'No position holders found'
                           }
                         </ClassSubtitle>
-                        
+
                         {/* Position Counts */}
                         {classData.position_holders.length > 0 && (
                           <PositionCounts>
@@ -1884,14 +1901,14 @@ const PositionHolders: React.FC = () => {
                         )}
                       </div>
                     </ClassHeader>
-                    
+
                     <PositionHoldersList>
                       {classData.position_holders.map((holder) => (
                         <PositionHolder key={holder.student_id} $position={holder.position}>
                           <Avatar $position={holder.position}>
                             {holder.student_name.charAt(0).toUpperCase()}
                           </Avatar>
-                          
+
                           <StudentInfo>
                             <StudentName>{holder.student_name}</StudentName>
                             <StudentDetails>
@@ -1899,7 +1916,7 @@ const PositionHolders: React.FC = () => {
                               <StudentId>ID: {getStudentDisplayId({ id: holder.student_id, roll_number: holder.roll_number })}</StudentId>
                             </StudentDetails>
                           </StudentInfo>
-                          
+
                           <ScoreInfo>
                             <ScoreValue $position={holder.position}>
                               {holder.obtained_marks.toFixed(0)}/{holder.total_marks.toFixed(0)}
@@ -1908,18 +1925,18 @@ const PositionHolders: React.FC = () => {
                               {holder.percentage.toFixed(1)}% - {holder.grade}
                             </ScoreLabel>
                           </ScoreInfo>
-                          
+
                           <PositionBadge $position={holder.position}>
                             {holder.position}
                           </PositionBadge>
                         </PositionHolder>
                       ))}
-                      
+
                       {classData.position_holders.length === 0 && (
-                        <div style={{ 
-                          textAlign: 'center', 
-                          padding: '16px', 
-                          color: '#6b7280', 
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '16px',
+                          color: '#6b7280',
                           fontSize: '0.9rem',
                           fontStyle: 'italic'
                         }}>
@@ -1947,7 +1964,7 @@ const PositionHolders: React.FC = () => {
 
         </MainContent>
       </PageContainer>
-      
+
       {showToTop && (
         <ToTopButton onClick={handleToTop} aria-label="Scroll to top">
           <KeyboardArrowUpIcon style={{ fontSize: 32 }} />

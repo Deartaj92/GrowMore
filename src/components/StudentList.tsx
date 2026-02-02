@@ -25,6 +25,7 @@ import {
   LocationOn as LocationIcon,
   Sms as SmsIcon,
   WhatsApp as WhatsAppIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { Textfit } from '@techstack/react-textfit';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
@@ -87,11 +88,13 @@ const HeaderFilters = styled.div`
 `;
 
 const Title = styled.h2`
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: ${({ theme }) => theme.ACCENT};
   margin: 0;
+  line-height: 1.3;
 `;
 
 const SearchBar = styled.div`
@@ -169,14 +172,14 @@ const FilterSelect = styled.select`
 
 const CardGrid = styled.div<{ cardCount: number }>`
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   width: 100%;
   padding: 0;
   margin: 0;
   
   @media (max-width: 1200px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   
   @media (max-width: 768px) {
@@ -184,7 +187,7 @@ const CardGrid = styled.div<{ cardCount: number }>`
   }
   
   @media (max-width: 700px) {
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 `;
@@ -196,8 +199,8 @@ const getStatusColor = (status: string) =>
         '99,102,241'; // blue
 
 const cardFlyIn = keyframes`
-  0% { opacity: 0; transform: translateY(60px) scale(0.96); }
-  60% { opacity: 1; transform: translateY(-6px) scale(1.01); }
+  0% { opacity: 0; transform: translateY(39px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.01); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 `;
 
@@ -207,21 +210,21 @@ const imageEntry = keyframes`
 `;
 
 const actionsEntry = keyframes`
-  0% { opacity: 0; transform: translateY(18px) scale(0.92); }
-  60% { opacity: 0.7; transform: translateY(-4px) scale(1.04); }
+  0% { opacity: 0; transform: translateY(12px) scale(0.92); }
+  60% { opacity: 0.7; transform: translateY(-3px) scale(1.04); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 `;
 
 const CardIdBadge = styled.span`
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 3px;
+  right: 3px;
   background: #6366f1;
   color: #fff;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 700;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -234,10 +237,10 @@ const CardIdBadge = styled.span`
 
 const CardImageSection = styled.div`
   width: 100%;
-  height: 80px;
+  height: 52px;
   background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -246,21 +249,21 @@ const CardImageSection = styled.div`
   box-shadow: 0 1px 4px #0001;
   
   @media (max-width: 700px) {
-    height: 100px;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
+    height: 65px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
   }
 `;
 
 const StudentCard = styled.div<{ status: string }>`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10);
   padding: 0;
   position: relative;
-  border: 2.5px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
+  border: 2px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.18s;
-  min-width: 270px;
+  min-width: 0;
   max-width: 100%;
   width: 100%;
   cursor: pointer;
@@ -268,20 +271,22 @@ const StudentCard = styled.div<{ status: string }>`
   overflow: hidden;
   
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
     border-color: rgba(${({ status }) => getStatusColor(status)}, 0.8);
   }
   
   @media (max-width: 700px) {
-    min-width: 200px;
+    min-width: 0;
   }
 `;
 
 const StatusBadge = styled.div<{ status: string }>`
-  padding: 0.15rem 0.5rem;
+  padding: 0.12rem 0.4rem;
   border-radius: 999px;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   background: ${({ status }) =>
     status === 'active' ? 'rgba(34, 197, 94, 0.15)' :
       status === 'suspended' ? 'rgba(245, 158, 11, 0.15)' :
@@ -308,8 +313,8 @@ const StatusBadge = styled.div<{ status: string }>`
   ${({ status }) => status === 'active' && `
     &::before {
       content: '';
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
       border-radius: 50%;
       background: currentColor;
       opacity: 0.6;
@@ -339,8 +344,8 @@ const CardImage = styled.img`
 `;
 
 const Avatar = styled.div`
-  width: 120px;
-  min-height: 140px;
+  width: 78px;
+  min-height: 91px;
   align-self: stretch;
   border-radius: 0;
   background: ${({ theme }) => theme.ACCENT + '22'};
@@ -348,8 +353,10 @@ const Avatar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
+  font-size: 1.6rem;
   font-weight: 700;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
   overflow: hidden;
   cursor: pointer;
@@ -372,9 +379,9 @@ const Avatar = styled.div`
   }
   
   @media (max-width: 700px) {
-    width: 90px;
-    min-height: 120px;
-    font-size: 2rem;
+    width: 58px;
+    min-height: 78px;
+    font-size: 1.3rem;
   }
 `;
 
@@ -382,39 +389,48 @@ const CardTop = styled.div`
   display: flex;
   align-items: stretch;
   gap: 0;
-  max-height: 140px;
+  max-height: 91px;
   
   @media (max-width: 700px) {
-    max-height: 120px;
+    max-height: 78px;
   }
 `;
 
 const StudentName = styled.h3`
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  margin: 0 0 0.35rem 0;
 `;
 
 const FatherName = styled.div`
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.92rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.3;
   margin-bottom: 0.1rem;
 `;
 
 const StudentDetails = styled.p`
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.9rem;
-  margin: 0.25rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0.2rem 0;
 `;
 
 const CardActions = styled.div<{ offsetTop?: boolean }>`
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 5px;
+  right: 5px;
   display: flex;
   flex-direction: row;
-  gap: 4px;
+  gap: 3px;
   opacity: 0;
   pointer-events: none;
   z-index: 3;
@@ -437,8 +453,8 @@ const CardActions = styled.div<{ offsetTop?: boolean }>`
 `;
 
 const CardActionBtn = styled.button`
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: none;
   background: #facc15;
@@ -446,8 +462,8 @@ const CardActionBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  font-size: 0.88rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
   transition: background 0.18s, color 0.18s, transform 0.18s;
   cursor: pointer;
   &:hover {
@@ -471,31 +487,31 @@ const CardContent = styled.div`
   flex-direction: column;
   justify-content: flex-start;
   background: none;
-  padding: 0 6px;
+  padding: 0 4px;
 `;
 
 const CardNameWrapper = styled.div`
-  height: 28px;
+  height: 18px;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  margin-top: 0.55em;
-  margin-bottom: 1px;
+  margin-top: 0.36em;
+  margin-bottom: 0.5px;
 `;
 
 const CardName = styled.h3`
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-  font-weight: 600;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
   color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
   margin: 0;
-  /* margin-top removed for wrapper control */
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: 0.01em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.08);
   
   @media (max-width: 700px) {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     font-weight: 700;
   }
 `;
@@ -504,43 +520,48 @@ const CardDivider = styled.div`
   width: 40%;
   height: 1px;
   background: ${({ theme }) => theme.FIELD_BORDER};
-  margin: 4px auto 4px auto;
+  margin: 3px auto 3px auto;
   border-radius: 1px;
 `;
 
 const CardFather = styled.p`
-  font-size: 0.7rem;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin: 0 0 2px 0;
+  margin: 0 0 1px 0;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
   
   @media (max-width: 700px) {
-    font-size: 0.8rem;
-    margin: 0 0 4px 0;
+    font-size: 0.78rem;
+    margin: 0 0 2px 0;
   }
 `;
 
 const CardInfoList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   width: 100%;
 `;
 
 const CardInfoRow = styled.div`
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   width: 100%;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-weight: 700;
-  margin-top: 1px;
+  margin-top: 0.5px;
+  line-height: 1.3;
   
   @media (max-width: 700px) {
-    font-size: 0.8rem;
-    margin-top: 2px;
+    font-size: 0.78rem;
+    margin-top: 1px;
   }
 `;
 
@@ -582,12 +603,15 @@ const PaginationContainer = styled.div`
 `;
 
 const PaginationInfo = styled.div`
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
   
   @media (max-width: 768px) {
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 `;
 
@@ -606,15 +630,17 @@ const PaginationControls = styled.div`
 `;
 
 const PaginationButton = styled.button<{ active?: boolean }>`
-  padding: 0.2rem 0.5rem;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  padding: 0.25rem 0.55rem;
   border-radius: 6px;
   border: 1px solid ${({ theme, active }) => active ? theme.ACCENT : theme.FIELD_BORDER};
   background: ${({ theme, active }) => active ? theme.ACCENT : theme.FIELD_BG};
   color: ${({ theme, active }) => active ? '#fff' : theme.TEXT_PRIMARY};
-  font-size: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 22px;
+  min-width: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1710,16 +1736,18 @@ const MemoizedStudentCard = memo(({
     <StudentCard status={student.status || 'active'} onClick={onClick} data-student-card>
       <div style={{
         position: 'absolute',
-        top: '12px',
-        right: '12px',
-        fontSize: '0.85rem',
-        opacity: 0.6,
+        top: '5px',
+        right: '5px',
+        fontSize: '0.65rem',
         fontWeight: 600,
+        letterSpacing: '0.02em',
         color: 'inherit',
-        background: 'rgba(0, 0, 0, 0.05)',
-        padding: '4px 8px',
-        borderRadius: '8px',
-        zIndex: 1
+        opacity: 0.75,
+        background: 'rgba(0, 0, 0, 0.06)',
+        padding: '3px 6px',
+        borderRadius: '5px',
+        zIndex: 1,
+        fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif"
       }}>
         #{displayId}
       </div>
@@ -1734,12 +1762,20 @@ const MemoizedStudentCard = memo(({
           {student.picture_url ? (
             <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
           ) : (
-            <span style={{ width: '100%', textAlign: 'center' }}>{(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}</span>
+            <span style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <PersonIcon
+                style={{
+                  fontSize: 88,
+                  color: '#9ca3af',
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))',
+                }}
+              />
+            </span>
           )}
         </Avatar>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1.2rem 1.5rem 1.2rem 1rem' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0.52rem 0.65rem 0.52rem 0.45rem' }}>
           <StudentName>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <span>{student.name}</span>
               <StatusBadge status={student.status || 'active'}>
                 {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
@@ -1749,26 +1785,26 @@ const MemoizedStudentCard = memo(({
           <FatherName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{student.father_name || 'N/A'}</span>
             {(student.phone || student.father_mobile) && (
-              <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px' }}>
                 {student.notification_channel === 'whatsapp' ? (
-                  <WhatsAppIcon style={{ fontSize: '0.9rem', color: '#25D366' }} />
+                  <WhatsAppIcon style={{ fontSize: '0.8rem', color: '#25D366' }} />
                 ) : student.notification_channel === 'sms' ? (
-                  <SmsIcon style={{ fontSize: '0.9rem', color: '#4CAF50' }} />
+                  <SmsIcon style={{ fontSize: '0.8rem', color: '#4CAF50' }} />
                 ) : (
-                  <PhoneIcon style={{ fontSize: '0.9rem' }} />
+                  <PhoneIcon style={{ fontSize: '0.8rem' }} />
                 )}
                 {student.phone || student.father_mobile}
               </span>
             )}
           </FatherName>
-          <StudentDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <StudentDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
             <span>
               {student.classes?.name || 'N/A'}
               {student.sections?.name && ` (${student.sections.name})`}
             </span>
             {student.address && (
-              <span style={{ fontSize: '0.8rem', opacity: 0.7, textAlign: 'right', maxWidth: '50%', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                <LocationIcon style={{ fontSize: '0.9rem' }} />
+              <span style={{ fontSize: '0.72rem', fontWeight: 500, opacity: 0.85, textAlign: 'right', maxWidth: '50%', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
+                <LocationIcon style={{ fontSize: '0.75rem' }} />
                 {student.address}
               </span>
             )}
@@ -1803,7 +1839,7 @@ const StudentList: React.FC = () => {
   const [classFilter, setClassFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = search.trim()
     ? filtered // show all filtered students if searching
@@ -2986,8 +3022,8 @@ const StudentList: React.FC = () => {
                   maxWidth: isMobile ? '65px' : '75px'
                 }}
               >
-                <option value="10">10</option>
-                <option value="25">25</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
               </PerPageSelect>
@@ -3321,7 +3357,7 @@ const StudentList: React.FC = () => {
               <GlowingCards enableGlow gap="0.6em" maxWidth="100%" padding="0">
                 <CardGrid cardCount={studentsToShow.length}>
                   {studentsToShow.map((student) => (
-                    <GlowingCard key={student.id} className="!max-w-[120px] !w-full !p-0" glowColor="#6366f1">
+                    <GlowingCard key={student.id} className="!max-w-full !w-full !p-0" glowColor="#6366f1">
                       <MemoizedStudentCard
                         student={student}
                         onClick={(e) => handleCardClickMemo(student, e)}

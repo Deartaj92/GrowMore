@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import styled, { css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import {
-  Add as AddIcon, 
-  Edit as EditIcon, 
-  Delete as DeleteIcon, 
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
   Search as SearchIcon,
   FilterList as FilterIcon,
   People as PeopleIcon,
@@ -17,7 +17,8 @@ import {
   RemoveCircleOutline as UnlinkIcon,
   Assessment as AssessmentIcon,
   CalendarToday as CalendarIcon,
-  KeyboardArrowUp as KeyboardArrowUpIcon
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  PersonOff as PersonOffIcon
 } from '@mui/icons-material';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
@@ -26,6 +27,7 @@ import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { examinationService } from '../services/examinationService';
 import { Examination, ExaminationFilters } from '../types/examinations';
+import { useNavigate } from 'react-router-dom';
 import Loader from './Loader';
 
 // Styled Components (copied and adapted from SubjectManager)
@@ -290,8 +292,8 @@ const StyledDialog = styled.div<{ open: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background: ${({ theme }) => theme.palette?.mode === 'dark' 
-    ? 'rgba(0, 0, 0, 0.5)' 
+  background: ${({ theme }) => theme.palette?.mode === 'dark'
+    ? 'rgba(0, 0, 0, 0.5)'
     : 'rgba(255, 255, 255, 0.5)'};
   display: ${props => props.open ? 'flex' : 'none'};
   align-items: center;
@@ -308,8 +310,8 @@ const StyledDialog = styled.div<{ open: boolean }>`
 `;
 
 const DialogPaper = styled.div`
-  background: ${({ theme }) => theme.palette?.mode === 'dark' 
-    ? theme.palette.background.paper 
+  background: ${({ theme }) => theme.palette?.mode === 'dark'
+    ? theme.palette.background.paper
     : theme.palette.background.paper};
   border-radius: 16px;
   max-width: 500px;
@@ -342,8 +344,8 @@ const DialogHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: ${({ theme }) => theme.palette?.mode === 'dark' 
-    ? '1px solid rgba(255, 255, 255, 0.05)' 
+  border-bottom: ${({ theme }) => theme.palette?.mode === 'dark'
+    ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
   background: ${({ theme }) => theme.palette?.mode === 'dark'
     ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
@@ -391,17 +393,17 @@ const StyledDialogContent = styled.div`
   
   &::-webkit-scrollbar-thumb {
     background-color: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 3px;
     border: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? `1px solid ${theme.palette.background.paper}`
-      : `1px solid ${theme.palette.background.paper}`};
+    ? `1px solid ${theme.palette.background.paper}`
+    : `1px solid ${theme.palette.background.paper}`};
     
     &:hover {
       background-color: ${({ theme }) => theme.palette?.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     }
   }
   
@@ -563,10 +565,10 @@ const ExaminationsList = styled.div`
 
 const ExamItem = styled.div<{ examType?: string }>`
   background: linear-gradient(135deg, ${({ theme }) => theme.FIELD_BG} 0%, ${({ theme }) => theme.CARD} 100%);
-  border: 2px solid ${({ examType }) => 
-    examType === 'Examination' ? 'rgba(16, 185, 129, 0.3)' : 
-    examType === 'Monthly Test' ? 'rgba(245, 158, 11, 0.3)' : 
-    'rgba(0, 0, 0, 0.1)'
+  border: 2px solid ${({ examType }) =>
+    examType === 'Examination' ? 'rgba(16, 185, 129, 0.3)' :
+      examType === 'Monthly Test' ? 'rgba(245, 158, 11, 0.3)' :
+        'rgba(0, 0, 0, 0.1)'
   };
   border-radius: 14px;
   padding: 1.25rem;
@@ -595,11 +597,11 @@ const ExamItem = styled.div<{ examType?: string }>`
   }
   
   &:hover {
-    border-color: ${({ examType }) => 
-      examType === 'Examination' ? 'rgba(16, 185, 129, 0.5)' : 
-      examType === 'Monthly Test' ? 'rgba(245, 158, 11, 0.5)' : 
-      'rgba(0, 0, 0, 0.2)'
-    };
+    border-color: ${({ examType }) =>
+    examType === 'Examination' ? 'rgba(16, 185, 129, 0.5)' :
+      examType === 'Monthly Test' ? 'rgba(245, 158, 11, 0.5)' :
+        'rgba(0, 0, 0, 0.2)'
+  };
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
     background: linear-gradient(135deg, ${({ theme }) => theme.CARD} 0%, ${({ theme }) => theme.FIELD_BG} 100%);
@@ -737,15 +739,15 @@ const Input = styled.input`
 
   &:hover, &:focus {
     background: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
     border-color: ${({ theme }) => theme.palette?.primary?.main || '#1976d2'};
   }
 
   &::placeholder {
     color: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.3)'
-      : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
   }
 `;
@@ -772,15 +774,15 @@ const TextArea = styled.textarea`
 
   &:hover, &:focus {
     background: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
     border-color: ${({ theme }) => theme.palette?.primary?.main || '#1976d2'};
   }
 
   &::placeholder {
     color: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.3)'
-      : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
   }
 `;
@@ -805,19 +807,19 @@ const Select = styled.select`
 
   &:hover, &:focus {
     background: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
     border-color: ${({ theme }) => theme.palette?.primary?.main || '#1976d2'};
   }
 
   /* Style the dropdown options */
   option {
     background: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? '#1a1a1a'
-      : '#ffffff'};
+    ? '#1a1a1a'
+    : '#ffffff'};
     color: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.9)'
-      : 'rgba(0, 0, 0, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.9)'
+    : 'rgba(0, 0, 0, 0.9)'};
     padding: 8px 12px;
     border: none;
   }
@@ -874,7 +876,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   ${({ variant, theme }) => {
     if (variant === 'primary') {
       return `
-        background: ${theme.palette?.mode === 'dark' 
+        background: ${theme.palette?.mode === 'dark'
           ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
           : 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'};
         color: white;
@@ -884,24 +886,24 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         
         &:hover {
           background: ${theme.palette?.mode === 'dark'
-            ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'
-            : 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'};
+          ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'
+          : 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'};
           box-shadow: ${theme.palette?.mode === 'dark'
-            ? '0 4px 12px rgba(25, 118, 210, 0.4)'
-            : '0 4px 12px rgba(25, 118, 210, 0.3)'};
+          ? '0 4px 12px rgba(25, 118, 210, 0.4)'
+          : '0 4px 12px rgba(25, 118, 210, 0.3)'};
           transform: translateY(-1px);
         }
         
         &:active {
           transform: translateY(0);
           box-shadow: ${theme.palette?.mode === 'dark'
-            ? '0 2px 6px rgba(25, 118, 210, 0.3)'
-            : '0 2px 6px rgba(25, 118, 210, 0.2)'};
+          ? '0 2px 6px rgba(25, 118, 210, 0.3)'
+          : '0 2px 6px rgba(25, 118, 210, 0.2)'};
         }
       `;
     } else if (variant === 'danger') {
       return `
-        background: ${theme.palette?.mode === 'dark' 
+        background: ${theme.palette?.mode === 'dark'
           ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
           : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'};
         color: white;
@@ -911,19 +913,19 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         
         &:hover {
           background: ${theme.palette?.mode === 'dark'
-            ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
-            : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'};
+          ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+          : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'};
           box-shadow: ${theme.palette?.mode === 'dark'
-            ? '0 4px 12px rgba(239, 68, 68, 0.4)'
-            : '0 4px 12px rgba(239, 68, 68, 0.3)'};
+          ? '0 4px 12px rgba(239, 68, 68, 0.4)'
+          : '0 4px 12px rgba(239, 68, 68, 0.3)'};
           transform: translateY(-1px);
         }
         
         &:active {
           transform: translateY(0);
           box-shadow: ${theme.palette?.mode === 'dark'
-            ? '0 2px 6px rgba(239, 68, 68, 0.3)'
-            : '0 2px 6px rgba(239, 68, 68, 0.2)'};
+          ? '0 2px 6px rgba(239, 68, 68, 0.3)'
+          : '0 2px 6px rgba(239, 68, 68, 0.2)'};
         }
       `;
     } else {
@@ -940,11 +942,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         
         &:hover {
           background: ${theme.palette?.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.08)'
-            : 'rgba(0, 0, 0, 0.08)'};
+          ? 'rgba(255, 255, 255, 0.08)'
+          : 'rgba(0, 0, 0, 0.08)'};
           border-color: ${theme.palette?.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.2)'
-            : 'rgba(0, 0, 0, 0.2)'};
+          ? 'rgba(255, 255, 255, 0.2)'
+          : 'rgba(0, 0, 0, 0.2)'};
           transform: translateY(-1px);
         }
         
@@ -981,11 +983,11 @@ const CloseButton = styled.button`
 
   &:hover {
     background: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.1)'};
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(0, 0, 0, 0.1)'};
     color: ${({ theme }) => theme.palette?.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.9)'
-      : 'rgba(0, 0, 0, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.9)'
+    : 'rgba(0, 0, 0, 0.9)'};
   }
 `;
 
@@ -1310,6 +1312,7 @@ const EXAM_TYPE_OPTIONS = [
 
 const ExaminationManager: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -1334,7 +1337,7 @@ const ExaminationManager: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [examinationToDelete, setExaminationToDelete] = useState<Examination | null>(null);
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   const fetchExaminations = async () => {
     if (!user?.school_id) return;
@@ -1358,11 +1361,11 @@ const ExaminationManager: React.FC = () => {
         .select('*')
         .eq('school_id', user.school_id)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       setSessions(data || []);
-      
+
       // Find the currently active session
       const currentDate = new Date();
       const active = data?.find(session => {
@@ -1370,7 +1373,7 @@ const ExaminationManager: React.FC = () => {
         const endDate = session.end_date ? new Date(session.end_date) : null;
         return currentDate >= startDate && (!endDate || currentDate <= endDate);
       });
-      
+
       setActiveSession(active || data?.[0] || null);
     } catch (error) {
     }
@@ -1421,28 +1424,28 @@ const ExaminationManager: React.FC = () => {
   };
 
   const validateForm = () => {
-    const errors: {[key: string]: string} = {};
-    
+    const errors: { [key: string]: string } = {};
+
     if (!newExamination.name.trim()) {
       errors.name = 'Name is required';
     }
-    
+
     if (!newExamination.exam_type) {
       errors.exam_type = 'Exam type is required';
     }
-    
+
     if (!newExamination.start_date) {
       errors.start_date = 'Start date is required';
     }
-    
+
     if (!newExamination.session_id) {
       errors.session_id = 'Session is required';
     }
-    
+
     if (newExamination.passing_marks < 0 || newExamination.passing_marks > 100) {
       errors.passing_marks = 'Passing marks must be between 0 and 100';
     }
-    
+
     if (newExamination.end_date && newExamination.start_date) {
       const startDate = new Date(newExamination.start_date);
       const endDate = new Date(newExamination.end_date);
@@ -1450,7 +1453,7 @@ const ExaminationManager: React.FC = () => {
         errors.end_date = 'End date must be after start date';
       }
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -1473,14 +1476,14 @@ const ExaminationManager: React.FC = () => {
 
   const handleSaveExamination = async () => {
     if (!user?.school_id || isSaving) return;
-    
+
     if (!validateForm()) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
-    
+
     setIsSaving(true);
-    
+
     try {
       // Check for duplicate name (case-insensitive, ignore self if editing)
       const nameLower = newExamination.name.trim().toLowerCase();
@@ -1489,7 +1492,7 @@ const ExaminationManager: React.FC = () => {
         showToast('An examination with this name already exists.', 'error');
         return;
       }
-      
+
       let error = null;
       if (editingExam) {
         await examinationService.updateExamination(editingExam.id, {
@@ -1507,19 +1510,19 @@ const ExaminationManager: React.FC = () => {
           end_date: newExamination.start_date // Use start_date as end_date for now
         });
       }
-      
+
       if (error) {
         showToast('Error saving examination.', 'error');
         return;
       }
-      
+
       // Success - show appropriate message
       if (editingExam) {
         showToast('Examination updated successfully.', 'success');
       } else {
         showToast('Examination added successfully.', 'success');
       }
-      
+
       handleCloseDialog();
       fetchExaminations();
     } catch (err) {
@@ -1531,7 +1534,7 @@ const ExaminationManager: React.FC = () => {
 
   const handleDeleteExamination = async (id: number) => {
     if (!user?.school_id) return;
-    
+
     try {
       await examinationService.deleteExamination(id, user.school_id);
       showToast('Examination deleted.', 'success');
@@ -1546,12 +1549,12 @@ const ExaminationManager: React.FC = () => {
     setExaminationToDelete(examination);
     setDeleteModalOpen(true);
   };
-  
+
   const closeDeleteModal = () => {
     setDeleteModalOpen(false);
     setExaminationToDelete(null);
   };
-  
+
   const confirmDelete = async () => {
     if (examinationToDelete) {
       await handleDeleteExamination(examinationToDelete.id);
@@ -1579,7 +1582,7 @@ const ExaminationManager: React.FC = () => {
 
   // Sort examinations within each session by start date (earliest first)
   Object.keys(examinationsBySession).forEach(sessionId => {
-    examinationsBySession[parseInt(sessionId)].examinations.sort((a, b) => 
+    examinationsBySession[parseInt(sessionId)].examinations.sort((a, b) =>
       new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
     );
   });
@@ -1589,11 +1592,11 @@ const ExaminationManager: React.FC = () => {
     return (
       <ThemeProvider theme={theme}>
         <PageContainer>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: '2rem', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
             gap: 16,
             color: '#888',
             fontSize: '1.1rem',
@@ -1620,7 +1623,7 @@ const ExaminationManager: React.FC = () => {
           <HeaderRow>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <Title>
-                Examination Management <span style={{fontWeight:400, fontSize:'1rem', color: theme.palette.mode === 'dark' ? '#b0b8d1' : '#4a4a4a'}}>({examinations.length})</span>
+                Examination Management <span style={{ fontWeight: 400, fontSize: '1rem', color: theme.palette.mode === 'dark' ? '#b0b8d1' : '#4a4a4a' }}>({examinations.length})</span>
               </Title>
               {/* Mobile Add Button - Icon Only */}
               <button
@@ -1656,6 +1659,31 @@ const ExaminationManager: React.FC = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
                 />
+                <SegmentedButton
+                  onClick={() => navigate('/student-exam-exclusion')}
+                  title="Excluded Students"
+                  style={{
+                    minWidth: 120,
+                    maxWidth: 160,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: theme.palette.mode === 'dark' ? '#444' : '#f3f4f6',
+                    border: `1.5px solid ${theme.palette.mode === 'dark' ? '#555' : '#e5e7eb'}`,
+                    borderLeft: 'none',
+                    color: theme.palette.mode === 'dark' ? '#C0C0C0' : '#444',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    padding: '6px 8px'
+                  }}
+                >
+                  <PersonOffIcon style={{ fontSize: 16 }} />
+                  <span style={{ fontWeight: 700, display: 'inline-block', whiteSpace: 'nowrap' }}>
+                    {window.innerWidth <= 900 ? 'Exclusions' : 'Excluded Students'}
+                  </span>
+                </SegmentedButton>
                 <SegmentedButton
                   onClick={() => handleOpenDialog()}
                   title="Add Examination"
@@ -1713,13 +1741,13 @@ const ExaminationManager: React.FC = () => {
                     {sessionData.examinations.length} examination(s)
                   </SessionInfo>
                 </SessionHeader>
-                
+
                 <ExaminationsList>
                   {sessionData.examinations.map(examination => (
                     <ExamItem key={examination.id} examType={examination.exam_type}>
-                      <div style={{ 
-                        position: 'absolute', 
-                        top: '1rem', 
+                      <div style={{
+                        position: 'absolute',
+                        top: '1rem',
                         right: '1rem',
                         background: examination.exam_type === 'Examination' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
                         color: examination.exam_type === 'Examination' ? '#10b981' : '#f59e0b',
@@ -1737,22 +1765,22 @@ const ExaminationManager: React.FC = () => {
                         <ExamName>{examination.name}</ExamName>
                         <ExamDetails>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{ 
-                              width: '6px', 
-                              height: '6px', 
-                              borderRadius: '50%', 
-                              background: '#6366f1' 
+                            <div style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#6366f1'
                             }} />
                             <span>
                               {examination.start_date ? new Date(examination.start_date).toLocaleDateString('en-GB') : 'TBD'} - {examination.end_date ? new Date(examination.end_date).toLocaleDateString('en-GB') : 'TBD'}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{ 
-                              width: '6px', 
-                              height: '6px', 
-                              borderRadius: '50%', 
-                              background: '#8b5cf6' 
+                            <div style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#8b5cf6'
                             }} />
                             <span>Passing Marks: {examination.passing_marks || 40}%</span>
                           </div>
@@ -1791,7 +1819,7 @@ const ExaminationManager: React.FC = () => {
           </PaginationInfo>
         </PaginationContainer>
       </PageContainer>
-      
+
       <StyledDialog open={openDialog}>
         <DialogPaper onClick={e => e.stopPropagation()}>
           <DialogHeader>
@@ -1800,7 +1828,7 @@ const ExaminationManager: React.FC = () => {
               <CloseIcon />
             </CloseButton>
           </DialogHeader>
-          
+
           <StyledDialogContent>
             <form onSubmit={(e) => { e.preventDefault(); handleSaveExamination(); }}>
               <FormGrid>
@@ -1816,7 +1844,7 @@ const ExaminationManager: React.FC = () => {
                   />
                   {formErrors.name && <ErrorText>{formErrors.name}</ErrorText>}
                 </FormGroup>
-                
+
                 <FormGroup>
                   <Label>Exam Type</Label>
                   <Select
@@ -1828,9 +1856,9 @@ const ExaminationManager: React.FC = () => {
                   </Select>
                   {formErrors.exam_type && <ErrorText>{formErrors.exam_type}</ErrorText>}
                 </FormGroup>
-                
+
               </FormGrid>
-              
+
               <FormGroup>
                 <Label>Session</Label>
                 <Select
@@ -1845,7 +1873,7 @@ const ExaminationManager: React.FC = () => {
                 </Select>
                 {formErrors.session_id && <ErrorText>{formErrors.session_id}</ErrorText>}
               </FormGroup>
-              
+
               <FormGrid>
                 <FormGroup>
                   <Label>Start Date</Label>
@@ -1857,7 +1885,7 @@ const ExaminationManager: React.FC = () => {
                   />
                   {formErrors.start_date && <ErrorText>{formErrors.start_date}</ErrorText>}
                 </FormGroup>
-                
+
                 <FormGroup>
                   <Label>End Date</Label>
                   <Input
@@ -1868,7 +1896,7 @@ const ExaminationManager: React.FC = () => {
                   {formErrors.end_date && <ErrorText>{formErrors.end_date}</ErrorText>}
                 </FormGroup>
               </FormGrid>
-              
+
               <FormGroup>
                 <Label>Status</Label>
                 <Select
@@ -1880,7 +1908,7 @@ const ExaminationManager: React.FC = () => {
                   <option value="archived">Archived</option>
                 </Select>
               </FormGroup>
-              
+
               <FormGrid>
                 <FormGroup>
                   <Label>Passing Marks (%)</Label>
@@ -1895,7 +1923,7 @@ const ExaminationManager: React.FC = () => {
                   />
                   {formErrors.passing_marks && <ErrorText>{formErrors.passing_marks}</ErrorText>}
                 </FormGroup>
-                
+
                 <FormGroup>
                   <Label>Description</Label>
                   <TextArea
@@ -1907,7 +1935,7 @@ const ExaminationManager: React.FC = () => {
               </FormGrid>
             </form>
           </StyledDialogContent>
-          
+
           <FormActions>
             <Button variant="secondary" type="button" onClick={handleCloseDialog}>
               Cancel
@@ -1918,7 +1946,7 @@ const ExaminationManager: React.FC = () => {
           </FormActions>
         </DialogPaper>
       </StyledDialog>
-      
+
       {/* Delete confirmation modal */}
       <StyledDialog open={deleteModalOpen}>
         <DialogPaper onClick={e => e.stopPropagation()}>
@@ -1943,13 +1971,13 @@ const ExaminationManager: React.FC = () => {
               <CloseIcon />
             </CloseButton>
           </DialogHeader>
-          
+
           <StyledDialogContent>
             <div style={{ padding: '0', fontSize: '1.05rem', color: '#f87171', fontWeight: 500, marginBottom: '1rem' }}>
               Are you sure you want to delete the examination "{examinationToDelete?.name}"? This will also remove all associated results and data.
             </div>
           </StyledDialogContent>
-          
+
           <FormActions>
             <Button variant="secondary" type="button" onClick={closeDeleteModal}>
               Cancel
