@@ -1490,9 +1490,9 @@ const MarksEntryManager: React.FC = () => {
         });
       });
 
-      // Sort students by name within each class-section group
+      // Sort students by ID within each class-section group
       Object.keys(studentsByClassSection).forEach(key => {
-        studentsByClassSection[key].sort((a, b) => a.name.localeCompare(b.name));
+        studentsByClassSection[key].sort((a, b) => a.id - b.id);
       });
 
       // Sort class-section keys using the universal class sorting function
@@ -1584,14 +1584,8 @@ const MarksEntryManager: React.FC = () => {
         doc.line(15, 50, pageWidth - 15, 50);
 
         // Table data - sorted by ID
-        const sortedStudents = students.sort((a, b) => {
-          const aId = getStudentDisplayId(a);
-          const bId = getStudentDisplayId(b);
-          if (typeof aId === 'number' && typeof bId === 'number') {
-            return aId - bId;
-          }
-          return String(aId).localeCompare(String(bId));
-        });
+        // Sort by ID
+        const sortedStudents = students.sort((a, b) => a.id - b.id);
         const tableData = sortedStudents.map((student, index) => [
           index + 1,
           getStudentDisplayId(student).toString(),
