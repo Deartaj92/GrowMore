@@ -126,8 +126,8 @@ const ActionButton = styled.button`
   
   &:hover {
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.05)'};
     transform: translateY(-1px);
   }
   
@@ -259,8 +259,8 @@ const StyledSelect = styled.select`
   &:hover, &:focus {
     border-color: ${({ theme }) => theme.ACCENT};
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
   }
   
   & option {
@@ -288,14 +288,14 @@ const SearchInput = styled.input`
   &:hover, &:focus {
     border-color: ${({ theme }) => theme.ACCENT};
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(255, 255, 255, 0.9)'};
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.9)'};
   }
   
   &::placeholder {
     color: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.3)'
-      : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
   }
 `;
 
@@ -360,14 +360,14 @@ const TableWrapper = styled.div`
   
   &::-webkit-scrollbar-thumb {
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 4px;
     
     &:hover {
       background: ${({ theme }) => isDark(theme)
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     }
   }
   
@@ -426,8 +426,8 @@ const TableRow = styled.tr`
   
   &:hover {
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.03)'
-      : 'rgba(0, 0, 0, 0.02)'};
+    ? 'rgba(255, 255, 255, 0.03)'
+    : 'rgba(0, 0, 0, 0.02)'};
   }
   
   &:last-child {
@@ -477,8 +477,8 @@ const IconButton = styled.button`
   
   &:hover {
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.05)'};
     transform: translateY(-1px);
   }
   
@@ -645,8 +645,8 @@ const SecondaryButton = styled.button`
   
   &:hover {
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.05)'};
   }
 `;
 
@@ -743,8 +743,8 @@ const PaginationButton = styled.button`
   
   &:hover:not(:disabled) {
     background: ${({ theme }) => isDark(theme)
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.05)'};
     transform: translateY(-1px);
   }
   
@@ -805,7 +805,20 @@ interface Payment {
   payment_mode: string;
   received_by: number | null;
   remarks: string | null;
+  transaction_id?: string | null;
+  cheque_number?: string | null;
+  account_id?: number | null;
+  accounts?: {
+    id: number;
+    name: string;
+    type: string;
+    bank_name?: string | null;
+    account_number?: string | null;
+    wallet_number?: string | null;
+  } | null;
   created_at: string;
+  invoice_id?: number;
+  student_id: number;
   fee_invoices?: {
     student_id: number;
     student?: {
@@ -834,10 +847,10 @@ const PaymentHistoryPage: React.FC = () => {
   const { showToast } = useToast();
   const { setLoading, loading } = useLoading();
   const { setFooterContent } = usePageFooter();
-  
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-  
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 700);
@@ -851,7 +864,7 @@ const PaymentHistoryPage: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -859,14 +872,14 @@ const PaymentHistoryPage: React.FC = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  
+
   // Modal states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<number | null>(null);
-  
+
   const [isLoadingData, setIsLoadingData] = useState(true);
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 1000;
@@ -888,7 +901,7 @@ const PaymentHistoryPage: React.FC = () => {
   };
 
   const getPaymentDisplayId = (paymentId: number) => `S${user?.school_id || 0}-${paymentId}`;
-  
+
   const getUserName = (userId: number | null) => {
     if (!userId) return 'Unknown User';
     return users.find((u: any) => u.id === userId)?.name || 'Unknown User';
@@ -915,7 +928,7 @@ const PaymentHistoryPage: React.FC = () => {
   // Filter payments
   const filteredPayments = useMemo(() => {
     let filtered = [...payments];
-    
+
     // Filter by class
     if (selectedClass !== 'all') {
       filtered = filtered.filter(p => {
@@ -923,7 +936,7 @@ const PaymentHistoryPage: React.FC = () => {
         return invoice?.student?.class_id === Number(selectedClass);
       });
     }
-    
+
     // Filter by section
     if (selectedSection !== 'all') {
       filtered = filtered.filter(p => {
@@ -931,12 +944,12 @@ const PaymentHistoryPage: React.FC = () => {
         return invoice?.student?.section_id === Number(selectedSection);
       });
     }
-    
+
     // Filter by payment method
     if (selectedPaymentMethod !== 'all') {
       filtered = filtered.filter(p => p.payment_mode === selectedPaymentMethod);
     }
-    
+
     // Filter by date range
     if (dateFrom) {
       filtered = filtered.filter(p => {
@@ -947,7 +960,7 @@ const PaymentHistoryPage: React.FC = () => {
         return paymentDate >= fromDate;
       });
     }
-    
+
     if (dateTo) {
       filtered = filtered.filter(p => {
         const paymentDate = new Date(p.payment_date);
@@ -957,7 +970,7 @@ const PaymentHistoryPage: React.FC = () => {
         return paymentDate <= toDate;
       });
     }
-    
+
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -969,7 +982,7 @@ const PaymentHistoryPage: React.FC = () => {
         return studentName.includes(query) || studentId.includes(query) || paymentId.includes(query) || fatherName.includes(query);
       });
     }
-    
+
     return filtered;
   }, [payments, selectedClass, selectedSection, selectedPaymentMethod, dateFrom, dateTo, searchQuery, user?.school_id]);
 
@@ -979,7 +992,7 @@ const PaymentHistoryPage: React.FC = () => {
     const totalAmount = filteredPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const totalDiscount = filteredPayments.reduce((sum, p) => sum + Number(p.discount_amount || 0), 0);
     const totalNet = filteredPayments.reduce((sum, p) => sum + Number(p.net_amount || p.amount || 0), 0);
-    
+
     return { total, totalAmount, totalDiscount, totalNet };
   }, [filteredPayments]);
 
@@ -1001,7 +1014,7 @@ const PaymentHistoryPage: React.FC = () => {
         const from = startIndex + 1;
         const to = Math.min(endIndex, filteredPayments.length);
         const total = filteredPayments.length;
-        
+
         return (
           <div style={{
             display: 'flex',
@@ -1032,7 +1045,7 @@ const PaymentHistoryPage: React.FC = () => {
               >
                 ‹
               </PaginationButton>
-              
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <span style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: theme.TEXT_SECONDARY }}>Page</span>
                 <PageInput
@@ -1058,7 +1071,7 @@ const PaymentHistoryPage: React.FC = () => {
                 />
                 <span style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: theme.TEXT_SECONDARY }}>of {totalPages}</span>
               </div>
-              
+
               <PaginationButton
                 theme={theme}
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
@@ -1096,14 +1109,14 @@ const PaymentHistoryPage: React.FC = () => {
   // Fetch classes
   const fetchClasses = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('classes')
         .select('id, name')
         .eq('school_id', user.school_id)
         .order('name');
-      
+
       if (error) throw error;
       if (data) {
         const sortedClasses = sortClasses(data);
@@ -1118,14 +1131,14 @@ const PaymentHistoryPage: React.FC = () => {
   // Fetch sections
   const fetchSections = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('sections')
         .select('id, name, class_id')
         .eq('school_id', user.school_id)
         .order('name');
-      
+
       if (error) throw error;
       if (data) {
         setSections(data);
@@ -1139,13 +1152,13 @@ const PaymentHistoryPage: React.FC = () => {
   // Fetch users
   const fetchUsers = useCallback(async () => {
     if (!user?.school_id) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email')
         .eq('school_id', user.school_id);
-      
+
       if (error) throw error;
       if (data) {
         setUsers(data);
@@ -1161,13 +1174,23 @@ const PaymentHistoryPage: React.FC = () => {
       setIsLoadingData(false);
       return;
     }
-    
+
     setIsLoadingData(true);
     try {
       // Fetch all payments first
       const { data: paymentsData, error } = await supabase
         .from('fee_payments')
-        .select('*')
+        .select(`
+          *,
+          accounts (
+            id,
+            name,
+            type,
+            bank_name,
+            account_number,
+            wallet_number
+          )
+        `)
         .eq('school_id', user.school_id)
         .order('payment_date', { ascending: false })
         .order('created_at', { ascending: false });
@@ -1175,28 +1198,19 @@ const PaymentHistoryPage: React.FC = () => {
       if (error) throw error;
 
       if (paymentsData && paymentsData.length > 0) {
-        // Get unique invoice IDs
-        const invoiceIds = Array.from(new Set(paymentsData.map((p: any) => p.invoice_id).filter(Boolean)));
-        
-        // Fetch invoices to get student IDs
-        const { data: invoicesData } = await supabase
-          .from('fee_invoices')
-          .select('id, student_id')
-          .in('id', invoiceIds);
-        
-        // Get unique student IDs
-        const studentIds = Array.from(new Set(invoicesData?.map((inv: any) => inv.student_id).filter(Boolean) || []));
-        
+        // Get unique student IDs directly from payments
+        const studentIds = Array.from(new Set(paymentsData.map((p: any) => p.student_id).filter(Boolean)));
+
         if (studentIds.length > 0) {
           // Fetch students with their class/section info
           const { data: studentsData } = await supabase
             .from('students')
             .select('id, name, roll_number, father_name, class_id, section_id')
             .in('id', studentIds);
-          
+
           const classIds = Array.from(new Set(studentsData?.map((s: any) => s.class_id).filter(Boolean) || []));
           const sectionIds = Array.from(new Set(studentsData?.map((s: any) => s.section_id).filter(Boolean) || []));
-          
+
           // Fetch classes and sections with chunking for .in() limit
           let allClasses: any[] = [];
           if (classIds.length > 0) {
@@ -1211,7 +1225,7 @@ const PaymentHistoryPage: React.FC = () => {
               allClasses.push(...chunkClasses);
             }
           }
-          
+
           let allSections: any[] = [];
           if (sectionIds.length > 0) {
             for (let i = 0; i < sectionIds.length; i += 1000) {
@@ -1225,22 +1239,20 @@ const PaymentHistoryPage: React.FC = () => {
               allSections.push(...chunkSections);
             }
           }
-          
+
           const classesMap = new Map(allClasses.map((c: any) => [c.id, c]));
           const sectionsMap = new Map(allSections.map((s: any) => [s.id, s]));
           const studentsMap = new Map((studentsData || []).map((s: any) => [s.id, s]));
-          const invoicesMap = new Map((invoicesData || []).map((inv: any) => [inv.id, inv]));
-          
+
           // Enrich payment data with student and class/section info
           const enrichedPayments = paymentsData.map((payment: any) => {
-            const invoice = invoicesMap.get(payment.invoice_id);
-            const studentId = invoice?.student_id;
+            const studentId = payment.student_id;
             const student = studentId ? studentsMap.get(studentId) : null;
-            
+
             if (student) {
               const classInfo = student.class_id ? classesMap.get(student.class_id) : null;
               const sectionInfo = student.section_id ? sectionsMap.get(student.section_id) : null;
-              
+
               return {
                 ...payment,
                 fee_invoices: [{
@@ -1255,13 +1267,13 @@ const PaymentHistoryPage: React.FC = () => {
                 }]
               };
             }
-            
+
             return {
               ...payment,
               fee_invoices: []
             };
           });
-          
+
           setPayments(enrichedPayments as Payment[]);
         } else {
           setPayments([]);
@@ -1316,15 +1328,15 @@ const PaymentHistoryPage: React.FC = () => {
     try {
       setDeletingPayment(selectedPayment.id);
       setLoading(true);
-      
+
       const { error } = await supabase
         .from('fee_payments')
         .delete()
         .eq('id', selectedPayment.id)
         .eq('school_id', user?.school_id);
-      
+
       if (error) throw error;
-      
+
       showToast('Payment deleted successfully', 'success');
       handleCloseDeleteModal();
       await fetchPayments();
@@ -1410,7 +1422,7 @@ const PaymentHistoryPage: React.FC = () => {
             />
           </div>
         </SearchWrapper>
-        
+
         <FilterRow>
           <FilterGroup>
             <FilterLabel theme={theme}>Class</FilterLabel>
@@ -1560,7 +1572,26 @@ const PaymentHistoryPage: React.FC = () => {
                       Rs. {formatCurrency(Number(payment.net_amount || payment.amount || 0))}
                     </TableCell>
                     <TableCell theme={theme}>
-                      {payment.payment_mode}
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{payment.payment_mode}</div>
+                        {payment.accounts && (
+                          <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY, marginTop: '0.25rem' }}>
+                            {payment.accounts.name}
+                            {payment.accounts.type === 'bank' && payment.accounts.bank_name && ` - ${payment.accounts.bank_name}`}
+                            {(payment.accounts.type === 'easypaisa' || payment.accounts.type === 'jazzcash') && payment.accounts.wallet_number && ` - ${payment.accounts.wallet_number}`}
+                          </div>
+                        )}
+                        {payment.transaction_id && (
+                          <div style={{ fontSize: '0.75rem', color: theme.ACCENT, marginTop: '0.25rem' }}>
+                            <strong>Txn ID:</strong> {payment.transaction_id}
+                          </div>
+                        )}
+                        {payment.cheque_number && (
+                          <div style={{ fontSize: '0.75rem', color: theme.ACCENT, marginTop: '0.25rem' }}>
+                            <strong>Cheque #:</strong> {payment.cheque_number}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell theme={theme}>
                       {payment.received_by ? `${payment.received_by} - ${getUserName(payment.received_by)}` : '-'}
@@ -1570,23 +1601,23 @@ const PaymentHistoryPage: React.FC = () => {
                     </TableCell>
                     <TableCell theme={theme}>
                       <ActionButtons>
-                        <IconButton 
-                          theme={theme} 
-                          onClick={() => generateInvoiceForPayment(payment)} 
+                        <IconButton
+                          theme={theme}
+                          onClick={() => generateInvoiceForPayment(payment)}
                           title="Generate Invoice"
                         >
                           <Receipt style={{ fontSize: 16 }} />
                         </IconButton>
-                        <IconButton 
-                          theme={theme} 
-                          onClick={() => generateThermalReceiptForPayment(payment)} 
+                        <IconButton
+                          theme={theme}
+                          onClick={() => generateThermalReceiptForPayment(payment)}
                           title="Generate Thermal Receipt"
                         >
                           <PrintIcon style={{ fontSize: 16 }} />
                         </IconButton>
-                        <IconButton 
-                          theme={theme} 
-                          onClick={() => handleOpenDeleteModal(payment)} 
+                        <IconButton
+                          theme={theme}
+                          onClick={() => handleOpenDeleteModal(payment)}
                           title="Delete Payment"
                         >
                           {deletingPayment === payment.id ? (

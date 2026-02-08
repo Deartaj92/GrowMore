@@ -926,7 +926,7 @@ const FeeCollectionNew: React.FC = () => {
   // Load initial data
   useEffect(() => {
     if (!user?.school_id) return; // Early return if no school_id, but AFTER hook is declared
-    
+
     let isMounted = true;
     const loadAll = async () => {
       startProgress(false);
@@ -1238,7 +1238,7 @@ const FeeCollectionNew: React.FC = () => {
       showToast('No school context found', 'error');
       return;
     }
-    
+
     try {
       // Fetch school information
       const [{ data: profileData }, { data: schoolData }] = await Promise.all([
@@ -1327,7 +1327,7 @@ const FeeCollectionNew: React.FC = () => {
           for (let i = 0; i < challanIds.length; i += chunkSize) {
             chunks.push(challanIds.slice(i, i + chunkSize));
           }
-          
+
           for (const chunk of chunks) {
             const chunkData = await fetchAllRows(async (from, to) => {
               return await supabase
@@ -1465,7 +1465,8 @@ const FeeCollectionNew: React.FC = () => {
 
       // Build items table rows - show ALL fee items with their full amounts only
       // Ensure at least 11 rows, add empty rows if needed
-      const minRows = 11;
+      // Ensure at least 11 rows for A5 landscape
+      // (minRows was previously 11, now hardcoded to 11 in calculation below)
       const itemsRows = allFeeItems.map((feeItem, index) => {
         // Handle One Time fees (no month/year) vs recurring fees
         let monthYear = '';
@@ -1490,183 +1491,37 @@ const FeeCollectionNew: React.FC = () => {
         }
         return `
           <tr>
-            <td style="text-align: center; padding: 8px; border: 1px solid #000;">${index + 1}</td>
-            <td style="text-align: left; padding: 8px; border: 1px solid #000;">${monthYear ? `${feeItem.fee_head_name} (${monthYear})` : feeItem.fee_head_name}</td>
-            <td style="text-align: center; padding: 8px; border: 1px solid #000;">${formatCurrency(feeItem.amount)}</td>
+            <td style="text-align: center; padding: 3px; border: 1px solid #000;">${index + 1}</td>
+            <td style="text-align: left; padding: 3px; border: 1px solid #000;">${monthYear ? `${feeItem.fee_head_name} (${monthYear})` : feeItem.fee_head_name}</td>
+            <td style="text-align: center; padding: 3px; border: 1px solid #000;">${formatCurrency(feeItem.amount)}</td>
           </tr>
         `;
       }).join('');
 
       // Add empty rows if needed to reach minimum of 11 rows (without numbers)
-      const emptyRows = Math.max(0, minRows - allFeeItems.length);
+      const emptyRows = Math.max(0, 11 - allFeeItems.length);
       const emptyRowsHtml = Array(emptyRows).fill(0).map(() => {
         return `
           <tr>
-            <td style="text-align: center; padding: 8px; border: 1px solid #000;">&nbsp;</td>
-            <td style="text-align: left; padding: 8px; border: 1px solid #000;">&nbsp;</td>
-            <td style="text-align: center; padding: 8px; border: 1px solid #000;">&nbsp;</td>
+            <td style="text-align: center; padding: 3px; border: 1px solid #000;">&nbsp;</td>
+            <td style="text-align: left; padding: 3px; border: 1px solid #000;">&nbsp;</td>
+            <td style="text-align: center; padding: 3px; border: 1px solid #000;">&nbsp;</td>
           </tr>
         `;
       }).join('');
 
       const allItemsRows = itemsRows + emptyRowsHtml;
 
-      // Create HTML content
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Fee Invoice</title>
-          <style>
-            @media print {
-              @page {
-                size: A4;
-                margin: 0;
-                /* Remove all margins to minimize header/footer space */
-              }
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 210mm;
-                height: 297mm;
-              }
-              body::before,
-              body::after {
-                display: none !important;
-                content: none !important;
-              }
-              /* Hide any potential header/footer elements */
-              @page :first {
-                margin: 0;
-              }
-              @page :left {
-                margin: 0;
-              }
-              @page :right {
-                margin: 0;
-              }
-            }
-            body {
-              font-family: Arial, sans-serif;
-              margin: 0;
-              padding: 20px;
-              color: #000;
-            }
-            @media print {
-              body {
-                padding: 15mm !important;
-              }
-            }
-            .invoice-container {
-              max-width: 210mm;
-              margin: 0 auto;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 20px;
-            }
-            .school-name {
-              font-size: 26px;
-              font-weight: bold;
-              margin-bottom: 8px;
-            }
-            .contact-info {
-              font-size: 16px;
-              margin-bottom: 8px;
-            }
-            .invoice-title {
-              font-size: 18px;
-              font-weight: bold;
-              margin-bottom: 16px;
-            }
-            .separator {
-              border-top: 1px solid #000;
-              margin: 16px 0;
-            }
-            .payment-details-container {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-top: 15px;
-            }
-            .received-by-section {
-              font-size: 12px;
-            }
-            .summary-section {
-              width: 300px;
-            }
-            table {
-              border-collapse: collapse;
-              margin-bottom: 15px;
-            }
-            table th {
-              font-weight: bold;
-              text-align: center;
-              padding: 8px;
-              border: 1px solid #000;
-            }
-            table td {
-              padding: 8px;
-              border: 1px solid #000;
-            }
-            .student-table {
-              width: 100%;
-            }
-            .student-table th:nth-child(1),
-            .student-table td:nth-child(1),
-            .student-table th:nth-child(2),
-            .student-table td:nth-child(2) {
-              width: 40%;
-            }
-            .student-table th:nth-child(3),
-            .student-table td:nth-child(3) {
-              width: 20%;
-            }
-            .fee-items-table {
-              width: 100%;
-              table-layout: fixed;
-            }
-            .fee-items-table th:nth-child(1),
-            .fee-items-table td:nth-child(1) {
-              width: 10%;
-            }
-            .fee-items-table th:nth-child(2),
-            .fee-items-table td:nth-child(2) {
-              width: auto;
-            }
-            .fee-items-table th:nth-child(3),
-            .fee-items-table td:nth-child(3) {
-              width: 120px;
-              min-width: 120px;
-              max-width: 120px;
-            }
-            .summary-table {
-              width: 300px;
-              table-layout: fixed;
-            }
-            .summary-table td:first-child {
-              font-weight: bold;
-              text-align: left;
-            }
-            .summary-table td:last-child {
-              text-align: right;
-              width: 120px;
-              min-width: 120px;
-              max-width: 120px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="invoice-container">
+      // Helper to generate receipt content for a specific copy type
+      const getReceiptContent = (copyType: string) => `
+          <div class="receipt-copy">
+            <div class="copy-header-row">
+              <div class="copy-label">${copyType}</div>
+            </div>
             <div class="header">
               <div class="school-name">${schoolInfo.name}</div>
               <div class="contact-info">${schoolInfo.address || ''}</div>
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-top: 8px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin-top: 4px; margin-bottom: 4px;">
                 <div>Invoice# ${paymentData.paymentId ? getPaymentDisplayId(paymentData.paymentId) : 'N/A'}</div>
                 <div>Date: ${dateString}</div>
               </div>
@@ -1674,7 +1529,7 @@ const FeeCollectionNew: React.FC = () => {
             
             <div class="separator"></div>
             
-            <div style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 16px;">Fee Invoice</div>
+            <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;">Fee Invoice</div>
             
             <table class="student-table">
               <thead>
@@ -1708,22 +1563,29 @@ const FeeCollectionNew: React.FC = () => {
             
             <div class="payment-details-container">
               <div class="received-by-section">
-                <div style="margin-bottom: 4px;">
-                  <strong>Payment Mode:</strong> ${paymentData.paymentMethod}
+                <div style="margin-bottom: 2px;">
+                  <strong>Mode:</strong> ${paymentData.paymentMethod}
                 </div>
                 ${paymentData.transactionId ? `
-                <div style="margin-bottom: 4px;">
-                  <strong>Transaction ID:</strong> ${paymentData.transactionId}
+                <div style="margin-bottom: 2px;">
+                  <strong>Trx ID:</strong> ${paymentData.transactionId}
                 </div>
                 ` : ''}
                 ${paymentData.chequeNumber ? `
-                <div style="margin-bottom: 4px;">
-                  <strong>Cheque Number:</strong> ${paymentData.chequeNumber}
+                <div style="margin-bottom: 2px;">
+                  <strong>Chq No:</strong> ${paymentData.chequeNumber}
                 </div>
                 ` : ''}
                 <div>
-                  <strong>Received By:</strong> ${paymentData.receivedBy} - ${getUserName(paymentData.receivedBy)}
+                  <strong>Rec By:</strong> ${paymentData.receivedBy} - ${getUserName(paymentData.receivedBy)}
                 </div>
+                ${copyType === 'Student Copy' ? `
+                <div style="margin-top: 40px; width: 120px;">
+                  <div style="border-top: 1px solid #000; text-align: center; font-size: 8px; color: #666; padding-top: 2px;">
+                    Signature
+                  </div>
+                </div>
+                ` : ''}
               </div>
               <div class="summary-section">
                 <table class="summary-table">
@@ -1736,18 +1598,188 @@ const FeeCollectionNew: React.FC = () => {
                       <td>Paid</td>
                       <td>${formatCurrency(paymentData.amount)}</td>
                     </tr>
+                    ${Number(paymentData.discount) > 0 ? `
                     <tr>
-                      <td>Discount</td>
+                      <td>Disc</td>
                       <td>${formatCurrency(paymentData.discount)}</td>
-                    </tr>
+                    </tr>` : ''}
                     <tr>
-                      <td>Remain</td>
+                      <td>Remaining</td>
                       <td>${formatCurrency(remainingAmount)}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
+            <div style="margin-top: auto; text-align: center; font-size: 8px; color: #666;">
+              This is a computer generated receipt
+            </div>
+          </div>
+      `;
+
+      // Create HTML content
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Fee Invoice</title>
+          <style>
+            @media print {
+              @page {
+                size: 210mm 148mm;
+                margin: 0;
+              }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 210mm;
+                height: 148mm;
+              }
+              body::before,
+              body::after {
+                display: none !important;
+                content: none !important;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 0;
+              color: #000;
+              background: white;
+              font-size: 11px; /* Increased font size */
+            }
+            
+            .dual-container {
+              display: flex;
+              width: 100%;
+              height: 100%;
+              max-width: 210mm;
+              margin: 0 auto;
+            }
+            
+            .receipt-copy {
+              flex: 1;
+              padding: 5mm; /* Reduced outer padding */
+              display: flex;
+              flex-direction: column;
+              height: 148mm;
+              box-sizing: border-box;
+            }
+
+            /* Add inner spacing towards the cut line to center content visually */
+            .receipt-copy:first-child {
+              padding-right: 10mm; 
+            }
+            .receipt-copy:last-child {
+              padding-left: 10mm;
+            }
+            
+            .cut-line {
+              width: 0;
+              border-left: 1px dashed #999;
+              height: 90%;
+              margin-top: 5%;
+            }
+
+            .copy-header-row {
+              display: flex;
+              justify-content: center;
+              margin-bottom: 8px; /* Added spacing */
+            }
+
+            .copy-label {
+              font-weight: bold;
+              text-transform: uppercase;
+              font-size: 9px;
+              border: 1px solid #000;
+              padding: 3px 8px;
+              background: #f0f0f0;
+              border-radius: 4px;
+            }
+
+            .header {
+              text-align: center;
+              margin-bottom: 10px; /* Added spacing */
+            }
+            .school-name {
+              font-size: 16px; /* Reduced font size */
+              font-weight: bold;
+              margin-bottom: 4px;
+            }
+            .contact-info {
+              font-size: 10px;
+              margin-bottom: 4px;
+            }
+            
+            .separator {
+              border-top: 1px solid #000;
+              margin: 8px 0; /* Added spacing */
+            }
+            
+            table {
+              border-collapse: collapse;
+              margin-bottom: 12px; /* Added spacing */
+              width: 100%;
+              font-size: 10px;
+            }
+            table th {
+              font-weight: bold;
+              text-align: center;
+              padding: 5px; /* Increased padding */
+              border: 1px solid #000;
+              background: #f9f9f9;
+            }
+            table td {
+              padding: 5px; /* Increased padding */
+              border: 1px solid #000;
+            }
+            
+            .student-table th:nth-child(1), .student-table td:nth-child(1) { width: 40%; }
+            .student-table th:nth-child(3), .student-table td:nth-child(3) { width: 25%; }
+            
+            .fee-items-table th:nth-child(1), .fee-items-table td:nth-child(1) { width: 10%; text-align: center; }
+            .fee-items-table th:nth-child(3), .fee-items-table td:nth-child(3) { width: 25%; text-align: center; }
+            
+            .payment-details-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              font-size: 10px;
+              margin-top: 5px;
+            }
+            .received-by-section {
+              flex: 1;
+              padding-right: 10px;
+            }
+            .received-by-section div {
+              margin-bottom: 4px;
+            }
+            .summary-section {
+              width: 45%;
+            }
+            .summary-table {
+              margin-bottom: 0;
+            }
+            .summary-table td:first-child {
+              text-align: left;
+              font-weight: bold;
+            }
+            .summary-table td:last-child {
+              text-align: right;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="dual-container">
+            ${getReceiptContent('Office Copy')}
+            <div class="cut-line"></div>
+            ${getReceiptContent('Student Copy')}
           </div>
         </body>
         </html>
@@ -2362,7 +2394,7 @@ const FeeCollectionNew: React.FC = () => {
 
     // Get only unpaid items (same logic as display)
     const unpaidItems: any[] = [];
-    
+
     // Process challan items
     feeChallans.forEach((challan: any, challanIndex: number) => {
       challan.fee_challans_items?.forEach((item: any, itemIndex: number) => {
@@ -3491,9 +3523,9 @@ const FeeCollectionNew: React.FC = () => {
                     {selectedAccountId && (
                       <>
                         <FormRow>
-                          <Box sx={{ 
-                            padding: '0.75rem', 
-                            background: (theme as any).CARD, 
+                          <Box sx={{
+                            padding: '0.75rem',
+                            background: (theme as any).CARD,
                             borderRadius: '8px',
                             border: `1px solid ${(theme as any).BORDER}`,
                             fontSize: '0.85rem'
@@ -3790,7 +3822,7 @@ const FeeCollectionNew: React.FC = () => {
               }}>
                 <CloseIcon />
               </SuccessCloseButton>
-              
+
               <SuccessModalHeader>
                 <div>
                   <SuccessIcon>
@@ -3806,53 +3838,53 @@ const FeeCollectionNew: React.FC = () => {
                   <SuccessInfoLabel>Payment ID</SuccessInfoLabel>
                   <SuccessInfoValue>{getPaymentDisplayId(successPaymentData.paymentId)}</SuccessInfoValue>
                 </SuccessInfoRow>
-                
+
                 <SuccessInfoRow>
                   <SuccessInfoLabel>Student</SuccessInfoLabel>
                   <SuccessInfoValue>{getStudentDisplayId(selectedStudent)} - {selectedStudent.name}</SuccessInfoValue>
                 </SuccessInfoRow>
-                
+
                 <SuccessInfoRow>
                   <SuccessInfoLabel>Payment Date</SuccessInfoLabel>
                   <SuccessInfoValue>{formatDate(successPaymentData.paymentDate)}</SuccessInfoValue>
                 </SuccessInfoRow>
-                
+
                 <SuccessInfoRow>
                   <SuccessInfoLabel>Payment Method</SuccessInfoLabel>
                   <SuccessInfoValue>{successPaymentData.paymentMethod}</SuccessInfoValue>
                 </SuccessInfoRow>
-                
+
                 <SuccessInfoRow>
                   <SuccessInfoLabel>Amount</SuccessInfoLabel>
                   <SuccessInfoValue>Rs. {formatCurrency(successPaymentData.amount)}</SuccessInfoValue>
                 </SuccessInfoRow>
-                
+
                 {Number(successPaymentData.discount) > 0 && (
                   <SuccessInfoRow>
                     <SuccessInfoLabel>Discount</SuccessInfoLabel>
                     <SuccessInfoValue style={{ color: '#f59e0b' }}>Rs. {formatCurrency(successPaymentData.discount)}</SuccessInfoValue>
                   </SuccessInfoRow>
                 )}
-                
+
                 <SuccessInfoRow style={{ background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%)', borderColor: '#22c55e' }}>
                   <SuccessInfoLabel>Net Amount</SuccessInfoLabel>
                   <SuccessInfoValueHighlight>Rs. {formatCurrency(successPaymentData.netAmount)}</SuccessInfoValueHighlight>
                 </SuccessInfoRow>
-                
+
                 {successPaymentData.transactionId && (
                   <SuccessInfoRow>
                     <SuccessInfoLabel>Transaction ID</SuccessInfoLabel>
                     <SuccessInfoValue style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>{successPaymentData.transactionId}</SuccessInfoValue>
                   </SuccessInfoRow>
                 )}
-                
+
                 {successPaymentData.chequeNumber && (
                   <SuccessInfoRow>
                     <SuccessInfoLabel>Cheque Number</SuccessInfoLabel>
                     <SuccessInfoValue>{successPaymentData.chequeNumber}</SuccessInfoValue>
                   </SuccessInfoRow>
                 )}
-                
+
                 {successPaymentData.paymentRemarks && (
                   <SuccessInfoRow>
                     <SuccessInfoLabel>Remarks</SuccessInfoLabel>
@@ -3862,8 +3894,8 @@ const FeeCollectionNew: React.FC = () => {
               </SuccessModalContent>
 
               <SuccessModalActions>
-                <SuccessModalButton 
-                  $variant="secondary" 
+                <SuccessModalButton
+                  $variant="secondary"
                   onClick={() => {
                     setShowSuccessModal(false);
                     // Focus back on search after closing
@@ -3878,8 +3910,8 @@ const FeeCollectionNew: React.FC = () => {
                   <CloseIcon style={{ fontSize: '1.1rem' }} />
                   Close
                 </SuccessModalButton>
-                <SuccessModalButton 
-                  $variant="primary" 
+                <SuccessModalButton
+                  $variant="primary"
                   onClick={async () => {
                     const defaultPrintType = getDefaultPrintType();
                     if (defaultPrintType === 'invoice') {
