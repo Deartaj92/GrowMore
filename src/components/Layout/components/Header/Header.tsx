@@ -1453,6 +1453,13 @@ const Header: React.FC<HeaderProps> = ({
       color: '#8b5cf6'
     },
     {
+      title: 'Family Fee Collection',
+      description: 'Collect fees for linked family students',
+      icon: <AttachMoneyIcon />,
+      path: '/family-fee-collection',
+      color: '#0ea5e9'
+    },
+    {
       title: 'Fee Structure',
       description: 'Create and manage fee structures',
       icon: <AccountBalanceIcon />,
@@ -1521,6 +1528,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <ListAltIcon />,
       path: '/payment-history',
       color: '#3b82f6'
+    },
+    {
+      title: 'Payments Analytics',
+      description: 'Track payment trends, methods, and collection performance',
+      icon: <AssessmentIcon />,
+      path: '/payments-analytics',
+      color: '#0d9488'
     },
     {
       title: 'Fee Ledger',

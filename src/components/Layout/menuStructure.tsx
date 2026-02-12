@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   People as PeopleIcon,
   PersonAdd as PersonAddIcon,
@@ -358,6 +358,13 @@ export const feeMenuItems1: MenuItem[] = [
     color: '#8b5cf6'
   },
   {
+    title: 'Family Fee Collection',
+    description: 'Collect fees for linked family students',
+    icon: React.createElement(AttachMoneyIcon),
+    path: '/family-fee-collection',
+    color: '#0ea5e9'
+  },
+  {
     title: 'Fee Defaulters',
     description: 'View students with outstanding fees',
     icon: React.createElement(AttachMoneyIcon),
@@ -387,6 +394,13 @@ export const feeMenuItems2: MenuItem[] = [
     icon: React.createElement(ListAltIcon),
     path: '/payment-history',
     color: '#3b82f6'
+  },
+  {
+    title: 'Payments Analytics',
+    description: 'Track payment trends, methods, and collection performance',
+    icon: React.createElement(AnalyticsIcon),
+    path: '/payments-analytics',
+    color: '#0d9488'
   },
   {
     title: 'Fee Ledger',
@@ -828,4 +842,8 @@ export const menuStructure: MainMenuItem[] = [
     columns: 2
   }
 ];
+
+
+
+
 

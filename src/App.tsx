@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useEffect } from 'react';
+﻿import React, { useContext, useRef, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import { HashRouter, BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
@@ -66,12 +66,14 @@ import FeeStructureManager from './pages/FeeStructureManager';
 import FeePlans from './pages/FeePlans';
 import FeeIncrements from './pages/FeeIncrements';
 import FeeCollection from './pages/FeeCollectionNew';
+import FamilyFeeCollection from './pages/FamilyFeeCollection';
 import FeeDefaultersList from './pages/FeeDefaultersList';
 import FeeArrearsManager from './pages/FeeArrearsManager';
 import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
 import ChallanGenerationPage from './pages/ChallanGenerationPage';
 import ChallansListPage from './pages/ChallansListPage';
 import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
+import PaymentsAnalyticsPage from './pages/PaymentsAnalyticsPage';
 import FeeSettings from './pages/FeeSettings';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import LedgerPage from './pages/LedgerPage';
@@ -681,6 +683,15 @@ const App: React.FC = () => {
                           />
 
                           <Route
+                            path="family-fee-collection"
+                            element={
+                              <ProtectedRoute requiredPermission="fee-collection">
+                                <FamilyFeeCollection />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
                             path="fee-defaulters"
                             element={
                               <ProtectedRoute requiredPermission="fee-defaulters">
@@ -718,6 +729,16 @@ const App: React.FC = () => {
                             }
                           />
 
+                          <Route
+                            path="payments-analytics"
+                            element={
+                              <ProtectedRoute
+                                requiredPermission="payments-analytics"
+                              >
+                                <PaymentsAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
                           <Route
                             path="fee-settings"
                             element={
@@ -1157,3 +1178,5 @@ const App: React.FC = () => {
 };
 
 export default App; 
+
+

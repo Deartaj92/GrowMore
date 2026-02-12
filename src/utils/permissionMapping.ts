@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Maps menu item paths to permission keys
  * This mapping is used to check if a user has permission to access a menu item
  */
@@ -50,10 +50,12 @@ export const pathToPermissionKey: Record<string, string> = {
   '/generate-challans': 'generate-challans',
   '/challans': 'view-challans',
   '/fee-collection': 'fee-collection',
+  '/family-fee-collection': 'fee-collection',
   '/fee-defaulters': 'fee-defaulters',
   '/fee-arrears': 'fee-arrears',
   '/fee-audit-logs': 'fee-audit-logs',
   '/fee-analytics': 'fee-analytics',
+  '/payments-analytics': 'payments-analytics',
   '/setup-accounts': 'setup-accounts',
   '/balance-sheet': 'balance-sheet',
   '/cash-flow': 'cash-flow-view',
@@ -159,4 +161,7 @@ export function shouldShowMenuItem(
   // Check permission based on role_id from roles table
   return userPermissions.has(permissionKey);
 }
+
+
+
 
