@@ -297,113 +297,113 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
             <ContentCard theme={theme}>
               <CardTitle theme={theme}>Admissions</CardTitle>
               <ResponsiveContainer width="100%" height={280}>
-                    <BarChart
-                      data={admissionsChartData}
+                <BarChart
+                  data={admissionsChartData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
-                      <XAxis
-                        dataKey="month"
-                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                        stroke={isDark ? '#888' : '#666'}
-                      />
-                      <YAxis
-                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                        stroke={isDark ? '#888' : '#666'}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                          borderRadius: '8px',
-                          color: isDark ? '#e2e8f0' : '#1e293b'
-                        }}
-                      />
-                      <Legend
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    stroke={isDark ? '#888' : '#666'}
+                  />
+                  <YAxis
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    stroke={isDark ? '#888' : '#666'}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                      border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                      borderRadius: '8px',
+                      color: isDark ? '#e2e8f0' : '#1e293b'
+                    }}
+                  />
+                  <Legend
                     wrapperStyle={{ paddingTop: '20px' }}
-                        iconType="rect"
-                      />
-                      <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" />
-                      <Bar dataKey="girls" stackId="a" fill="#ec4899" name="Girls" />
-                      <LabelList
-                        dataKey="total"
-                        position="top"
-                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
-                        formatter={(value: number) => value > 0 ? value : ''}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                    iconType="rect"
+                  />
+                  <Bar dataKey="boys" stackId="a" fill="#3b82f6" name="Boys" />
+                  <Bar dataKey="girls" stackId="a" fill="#ec4899" name="Girls" />
+                  <LabelList
+                    dataKey="total"
+                    position="top"
+                    style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
+                    formatter={(value: number) => value > 0 ? value : ''}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </ContentCard>
 
             <ContentCard theme={theme}>
               <CardTitle theme={theme}>Withdrawals</CardTitle>
               <ResponsiveContainer width="100%" height={280}>
-                    <BarChart
-                      data={withdrawalsChartData}
+                <BarChart
+                  data={withdrawalsChartData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
-                      <XAxis
-                        dataKey="month"
-                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                        stroke={isDark ? '#888' : '#666'}
-                      />
-                      <YAxis
-                        tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                        stroke={isDark ? '#888' : '#666'}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                          border: `1px solid ${isDark ? '#444' : '#ddd'}`,
-                          borderRadius: '8px',
-                          color: isDark ? '#e2e8f0' : '#1e293b'
-                        }}
-                      />
-                      <Legend
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    stroke={isDark ? '#888' : '#666'}
+                  />
+                  <YAxis
+                    tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
+                    stroke={isDark ? '#888' : '#666'}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? '#2a2a2a' : '#fff',
+                      border: `1px solid ${isDark ? '#444' : '#ddd'}`,
+                      borderRadius: '8px',
+                      color: isDark ? '#e2e8f0' : '#1e293b'
+                    }}
+                  />
+                  <Legend
                     wrapperStyle={{ paddingTop: '20px' }}
-                        iconType="rect"
-                      />
-                      <Bar dataKey="boys" stackId="a" fill="#ef4444" name="Boys" />
-                      <Bar dataKey="girls" stackId="a" fill="#f97316" name="Girls" />
-                      <LabelList
-                        dataKey="students"
-                        position="top"
-                        style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
-                        formatter={(value: number) => value > 0 ? value : ''}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                    iconType="rect"
+                  />
+                  <Bar dataKey="boys" stackId="a" fill="#ef4444" name="Boys" />
+                  <Bar dataKey="girls" stackId="a" fill="#f97316" name="Girls" />
+                  <LabelList
+                    dataKey="students"
+                    position="top"
+                    style={{ fill: isDark ? '#e2e8f0' : '#1e293b', fontSize: 11 }}
+                    formatter={(value: number) => value > 0 ? value : ''}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </ContentCard>
 
             <ContentCard theme={theme}>
               <CardTitle theme={theme}>Gender</CardTitle>
               <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie
-                        data={genderChartData}
-                        cx="50%"
-                        cy="50%"
+                <PieChart>
+                  <Pie
+                    data={genderChartData}
+                    cx="50%"
+                    cy="50%"
                     innerRadius={50}
                     outerRadius={85}
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {genderChartData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.color || '#888'} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, value, percent }) => `${name} (${value}) ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {genderChartData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || '#888'} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
                       backgroundColor: '#fff',
                       border: '1px solid #ddd',
-                          borderRadius: '8px',
+                      borderRadius: '8px',
                       color: '#1e293b'
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </ContentCard>
           </ContentGrid>
 
@@ -412,7 +412,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
             {/* Class Wise Strength Card */}
             {classStrengths && classStrengths.length > 0 && (
               <ContentCard theme={theme} style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-              <CardTitle theme={theme} style={{ marginBottom: '1rem' }}>Class Wise Strength</CardTitle>
+                <CardTitle theme={theme} style={{ marginBottom: '1rem' }}>Class Wise Strength</CardTitle>
                 <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -449,8 +449,8 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-              </div>
-            </ContentCard>
+                </div>
+              </ContentCard>
             )}
 
             {/* Latest Admissions Card */}
@@ -490,11 +490,11 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                     const studentName = admission.name || 'N/A';
                     const initials = studentName !== 'N/A'
                       ? studentName
-                      .split(' ')
-                      .map((n: string) => n[0])
-                      .join('')
-                      .toUpperCase()
-                          .slice(0, 2)
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)
                       : 'N/A';
 
                     const className = admission.className || admission.class_name || 'N/A';
@@ -577,62 +577,62 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
 
           {/* Today's Birthdays Card */}
           {(todaysBirthdays && todaysBirthdays.length > 0) || (admissionsData?.todaysBirthdaysCount > 0) ? (
-          <ContentGrid theme={theme}>
-            <ContentCard theme={theme} style={{
-              minHeight: '200px',
-              background: 'linear-gradient(135deg, #ec4899 0%, #ef4444 100%)',
-              color: '#fff',
-              border: 'none'
-            }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                padding: '2rem',
-                textAlign: 'center'
+            <ContentGrid theme={theme}>
+              <ContentCard theme={theme} style={{
+                minHeight: '200px',
+                background: 'linear-gradient(135deg, #ec4899 0%, #ef4444 100%)',
+                color: '#fff',
+                border: 'none'
               }}>
                 <div style={{
-                  fontSize: '4rem',
-                  marginBottom: '1rem',
-                  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  padding: '2rem',
+                  textAlign: 'center'
                 }}>
-                  🎂
-                </div>
-                <CardTitle theme={theme} style={{ color: '#fff', marginBottom: '0.5rem' }}>
-                  Today's Birthdays
-                </CardTitle>
-                <div style={{
-                  fontSize: '1rem',
-                  marginBottom: '1rem',
-                  opacity: 0.95
-                }}>
-                  {new Date().toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                </div>
-                <div style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 700,
-                    marginBottom: '1rem'
-                }}>
-                    {admissionsData?.todaysBirthdaysCount || todaysBirthdays?.length || 0} {(admissionsData?.todaysBirthdaysCount || todaysBirthdays?.length || 0) === 1 ? 'Birthday' : 'Birthdays'}
-                </div>
-                  {todaysBirthdays && todaysBirthdays.length > 0 && (
                   <div style={{
+                    fontSize: '4rem',
+                    marginBottom: '1rem',
+                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
+                  }}>
+                    🎂
+                  </div>
+                  <CardTitle theme={theme} style={{ color: '#fff', marginBottom: '0.5rem' }}>
+                    Today's Birthdays
+                  </CardTitle>
+                  <div style={{
+                    fontSize: '1rem',
+                    marginBottom: '1rem',
+                    opacity: 0.95
+                  }}>
+                    {new Date().toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </div>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    marginBottom: '1rem'
+                  }}>
+                    {admissionsData?.todaysBirthdaysCount || todaysBirthdays?.length || 0} {(admissionsData?.todaysBirthdaysCount || todaysBirthdays?.length || 0) === 1 ? 'Birthday' : 'Birthdays'}
+                  </div>
+                  {todaysBirthdays && todaysBirthdays.length > 0 && (
+                    <div style={{
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '0.5rem',
                       justifyContent: 'center',
                       maxWidth: '600px'
-                  }}>
+                    }}>
                       {todaysBirthdays.slice(0, 10).map((birthday: any, idx: number) => (
-                      <div
-                        key={idx}
-                        style={{
+                        <div
+                          key={idx}
+                          style={{
                             padding: '0.5rem 0.75rem',
                             background: 'rgba(255, 255, 255, 0.2)',
                             borderRadius: '20px',
@@ -654,13 +654,13 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                           backdropFilter: 'blur(10px)'
                         }}>
                           +{todaysBirthdays.length - 10} more
-                          </div>
-                        )}
-                  </div>
-                )}
-              </div>
-            </ContentCard>
-          </ContentGrid>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </ContentCard>
+            </ContentGrid>
           ) : null}
         </>
       )}

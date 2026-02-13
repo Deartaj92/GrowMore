@@ -75,7 +75,7 @@ export const fetchAdmissionsData = async (
     const enquiriesThisMonthResult = rangeResults[0];
     const studentsThisMonthResult = rangeResults[1];
     const familiesThisMonthResult = rangeResults[2];
-    
+
     const inquiriesThisRange = enquiriesThisMonthResult.count || 0;
     const studentsThisRange = studentsThisMonthResult.count || 0;
     const familiesThisRange = familiesThisMonthResult.count || 0;
@@ -124,12 +124,12 @@ export const fetchAdmissionsData = async (
       if (student.created_at) {
         const date = new Date(student.created_at);
         const monthKey = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
-        
+
         if (!admissionsChartMap.has(monthKey)) {
           admissionsChartMap.set(monthKey, { boys: 0, girls: 0 });
         }
         const monthData = admissionsChartMap.get(monthKey)!;
-        
+
         if (student.gender === 'Male' || student.gender === 'male') {
           monthData.boys++;
           genderCounts.boys++;
@@ -155,11 +155,11 @@ export const fetchAdmissionsData = async (
       supabase
         .from('student_status_history')
         .select('id, student_id, created_at, action, new_status, reason')
-      .eq('school_id', schoolId)
+        .eq('school_id', schoolId)
         .eq('new_status', 'withdrawn')
-      .gte('created_at', dataStartDate)
+        .gte('created_at', dataStartDate)
         .lte('created_at', dataEndDate)
-      .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(100)
     ]);
 
@@ -168,7 +168,7 @@ export const fetchAdmissionsData = async (
       ...(withdrawalsByAction.data || []),
       ...(withdrawalsByStatus.data || [])
     ];
-    
+
     // Remove duplicates by id
     const uniqueWithdrawals = Array.from(
       new Map(allWithdrawals.map((record: any) => [record.id, record])).values()
@@ -211,19 +211,19 @@ export const fetchAdmissionsData = async (
       if (historyRecord.created_at) {
         const date = new Date(historyRecord.created_at);
         const monthKey = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
-        
+
         if (!withdrawalsChartMap.has(monthKey)) {
           withdrawalsChartMap.set(monthKey, { boys: 0, girls: 0 });
         }
         const monthData = withdrawalsChartMap.get(monthKey)!;
-        
+
         // Get gender from the student gender map
         const gender = studentGenderMap.get(historyRecord.student_id);
         if (gender) {
           if (gender === 'Male' || gender === 'male') {
-          monthData.boys++;
+            monthData.boys++;
           } else if (gender === 'Female' || gender === 'female') {
-          monthData.girls++;
+            monthData.girls++;
           }
         }
       }
@@ -238,17 +238,17 @@ export const fetchAdmissionsData = async (
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthKey = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
       const monthLabel = date.toLocaleDateString('en-US', { month: 'short' });
-      
+
       const admissionsData = admissionsChartMap.get(monthKey) || { boys: 0, girls: 0 };
       const withdrawalsData = withdrawalsChartMap.get(monthKey) || { boys: 0, girls: 0 };
-      
+
       admissionsChart.push({
         month: monthLabel,
         boys: admissionsData.boys,
         girls: admissionsData.girls,
         total: admissionsData.boys + admissionsData.girls
       });
-      
+
       withdrawalsChart.push({
         month: monthLabel,
         boys: withdrawalsData.boys,
@@ -257,10 +257,29 @@ export const fetchAdmissionsData = async (
       });
     }
 
-    // Generate gender data
+    // Fetch total gender counts for all active students
+    const [totalBoysResult, totalGirlsResult] = await Promise.all([
+      supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .eq('status', 'active')
+        .in('gender', ['Male', 'male']),
+      supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .eq('status', 'active')
+        .in('gender', ['Female', 'female'])
+    ]);
+
+    const totalBoys = totalBoysResult.count || 0;
+    const totalGirls = totalGirlsResult.count || 0;
+
+    // Generate gender data with total counts
     const genderData = [
-      { name: 'Boys', value: genderCounts.boys, color: '#3b82f6' },
-      { name: 'Girls', value: genderCounts.girls, color: '#ec4899' }
+      { name: 'Boys', value: totalBoys, color: '#3b82f6' },
+      { name: 'Girls', value: totalGirls, color: '#ec4899' }
     ];
 
     // Process latest admissions (last 10 students)
@@ -312,7 +331,7 @@ export const fetchAdmissionsData = async (
     };
 
     setAdmissionsData(admissionsData);
-    
+
   } catch (error) {
     console.error('Error fetching admissions data:', error);
   } finally {

@@ -2462,13 +2462,8 @@ const MarksEntryManager: React.FC = () => {
       const filteredStudents = (studentsData || []).filter(student => !excludedIds.has(student.id));
 
       const finalStudents = filteredStudents.sort((a, b) => {
-        // Try to sort by roll number if numeric
-        const rollA = parseInt(a.roll_number);
-        const rollB = parseInt(b.roll_number);
-        if (!isNaN(rollA) && !isNaN(rollB)) {
-          return rollA - rollB;
-        }
-        return a.name.localeCompare(b.name);
+        // Sort by student ID
+        return a.id - b.id;
       });
 
       setStudents(finalStudents);
