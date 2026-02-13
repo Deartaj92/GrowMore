@@ -2083,12 +2083,12 @@ const MarksEntryManager: React.FC = () => {
         return (
           <div style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'center' : 'center',
-            justifyContent: isMobile ? 'center' : 'flex-end',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: isMobile ? 'space-between' : 'flex-end',
             width: '100%',
             gap: isMobile ? '6px' : '8px',
-            flexWrap: isMobile ? 'nowrap' : 'wrap'
+            flexWrap: 'nowrap'
           }}>
             <FooterButton
               variant="secondary"
