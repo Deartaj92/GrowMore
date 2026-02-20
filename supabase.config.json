@@ -1,0 +1,7 @@
+{
+  "postgres_url": "postgresql://postgres.dgtlbtpqhwizbgvienqb:Taaj7192!!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres",
+  "password": "Taaj7192!!",
+  "anon_api_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndGxidHBxaHdpemJndmllbnFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMzI5NTUsImV4cCI6MjA2MTkwODk1NX0.qDdZ-B_nHhgPQz35bm7BmP2sameT37QCA6RpwkUj2Pg",
+  "service_role_api_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRndGxidHBxaHdpemJndmllbnFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NjMzMjk1NSwiZXhwIjoyMDYxOTA4OTU1fQ.TR2L4HT9_ThE1feKHaEdN64fugr9TAYckqNRsxIMZdk",
+  "GDRIVE_FOLDER_ID": "your_google_drive_folder_id"
+} 

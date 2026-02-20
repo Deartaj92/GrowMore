@@ -1,0 +1,223 @@
+{
+  "name": "grow-more",
+  "version": "1.4.2",
+  "description": "Grow More - A modern school management system",
+  "author": "Taj & co.",
+  "scripts": {
+    "sync-release-notes": "node scripts/sync-release-notes.js",
+    "generate-web-icons": "node scripts/generate-web-icons.js",
+    "fix-icon": "node scripts/fix-icon.js",
+    "start": "react-scripts start",
+    "build": "cross-env REACT_APP_VERSION=$npm_package_version react-scripts build",
+    "build:with-token": "node scripts/copy-tinymce.js && node scripts/inject-token-build.js",
+    "electron": "npm run build:with-token && electron .",
+    "electron:run": "electron .",
+    "electron-pack": "npm run build && electron-builder --win --mac --linux",
+    "ensure-latest": "node scripts/ensure-latest-code.js",
+    "ensure-latest:commit": "node scripts/ensure-latest-code.js --auto-commit",
+    "electron-pack-win": "rimraf dist && npm run fix-icon && node scripts/build-electron.js",
+    "electron-pack-win-fix": "rimraf dist && npm run fix-icon && node scripts/copy-tinymce.js && node scripts/inject-token-build.js && node scripts/copy-aboutus-image.js && node scripts/generate-asset-manifest.js && electron-builder --win",
+    "build:latest": "npm run ensure-latest && npm run build",
+    "build:latest:commit": "npm run ensure-latest:commit && npm run build",
+    "electron-pack-win-ps": "rimraf dist && powershell -ExecutionPolicy Bypass -File scripts/build-electron.ps1",
+    "electron-pack-win-simple": "rimraf dist && npm run fix-icon && npm run build && node scripts/copy-aboutus-image.js && electron-builder --win",
+    "electron-pack-win-packager": "rimraf dist && npm run build && electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
+    "electron-pack-win-fast": "rimraf dist && npm run fix-icon && npm run build && node scripts/copy-electron-files.js && node scripts/copy-aboutus-image.js && node scripts/generate-asset-manifest.js && electron-builder --win",
+    "win-pack": "rimraf dist && npm run build && electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
+    "electron-pack-mac": "rimraf dist && npm run build && electron-builder --mac",
+    "electron-pack-linux": "rimraf dist && npm run build && electron-builder --linux",
+    "android": "npm run build && npx cap sync && npx cap open android",
+    "android:build": "npm run build && npx cap sync && cd android && java -version && gradlew.bat assembleDebug",
+    "android:dev": "npm run start:mobile",
+    "start:mobile": "react-scripts start",
+    "sync:android": "npx cap sync android",
+    "open:android": "npx cap open android",
+    "setup:mobile": "node scripts/setup-mobile-dev.js",
+    "dev:mobile": "scripts/setup-mobile-dev.bat",
+    "dev:mobile:ps": "powershell -ExecutionPolicy Bypass -File scripts/setup-mobile-dev.ps1",
+    "update": "npm run sync-release-notes && node scripts/upload-apk.js",
+    "update:desktop": "npm run sync-release-notes && node scripts/upload-installer.js",
+    "upload:desktop": "npm run sync-release-notes && node scripts/upload-installer-only.js",
+    "update:bundle": "npm run sync-release-notes && node scripts/deploy-update.js",
+    "release:apk": "npm run sync-release-notes && node scripts/upload-apk.js",
+    "release:desktop": "npm run sync-release-notes && node scripts/upload-installer.js",
+    "upload:bundle": "npm run sync-release-notes && node scripts/upload-bundle.js",
+    "setup:github": "node scripts/setup-github-updates.js",
+    "setup:github:ps": "powershell -ExecutionPolicy Bypass -File scripts/setup-github-updates.ps1",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "main": "public/electron.js",
+  "homepage": ".",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "build": {
+    "appId": "com.growmore.app",
+    "productName": "Grow More",
+    "files": [
+      "build/**/*",
+      "public/electron.js",
+      "public/preload.js",
+      "!**/*.map"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/patternLogo.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Grow More",
+      "deleteAppDataOnUninstall": false,
+      "include": "installer.nsh",
+      "installerIcon": "assets/patternLogo.ico",
+      "uninstallerIcon": "assets/patternLogo.ico",
+      "installerHeaderIcon": "assets/patternLogo.ico",
+      "menuCategory": "Grow More",
+      "displayLanguageSelector": true,
+      "allowElevation": true,
+      "perMachine": false
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/patternLogo.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/patternLogo-linux.png"
+    },
+    "asar": true,
+    "compression": "normal",
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "removePackageScripts": true,
+    "removePackageKeywords": true,
+    "extraMetadata": {
+      "main": "build/electron.js"
+    }
+  },
+  "dependencies": {
+    "@awesome-cordova-plugins/android-permissions": "^8.1.0",
+    "@capacitor-community/file-opener": "^7.0.1",
+    "@capacitor-community/http": "^1.4.1",
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/browser": "^7.0.2",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/filesystem": "^7.1.4",
+    "@capacitor/live-updates": "^0.4.0",
+    "@capacitor/push-notifications": "^7.0.3",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.12",
+    "@mui/lab": "^5.0.0-alpha.165",
+    "@mui/material": "^5.15.12",
+    "@mui/x-date-pickers": "^6.19.7",
+    "@react-pdf/renderer": "^4.3.1",
+    "@supabase/supabase-js": "^2.49.9",
+    "@techstack/react-textfit": "^1.0.0",
+    "@tinymce/tinymce-react": "^6.3.0",
+    "@types/gsap": "^1.20.2",
+    "@types/lodash": "^4.17.20",
+    "@types/react-virtualized-auto-sizer": "^1.0.4",
+    "apexcharts": "^5.3.6",
+    "auto-launch": "^5.0.6",
+    "browser-image-compression": "^2.0.1",
+    "canvasjs-react-charts": "^1.0.5",
+    "chart.js": "^4.4.9",
+    "cors": "^2.8.5",
+    "date-fns": "^2.30.0",
+    "dayjs": "^1.11.13",
+    "electron-is-dev": "^2.0.0",
+    "electron-push-receiver": "^2.1.3",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.6.0",
+    "flatpickr": "^4.6.13",
+    "framer-motion": "^12.18.1",
+    "gsap": "^3.13.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
+    "lodash": "^4.17.21",
+    "multer": "^1.4.5-lts.2",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.15.6",
+    "react": "^18.2.0",
+    "react-apexcharts": "^1.8.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-datepicker": "^8.3.0",
+    "react-dom": "^18.2.0",
+    "react-flatpickr": "^4.0.10",
+    "react-google-charts": "^5.2.1",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-is": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "react-quill": "^2.0.0",
+    "react-router-dom": "^6.11.1",
+    "react-to-pdf": "^2.0.0",
+    "react-virtualized-auto-sizer": "^1.0.26",
+    "react-window": "^1.8.11",
+    "recharts": "^2.15.3",
+    "styled-components": "^5.3.11",
+    "three": "^0.177.0",
+    "tinymce": "^8.2.2",
+    "zustand": "^4.3.9"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0",
+    "@types/node": "^18.15.11",
+    "@types/pg": "^8.11.14",
+    "@types/react": "^18.0.0",
+    "@types/react-beautiful-dnd": "^13.1.8",
+    "@types/react-dom": "^18.0.0",
+    "@types/react-window": "^1.8.8",
+    "@types/styled-components": "^5.1.34",
+    "@types/three": "^0.154.0",
+    "app-builder-bin": "^5.0.0-alpha.12",
+    "cross-env": "^10.1.0",
+    "depcheck": "^1.4.7",
+    "electron": "^36.2.0",
+    "electron-builder": "^26.0.12",
+    "electron-packager": "^17.1.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "react-scripts": "5.0.1",
+    "rimraf": "^3.0.2",
+    "shadcn": "^3.5.2",
+    "sharp": "^0.34.4",
+    "to-ico": "^1.1.5",
+    "typescript": "^4.9.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

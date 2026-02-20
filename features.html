@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grow More - School Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+            color: #1a1a1a;
+            background: #ffffff;
+        }
+
+        .header {
+            background: #2d3748;
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .section {
+            margin-bottom: 70px;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #2d3748;
+            margin-bottom: 40px;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .module-card {
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 25px;
+            transition: border-color 0.2s;
+        }
+
+        .module-card:hover {
+            border-color: #667eea;
+        }
+
+        .module-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .module-icon {
+            font-size: 1.5em;
+        }
+
+        .module-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .module-features {
+            color: #4a5568;
+            font-size: 0.9em;
+            line-height: 1.8;
+        }
+
+        .module-features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .module-features li {
+            padding: 4px 0;
+            padding-left: 18px;
+            position: relative;
+        }
+
+        .module-features li:before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .highlights {
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 40px;
+            margin: 50px 0;
+        }
+
+        .highlights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .highlight-item {
+            text-align: left;
+        }
+
+        .highlight-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .highlight-desc {
+            color: #718096;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .stats {
+            background: #2d3748;
+            color: white;
+            padding: 50px 40px;
+            border-radius: 8px;
+            margin: 50px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 40px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .container {
+                padding: 40px 20px;
+            }
+
+            .section-title {
+                font-size: 1.5em;
+            }
+
+            .highlights {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Grow More</h1>
+        <p>Complete School Management System</p>
+    </div>
+
+    <div class="container">
+        <!-- Main Modules -->
+        <div class="section">
+            <h2 class="section-title">Modules</h2>
+            <div class="modules-grid">
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">👥</span>
+                        <div class="module-name">Student Management</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Admission & enrollment</li>
+                            <li>Bulk student import</li>
+                            <li>Status tracking & promotions</li>
+                            <li>Family relationships</li>
+                            <li>Complete profiles & history</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">✅</span>
+                        <div class="module-name">Attendance System</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Daily student & staff attendance</li>
+                            <li>Real-time tracking</li>
+                            <li>Automated reports & analytics</li>
+                            <li>Half-day leave management</li>
+                            <li>Pattern identification</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">💰</span>
+                        <div class="module-name">Financial Management</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Flexible fee structures</li>
+                            <li>Multiple payment modes</li>
+                            <li>Automated invoicing</li>
+                            <li>Defaulter tracking</li>
+                            <li>Fee concessions & discounts</li>
+                            <li>Complete audit trails</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">⚖️</span>
+                        <div class="module-name">Fine Management</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Configurable fine rules</li>
+                            <li>Payment processing</li>
+                            <li>Outstanding tracking</li>
+                            <li>Collection analytics</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">📚</span>
+                        <div class="module-name">Examination System</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Exam scheduling & configuration</li>
+                            <li>Marks entry & validation</li>
+                            <li>Master sheets & DMC generation</li>
+                            <li>Position holders & rankings</li>
+                            <li>Performance analytics</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">📝</span>
+                        <div class="module-name">Test Records</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Class test management</li>
+                            <li>Marks entry & tracking</li>
+                            <li>Master sheet generation</li>
+                            <li>Performance analysis</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">👔</span>
+                        <div class="module-name">Staff Management</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Employee registration</li>
+                            <li>Teacher-class assignment</li>
+                            <li>Subject mapping</li>
+                            <li>Attendance tracking</li>
+                            <li>Complete profiles</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">📅</span>
+                        <div class="module-name">Timetable & Scheduling</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Class timetable creation</li>
+                            <li>Period-wise scheduling</li>
+                            <li>Teacher timetable views</li>
+                            <li>Break management</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">📖</span>
+                        <div class="module-name">Homework Diary</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Daily homework assignment</li>
+                            <li>Subject-wise organization</li>
+                            <li>Bulk assignments</li>
+                            <li>History tracking</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">❓</span>
+                        <div class="module-name">Enquiry Management</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Enquiry capture & tracking</li>
+                            <li>Follow-up scheduling</li>
+                            <li>Conversion analytics</li>
+                            <li>Source tracking</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">📊</span>
+                        <div class="module-name">Reports & Analytics</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Custom report creation</li>
+                            <li>Attendance summaries</li>
+                            <li>Financial analytics</li>
+                            <li>Performance dashboards</li>
+                            <li>PDF/Excel export</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="module-card">
+                    <div class="module-header">
+                        <span class="module-icon">🔔</span>
+                        <div class="module-name">Communication</div>
+                    </div>
+                    <div class="module-features">
+                        <ul>
+                            <li>Targeted announcements</li>
+                            <li>Real-time notifications</li>
+                            <li>Role-based messaging</li>
+                            <li>WhatsApp integration</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Highlights -->
+        <div class="highlights">
+            <h2 class="section-title" style="border: none; margin-bottom: 30px;">Platform Features</h2>
+            <div class="highlights-grid">
+                <div class="highlight-item">
+                    <div class="highlight-title">Cloud-Based</div>
+                    <div class="highlight-desc">Access from anywhere, anytime. Secure data storage with automatic backups.</div>
+                </div>
+                <div class="highlight-item">
+                    <div class="highlight-title">Multi-Platform</div>
+                    <div class="highlight-desc">Web, desktop (Windows/Mac/Linux), and mobile (Android) support.</div>
+                </div>
+                <div class="highlight-item">
+                    <div class="highlight-title">Secure & Reliable</div>
+                    <div class="highlight-desc">Role-based access control, data encryption, and complete audit trails.</div>
+                </div>
+                <div class="highlight-item">
+                    <div class="highlight-title">Real-Time Updates</div>
+                    <div class="highlight-desc">Instant synchronization across all devices and users.</div>
+                </div>
+                <div class="highlight-item">
+                    <div class="highlight-title">Customizable</div>
+                    <div class="highlight-desc">Configure dashboards, roles, and settings to match your needs.</div>
+                </div>
+                <div class="highlight-item">
+                    <div class="highlight-title">Multi-Campuses</div>
+                    <div class="highlight-desc">Manage multiple campuses from a single platform.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stats-grid">
+                <div>
+                    <div class="stat-number">12+</div>
+                    <div class="stat-label">Core Modules</div>
+                </div>
+                <div>
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Cloud-Based</div>
+                </div>
+                <div>
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Accessibility</div>
+                </div>
+                <div>
+                    <div class="stat-number">∞</div>
+                    <div class="stat-label">Scalable</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong>Grow More School Management System</strong></p>
+        <p>Version 1.3.0 | Developed by Taj & co.</p>
+    </div>
+</body>
+</html>
