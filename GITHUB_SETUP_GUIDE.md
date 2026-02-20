@@ -34,16 +34,21 @@ If you prefer to set up manually, follow these steps:
 4. Choose **Public** or **Private** (Private repositories require authentication)
 5. Click **"Create repository"**
 
-### Step 2: Initialize Git (if not already done)
+### Step 2: Initialize Git & Push to GitHub
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
+git init                        # initialize git
+git add .                       # stage all files
+git commit -m "Initial commit"  # first commit
+git branch -M master            # set branch name
+git remote add origin https://github.com/DearTaj92/GrowMore.git  # link to github
+git push -u origin master       # upload code
 ```
+
+> ⚠️ If you get **"refusing to merge unrelated histories"**, run:
+> ```bash
+> git pull origin master --allow-unrelated-histories
+> ```
 
 ### Step 3: Install GitHub CLI
 

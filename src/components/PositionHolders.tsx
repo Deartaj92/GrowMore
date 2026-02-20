@@ -17,6 +17,7 @@ import {
   KeyboardArrowUp as KeyboardArrowUpIcon,
   PictureAsPdf,
 } from '@mui/icons-material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -971,6 +972,10 @@ const PositionHolders: React.FC = () => {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  // Class filter for PDF
+  const [showClassFilter, setShowClassFilter] = useState(false);
+  const [selectedClassKeys, setSelectedClassKeys] = useState<Set<string>>(new Set());
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
 
@@ -1367,12 +1372,54 @@ const PositionHolders: React.FC = () => {
     }
   };
 
+  // Show class filter dialog before generating PDF
+  const handlePdfRequest = () => {
+    if (!selectedExam || positionData.length === 0) {
+      showToast('Please select an examination and ensure position data is available', 'error');
+      return;
+    }
+    // Pre-select all classes
+    const allKeys = new Set(positionData.map(d => `${d.class_id}-${d.section_id}`));
+    setSelectedClassKeys(allKeys);
+    setShowClassFilter(true);
+  };
+
+  const toggleClassKey = (key: string) => {
+    setSelectedClassKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllClasses = () => {
+    const allKeys = positionData.map(d => `${d.class_id}-${d.section_id}`);
+    if (selectedClassKeys.size === allKeys.length) {
+      setSelectedClassKeys(new Set());
+    } else {
+      setSelectedClassKeys(new Set(allKeys));
+    }
+  };
+
   // Generate Position Holders PDF
   const generatePositionHoldersPDF = async () => {
     if (!selectedExam || positionData.length === 0) {
       showToast('Please select an examination and ensure position data is available', 'error');
       return;
     }
+
+    // Filter positionData by selected class keys
+    const filteredData = positionData.filter(d => selectedClassKeys.has(`${d.class_id}-${d.section_id}`));
+    if (filteredData.length === 0) {
+      showToast('Please select at least one class', 'error');
+      return;
+    }
+
+    setShowClassFilter(false);
 
     try {
       setPdfLoading(true);
@@ -1414,15 +1461,15 @@ const PositionHolders: React.FC = () => {
       doc.text(selectedExam.name, 50, 35);
 
       // Summary statistics
-      const totalClasses = positionData.length;
-      const totalStudents = positionData.reduce((sum, classData) => sum + classData.position_holders.length, 0);
-      const firstCount = positionData.reduce((sum, classData) =>
+      const totalClasses = filteredData.length;
+      const totalStudents = filteredData.reduce((sum, classData) => sum + classData.position_holders.length, 0);
+      const firstCount = filteredData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 1).length, 0
       );
-      const secondCount = positionData.reduce((sum, classData) =>
+      const secondCount = filteredData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 2).length, 0
       );
-      const thirdCount = positionData.reduce((sum, classData) =>
+      const thirdCount = filteredData.reduce((sum, classData) =>
         sum + classData.position_holders.filter(holder => holder.position === 3).length, 0
       );
 
@@ -1442,7 +1489,7 @@ const PositionHolders: React.FC = () => {
       let currentY = 75;
 
       // Generate content for each class
-      for (const classData of positionData) {
+      for (const classData of filteredData) {
         // Check if we need a new page
         if (currentY > pageHeight - 50) {
           doc.addPage();
@@ -1768,7 +1815,7 @@ const PositionHolders: React.FC = () => {
 
             {/* Mobile PDF Button - only visible on mobile */}
             <MobilePdfButton
-              onClick={generatePositionHoldersPDF}
+              onClick={handlePdfRequest}
               disabled={pdfLoading || !selectedExam || positionData.length === 0}
               title="Generate Position Holders PDF"
             >
@@ -1806,7 +1853,7 @@ const PositionHolders: React.FC = () => {
                 </SegmentedSelect>
 
                 <PdfButton
-                  onClick={generatePositionHoldersPDF}
+                  onClick={handlePdfRequest}
                   disabled={pdfLoading || !selectedExam || positionData.length === 0}
                   $last={true}
                 >
@@ -1970,6 +2017,190 @@ const PositionHolders: React.FC = () => {
           <KeyboardArrowUpIcon style={{ fontSize: 32 }} />
         </ToTopButton>
       )}
+
+      {/* Class Filter Dialog for PDF */}
+      <Dialog
+        open={showClassFilter}
+        onClose={() => setShowClassFilter(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          style: {
+            borderRadius: '16px',
+            background: theme === 'dark' ? '#1e1e1e' : '#fff',
+          }
+        }}
+      >
+        <DialogTitle style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: theme === 'dark' ? '1px solid #333' : '1px solid #e5e7eb',
+          padding: '16px 24px',
+          color: theme === 'dark' ? '#e5e7eb' : '#1f2937'
+        }}>
+          <span style={{ fontWeight: 700, fontSize: '1rem' }}>📋 Select Classes for PDF</span>
+          <button
+            onClick={() => setShowClassFilter(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+              fontSize: '1.2rem',
+              padding: '4px'
+            }}
+          >
+            <CloseIcon style={{ fontSize: 20 }} />
+          </button>
+        </DialogTitle>
+        <DialogContent style={{
+          padding: '16px 24px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          background: theme === 'dark' ? '#1e1e1e' : '#fff',
+        }}>
+          {/* Select All / Deselect All */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 0',
+            marginBottom: '8px',
+            borderBottom: theme === 'dark' ? '1px solid #333' : '1px solid #e5e7eb',
+          }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectedClassKeys.size === positionData.length && positionData.length > 0}
+                  indeterminate={selectedClassKeys.size > 0 && selectedClassKeys.size < positionData.length}
+                  onChange={toggleAllClasses}
+                  sx={{
+                    color: theme === 'dark' ? '#6366f1' : '#4a6cf7',
+                    '&.Mui-checked': { color: '#4a6cf7' },
+                    '&.MuiCheckbox-indeterminate': { color: '#4a6cf7' },
+                  }}
+                />
+              }
+              label={
+                <span style={{
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  color: theme === 'dark' ? '#e5e7eb' : '#1f2937'
+                }}>
+                  {selectedClassKeys.size === positionData.length ? 'Deselect All' : 'Select All'}
+                </span>
+              }
+            />
+            <span style={{
+              fontSize: '0.75rem',
+              color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+              fontWeight: 500
+            }}>
+              {selectedClassKeys.size}/{positionData.length} selected
+            </span>
+          </div>
+
+          {/* Class List */}
+          {positionData.map(classData => {
+            const key = `${classData.class_id}-${classData.section_id}`;
+            const label = classData.section_name
+              ? `${classData.class_name} (${classData.section_name})`
+              : classData.class_name;
+            const studentCount = classData.position_holders.length;
+            return (
+              <div
+                key={key}
+                onClick={() => toggleClassKey(key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 8px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                  background: selectedClassKeys.has(key)
+                    ? (theme === 'dark' ? 'rgba(74, 108, 247, 0.1)' : 'rgba(74, 108, 247, 0.05)')
+                    : 'transparent',
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedClassKeys.has(key)}
+                      onChange={() => toggleClassKey(key)}
+                      size="small"
+                      sx={{
+                        color: theme === 'dark' ? '#555' : '#d1d5db',
+                        '&.Mui-checked': { color: '#4a6cf7' },
+                      }}
+                    />
+                  }
+                  label={
+                    <span style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                      color: theme === 'dark' ? '#d1d5db' : '#374151'
+                    }}>{label}</span>
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ margin: 0 }}
+                />
+                <span style={{
+                  fontSize: '0.7rem',
+                  color: theme === 'dark' ? '#6b7280' : '#9ca3af',
+                  fontWeight: 500
+                }}>
+                  {studentCount} student{studentCount !== 1 ? 's' : ''}
+                </span>
+              </div>
+            );
+          })}
+        </DialogContent>
+        <DialogActions style={{
+          padding: '12px 24px',
+          borderTop: theme === 'dark' ? '1px solid #333' : '1px solid #e5e7eb',
+          background: theme === 'dark' ? '#1e1e1e' : '#fff',
+          gap: '8px'
+        }}>
+          <button
+            onClick={() => setShowClassFilter(false)}
+            style={{
+              padding: '8px 20px',
+              borderRadius: '8px',
+              border: theme === 'dark' ? '1px solid #444' : '1px solid #d1d5db',
+              background: 'transparent',
+              color: theme === 'dark' ? '#d1d5db' : '#374151',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 500
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={generatePositionHoldersPDF}
+            disabled={selectedClassKeys.size === 0 || pdfLoading}
+            style={{
+              padding: '8px 20px',
+              borderRadius: '8px',
+              border: 'none',
+              background: selectedClassKeys.size === 0 ? '#9ca3af' : '#4a6cf7',
+              color: '#fff',
+              cursor: selectedClassKeys.size === 0 ? 'not-allowed' : 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <PictureAsPdf style={{ fontSize: 16 }} />
+            Generate PDF ({selectedClassKeys.size})
+          </button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
