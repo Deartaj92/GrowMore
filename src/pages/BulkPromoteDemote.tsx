@@ -115,9 +115,10 @@ const ControlPanel = styled.div`
 
 const ControlGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
+
   @media (max-width: 1200px) {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
@@ -129,10 +130,53 @@ const ControlGrid = styled.div`
   }
 `;
 
+const FormRow = styled.div`
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  
+  @media (max-width: 1200px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  @media (max-width: 768px) {
+    margin-bottom: 1rem;
+  }
+`;
+
+const FormSection = styled.div`
+  flex: 1;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'};
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+    gap: 1rem;
+  }
+`;
+
+const FormSectionTitle = styled.h4`
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+`;
+
 const ControlField = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
   @media (max-width: 768px) {
     gap: 0.25rem;
   }
@@ -578,8 +622,8 @@ const SessionInfo = styled.div`
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: ${({ theme }) => theme.BG === '#252525' 
-    ? 'rgba(0, 0, 0, 0.5)' 
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(0, 0, 0, 0.5)'
     : 'rgba(255, 255, 255, 0.5)'};
   backdrop-filter: blur(8px);
   WebkitBackdropFilter: blur(8px);
@@ -685,14 +729,14 @@ const ModalContent = styled.div`
   }
   &::-webkit-scrollbar-thumb {
     background: ${({ theme }) => theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 4px;
     border: 2px solid ${({ theme }) => theme.BG};
     &:hover {
       background: ${({ theme }) => theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
+    ? 'rgba(255, 255, 255, 0.3)'
+    : 'rgba(0, 0, 0, 0.3)'};
     }
   }
 `;
@@ -717,22 +761,22 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: ${({ theme, variant }) => 
+  background: ${({ theme, variant }) =>
     variant === 'primary'
       ? 'linear-gradient(45deg, #6366f1, #8b5cf6)'
       : variant === 'danger'
         ? 'linear-gradient(45deg, #ef4444, #dc2626)'
-        : theme.BG === '#252525' 
-          ? 'rgba(255, 255, 255, 0.1)' 
+        : theme.BG === '#252525'
+          ? 'rgba(255, 255, 255, 0.1)'
           : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme, variant }) => 
+  color: ${({ theme, variant }) =>
     variant === 'primary' || variant === 'danger'
       ? '#fff'
       : theme.BG === '#252525'
         ? '#fff'
         : '#1e293b'};
   border: none;
-  box-shadow: ${({ variant }) => 
+  box-shadow: ${({ variant }) =>
     variant === 'primary'
       ? '0 2px 8px rgba(99, 102, 241, 0.25)'
       : variant === 'danger'
@@ -741,20 +785,20 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
   
   &:hover {
     transform: translateY(-1px);
-    background: ${({ theme, variant }) => 
-      variant === 'primary'
-        ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
-        : variant === 'danger'
-          ? 'linear-gradient(45deg, #dc2626, #b91c1c)'
-          : theme.BG === '#252525'
-            ? 'rgba(255, 255, 255, 0.15)'
-            : 'rgba(0, 0, 0, 0.1)'};
-    box-shadow: ${({ variant }) => 
-      variant === 'primary'
-        ? '0 4px 12px rgba(99, 102, 241, 0.35)'
-        : variant === 'danger'
-          ? '0 4px 12px rgba(239, 68, 68, 0.35)'
-          : 'none'};
+    background: ${({ theme, variant }) =>
+    variant === 'primary'
+      ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
+      : variant === 'danger'
+        ? 'linear-gradient(45deg, #dc2626, #b91c1c)'
+        : theme.BG === '#252525'
+          ? 'rgba(255, 255, 255, 0.15)'
+          : 'rgba(0, 0, 0, 0.1)'};
+    box-shadow: ${({ variant }) =>
+    variant === 'primary'
+      ? '0 4px 12px rgba(99, 102, 241, 0.35)'
+      : variant === 'danger'
+        ? '0 4px 12px rgba(239, 68, 68, 0.35)'
+        : 'none'};
   }
   
   &:active {
@@ -770,32 +814,32 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
 `;
 
 const ModalText = styled.div`
-  color: ${({theme}) => theme.TEXT_PRIMARY};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 1.1rem;
   margin-bottom: 1.5rem;
   font-weight: 500;
   line-height: 1.5;
 
   strong {
-    color: ${({theme}) => theme.ACCENT};
+    color: ${({ theme }) => theme.ACCENT};
     font-weight: 600;
   }
 `;
 
 const InfoBox = styled.div<{ type?: 'success' | 'warning' | 'error' }>`
-  background: ${({theme, type}) => {
+  background: ${({ theme, type }) => {
     if (type === 'success') return theme.BG === '#252525' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)';
     if (type === 'warning') return theme.BG === '#252525' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)';
     if (type === 'error') return theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)';
     return theme.BG === '#252525' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)';
   }};
-  border: 1px solid ${({theme, type}) => {
+  border: 1px solid ${({ theme, type }) => {
     if (type === 'success') return 'rgba(34, 197, 94, 0.2)';
     if (type === 'warning') return 'rgba(245, 158, 11, 0.2)';
     if (type === 'error') return 'rgba(239, 68, 68, 0.2)';
     return 'rgba(99, 102, 241, 0.2)';
   }};
-  color: ${({theme, type}) => {
+  color: ${({ theme, type }) => {
     if (type === 'success') return theme.BG === '#252525' ? '#22c55e' : '#16a34a';
     if (type === 'warning') return theme.BG === '#252525' ? '#f59e0b' : '#d97706';
     if (type === 'error') return theme.BG === '#252525' ? '#ef4444' : '#dc2626';
@@ -854,10 +898,13 @@ const BulkPromoteDemote: React.FC = () => {
   const [targetSection, setTargetSection] = useState('');
   const [targetSections, setTargetSections] = useState<any[]>([]);
   const [targetStudents, setTargetStudents] = useState<any[]>([]);
+  const [targetStatus, setTargetStatus] = useState<string>('retain');
   const [processing, setProcessing] = useState(false);
   const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [targetClassStudentsCount, setTargetClassStudentsCount] = useState(0);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [sourceSession, setSourceSession] = useState('');
   const [activeSession, setActiveSession] = useState<{ id: string; name: string } | null>(null);
 
   // Detect mobile
@@ -871,7 +918,7 @@ const BulkPromoteDemote: React.FC = () => {
       setLoading(true);
       startProgress(false);
       setProgress(10);
-      await fetchActiveSession();
+      await fetchSessions();
       setProgress(20);
       await fetchClasses();
       setProgress(30);
@@ -894,23 +941,23 @@ const BulkPromoteDemote: React.FC = () => {
     loadInitialData();
   }, [user?.school_id, setLoading, startProgress, setProgress, completeProgress]);
 
-    const checkForAnyStudents = async () => {
-      if (!user?.school_id) return;
-      
+  const checkForAnyStudents = async () => {
+    if (!user?.school_id) return;
+
     try {
       // Check if there are any students in the students table for this school
-        const { data, error } = await supabase
-          .from('students')
-          .select('id')
-          .eq('school_id', user?.school_id)
+      const { data, error } = await supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', user?.school_id)
         .eq('status', 'active')
-          .limit(1);
-        
+        .limit(1);
+
       if (error) {
         setHasAnyStudents(false);
         return;
       }
-      
+
       setHasAnyStudents(data && data.length > 0);
     } catch (err: any) {
       setHasAnyStudents(false);
@@ -922,17 +969,27 @@ const BulkPromoteDemote: React.FC = () => {
     checkForAnyStudents();
   }, [user?.school_id]);
 
-  const fetchActiveSession = async () => {
+  const fetchSessions = async () => {
     try {
       const { data, error } = await supabase
         .from('sessions')
-        .select('id, name')
+        .select('id, name, is_active')
         .eq('school_id', user?.school_id)
-        .eq('is_active', true)
-        .single();
-      
+        .order('start_date', { ascending: false });
+
       if (error) throw error;
-      setActiveSession(data);
+      setSessions(data || []);
+      const active = data?.find(s => s.is_active);
+      if (active) {
+        setActiveSession(active);
+        // Default to previous session if we have one, otherwise active session
+        const activeIndex = data!.findIndex(s => s.id === active.id);
+        if (activeIndex < data!.length - 1) {
+          setSourceSession(data![activeIndex + 1].id);
+        } else {
+          setSourceSession(active.id);
+        }
+      }
     } catch (err: any) {
       // Don't show error toast for this as it's not critical
     }
@@ -990,16 +1047,16 @@ const BulkPromoteDemote: React.FC = () => {
 
   // Fetch students for source class/section
   useEffect(() => {
-    if (!sourceClass) {
+    if (!sourceClass || !sourceSession) {
       setSourceStudents([]);
       setSelectedStudents(new Set());
       return;
     }
-    
+
     // Check if the selected class has sections
     const selectedClass = classes.find(c => String(c.id) === String(sourceClass));
     const hasSections = selectedClass?.has_sections ?? true;
-    
+
     // If class has sections but no section is selected, don't fetch
     if (hasSections && !sourceSection) {
       setSourceStudents([]);
@@ -1014,29 +1071,29 @@ const BulkPromoteDemote: React.FC = () => {
         // Check if the selected class has sections
         const selectedClass = classes.find(c => String(c.id) === String(sourceClass));
         const hasSections = selectedClass?.has_sections ?? true;
-        
-        // Fetch students from student_class_history for the active session and selected class/section
+
+        // Fetch students from student_class_history for the source session and selected class/section
         let schQuery = supabase
           .from('student_class_history')
           .select('student_id')
-          .eq('session_id', activeSession?.id)
+          .eq('session_id', sourceSession)
           .eq('new_class_id', sourceClass)
           .eq('school_id', user?.school_id);
-        
+
         // Only filter by section if the class has sections
         if (hasSections) {
           schQuery = schQuery.eq('new_section_id', sourceSection);
-            } else {
+        } else {
           schQuery = schQuery.is('new_section_id', null);
         }
-        
+
         const { data: schData, error: schError } = await schQuery;
 
         if (schError) throw schError;
 
         if (!schData || schData.length === 0) {
-            setSourceStudents([]);
-            setSelectedStudents(new Set());
+          setSourceStudents([]);
+          setSelectedStudents(new Set());
           return;
         }
 
@@ -1052,35 +1109,35 @@ const BulkPromoteDemote: React.FC = () => {
             sections:section_id(name)
           `)
           .eq('school_id', user?.school_id)
-        .eq('status', 'active')
+          .eq('status', 'active')
           .in('id', studentIds);
-        
+
         if (error) throw error;
-        
+
         // Sort students by ID
         const sortedStudents = (data || []).sort((a, b) => {
           const idA = parseInt(a.id) || 0;
           const idB = parseInt(b.id) || 0;
           return idA - idB;
         });
-        
+
         setSourceStudents(sortedStudents);
         setSelectedStudents(new Set(sortedStudents.map((s) => s.id)));
       } catch (err: any) {
         toast.showToast('Failed to fetch students', 'error');
-          setSourceStudents([]);
-          setSelectedStudents(new Set());
+        setSourceStudents([]);
+        setSelectedStudents(new Set());
       } finally {
-      const elapsed = Date.now() - start;
-      if (elapsed < minDuration) {
-        setTimeout(() => setLoading(false), minDuration - elapsed);
-      } else {
-        setLoading(false);
+        const elapsed = Date.now() - start;
+        if (elapsed < minDuration) {
+          setTimeout(() => setLoading(false), minDuration - elapsed);
+        } else {
+          setLoading(false);
         }
       }
     };
     fetchStudents();
-  }, [sourceClass, sourceSection, user?.school_id, classes, activeSession]);
+  }, [sourceClass, sourceSection, user?.school_id, classes, sourceSession]);
 
   // Auto-select target class based on action
   useEffect(() => {
@@ -1155,11 +1212,11 @@ const BulkPromoteDemote: React.FC = () => {
       setTargetStudents([]);
       return;
     }
-    
+
     // Check if the target class has sections
     const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
     const hasSections = targetClassObj?.has_sections ?? true;
-    
+
     // If class has sections but no section is selected, don't fetch
     if (hasSections && !targetSection) {
       setTargetStudents([]);
@@ -1173,7 +1230,7 @@ const BulkPromoteDemote: React.FC = () => {
         // Check if the target class has sections
         const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
         const hasSections = targetClassObj?.has_sections ?? true;
-        
+
         // Fetch students from student_class_history for the active session and selected class/section
         let schQuery = supabase
           .from('student_class_history')
@@ -1181,20 +1238,20 @@ const BulkPromoteDemote: React.FC = () => {
           .eq('session_id', activeSession?.id)
           .eq('new_class_id', targetClass)
           .eq('school_id', user?.school_id);
-        
+
         // Only filter by section if the class has sections
         if (hasSections) {
           schQuery = schQuery.eq('new_section_id', targetSection);
-            } else {
+        } else {
           schQuery = schQuery.is('new_section_id', null);
         }
-        
+
         const { data: schData, error: schError } = await schQuery;
 
         if (schError) throw schError;
 
         if (!schData || schData.length === 0) {
-            setTargetStudents([]);
+          setTargetStudents([]);
           return;
         }
 
@@ -1210,28 +1267,28 @@ const BulkPromoteDemote: React.FC = () => {
             sections:section_id(name)
           `)
           .eq('school_id', user?.school_id)
-        .eq('status', 'active')
+          .eq('status', 'active')
           .in('id', studentIds);
-        
+
         if (error) throw error;
-        
+
         // Sort students by ID
         const sortedStudents = (data || []).sort((a, b) => {
           const idA = parseInt(a.id) || 0;
           const idB = parseInt(b.id) || 0;
           return idA - idB;
         });
-        
+
         setTargetStudents(sortedStudents);
       } catch (err: any) {
         toast.showToast('Failed to fetch target students', 'error');
-          setTargetStudents([]);
+        setTargetStudents([]);
       } finally {
-      const elapsed = Date.now() - start;
-      if (elapsed < minDuration) {
-        setTimeout(() => setLoading(false), minDuration - elapsed);
-      } else {
-        setLoading(false);
+        const elapsed = Date.now() - start;
+        if (elapsed < minDuration) {
+          setTimeout(() => setLoading(false), minDuration - elapsed);
+        } else {
+          setLoading(false);
         }
       }
     };
@@ -1255,7 +1312,7 @@ const BulkPromoteDemote: React.FC = () => {
 
   // Helper function to update student_class_history (same as StudentStatusManager)
   const updateStudentClassHistory = async (studentId: string, sessionId: string, newClassId: number, newSectionId: number | null) => {
-    
+
     // First, get the original admission class from the first record (minimum id) for this student
     // This preserves the admission class which should never change
     const { data: admissionRecord, error: admissionError } = await supabase
@@ -1266,12 +1323,12 @@ const BulkPromoteDemote: React.FC = () => {
       .order('id', { ascending: true })
       .limit(1)
       .maybeSingle();
-    
+
     // If no admission record exists, use the new class as admission (shouldn't happen for promotions, but handle it)
     const admClassId = admissionRecord?.adm_class_id || newClassId;
     const admSectionId = admissionRecord?.adm_section_id !== null ? admissionRecord?.adm_section_id : newSectionId;
-    
-    
+
+
     // Check if an entry exists for this student in this session
     const { data: existingEntry, error: checkError } = await supabase
       .from('student_class_history')
@@ -1292,7 +1349,7 @@ const BulkPromoteDemote: React.FC = () => {
           new_section_id: newSectionId // Update current section to promoted section
         })
         .eq('id', existingEntry.id);
-      
+
       if (schError) {
         // Failed to update student_class_history
       }
@@ -1309,7 +1366,7 @@ const BulkPromoteDemote: React.FC = () => {
           new_section_id: newSectionId, // Set current section to promoted section
           school_id: user?.school_id
         });
-      
+
       if (schError) {
         // Failed to create student_class_history entry
       }
@@ -1319,12 +1376,12 @@ const BulkPromoteDemote: React.FC = () => {
   // Check if target class has existing students
   const checkTargetClassStudents = useCallback(async () => {
     if (!targetClass) return 0;
-    
+
     try {
       // Check if the target class has sections
       const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
       const hasSections = targetClassObj?.has_sections ?? true;
-      
+
       // Check student_class_history for the active session
       let schQuery = supabase
         .from('student_class_history')
@@ -1332,25 +1389,25 @@ const BulkPromoteDemote: React.FC = () => {
         .eq('session_id', activeSession?.id)
         .eq('new_class_id', parseInt(targetClass))
         .eq('school_id', user?.school_id);
-      
+
       // Only filter by section if the class has sections
       if (hasSections) {
         schQuery = schQuery.eq('new_section_id', parseInt(targetSection));
       } else {
         schQuery = schQuery.is('new_section_id', null);
       }
-      
+
       const { data: schData, error: schError } = await schQuery;
-      
+
       if (schError) throw schError;
-      
+
       if (!schData || schData.length === 0) {
         return 0;
       }
-      
+
       // Get student IDs from student_class_history
       const studentIds = schData.map(sch => sch.student_id);
-      
+
       // Check how many of these students are still active
       const { data: activeStudents, error: studentsError } = await supabase
         .from('students')
@@ -1358,9 +1415,9 @@ const BulkPromoteDemote: React.FC = () => {
         .eq('school_id', user?.school_id)
         .eq('status', 'active')
         .in('id', studentIds);
-      
+
       if (studentsError) throw studentsError;
-      
+
       return activeStudents?.length || 0;
     } catch (error) {
       return 0;
@@ -1371,11 +1428,11 @@ const BulkPromoteDemote: React.FC = () => {
     // Check if source class has sections
     const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
     const sourceHasSections = sourceClassObj?.has_sections ?? true;
-    
+
     // Check if target class has sections
     const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
     const targetHasSections = targetClassObj?.has_sections ?? true;
-    
+
     // Validate required fields
     if (!sourceClass || !targetClass || selectedStudents.size === 0) return;
     if (sourceHasSections && !sourceSection) return;
@@ -1395,28 +1452,35 @@ const BulkPromoteDemote: React.FC = () => {
           const oldClassId = student?.class_id;
           const oldSectionId = student?.section_id;
           const oldStatus = student?.status;
-          
+
           // Check if the new class has sections
           const selectedClass = classes.find(c => c.id === parseInt(targetClass));
           const hasSections = selectedClass?.has_sections ?? true;
           const finalSectionId = hasSections ? parseInt(targetSection) : null;
-          
+          const finalStatus = targetStatus === 'retain' ? oldStatus : targetStatus;
+
           // Update or create student_class_history for the active session
-          // Note: We do NOT update class_id and section_id in students table - only update student_class_history
           if (activeSession) {
             await updateStudentClassHistory(studentId, activeSession.id, parseInt(targetClass), finalSectionId);
           }
-          
+
+          // **Crucial**: Update students table to reflect their new current class/section 
+          await supabase.from('students').update({
+            class_id: parseInt(targetClass),
+            section_id: finalSectionId,
+            status: finalStatus
+          }).eq('id', studentId);
+
           // 2. Record in student_status_history
           await supabase.from('student_status_history').insert({
             student_id: studentId,
             school_id: user?.school_id,
             action: action,
             old_status: oldStatus,
-            new_status: oldStatus, // status doesn't change on promote/demote
+            new_status: finalStatus,
             old_class_id: oldClassId,
             new_class_id: parseInt(targetClass),
-        reason: null,
+            reason: null,
             performed_by: user?.id || null,
             new_section_id: finalSectionId
           });
@@ -1427,7 +1491,7 @@ const BulkPromoteDemote: React.FC = () => {
       }
 
       toast.showToast(`Successfully ${action}d ${processedCount} students`, 'success');
-      
+
       // Reset form
       setSourceClass('');
       setSourceSection('');
@@ -1436,7 +1500,8 @@ const BulkPromoteDemote: React.FC = () => {
       setSelectedStudents(new Set());
       setSourceStudents([]);
       setTargetStudents([]);
-      
+      setTargetStatus('retain');
+
     } catch (err: any) {
       toast.showToast(err.message, 'error');
     } finally {
@@ -1458,17 +1523,18 @@ const BulkPromoteDemote: React.FC = () => {
     setSourceStudents([]);
     setTargetStudents([]);
     setSelectedStudents(new Set());
+    setTargetStatus('retain');
   }, []);
 
   const handleConfirmClick = useCallback(async () => {
     // Check if source class has sections
     const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
     const sourceHasSections = sourceClassObj?.has_sections ?? true;
-    
+
     // Check if target class has sections
     const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
     const targetHasSections = targetClassObj?.has_sections ?? true;
-    
+
     // Validate required fields
     if (!sourceClass || !targetClass || selectedStudents.size === 0) {
       toast.showToast('Please select all required fields and students', 'error');
@@ -1500,7 +1566,7 @@ const BulkPromoteDemote: React.FC = () => {
       const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
       const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
       const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
-      const isDisabled = processing || !sourceClass || !targetClass || selectedStudents.size === 0 || 
+      const isDisabled = processing || !sourceClass || !targetClass || selectedStudents.size === 0 ||
         (sourceClassObj?.has_sections !== false && !sourceSection) ||
         (targetClassObj?.has_sections !== false && !targetSection);
 
@@ -1515,11 +1581,11 @@ const BulkPromoteDemote: React.FC = () => {
           flexWrap: isMobile ? 'nowrap' : 'wrap'
         }}>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <ActionButton 
+            <ActionButton
               onClick={(e) => {
                 e.preventDefault();
                 handleCancel();
-              }} 
+              }}
               disabled={processing}
               style={{
                 padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.5rem',
@@ -1542,12 +1608,12 @@ const BulkPromoteDemote: React.FC = () => {
             >
               Cancel
             </ActionButton>
-            <ActionButton 
-              variant="primary" 
+            <ActionButton
+              variant="primary"
               onClick={(e) => {
                 e.preventDefault();
                 handleConfirmClick();
-              }} 
+              }}
               disabled={isDisabled}
               style={{
                 padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.5rem',
@@ -1571,7 +1637,7 @@ const BulkPromoteDemote: React.FC = () => {
               {processing ? 'Processing...' : `${action === 'promote' ? 'Promote' : 'Demote'} ${selectedStudents.size} Students`}
             </ActionButton>
           </div>
-          
+
           {selectedStudents.size > 0 && (
             <div style={{
               display: 'flex',
@@ -1614,12 +1680,12 @@ const BulkPromoteDemote: React.FC = () => {
   return (
     <Container>
       <PageHeader>
-      <Heading>
+        <Heading>
           <HeaderIcon>
             <SchoolIcon style={{ fontSize: 20 }} />
           </HeaderIcon>
-        Bulk Promote/Demote Students
-      </Heading>
+          Bulk Promote/Demote Students
+        </Heading>
         {activeSession && (
           <SessionInfo>
             <span>Active Session:</span>
@@ -1631,84 +1697,133 @@ const BulkPromoteDemote: React.FC = () => {
       <MainContent>
         <ControlPanel>
           <form onSubmit={e => e.preventDefault()}>
-            <ControlGrid>
-            <ControlField>
-              <Label>Source Class</Label>
-          <Select value={sourceClass} onChange={e => {
-            e.preventDefault();
-            setSourceClass(e.target.value);
-          }}>
-            <option value="">Select Class</option>
-            {classes.map(cls => (
-              <option key={cls.id} value={cls.id}>{cls.name}</option>
-            ))}
-          </Select>
-            </ControlField>
-            
-        {(() => {
-          const selectedClass = classes.find(c => String(c.id) === String(sourceClass));
-          const hasSections = selectedClass?.has_sections ?? true;
-          return hasSections ? (
+            <FormRow>
+              <FormSection>
+                <FormSectionTitle>📤 Source Information</FormSectionTitle>
                 <ControlField>
-                  <Label>Source Section</Label>
-              <Select value={sourceSection} onChange={e => {
-                e.preventDefault();
-                setSourceSection(e.target.value);
-              }} disabled={!sourceClass}>
-                <option value="">Select Section</option>
-                {sourceSections.map(sec => (
-                  <option key={sec.id} value={sec.id}>{sec.name}</option>
-                ))}
-              </Select>
+                  <Label>Source Session</Label>
+                  <Select value={sourceSession} onChange={e => {
+                    e.preventDefault();
+                    setSourceSession(e.target.value);
+                    setSourceClass('');
+                    setSourceSection('');
+                    setTargetClass('');
+                    setTargetSection('');
+                    setSourceStudents([]);
+                    setSelectedStudents(new Set());
+                  }}>
+                    <option value="">Select Session</option>
+                    {sessions.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} {s.is_active ? '(Active)' : ''}</option>
+                    ))}
+                  </Select>
                 </ControlField>
-          ) : null;
-        })()}
-            
-            <ControlField>
-              <Label>Target Class</Label>
-          <Select value={targetClass} onChange={e => {
-            e.preventDefault();
-            setTargetClass(e.target.value);
-          }} disabled={!sourceClass}>
-            <option value="">Select Class</option>
-            {classes
-              .filter((cls, idx) => {
-                const currentIdx = classes.findIndex(c => String(c.id) === sourceClass);
-                const targetIdx = action === 'promote' ? currentIdx + 1 : currentIdx - 1;
-                return targetIdx >= 0 && targetIdx < classes.length && classes[targetIdx].id === cls.id;
-              })
-              .map(cls => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
-              ))}
-          </Select>
-            </ControlField>
-            
-        {(() => {
-          const selectedClass = classes.find(c => String(c.id) === String(targetClass));
-          const hasSections = selectedClass?.has_sections ?? true;
-          return hasSections ? (
+
+                <ControlGrid>
+                  <ControlField>
+                    <Label>Source Class</Label>
+                    <Select value={sourceClass} onChange={e => {
+                      e.preventDefault();
+                      setSourceClass(e.target.value);
+                    }}>
+                      <option value="">Select Class</option>
+                      {classes.map(cls => (
+                        <option key={cls.id} value={cls.id}>{cls.name}</option>
+                      ))}
+                    </Select>
+                  </ControlField>
+
+                  {(() => {
+                    const selectedClass = classes.find(c => String(c.id) === String(sourceClass));
+                    const hasSections = selectedClass?.has_sections ?? true;
+                    return hasSections ? (
+                      <ControlField>
+                        <Label>Source Section</Label>
+                        <Select value={sourceSection} onChange={e => {
+                          e.preventDefault();
+                          setSourceSection(e.target.value);
+                        }} disabled={!sourceClass}>
+                          <option value="">Select Section</option>
+                          {sourceSections.map(sec => (
+                            <option key={sec.id} value={sec.id}>{sec.name}</option>
+                          ))}
+                        </Select>
+                      </ControlField>
+                    ) : null;
+                  })()}
+                </ControlGrid>
+              </FormSection>
+
+              <FormSection>
+                <FormSectionTitle>📥 Target Information</FormSectionTitle>
                 <ControlField>
-                  <Label>Target Section</Label>
-              <Select value={targetSection} onChange={e => {
-                e.preventDefault();
-                setTargetSection(e.target.value);
-              }} disabled={!targetClass}>
-                <option value="">Select Section</option>
-                {targetSections.map(sec => (
-                  <option key={sec.id} value={sec.id}>{sec.name}</option>
-                ))}
-              </Select>
+                  <Label>Target Session</Label>
+                  <Select value={activeSession?.id || ''} disabled>
+                    <option value={activeSession?.id || ''}>{activeSession?.name || 'Active Session'}</option>
+                  </Select>
                 </ControlField>
-          ) : null;
-        })()}
-          </ControlGrid>
+
+                <ControlGrid>
+                  <ControlField>
+                    <Label>Target Class</Label>
+                    <Select value={targetClass} onChange={e => {
+                      e.preventDefault();
+                      setTargetClass(e.target.value);
+                    }} disabled={!sourceClass}>
+                      <option value="">Select Class</option>
+                      {classes
+                        .filter((cls, idx) => {
+                          const currentIdx = classes.findIndex(c => String(c.id) === sourceClass);
+                          const targetIdx = action === 'promote' ? currentIdx + 1 : currentIdx - 1;
+                          return targetIdx >= 0 && targetIdx < classes.length && classes[targetIdx].id === cls.id;
+                        })
+                        .map(cls => (
+                          <option key={cls.id} value={cls.id}>{cls.name}</option>
+                        ))}
+                    </Select>
+                  </ControlField>
+
+                  {(() => {
+                    const selectedClass = classes.find(c => String(c.id) === String(targetClass));
+                    const hasSections = selectedClass?.has_sections ?? true;
+                    return hasSections ? (
+                      <ControlField>
+                        <Label>Target Section</Label>
+                        <Select value={targetSection} onChange={e => {
+                          e.preventDefault();
+                          setTargetSection(e.target.value);
+                        }} disabled={!targetClass}>
+                          <option value="">Select Section</option>
+                          {targetSections.map(sec => (
+                            <option key={sec.id} value={sec.id}>{sec.name}</option>
+                          ))}
+                        </Select>
+                      </ControlField>
+                    ) : null;
+                  })()}
+                </ControlGrid>
+
+                <ControlField>
+                  <Label>Target Status</Label>
+                  <Select value={targetStatus} onChange={e => {
+                    e.preventDefault();
+                    setTargetStatus(e.target.value);
+                  }}>
+                    <option value="retain">Retain Current Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="withdrawn">Withdrawn</option>
+                  </Select>
+                </ControlField>
+              </FormSection>
+            </FormRow>
           </form>
-          
+
           <ActionSelector>
             <Label>Action Type</Label>
             <ActionToggle>
-              <ToggleButton 
-                active={action === 'promote'} 
+              <ToggleButton
+                active={action === 'promote'}
                 onClick={(e) => {
                   e.preventDefault();
                   setAction('promote');
@@ -1716,8 +1831,8 @@ const BulkPromoteDemote: React.FC = () => {
               >
                 Promote
               </ToggleButton>
-              <ToggleButton 
-                active={action === 'demote'} 
+              <ToggleButton
+                active={action === 'demote'}
                 onClick={(e) => {
                   e.preventDefault();
                   setAction('demote');
@@ -1742,10 +1857,10 @@ const BulkPromoteDemote: React.FC = () => {
               </CardTitle>
               <StudentCount>{sourceStudents.length}</StudentCount>
             </CardHeader>
-        <TableContainer>
-          <Table>
-            <thead>
-              <tr>
+            <TableContainer>
+              <Table>
+                <thead>
+                  <tr>
                     <Th>
                       <SerialCheckbox
                         className={selectedStudents.size === sourceStudents.length && sourceStudents.length > 0 ? 'checked' : ''}
@@ -1759,13 +1874,13 @@ const BulkPromoteDemote: React.FC = () => {
                       </SerialCheckbox>
                     </Th>
                     <Th>Student</Th>
-                <Th>Father</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {sourceStudents.map((student, idx) => (
-                <tr key={student.id}>
-                  <Td>
+                    <Th>Father</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceStudents.map((student, idx) => (
+                    <tr key={student.id}>
+                      <Td>
                         <SerialCheckbox
                           className={selectedStudents.has(student.id) ? 'checked' : ''}
                           onClick={(e) => {
@@ -1776,39 +1891,39 @@ const BulkPromoteDemote: React.FC = () => {
                         >
                           {idx + 1}
                         </SerialCheckbox>
-                  </Td>
+                      </Td>
                       <Td>
                         <StudentInfo>
-                    <Avatar>
-                      {student.picture_url ? (
-                              <img 
-                                src={student.picture_url} 
-                                alt={student.name} 
-                                style={{ 
-                                  width: '100%', 
-                                  height: '100%', 
-                                  borderRadius: '8px', 
-                                  objectFit: 'cover', 
-                                  display: 'block' 
-                                }} 
+                          <Avatar>
+                            {student.picture_url ? (
+                              <img
+                                src={student.picture_url}
+                                alt={student.name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  borderRadius: '8px',
+                                  objectFit: 'cover',
+                                  display: 'block'
+                                }}
                               />
                             ) : (
                               <span style={{ width: '100%', textAlign: 'center' }}>
-                                {(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}
+                                {(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}
                               </span>
-                      )}
-                    </Avatar>
+                            )}
+                          </Avatar>
                           <div>
                             <StudentName>{getStudentDisplayId(student)} - {student.name}</StudentName>
                           </div>
                         </StudentInfo>
-                  </Td>
-                  <Td>{student.father_name || 'N/A'}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableContainer>
+                      </Td>
+                      <Td>{student.father_name || 'N/A'}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableContainer>
           </StudentsCard>
 
           <StudentsCard>
@@ -1816,18 +1931,18 @@ const BulkPromoteDemote: React.FC = () => {
               <CardTitle>Target Students</CardTitle>
               <StudentCount>{targetStudents.length}</StudentCount>
             </CardHeader>
-        <TableContainer>
-          <Table>
-            <thead>
-              <tr>
+            <TableContainer>
+              <Table>
+                <thead>
+                  <tr>
                     <Th>#</Th>
                     <Th>Student</Th>
-                <Th>Father</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {targetStudents.map((student, idx) => (
-                <tr key={student.id}>
+                    <Th>Father</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {targetStudents.map((student, idx) => (
+                    <tr key={student.id}>
                       <Td>
                         <SerialCheckbox
                           className=""
@@ -1838,36 +1953,36 @@ const BulkPromoteDemote: React.FC = () => {
                       </Td>
                       <Td>
                         <StudentInfo>
-                    <Avatar>
-                      {student.picture_url ? (
-                              <img 
-                                src={student.picture_url} 
-                                alt={student.name} 
-                                style={{ 
-                                  width: '100%', 
-                                  height: '100%', 
-                                  borderRadius: '8px', 
-                                  objectFit: 'cover', 
-                                  display: 'block' 
-                                }} 
+                          <Avatar>
+                            {student.picture_url ? (
+                              <img
+                                src={student.picture_url}
+                                alt={student.name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  borderRadius: '8px',
+                                  objectFit: 'cover',
+                                  display: 'block'
+                                }}
                               />
                             ) : (
                               <span style={{ width: '100%', textAlign: 'center' }}>
-                                {(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0,2) || '?')}
+                                {(student.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?')}
                               </span>
-                      )}
-                    </Avatar>
+                            )}
+                          </Avatar>
                           <div>
                             <StudentName>{getStudentDisplayId(student)} - {student.name}</StudentName>
                           </div>
                         </StudentInfo>
-                  </Td>
-                  <Td>{student.father_name || 'N/A'}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableContainer>
+                      </Td>
+                      <Td>{student.father_name || 'N/A'}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableContainer>
           </StudentsCard>
         </StudentsGrid>
       </MainContent>
@@ -1882,7 +1997,7 @@ const BulkPromoteDemote: React.FC = () => {
                 Confirm {action === 'promote' ? 'Promotion' : 'Demotion'}
               </ModalTitle>
             </ModalHeader>
-            
+
             <ModalContent>
               <ModalText>
                 Are you sure you want to {action} <strong>{selectedStudents.size} students</strong> from{' '}
@@ -1924,7 +2039,7 @@ const BulkPromoteDemote: React.FC = () => {
                 </div>
               </InfoBox>
             </ModalContent>
-            
+
             <ModalFooter>
               <ModalButton
                 onClick={(e) => {

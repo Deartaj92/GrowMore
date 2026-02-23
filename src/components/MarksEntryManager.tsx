@@ -1801,7 +1801,7 @@ const MarksEntryManager: React.FC = () => {
 
   // Load existing marks for the selected subject
   const loadExistingMarks = async () => {
-    if (!selectedExam || !selectedSubject || students.length === 0) {
+    if (!selectedExam || !selectedSubject || students.length === 0 || !selectedClass) {
       return;
     }
 
@@ -1811,12 +1811,26 @@ const MarksEntryManager: React.FC = () => {
       const examId = selectedExam.id;
       const studentIds = students.map(s => s.id);
 
-      const { data: existingMarks, error } = await supabase
+      let query = supabase
         .from('exam_results')
         .select('student_id, obtained_marks, remarks')
         .eq('exam_id', examId)
         .eq('subject_id', subjectId)
+        .eq('class_id', selectedClass.id)
         .in('student_id', studentIds);
+
+      const hasSections = selectedClass.has_sections ?? true;
+      if (hasSections) {
+        if (selectedSection) {
+          query = query.eq('section_id', selectedSection.id);
+        } else {
+          query = query.is('section_id', null);
+        }
+      } else {
+        query = query.is('section_id', null);
+      }
+
+      const { data: existingMarks, error } = await query;
 
       if (error) {
         showToast(`Failed to load existing marks: ${error.message}`, 'error');
@@ -2048,7 +2062,7 @@ const MarksEntryManager: React.FC = () => {
     } else if (!hasSections) {
       loadStudents(selectedClass.id, null);
     }
-  }, [selectedClass, selectedSection, selectedExam]);
+  }, [selectedClass, selectedSection, selectedExam, selectedSubject]);
 
   // Load subjects when class is selected
   useEffect(() => {
@@ -2428,14 +2442,43 @@ const MarksEntryManager: React.FC = () => {
         throw schError;
       }
 
-      if (!schData || schData.length === 0) {
+      // Get student IDs from student_class_history
+      const currentStudentIds = (schData || []).map(sch => sch.student_id);
+
+      // Fetch student IDs that already have marks stored for this class (and section) in the selected exam
+      let examResultStudentIds: number[] = [];
+      if (selectedExam) {
+        let erQuery = supabase
+          .from('exam_results')
+          .select('student_id')
+          .eq('exam_id', selectedExam.id)
+          .eq('class_id', classId);
+
+        if (selectedSubject) {
+          const subjectId = selectedSubject.subject_id || selectedSubject.subject?.id;
+          erQuery = erQuery.eq('subject_id', subjectId);
+        }
+
+        if (sectionId === null) {
+          erQuery = erQuery.is('section_id', null);
+        } else {
+          erQuery = erQuery.eq('section_id', sectionId);
+        }
+
+        const { data: erData } = await erQuery;
+        if (erData) {
+          examResultStudentIds = erData.map(er => er.student_id);
+        }
+      }
+
+      // Combine both lists of student IDs into unique list
+      const allStudentIds = Array.from(new Set([...currentStudentIds, ...examResultStudentIds]));
+
+      if (allStudentIds.length === 0) {
         setStudents([]);
         setLoading(false);
         return;
       }
-
-      // Get student IDs from student_class_history
-      const studentIds = schData.map(sch => sch.student_id);
 
       // Fetch full student details
       const { data: studentsData, error: studentsError } = await supabase
@@ -2443,7 +2486,7 @@ const MarksEntryManager: React.FC = () => {
         .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
         .eq('status', 'active')
-        .in('id', studentIds);
+        .in('id', allStudentIds);
 
       if (studentsError) {
         throw studentsError;
@@ -2464,7 +2507,22 @@ const MarksEntryManager: React.FC = () => {
       }
 
       // Filter out excluded students
-      const filteredStudents = (studentsData || []).filter(student => !excludedIds.has(student.id));
+      const filteredStudents = (studentsData || []).filter(student => {
+        if (excludedIds.has(student.id)) return false;
+
+        // Determine if student is currently in the selected class/section
+        const inCurrentClassAndSection = student.class_id === classId && (sectionId === null || student.section_id === sectionId);
+
+        // If they are not currently in this class/section (they were promoted/transferred)
+        if (!inCurrentClassAndSection) {
+          // They should only appear if they have existing marks for this exam + subject + class
+          if (!examResultStudentIds.includes(student.id)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
 
       const finalStudents = filteredStudents.sort((a, b) => {
         // Sort by student ID

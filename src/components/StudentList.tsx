@@ -1731,7 +1731,7 @@ const MemoizedStudentCard = memo(({
   onProfile: () => void;
 }) => {
   const displayId = getStudentDisplayId(student);
-  
+
   return (
     <StudentCard status={student.status || 'active'} onClick={onClick} data-student-card>
       <div style={{
@@ -2234,7 +2234,7 @@ const StudentList: React.FC = () => {
       setProgress(70);
 
       // Fetch class history for all students - get latest record for each student
-      const { data: historyData } = await supabase
+      let historyQuery = supabase
         .from('student_class_history')
         .select(`
           id,
@@ -2248,6 +2248,12 @@ const StudentList: React.FC = () => {
         .in('student_id', studentIds)
         .eq('school_id', user.school_id)
         .order('id', { ascending: true });
+
+      if (sessionFilter) {
+        historyQuery = historyQuery.eq('session_id', sessionFilter);
+      }
+
+      const { data: historyData } = await historyQuery;
 
       setProgress(90);
 
@@ -2274,7 +2280,8 @@ const StudentList: React.FC = () => {
               class: lastRecord.new_classes || null,
               section: lastRecord.new_sections || null,
               class_id: lastRecord.new_class_id || null,
-              section_id: lastRecord.new_section_id || null
+              section_id: lastRecord.new_section_id || null,
+              session_id: lastRecord.session_id || null
             });
           }
         });
@@ -2290,7 +2297,8 @@ const StudentList: React.FC = () => {
           classes: currentClass?.class || null,
           sections: currentClass?.section || null,
           class_id: currentClass?.class_id || student.class_id || null,
-          section_id: currentClass?.section_id || student.section_id || null
+          section_id: currentClass?.section_id || student.section_id || null,
+          session_id: currentClass?.session_id || student.session_id || null
         };
       });
 
@@ -2484,15 +2492,15 @@ const StudentList: React.FC = () => {
             }
           }
         }
-        
+
         const file = formData._newAvatarFile;
-        
+
         if (!(file instanceof File)) {
           showToast('File object was lost. Please select the image again.', 'error');
           setEditLoading(false);
           return;
         }
-        
+
         const fileExt = file.name.split('.').pop();
         const fileName = `student_${editingStudent.id}_${Date.now()}.${fileExt}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -3001,7 +3009,7 @@ const StudentList: React.FC = () => {
         const currentFrom = (page - 1) * perPage + 1;
         const currentTo = (page - 1) * perPage + paginated.length;
         const currentTotal = filtered.length;
-        
+
         return (
           <div style={{
             display: 'flex',

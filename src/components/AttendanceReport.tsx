@@ -359,14 +359,14 @@ const Td = styled.td`
   min-width: 34px;
   max-width: 36px;
 `;
-const StatusCell = styled(Td)<{ status?: string }>`
+const StatusCell = styled(Td) <{ status?: string }>`
   font-weight: 700;
   color: ${({ status }) =>
     status === 'P' ? '#16a34a' :
-    status === 'A' ? '#dc2626' :
-    status === 'Lt' ? '#f59e42' :
-    status === 'L' ? '#4a6cf7' :
-    '#888'};
+      status === 'A' ? '#dc2626' :
+        status === 'Lt' ? '#f59e42' :
+          status === 'L' ? '#4a6cf7' :
+            '#888'};
   background: transparent;
 `;
 const InlineStats = styled.div`
@@ -419,7 +419,7 @@ const SundayTh = styled(Th)`
   background: ${({ theme }) => isDark(theme) ? highlightDark : '#ffeaea'} !important;
   color: #dc2626 !important;
 `;
-const SundayTd = styled(Td)<{ status?: string }>`
+const SundayTd = styled(Td) <{ status?: string }>`
   background: ${({ theme }) => isDark(theme) ? highlightDark : '#fff3f3'} !important;
   color: #dc2626 !important;
   font-style: italic;
@@ -455,16 +455,16 @@ const StatusBlock = styled.span<{ status?: string }>`
   text-align: center;
   background: ${({ status }) =>
     status === 'P' ? 'rgba(22,163,74,0.12)' :
-    status === 'A' ? 'rgba(220,38,38,0.12)' :
-    status === 'Lt' ? 'rgba(245,158,66,0.12)' :
-    status === 'L' ? 'rgba(74,108,247,0.12)' :
-    'rgba(68,68,68,0.08)'};
+      status === 'A' ? 'rgba(220,38,38,0.12)' :
+        status === 'Lt' ? 'rgba(245,158,66,0.12)' :
+          status === 'L' ? 'rgba(74,108,247,0.12)' :
+            'rgba(68,68,68,0.08)'};
   color: ${({ status }) =>
     status === 'P' ? '#16a34a' :
-    status === 'A' ? '#dc2626' :
-    status === 'Lt' ? '#f59e42' :
-    status === 'L' ? '#4a6cf7' :
-    '#bbb'};
+      status === 'A' ? '#dc2626' :
+        status === 'Lt' ? '#f59e42' :
+          status === 'L' ? '#4a6cf7' :
+            '#bbb'};
   transition: background 0.18s, color 0.18s;
 `;
 const HalfLeaveBadge = styled.span`
@@ -664,28 +664,9 @@ const AttendanceReport: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { startProgress, setProgress, completeProgress } = useProgress();
-  
-  // Check if user has school_id
-  if (!user?.school_id) {
-    return (
-      <Container>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          padding: '2rem', 
-          gap: 16,
-          color: '#888',
-          fontSize: '1.1rem',
-          fontWeight: 600
-        }}>
-          <X style={{ fontSize: '1.5rem' }} />
-          No school context found. Please contact your administrator.
-        </div>
-      </Container>
-    );
-  }
-  
+
+  // School ID check is now done at render time to prevent hook violations
+
   const [classes, setClasses] = useState<Array<{ id: string; name: string; has_sections?: boolean }>>([]);
   const [sections, setSections] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedClass, setSelectedClass] = useState('');
@@ -698,9 +679,9 @@ const AttendanceReport: React.FC = () => {
   const [avgAttendance, setAvgAttendance] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<{ 
-    row: number; 
-    col: number; 
+  const [openDropdown, setOpenDropdown] = useState<{
+    row: number;
+    col: number;
     rect: DOMRect | null;
     shouldPositionAbove?: boolean;
   } | null>(null);
@@ -769,25 +750,38 @@ const AttendanceReport: React.FC = () => {
 
   // Check if there are any students with attendance records in the system
   useEffect(() => {
-    const checkForAnyStudents = async () => {
+    const checkForAnyActiveStudents = async () => {
       if (!user?.school_id || !sessionId) return;
-      
-      // Check if there are any attendance records for this school
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from('attendance_records')
+
+      // Fetch all student IDs from student_class_history for the active session
+      const { data: schData, error: schError } = await supabase
+        .from('student_class_history')
         .select('student_id')
-        .eq('school_id', user.school_id)
         .eq('session_id', sessionId)
-        .limit(1);
-      
-      if (!attendanceError && attendanceData && attendanceData.length > 0) {
+        .eq('school_id', user.school_id);
+
+      if (schError || !schData || schData.length === 0) {
+        setHasAnyStudents(false);
+        return;
+      }
+
+      // Fetch student details with status: 'active'
+      const studentIds = schData.map(sch => sch.student_id);
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', user.school_id)
+        .eq('status', 'active')
+        .in('id', studentIds);
+
+      if (!studentsError && studentsData && studentsData.length > 0) {
         setHasAnyStudents(true);
       } else {
         setHasAnyStudents(false);
       }
     };
-    
-    checkForAnyStudents();
+
+    checkForAnyActiveStudents();
   }, [user?.school_id, sessionId]);
 
   // Fetch classes on mount
@@ -819,22 +813,22 @@ const AttendanceReport: React.FC = () => {
     setAttendanceMatrix([]);
     setWorkingDays(0);
     setAvgAttendance(0);
-    
+
     if (!selectedClass || !user?.school_id) {
       setSections([]);
       setSelectedSection('');
       return;
     }
-    
+
     const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
     const hasSections = selectedClassObj?.has_sections ?? true;
-    
+
     if (!hasSections) {
       setSections([]);
       setSelectedSection('');
       return;
     }
-    
+
     const fetchSections = async () => {
       setLoadingSections(true);
       const { data, error } = await supabase
@@ -853,23 +847,23 @@ const AttendanceReport: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass || !selectedMonth || !user?.school_id) return;
-      
+
       const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
       const hasSections = selectedClassObj?.has_sections ?? true;
-      
+
       if (hasSections && !selectedSection) return; // Only return if sections are required but not selected
-      
+
       const minDuration = 1500; // 1.5 seconds
       const start = Date.now();
       setLoadingStudents(true);
       startProgress(false);
       setProgress(10);
-      // Fetch attendance records for the selected month/year to get students who have attendance
+      // Fetch attendance records for the selected month/year
       setProgress(20);
       const startDate = selectedMonth + '-01';
       const daysInMonth = getDaysInMonth(parseISO(startDate));
       const endDate = format(new Date(parseISO(startDate).getFullYear(), parseISO(startDate).getMonth(), daysInMonth), 'yyyy-MM-dd');
-      
+
       let attendanceQuery = supabase
         .from('attendance_records')
         .select('student_id, date, status')
@@ -877,27 +871,36 @@ const AttendanceReport: React.FC = () => {
         .eq('school_id', user.school_id)
         .gte('date', startDate)
         .lte('date', endDate);
-      
+
       if (hasSections) {
         attendanceQuery = attendanceQuery.eq('section_id', selectedSection);
       } else {
         attendanceQuery = attendanceQuery.is('section_id', null);
       }
-      
-      const { data: attendanceData, error: attendanceError } = await attendanceQuery;
 
-      if (attendanceError || !attendanceData) {
-        setStudents([]);
-        setAttendanceMatrix([]);
-        setWorkingDays(0);
-        setAvgAttendance(0);
-        setLoadingStudents(false);
-        setProgress(100);
-        completeProgress();
-        return;
-      }
+      const { data: rawAttendanceData, error: attendanceError } = await attendanceQuery;
+      const attendanceData = (attendanceError || !rawAttendanceData) ? [] : rawAttendanceData;
+
       setProgress(40);
-      if (attendanceData.length === 0) {
+
+      // Fetch students from student_class_history for the active session and selected class/section
+      let schQuery = supabase
+        .from('student_class_history')
+        .select('student_id')
+        .eq('session_id', sessionId)
+        .eq('new_class_id', selectedClass)
+        .eq('school_id', user.school_id);
+
+      // Only filter by section if the class has sections
+      if (hasSections) {
+        schQuery = schQuery.eq('new_section_id', selectedSection);
+      } else {
+        schQuery = schQuery.is('new_section_id', null);
+      }
+
+      const { data: schData, error: schError } = await schQuery;
+
+      if (schError || !schData || schData.length === 0) {
         setStudents([]);
         setAttendanceMatrix([]);
         setWorkingDays(0);
@@ -907,19 +910,20 @@ const AttendanceReport: React.FC = () => {
         completeProgress();
         return;
       }
-      
-      // Get unique student IDs from attendance records
-      const studentIds = Array.from(new Set(attendanceData.map(record => record.student_id)));
-      
-      // Fetch student details for those who have attendance records (regardless of current status)
+
+      // Get student IDs from student_class_history
+      const studentIds = schData.map(sch => sch.student_id);
+
+      // Fetch full student details
       setProgress(60);
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('id, name, roll_number')
         .eq('school_id', user.school_id)
+        .eq('status', 'active')
         .in('id', studentIds);
 
-      if (studentsError || !studentsData) {
+      if (studentsError || !studentsData || studentsData.length === 0) {
         setStudents([]);
         setAttendanceMatrix([]);
         setWorkingDays(0);
@@ -929,8 +933,9 @@ const AttendanceReport: React.FC = () => {
         completeProgress();
         return;
       }
+
       setStudents(studentsData);
-      
+
       // Fetch half leaves for students in this month
       setProgress(70);
       if (sessionId) {
@@ -943,7 +948,7 @@ const AttendanceReport: React.FC = () => {
           .in('person_id', studentIds)
           .gte('date', startDate)
           .lte('date', endDate);
-        
+
         // Create a map for quick lookup: "studentId_date" -> half leave data
         const hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
         (halfLeavesData || []).forEach((hl: any) => {
@@ -958,7 +963,7 @@ const AttendanceReport: React.FC = () => {
       } else {
         setHalfLeavesMap(new Map());
       }
-      
+
       // Build attendance matrix
       setProgress(80);
       const attMap: Record<number, Record<number, string>> = {};
@@ -971,7 +976,7 @@ const AttendanceReport: React.FC = () => {
         Array.from({ length: daysInMonth }, (_, i) => attMap[stu.id]?.[i + 1] || '-')
       );
       setAttendanceMatrix(matrix);
-      
+
       // Calculate working days
       const daysWithAttendance = new Set<number>();
       attendanceData.forEach((rec: any) => {
@@ -979,7 +984,7 @@ const AttendanceReport: React.FC = () => {
         daysWithAttendance.add(day);
       });
       setWorkingDays(daysWithAttendance.size);
-      
+
       // Calculate average attendance
       let presentCount = 0;
       let totalPossible = studentsData.length * daysWithAttendance.size;
@@ -1008,10 +1013,10 @@ const AttendanceReport: React.FC = () => {
   // Real-time subscription for attendance_records
   useEffect(() => {
     if (!selectedClass || !selectedMonth || !user?.school_id) return;
-    
+
     const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
     const hasSections = selectedClassObj?.has_sections ?? true;
-    
+
     if (hasSections && !selectedSection) return; // Only return if sections are required but not selected
 
     // Unsubscribe previous
@@ -1024,14 +1029,14 @@ const AttendanceReport: React.FC = () => {
     const startDate = selectedMonth + '-01';
     const daysInMonth = getDaysInMonth(parseISO(startDate));
     const endDate = format(new Date(parseISO(startDate).getFullYear(), parseISO(startDate).getMonth(), daysInMonth), 'yyyy-MM-dd');
-    
+
     let filterString = `class_id=eq.${selectedClass}`;
     if (hasSections) {
       filterString += `,section_id=eq.${selectedSection}`;
     } else {
       filterString += `,section_id=is.null`;
     }
-    
+
     const channel = supabase.channel('attendance-realtime')
       .on(
         'postgres_changes',
@@ -1104,26 +1109,26 @@ const AttendanceReport: React.FC = () => {
       return;
     }
     lastClickTimeRef.current = now;
-    
+
     // Find the student's index in the original students array for attendanceMatrix lookup
     const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
     if (studentIndexInOriginal === -1) {
       return;
     }
-    
+
     // Create a unique key for this update operation
     const updateKey = `${student.id}-${selectedClass}-${selectedSection}-${selectedMonth}-${dayIdx + 1}-${opt.value}`;
-    
+
     // Prevent duplicate calls
     if (updatingStatusRef.current.has(updateKey)) {
       return;
     }
-    
+
     // Add to updating set
     updatingStatusRef.current.add(updateKey);
     setIsUpdatingStatus(true);
-    
-    
+
+
     try {
       if (opt.value === 'DELETE') {
         // Delete attendance record from Supabase
@@ -1155,20 +1160,20 @@ const AttendanceReport: React.FC = () => {
         });
         setOpenDropdown(null);
         const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-        
+
         // Validate required fields for delete
         const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
         const hasSections = selectedClassObj?.has_sections ?? true;
-        
+
         if (!student.id || !selectedClass || !dateStr || !user?.school_id || !sessionId) {
           throw new Error(`Missing required fields for delete: student_id=${student.id}, class_id=${selectedClass}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
         }
-        
+
         if (hasSections && !selectedSection) {
           throw new Error(`Section is required for this class: section_id=${selectedSection}`);
         }
-        
-        
+
+
         let deleteQuery = supabase
           .from('attendance_records')
           .delete()
@@ -1177,28 +1182,28 @@ const AttendanceReport: React.FC = () => {
           .eq('school_id', user.school_id)
           .eq('session_id', sessionId)
           .eq('date', dateStr);
-        
+
         if (hasSections) {
           deleteQuery = deleteQuery.eq('section_id', selectedSection);
         } else {
           deleteQuery = deleteQuery.is('section_id', null);
         }
-        
+
         const { data, error } = await deleteQuery;
-          
+
         if (error) {
           throw error;
         }
-        
+
         toast.showToast('Attendance record deleted.', 'success');
         return;
       }
-      
+
       if (!sessionId) {
         toast.showToast('No active session found. Please activate a session first.', 'error');
         return;
       }
-      
+
       setAttendanceMatrix(prev => {
         const updated = prev.map(row => [...row]);
         updated[studentIndexInOriginal][dayIdx] = opt.value;
@@ -1231,19 +1236,19 @@ const AttendanceReport: React.FC = () => {
       });
       setOpenDropdown(null);
       const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-      
+
       // Validate required fields
       const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
       const hasSections = selectedClassObj?.has_sections ?? true;
-      
+
       if (!student.id || !selectedClass || !dateStr || !user?.school_id || !sessionId) {
         throw new Error(`Missing required fields: student_id=${student.id}, class_id=${selectedClass}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
       }
-      
+
       if (hasSections && !selectedSection) {
         throw new Error(`Section is required for this class: section_id=${selectedSection}`);
       }
-      
+
       // Map UI status to DB status
       const statusMap: Record<string, string> = {
         'P': 'present',
@@ -1261,8 +1266,8 @@ const AttendanceReport: React.FC = () => {
         school_id: user.school_id,
         session_id: sessionId
       };
-      
-      
+
+
       // First, check if record already exists
       let checkQuery = supabase
         .from('attendance_records')
@@ -1272,21 +1277,21 @@ const AttendanceReport: React.FC = () => {
         .eq('school_id', user.school_id)
         .eq('session_id', sessionId)
         .eq('date', dateStr);
-      
+
       if (hasSections) {
         checkQuery = checkQuery.eq('section_id', selectedSection);
       } else {
         checkQuery = checkQuery.is('section_id', null);
       }
-      
+
       const { data: existingRecord, error: checkError } = await checkQuery.single();
-      
+
       if (checkError && checkError.code !== 'PGRST116') {
         throw checkError;
       }
-      
+
       let data, error;
-      
+
       if (existingRecord) {
         // Record exists, update it
         const updateResult = await supabase
@@ -1303,22 +1308,22 @@ const AttendanceReport: React.FC = () => {
         data = insertResult.data;
         error = insertResult.error;
       }
-      
+
       if (error) {
         throw error;
       }
-      
+
       toast.showToast('Attendance updated successfully.', 'success');
-      
+
     } catch (err: any) {
-      
+
       // Revert the UI state on error
       setAttendanceMatrix(prev => {
         const reverted = prev.map(row => [...row]);
         reverted[studentIndexInOriginal][dayIdx] = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
         return reverted;
       });
-      
+
       toast.showToast(`Could not update attendance: ${err.message || 'Unknown error'}`, 'error');
     } finally {
       // Clean up
@@ -1327,20 +1332,15 @@ const AttendanceReport: React.FC = () => {
     }
   };
 
-  // Filter students based on search query and attendance records
+  // Filter students based on search query
   const filteredStudents = students.filter(student => {
-    // First check if student matches search query (name or roll_number)
+    // Check if student matches search query (name or roll_number)
     const nameMatch = student.name.toLowerCase().includes(searchQuery.toLowerCase());
     const idMatch = matchesStudentSearch(student, searchQuery);
     const matchesSearch = nameMatch || idMatch.matches;
     if (!matchesSearch) return false;
 
-    // Then check if student has any attendance records for the month
-    const studentAttendance = attendanceMatrix[students.findIndex(s => s.id === student.id)];
-    if (!studentAttendance) return false;
-
-    // Check if student has at least one attendance record (any status except '-')
-    return studentAttendance.some(status => status !== '-');
+    return true;
   }).sort((a, b) => a.id - b.id);
 
   // Helper to get class/section names
@@ -1428,12 +1428,12 @@ const AttendanceReport: React.FC = () => {
   useEffect(() => {
     const fetchHolidays = async () => {
       if (!selectedMonth || !sessionId || !selectedClass || !user?.school_id) return;
-      
+
       const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
       const hasSections = selectedClassObj?.has_sections ?? true;
-      
+
       if (hasSections && !selectedSection) return; // Only return if sections are required but not selected
-      
+
       const startDate = selectedMonth + '-01';
       const daysInMonth = getDaysInMonth(parseISO(startDate));
       const endDate = format(new Date(parseISO(startDate).getFullYear(), parseISO(startDate).getMonth(), daysInMonth), 'yyyy-MM-dd');
@@ -1441,7 +1441,7 @@ const AttendanceReport: React.FC = () => {
       try {
         // First, fetch all holidays for the period
         const { data: allHolidaysData, error: allHolidaysError } = await supabase
-        .from('holidays')
+          .from('holidays')
           .select(`
             id,
             name,
@@ -1452,10 +1452,10 @@ const AttendanceReport: React.FC = () => {
               section_id
             )
           `)
-        .eq('session_id', sessionId)
-        .eq('school_id', user.school_id)
-        .lte('start_date', endDate)
-        .gte('end_date', startDate);
+          .eq('session_id', sessionId)
+          .eq('school_id', user.school_id)
+          .lte('start_date', endDate)
+          .gte('end_date', startDate);
 
         if (allHolidaysError) throw allHolidaysError;
 
@@ -1475,7 +1475,7 @@ const AttendanceReport: React.FC = () => {
             const classMatch = String(assignment.class_id) === String(selectedClass);
             const isClassSpecific = !assignment.section_id;
             const isSectionSpecific = hasSections ? String(assignment.section_id) === String(selectedSection) : false;
-            
+
             // Match class-specific holiday (no section specified)
             if (classMatch && isClassSpecific) {
               return true;
@@ -1575,312 +1575,312 @@ const AttendanceReport: React.FC = () => {
       toast.showToast('Please select class, section and month');
       return;
     }
-    
+
     setExportLoading(true);
     setIsExporting(true);
-    
+
     try {
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
         toast.showToast('Generating PDF for mobile... Please wait.', 'success');
       }
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    // Set font styles
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+      // Set font styles
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
 
-    // Add title
-    const title = `Monthly Attendance Report -`;
-    doc.text(title, 14, 20);
-    // Add class/section to top right (always show something)
-    const classSectionStr = hasSections ? `${className} (${sectionName})` : className;
-    doc.text(classSectionStr, doc.internal.pageSize.getWidth() - 14, 20, { align: 'right' });
+      // Add title
+      const title = `Monthly Attendance Report -`;
+      doc.text(title, 14, 20);
+      // Add class/section to top right (always show something)
+      const classSectionStr = hasSections ? `${className} (${sectionName})` : className;
+      doc.text(classSectionStr, doc.internal.pageSize.getWidth() - 14, 20, { align: 'right' });
 
-    // Add subtitle with month and stats
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const monthYear = format(parseISO(selectedMonth + '-01'), 'MMMM yyyy');
-    doc.text(`Month: ${monthYear}`, 14, 30);
-    doc.text(`Working Days: ${workingDays}`, 80, 30);
-    doc.text(`Average Attendance: ${avgAttendance}%`, 160, 30);
+      // Add subtitle with month and stats
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const monthYear = format(parseISO(selectedMonth + '-01'), 'MMMM yyyy');
+      doc.text(`Month: ${monthYear}`, 14, 30);
+      doc.text(`Working Days: ${workingDays}`, 80, 30);
+      doc.text(`Average Attendance: ${avgAttendance}%`, 160, 30);
 
-    // Prepare a map of holiday days for quick lookup
-    let holidayDayMap: Record<number, string> = {};
-    holidays.forEach(holiday => {
-      const start = parseISO(holiday.start_date);
-      const end = parseISO(holiday.end_date);
-      const monthStart = parseISO(selectedMonth + '-01');
-      const daysInMonth = getDaysInMonth(monthStart);
-      const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-      const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
-      for (let i = firstDayIdx; i <= lastDayIdx; i++) {
-        holidayDayMap[i + 1] = holiday.name;
-      }
-    });
+      // Prepare a map of holiday days for quick lookup
+      let holidayDayMap: Record<number, string> = {};
+      holidays.forEach(holiday => {
+        const start = parseISO(holiday.start_date);
+        const end = parseISO(holiday.end_date);
+        const monthStart = parseISO(selectedMonth + '-01');
+        const daysInMonth = getDaysInMonth(monthStart);
+        const firstDayIdx = Math.max(0, Math.ceil((start.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+        const lastDayIdx = Math.min(daysInMonth - 1, Math.floor((end.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)));
+        for (let i = firstDayIdx; i <= lastDayIdx; i++) {
+          holidayDayMap[i + 1] = holiday.name;
+        }
+      });
 
-    // Prepare table data
-    const sortedStudents = [...filteredStudents].sort((a, b) => a.id - b.id);
-    const tableData = sortedStudents.map((student, idx) => {
-      const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
-      const row = [
-        (idx + 1).toString(),
-        getStudentDisplayId(student).toString(),
-        student.name,
+      // Prepare table data
+      const sortedStudents = [...filteredStudents].sort((a, b) => a.id - b.id);
+      const tableData = sortedStudents.map((student, idx) => {
+        const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+        const row = [
+          (idx + 1).toString(),
+          getStudentDisplayId(student).toString(),
+          student.name,
+          ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
+            const date = new Date(parseISO(selectedMonth + '-01'));
+            date.setDate(dayIdx + 1);
+            const isSunday = date.getDay() === 0;
+            if (isSunday) return '';
+            const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
+            const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+            const halfLeaveKey = `${student.id}_${dateStr}`;
+            const halfLeave = halfLeavesMap.get(halfLeaveKey);
+            // Replace status with HL if half leave exists
+            // Use "HLt" if original status was "Lt" (Late) to maintain yellow color
+            if (halfLeave) {
+              return status === 'Lt' ? 'HLt' : 'HL';
+            }
+            return status;
+          })
+        ];
+        return row;
+      });
+
+      // Add summary row for absents/leaves
+      const summaryRow = [
+        '',
+        '',
+        'Absents/Leaves:',
         ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
           const date = new Date(parseISO(selectedMonth + '-01'));
           date.setDate(dayIdx + 1);
           const isSunday = date.getDay() === 0;
           if (isSunday) return '';
-          const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
-          const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-          const halfLeaveKey = `${student.id}_${dateStr}`;
-          const halfLeave = halfLeavesMap.get(halfLeaveKey);
-          // Replace status with HL if half leave exists
-          // Use "HLt" if original status was "Lt" (Late) to maintain yellow color
-          if (halfLeave) {
-            return status === 'Lt' ? 'HLt' : 'HL';
-          }
-          return status;
+
+          // Check for holidays
+          if (holidayDayMap[dayIdx + 1]) return '';
+
+          // Count absent and leave students for this day
+          let absentCount = 0;
+          sortedStudents.forEach((student) => {
+            const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+            const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx];
+            if (status === 'A' || status === 'L') {
+              absentCount++;
+            }
+          });
+
+          return absentCount > 0 ? absentCount.toString() : '-';
         })
       ];
-      return row;
-    });
-    
-    // Add summary row for absents/leaves
-    const summaryRow = [
-      '',
-      '',
-      'Absents/Leaves:',
-      ...Array.from({ length: daysInMonth }, (_, dayIdx) => {
-        const date = new Date(parseISO(selectedMonth + '-01'));
-        date.setDate(dayIdx + 1);
-        const isSunday = date.getDay() === 0;
-        if (isSunday) return '';
-        
-        // Check for holidays
-        if (holidayDayMap[dayIdx + 1]) return '';
-        
-        // Count absent and leave students for this day
-        let absentCount = 0;
-        sortedStudents.forEach((student) => {
-          const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
-          const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx];
-          if (status === 'A' || status === 'L') {
-            absentCount++;
-          }
-        });
-        
-        return absentCount > 0 ? absentCount.toString() : '-';
-      })
-    ];
-    tableData.push(summaryRow);
+      tableData.push(summaryRow);
 
-    // Prepare table headers
-    const headers = [
-      '#',
-      'ID',
-      'Student Name',
-      ...Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString())
-    ];
+      // Prepare table headers
+      const headers = [
+        '#',
+        'ID',
+        'Student Name',
+        ...Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString())
+      ];
 
-    // Build columnStyles for uniform day columns
-    const totalWidth = 270;
-    const fixedColsWidth = 8 + 15 + 40; // #, ID, Name
-    const daysColCount = daysInMonth;
-    const dayColWidth = (totalWidth - fixedColsWidth) / daysColCount;
-    const columnStyles: any = {
-      0: { cellWidth: 8 }, // #
-      1: { cellWidth: 15 }, // ID
-      2: { cellWidth: 40, halign: 'left' }, // Student Name
-    };
-    for (let i = 3; i < daysInMonth + 3; i++) {
-      columnStyles[i] = { cellWidth: dayColWidth, halign: 'center' };
-    }
-
-    // Add table
-    autoTable(doc, {
-      head: [headers],
-      body: tableData,
-      startY: 35,
-      margin: { left: 14 },
-      styles: {
-        fontSize: 8,
-        cellPadding: 1,
-        overflow: 'linebreak',
-        halign: 'center'
-      },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      columnStyles,
-      didParseCell: function(data) {
-        // Style for Sunday columns
-        if (data.column.index > 2) {
-          const date = new Date(parseISO(selectedMonth + '-01'));
-          date.setDate(data.column.index - 2);
-          if (date.getDay() === 0) {
-            data.cell.styles.fillColor = [255, 235, 235];
-            data.cell.styles.textColor = [220, 38, 38];
-          }
-        }
-        // Style for holiday columns
-        if (data.column.index > 2) {
-          const dayIdx = data.column.index - 2;
-          if (holidayDayMap[dayIdx + 1]) {
-            data.cell.styles.fillColor = [234, 247, 255];
-            data.cell.styles.textColor = [74, 108, 247];
-            if (data.row.section !== 'head') {
-              // Remove text from holiday cells
-              data.cell.text = [''];
-            }
-          }
-        }
-        // Style for status cells
-        if (data.column.index > 2 && data.cell.raw !== '') {
-          const cellValue = String(data.cell.raw || '');
-          
-          // Check if this is the summary row (last row)
-          const isSummaryRow = data.row.index === tableData.length - 1;
-          
-          if (isSummaryRow) {
-            // Style summary row
-            data.cell.styles.fillColor = [248, 249, 250];
-            data.cell.styles.fontStyle = 'bold';
-            if (cellValue !== '-' && cellValue !== '') {
-              data.cell.styles.textColor = [220, 38, 38]; // Red for absent counts
-            }
-          } else {
-            // Style regular status cells
-            if (cellValue === 'HL') {
-              // Highlight HL in pink color (when replacing P, A, L, etc.)
-              data.cell.styles.textColor = [236, 72, 153]; // Pink color for HL
-              data.cell.styles.fontStyle = 'bold';
-            } else if (cellValue === 'HLt') {
-              // Highlight HL in yellow color (when replacing Lt/Late)
-              data.cell.styles.textColor = [245, 158, 66]; // Yellow/Orange color for HL replacing Late
-              data.cell.styles.fontStyle = 'bold';
-              // Change text from "HLt" to "HL" for display
-              data.cell.text = ['HL'];
-            } else if (cellValue === 'P') {
-            data.cell.styles.textColor = [22, 163, 74];
-            } else if (cellValue === 'A') {
-            data.cell.styles.textColor = [220, 38, 38];
-            } else if (cellValue === 'L') {
-            data.cell.styles.textColor = [74, 108, 247];
-            } else if (cellValue === 'Lt') {
-            data.cell.styles.textColor = [245, 158, 66];
-            }
-          }
-        }
+      // Build columnStyles for uniform day columns
+      const totalWidth = 270;
+      const fixedColsWidth = 8 + 15 + 40; // #, ID, Name
+      const daysColCount = daysInMonth;
+      const dayColWidth = (totalWidth - fixedColsWidth) / daysColCount;
+      const columnStyles: any = {
+        0: { cellWidth: 8 }, // #
+        1: { cellWidth: 15 }, // ID
+        2: { cellWidth: 40, halign: 'left' }, // Student Name
+      };
+      for (let i = 3; i < daysInMonth + 3; i++) {
+        columnStyles[i] = { cellWidth: dayColWidth, halign: 'center' };
       }
-    });
 
-    // Add holidays list at the bottom if there are any holidays
-    if (holidays.length > 0) {
-      // Sort holidays by start date
-      const sortedHolidays = [...holidays].sort((a, b) => {
-        const dateA = parseISO(a.start_date);
-        const dateB = parseISO(b.start_date);
-        return dateA.getTime() - dateB.getTime();
+      // Add table
+      autoTable(doc, {
+        head: [headers],
+        body: tableData,
+        startY: 35,
+        margin: { left: 14 },
+        styles: {
+          fontSize: 8,
+          cellPadding: 1,
+          overflow: 'linebreak',
+          halign: 'center'
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        columnStyles,
+        didParseCell: function (data) {
+          // Style for Sunday columns
+          if (data.column.index > 2) {
+            const date = new Date(parseISO(selectedMonth + '-01'));
+            date.setDate(data.column.index - 2);
+            if (date.getDay() === 0) {
+              data.cell.styles.fillColor = [255, 235, 235];
+              data.cell.styles.textColor = [220, 38, 38];
+            }
+          }
+          // Style for holiday columns
+          if (data.column.index > 2) {
+            const dayIdx = data.column.index - 2;
+            if (holidayDayMap[dayIdx + 1]) {
+              data.cell.styles.fillColor = [234, 247, 255];
+              data.cell.styles.textColor = [74, 108, 247];
+              if (data.row.section !== 'head') {
+                // Remove text from holiday cells
+                data.cell.text = [''];
+              }
+            }
+          }
+          // Style for status cells
+          if (data.column.index > 2 && data.cell.raw !== '') {
+            const cellValue = String(data.cell.raw || '');
+
+            // Check if this is the summary row (last row)
+            const isSummaryRow = data.row.index === tableData.length - 1;
+
+            if (isSummaryRow) {
+              // Style summary row
+              data.cell.styles.fillColor = [248, 249, 250];
+              data.cell.styles.fontStyle = 'bold';
+              if (cellValue !== '-' && cellValue !== '') {
+                data.cell.styles.textColor = [220, 38, 38]; // Red for absent counts
+              }
+            } else {
+              // Style regular status cells
+              if (cellValue === 'HL') {
+                // Highlight HL in pink color (when replacing P, A, L, etc.)
+                data.cell.styles.textColor = [236, 72, 153]; // Pink color for HL
+                data.cell.styles.fontStyle = 'bold';
+              } else if (cellValue === 'HLt') {
+                // Highlight HL in yellow color (when replacing Lt/Late)
+                data.cell.styles.textColor = [245, 158, 66]; // Yellow/Orange color for HL replacing Late
+                data.cell.styles.fontStyle = 'bold';
+                // Change text from "HLt" to "HL" for display
+                data.cell.text = ['HL'];
+              } else if (cellValue === 'P') {
+                data.cell.styles.textColor = [22, 163, 74];
+              } else if (cellValue === 'A') {
+                data.cell.styles.textColor = [220, 38, 38];
+              } else if (cellValue === 'L') {
+                data.cell.styles.textColor = [74, 108, 247];
+              } else if (cellValue === 'Lt') {
+                data.cell.styles.textColor = [245, 158, 66];
+              }
+            }
+          }
+        }
       });
 
-      // Position the holiday list near the bottom of the page
-      const pageHeight = doc.internal.pageSize.height;
-      const finalY = pageHeight - (holidays.length * 5 + 20); // Leave some margin at bottom
-      
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Holidays:', 14, finalY);
-      doc.setFont('helvetica', 'normal');
-      sortedHolidays.forEach((holiday, index) => {
-        const startDate = format(parseISO(holiday.start_date), 'dd MMM');
-        const endDate = format(parseISO(holiday.end_date), 'dd MMM');
-        const dateRange = startDate === endDate ? startDate : `${startDate} - ${endDate}`;
-        doc.text(`• ${holiday.name} (${dateRange})`, 18, finalY + ((index + 1) * 5));
+      // Add holidays list at the bottom if there are any holidays
+      if (holidays.length > 0) {
+        // Sort holidays by start date
+        const sortedHolidays = [...holidays].sort((a, b) => {
+          const dateA = parseISO(a.start_date);
+          const dateB = parseISO(b.start_date);
+          return dateA.getTime() - dateB.getTime();
         });
-    }
 
-    // Add footer with page numbers
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        doc.internal.pageSize.width - 20,
-        doc.internal.pageSize.height - 10
-      );
-    }
+        // Position the holiday list near the bottom of the page
+        const pageHeight = doc.internal.pageSize.height;
+        const finalY = pageHeight - (holidays.length * 5 + 20); // Leave some margin at bottom
 
-    // Format date as dd-mmm-yyyy for filename
-    const formatDateForFileName = (date: Date) => {
-      const day = date.getDate().toString().padStart(2, '0');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[date.getMonth()];
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;
-    };
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Holidays:', 14, finalY);
+        doc.setFont('helvetica', 'normal');
+        sortedHolidays.forEach((holiday, index) => {
+          const startDate = format(parseISO(holiday.start_date), 'dd MMM');
+          const endDate = format(parseISO(holiday.end_date), 'dd MMM');
+          const dateRange = startDate === endDate ? startDate : `${startDate} - ${endDate}`;
+          doc.text(`• ${holiday.name} (${dateRange})`, 18, finalY + ((index + 1) * 5));
+        });
+      }
 
-    const fileName = `Attendance Report (${formatDateForFileName(new Date())}).pdf`;
-    
-    if (isMobileDevice) {
-      // For mobile devices, use Capacitor Filesystem API approach
-      try {
-        // Generate PDF as base64 string
-        const pdfBase64 = doc.output('datauristring').split(',')[1];
-        
-        // Create unique filename with timestamp to prevent overwriting
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const mobileFileName = `attendance-report-${timestamp}.pdf`;
+      // Add footer with page numbers
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
+          `Page ${i} of ${pageCount}`,
+          doc.internal.pageSize.width - 20,
+          doc.internal.pageSize.height - 10
+        );
+      }
 
-        // Check if Capacitor is available (for mobile apps)
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-          try {
-            // Write PDF to documents directory
-            await window.Capacitor.Plugins.Filesystem.writeFile({
-              path: mobileFileName,
-              data: pdfBase64,
-              directory: 'DOCUMENTS'
-            });
+      // Format date as dd-mmm-yyyy for filename
+      const formatDateForFileName = (date: Date) => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
 
-            // Get the file URI
-            const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
-              path: mobileFileName,
-              directory: 'DOCUMENTS'
-            });
+      const fileName = `Attendance Report (${formatDateForFileName(new Date())}).pdf`;
 
-            // Show success message and trigger native Android "Open with" dialog
-            toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
-            
-            // Trigger native Android "Open with" dialog by opening the file URI
-            // This will show the native Android app chooser dialog
-            window.open(uriResult.uri, '_blank');
-            
-          } catch (fsError) {
-            // If filesystem fails, fallback to regular download
-            doc.save(mobileFileName);
-            toast.showToast('PDF downloaded successfully!', 'success');
-          }
-        } else {
-          // Fallback for web browsers - use the blob approach
-          try {
-            const pdfBlob = doc.output('blob');
-            const url = URL.createObjectURL(pdfBlob);
-            
-            // Create a visible download button for mobile
-            const downloadContainer = document.createElement('div');
-            downloadContainer.style.cssText = `
+      if (isMobileDevice) {
+        // For mobile devices, use Capacitor Filesystem API approach
+        try {
+          // Generate PDF as base64 string
+          const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+          // Create unique filename with timestamp to prevent overwriting
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const mobileFileName = `attendance-report-${timestamp}.pdf`;
+
+          // Check if Capacitor is available (for mobile apps)
+          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+            try {
+              // Write PDF to documents directory
+              await window.Capacitor.Plugins.Filesystem.writeFile({
+                path: mobileFileName,
+                data: pdfBase64,
+                directory: 'DOCUMENTS'
+              });
+
+              // Get the file URI
+              const uriResult = await window.Capacitor.Plugins.Filesystem.getUri({
+                path: mobileFileName,
+                directory: 'DOCUMENTS'
+              });
+
+              // Show success message and trigger native Android "Open with" dialog
+              toast.showToast(`PDF saved successfully as ${mobileFileName}`, 'success');
+
+              // Trigger native Android "Open with" dialog by opening the file URI
+              // This will show the native Android app chooser dialog
+              window.open(uriResult.uri, '_blank');
+
+            } catch (fsError) {
+              // If filesystem fails, fallback to regular download
+              doc.save(mobileFileName);
+              toast.showToast('PDF downloaded successfully!', 'success');
+            }
+          } else {
+            // Fallback for web browsers - use the blob approach
+            try {
+              const pdfBlob = doc.output('blob');
+              const url = URL.createObjectURL(pdfBlob);
+
+              // Create a visible download button for mobile
+              const downloadContainer = document.createElement('div');
+              downloadContainer.style.cssText = `
               position: fixed;
               top: 50%;
               left: 50%;
@@ -1894,8 +1894,8 @@ const AttendanceReport: React.FC = () => {
               text-align: center;
               max-width: 90vw;
             `;
-            
-            downloadContainer.innerHTML = `
+
+              downloadContainer.innerHTML = `
               <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
               <p style="margin: 0 0 15px 0; color: #666;">Attendance Report</p>
               <a href="${url}" download="${fileName}" 
@@ -1910,26 +1910,26 @@ const AttendanceReport: React.FC = () => {
                 Close
               </button>
             `;
-            
-            document.body.appendChild(downloadContainer);
-            
-            // Auto-remove after 30 seconds
-            setTimeout(() => {
-              if (downloadContainer.parentElement) {
-                downloadContainer.remove();
-              }
-              URL.revokeObjectURL(url);
-            }, 30000);
-            
-            toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
-            
-          } catch (webError) {
-            
-            // Final fallback: Open PDF in new tab with data URI
-            const pdfDataUri = doc.output('datauristring');
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-              newWindow.document.write(`
+
+              document.body.appendChild(downloadContainer);
+
+              // Auto-remove after 30 seconds
+              setTimeout(() => {
+                if (downloadContainer.parentElement) {
+                  downloadContainer.remove();
+                }
+                URL.revokeObjectURL(url);
+              }, 30000);
+
+              toast.showToast(`PDF ready! Click the download button that appeared on screen.`, 'success');
+
+            } catch (webError) {
+
+              // Final fallback: Open PDF in new tab with data URI
+              const pdfDataUri = doc.output('datauristring');
+              const newWindow = window.open('', '_blank');
+              if (newWindow) {
+                newWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
                   <head>
@@ -1960,25 +1960,25 @@ const AttendanceReport: React.FC = () => {
                   </body>
                 </html>
               `);
-              newWindow.document.close();
-              toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
-            } else {
-              toast.showToast('Please allow popups for this site to download the PDF', 'error');
+                newWindow.document.close();
+                toast.showToast(`PDF opened in new tab. Use the download button in the new tab.`, 'success');
+              } else {
+                toast.showToast('Please allow popups for this site to download the PDF', 'error');
+              }
             }
           }
+        } catch (error) {
+          toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
         }
-      } catch (error) {
-        toast.showToast('Failed to export PDF on mobile. Please try on desktop.', 'error');
+      } else {
+        // For desktop, use the standard approach
+        doc.save(fileName);
+        toast.showToast('Attendance report PDF generated successfully', 'success');
       }
-    } else {
-      // For desktop, use the standard approach
-      doc.save(fileName);
-      toast.showToast('Attendance report PDF generated successfully', 'success');
-    }
 
-    if (!namesLoaded) {
-      toast.showToast('Class/section names not loaded, using IDs in PDF.', 'error');
-    }
+      if (!namesLoaded) {
+        toast.showToast('Class/section names not loaded, using IDs in PDF.', 'error');
+      }
     } catch (error) {
       toast.showToast('Failed to generate PDF', 'error');
     } finally {
@@ -1986,6 +1986,27 @@ const AttendanceReport: React.FC = () => {
       setIsExporting(false);
     }
   };
+
+  // Check if user has school_id at render time
+  if (!user?.school_id) {
+    return (
+      <Container>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          gap: 16,
+          color: '#888',
+          fontSize: '1.1rem',
+          fontWeight: 600
+        }}>
+          <X style={{ fontSize: '1.5rem' }} />
+          No school context found. Please contact your administrator.
+        </div>
+      </Container>
+    );
+  }
 
   // Show skeleton loader only for initial session loading
   if (loadingSession || loading) {
@@ -2003,293 +2024,293 @@ const AttendanceReport: React.FC = () => {
 
   return (
     <Container>
-                    <Header>
-         {/* Header row: always flex row, header left, toggle right */}
-         <div
-           style={{
-             display: 'flex', 
-             flexDirection: 'row',
-             alignItems: 'center',
-             justifyContent: 'space-between',
-             width: '100%',
-             gap: 8,
-             marginBottom: window.innerWidth <= 700 ? 4 : 0,
-           }}
-         >
-           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-             <StatCard>
-               <CalendarMonth style={{ fontSize: window.innerWidth <= 700 ? 16 : 20, marginRight: window.innerWidth <= 700 ? 1 : 2 }} />
-               <span style={{ display: window.innerWidth <= 700 ? 'none' : 'inline' }}>Working Days</span>
-               <StatValue>{loadingStudents ? '...' : workingDays}</StatValue>
-             </StatCard>
-             <StatCard>
-               <BarChart style={{ fontSize: window.innerWidth <= 700 ? 16 : 20, marginRight: window.innerWidth <= 700 ? 1 : 2 }} />
-               <span style={{ display: window.innerWidth <= 700 ? 'none' : 'inline' }}>Average Attendance</span>
-               <StatValue>{loadingStudents ? '...' : `${avgAttendance}%`}</StatValue>
-             </StatCard>
-           </div>
-           {/* Mobile filter toggle button and add button */}
-           <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
-             <button
-               aria-label="Show/hide filters"
-               style={{
-                 background: '#23242a',
-                 border: 'none',
-                 borderRadius: 8,
-                 padding: 8,
-                 marginLeft: 8,
-                 cursor: 'pointer',
-                 boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-                 display: 'flex',
-                 alignItems: 'center',
-               }}
-               onClick={() => setShowMobileFilters(v => !v)}
-             >
-               <FilterIcon style={{ fontSize: 24, color: '#C0C0C0' }} />
-             </button>
-           </div>
-           {/* Desktop filters */}
-           <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
-             <SegmentedGroup>
-               <SegmentedSelect
-                 first
-            value={selectedClass}
-            onChange={e => setSelectedClass(e.target.value)}
-            disabled={user?.role === 'Teacher' ? teacherHasSingleSection : loadingClasses}
+      <Header>
+        {/* Header row: always flex row, header left, toggle right */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            gap: 8,
+            marginBottom: window.innerWidth <= 700 ? 4 : 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <StatCard>
+              <CalendarMonth style={{ fontSize: window.innerWidth <= 700 ? 16 : 20, marginRight: window.innerWidth <= 700 ? 1 : 2 }} />
+              <span style={{ display: window.innerWidth <= 700 ? 'none' : 'inline' }}>Working Days</span>
+              <StatValue>{loadingStudents ? '...' : workingDays}</StatValue>
+            </StatCard>
+            <StatCard>
+              <BarChart style={{ fontSize: window.innerWidth <= 700 ? 16 : 20, marginRight: window.innerWidth <= 700 ? 1 : 2 }} />
+              <span style={{ display: window.innerWidth <= 700 ? 'none' : 'inline' }}>Average Attendance</span>
+              <StatValue>{loadingStudents ? '...' : `${avgAttendance}%`}</StatValue>
+            </StatCard>
+          </div>
+          {/* Mobile filter toggle button and add button */}
+          <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
+            <button
+              aria-label="Show/hide filters"
+              style={{
+                background: '#23242a',
+                border: 'none',
+                borderRadius: 8,
+                padding: 8,
+                marginLeft: 8,
+                cursor: 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              onClick={() => setShowMobileFilters(v => !v)}
+            >
+              <FilterIcon style={{ fontSize: 24, color: '#C0C0C0' }} />
+            </button>
+          </div>
+          {/* Desktop filters */}
+          <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
+            <SegmentedGroup>
+              <SegmentedSelect
+                first
+                value={selectedClass}
+                onChange={e => setSelectedClass(e.target.value)}
+                disabled={user?.role === 'Teacher' ? teacherHasSingleSection : loadingClasses}
+              >
+                <option value="">Select Class</option>
+                {user?.role === 'Teacher'
+                  ? teacherClasses.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))
+                  : (loadingClasses ? <option>Loading...</option> :
+                    classes.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    )))}
+              </SegmentedSelect>
+              {(() => {
+                const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
+                const hasSections = selectedClassObj?.has_sections ?? true;
+                return hasSections ? (
+                  <SegmentedSelect
+                    value={selectedSection}
+                    onChange={e => setSelectedSection(e.target.value)}
+                    disabled={user?.role === 'Teacher' ? teacherHasSingleSection : (!selectedClass && user?.role !== 'Teacher') || loadingSections}
+                  >
+                    <option value="">Select Section</option>
+                    {user?.role === 'Teacher'
+                      ? teacherSections
+                        .filter(s => s.class_id.toString() === selectedClass)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))
+                      : (loadingSections ? <option>Loading...</option> :
+                        sections.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        )))}
+                  </SegmentedSelect>
+                ) : null;
+              })()}
+              <SegmentedSelect
+                value={selectedMonth.split('-')[1] || ''}
+                onChange={e => {
+                  const year = selectedMonth.split('-')[0] || new Date().getFullYear().toString();
+                  setSelectedMonth(`${year}-${e.target.value.padStart(2, '0')}`);
+                }}
+              >
+                <option value="">Month</option>
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </SegmentedSelect>
+              <SegmentedSelect
+                value={selectedMonth.split('-')[0] || ''}
+                onChange={e => {
+                  const month = selectedMonth.split('-')[1] || '01';
+                  setSelectedMonth(`${e.target.value}-${month}`);
+                }}
+              >
+                <option value="">Year</option>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const year = new Date().getFullYear() - 5 + i;
+                  return (
+                    <option key={year} value={year.toString()}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </SegmentedSelect>
+              <SegmentedInput
+                type="text"
+                placeholder="Search by name or roll number..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ minWidth: '120px' }}
+              />
+              <SegmentedButton
+                last
+                onClick={handleExportPDF}
+                disabled={!hasSelection || isExporting || loading || loadingStudents || exportLoading}
+                style={{ opacity: (!hasSelection || isExporting || loading || loadingStudents || exportLoading) ? 0.7 : 1 }}
+              >
+                {exportLoading ? (
+                  <div style={{
+                    width: 16,
+                    height: 16,
+                    border: '2px solid #e0e7ff',
+                    borderTop: '2px solid #4a6cf7',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                ) : (
+                  <PictureAsPdf style={{ fontSize: 16 }} />
+                )}
+                {exportLoading ? 'Exporting...' : 'Export PDF'}
+              </SegmentedButton>
+            </SegmentedGroup>
+          </HeaderFilters>
+        </div>
+        {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
+        {window.innerWidth <= 700 && showMobileFilters && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+              width: '100%',
+              marginTop: 8,
+              marginBottom: 8,
+            }}
           >
-            <option value="">Select Class</option>
-            {user?.role === 'Teacher'
-              ? teacherClasses.map(c => (
+            <SegmentedSelect
+              value={selectedClass}
+              onChange={e => setSelectedClass(e.target.value)}
+              disabled={user?.role === 'Teacher' ? teacherHasSingleSection : loadingClasses}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Class</option>
+              {user?.role === 'Teacher'
+                ? teacherClasses.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))
-              : (loadingClasses ? <option>Loading...</option> :
-              classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-                )))}
-               </SegmentedSelect>
-               {(() => {
-                 const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
-                 const hasSections = selectedClassObj?.has_sections ?? true;
-                 return hasSections ? (
-                   <SegmentedSelect
-                     value={selectedSection}
-                     onChange={e => setSelectedSection(e.target.value)}
-                     disabled={user?.role === 'Teacher' ? teacherHasSingleSection : (!selectedClass && user?.role !== 'Teacher') || loadingSections}
-                   >
-                     <option value="">Select Section</option>
-                     {user?.role === 'Teacher'
-                       ? teacherSections
-                           .filter(s => s.class_id.toString() === selectedClass)
-                           .map(s => (
-                             <option key={s.id} value={s.id}>{s.name}</option>
-                           ))
-                       : (loadingSections ? <option>Loading...</option> :
-                       sections.map(s => (
-                         <option key={s.id} value={s.id}>{s.name}</option>
-                         )))}
-                   </SegmentedSelect>
-                 ) : null;
-               })()}
-               <SegmentedSelect
-                 value={selectedMonth.split('-')[1] || ''}
-                 onChange={e => {
-                   const year = selectedMonth.split('-')[0] || new Date().getFullYear().toString();
-                   setSelectedMonth(`${year}-${e.target.value.padStart(2, '0')}`);
-                 }}
-               >
-                 <option value="">Month</option>
-                 <option value="01">January</option>
-                 <option value="02">February</option>
-                 <option value="03">March</option>
-                 <option value="04">April</option>
-                 <option value="05">May</option>
-                 <option value="06">June</option>
-                 <option value="07">July</option>
-                 <option value="08">August</option>
-                 <option value="09">September</option>
-                 <option value="10">October</option>
-                 <option value="11">November</option>
-                 <option value="12">December</option>
-               </SegmentedSelect>
-               <SegmentedSelect
-                 value={selectedMonth.split('-')[0] || ''}
-                 onChange={e => {
-                   const month = selectedMonth.split('-')[1] || '01';
-                   setSelectedMonth(`${e.target.value}-${month}`);
-                 }}
-               >
-                 <option value="">Year</option>
-                 {Array.from({ length: 10 }, (_, i) => {
-                   const year = new Date().getFullYear() - 5 + i;
-                   return (
-                     <option key={year} value={year.toString()}>
-                       {year}
-                     </option>
-                   );
-                 })}
-               </SegmentedSelect>
-               <SegmentedInput
-            type="text"
-            placeholder="Search by name or roll number..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-                 style={{ minWidth: '120px' }}
-               />
-               <SegmentedButton
-                 last
-            onClick={handleExportPDF}
-            disabled={!hasSelection || isExporting || loading || loadingStudents || exportLoading}
-            style={{ opacity: (!hasSelection || isExporting || loading || loadingStudents || exportLoading) ? 0.7 : 1 }}
-          >
-                 {exportLoading ? (
-                   <div style={{ 
-                     width: 16, 
-                     height: 16, 
-                     border: '2px solid #e0e7ff', 
-                     borderTop: '2px solid #4a6cf7', 
-                     borderRadius: '50%', 
-                     animation: 'spin 1s linear infinite' 
-                   }} />
-                 ) : (
-                 <PictureAsPdf style={{ fontSize: 16 }} />
-                 )}
-                 {exportLoading ? 'Exporting...' : 'Export PDF'}
-               </SegmentedButton>
-             </SegmentedGroup>
-           </HeaderFilters>
-         </div>
-         {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
-         {window.innerWidth <= 700 && showMobileFilters && (
-           <div
-             style={{
-               display: 'grid',
-               gridTemplateColumns: '1fr 1fr',
-               gap: 10,
-               width: '100%',
-               marginTop: 8,
-               marginBottom: 8,
-             }}
-           >
-             <SegmentedSelect
-               value={selectedClass}
-               onChange={e => setSelectedClass(e.target.value)}
-               disabled={user?.role === 'Teacher' ? teacherHasSingleSection : loadingClasses}
-               style={{ width: '100%' }}
-             >
-               <option value="">Select Class</option>
-               {user?.role === 'Teacher'
-                 ? teacherClasses.map(c => (
-                     <option key={c.id} value={c.id}>{c.name}</option>
-                   ))
-                 : (loadingClasses ? <option>Loading...</option> :
-                 classes.map(c => (
-                   <option key={c.id} value={c.id}>{c.name}</option>
-                   )))}
-             </SegmentedSelect>
-             {(() => {
-               const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
-               const hasSections = selectedClassObj?.has_sections ?? true;
-               return hasSections ? (
-                 <SegmentedSelect
-                   value={selectedSection}
-                   onChange={e => setSelectedSection(e.target.value)}
-                   disabled={user?.role === 'Teacher' ? teacherHasSingleSection : (!selectedClass && user?.role !== 'Teacher') || loadingSections}
-                   style={{ width: '100%' }}
-                 >
-                   <option value="">Select Section</option>
-                   {user?.role === 'Teacher'
-                     ? teacherSections
-                         .filter(s => s.class_id.toString() === selectedClass)
-                         .map(s => (
-                           <option key={s.id} value={s.id}>{s.name}</option>
-                         ))
-                     : (loadingSections ? <option>Loading...</option> :
-                     sections.map(s => (
-                       <option key={s.id} value={s.id}>{s.name}</option>
-                       )))}
-                 </SegmentedSelect>
-               ) : null;
-             })()}
-             <SegmentedSelect
-               value={selectedMonth.split('-')[1] || ''}
-               onChange={e => {
-                 const year = selectedMonth.split('-')[0] || new Date().getFullYear().toString();
-                 setSelectedMonth(`${year}-${e.target.value.padStart(2, '0')}`);
-               }}
-               style={{ width: '100%' }}
-             >
-               <option value="">Month</option>
-               <option value="01">January</option>
-               <option value="02">February</option>
-               <option value="03">March</option>
-               <option value="04">April</option>
-               <option value="05">May</option>
-               <option value="06">June</option>
-               <option value="07">July</option>
-               <option value="08">August</option>
-               <option value="09">September</option>
-               <option value="10">October</option>
-               <option value="11">November</option>
-               <option value="12">December</option>
-             </SegmentedSelect>
-             <SegmentedSelect
-               value={selectedMonth.split('-')[0] || ''}
-               onChange={e => {
-                 const month = selectedMonth.split('-')[1] || '01';
-                 setSelectedMonth(`${e.target.value}-${month}`);
-               }}
-               style={{ width: '100%' }}
-             >
-               <option value="">Year</option>
-               {Array.from({ length: 10 }, (_, i) => {
-                 const year = new Date().getFullYear() - 5 + i;
-                 return (
-                   <option key={year} value={year.toString()}>
-                     {year}
-                   </option>
-                 );
-               })}
-             </SegmentedSelect>
-             <SegmentedInput
-               type="text"
-               placeholder="Search by name or roll number..."
-               value={searchQuery}
-               onChange={e => setSearchQuery(e.target.value)}
-               style={{ width: '100%' }}
-             />
-             <SegmentedButton
-               onClick={handleExportPDF}
-               disabled={!hasSelection || isExporting || loading || loadingStudents || exportLoading}
-               style={{ width: '100%', opacity: (!hasSelection || isExporting || loading || loadingStudents || exportLoading) ? 0.7 : 1 }}
-             >
-               {exportLoading ? (
-                 <div style={{ 
-                   width: 16, 
-                   height: 16, 
-                   border: '2px solid #e0e7ff', 
-                   borderTop: '2px solid #4a6cf7', 
-                   borderRadius: '50%', 
-                   animation: 'spin 1s linear infinite' 
-                 }} />
-               ) : (
-               <PictureAsPdf style={{ fontSize: 16 }} />
-               )}
-               {exportLoading ? 'Exporting...' : 'Export PDF'}
-             </SegmentedButton>
-           </div>
-         )}
-       </Header>
+                : (loadingClasses ? <option>Loading...</option> :
+                  classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  )))}
+            </SegmentedSelect>
+            {(() => {
+              const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
+              const hasSections = selectedClassObj?.has_sections ?? true;
+              return hasSections ? (
+                <SegmentedSelect
+                  value={selectedSection}
+                  onChange={e => setSelectedSection(e.target.value)}
+                  disabled={user?.role === 'Teacher' ? teacherHasSingleSection : (!selectedClass && user?.role !== 'Teacher') || loadingSections}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select Section</option>
+                  {user?.role === 'Teacher'
+                    ? teacherSections
+                      .filter(s => s.class_id.toString() === selectedClass)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))
+                    : (loadingSections ? <option>Loading...</option> :
+                      sections.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      )))}
+                </SegmentedSelect>
+              ) : null;
+            })()}
+            <SegmentedSelect
+              value={selectedMonth.split('-')[1] || ''}
+              onChange={e => {
+                const year = selectedMonth.split('-')[0] || new Date().getFullYear().toString();
+                setSelectedMonth(`${year}-${e.target.value.padStart(2, '0')}`);
+              }}
+              style={{ width: '100%' }}
+            >
+              <option value="">Month</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </SegmentedSelect>
+            <SegmentedSelect
+              value={selectedMonth.split('-')[0] || ''}
+              onChange={e => {
+                const month = selectedMonth.split('-')[1] || '01';
+                setSelectedMonth(`${e.target.value}-${month}`);
+              }}
+              style={{ width: '100%' }}
+            >
+              <option value="">Year</option>
+              {Array.from({ length: 10 }, (_, i) => {
+                const year = new Date().getFullYear() - 5 + i;
+                return (
+                  <option key={year} value={year.toString()}>
+                    {year}
+                  </option>
+                );
+              })}
+            </SegmentedSelect>
+            <SegmentedInput
+              type="text"
+              placeholder="Search by name or roll number..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ width: '100%' }}
+            />
+            <SegmentedButton
+              onClick={handleExportPDF}
+              disabled={!hasSelection || isExporting || loading || loadingStudents || exportLoading}
+              style={{ width: '100%', opacity: (!hasSelection || isExporting || loading || loadingStudents || exportLoading) ? 0.7 : 1 }}
+            >
+              {exportLoading ? (
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  border: '2px solid #e0e7ff',
+                  borderTop: '2px solid #4a6cf7',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              ) : (
+                <PictureAsPdf style={{ fontSize: 16 }} />
+              )}
+              {exportLoading ? 'Exporting...' : 'Export PDF'}
+            </SegmentedButton>
+          </div>
+        )}
+      </Header>
 
       <TableWrapper>
         {loadingStudents ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: 12 }}>
-            <div style={{ 
-              width: '20px', 
-              height: '20px', 
-              border: '2px solid #f3f3f3', 
-              borderTop: '2px solid #4a6cf7', 
-              borderRadius: '50%', 
-              animation: 'spin 1s linear infinite' 
+            <div style={{
+              width: '20px',
+              height: '20px',
+              border: '2px solid #f3f3f3',
+              borderTop: '2px solid #4a6cf7',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
             }} />
             <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#888' }}>Loading students...</div>
           </div>
@@ -2301,300 +2322,300 @@ const AttendanceReport: React.FC = () => {
           ) : null
         ) : (
           <>
-        <Table>
-          <thead>
-            <tr>
-              <NarrowTh>#</NarrowTh>
-              <NarrowTh>ID</NarrowTh>
-              <Th>STUDENT</Th>
-              {Array.from({ length: daysInMonth }, (_, i) => {
-                const date = new Date(parseISO(selectedMonth + '-01'));
-                date.setDate(i + 1);
-                const isSunday = date.getDay() === 0;
-                const DayHeader = isSunday ? SundayTh : Th;
-                return (
-                  <DayHeader key={i + 1}>{i + 1}</DayHeader>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredStudents.map((student, idx) => {
-              let skipCols = 0;
-              // Find the student's index in the original students array for attendanceMatrix lookup
-              const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
-              return (
-              <tr key={student.id}>
-                <NarrowTd>{idx + 1}</NarrowTd>
-                <NarrowTd>{getStudentDisplayId(student)}</NarrowTd>
-                <StudentNameCell>{student.name}</StudentNameCell>
-                {Array.from({ length: daysInMonth }, (_, dayIdx) => {
-                    if (skipCols > 0) {
-                      skipCols--;
-                      return null;
-                    }
-                    // Check if this day is the start of a holiday range
-                    const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
-                    if (holiday) {
-                      if (idx === 0) {
-                        skipCols = holiday.endIdx - holiday.startIdx;
-                        const colSpan = holiday.endIdx - holiday.startIdx + 1;
-                        const key = `${holiday.name}-${holidays.find(hh => hh.name === holiday.name)?.start_date}`;
-                        const styleObj = holidayTextStyle[key] || { angle: -45, fontSize: '1em', maxWidth: '100px' };
-                        return (
-                          <SundayMergedCell
-                            key={`holiday-${holiday.name}-${dayIdx}`}
-                            rowSpan={filteredStudents.length}
-                            colSpan={colSpan}
-                            ref={el => { holidayCellRefs.current[key] = el; }}
-                            style={{
-                              background: isDark(theme) ? '#232a3b' : '#eaf7ff',
-                              color: '#4a6cf7',
-                              verticalAlign: 'middle',
-                              textAlign: 'center',
-                              position: 'relative',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {colSpan === 1 ? (
-                              <span
+            <Table>
+              <thead>
+                <tr>
+                  <NarrowTh>#</NarrowTh>
+                  <NarrowTh>ID</NarrowTh>
+                  <Th>STUDENT</Th>
+                  {Array.from({ length: daysInMonth }, (_, i) => {
+                    const date = new Date(parseISO(selectedMonth + '-01'));
+                    date.setDate(i + 1);
+                    const isSunday = date.getDay() === 0;
+                    const DayHeader = isSunday ? SundayTh : Th;
+                    return (
+                      <DayHeader key={i + 1}>{i + 1}</DayHeader>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.map((student, idx) => {
+                  let skipCols = 0;
+                  // Find the student's index in the original students array for attendanceMatrix lookup
+                  const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+                  return (
+                    <tr key={student.id}>
+                      <NarrowTd>{idx + 1}</NarrowTd>
+                      <NarrowTd>{getStudentDisplayId(student)}</NarrowTd>
+                      <StudentNameCell>{student.name}</StudentNameCell>
+                      {Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                        if (skipCols > 0) {
+                          skipCols--;
+                          return null;
+                        }
+                        // Check if this day is the start of a holiday range
+                        const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
+                        if (holiday) {
+                          if (idx === 0) {
+                            skipCols = holiday.endIdx - holiday.startIdx;
+                            const colSpan = holiday.endIdx - holiday.startIdx + 1;
+                            const key = `${holiday.name}-${holidays.find(hh => hh.name === holiday.name)?.start_date}`;
+                            const styleObj = holidayTextStyle[key] || { angle: -45, fontSize: '1em', maxWidth: '100px' };
+                            return (
+                              <SundayMergedCell
+                                key={`holiday-${holiday.name}-${dayIdx}`}
+                                rowSpan={filteredStudents.length}
+                                colSpan={colSpan}
+                                ref={el => { holidayCellRefs.current[key] = el; }}
                                 style={{
+                                  background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                                  color: '#4a6cf7',
+                                  verticalAlign: 'middle',
+                                  textAlign: 'center',
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {colSpan === 1 ? (
+                                  <span
+                                    style={{
+                                      writingMode: 'vertical-rl',
+                                      textOrientation: 'mixed',
+                                      fontSize: styleObj.fontSize,
+                                      fontWeight: 700,
+                                      letterSpacing: '0.15em',
+                                      color: '#4a6cf7',
+                                      display: 'inline-block',
+                                      maxWidth: styleObj.maxWidth,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {holiday.name.toUpperCase()}
+                                  </span>
+                                ) : (
+                                  <AngledHolidayName
+                                    style={{
+                                      transform: `translate(-50%, -50%) rotate(${styleObj.angle}deg)`,
+                                      fontSize: styleObj.fontSize,
+                                      left: '50%',
+                                      top: '50%',
+                                      maxWidth: styleObj.maxWidth,
+                                    }}
+                                  >
+                                    {holiday.name.toUpperCase()}
+                                  </AngledHolidayName>
+                                )}
+                              </SundayMergedCell>
+                            );
+                          } else {
+                            skipCols = holiday.endIdx - holiday.startIdx;
+                            return null;
+                          }
+                        }
+                        // Check if this day is a Sunday
+                        const date = new Date(parseISO(selectedMonth + '-01'));
+                        date.setDate(dayIdx + 1);
+                        const isSunday = date.getDay() === 0;
+                        if (isSunday) {
+                          if (idx === 0) {
+                            return (
+                              <SundayMergedCell
+                                key={`sunday-${dayIdx}`}
+                                rowSpan={filteredStudents.length}
+                                style={{
+                                  background: isDark(theme) ? '#232a3b' : '#ffeaea',
+                                  color: '#dc2626',
+                                  verticalAlign: 'middle',
+                                  textAlign: 'center',
                                   writingMode: 'vertical-rl',
                                   textOrientation: 'mixed',
-                                  fontSize: styleObj.fontSize,
-                                  fontWeight: 700,
-                                  letterSpacing: '0.15em',
-                                  color: '#4a6cf7',
-                                  display: 'inline-block',
-                                  maxWidth: styleObj.maxWidth,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
+                                  fontSize: '1.1rem',
+                                  letterSpacing: '0.2em',
                                 }}
                               >
-                                {holiday.name.toUpperCase()}
-                              </span>
-                            ) : (
-                              <AngledHolidayName
-                                style={{
-                                  transform: `translate(-50%, -50%) rotate(${styleObj.angle}deg)` ,
-                                  fontSize: styleObj.fontSize,
-                                  left: '50%',
-                                  top: '50%',
-                                  maxWidth: styleObj.maxWidth,
-                                }}
-                              >
-                                {holiday.name.toUpperCase()}
-                              </AngledHolidayName>
-                            )}
-                          </SundayMergedCell>
-                        );
-                      } else {
-                        skipCols = holiday.endIdx - holiday.startIdx;
-                        return null;
-                      }
-                    }
-                    // Check if this day is a Sunday
-                  const date = new Date(parseISO(selectedMonth + '-01'));
-                  date.setDate(dayIdx + 1);
-                  const isSunday = date.getDay() === 0;
-                  if (isSunday) {
-                    if (idx === 0) {
-                      return (
-                          <SundayMergedCell
-                            key={`sunday-${dayIdx}`}
-                            rowSpan={filteredStudents.length}
-                            style={{
-                              background: isDark(theme) ? '#232a3b' : '#ffeaea',
-                              color: '#dc2626',
-                              verticalAlign: 'middle',
-                              textAlign: 'center',
-                              writingMode: 'vertical-rl',
-                              textOrientation: 'mixed',
-                              fontSize: '1.1rem',
-                              letterSpacing: '0.2em',
-                            }}
-                          >
-                            SUNDAY
-                          </SundayMergedCell>
-                      );
-                    } else {
-                      return null;
-                    }
-                  }
-                    // Otherwise, render attendance status
-                  const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
-                  const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-                  const halfLeaveKey = student ? `${student.id}_${dateStr}` : '';
-                  const halfLeave = halfLeaveKey ? halfLeavesMap.get(halfLeaveKey) : null;
-                  
-                  return (
-                    <StatusCell key={dayIdx} status={status} style={{ position: 'relative' }}>
-                      {halfLeave && (
-                        <HalfLeaveBadge title="Half Leave">
-                          HL
-                        </HalfLeaveBadge>
-                      )}
-                      <span
-                        ref={el => {
-                          if (openDropdown && openDropdown.row === idx && openDropdown.col === dayIdx && el) {
-                            if (openDropdown.rect == null) {
-                              setOpenDropdown({ row: idx, col: dayIdx, rect: el.getBoundingClientRect() });
-                            }
+                                SUNDAY
+                              </SundayMergedCell>
+                            );
+                          } else {
+                            return null;
                           }
-                        }}
-                        style={{ display: 'inline-block' }}
-                      >
-                        <StatusBlock
-                          status={status}
-                          onClick={e => {
-                            if (isUpdatingStatus) {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              return;
-                            }
-                            const rect = (e.target as HTMLElement).getBoundingClientRect();
-                            
-                            // Simple positioning logic for now
-                            const viewportHeight = window.innerHeight;
-                            const dropdownHeight = 200;
-                            const spaceBelow = viewportHeight - rect.bottom;
-                            const shouldPositionAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
-                            
-                            setOpenDropdown({ 
-                              row: idx, 
-                              col: dayIdx, 
-                              rect,
-                              shouldPositionAbove
-                            });
-                          }}
-                          style={{ 
-                            cursor: isUpdatingStatus ? 'not-allowed' : 'pointer',
-                            opacity: isUpdatingStatus ? 0.6 : 1
-                          }}
-                        >
-                          {status}
-                        </StatusBlock>
-                      </span>
-                      {openDropdown && openDropdown.rect && openDropdown.row === idx && openDropdown.col === dayIdx && 
-                        ReactDOM.createPortal(
-                          <StatusDropdown
-                            ref={dropdownRef}
-                            style={{
-                              position: 'fixed',
-                              top: openDropdown.shouldPositionAbove 
-                                ? openDropdown.rect.top - 204 // Position above with some margin
-                                : openDropdown.rect.bottom + 4, // Position below as usual
-                              left: openDropdown.rect.left, // Keep it simple for now
-                            }}
-                          >
-                            {statusOptions.map(opt => (
-                              <StatusOption
-                                key={opt.value}
-                                color={opt.color}
-                                onClick={() => {
-                                  if (isUpdatingStatus) return;
-                                  handleStatusChange(opt, idx, dayIdx, student);
+                        }
+                        // Otherwise, render attendance status
+                        const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx] || '-';
+                        const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+                        const halfLeaveKey = student ? `${student.id}_${dateStr}` : '';
+                        const halfLeave = halfLeaveKey ? halfLeavesMap.get(halfLeaveKey) : null;
+
+                        return (
+                          <StatusCell key={dayIdx} status={status} style={{ position: 'relative' }}>
+                            {halfLeave && (
+                              <HalfLeaveBadge title="Half Leave">
+                                HL
+                              </HalfLeaveBadge>
+                            )}
+                            <span
+                              ref={el => {
+                                if (openDropdown && openDropdown.row === idx && openDropdown.col === dayIdx && el) {
+                                  if (openDropdown.rect == null) {
+                                    setOpenDropdown({ row: idx, col: dayIdx, rect: el.getBoundingClientRect() });
+                                  }
+                                }
+                              }}
+                              style={{ display: 'inline-block' }}
+                            >
+                              <StatusBlock
+                                status={status}
+                                onClick={e => {
+                                  if (isUpdatingStatus) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    return;
+                                  }
+                                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+
+                                  // Simple positioning logic for now
+                                  const viewportHeight = window.innerHeight;
+                                  const dropdownHeight = 200;
+                                  const spaceBelow = viewportHeight - rect.bottom;
+                                  const shouldPositionAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+
+                                  setOpenDropdown({
+                                    row: idx,
+                                    col: dayIdx,
+                                    rect,
+                                    shouldPositionAbove
+                                  });
                                 }}
-                                style={{ 
-                                  opacity: isUpdatingStatus ? 0.5 : 1,
-                                  cursor: isUpdatingStatus ? 'not-allowed' : 'pointer'
+                                style={{
+                                  cursor: isUpdatingStatus ? 'not-allowed' : 'pointer',
+                                  opacity: isUpdatingStatus ? 0.6 : 1
                                 }}
                               >
-                                {opt.label}
-                              </StatusOption>
-                            ))}
-                            <StatusOption
-                              color={deleteOption.color}
-                              style={{ 
-                                fontWeight: 700, 
-                                borderTop: '1px solid #eee', 
-                                marginTop: 2,
-                                opacity: isUpdatingStatus ? 0.5 : 1,
-                                cursor: isUpdatingStatus ? 'not-allowed' : 'pointer'
-                              }}
-                              onClick={() => {
-                                if (isUpdatingStatus) return;
-                                handleStatusChange(deleteOption, idx, dayIdx, student);
-                              }}
-                            >
-                              {deleteOption.label}
-                            </StatusOption>
-                          </StatusDropdown>,
-                          document.body
-                        )
-                      }
-                    </StatusCell>
+                                {status}
+                              </StatusBlock>
+                            </span>
+                            {openDropdown && openDropdown.rect && openDropdown.row === idx && openDropdown.col === dayIdx &&
+                              ReactDOM.createPortal(
+                                <StatusDropdown
+                                  ref={dropdownRef}
+                                  style={{
+                                    position: 'fixed',
+                                    top: openDropdown.shouldPositionAbove
+                                      ? openDropdown.rect.top - 204 // Position above with some margin
+                                      : openDropdown.rect.bottom + 4, // Position below as usual
+                                    left: openDropdown.rect.left, // Keep it simple for now
+                                  }}
+                                >
+                                  {statusOptions.map(opt => (
+                                    <StatusOption
+                                      key={opt.value}
+                                      color={opt.color}
+                                      onClick={() => {
+                                        if (isUpdatingStatus) return;
+                                        handleStatusChange(opt, idx, dayIdx, student);
+                                      }}
+                                      style={{
+                                        opacity: isUpdatingStatus ? 0.5 : 1,
+                                        cursor: isUpdatingStatus ? 'not-allowed' : 'pointer'
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </StatusOption>
+                                  ))}
+                                  <StatusOption
+                                    color={deleteOption.color}
+                                    style={{
+                                      fontWeight: 700,
+                                      borderTop: '1px solid #eee',
+                                      marginTop: 2,
+                                      opacity: isUpdatingStatus ? 0.5 : 1,
+                                      cursor: isUpdatingStatus ? 'not-allowed' : 'pointer'
+                                    }}
+                                    onClick={() => {
+                                      if (isUpdatingStatus) return;
+                                      handleStatusChange(deleteOption, idx, dayIdx, student);
+                                    }}
+                                  >
+                                    {deleteOption.label}
+                                  </StatusOption>
+                                </StatusDropdown>,
+                                document.body
+                              )
+                            }
+                          </StatusCell>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </tr>
-              );
-            })}
-            {/* Summary row showing daily absent and leave counts */}
-            <SummaryRow>
-              <SummaryLabelCell colSpan={3}>Absents/Leaves:</SummaryLabelCell>
-              {(() => {
-                let skipCols = 0;
-                return Array.from({ length: daysInMonth }, (_, dayIdx) => {
-                  if (skipCols > 0) {
-                    skipCols--;
-                    return null;
-                  }
-                  
-                  const date = new Date(parseISO(selectedMonth + '-01'));
-                  date.setDate(dayIdx + 1);
-                  const isSunday = date.getDay() === 0;
-                  
-                  // Check if this day is the start of a holiday range
-                  const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
-                  if (holiday) {
-                    skipCols = holiday.endIdx - holiday.startIdx;
-                    const colSpan = holiday.endIdx - holiday.startIdx + 1;
-                    return (
-                      <SummaryCell 
-                        key={dayIdx} 
-                        colSpan={colSpan}
-                        style={{ 
-                          background: isDark(theme) ? '#232a3b' : '#eaf7ff',
-                          color: '#4a6cf7'
-                        }}
-                      >
-                        -
-                      </SummaryCell>
-                    );
-                  }
-                  
-                  if (isSunday) {
-                    return (
-                      <SummaryCell 
-                        key={dayIdx} 
-                        style={{ background: isDark(theme) ? '#232a3b' : '#ffeaea', color: '#dc2626' }}
-                      >
-                        -
-                      </SummaryCell>
-                    );
-                  }
-                  
-                  // Count absent and leave students for this day
-                  let absentCount = 0;
-                  filteredStudents.forEach((student) => {
-                    const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
-                    const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx];
-                    if (status === 'A' || status === 'L') {
-                      absentCount++;
-                    }
-                  });
-                  
-                  return (
-                    <SummaryCell key={dayIdx} style={{ color: absentCount > 0 ? '#dc2626' : 'inherit' }}>
-                      {absentCount > 0 ? absentCount : '-'}
-                    </SummaryCell>
-                  );
-                });
-              })()}
-            </SummaryRow>
-          </tbody>
-        </Table>
+                {/* Summary row showing daily absent and leave counts */}
+                <SummaryRow>
+                  <SummaryLabelCell colSpan={3}>Absents/Leaves:</SummaryLabelCell>
+                  {(() => {
+                    let skipCols = 0;
+                    return Array.from({ length: daysInMonth }, (_, dayIdx) => {
+                      if (skipCols > 0) {
+                        skipCols--;
+                        return null;
+                      }
+
+                      const date = new Date(parseISO(selectedMonth + '-01'));
+                      date.setDate(dayIdx + 1);
+                      const isSunday = date.getDay() === 0;
+
+                      // Check if this day is the start of a holiday range
+                      const holiday = holidayRanges.find(h => h.startIdx === dayIdx);
+                      if (holiday) {
+                        skipCols = holiday.endIdx - holiday.startIdx;
+                        const colSpan = holiday.endIdx - holiday.startIdx + 1;
+                        return (
+                          <SummaryCell
+                            key={dayIdx}
+                            colSpan={colSpan}
+                            style={{
+                              background: isDark(theme) ? '#232a3b' : '#eaf7ff',
+                              color: '#4a6cf7'
+                            }}
+                          >
+                            -
+                          </SummaryCell>
+                        );
+                      }
+
+                      if (isSunday) {
+                        return (
+                          <SummaryCell
+                            key={dayIdx}
+                            style={{ background: isDark(theme) ? '#232a3b' : '#ffeaea', color: '#dc2626' }}
+                          >
+                            -
+                          </SummaryCell>
+                        );
+                      }
+
+                      // Count absent and leave students for this day
+                      let absentCount = 0;
+                      filteredStudents.forEach((student) => {
+                        const studentIndexInOriginal = students.findIndex(s => s.id === student.id);
+                        const status = attendanceMatrix[studentIndexInOriginal]?.[dayIdx];
+                        if (status === 'A' || status === 'L') {
+                          absentCount++;
+                        }
+                      });
+
+                      return (
+                        <SummaryCell key={dayIdx} style={{ color: absentCount > 0 ? '#dc2626' : 'inherit' }}>
+                          {absentCount > 0 ? absentCount : '-'}
+                        </SummaryCell>
+                      );
+                    });
+                  })()}
+                </SummaryRow>
+              </tbody>
+            </Table>
           </>
         )}
       </TableWrapper>
