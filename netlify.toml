@@ -11,9 +11,9 @@
   # Environment variables for build
   [build.environment]
     NODE_VERSION = "20"
-    REACT_APP_VERSION = "1.3.1"
+    REACT_APP_VERSION = "1.4.2"
     # Increase Node memory limit for large builds (8GB for Netlify)
-    NODE_OPTIONS = "--max-old-space-size=8192"
+    NODE_OPTIONS = "--max-old-space-size=2048"
     # Disable source maps in production to reduce bundle size
     GENERATE_SOURCEMAP = "false"
 
