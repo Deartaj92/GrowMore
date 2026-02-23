@@ -1,10 +1,78 @@
+@import './styles/designSystem.css';
+
 /* GLOBAL SMOOTHNESS & PERFORMANCE OPTIMIZATIONS */
-html, body, #root {
+
+/* --- CUSTOM 3D CURSORS --- */
+/* --- CUSTOM 3D CURSORS --- */
+* {
+  cursor: url('./assets/cursor-default.svg') 1 1, auto !important;
+}
+
+/* Pointer cursors for interactive items explicitly */
+a,
+a *,
+button,
+button *,
+[role="button"],
+[role="button"] *,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="color"],
+input[type="file"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+select,
+select *,
+summary,
+summary *,
+.clickable,
+.clickable *,
+.cursor-pointer,
+.cursor-pointer *,
+[style*="cursor: pointer"],
+.apexcharts-canvas [style*="cursor: pointer"],
+.recharts-wrapper [style*="cursor: pointer"],
+.apexcharts-tooltip,
+.recharts-tooltip-wrapper,
+.apexcharts-series path,
+.recharts-layer path,
+.MuiSelect-select,
+.MuiSelect-select *,
+.MuiMenuItem-root,
+.MuiMenuItem-root *,
+.MuiIconButton-root,
+.MuiIconButton-root *,
+.MuiPickersDay-root,
+.MuiPickersDay-root *,
+.MuiAutocomplete-popupIndicator,
+.MuiAutocomplete-popupIndicator *,
+.MuiButtonBase-root,
+.MuiButtonBase-root * {
+  cursor: url('./assets/cursor-pointer.svg') 8 0, pointer !important;
+}
+
+/* Text cursors for typing fields */
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]):not([type="date"]):not([type="datetime-local"]):not([type="month"]):not([type="time"]):not([type="week"]),
+textarea,
+.MuiInputBase-input:not(.MuiSelect-select) {
+  cursor: url('./assets/cursor-text.svg') 12 12, text !important;
+}
+
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Prevent body scroll - let containers handle it */
+  overflow: hidden;
+  /* Prevent body scroll - let containers handle it */
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   will-change: scroll-position;
@@ -19,33 +87,53 @@ html, body, #root {
 
 /* Use dynamic viewport height on mobile to account for browser UI */
 @media (max-width: 700px) {
-  html, body, #root {
-    min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
+
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+    /* Dynamic viewport height for mobile browsers */
     height: 100dvh;
   }
 }
 
 body {
-  font-size: 16px; /* Ensure consistent base font-size */
+  font-size: 16px;
+  /* Ensure consistent base font-size */
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body, html {
+body,
+html {
   overflow-x: auto;
   overflow-y: auto;
 }
 
 /* Hardware acceleration for all major containers */
-main, .main-content, .page-container, .modal, .sidebar, .drawer, .card, .dialog, .overlay {
+main,
+.main-content,
+.page-container,
+.modal,
+.sidebar,
+.drawer,
+.card,
+.dialog,
+.overlay {
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
 /* Smooth transitions for interactive elements */
-button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
+button,
+.card,
+.modal,
+.sidebar,
+.drawer,
+.dialog,
+.overlay {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -69,7 +157,7 @@ button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
 
 /* Show scrollbar on hover */
 *:hover::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 *:hover::-webkit-scrollbar-track {
@@ -79,7 +167,7 @@ button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
 /* Show scrollbar when scrolling */
 .scrolling::-webkit-scrollbar-thumb,
 .scrolling *::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .scrolling::-webkit-scrollbar-track,
@@ -91,12 +179,15 @@ button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
 *:hover::-webkit-scrollbar-thumb:hover,
 .scrolling::-webkit-scrollbar-thumb:hover,
 .scrolling *::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* Momentum scrolling for mobile */
 @media (max-width: 700px) {
-  html, body, #root {
+
+  html,
+  body,
+  #root {
     scroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -109,7 +200,8 @@ button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
 }
 
 /* Allow text selection in inputs and textareas */
-input, textarea {
+input,
+textarea {
   -webkit-user-select: text;
   user-select: text;
 }
@@ -118,9 +210,11 @@ input, textarea {
 
 /* 1. Font rendering and swap */
 html {
-  font-size: 16px; /* Base font-size for consistent rem calculations */
+  font-size: 16px;
+  /* Base font-size for consistent rem calculations */
   text-rendering: optimizeLegibility;
-  -webkit-text-size-adjust: 100%; /* Prevent iOS font size adjustment */
+  -webkit-text-size-adjust: 100%;
+  /* Prevent iOS font size adjustment */
   -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -142,14 +236,17 @@ img {
   outline-offset: 2px;
   transition: outline 0.18s;
 }
-button:active, .card:active, a:active {
+
+button:active,
+.card:active,
+a:active {
   filter: brightness(0.96);
   transition: filter 0.13s;
 }
 
 /* 4. Tap highlight color for mobile */
 * {
-  -webkit-tap-highlight-color: rgba(99,102,241,0.18);
+  -webkit-tap-highlight-color: rgba(99, 102, 241, 0.18);
 }
 
 /* 5. Pointer events for scrollbars - allow interaction */
@@ -158,30 +255,48 @@ button:active, .card:active, a:active {
 }
 
 /* 6. Global box-sizing for layout consistency */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 /* 7. Smooth background and color transitions for theme changes */
-body, html, #root, .page-container, .main-content, .card, .modal, .sidebar, .drawer {
-  transition: background 0.25s cubic-bezier(0.4,0,0.2,1), color 0.25s cubic-bezier(0.4,0,0.2,1);
+body,
+html,
+#root,
+.page-container,
+.main-content,
+.card,
+.modal,
+.sidebar,
+.drawer {
+  transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 8. CSS variables for easy theming */
 :root {
-  --accent: #6366f1;
-  --bg-dark: #181c2a;
-  --bg-light: #f3f4f6;
+  --accent: #3b82f6;
+  --bg-dark: #252525;
+  --bg-light: #ebf4fc;
   --text-main: #22223b;
   --text-light: #f3f4f6;
 }
 
 /* 9. Prevent text selection lag on fast scroll, but allow in inputs */
-button, .card, .modal, .sidebar, .drawer, .dialog, .overlay {
+button,
+.card,
+.modal,
+.sidebar,
+.drawer,
+.dialog,
+.overlay {
   -webkit-user-select: none;
   user-select: none;
 }
-input, textarea {
+
+input,
+textarea {
   -webkit-user-select: text;
   user-select: text;
-} 
+}

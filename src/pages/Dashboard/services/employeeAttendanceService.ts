@@ -17,7 +17,7 @@ export const fetchEmployeeAbsentees = async (
   try {
     if (USE_DUMMY_DATA) {
       await new Promise(resolve => setTimeout(resolve, 100));
-      const dummyStaffIds = staff.length > 0 
+      const dummyStaffIds = staff.length > 0
         ? staff.map(s => s.id)
         : Array.from({ length: 50 }, (_, i) => i + 1);
       const dummyAbsentees = dummyStaffIds
@@ -30,7 +30,7 @@ export const fetchEmployeeAbsentees = async (
           session_id: sessionId,
           remarks: null,
         }));
-      
+
       const dummyDetails: Record<string, any> = {};
       dummyAbsentees.forEach((absentee) => {
         dummyDetails[absentee.staff_id] = {
@@ -43,12 +43,12 @@ export const fetchEmployeeAbsentees = async (
           attendance_percentage: Math.floor(Math.random() * 20) + 70,
         };
       });
-      
+
       setAbsentees(dummyAbsentees);
       setStaffDetails(dummyDetails);
       return;
     }
-    
+
     const sessionData = await getCachedSession();
 
     if (!sessionData?.id) {
@@ -57,7 +57,7 @@ export const fetchEmployeeAbsentees = async (
       return;
     }
 
-    const { data: attendanceData, error: attendanceError } = await supabase
+    const { data: allAttendanceData, error: attendanceError } = await supabase
       .from('staff_attendance_records')
       .select(`
         id,
@@ -68,14 +68,16 @@ export const fetchEmployeeAbsentees = async (
       `)
       .eq('date', absentDate)
       .eq('session_id', sessionData.id)
-      .eq('school_id', schoolId)
-      .or('status.eq.absent,status.eq.leave');
+      .eq('school_id', schoolId);
 
     if (attendanceError) {
       throw attendanceError;
     }
 
+    const attendanceData = allAttendanceData || [];
+
     const staffIds = attendanceData
+      .filter((record: any) => record.status === 'absent' || record.status === 'leave')
       .map(record => record.staff_id)
       .filter((id, index, self) => id && self.indexOf(id) === index);
 
@@ -110,14 +112,11 @@ export const fetchEmployeeAbsentees = async (
     const monthStart = format(startOfMonth(parseISO(absentDate)), 'yyyy-MM-dd');
     const monthEnd = format(endOfMonth(parseISO(absentDate)), 'yyyy-MM-dd');
 
-    const fetchedStaffIds = staffData?.map(s => s.id) || [];
-    
-    // Fetch all monthly attendance records for these staff using fetchAllRows to handle pagination
+    // Fetch all monthly attendance records for the entire school to accurately determine working days
     const monthlyAttendance = await fetchAllRows(async (from, to) => {
       const result = await supabase
         .from('staff_attendance_records')
         .select('staff_id, status, date')
-        .in('staff_id', fetchedStaffIds)
         .gte('date', monthStart)
         .lte('date', monthEnd)
         .eq('session_id', sessionData.id)
@@ -126,16 +125,19 @@ export const fetchEmployeeAbsentees = async (
       return { data: result.data, error: result.error };
     });
 
+    const uniqueDates = new Set(monthlyAttendance?.map(a => a.date) || []);
+    const workingDaysCount = uniqueDates.size;
+
     // Calculate monthly statistics for each staff member
-    const monthlyStats: Record<number, { absences: number; leaves: number; total: number; present: number }> = {};
+    const monthlyStats: Record<number, { explicit_absences: number; leaves: number; total_explicit: number; present: number }> = {};
     if (monthlyAttendance) {
       monthlyAttendance.forEach(record => {
         if (!monthlyStats[record.staff_id]) {
-          monthlyStats[record.staff_id] = { absences: 0, leaves: 0, total: 0, present: 0 };
+          monthlyStats[record.staff_id] = { explicit_absences: 0, leaves: 0, total_explicit: 0, present: 0 };
         }
-        monthlyStats[record.staff_id].total++;
+        monthlyStats[record.staff_id].total_explicit++;
         if (record.status === 'absent') {
-          monthlyStats[record.staff_id].absences++;
+          monthlyStats[record.staff_id].explicit_absences++;
         } else if (record.status === 'leave') {
           monthlyStats[record.staff_id].leaves++;
         } else if (record.status === 'present' || record.status === 'late' || record.status === 'half_day') {
@@ -147,14 +149,17 @@ export const fetchEmployeeAbsentees = async (
     // Process and set data with monthly stats
     const details: Record<string, any> = {};
     staffData?.forEach((staffMember: any) => {
-      const stats = monthlyStats[staffMember.id] || { absences: 0, leaves: 0, total: 0, present: 0 };
-      const attendancePercentage = stats.total > 0 
-        ? Math.round((stats.present / stats.total) * 100) 
+      const stats = monthlyStats[staffMember.id] || { explicit_absences: 0, leaves: 0, total_explicit: 0, present: 0 };
+      const missingRecords = Math.max(0, workingDaysCount - stats.total_explicit);
+      const totalAbsences = stats.explicit_absences + stats.leaves + missingRecords;
+
+      const attendancePercentage = workingDaysCount > 0
+        ? Math.round((stats.present / workingDaysCount) * 100)
         : 100;
-      
+
       details[staffMember.id] = {
         ...staffMember,
-        monthly_absences: stats.absences,
+        monthly_absences: totalAbsences,
         monthly_leaves: stats.leaves,
         attendance_percentage: attendancePercentage
       };

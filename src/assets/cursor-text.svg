@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="cursorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93c5fd" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="1" dy="2" stdDeviation="1.5" flood-color="rgba(0,0,0,0.5)" />
+    </filter>
+  </defs>
+  <!-- Outer outline (White) with drop shadow -->
+  <path d="M12 5 L20 5 M16 5 L16 27 M12 27 L20 27" 
+        stroke="#ffffff" 
+        stroke-width="5" 
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#shadow)" />
+  <!-- Inner core (Orange Gradient) -->
+  <path d="M12 5 L20 5 M16 5 L16 27 M12 27 L20 27" 
+        stroke="url(#cursorGrad)" 
+        stroke-width="2" 
+        stroke-linecap="round"
+        stroke-linejoin="round" />
+</svg>

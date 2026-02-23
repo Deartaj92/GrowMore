@@ -103,6 +103,7 @@ import HomeworkDiaryManager from './components/HomeworkDiaryManager';
 import DiaryAnalytics from './components/DiaryAnalytics';
 // Student Management Components
 import GeneralMessagePage from './pages/GeneralMessagePage';
+import StudentCardsPage from './pages/StudentCardsPage';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
 // Attendance Management Components
@@ -113,6 +114,10 @@ import ExpenseAnalyticsPage from './pages/ExpenseAnalyticsPage';
 import OtherIncomeManager from './pages/OtherIncomeManager';
 // Assets & Liabilities Management Components
 import AssetsLiabilitiesManager from './pages/AssetsLiabilities/AssetsLiabilitiesManager';
+// Student Attendance Analytics
+import StudentAttendanceAnalyticsPage from './pages/StudentAttendanceAnalyticsPage';
+// Staff Attendance Analytics
+import StaffAttendanceAnalyticsPage from './pages/StaffAttendanceAnalyticsPage';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
 // Communication Management Components
@@ -289,6 +294,17 @@ const App: React.FC = () => {
                                 requiredPermission="students-list"
                               >
                                 <StudentList />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="students/cards"
+                            element={
+                              <ProtectedRoute
+                                requiredPermission="students-cards"
+                              >
+                                <StudentCardsPage />
                               </ProtectedRoute>
                             }
                           />
@@ -978,10 +994,28 @@ const App: React.FC = () => {
                           />
 
                           <Route
+                            path="attendance/analytics"
+                            element={
+                              <ProtectedRoute requiredPermission="attendance-analytics">
+                                <StudentAttendanceAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
                             path="attendance/staff-half-leaves"
                             element={
                               <ProtectedRoute requiredPermission="staff-half-leaves">
                                 <StaffHalfLeaves />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/staff-analytics"
+                            element={
+                              <ProtectedRoute requiredPermission="attendance-staff-analytics">
+                                <StaffAttendanceAnalyticsPage />
                               </ProtectedRoute>
                             }
                           />
@@ -1177,6 +1211,6 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;
 
 

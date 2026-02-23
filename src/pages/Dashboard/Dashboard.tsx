@@ -26,10 +26,10 @@ import { DashboardTab, FineToDelete, FeeSummary, FeeCollectionDetails, Defaulter
 import { USE_DUMMY_DATA } from './constants';
 import { DashboardContainer } from './styles';
 import { useExpandedState } from './hooks/useExpandedState';
-import { 
-  isNoSessionError, 
-  compareClassNames, 
-  formatCurrency, 
+import {
+  isNoSessionError,
+  compareClassNames,
+  formatCurrency,
   getStatus,
   getCurrentMonthRange
 } from './utils/dashboardUtils';
@@ -65,6 +65,7 @@ import AdmissionsTab from './components/AdmissionsTab/AdmissionsTab';
 import HomeworkTab from './components/HomeworkTab/HomeworkTab';
 import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAttendanceTab';
 import AccountsTab from './components/AccountsTab/AccountsTab';
+import PredictionsTab from './components/PredictionsTab/PredictionsTab';
 import { Box } from '@mui/material';
 import { Assessment, Groups, Payment, PersonAdd, BarChart, People, AttachMoney, AccountBalanceWallet } from '@mui/icons-material';
 
@@ -147,7 +148,7 @@ const Dashboard: React.FC = () => {
   // Handle tab change with immediate loading state reset
   const handleTabChange = useCallback((newTab: DashboardTab) => {
     if (newTab === activeTab) return;
-    
+
     // Immediately set loading states for the new tab before changing
     if (newTab === 'attendance') {
       setAttendanceStatsLoading(true);
@@ -168,7 +169,7 @@ const Dashboard: React.FC = () => {
     } else if (newTab === 'accounts') {
       setAccountsLoading(true);
     }
-    
+
     setActiveTab(newTab);
   }, [activeTab]);
 
@@ -382,7 +383,7 @@ const Dashboard: React.FC = () => {
   // ==========================================
   // DATA FETCHING FUNCTIONS
   // ==========================================
-  
+
   // Fetch all initial data
   const fetchAll = useCallback(async () => {
     if (!user?.school_id) {
@@ -592,13 +593,13 @@ const Dashboard: React.FC = () => {
   // Fetch attendance for date
   useEffect(() => {
     if (activeTab !== 'attendance') return;
-    
+
     const fetchAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
 
       setAttendanceStatsLoading(true);
       if (USE_DUMMY_DATA) {
-        const dummyStudentIds = students.length > 0 
+        const dummyStudentIds = students.length > 0
           ? students.map(s => s.id)
           : Array.from({ length: 500 }, (_, i) => i + 1);
         const dummyAttendance = generateDummyAttendance(dummyStudentIds, dashboardDate, sessionData?.id || 1);
@@ -656,7 +657,7 @@ const Dashboard: React.FC = () => {
   // Fetch attendance trend
   useEffect(() => {
     if (activeTab !== 'attendance') return;
-    
+
     const fetchAttendanceTrend = async () => {
       if (!user?.school_id || !sessionData?.id || !dashboardDate) return;
 
@@ -716,15 +717,15 @@ const Dashboard: React.FC = () => {
 
         // Build array of 30 working days (excluding Sundays and holidays) from selected date going backwards
         const days: Array<{ date: Date; dateStr: string; dayName: string; dayOfWeek: string }> = [];
-        
+
         // Get day names for tooltip
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
+
         // Start from selected date and go back enough days to find 30 working days
         let daysBack = 0;
         let workingDaysCount = 0;
         const maxDaysToCheck = 60; // Look back up to 60 days to find 30 working days
-        
+
         // First, add the selected date if it's a working day
         if (isSelectedDateWorkingDay) {
           const dayName = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`;
@@ -739,14 +740,14 @@ const Dashboard: React.FC = () => {
         } else {
           daysBack = 1;
         }
-        
+
         // Continue looking back to find 30 working days total
         while (workingDaysCount < 30 && daysBack < maxDaysToCheck) {
           const date = new Date(selectedDate);
           date.setDate(date.getDate() - daysBack);
           const dateStr = date.toISOString().slice(0, 10);
           const dayOfWeek = date.getDay();
-          
+
           // Only include if it's not Sunday and not a holiday
           if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr >= startDateStr) {
             const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
@@ -788,7 +789,7 @@ const Dashboard: React.FC = () => {
             .range(from, to);
           return { data: result.data, error: result.error };
         });
-        
+
         if (!allAttendanceData) {
           console.error('Error fetching attendance trend: Failed to fetch data');
           setAttendanceChartsLoading(false);
@@ -815,14 +816,10 @@ const Dashboard: React.FC = () => {
                 const stats = attendanceByDate.get(dateStr);
                 if (stats) {
                   stats.total++;
-                  if (record.status === 'present') {
+                  if (record.status === 'present' || record.status === 'late' || record.status === 'half_day') {
                     stats.present++;
-                  } else if (record.status === 'absent') {
+                  } else if (record.status === 'absent' || record.status === 'leave') {
                     stats.absent++;
-                  } else if (record.status === 'leave') {
-                    stats.leave++;
-                  } else if (record.status === 'late') {
-                    stats.late++;
                   }
                 }
               }
@@ -831,8 +828,8 @@ const Dashboard: React.FC = () => {
         }
 
         if (isSelectedDateWorkingDay && daysDateStrs.has(selectedDateStr)) {
-          const selectedDatePresent = attendanceDataForDate.filter(a => a.status === 'present').length;
-          const selectedDateAbsent = attendanceDataForDate.filter(a => a.status === 'absent').length;
+          const selectedDatePresent = attendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late' || a.status === 'half_day').length;
+          const selectedDateAbsent = attendanceDataForDate.filter(a => a.status === 'absent' || a.status === 'leave').length;
           const selectedDateLeave = attendanceDataForDate.filter(a => a.status === 'leave').length;
           const selectedDateLate = attendanceDataForDate.filter(a => a.status === 'late').length;
           const selectedDateTotal = attendanceDataForDate.length;
@@ -848,17 +845,17 @@ const Dashboard: React.FC = () => {
 
         days.forEach(({ dateStr, dayName, dayOfWeek }) => {
           const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0, absent: 0, leave: 0, late: 0 };
-          const rate = stats.total > 0 ? Math.round(((stats.present + stats.late) / stats.total) * 100) : 0;
-          trendData.push({ 
-            day: dayName, 
-            rate, 
-            dayOfWeek, 
+          const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+          trendData.push({
+            day: dayName,
+            rate,
+            dayOfWeek,
             dateStr,
             present: stats.present,
             absent: stats.absent,
             leave: stats.leave,
             late: stats.late,
-            presentWithLate: stats.present + stats.late // Present includes late
+            presentWithLate: stats.present
           });
           totalRate += rate;
         });
@@ -952,7 +949,7 @@ const Dashboard: React.FC = () => {
 
         const allStudentIds = Array.from(new Set(allStudentHistory.map(sh => sh.student_id)));
         let allAttendanceRecords: any[] = [];
-        
+
         if (allStudentIds.length > 0) {
           const chunkSize = 1000;
           for (let i = 0; i < allStudentIds.length; i += chunkSize) {
@@ -1046,7 +1043,7 @@ const Dashboard: React.FC = () => {
   // Fetch consecutive absent
   useEffect(() => {
     if (activeTab !== 'attendance') return;
-    
+
     const fetchConsecutiveAbsent = async () => {
       if (!user?.school_id || !sessionData?.id) return;
 
@@ -1210,7 +1207,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
-    
+
     // Set loading state before fetching
     setFeeSummaryLoading(true);
     fetchFeeSummaryService(
@@ -1226,7 +1223,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
-    
+
     // Set loading state before fetching
     setCollectionChartsLoading(true);
     fetchCollectionChartsDataService(
@@ -1242,7 +1239,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
-    
+
     // Set loading state before fetching
     setFeeCollectionDetailsLoading(true);
     fetchFeeCollectionDetailsService(
@@ -1257,7 +1254,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (activeTab !== 'fee') return;
     if (!user?.school_id) return;
-    
+
     // Set loading state before fetching
     setDefaultersLoading(true);
     fetchDefaultersDataService(
@@ -1326,14 +1323,14 @@ const Dashboard: React.FC = () => {
   // Fetch employee attendance for date
   useEffect(() => {
     if (activeTab !== 'employeeAttendance') return;
-    
+
     const fetchEmployeeAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
 
       setEmployeeAttendanceStatsLoading(true);
       try {
         if (USE_DUMMY_DATA) {
-          const dummyStaffIds = staff.length > 0 
+          const dummyStaffIds = staff.length > 0
             ? staff.map(s => s.id)
             : Array.from({ length: 50 }, (_, i) => i + 1);
           const dummyAttendance = dummyStaffIds.map((staffId, i) => ({
@@ -1376,10 +1373,10 @@ const Dashboard: React.FC = () => {
   // Calculate employee attendance stats
   // Present count includes both 'present' and 'late' statuses
   const employeePresentToday = employeeAttendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late').length;
-  const employeeAbsentToday = employeeAttendanceDataForDate.filter(a => a.status === 'absent').length;
   const employeeLeaveToday = employeeAttendanceDataForDate.filter(a => a.status === 'leave').length;
   const employeeLateToday = employeeAttendanceDataForDate.filter(a => a.status === 'late').length;
   const employeeHalfDayCount = employeeAttendanceDataForDate.filter(a => a.status === 'half_day').length;
+  const employeeAbsentToday = employeeAttendanceDataForDate.filter(a => a.status === 'absent').length;
   const employeeTotalMarked = employeeAttendanceDataForDate.length;
   const employeePresentPercent = employeeTotalMarked ? Math.round((employeePresentToday / employeeTotalMarked) * 1000) / 10 : 0;
   const employeeAbsentPercent = employeeTotalMarked ? Math.round((employeeAbsentToday / employeeTotalMarked) * 1000) / 10 : 0;
@@ -1408,7 +1405,7 @@ const Dashboard: React.FC = () => {
             const dateStr = date.toISOString().slice(0, 10);
             const dayOfWeek = dayNames[date.getDay()];
             const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
-            
+
             // Generate random counts
             const present = Math.floor(Math.random() * 40) + 30;
             const absent = Math.floor(Math.random() * 10) + 2;
@@ -1417,7 +1414,7 @@ const Dashboard: React.FC = () => {
             const total = present + absent + leave + late;
             const presentWithLate = present + late;
             const rate = total > 0 ? Math.round((presentWithLate / total) * 100) : 0;
-            
+
             trendData.push({
               day: dayName,
               rate,
@@ -1433,7 +1430,7 @@ const Dashboard: React.FC = () => {
           setEmployeeAttendanceTrendData(trendData);
           const lastRate = trendData[trendData.length - 1]?.rate || 85;
           setEmployeeTodayAttendanceRate(lastRate);
-          const avg = trendData.length > 0 
+          const avg = trendData.length > 0
             ? Math.round(trendData.reduce((sum, d) => sum + d.rate, 0) / trendData.length)
             : 0;
           setEmployeeWeekAvgAttendanceRate(avg);
@@ -1482,15 +1479,15 @@ const Dashboard: React.FC = () => {
 
         // Build array of 30 working days (excluding Sundays and holidays) from selected date going backwards
         const days: Array<{ date: Date; dateStr: string; dayName: string; dayOfWeek: string }> = [];
-        
+
         // Get day names for tooltip
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
+
         // Start from selected date and go back enough days to find 30 working days
         let daysBack = 0;
         let workingDaysCount = 0;
         const maxDaysToCheck = 60; // Look back up to 60 days to find 30 working days
-        
+
         // First, add the selected date if it's a working day
         if (isSelectedDateWorkingDay) {
           const dayName = `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}`;
@@ -1505,14 +1502,14 @@ const Dashboard: React.FC = () => {
         } else {
           daysBack = 1;
         }
-        
+
         // Continue looking back to find 30 working days total
         while (workingDaysCount < 30 && daysBack < maxDaysToCheck) {
           const date = new Date(selectedDate);
           date.setDate(date.getDate() - daysBack);
           const dateStr = date.toISOString().slice(0, 10);
           const dayOfWeek = date.getDay();
-          
+
           // Only include if it's not Sunday and not a holiday
           if (dayOfWeek !== 0 && !holidayDates.has(dateStr) && dateStr >= startDateStr) {
             const dayName = `${date.getDate()}/${date.getMonth() + 1}`;
@@ -1554,7 +1551,7 @@ const Dashboard: React.FC = () => {
             .range(from, to);
           return { data: result.data, error: result.error };
         });
-        
+
         if (!allAttendanceData) {
           console.error('Error fetching employee attendance trend: Failed to fetch data');
           setEmployeeAttendanceChartsLoading(false);
@@ -1603,10 +1600,10 @@ const Dashboard: React.FC = () => {
         days.forEach(({ dateStr, dayName, dayOfWeek }) => {
           const stats = attendanceByDate.get(dateStr) || { total: 0, present: 0, absent: 0, leave: 0, late: 0 };
           const rate = stats.total > 0 ? Math.round(((stats.present + stats.late) / stats.total) * 100) : 0;
-          trendData.push({ 
-            day: dayName, 
-            rate, 
-            dayOfWeek, 
+          trendData.push({
+            day: dayName,
+            rate,
+            dayOfWeek,
             dateStr,
             present: stats.present,
             absent: stats.absent,
@@ -1642,7 +1639,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchAccounts = async () => {
       if (!user?.school_id || !accountsDateFrom || !accountsDateTo || activeTab !== 'accounts') return;
-      
+
       await fetchAccountsData(
         String(user.school_id),
         accountsDateFrom,
@@ -1743,7 +1740,7 @@ const Dashboard: React.FC = () => {
 
   // Set footer content with real-time clock and shortcut buttons
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
-  
+
   // Add style to ensure no transitions on footer buttons
   useEffect(() => {
     const styleId = 'footer-buttons-no-transition';
@@ -1763,39 +1760,39 @@ const Dashboard: React.FC = () => {
       `;
       document.head.appendChild(style);
     }
-    
+
     return () => {
       const styleEl = document.getElementById(styleId);
       if (styleEl) styleEl.remove();
     };
   }, []);
-  
+
   useEffect(() => {
     const updateFooter = () => {
       const now = new Date();
-      const timeStr = now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
+      const timeStr = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
         second: '2-digit',
-        hour12: true 
+        hour12: true
       });
-      const dateStr = now.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const dateStr = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       });
-      
+
       // Check if mobile device
       const isMobile = window.innerWidth <= 768;
-      
+
       setFooterContent({
         visible: true,
         content: (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: isMobile ? 'center' : 'space-between', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isMobile ? 'center' : 'space-between',
             width: '100%',
             gap: '1rem'
           }}>
@@ -1805,551 +1802,551 @@ const Dashboard: React.FC = () => {
               <span>{dateStr}</span>
             </div>
             {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {/* Student Attendance Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('student')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/attendance/mark')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'student' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'student' ? '#60a5fa' : 'rgba(59, 130, 246, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {/* Student Attendance Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('student')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <Assessment 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'student' ? '#60a5fa' : '#3b82f6',
+                  <button
+                    onClick={() => navigate('/attendance/mark')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'student' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'student' ? '#60a5fa' : 'rgba(59, 130, 246, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'student' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Mark Student Attendance
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <Assessment
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'student' ? '#60a5fa' : '#3b82f6',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'student' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Mark Student Attendance
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Employee Attendance Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('employee')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/attendance/staff')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'employee' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'employee' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Employee Attendance Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('employee')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <Groups 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'employee' ? '#34d399' : '#10b981',
+                  <button
+                    onClick={() => navigate('/attendance/staff')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'employee' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'employee' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'employee' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Mark Employee Attendance
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <Groups
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'employee' ? '#34d399' : '#10b981',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'employee' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Mark Employee Attendance
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Fee Collection Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('fee')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/fee-collection')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'fee' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'fee' ? '#a78bfa' : 'rgba(139, 92, 246, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Fee Collection Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('fee')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <Payment 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'fee' ? '#a78bfa' : '#8b5cf6',
+                  <button
+                    onClick={() => navigate('/fee-collection')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'fee' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'fee' ? '#a78bfa' : 'rgba(139, 92, 246, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'fee' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Fee Collection
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <Payment
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'fee' ? '#a78bfa' : '#8b5cf6',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'fee' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Fee Collection
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Add Student Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('addStudent')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/students/add')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'addStudent' ? 'rgba(34, 197, 94, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'addStudent' ? '#4ade80' : 'rgba(34, 197, 94, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Add Student Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('addStudent')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <PersonAdd 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'addStudent' ? '#4ade80' : '#22c55e',
+                  <button
+                    onClick={() => navigate('/students/add')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'addStudent' ? 'rgba(34, 197, 94, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'addStudent' ? '#4ade80' : 'rgba(34, 197, 94, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'addStudent' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Add Student
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <PersonAdd
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'addStudent' ? '#4ade80' : '#22c55e',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'addStudent' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Add Student
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Reports Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('reports')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/reports')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'reports' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'reports' ? '#fbbf24' : 'rgba(234, 179, 8, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Reports Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('reports')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <BarChart 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'reports' ? '#fbbf24' : '#eab308',
+                  <button
+                    onClick={() => navigate('/reports')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'reports' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'reports' ? '#fbbf24' : 'rgba(234, 179, 8, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'reports' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Reports
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <BarChart
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'reports' ? '#fbbf24' : '#eab308',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'reports' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Reports
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Students List Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('students')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/students/list')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'students' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'students' ? '#818cf8' : 'rgba(99, 102, 241, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Students List Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('students')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <People 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'students' ? '#818cf8' : '#6366f1',
+                  <button
+                    onClick={() => navigate('/students/list')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'students' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'students' ? '#818cf8' : 'rgba(99, 102, 241, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'students' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Students List
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <People
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'students' ? '#818cf8' : '#6366f1',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'students' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Students List
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Fine Collection Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('fineCollect')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/fines/collect')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'fineCollect' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'fineCollect' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Fine Collection Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('fineCollect')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <AttachMoney 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'fineCollect' ? '#34d399' : '#10b981',
+                  <button
+                    onClick={() => navigate('/fines/collect')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'fineCollect' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'fineCollect' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'fineCollect' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Fine Collection
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
-              </div>
+                    <AttachMoney
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'fineCollect' ? '#34d399' : '#10b981',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'fineCollect' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Fine Collection
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Remaining Fine Button */}
-              <div 
-                style={{ position: 'relative' }}
-                onMouseEnter={() => setHoveredButton('remainingFine')}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                <button
-                  onClick={() => navigate('/fines/remaining')}
-                  className="footer-icon-button"
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: hoveredButton === 'remainingFine' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
-                    border: `1.5px solid ${hoveredButton === 'remainingFine' ? '#fbbf24' : 'rgba(245, 158, 11, 0.4)'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'none !important'
-                  }}
+                {/* Remaining Fine Button */}
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setHoveredButton('remainingFine')}
+                  onMouseLeave={() => setHoveredButton(null)}
                 >
-                  <AccountBalanceWallet 
-                    sx={{ 
-                      fontSize: '16px',
-                      color: hoveredButton === 'remainingFine' ? '#fbbf24' : '#f59e0b',
+                  <button
+                    onClick={() => navigate('/fines/remaining')}
+                    className="footer-icon-button"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: hoveredButton === 'remainingFine' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                      border: `1.5px solid ${hoveredButton === 'remainingFine' ? '#fbbf24' : 'rgba(245, 158, 11, 0.4)'}`,
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'visible',
                       transition: 'none !important'
                     }}
-                  />
-                </button>
-                {hoveredButton === 'remainingFine' && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: isDark ? '#1e293b' : '#0f172a',
-                      color: '#fff',
-                      padding: '3px 6px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      zIndex: 10001,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                      maxWidth: 'calc(100vw - 16px)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
                   >
-                    Remaining Fine
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      border: '3px solid transparent',
-                      borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                    }} />
-                  </div>
-                )}
+                    <AccountBalanceWallet
+                      sx={{
+                        fontSize: '16px',
+                        color: hoveredButton === 'remainingFine' ? '#fbbf24' : '#f59e0b',
+                        transition: 'none !important'
+                      }}
+                    />
+                  </button>
+                  {hoveredButton === 'remainingFine' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#1e293b' : '#0f172a',
+                        color: '#fff',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 10001,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                        maxWidth: 'calc(100vw - 16px)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      Remaining Fine
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        border: '3px solid transparent',
+                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                      }} />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
             )}
           </div>
         )
@@ -2636,7 +2633,7 @@ const Dashboard: React.FC = () => {
 
       const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
       const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-      
+
       if (isCapacitor) {
         const pdfBlob = doc.output('blob');
         await savePdf(pdfBlob, `Absent Students (${formattedDate}).pdf`, true);
@@ -2792,7 +2789,7 @@ const Dashboard: React.FC = () => {
 
       const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
       const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-      
+
       if (isCapacitor) {
         const pdfBlob = doc.output('blob');
         await savePdf(pdfBlob, `Consecutive Absent Students (${formattedDate}).pdf`, true);
@@ -3031,7 +3028,7 @@ const Dashboard: React.FC = () => {
 
       const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
       const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-      
+
       if (isCapacitor) {
         const pdfBlob = doc.output('blob');
         await savePdf(pdfBlob, `Present Students (${formattedDate}).pdf`, true);
@@ -3307,7 +3304,7 @@ const Dashboard: React.FC = () => {
 
       const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
       const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-      
+
       if (isCapacitor) {
         const pdfBlob = doc.output('blob');
         await savePdf(pdfBlob, `Absent Employees (${formattedDate}).pdf`, true);
@@ -3391,7 +3388,7 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      const presentRecords = employeeAttendanceDataForDate.filter(a => 
+      const presentRecords = employeeAttendanceDataForDate.filter(a =>
         a.status === 'present' || a.status === 'late' || a.status === 'half_day'
       );
       if (presentRecords.length === 0) {
@@ -3443,7 +3440,7 @@ const Dashboard: React.FC = () => {
         .eq('session_id', sessionData.id)
         .eq('school_id', user.school_id);
 
-      const presentCount = completeAttendanceData?.filter(a => 
+      const presentCount = completeAttendanceData?.filter(a =>
         a.status === 'present' || a.status === 'late' || a.status === 'half_day'
       ).length || 0;
       const absentCount = completeAttendanceData?.filter(a => a.status === 'absent').length || 0;
@@ -3490,8 +3487,8 @@ const Dashboard: React.FC = () => {
           employee.name,
           employee.role,
           employee.mobile,
-          employee.status === 'late' ? 'Late' : 
-          employee.status === 'half_day' ? 'Half Day' : 'Present'
+          employee.status === 'late' ? 'Late' :
+            employee.status === 'half_day' ? 'Half Day' : 'Present'
         ]),
         theme: 'grid',
         headStyles: {
@@ -3531,7 +3528,7 @@ const Dashboard: React.FC = () => {
 
       const isCapacitor = !!(window as any).Capacitor && !!(window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform();
       const isElectron = !!(window as any).electron || (typeof window !== 'undefined' && (window as any).process?.type === 'renderer');
-      
+
       if (isCapacitor) {
         const pdfBlob = doc.output('blob');
         await savePdf(pdfBlob, `Present Employees (${formattedDate}).pdf`, true);
@@ -3736,165 +3733,169 @@ const Dashboard: React.FC = () => {
         <Loader />
       ) : (
         <>
-      {activeTab === 'attendance' && (
-        <AttendanceTab
-          presentToday={presentToday}
-          absentToday={absentToday}
-          leaveToday={leaveToday}
-          lateToday={lateToday}
-          halfLeaveCount={halfLeaveCount}
-          presentPercent={presentPercent}
-          absentPercent={absentPercent}
-          leavePercent={leavePercent}
-          latePercent={latePercent}
-          halfLeavePercent={halfLeavePercent}
-          attendanceStatsLoading={attendanceStatsLoading}
-          attendanceChartsLoading={attendanceChartsLoading}
-          attendanceTrendData={attendanceTrendData}
-          classAttendanceData={classAttendanceData}
-          todayAttendanceRate={todayAttendanceRate}
-          weekAvgAttendanceRate={weekAvgAttendanceRate}
-          consecutiveAbsentLoading={consecutiveAbsentLoading}
-          consecutiveAbsentStudents={consecutiveAbsentStudents}
-          absentDate={absentDate}
-          setAbsentDate={setAbsentDate}
-          isAbsenteesExpanded={isAbsenteesExpanded}
-          setIsAbsenteesExpanded={setIsAbsenteesExpanded}
-          absentees={absentees}
-          studentDetails={studentDetails}
-          attendanceDataForDate={attendanceDataForDate}
-          whatsappProcessing={whatsappProcessing}
-          setWhatsappProcessing={setWhatsappProcessing}
-          setShowWhatsAppSender={setShowWhatsAppSender}
-          setWhatsappNotificationData={setWhatsappNotificationData}
-          exportAbsentLoading={exportAbsentLoading}
-          exportPresentLoading={exportPresentLoading}
-          exportAbsenteesPDF={exportAbsenteesPDF}
-          exportConsecutiveAbsentPDF={exportConsecutiveAbsentPDF}
-          exportPresentStudentsPDF={exportPresentStudentsPDF}
-          showExportDropdown={showExportDropdown}
-          setShowExportDropdown={setShowExportDropdown}
-          exportDropdownRef={exportDropdownRef}
-          dropdownIdx={dropdownIdx}
-          setDropdownIdx={setDropdownIdx}
-          dropdownPos={dropdownPos}
-          setDropdownPos={setDropdownPos}
-          dropdownDirection={dropdownDirection}
-          setDropdownDirection={setDropdownDirection}
-          dropdownRef={dropdownRef}
-          hoveredAvatar={hoveredAvatar}
-          setHoveredAvatar={setHoveredAvatar}
-          setAbsentees={setAbsentees}
-          setAttendanceDataForDate={setAttendanceDataForDate}
-          user={user}
-          schoolName={schoolName}
-          hasRightCards={hasRightCards}
-          showAbsentees={showAbsentees}
-          isMobile={isMobile}
-        />
-      )}
+          {activeTab === 'attendance' && (
+            <AttendanceTab
+              presentToday={presentToday}
+              absentToday={absentToday}
+              leaveToday={leaveToday}
+              lateToday={lateToday}
+              halfLeaveCount={halfLeaveCount}
+              presentPercent={presentPercent}
+              absentPercent={absentPercent}
+              leavePercent={leavePercent}
+              latePercent={latePercent}
+              halfLeavePercent={halfLeavePercent}
+              attendanceStatsLoading={attendanceStatsLoading}
+              attendanceChartsLoading={attendanceChartsLoading}
+              attendanceTrendData={attendanceTrendData}
+              classAttendanceData={classAttendanceData}
+              todayAttendanceRate={todayAttendanceRate}
+              weekAvgAttendanceRate={weekAvgAttendanceRate}
+              consecutiveAbsentLoading={consecutiveAbsentLoading}
+              consecutiveAbsentStudents={consecutiveAbsentStudents}
+              absentDate={absentDate}
+              setAbsentDate={setAbsentDate}
+              isAbsenteesExpanded={isAbsenteesExpanded}
+              setIsAbsenteesExpanded={setIsAbsenteesExpanded}
+              absentees={absentees}
+              studentDetails={studentDetails}
+              attendanceDataForDate={attendanceDataForDate}
+              whatsappProcessing={whatsappProcessing}
+              setWhatsappProcessing={setWhatsappProcessing}
+              setShowWhatsAppSender={setShowWhatsAppSender}
+              setWhatsappNotificationData={setWhatsappNotificationData}
+              exportAbsentLoading={exportAbsentLoading}
+              exportPresentLoading={exportPresentLoading}
+              exportAbsenteesPDF={exportAbsenteesPDF}
+              exportConsecutiveAbsentPDF={exportConsecutiveAbsentPDF}
+              exportPresentStudentsPDF={exportPresentStudentsPDF}
+              showExportDropdown={showExportDropdown}
+              setShowExportDropdown={setShowExportDropdown}
+              exportDropdownRef={exportDropdownRef}
+              dropdownIdx={dropdownIdx}
+              setDropdownIdx={setDropdownIdx}
+              dropdownPos={dropdownPos}
+              setDropdownPos={setDropdownPos}
+              dropdownDirection={dropdownDirection}
+              setDropdownDirection={setDropdownDirection}
+              dropdownRef={dropdownRef}
+              hoveredAvatar={hoveredAvatar}
+              setHoveredAvatar={setHoveredAvatar}
+              setAbsentees={setAbsentees}
+              setAttendanceDataForDate={setAttendanceDataForDate}
+              user={user}
+              schoolName={schoolName}
+              hasRightCards={hasRightCards}
+              showAbsentees={showAbsentees}
+              isMobile={isMobile}
+            />
+          )}
 
-      {activeTab === 'fee' && (
-        <FeeTab
-          feeSummary={feeSummary}
-          feeSummaryLoading={feeSummaryLoading}
-          collectionChartsLoading={collectionChartsLoading}
-          dailyCollectionData={dailyCollectionData}
-          monthlyCollectionData={monthlyCollectionData}
-          feeCollectionDetails={feeCollectionDetails}
-          feeCollectionDetailsLoading={feeCollectionDetailsLoading}
-          defaultersData={defaultersData}
-          defaultersLoading={defaultersLoading}
-        />
-      )}
+          {activeTab === 'fee' && (
+            <FeeTab
+              feeSummary={feeSummary}
+              feeSummaryLoading={feeSummaryLoading}
+              collectionChartsLoading={collectionChartsLoading}
+              dailyCollectionData={dailyCollectionData}
+              monthlyCollectionData={monthlyCollectionData}
+              feeCollectionDetails={feeCollectionDetails}
+              feeCollectionDetailsLoading={feeCollectionDetailsLoading}
+              defaultersData={defaultersData}
+              defaultersLoading={defaultersLoading}
+            />
+          )}
 
-      {activeTab === 'admissions' && (
-        <AdmissionsTab
-          admissionsDateFrom={admissionsDateFrom}
-          setAdmissionsDateFrom={setAdmissionsDateFrom}
-          admissionsDateTo={admissionsDateTo}
-          setAdmissionsDateTo={setAdmissionsDateTo}
-          admissionsLoading={admissionsLoading}
-          admissionsData={admissionsData}
-          admissionsChartData={admissionsChartData}
-          withdrawalsChartData={withdrawalsChartData}
-          genderChartData={genderChartData}
-          classStrengths={classStrengths}
-          latestAdmissions={latestAdmissions}
-          todaysBirthdays={todaysBirthdays}
-        />
-      )}
+          {activeTab === 'admissions' && (
+            <AdmissionsTab
+              admissionsDateFrom={admissionsDateFrom}
+              setAdmissionsDateFrom={setAdmissionsDateFrom}
+              admissionsDateTo={admissionsDateTo}
+              setAdmissionsDateTo={setAdmissionsDateTo}
+              admissionsLoading={admissionsLoading}
+              admissionsData={admissionsData}
+              admissionsChartData={admissionsChartData}
+              withdrawalsChartData={withdrawalsChartData}
+              genderChartData={genderChartData}
+              classStrengths={classStrengths}
+              latestAdmissions={latestAdmissions}
+              todaysBirthdays={todaysBirthdays}
+            />
+          )}
 
-      {activeTab === 'homework' && (
-        <HomeworkTab
-          showHomeworkDiary={showHomeworkDiary}
-          homeworkViewMode={homeworkViewMode}
-          setHomeworkViewMode={setHomeworkViewMode}
-          homeworkLoading={homeworkLoading}
-          homeworkDiaryData={homeworkDiaryData}
-          dashboardDate={dashboardDate}
-        />
-      )}
+          {activeTab === 'homework' && (
+            <HomeworkTab
+              showHomeworkDiary={showHomeworkDiary}
+              homeworkViewMode={homeworkViewMode}
+              setHomeworkViewMode={setHomeworkViewMode}
+              homeworkLoading={homeworkLoading}
+              homeworkDiaryData={homeworkDiaryData}
+              dashboardDate={dashboardDate}
+            />
+          )}
 
-      {activeTab === 'employeeAttendance' && (
-        <EmployeeAttendanceTab
-          presentToday={employeePresentToday}
-          absentToday={employeeAbsentToday}
-          leaveToday={employeeLeaveToday}
-          lateToday={employeeLateToday}
-          halfDayCount={employeeHalfDayCount}
-          presentPercent={employeePresentPercent}
-          absentPercent={employeeAbsentPercent}
-          leavePercent={employeeLeavePercent}
-          latePercent={employeeLatePercent}
-          halfDayPercent={employeeHalfDayPercent}
-          attendanceStatsLoading={employeeAttendanceStatsLoading}
-          attendanceChartsLoading={employeeAttendanceChartsLoading}
-          attendanceTrendData={employeeAttendanceTrendData}
-          todayAttendanceRate={employeeTodayAttendanceRate}
-          weekAvgAttendanceRate={employeeWeekAvgAttendanceRate}
-          absentDate={employeeAbsentDate}
-          setAbsentDate={setEmployeeAbsentDate}
-          isAbsenteesExpanded={isEmployeeAbsenteesExpanded}
-          setIsAbsenteesExpanded={setIsEmployeeAbsenteesExpanded}
-          absentees={employeeAbsentees}
-          staffDetails={staffDetails}
-          attendanceDataForDate={employeeAttendanceDataForDate}
-          exportAbsentLoading={exportEmployeeAbsentLoading}
-          exportPresentLoading={exportEmployeePresentLoading}
-          exportAbsenteesPDF={exportEmployeeAbsenteesPDF}
-          exportPresentEmployeesPDF={exportPresentEmployeesPDF}
-          showExportDropdown={showExportDropdown}
-          setShowExportDropdown={setShowExportDropdown}
-          exportDropdownRef={exportDropdownRef}
-          dropdownIdx={dropdownIdx}
-          setDropdownIdx={setDropdownIdx}
-          dropdownPos={dropdownPos}
-          setDropdownPos={setDropdownPos}
-          dropdownDirection={dropdownDirection}
-          setDropdownDirection={setDropdownDirection}
-          dropdownRef={dropdownRef}
-          hoveredAvatar={hoveredAvatar}
-          setHoveredAvatar={setHoveredAvatar}
-          setAbsentees={setEmployeeAbsentees}
-          setAttendanceDataForDate={setEmployeeAttendanceDataForDate}
-          user={user}
-          schoolName={schoolName}
-          showAbsentees={true}
-          isMobile={isMobile}
-        />
-      )}
+          {activeTab === 'employeeAttendance' && (
+            <EmployeeAttendanceTab
+              presentToday={employeePresentToday}
+              absentToday={employeeAbsentToday}
+              leaveToday={employeeLeaveToday}
+              lateToday={employeeLateToday}
+              halfDayCount={employeeHalfDayCount}
+              presentPercent={employeePresentPercent}
+              absentPercent={employeeAbsentPercent}
+              leavePercent={employeeLeavePercent}
+              latePercent={employeeLatePercent}
+              halfDayPercent={employeeHalfDayPercent}
+              attendanceStatsLoading={employeeAttendanceStatsLoading}
+              attendanceChartsLoading={employeeAttendanceChartsLoading}
+              attendanceTrendData={employeeAttendanceTrendData}
+              todayAttendanceRate={employeeTodayAttendanceRate}
+              weekAvgAttendanceRate={employeeWeekAvgAttendanceRate}
+              absentDate={employeeAbsentDate}
+              setAbsentDate={setEmployeeAbsentDate}
+              isAbsenteesExpanded={isEmployeeAbsenteesExpanded}
+              setIsAbsenteesExpanded={setIsEmployeeAbsenteesExpanded}
+              absentees={employeeAbsentees}
+              staffDetails={staffDetails}
+              attendanceDataForDate={employeeAttendanceDataForDate}
+              exportAbsentLoading={exportEmployeeAbsentLoading}
+              exportPresentLoading={exportEmployeePresentLoading}
+              exportAbsenteesPDF={exportEmployeeAbsenteesPDF}
+              exportPresentEmployeesPDF={exportPresentEmployeesPDF}
+              showExportDropdown={showExportDropdown}
+              setShowExportDropdown={setShowExportDropdown}
+              exportDropdownRef={exportDropdownRef}
+              dropdownIdx={dropdownIdx}
+              setDropdownIdx={setDropdownIdx}
+              dropdownPos={dropdownPos}
+              setDropdownPos={setDropdownPos}
+              dropdownDirection={dropdownDirection}
+              setDropdownDirection={setDropdownDirection}
+              dropdownRef={dropdownRef}
+              hoveredAvatar={hoveredAvatar}
+              setHoveredAvatar={setHoveredAvatar}
+              setAbsentees={setEmployeeAbsentees}
+              setAttendanceDataForDate={setEmployeeAttendanceDataForDate}
+              user={user}
+              schoolName={schoolName}
+              showAbsentees={true}
+              isMobile={isMobile}
+            />
+          )}
 
-      {activeTab === 'accounts' && (
-        <AccountsTab
-          accountsData={accountsData}
-          accountsLoading={accountsLoading}
-          accountsDateFrom={accountsDateFrom}
-          setAccountsDateFrom={setAccountsDateFrom}
-          accountsDateTo={accountsDateTo}
-          setAccountsDateTo={setAccountsDateTo}
-        />
-      )}
+          {activeTab === 'accounts' && (
+            <AccountsTab
+              accountsData={accountsData}
+              accountsLoading={accountsLoading}
+              accountsDateFrom={accountsDateFrom}
+              setAccountsDateFrom={setAccountsDateFrom}
+              accountsDateTo={accountsDateTo}
+              setAccountsDateTo={setAccountsDateTo}
+            />
+          )}
+
+          {activeTab === 'predictions' && (
+            <PredictionsTab user={user} />
+          )}
         </>
       )}
 
@@ -3909,7 +3910,7 @@ const Dashboard: React.FC = () => {
             background: '#fff',
             borderRadius: '12px',
             boxShadow: '0 4px 24px #0007',
-            border: '2px solid #4a6cf7',
+            border: `2px solid ${(theme as any).ACCENT}`,
             padding: 4,
             width: 120,
             height: 120,

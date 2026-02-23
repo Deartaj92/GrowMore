@@ -5,7 +5,7 @@
 export const pathToPermissionKey: Record<string, string> = {
   // Dashboard
   '/dashboard': 'dashboard',
-  
+
   // Students
   '/students/list': 'students-list',
   '/students/add': 'students-add',
@@ -14,20 +14,23 @@ export const pathToPermissionKey: Record<string, string> = {
   '/bulk-promote-demote': 'students-bulk-promote',
   '/family-management': 'family-management',
   '/students/withdrawal-register': 'withdrawal-register',
+  '/students/cards': 'students-cards',
   '/student/:id': 'student-profile',
   '/students/profile/:id': 'student-profile',
   '/profile': 'teacher-profile',
   '/employees/profile/:id': 'teacher-profile',
-  
+
   // Attendance
   '/attendance/mark': 'attendance-mark',
   '/attendance/report': 'attendance-report',
+  '/attendance/analytics': 'attendance-analytics',
   '/attendance/staff': 'attendance-staff',
   '/attendance/staff-report': 'attendance-staff-report',
+  '/attendance/staff-analytics': 'attendance-staff-analytics',
   '/attendance/half-leaves': 'half-leaves',
   '/attendance/staff-half-leaves': 'staff-half-leaves',
   '/attendance/leave-requests': 'leave-requests',
-  
+
   // Reports
   '/reports': 'reports-students', // Student Reports page
   '/reports/students': 'reports-students',
@@ -36,13 +39,13 @@ export const pathToPermissionKey: Record<string, string> = {
   '/reports/employee-reports': 'reports-employees',
   '/reports/staff-attendance': 'reports-students', // Using same permission
   '/reports/financial': 'reports-students', // Using same permission
-  
+
   // Employees
   '/employees/list': 'employees-list',
   '/employees/add': 'employees-add',
   '/teacher-subjects': 'teacher-subjects',
   '/timetable': 'timetable',
-  
+
   // Fee Collection
   '/fee-structure-management': 'fee-structure',
   '/fee-plans': 'fee-plans',
@@ -61,18 +64,18 @@ export const pathToPermissionKey: Record<string, string> = {
   '/cash-flow': 'cash-flow-view',
   '/payment-history': 'payment-history',
   '/ledger': 'fee-ledger',
-  
+
   // Finance
   '/expense-manager': 'expense-manager',
   '/expense-analytics': 'expense-analytics',
   '/other-income-manager': 'other-income-manager',
-  
+
   // Fine Management
   '/fines/assign': 'fine-assign',
   '/fines/collect': 'fine-collect',
   '/fines/remaining': 'fine-remaining',
   '/fines/statistics': 'fine-statistics',
-  
+
   // Communication
   '/students/general-message': 'messages',
   '/settings/user-announcements': 'announcements',
@@ -81,7 +84,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/enquiries/dashboard': 'enquiry-dashboard',
   '/enquiries/list': 'enquiry-list',
   '/enquiries/create': 'enquiry-create',
-  
+
   // Academics
   '/examinations': 'examinations',
   '/marks-entry': 'marks-entry',
@@ -96,7 +99,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/test-analytics': 'test-analytics',
   '/homework-diary': 'homework-diary',
   '/diary-analytics': 'diary-analytics',
-  
+
   // Settings
   '/settings/institute-profile': 'settings-institute-profile',
   '/settings/classes': 'settings-classes',
@@ -108,16 +111,16 @@ export const pathToPermissionKey: Record<string, string> = {
   '/settings/rendersettings': 'settings-landing-page',
   '/settings/general-settings': 'settings-general',
   '/settings/notifications': 'settings-notifications',
-  
+
   // Payroll Management
   '/payroll': 'payroll-view',
-  
+
   // Assets & Liabilities Management
   '/assets-liabilities': 'assets-liabilities-view',
-  
+
   // User Dashboard
   '/user': 'dashboard', // User dashboard uses dashboard permission
-  
+
   // Additional routes
   '/employees': 'employees-list',
   '/finance': 'fee-structure', // Finance dashboard
@@ -157,7 +160,7 @@ export function shouldShowMenuItem(
     // If no permission key mapped, allow access (backward compatibility)
     return true;
   }
-  
+
   // Check permission based on role_id from roles table
   return userPermissions.has(permissionKey);
 }

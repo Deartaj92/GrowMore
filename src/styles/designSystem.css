@@ -1,0 +1,173 @@
+/* 
+  GROW MORE - GLOBAL DESIGN SYSTEM
+  =================================
+  This file contains the global custom styling for colors and sizing.
+  It is designed so you can apply styles systematically to pages,
+  but easily skip/override them when needed.
+*/
+
+:root {
+    /* --- 1. GLOBAL COLORS --- */
+    /* Primary & Accents */
+    --gm-primary: #3b82f6;
+    --gm-primary-light: #60a5fa;
+    --gm-primary-dark: #2563eb;
+    --gm-secondary: #6c757d;
+
+    /* Status Colors */
+    --gm-success: #10b981;
+    --gm-error: #ef4444;
+    --gm-warning: #f59e0b;
+    --gm-info: #3b82f6;
+
+    /* Surfaces & Backgrounds */
+    --gm-bg-main: #ebf4fc;
+    --gm-bg-card: #ffffff;
+    --gm-bg-dark: #252525;
+    --gm-bg-card-dark: #2a2a2a;
+
+    /* Text Colors */
+    --gm-text-main: #1f2937;
+    --gm-text-muted: #6b7280;
+    --gm-text-light: #f3f4f6;
+
+    /* Borders & Dividers */
+    --gm-border-light: #e5e7eb;
+    --gm-border-dark: #374151;
+
+
+    /* --- 2. GLOBAL SIZING (Paddings, Margins, Gaps) --- */
+    --gm-spacing-xs: 0.25rem;
+    /* 4px */
+    --gm-spacing-sm: 0.5rem;
+    /* 8px */
+    --gm-spacing-md: 1rem;
+    /* 16px */
+    --gm-spacing-lg: 1.5rem;
+    /* 24px */
+    --gm-spacing-xl: 2rem;
+    /* 32px */
+    --gm-spacing-2xl: 3rem;
+    /* 48px */
+
+
+    /* --- 3. GLOBAL BORDER RADIUS (Rounding) --- */
+    --gm-radius-sm: 4px;
+    --gm-radius-md: 8px;
+    --gm-radius-lg: 12px;
+    --gm-radius-xl: 16px;
+    --gm-radius-full: 9999px;
+
+
+    /* --- 4. GLOBAL SIZING (Width/Height scales) --- */
+    --gm-element-height-sm: 32px;
+    --gm-element-height-md: 40px;
+    --gm-element-height-lg: 48px;
+
+
+    /* --- 5. GLOBAL TYPOGRAPHY SIZING --- */
+    --gm-text-xs: 0.75rem;
+    --gm-text-sm: 0.875rem;
+    --gm-text-base: 1rem;
+    --gm-text-lg: 1.125rem;
+    --gm-text-xl: 1.25rem;
+    --gm-text-2xl: 1.5rem;
+    --gm-text-3xl: 1.875rem;
+}
+
+
+/* ==========================================================================
+   GLOBAL STYLE APPLICATOR
+   Apply class "gm-global-styling" to a parent container (like a Page or Card)
+   to automatically enforce standard coloring and sizing on its children.
+   ========================================================================== */
+
+.gm-global-styling {
+    background-color: var(--gm-bg-main);
+    color: var(--gm-text-main);
+    font-size: var(--gm-text-base);
+    border-radius: var(--gm-radius-md);
+}
+
+/* Dark mode support within the global styling */
+.gm-theme-dark .gm-global-styling,
+.gm-global-styling.gm-theme-dark {
+    background-color: var(--gm-bg-dark);
+    color: var(--gm-text-light);
+}
+
+/* Standardizing Buttons */
+.gm-global-styling button:not(.gm-skip-styling) {
+    min-height: var(--gm-element-height-md);
+    padding: var(--gm-spacing-sm) var(--gm-spacing-md);
+    border-radius: var(--gm-radius-md);
+    background-color: var(--gm-primary);
+    color: white;
+    font-size: var(--gm-text-sm);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.gm-global-styling button:not(.gm-skip-styling):hover {
+    background-color: var(--gm-primary-dark);
+}
+
+/* Standardizing Inputs */
+.gm-global-styling input:not(.gm-skip-styling),
+.gm-global-styling select:not(.gm-skip-styling),
+.gm-global-styling textarea:not(.gm-skip-styling) {
+    min-height: var(--gm-element-height-md);
+    padding: var(--gm-spacing-sm) var(--gm-spacing-md);
+    border-radius: var(--gm-radius-md);
+    border: 1px solid var(--gm-border-light);
+    font-size: var(--gm-text-base);
+    width: 100%;
+}
+
+.gm-theme-dark .gm-global-styling input:not(.gm-skip-styling),
+.gm-theme-dark .gm-global-styling select:not(.gm-skip-styling),
+.gm-theme-dark .gm-global-styling textarea:not(.gm-skip-styling) {
+    background-color: var(--gm-bg-card-dark);
+    border-color: var(--gm-border-dark);
+    color: var(--gm-text-light);
+}
+
+/* Standardizing Cards/Containers */
+.gm-global-styling .gm-card:not(.gm-skip-styling) {
+    background-color: var(--gm-bg-card);
+    padding: var(--gm-spacing-lg);
+    border-radius: var(--gm-radius-lg);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-bottom: var(--gm-spacing-md);
+}
+
+.gm-theme-dark .gm-global-styling .gm-card:not(.gm-skip-styling) {
+    background-color: var(--gm-bg-card-dark);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Utilities for Spacing and Display */
+.gm-global-styling .gm-flex-row:not(.gm-skip-styling) {
+    display: flex;
+    gap: var(--gm-spacing-md);
+    align-items: center;
+}
+
+.gm-global-styling .gm-flex-col:not(.gm-skip-styling) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gm-spacing-md);
+}
+
+/* ==========================================================================
+   OPT-OUT (SKIP STYLING) MECHANISM
+   Apply class "gm-skip-styling" to any element (or parent) inside
+   .gm-global-styling to prevent/override the global styles.
+   ========================================================================== */
+
+/* 
+  If you wrap an area in .gm-skip-styling, you can optionally reset its 
+  properties to unset, or let the component's inline styles take over entirely.
+  The :not(.gm-skip-styling) pseudo-class handles the exclusion without needing specific rules here.
+*/

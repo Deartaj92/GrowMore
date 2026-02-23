@@ -1,13 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { 
+import {
   MoreVert,
   EventNote,
   AccountBalanceWallet,
   PersonAdd,
   Assignment,
   Groups,
-  AccountBalance
+  AccountBalance,
+  Lightbulb
 } from '@mui/icons-material';
 import { TabContainer, TabsWrapper, TabButton, DashboardDateInput, OverflowButton, TabsContainer, DropdownMenu, DropdownMenuItem } from '../../styles';
 import { DashboardTab } from '../../types';
@@ -49,7 +50,8 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     { id: 'admissions', label: 'Admissions', icon: <PersonAdd /> },
     { id: 'homework', label: 'Homework Diary', icon: <Assignment /> },
     { id: 'employeeAttendance', label: 'Employee Attendance', icon: <Groups /> },
-    { id: 'accounts', label: 'Accounts', icon: <AccountBalance /> }
+    { id: 'accounts', label: 'Accounts', icon: <AccountBalance /> },
+    { id: 'predictions', label: 'Predictions (ML)', icon: <Lightbulb /> }
   ];
 
   // Get all hidden tabs (not visible in container)
@@ -57,7 +59,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     const wrapper = tabsWrapperRef.current;
     const container = tabsContainerRef.current;
     if (!wrapper || !container) return [];
-    
+
     const tabButtons = Array.from(wrapper.querySelectorAll('[data-tab-id]'));
     const containerRect = container.getBoundingClientRect();
 
@@ -75,7 +77,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
         }
       }
     });
-    
+
     return hidden;
   }, [tabs, hasOverflow]);
 
@@ -95,7 +97,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   // Check overflow on mount and resize
   useEffect(() => {
     checkOverflow();
-    
+
     const resizeObserver = new ResizeObserver(() => {
       checkOverflow();
     });
@@ -128,7 +130,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    
+
     const hidden = getHiddenTabs();
     if (hidden.length > 0) {
       setIsDropdownOpen(true);
@@ -140,7 +142,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
     }
-    
+
     closeTimeoutRef.current = setTimeout(() => {
       setIsDropdownOpen(false);
       closeTimeoutRef.current = null;
@@ -199,15 +201,15 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       <TabsContainer ref={tabsContainerRef}>
         <TabsWrapper ref={tabsWrapperRef} $hideScrollbar={true} $preventScroll={true}>
           {tabs.map((tab) => (
-        <TabButton
+            <TabButton
               key={tab.id}
               data-tab-id={tab.id}
               active={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-        >
+            >
               {tab.icon}
               {tab.label}
-        </TabButton>
+            </TabButton>
           ))}
         </TabsWrapper>
         {hasOverflow && (

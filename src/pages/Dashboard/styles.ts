@@ -157,7 +157,7 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
   min-width: 0;
   
   /* Prevent scrolling when $preventScroll is true */
-  ${({ $preventScroll }) => $preventScroll 
+  ${({ $preventScroll }) => $preventScroll
     ? 'overflow: hidden;'
     : `
   overflow-x: auto;
@@ -168,10 +168,10 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
   /* Desktop: Hide scrollbar when $hideScrollbar is true */
   @media (min-width: 769px) {
     ${({ $preventScroll, $hideScrollbar, theme }) => {
-      if ($preventScroll) return '';
-      
-      const scrollbarStyles = $hideScrollbar 
-        ? `
+    if ($preventScroll) return '';
+
+    const scrollbarStyles = $hideScrollbar
+      ? `
           scrollbar-width: none;
           -ms-overflow-style: none;
           &::-webkit-scrollbar {
@@ -179,12 +179,12 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
             height: 0;
           }
         `
-        : `
+      : `
   scrollbar-width: thin;
           -ms-overflow-style: auto;
           scrollbar-color: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
+        ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
+        : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
   
   &::-webkit-scrollbar {
             display: block;
@@ -193,15 +193,15 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
   
   &::-webkit-scrollbar-track {
             background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.05)'};
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(0, 0, 0, 0.05)'};
     border-radius: 2px;
   }
   
   &::-webkit-scrollbar-thumb {
             background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.2)'
-      : 'rgba(0, 0, 0, 0.2)'};
+        ? 'rgba(255, 255, 255, 0.2)'
+        : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 2px;
     
     &:hover {
@@ -211,8 +211,8 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
     }
           }
         `;
-      return scrollbarStyles;
-    }}
+    return scrollbarStyles;
+  }}
   }
   
   @media (max-width: 768px) {
@@ -253,8 +253,8 @@ export const OverflowButton = styled.button`
   
   &:hover {
     background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.1)'};
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(0, 0, 0, 0.1)'};
   }
   
   svg {
@@ -303,18 +303,18 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
   
   &:hover {
     background: ${({ $active, theme }) => $active
-      ? 'rgba(99, 102, 241, 0.15)'
-      : (theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(0, 0, 0, 0.05)'};
+    ? 'rgba(99, 102, 241, 0.15)'
+    : (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(0, 0, 0, 0.05)'};
   }
   
   &:active {
     background: ${({ $active, theme }) => $active
-      ? 'rgba(99, 102, 241, 0.2)'
-      : (theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(0, 0, 0, 0.08)'};
+    ? 'rgba(99, 102, 241, 0.2)'
+    : (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.08)'};
   }
 `;
 
@@ -326,7 +326,7 @@ export const TabButton = styled.button<{ active: boolean }>`
   border-radius: 8px;
   border: none;
   background: ${({ active, theme }) => active
-    ? theme.ACCENT || '#6366f1'
+    ? theme.ACCENT || '#f97316'
     : (theme.BG === '#252525' || theme.BG === '#181c2a')
       ? 'rgba(255, 255, 255, 0.05)'
       : 'rgba(0, 0, 0, 0.05)'};
@@ -347,10 +347,10 @@ export const TabButton = styled.button<{ active: boolean }>`
   
   &:hover {
     background: ${({ active, theme }) => active
-      ? theme.ACCENT || '#6366f1'
-      : (theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(0, 0, 0, 0.08)'};
+    ? theme.ACCENT || '#f97316'
+    : (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.08)'};
   }
   
   @media (max-width: 768px) {
@@ -785,8 +785,8 @@ export const AttendanceStatCard = styled.div<{ accentColor: string; $index?: num
   &:hover {
     transform: translateY(-2px);
     box-shadow: ${({ theme }) => theme.BG === '#252525'
-      ? '0 8px 40px rgba(0, 0, 0, 0.4)'
-      : '0 8px 40px rgba(0, 0, 0, 0.15)'};
+    ? '0 8px 40px rgba(0, 0, 0, 0.4)'
+    : '0 8px 40px rgba(0, 0, 0, 0.15)'};
   }
 `;
 
@@ -1317,13 +1317,13 @@ export const ExportDropdownItem = styled.button<{ $type?: string }>`
   border-radius: 8px;
   background: ${({ $type, theme }) => {
     if ($type === 'absent') {
-      return theme.BG === '#252525' 
-        ? 'rgba(239, 68, 68, 0.15)' 
+      return theme.BG === '#252525'
+        ? 'rgba(239, 68, 68, 0.15)'
         : 'rgba(239, 68, 68, 0.08)';
     }
     if ($type === 'present') {
-      return theme.BG === '#252525' 
-        ? 'rgba(34, 197, 94, 0.15)' 
+      return theme.BG === '#252525'
+        ? 'rgba(34, 197, 94, 0.15)'
         : 'rgba(34, 197, 94, 0.08)';
     }
     return 'transparent';
@@ -1350,33 +1350,33 @@ export const ExportDropdownItem = styled.button<{ $type?: string }>`
   
   svg {
     color: ${({ $type }) => {
-      if ($type === 'absent') return '#ef4444';
-      if ($type === 'present') return '#22c55e';
-      return 'inherit';
-    }};
+    if ($type === 'absent') return '#ef4444';
+    if ($type === 'present') return '#22c55e';
+    return 'inherit';
+  }};
     font-size: 1rem;
   }
   
   &:hover {
     background: ${({ $type, theme }) => {
-      if ($type === 'absent') {
-        return theme.BG === '#252525' 
-          ? 'rgba(239, 68, 68, 0.25)' 
-          : 'rgba(239, 68, 68, 0.15)';
-      }
-      if ($type === 'present') {
-        return theme.BG === '#252525' 
-          ? 'rgba(34, 197, 94, 0.25)' 
-          : 'rgba(34, 197, 94, 0.15)';
-      }
-      return theme.BG === '#252525' ? '#353b4a' : '#f3f4f6';
-    }};
+    if ($type === 'absent') {
+      return theme.BG === '#252525'
+        ? 'rgba(239, 68, 68, 0.25)'
+        : 'rgba(239, 68, 68, 0.15)';
+    }
+    if ($type === 'present') {
+      return theme.BG === '#252525'
+        ? 'rgba(34, 197, 94, 0.25)'
+        : 'rgba(34, 197, 94, 0.15)';
+    }
+    return theme.BG === '#252525' ? '#353b4a' : '#f3f4f6';
+  }};
     transform: translateX(2px);
     box-shadow: ${({ $type }) => {
-      if ($type === 'absent') return '0 2px 8px rgba(239, 68, 68, 0.2)';
-      if ($type === 'present') return '0 2px 8px rgba(34, 197, 94, 0.2)';
-      return 'none';
-    }};
+    if ($type === 'absent') return '0 2px 8px rgba(239, 68, 68, 0.2)';
+    if ($type === 'present') return '0 2px 8px rgba(34, 197, 94, 0.2)';
+    return 'none';
+  }};
   }
   
   &:active {
@@ -1392,7 +1392,7 @@ export const ExportDropdownItem = styled.button<{ $type?: string }>`
   }
 `;
 
-export const ExpandIcon = styled(ChevronDownIcon)<{ $expanded: boolean }>`
+export const ExpandIcon = styled(ChevronDownIcon) <{ $expanded: boolean }>`
   transform: ${({ $expanded }) => $expanded ? 'rotate(180deg)' : 'rotate(0deg)'};
   transition: transform 0.3s ease;
   cursor: pointer;
@@ -1468,13 +1468,13 @@ const AbsenteeCard = styled.div`
 `;
 
 // Animated version with delay
-const AnimatedAbsenteeCard = styled(AbsenteeCard)<{ $index: number }>`
+const AnimatedAbsenteeCard = styled(AbsenteeCard) <{ $index: number }>`
   opacity: 0;
   animation: ${slideIn} 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   animation-delay: ${props => props.$index * 0.09 + 0.18}s;
 `;
 
-export const CompactAnimatedAbsenteeCard = styled(AnimatedAbsenteeCard)<{ $index?: number }>`
+export const CompactAnimatedAbsenteeCard = styled(AnimatedAbsenteeCard) <{ $index?: number }>`
   padding: clamp(0.18rem, 1vw, 0.38rem) clamp(0.5rem, 2vw, 0.7rem);
   font-size: clamp(0.72rem, 1.7vw, 0.8rem);
   min-width: 0;
@@ -2234,13 +2234,13 @@ export const HomeworkToggleButton = styled.button<{ $active: boolean }>`
   padding: 0.75rem 1.25rem;
   border: none;
   border-radius: 8px;
-  background: ${({ $active, theme }) => 
-    $active 
+  background: ${({ $active, theme }) =>
+    $active
       ? `linear-gradient(135deg, ${theme.ACCENT} 0%, ${theme.ACCENT}dd 100%)`
       : 'transparent'
   };
-  color: ${({ $active, theme }) => 
-    $active 
+  color: ${({ $active, theme }) =>
+    $active
       ? '#ffffff'
       : theme.TEXT_SECONDARY
   };
@@ -2259,11 +2259,11 @@ export const HomeworkToggleButton = styled.button<{ $active: boolean }>`
     left: 0;
     right: 0;
     bottom: 0;
-    background: ${({ $active, theme }) => 
-      $active 
-        ? 'rgba(255, 255, 255, 0.1)'
-        : 'transparent'
-    };
+    background: ${({ $active, theme }) =>
+    $active
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'transparent'
+  };
     opacity: 0;
     transition: opacity 0.2s ease;
   }
@@ -2288,26 +2288,26 @@ export const HomeworkToggleButton = styled.button<{ $active: boolean }>`
   }
   
   &:hover:not(:disabled) {
-    background: ${({ $active, theme }) => 
-      $active 
-        ? `linear-gradient(135deg, ${theme.ACCENT} 0%, ${theme.ACCENT}dd 100%)`
-        : theme.BG === '#252525' ? '#2a3441' : '#f8fafc'
-    };
+    background: ${({ $active, theme }) =>
+    $active
+      ? `linear-gradient(135deg, ${theme.ACCENT} 0%, ${theme.ACCENT}dd 100%)`
+      : theme.BG === '#252525' ? '#2a3441' : '#f8fafc'
+  };
     transform: ${({ $active }) => $active ? 'translateY(-1px)' : 'none'};
-    box-shadow: ${({ $active }) => 
-      $active 
-        ? '0 4px 12px rgba(99, 102, 241, 0.3)'
-        : '0 2px 4px rgba(0, 0, 0, 0.1)'
-    };
+    box-shadow: ${({ $active }) =>
+    $active
+      ? '0 4px 12px rgba(99, 102, 241, 0.3)'
+      : '0 2px 4px rgba(0, 0, 0, 0.1)'
+  };
   }
   
   &:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: ${({ $active }) => 
-      $active 
-        ? '0 2px 6px rgba(99, 102, 241, 0.2)'
-        : 'none'
-    };
+    box-shadow: ${({ $active }) =>
+    $active
+      ? '0 2px 6px rgba(99, 102, 241, 0.2)'
+      : 'none'
+  };
   }
   
   &:disabled {

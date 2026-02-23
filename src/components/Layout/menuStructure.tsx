@@ -40,6 +40,7 @@ import {
   History as HistoryIcon,
   Analytics as AnalyticsIcon,
   AccountBalanceWallet as AccountBalanceWalletIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
 
 export interface MenuItem {
@@ -115,6 +116,13 @@ export const studentMenuItems: MenuItem[] = [
     icon: React.createElement(DescriptionIcon),
     path: '/students/withdrawal-register',
     color: '#14b8a6'
+  },
+  {
+    title: 'Student Cards',
+    description: 'Generate and print ID cards',
+    icon: React.createElement(BadgeIcon),
+    path: '/students/cards',
+    color: '#8b5cf6'
   }
 ];
 
@@ -140,6 +148,13 @@ export const attendanceMenuItems: MenuItem[] = [
     icon: React.createElement(AccessTimeIcon),
     path: '/attendance/half-leaves',
     color: '#ec4899'
+  },
+  {
+    title: 'Attendance Analytics',
+    description: 'View comprehensive student attendance analytics and trends',
+    icon: React.createElement(AnalyticsIcon),
+    path: '/attendance/analytics',
+    color: '#0ea5e9'
   }
 ];
 
@@ -186,6 +201,13 @@ export const employeeAttendanceMenuItems: MenuItem[] = [
     icon: React.createElement(AccessTimeIcon),
     path: '/attendance/staff-half-leaves',
     color: '#ec4899'
+  },
+  {
+    title: 'Staff Attendance Analytics',
+    description: 'View comprehensive staff attendance analytics and trends',
+    icon: React.createElement(AnalyticsIcon),
+    path: '/attendance/staff-analytics',
+    color: '#0ea5e9'
   }
 ];
 
@@ -765,8 +787,8 @@ export const menuStructure: MainMenuItem[] = [
     hasDropdown: true,
     menuItems: [
       { title: 'Employee Management', items: employeeMenuItems },
-      { 
-        title: 'Attendance & Reports', 
+      {
+        title: 'Attendance & Reports',
         items: [...employeeAttendanceMenuItems, ...employeeReportsMenuItems]
       }
     ],
@@ -778,20 +800,20 @@ export const menuStructure: MainMenuItem[] = [
     label: 'Finance',
     hasDropdown: true,
     menuItems: [
-      { 
-        title: 'Fee Management', 
+      {
+        title: 'Fee Management',
         items: feeMenuItems1
       },
-      { 
-        title: 'Fee Record', 
+      {
+        title: 'Fee Record',
         items: feeMenuItems2
       },
-      { 
-        title: 'Expense Management', 
+      {
+        title: 'Expense Management',
         items: expenseMenuItems
       },
-      { 
-        title: 'Fine Management', 
+      {
+        title: 'Fine Management',
         items: fineMenuItems
       }
     ],
