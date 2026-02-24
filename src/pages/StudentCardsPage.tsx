@@ -46,74 +46,135 @@ const PrintGlobalStyle = createGlobalStyle`
   }
 `;
 
-const ControlPanel = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1.5rem;
+const Header = styled.div`
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem;
-  border: ${({ theme }) => (theme as any).BG === '#252525' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => (theme as any).BG === '#252525' ? '0 4px 20px rgba(0, 0, 0, 0.2)' : '0 4px 20px rgba(0, 0, 0, 0.05)'};
-  
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 6px 0 4px 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: ${({ theme }) => theme.BG};
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  border-radius: 10px;
+  padding: 4px 8px 2px 8px;
+  min-height: 36px;
+
   @media print {
     display: none;
   }
 `;
 
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 200px;
-`;
+const SEGMENTED_HEIGHT = '32px';
 
-const Label = styled.label`
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-`;
-
-const Select = styled.select`
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-  background: ${({ theme }) => (theme as any).BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : '#fff'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.95rem;
-  outline: none;
-  transition: all 0.2s;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 3px ${({ theme }) => `${theme.ACCENT}20`};
-  }
-`;
-
-const PrintButton = styled.button`
+const SegmentedGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: ${({ theme }) => theme.ACCENT};
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  height: max-content;
-
-  &:hover {
-    filter: brightness(1.1);
+  background: ${({ theme }) => (theme as any).BG === '#252525' ? '#222' : '#f3f4f6'};
+  border-radius: 11px;
+  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
+  @media (max-width: 700px) {
+    width: 100%;
+    justify-content: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    border-radius: 8px;
   }
-  
+`;
+
+const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
+  font-family: inherit;
+  font-size: 0.77em;
+  font-weight: 400;
+  height: ${SEGMENTED_HEIGHT};
+  line-height: ${SEGMENTED_HEIGHT};
+  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  border: none;
+  outline: none;
+  transition: background 0.2s;
+  appearance: none;
+  background: ${({ theme }) => (theme as any).BG === '#252525' ? '#444' : '#fff'};
+  color: ${({ theme }) => (theme as any).BG === '#252525' ? '#C0C0C0' : '#333'};
+  padding: 0 2.2em 0 0.84em;
+  border-right: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
+  &:last-child { border-right: none; }
+  ${({ first }) => first && `
+    border-top-left-radius: 11px;
+    border-bottom-left-radius: 11px;
+  `}
+  ${({ last }) => last && `
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
+  `}
+  &:not(:first-child) {
+    border-left: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
+  }
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8em center;
+  background-size: 1em 1em;
+  cursor: pointer;
+  @media (max-width: 700px) {
+    width: 100%;
+    border-radius: 8px !important;
+    border-left: none;
+    border-right: none;
+    min-width: 0;
+    background-position: right 1em center;
+  }
+`;
+
+const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
+  font-family: inherit;
+  font-size: 0.77em;
+  font-weight: 500;
+  height: ${SEGMENTED_HEIGHT};
+  line-height: ${SEGMENTED_HEIGHT};
+  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  border: none;
+  outline: none;
+  transition: background 0.2s;
+  appearance: none;
+  background: ${({ theme }) => (theme as any).BG === '#252525' ? '#444' : '#fff'};
+  color: ${({ theme }) => (theme as any).BG === '#252525' ? '#C0C0C0' : '#333'};
+  padding: 0 1.12em;
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  border-radius: 0;
+  border-right: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
+  &:last-child { border-right: none; }
+  &:not(:first-child) {
+    border-left: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
+  }
+  ${({ first }) => first && `
+    border-top-left-radius: 11px;
+    border-bottom-left-radius: 11px;
+  `}
+  ${({ last }) => last && `
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
+  `}
+  cursor: pointer;
+  &:hover {
+    background: ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#e5e7eb'};
+  }
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  @media (max-width: 700px) {
+    width: 100%;
+    border-radius: 8px !important;
+    border-left: none;
+    border-right: none;
+    min-width: 0;
   }
 `;
 
@@ -539,43 +600,40 @@ const StudentCardsPage = () => {
 
   return (
     <Container>
-      <ControlPanel>
-        <InputGroup>
-          <Label>Class</Label>
-          <Select
+      <Header>
+        <SegmentedGroup>
+          <SegmentedSelect
+            first
             value={selectedClass}
             onChange={(e) => {
               setSelectedClass(e.target.value);
               setSelectedSection('');
             }}
           >
-            <option value="">Select a Class</option>
+            <option value="">Select Class</option>
             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
-        </InputGroup>
+          </SegmentedSelect>
 
-        <InputGroup>
-          <Label>Section</Label>
-          <Select
+          <SegmentedSelect
             value={selectedSection}
             onChange={(e) => setSelectedSection(e.target.value)}
             disabled={!selectedClass}
           >
             <option value="">All Sections</option>
             {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>
-        </InputGroup>
+          </SegmentedSelect>
 
-        {students.length > 0 && !fetching ? (
-          <PrintButton onClick={handleDownloadPDF} disabled={isGeneratingPDF}>
-            <Print /> {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF Cards'}
-          </PrintButton>
-        ) : (
-          <PrintButton disabled={true}>
-            <Print /> Download PDF Cards
-          </PrintButton>
-        )}
-      </ControlPanel>
+          <SegmentedButton
+            last
+            onClick={handleDownloadPDF}
+            disabled={!students.length || fetching || isGeneratingPDF}
+            style={{ opacity: (!students.length || fetching || isGeneratingPDF) ? 0.5 : 1 }}
+          >
+            <Print style={{ fontSize: 16 }} />
+            {isGeneratingPDF ? 'Generating...' : 'PDF Cards'}
+          </SegmentedButton>
+        </SegmentedGroup>
+      </Header>
 
       {fetching ? (
         <Loader />

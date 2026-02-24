@@ -158,10 +158,10 @@ const Layout: React.FC = () => {
       // Add scrolling class to body and html
       document.body.classList.add('scrolling');
       document.documentElement.classList.add('scrolling');
-      
+
       // Clear existing timeout
       clearTimeout(scrollTimeout);
-      
+
       // Remove scrolling class after scrolling stops (1 second delay)
       scrollTimeout = setTimeout(() => {
         document.body.classList.remove('scrolling');
@@ -1010,7 +1010,7 @@ const Layout: React.FC = () => {
   }, []);
 
   const [canViewSeenByList, setCanViewSeenByList] = useState(false);
-  
+
   useEffect(() => {
     const checkPermission = async () => {
       if (authUser?.id && authUser?.school_id) {
@@ -1067,18 +1067,18 @@ const Layout: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.25, ease: 'easeInOut' }}
-                    style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
                       height: '100%',
-                      minHeight: 0 
+                      minHeight: 0
                     }}
                   >
-                    <div 
-                      style={{ 
-                        flex: 1, 
-                        minHeight: 0, 
-                        display: 'flex', 
+                    <div
+                      style={{
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
                         flexDirection: 'column',
                         paddingBottom: footerHeight > 0 ? `${footerHeight}px` : '0',
                         boxSizing: 'border-box'
@@ -1098,10 +1098,10 @@ const Layout: React.FC = () => {
                         </OfflineContainer>
                       )}
                     </div>
-                    <GlobalFooter onHeightChange={handleFooterHeightChange} />
                   </motion.div>
                 </AnimatePresence>
               </ContentArea>
+              <GlobalFooter onHeightChange={handleFooterHeightChange} />
             </MainArea>
           </LayoutWrapper>
         </AppContainer>

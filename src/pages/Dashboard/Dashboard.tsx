@@ -4,6 +4,8 @@ import { supabase } from '../../supabaseClient';
 import { useToast } from '../../components/useToast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { getUserPermissions } from '../../services/permissionService';
+import { shouldShowMenuItem } from '../../utils/permissionMapping';
 import { useLoading } from '../../contexts/LoadingContext';
 import { useProgress } from '../../components/Layout';
 import { PageHeaderContext } from '../../components/Layout';
@@ -144,6 +146,65 @@ const Dashboard: React.FC = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<DashboardTab>('attendance');
   const prevActiveTabRef = useRef<DashboardTab | null>(null);
+  const [allowedTabs, setAllowedTabs] = useState<Set<DashboardTab>>(new Set());
+  const [userPerms, setUserPerms] = useState<Set<string>>(new Set());
+
+  // Fetch dashboard tab permissions
+  useEffect(() => {
+    const fetchTabPermissions = async () => {
+      if (!user?.id || !user?.school_id) return;
+
+      // Super admin / owner sees all tabs
+      if (user.role === 'owner' || user.role === 'super_admin') {
+        setAllowedTabs(new Set()); // Empty means show all
+        setUserPerms(new Set()); // Empty means allow all
+        return;
+      }
+
+      try {
+        const perms = await getUserPermissions(user.id, user.school_id);
+        setUserPerms(perms);
+
+        const tabPermissionMap: Record<string, DashboardTab> = {
+          'dashboard-tab-attendance': 'attendance',
+          'dashboard-tab-fee': 'fee',
+          'dashboard-tab-admissions': 'admissions',
+          'dashboard-tab-homework': 'homework',
+          'dashboard-tab-employee-attendance': 'employeeAttendance',
+          'dashboard-tab-accounts': 'accounts',
+          'dashboard-tab-predictions': 'predictions',
+        };
+
+        const allowed = new Set<DashboardTab>();
+        let hasAnyTabPermission = false;
+
+        for (const [permKey, tabId] of Object.entries(tabPermissionMap)) {
+          if (perms.has(permKey)) {
+            allowed.add(tabId);
+            hasAnyTabPermission = true;
+          }
+        }
+
+        // If no tab permissions are set at all, show all tabs (backward compatibility)
+        if (!hasAnyTabPermission) {
+          setAllowedTabs(new Set());
+        } else {
+          setAllowedTabs(allowed);
+          // Set active tab to first allowed tab if current is not allowed
+          if (allowed.size > 0 && !allowed.has(activeTab)) {
+            const firstAllowed = Array.from(allowed)[0];
+            setActiveTab(firstAllowed);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard tab permissions:', error);
+        setAllowedTabs(new Set()); // On error, show all tabs
+        setUserPerms(new Set());
+      }
+    };
+
+    fetchTabPermissions();
+  }, [user?.id, user?.school_id, user?.role]);
 
   // Handle tab change with immediate loading state reset
   const handleTabChange = useCallback((newTab: DashboardTab) => {
@@ -1741,6 +1802,13 @@ const Dashboard: React.FC = () => {
   // Set footer content with real-time clock and shortcut buttons
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
+  // Helper: check if a footer shortcut should be visible for this user
+  const isSuperAdmin = user?.role === 'owner' || user?.role === 'super_admin';
+  const canAccessFooterShortcut = useCallback((path: string): boolean => {
+    if (isSuperAdmin || userPerms.size === 0) return true;
+    return shouldShowMenuItem(path, user?.role, userPerms);
+  }, [isSuperAdmin, userPerms, user?.role]);
+
   // Add style to ensure no transitions on footer buttons
   useEffect(() => {
     const styleId = 'footer-buttons-no-transition';
@@ -1804,548 +1872,564 @@ const Dashboard: React.FC = () => {
             {!isMobile && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {/* Student Attendance Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('student')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/attendance/mark')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'student' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'student' ? '#60a5fa' : 'rgba(59, 130, 246, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/attendance/mark') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('student')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <Assessment
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'student' ? '#60a5fa' : '#3b82f6',
+                    <button
+                      onClick={() => navigate('/attendance/mark')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'student' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'student' ? '#60a5fa' : 'rgba(59, 130, 246, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'student' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Mark Student Attendance
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <Assessment
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'student' ? '#60a5fa' : '#3b82f6',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'student' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Mark Student Attendance
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Employee Attendance Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('employee')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/attendance/staff')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'employee' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'employee' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/attendance/staff') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('employee')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <Groups
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'employee' ? '#34d399' : '#10b981',
+                    <button
+                      onClick={() => navigate('/attendance/staff')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'employee' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'employee' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'employee' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Mark Employee Attendance
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <Groups
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'employee' ? '#34d399' : '#10b981',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'employee' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Mark Employee Attendance
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Fee Collection Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('fee')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/fee-collection')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'fee' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'fee' ? '#a78bfa' : 'rgba(139, 92, 246, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/fee-collection') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('fee')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <Payment
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'fee' ? '#a78bfa' : '#8b5cf6',
+                    <button
+                      onClick={() => navigate('/fee-collection')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'fee' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'fee' ? '#a78bfa' : 'rgba(139, 92, 246, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'fee' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Fee Collection
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <Payment
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'fee' ? '#a78bfa' : '#8b5cf6',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'fee' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Fee Collection
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Add Student Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('addStudent')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/students/add')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'addStudent' ? 'rgba(34, 197, 94, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'addStudent' ? '#4ade80' : 'rgba(34, 197, 94, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/students/add') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('addStudent')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <PersonAdd
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'addStudent' ? '#4ade80' : '#22c55e',
+                    <button
+                      onClick={() => navigate('/students/add')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'addStudent' ? 'rgba(34, 197, 94, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'addStudent' ? '#4ade80' : 'rgba(34, 197, 94, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'addStudent' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Add Student
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <PersonAdd
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'addStudent' ? '#4ade80' : '#22c55e',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'addStudent' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Add Student
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Reports Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('reports')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/reports')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'reports' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'reports' ? '#fbbf24' : 'rgba(234, 179, 8, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/reports') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('reports')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <BarChart
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'reports' ? '#fbbf24' : '#eab308',
+                    <button
+                      onClick={() => navigate('/reports')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'reports' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'reports' ? '#fbbf24' : 'rgba(234, 179, 8, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'reports' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Reports
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <BarChart
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'reports' ? '#fbbf24' : '#eab308',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'reports' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Reports
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Students List Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('students')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/students/list')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'students' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'students' ? '#818cf8' : 'rgba(99, 102, 241, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/students/list') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('students')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <People
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'students' ? '#818cf8' : '#6366f1',
+                    <button
+                      onClick={() => navigate('/students/list')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'students' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'students' ? '#818cf8' : 'rgba(99, 102, 241, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'students' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Students List
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <People
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'students' ? '#818cf8' : '#6366f1',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'students' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Students List
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Fine Collection Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('fineCollect')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/fines/collect')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'fineCollect' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'fineCollect' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/fines/collect') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('fineCollect')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <AttachMoney
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'fineCollect' ? '#34d399' : '#10b981',
+                    <button
+                      onClick={() => navigate('/fines/collect')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'fineCollect' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'fineCollect' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'fineCollect' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Fine Collection
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <AttachMoney
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'fineCollect' ? '#34d399' : '#10b981',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'fineCollect' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Fine Collection
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Remaining Fine Button */}
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredButton('remainingFine')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                >
-                  <button
-                    onClick={() => navigate('/fines/remaining')}
-                    className="footer-icon-button"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: hoveredButton === 'remainingFine' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
-                      border: `1.5px solid ${hoveredButton === 'remainingFine' ? '#fbbf24' : 'rgba(245, 158, 11, 0.4)'}`,
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'visible',
-                      transition: 'none !important'
-                    }}
+                {canAccessFooterShortcut('/fines/remaining') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('remainingFine')}
+                    onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <AccountBalanceWallet
-                      sx={{
-                        fontSize: '16px',
-                        color: hoveredButton === 'remainingFine' ? '#fbbf24' : '#f59e0b',
+                    <button
+                      onClick={() => navigate('/fines/remaining')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'remainingFine' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'remainingFine' ? '#fbbf24' : 'rgba(245, 158, 11, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
                         transition: 'none !important'
                       }}
-                    />
-                  </button>
-                  {hoveredButton === 'remainingFine' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 6px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: isDark ? '#1e293b' : '#0f172a',
-                        color: '#fff',
-                        padding: '3px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                        zIndex: 10001,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                        maxWidth: 'calc(100vw - 16px)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
                     >
-                      Remaining Fine
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        border: '3px solid transparent',
-                        borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                      }} />
-                    </div>
-                  )}
-                </div>
+                      <AccountBalanceWallet
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'remainingFine' ? '#fbbf24' : '#f59e0b',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'remainingFine' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Remaining Fine
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2364,7 +2448,7 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       setFooterContent(null);
     };
-  }, [setFooterContent, navigate, isDark, hoveredButton]);
+  }, [setFooterContent, navigate, isDark, hoveredButton, canAccessFooterShortcut]);
 
   // Cleanup
   useEffect(() => {
@@ -3726,6 +3810,7 @@ const Dashboard: React.FC = () => {
         setDashboardDate={setDashboardDate}
         setAbsentDate={setAbsentDate}
         setFineDate={setFineDate}
+        allowedTabs={allowedTabs}
       />
 
       {/* Show loader if tab is loading */}

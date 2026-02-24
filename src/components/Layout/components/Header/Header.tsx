@@ -254,7 +254,7 @@ const MenuWrapper = styled.div`
 
 const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualColumns?: number }>`
   position: fixed;
-  background: ${props => props.theme.CARD};
+  background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : props.theme.CARD};
   border: 1px solid ${props => props.theme.BORDER};
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
@@ -290,7 +290,7 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
     if (cols === 3) return '900px';
     return 'auto';
   }};
-  max-height: 430px;
+  max-height: 520px;
   overflow-y: auto;
   overflow-x: hidden;
   
@@ -452,7 +452,7 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   gap: 8px;
   padding: 6px;
   border: none;
-  background: ${props => props.theme.CARD};
+  background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : props.theme.CARD};
   border-radius: 5px;
   cursor: pointer;
   transition: all 0.2s ease;

@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         padding: 10,
         justifyContent: 'center',
-        gap: 10,
+        gap: 4,
     },
     card: {
         width: '3.375in',
@@ -22,8 +22,8 @@ const styles = StyleSheet.create({
         border: '1px solid #e5e7eb',
         position: 'relative',
         overflow: 'hidden',
-        marginBottom: 10,
-        marginRight: 10,
+        marginBottom: 2,
+        marginRight: 4,
     },
     cardBackgroundSvg: {
         position: 'absolute',

@@ -17,6 +17,11 @@ import {
   AccountBalanceWallet,
   AccountBalance as AccountBalanceIcon,
   TrendingUp as TrendingUpIcon,
+  EventNote,
+  PersonAdd,
+  Assignment,
+  Groups,
+  Lightbulb,
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
@@ -108,8 +113,8 @@ const ModalIconContainer = styled.div`
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' 
-    ? 'rgba(239, 68, 68, 0.2)' 
+  background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a'
+    ? 'rgba(239, 68, 68, 0.2)'
     : 'rgba(239, 68, 68, 0.1)'};
   display: flex;
   align-items: center;
@@ -167,15 +172,15 @@ const ModalButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
       `;
     } else {
       return `
-        background: ${theme.BG === '#252525' || theme.BG === '#181c2a' 
-          ? 'rgba(255, 255, 255, 0.1)' 
+        background: ${theme.BG === '#252525' || theme.BG === '#181c2a'
+          ? 'rgba(255, 255, 255, 0.1)'
           : 'rgba(0, 0, 0, 0.05)'};
         color: ${theme.TEXT_PRIMARY};
         border: 1px solid ${theme.BORDER};
         &:hover {
-          background: ${theme.BG === '#252525' || theme.BG === '#181c2a' 
-            ? 'rgba(255, 255, 255, 0.15)' 
-            : 'rgba(0, 0, 0, 0.08)'};
+          background: ${theme.BG === '#252525' || theme.BG === '#181c2a'
+          ? 'rgba(255, 255, 255, 0.15)'
+          : 'rgba(0, 0, 0, 0.08)'};
         }
         &:active {
           transform: scale(0.98);
@@ -383,14 +388,14 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number }>`
   
   @media (max-width: 1024px) {
     ${props => {
-      if (props.$columns === 3) {
-        return `grid-template-columns: repeat(2, 1fr);`;
-      }
-      if (props.$columns === 2) {
-        return `grid-template-columns: 1fr;`;
-      }
-      return '';
-    }}
+    if (props.$columns === 3) {
+      return `grid-template-columns: repeat(2, 1fr);`;
+    }
+    if (props.$columns === 2) {
+      return `grid-template-columns: 1fr;`;
+    }
+    return '';
+  }}
   }
   
   @media (max-width: 768px) {
@@ -474,11 +479,11 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean; $inhe
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 2px solid ${props => props.$checked 
-    ? props.$color 
+  border: 2px solid ${props => props.$checked
+    ? props.$color
     : props.theme.BORDER};
-  background: ${props => props.$checked 
-    ? `${props.$color}15` 
+  background: ${props => props.$checked
+    ? `${props.$color}15`
     : props.theme.CARD};
   border-radius: 8px;
   cursor: pointer;
@@ -488,9 +493,9 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean; $inhe
   position: relative;
   
   &:hover {
-    background: ${props => props.$checked 
-      ? `${props.$color}25` 
-      : props.theme.BG};
+    background: ${props => props.$checked
+    ? `${props.$color}25`
+    : props.theme.BG};
     border-color: ${props => props.$color};
     transform: translateX(3px);
   }
@@ -521,17 +526,17 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean; $inhe
     width: 28px;
     height: 28px;
     border-radius: 6px;
-    background: ${props => props.$checked 
-      ? `linear-gradient(135deg, ${props.$color} 0%, ${props.$color}dd 100%)`
-      : `linear-gradient(135deg, ${props.$color}40 0%, ${props.$color}60 100%)`};
+    background: ${props => props.$checked
+    ? `linear-gradient(135deg, ${props.$color} 0%, ${props.$color}dd 100%)`
+    : `linear-gradient(135deg, ${props.$color}40 0%, ${props.$color}60 100%)`};
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     flex-shrink: 0;
-    box-shadow: ${props => props.$checked 
-      ? `0 2px 8px ${props.$color}60`
-      : `0 1px 3px ${props.$color}20`};
+    box-shadow: ${props => props.$checked
+    ? `0 2px 8px ${props.$color}60`
+    : `0 1px 3px ${props.$color}20`};
     opacity: ${props => props.$checked ? 1 : 0.5};
     transition: all 0.2s ease;
     
@@ -548,9 +553,9 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean; $inhe
   .menu-title {
     font-size: 0.8rem;
     font-weight: ${props => props.$checked ? 700 : 600};
-    color: ${props => props.$checked 
-      ? props.$color 
-      : props.theme.TEXT_PRIMARY};
+    color: ${props => props.$checked
+    ? props.$color
+    : props.theme.TEXT_PRIMARY};
     margin: 0 0 3px 0;
     line-height: 1.2;
     transition: all 0.2s ease;
@@ -562,9 +567,9 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean; $inhe
   
   .menu-description {
     font-size: 0.7rem;
-    color: ${props => props.$checked 
-      ? props.theme.TEXT_PRIMARY 
-      : props.theme.TEXT_SECONDARY};
+    color: ${props => props.$checked
+    ? props.theme.TEXT_PRIMARY
+    : props.theme.TEXT_SECONDARY};
     margin: 0;
     line-height: 1.3;
     display: -webkit-box;
@@ -612,6 +617,80 @@ const SearchIconWrapper = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   display: flex;
   align-items: center;
+`;
+
+const SubItemsContainer = styled.div<{ $isOpen: boolean }>`
+  display: ${props => props.$isOpen ? 'flex' : 'none'};
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  margin-left: 20px;
+  padding-left: 12px;
+  border-left: 2px solid ${({ theme }) => theme.BORDER};
+`;
+
+const SubItemCheckbox = styled.label<{ $color: string; $checked: boolean; $inherited?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid ${props => props.$checked ? props.$color : props.theme.BORDER};
+  background: ${props => props.$checked ? `${props.$color}10` : 'transparent'};
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.75rem;
+  
+  &:hover {
+    background: ${props => props.$checked ? `${props.$color}20` : props.theme.BG};
+    border-color: ${props => props.$color};
+  }
+
+  input[type="checkbox"] {
+    display: none;
+  }
+  
+  .sub-checkbox-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 2px solid ${props => props.$checked ? props.$color : props.theme.BORDER};
+    background: ${props => props.$checked ? props.$color : 'transparent'};
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    
+    svg {
+      font-size: 12px;
+      color: white;
+    }
+  }
+  
+  .sub-icon {
+    display: flex;
+    align-items: center;
+    color: ${props => props.$checked ? props.$color : props.theme.TEXT_SECONDARY};
+    
+    svg {
+      font-size: 16px;
+    }
+  }
+  
+  .sub-label {
+    font-weight: ${props => props.$checked ? 600 : 500};
+    color: ${props => props.$checked ? props.$color : props.theme.TEXT_PRIMARY};
+    transition: all 0.2s ease;
+    flex: 1;
+  }
+  
+  .sub-status {
+    font-size: 0.6rem;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-left: auto;
+  }
 `;
 
 const EmptyState = styled.div`
@@ -744,7 +823,7 @@ const UserPermissionManagement: React.FC = () => {
     const query = searchQuery.toLowerCase();
     return menuStructure.map(menu => {
       const filteredSections = menu.menuItems.map(section => {
-        const filteredItems = section.items.filter(item => 
+        const filteredItems = section.items.filter(item =>
           item.title.toLowerCase().includes(query) ||
           item.description.toLowerCase().includes(query)
         );
@@ -757,7 +836,7 @@ const UserPermissionManagement: React.FC = () => {
           items: filteredItems,
           ...(section.expenseItems && { expenseItems: filteredExpenseItems })
         };
-      }).filter(section => 
+      }).filter(section =>
         section.items.length > 0 || (section.expenseItems && section.expenseItems.length > 0)
       );
 
@@ -818,7 +897,7 @@ const UserPermissionManagement: React.FC = () => {
         .maybeSingle();
 
       if (error) throw error;
-      
+
       const roleId = user?.role_id;
       setUserRoles(roleId ? [roleId] : []);
 
@@ -902,9 +981,9 @@ const UserPermissionManagement: React.FC = () => {
   const handlePermissionToggle = (permissionId: number) => {
     const currentlyGranted = isPermissionGranted(permissionId);
     const hasSavedPermissions = userPermissions.size > 0;
-    
+
     const newUserPerms = new Map(userPermissions);
-    
+
     // If user has no saved permissions yet, initialize with role defaults
     if (!hasSavedPermissions) {
       // Copy all role permissions to user permissions first
@@ -912,14 +991,14 @@ const UserPermissionManagement: React.FC = () => {
         newUserPerms.set(rolePermId, true);
       });
     }
-    
+
     // Now toggle the specific permission
     if (currentlyGranted) {
       newUserPerms.set(permissionId, false);
     } else {
       newUserPerms.set(permissionId, true);
     }
-    
+
     setUserPermissions(newUserPerms);
   };
 
@@ -943,7 +1022,7 @@ const UserPermissionManagement: React.FC = () => {
     const menuPermissionIds = items
       .map(item => getPermissionIdForPath(item.path))
       .filter((id): id is number => id !== null);
-    
+
     // Also include standalone pages (Standalone Pages/Features section)
     const standalonePages = [
       '/dashboard',
@@ -955,20 +1034,34 @@ const UserPermissionManagement: React.FC = () => {
     const standalonePermissionIds = standalonePages
       .map(path => getPermissionIdForPath(path))
       .filter((id): id is number => id !== null);
-    
+
+    // Also include dashboard tab permissions
+    const dashboardTabPaths = [
+      '/dashboard/tab/attendance',
+      '/dashboard/tab/fee',
+      '/dashboard/tab/admissions',
+      '/dashboard/tab/homework',
+      '/dashboard/tab/employeeAttendance',
+      '/dashboard/tab/accounts',
+      '/dashboard/tab/predictions'
+    ];
+    const dashboardTabPermissionIds = dashboardTabPaths
+      .map(path => getPermissionIdForPath(path))
+      .filter((id): id is number => id !== null);
+
     // Also include WhatsApp notification permission
     const featurePermissionIds: number[] = [];
     if (whatsappPermissionId) {
       featurePermissionIds.push(whatsappPermissionId);
     }
-    
+
     // Combine and return unique IDs
-    return Array.from(new Set([...menuPermissionIds, ...standalonePermissionIds, ...featurePermissionIds]));
+    return Array.from(new Set([...menuPermissionIds, ...standalonePermissionIds, ...dashboardTabPermissionIds, ...featurePermissionIds]));
   };
 
   const handleSelectAll = () => {
     const newUserPerms = new Map<number, boolean>();
-    
+
     // If user has no saved permissions, start with role defaults
     if (userPermissions.size === 0) {
       rolePermissions.forEach(rolePermId => {
@@ -980,13 +1073,13 @@ const UserPermissionManagement: React.FC = () => {
         newUserPerms.set(permId, granted);
       });
     }
-    
+
     // Then add all menu permissions
     const allPermissionIds = getAllMenuPermissionIds();
     allPermissionIds.forEach(permissionId => {
       newUserPerms.set(permissionId, true);
     });
-    
+
     setUserPermissions(newUserPerms);
   };
 
@@ -1016,7 +1109,7 @@ const UserPermissionManagement: React.FC = () => {
 
   const handleSelectSection = (section: MenuSection) => {
     const newUserPerms = new Map<number, boolean>();
-    
+
     if (userPermissions.size === 0) {
       rolePermissions.forEach(rolePermId => {
         newUserPerms.set(rolePermId, true);
@@ -1026,7 +1119,7 @@ const UserPermissionManagement: React.FC = () => {
         newUserPerms.set(permId, granted);
       });
     }
-    
+
     section.items.forEach(item => {
       const permissionId = getPermissionIdForPath(item.path);
       if (permissionId) newUserPerms.set(permissionId, true);
@@ -1037,13 +1130,13 @@ const UserPermissionManagement: React.FC = () => {
         if (permissionId) newUserPerms.set(permissionId, true);
       });
     }
-    
+
     setUserPermissions(newUserPerms);
   };
 
   const handleDeselectSection = (section: MenuSection) => {
     const newUserPerms = new Map<number, boolean>();
-    
+
     if (userPermissions.size === 0) {
       rolePermissions.forEach(rolePermId => {
         newUserPerms.set(rolePermId, true);
@@ -1053,7 +1146,7 @@ const UserPermissionManagement: React.FC = () => {
         newUserPerms.set(permId, granted);
       });
     }
-    
+
     section.items.forEach(item => {
       const permissionId = getPermissionIdForPath(item.path);
       if (permissionId) newUserPerms.set(permissionId, false);
@@ -1064,7 +1157,7 @@ const UserPermissionManagement: React.FC = () => {
         if (permissionId) newUserPerms.set(permissionId, false);
       });
     }
-    
+
     setUserPermissions(newUserPerms);
   };
 
@@ -1113,7 +1206,7 @@ const UserPermissionManagement: React.FC = () => {
       }
 
       showToast('User permissions saved successfully', 'success');
-      
+
       // Refresh user permissions to reflect saved state
       await fetchUserPermissions(selectedUserId);
     } catch (error: any) {
@@ -1143,10 +1236,10 @@ const UserPermissionManagement: React.FC = () => {
       if (error) throw error;
 
       showToast('User permissions reset to role defaults successfully', 'success');
-      
+
       // Clear user permissions state (user will now inherit from role)
       setUserPermissions(new Map());
-      
+
       // Refresh user permissions to reflect reset state
       await fetchUserPermissions(selectedUserId);
     } catch (error: any) {
@@ -1172,430 +1265,133 @@ const UserPermissionManagement: React.FC = () => {
         </Header>
 
         <Content>
-        <UserSection>
-          <UserSelectWrapper>
-            <UserSelect
-              value={selectedUserId || ''}
-              onChange={(e) => setSelectedUserId(Number(e.target.value) || null)}
-            >
-              <option value="">-- Select a user --</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.username}) - {user.role}
-                </option>
-              ))}
-            </UserSelect>
-          </UserSelectWrapper>
-
-          {selectedUser && (
-            <UserInfo>
-              <InfoRow>
-                <strong>Name:</strong>
-                <span>{selectedUser.name}</span>
-              </InfoRow>
-              <InfoRow>
-                <strong>Username:</strong>
-                <span>{selectedUser.username}</span>
-              </InfoRow>
-              <InfoRow>
-                <strong>Role:</strong>
-                <span>{selectedUser.role}</span>
-              </InfoRow>
-              <InfoNote>
-                <strong>User Permission Customization:</strong> By default, users inherit all permissions from their role 
-                (set in Role Management). When you customize permissions for this user and save, those become their 
-                complete set of permissions (replacing role defaults). To revert to role defaults, delete all user permissions.
-                {userPermissions.size > 0 && (
-                  <span style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
-                    ⚠️ This user has custom permissions saved. Current selections will replace role defaults when saved.
-                  </span>
-                )}
-              </InfoNote>
-            </UserInfo>
-          )}
-        </UserSection>
-
-        {selectedUserId ? (
-          <>
-            <SearchBox>
-              <SearchIconWrapper>
-                <SearchIcon style={{ fontSize: '1.2rem' }} />
-              </SearchIconWrapper>
-              <SearchInput
-                type="text"
-                placeholder="Search permissions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button 
-                $variant="secondary" 
-                onClick={isAllSelected() ? handleDeselectAll : handleSelectAll}
-                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+          <UserSection>
+            <UserSelectWrapper>
+              <UserSelect
+                value={selectedUserId || ''}
+                onChange={(e) => setSelectedUserId(Number(e.target.value) || null)}
               >
-                {isAllSelected() ? 'Deselect All' : 'Select All'}
-              </Button>
-            </SearchBox>
+                <option value="">-- Select a user --</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.username}) - {user.role}
+                  </option>
+                ))}
+              </UserSelect>
+            </UserSelectWrapper>
 
-            <MenuContainer>
-              {filteredMenuStructure.map((menu) => {
-                const isOpen = openMenus.has(menu.label);
-                
-                return (
-                  <MenuSectionWrapper key={menu.label}>
-                    <MenuSectionHeader
-                      $isOpen={isOpen}
-                      onClick={() => toggleMenu(menu.label)}
-                    >
-                      {menu.icon}
-                      <span>{menu.label}</span>
-                    </MenuSectionHeader>
-                    <MenuDropdown $isOpen={isOpen} $columns={menu.columns}>
-                      {menu.menuItems.map((section, sectionIdx) => {
-                        // For Finance menu, combine Expense Management and Fine Management in the same column (3rd column)
-                        const isFinance = menu.label === 'Finance';
-                        const isExpenseManagement = section.title === 'Expense Management';
-                        const isFineManagement = section.title === 'Fine Management';
-                        
-                        // Skip rendering Fine Management as separate column, it will be rendered with Expense Management
-                        if (isFinance && isFineManagement && sectionIdx === 3) {
-                          return null;
-                        }
-                        
-                        // If this is Expense Management in Finance menu, render both Expense and Fine sections together
-                        if (isFinance && isExpenseManagement) {
-                          const fineSection = menu.menuItems.find((s: MenuSection) => s.title === 'Fine Management');
-                          return (
-                            <DropdownColumn key={sectionIdx}>
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '8px'
-                              }}>
-                                <ColumnTitle>{section.title}</ColumnTitle>
-                                <Button
-                                  $variant="secondary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isSectionAllSelected(section)) {
-                                      handleDeselectSection(section);
-                                    } else {
-                                      handleSelectSection(section);
-                                    }
-                                  }}
-                                  style={{ 
-                                    fontSize: '0.7rem', 
-                                    padding: '0.25rem 0.5rem',
-                                    minWidth: 'auto'
-                                  }}
-                                >
-                                  {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
-                                </Button>
-                              </div>
-                              {section.items.map((menuItem, itemIdx) => {
-                                const isGranted = isMenuItemGranted(menuItem);
-                                const fromRole = isMenuItemFromRole(menuItem);
-                                const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
-                                return (
-                                  <DropdownMenuItem
-                                    key={itemIdx}
-                                    $color={menuItem.color}
-                                    $checked={isGranted}
-                                    $inherited={fromRole}
-                                    htmlFor={checkboxId}
+            {selectedUser && (
+              <UserInfo>
+                <InfoRow>
+                  <strong>Name:</strong>
+                  <span>{selectedUser.name}</span>
+                </InfoRow>
+                <InfoRow>
+                  <strong>Username:</strong>
+                  <span>{selectedUser.username}</span>
+                </InfoRow>
+                <InfoRow>
+                  <strong>Role:</strong>
+                  <span>{selectedUser.role}</span>
+                </InfoRow>
+                <InfoNote>
+                  <strong>User Permission Customization:</strong> By default, users inherit all permissions from their role
+                  (set in Role Management). When you customize permissions for this user and save, those become their
+                  complete set of permissions (replacing role defaults). To revert to role defaults, delete all user permissions.
+                  {userPermissions.size > 0 && (
+                    <span style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
+                      ⚠️ This user has custom permissions saved. Current selections will replace role defaults when saved.
+                    </span>
+                  )}
+                </InfoNote>
+              </UserInfo>
+            )}
+          </UserSection>
+
+          {selectedUserId ? (
+            <>
+              <SearchBox>
+                <SearchIconWrapper>
+                  <SearchIcon style={{ fontSize: '1.2rem' }} />
+                </SearchIconWrapper>
+                <SearchInput
+                  type="text"
+                  placeholder="Search permissions..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Button
+                  $variant="secondary"
+                  onClick={isAllSelected() ? handleDeselectAll : handleSelectAll}
+                  style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+                >
+                  {isAllSelected() ? 'Deselect All' : 'Select All'}
+                </Button>
+              </SearchBox>
+
+              <MenuContainer>
+                {filteredMenuStructure.map((menu) => {
+                  const isOpen = openMenus.has(menu.label);
+
+                  return (
+                    <MenuSectionWrapper key={menu.label}>
+                      <MenuSectionHeader
+                        $isOpen={isOpen}
+                        onClick={() => toggleMenu(menu.label)}
+                      >
+                        {menu.icon}
+                        <span>{menu.label}</span>
+                      </MenuSectionHeader>
+                      <MenuDropdown $isOpen={isOpen} $columns={menu.columns}>
+                        {menu.menuItems.map((section, sectionIdx) => {
+                          // For Finance menu, combine Expense Management and Fine Management in the same column (3rd column)
+                          const isFinance = menu.label === 'Finance';
+                          const isExpenseManagement = section.title === 'Expense Management';
+                          const isFineManagement = section.title === 'Fine Management';
+
+                          // Skip rendering Fine Management as separate column, it will be rendered with Expense Management
+                          if (isFinance && isFineManagement && sectionIdx === 3) {
+                            return null;
+                          }
+
+                          // If this is Expense Management in Finance menu, render both Expense and Fine sections together
+                          if (isFinance && isExpenseManagement) {
+                            const fineSection = menu.menuItems.find((s: MenuSection) => s.title === 'Fine Management');
+                            return (
+                              <DropdownColumn key={sectionIdx}>
+                                <div style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginBottom: '8px'
+                                }}>
+                                  <ColumnTitle>{section.title}</ColumnTitle>
+                                  <Button
+                                    $variant="secondary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isSectionAllSelected(section)) {
+                                        handleDeselectSection(section);
+                                      } else {
+                                        handleSelectSection(section);
+                                      }
+                                    }}
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      padding: '0.25rem 0.5rem',
+                                      minWidth: 'auto'
+                                    }}
                                   >
-                                    <input
-                                      type="checkbox"
-                                      id={checkboxId}
-                                      checked={isGranted}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        toggleMenuItemPermission(menuItem);
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
-                                    />
-                                    <div className="checkbox-indicator">
-                                      {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                    </div>
-                                    <div className="menu-icon">
-                                      {menuItem.icon}
-                                    </div>
-                                    <div className="menu-content">
-                                      <div className="menu-title">
-                                        {menuItem.title}
-                                        {fromRole && (
-                                          <span style={{ 
-                                            fontSize: '0.65rem', 
-                                            fontWeight: 400, 
-                                            color: 'inherit', 
-                                            opacity: 0.7, 
-                                            marginLeft: '0.5rem' 
-                                          }}>
-                                            (default from role)
-                                          </span>
-                                        )}
-                                        {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
-                                          <span style={{ 
-                                            fontSize: '0.65rem', 
-                                            fontWeight: 400, 
-                                            color: '#6366f1', 
-                                            opacity: 0.8, 
-                                            marginLeft: '0.5rem' 
-                                          }}>
-                                            (user override - granted)
-                                          </span>
-                                        )}
-                                        {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
-                                          <span style={{ 
-                                            fontSize: '0.65rem', 
-                                            fontWeight: 400, 
-                                            color: '#ef4444', 
-                                            opacity: 0.8, 
-                                            marginLeft: '0.5rem' 
-                                          }}>
-                                            (user override - denied)
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="menu-description">{menuItem.description}</div>
-                                    </div>
-                                  </DropdownMenuItem>
-                                );
-                              })}
-                              {fineSection && (
-                                <>
-                                  <ColumnSeparator />
-                                  <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '8px',
-                                    marginTop: '8px'
-                                  }}>
-                                    <ColumnTitle>{fineSection.title}</ColumnTitle>
-                                    <Button
-                                      $variant="secondary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isSectionAllSelected(fineSection)) {
-                                          handleDeselectSection(fineSection);
-                                        } else {
-                                          handleSelectSection(fineSection);
-                                        }
-                                      }}
-                                      style={{ 
-                                        fontSize: '0.7rem', 
-                                        padding: '0.25rem 0.5rem',
-                                        minWidth: 'auto'
-                                      }}
-                                    >
-                                      {isSectionAllSelected(fineSection) ? 'Deselect All' : 'Select All'}
-                                    </Button>
-                                  </div>
-                                  {fineSection.items.map((menuItem, itemIdx) => {
-                                    const isGranted = isMenuItemGranted(menuItem);
-                                    const fromRole = isMenuItemFromRole(menuItem);
-                                    const checkboxId = `checkbox-fine-${menuItem.path}-${itemIdx}`;
-                                    return (
-                                      <DropdownMenuItem
-                                        key={`fine-${itemIdx}`}
-                                        $color={menuItem.color}
-                                        $checked={isGranted}
-                                        $inherited={fromRole}
-                                        htmlFor={checkboxId}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          id={checkboxId}
-                                          checked={isGranted}
-                                          onChange={(e) => {
-                                            e.stopPropagation();
-                                            toggleMenuItemPermission(menuItem);
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                          }}
-                                        />
-                                        <div className="checkbox-indicator">
-                                          {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                        </div>
-                                        <div className="menu-icon">
-                                          {menuItem.icon}
-                                        </div>
-                                        <div className="menu-content">
-                                          <div className="menu-title">
-                                            {menuItem.title}
-                                            {fromRole && (
-                                              <span style={{ 
-                                                fontSize: '0.65rem', 
-                                                fontWeight: 400, 
-                                                color: 'inherit', 
-                                                opacity: 0.7, 
-                                                marginLeft: '0.5rem' 
-                                              }}>
-                                                (default from role)
-                                              </span>
-                                            )}
-                                            {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
-                                              <span style={{ 
-                                                fontSize: '0.65rem', 
-                                                fontWeight: 400, 
-                                                color: '#6366f1', 
-                                                opacity: 0.8, 
-                                                marginLeft: '0.5rem' 
-                                              }}>
-                                                (user override - granted)
-                                              </span>
-                                            )}
-                                            {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
-                                              <span style={{ 
-                                                fontSize: '0.65rem', 
-                                                fontWeight: 400, 
-                                                color: '#ef4444', 
-                                                opacity: 0.8, 
-                                                marginLeft: '0.5rem' 
-                                              }}>
-                                                (user override - denied)
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="menu-description">{menuItem.description}</div>
-                                        </div>
-                                      </DropdownMenuItem>
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </DropdownColumn>
-                          );
-                        }
-                        
-                        // Render other sections normally
-                        return (
-                          <DropdownColumn key={sectionIdx}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginBottom: '8px'
-                            }}>
-                              <ColumnTitle>{section.title}</ColumnTitle>
-                              <Button
-                                $variant="secondary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isSectionAllSelected(section)) {
-                                    handleDeselectSection(section);
-                                  } else {
-                                    handleSelectSection(section);
-                                  }
-                                }}
-                                style={{ 
-                                  fontSize: '0.7rem', 
-                                  padding: '0.25rem 0.5rem',
-                                  minWidth: 'auto'
-                                }}
-                              >
-                                {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
-                              </Button>
-                            </div>
-                            {section.items.map((menuItem, itemIdx) => {
-                              const isGranted = isMenuItemGranted(menuItem);
-                              const fromRole = isMenuItemFromRole(menuItem);
-                              const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
-                              // Add separator before Reports items in Students and Employees menus
-                              const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
-                              const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
-                              // Add separator before Timetable in Employee Management section
-                              const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
-                              // Add separator before Payroll in Fee Record section
-                              const isFeeRecordSection = menu.label === 'Finance' && section.title === 'Fee Record';
-                              const isPayrollItem = menuItem.path === '/payroll';
-                              const prevItem = itemIdx > 0 ? section.items[itemIdx - 1] : null;
-                              const isFirstPayrollItem = isFeeRecordSection && isPayrollItem && prevItem && prevItem.path !== '/payroll';
-                              const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable || isFirstPayrollItem;
-                              return (
-                                <React.Fragment key={itemIdx}>
-                                  {shouldShowSeparator && <ColumnSeparator />}
-                                  <DropdownMenuItem
-                                    $color={menuItem.color}
-                                    $checked={isGranted}
-                                    $inherited={fromRole}
-                                    htmlFor={checkboxId}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      id={checkboxId}
-                                      checked={isGranted}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        toggleMenuItemPermission(menuItem);
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
-                                    />
-                                    <div className="checkbox-indicator">
-                                      {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                    </div>
-                                    <div className="menu-icon">
-                                      {menuItem.icon}
-                                    </div>
-                                    <div className="menu-content">
-                                      <div className="menu-title">
-                                        {menuItem.title}
-                                        {fromRole && (
-                                          <span style={{ 
-                                            fontSize: '0.65rem', 
-                                            fontWeight: 400, 
-                                            color: 'inherit', 
-                                            opacity: 0.7, 
-                                            marginLeft: '0.5rem' 
-                                          }}>
-                                            (default from role)
-                                          </span>
-                                        )}
-                                        {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
-                                          <span style={{ 
-                                            fontSize: '0.65rem', 
-                                            fontWeight: 400, 
-                                            color: '#6366f1', 
-                                            opacity: 0.8, 
-                                            marginLeft: '0.5rem' 
-                                          }}>
-                                            (user override - granted)
-                                          </span>
-                                        )}
-                                        {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
-                                          <span style={{ 
-                                            fontSize: '0.65rem', 
-                                            fontWeight: 400, 
-                                            color: '#ef4444', 
-                                            opacity: 0.8, 
-                                            marginLeft: '0.5rem' 
-                                          }}>
-                                            (user override - denied)
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="menu-description">{menuItem.description}</div>
-                                    </div>
-                                  </DropdownMenuItem>
-                                </React.Fragment>
-                              );
-                            })}
-                            {section.expenseItems && (
-                              <>
-                                <ColumnSeparator />
-                                {section.expenseItems.map((menuItem, itemIdx) => {
+                                    {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
+                                  </Button>
+                                </div>
+                                {section.items.map((menuItem, itemIdx) => {
                                   const isGranted = isMenuItemGranted(menuItem);
                                   const fromRole = isMenuItemFromRole(menuItem);
-                                  const checkboxId = `checkbox-expense-${menuItem.path}-${itemIdx}`;
+                                  const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
                                   return (
                                     <DropdownMenuItem
-                                      key={`expense-${itemIdx}`}
+                                      key={itemIdx}
                                       $color={menuItem.color}
                                       $checked={isGranted}
                                       $inherited={fromRole}
@@ -1623,34 +1419,34 @@ const UserPermissionManagement: React.FC = () => {
                                         <div className="menu-title">
                                           {menuItem.title}
                                           {fromRole && (
-                                            <span style={{ 
-                                              fontSize: '0.65rem', 
-                                              fontWeight: 400, 
-                                              color: 'inherit', 
-                                              opacity: 0.7, 
-                                              marginLeft: '0.5rem' 
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: 400,
+                                              color: 'inherit',
+                                              opacity: 0.7,
+                                              marginLeft: '0.5rem'
                                             }}>
                                               (default from role)
                                             </span>
                                           )}
                                           {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
-                                            <span style={{ 
-                                              fontSize: '0.65rem', 
-                                              fontWeight: 400, 
-                                              color: '#6366f1', 
-                                              opacity: 0.8, 
-                                              marginLeft: '0.5rem' 
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: 400,
+                                              color: '#6366f1',
+                                              opacity: 0.8,
+                                              marginLeft: '0.5rem'
                                             }}>
                                               (user override - granted)
                                             </span>
                                           )}
                                           {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
-                                            <span style={{ 
-                                              fontSize: '0.65rem', 
-                                              fontWeight: 400, 
-                                              color: '#ef4444', 
-                                              opacity: 0.8, 
-                                              marginLeft: '0.5rem' 
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: 400,
+                                              color: '#ef4444',
+                                              opacity: 0.8,
+                                              marginLeft: '0.5rem'
                                             }}>
                                               (user override - denied)
                                             </span>
@@ -1661,339 +1457,686 @@ const UserPermissionManagement: React.FC = () => {
                                     </DropdownMenuItem>
                                   );
                                 })}
-                              </>
-                            )}
-                          </DropdownColumn>
-                        );
-                      })}
-                    </MenuDropdown>
-                  </MenuSectionWrapper>
-                );
-              })}
-            </MenuContainer>
-
-            {filteredMenuStructure.length === 0 && (
-              <EmptyState>
-                <p>No menu items found matching your search.</p>
-              </EmptyState>
-            )}
-
-            {/* Standalone Pages/Features Section */}
-            <MenuSectionWrapper>
-              <MenuSectionHeader
-                $isOpen={openMenus.has('Standalone Pages/Features')}
-                onClick={() => toggleMenu('Standalone Pages/Features')}
-              >
-                <PersonIcon />
-                <span>Standalone Pages/Features</span>
-              </MenuSectionHeader>
-              <MenuDropdown $isOpen={openMenus.has('Standalone Pages/Features')} $columns={2}>
-                {/* Pages Column */}
-                <DropdownColumn>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '8px'
-                  }}>
-                    <ColumnTitle>Pages</ColumnTitle>
-                    <Button
-                      $variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const standalonePages = [
-                          { path: '/dashboard' },
-                          { path: '/students/profile/:id' },
-                          { path: '/profile' },
-                          { path: '/setup-accounts' },
-                          { path: '/balance-sheet' }
-                        ];
-                        const allSelected = standalonePages.every(page => {
-                          const permissionId = getPermissionIdForPath(page.path);
-                          return permissionId !== null && isPermissionGranted(permissionId);
-                        });
-                        
-                        // Create a new permissions map
-                        const newUserPerms = new Map(userPermissions);
-                        
-                        // If user has no saved permissions yet, initialize with role defaults
-                        if (newUserPerms.size === 0) {
-                          rolePermissions.forEach(rolePermId => {
-                            newUserPerms.set(rolePermId, true);
-                          });
-                        }
-                        
-                        // Update standalone pages
-                        standalonePages.forEach(page => {
-                          const permissionId = getPermissionIdForPath(page.path);
-                          if (permissionId) {
-                            if (allSelected) {
-                              // Deselect all - set to false (explicitly deny)
-                              newUserPerms.set(permissionId, false);
-                            } else {
-                              // Select all - set to true (explicitly grant)
-                              newUserPerms.set(permissionId, true);
-                            }
+                                {fineSection && (
+                                  <>
+                                    <ColumnSeparator />
+                                    <div style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      marginBottom: '8px',
+                                      marginTop: '8px'
+                                    }}>
+                                      <ColumnTitle>{fineSection.title}</ColumnTitle>
+                                      <Button
+                                        $variant="secondary"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (isSectionAllSelected(fineSection)) {
+                                            handleDeselectSection(fineSection);
+                                          } else {
+                                            handleSelectSection(fineSection);
+                                          }
+                                        }}
+                                        style={{
+                                          fontSize: '0.7rem',
+                                          padding: '0.25rem 0.5rem',
+                                          minWidth: 'auto'
+                                        }}
+                                      >
+                                        {isSectionAllSelected(fineSection) ? 'Deselect All' : 'Select All'}
+                                      </Button>
+                                    </div>
+                                    {fineSection.items.map((menuItem, itemIdx) => {
+                                      const isGranted = isMenuItemGranted(menuItem);
+                                      const fromRole = isMenuItemFromRole(menuItem);
+                                      const checkboxId = `checkbox-fine-${menuItem.path}-${itemIdx}`;
+                                      return (
+                                        <DropdownMenuItem
+                                          key={`fine-${itemIdx}`}
+                                          $color={menuItem.color}
+                                          $checked={isGranted}
+                                          $inherited={fromRole}
+                                          htmlFor={checkboxId}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            id={checkboxId}
+                                            checked={isGranted}
+                                            onChange={(e) => {
+                                              e.stopPropagation();
+                                              toggleMenuItemPermission(menuItem);
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                            }}
+                                          />
+                                          <div className="checkbox-indicator">
+                                            {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                          </div>
+                                          <div className="menu-icon">
+                                            {menuItem.icon}
+                                          </div>
+                                          <div className="menu-content">
+                                            <div className="menu-title">
+                                              {menuItem.title}
+                                              {fromRole && (
+                                                <span style={{
+                                                  fontSize: '0.65rem',
+                                                  fontWeight: 400,
+                                                  color: 'inherit',
+                                                  opacity: 0.7,
+                                                  marginLeft: '0.5rem'
+                                                }}>
+                                                  (default from role)
+                                                </span>
+                                              )}
+                                              {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
+                                                <span style={{
+                                                  fontSize: '0.65rem',
+                                                  fontWeight: 400,
+                                                  color: '#6366f1',
+                                                  opacity: 0.8,
+                                                  marginLeft: '0.5rem'
+                                                }}>
+                                                  (user override - granted)
+                                                </span>
+                                              )}
+                                              {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
+                                                <span style={{
+                                                  fontSize: '0.65rem',
+                                                  fontWeight: 400,
+                                                  color: '#ef4444',
+                                                  opacity: 0.8,
+                                                  marginLeft: '0.5rem'
+                                                }}>
+                                                  (user override - denied)
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="menu-description">{menuItem.description}</div>
+                                          </div>
+                                        </DropdownMenuItem>
+                                      );
+                                    })}
+                                  </>
+                                )}
+                              </DropdownColumn>
+                            );
                           }
-                        });
-                        setUserPermissions(newUserPerms);
-                      }}
-                      style={{ 
-                        fontSize: '0.7rem', 
-                        padding: '0.25rem 0.5rem',
-                        minWidth: 'auto'
-                      }}
-                    >
-                      {(() => {
-                        const standalonePages = [
-                          { path: '/dashboard' },
-                          { path: '/students/profile/:id' },
-                          { path: '/profile' },
-                          { path: '/setup-accounts' },
-                          { path: '/balance-sheet' }
-                        ];
-                        const allSelected = standalonePages.every(page => {
-                          const permissionId = getPermissionIdForPath(page.path);
-                          return permissionId !== null && isPermissionGranted(permissionId);
-                        });
-                        return allSelected ? 'Deselect All' : 'Select All';
-                      })()}
-                    </Button>
-                  </div>
-                  {[
-                    { 
-                      title: 'Dashboard', 
-                      description: 'View comprehensive dashboard with attendance, fees, admissions, and homework analytics',
-                      path: '/dashboard', 
-                      color: '#6366f1', 
-                      icon: React.createElement(DashboardIcon) 
-                    },
-                    { 
-                      title: 'Student Profile', 
-                      description: 'View detailed student profile including attendance, exams, fees, and reports',
-                      path: '/students/profile/:id', 
-                      color: '#3b82f6', 
-                      icon: React.createElement(PersonIcon) 
-                    },
-                    { 
-                      title: 'Teacher Profile', 
-                      description: 'View detailed teacher profile including attendance, timetable, test analysis, and diary assignments',
-                      path: '/profile', 
-                      color: '#8b5cf6', 
-                      icon: React.createElement(WorkIcon) 
-                    },
-                    { 
-                      title: 'Setup Accounts', 
-                      description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
-                      path: '/setup-accounts', 
-                      color: '#3b82f6', 
-                      icon: React.createElement(AccountBalanceWallet) 
-                    },
-                    { 
-                      title: 'Balance Sheet', 
-                      description: 'View account balances including income and expenses',
-                      path: '/balance-sheet', 
-                      color: '#10b981', 
-                      icon: React.createElement(AccountBalanceIcon) 
-                    },
-                    { 
-                      title: 'Cash Flow', 
-                      description: 'View cash inflows, outflows, and net cash flow statement',
-                      path: '/cash-flow', 
-                      color: '#f59e0b', 
-                      icon: React.createElement(TrendingUpIcon) 
-                    }
-                  ].map((pageItem, itemIdx) => {
-                    const isGranted = isMenuItemGranted(pageItem);
-                    const fromRole = isMenuItemFromRole(pageItem);
-                    return (
-                      <DropdownMenuItem
-                        key={itemIdx}
-                        $color={pageItem.color}
-                        $checked={isGranted}
-                        $inherited={fromRole}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isGranted}
-                          onChange={() => toggleMenuItemPermission(pageItem)}
-                        />
-                        <div className="checkbox-indicator">
-                          {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                        </div>
-                        <div className="menu-icon">
-                          {pageItem.icon}
-                        </div>
-                        <div className="menu-content">
-                          <div className="menu-title">
-                            {pageItem.title}
-                            {fromRole && (
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                fontWeight: 400, 
-                                color: 'inherit', 
-                                opacity: 0.7, 
-                                marginLeft: '0.5rem' 
+
+                          // Render other sections normally
+                          return (
+                            <DropdownColumn key={sectionIdx}>
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '8px'
                               }}>
-                                (default from role)
-                              </span>
-                            )}
-                            {userPermissions.has(getPermissionIdForPath(pageItem.path) || 0) && !fromRole && isGranted && (
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                fontWeight: 400, 
-                                color: '#6366f1', 
-                                opacity: 0.8, 
-                                marginLeft: '0.5rem' 
-                              }}>
-                                (user override - granted)
-                              </span>
-                            )}
-                            {userPermissions.has(getPermissionIdForPath(pageItem.path) || 0) && !isGranted && (
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                fontWeight: 400, 
-                                color: '#ef4444', 
-                                opacity: 0.8, 
-                                marginLeft: '0.5rem' 
-                              }}>
-                                (user override - denied)
-                              </span>
-                            )}
-                          </div>
-                          <div className="menu-description">{pageItem.description}</div>
-                        </div>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownColumn>
-                
-                {/* Features Column */}
-                <DropdownColumn>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '8px'
-                  }}>
-                    <ColumnTitle>Features</ColumnTitle>
-                    {whatsappPermissionId && (
+                                <ColumnTitle>{section.title}</ColumnTitle>
+                                <Button
+                                  $variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isSectionAllSelected(section)) {
+                                      handleDeselectSection(section);
+                                    } else {
+                                      handleSelectSection(section);
+                                    }
+                                  }}
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    padding: '0.25rem 0.5rem',
+                                    minWidth: 'auto'
+                                  }}
+                                >
+                                  {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
+                                </Button>
+                              </div>
+                              {section.items.map((menuItem, itemIdx) => {
+                                const isGranted = isMenuItemGranted(menuItem);
+                                const fromRole = isMenuItemFromRole(menuItem);
+                                const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
+                                // Add separator before Reports items in Students and Employees menus
+                                const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
+                                const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
+                                // Add separator before Timetable in Employee Management section
+                                const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
+                                // Add separator before Payroll in Fee Record section
+                                const isFeeRecordSection = menu.label === 'Finance' && section.title === 'Fee Record';
+                                const isPayrollItem = menuItem.path === '/payroll';
+                                const prevItem = itemIdx > 0 ? section.items[itemIdx - 1] : null;
+                                const isFirstPayrollItem = isFeeRecordSection && isPayrollItem && prevItem && prevItem.path !== '/payroll';
+                                const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable || isFirstPayrollItem;
+                                return (
+                                  <React.Fragment key={itemIdx}>
+                                    {shouldShowSeparator && <ColumnSeparator />}
+                                    <DropdownMenuItem
+                                      $color={menuItem.color}
+                                      $checked={isGranted}
+                                      $inherited={fromRole}
+                                      htmlFor={checkboxId}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        id={checkboxId}
+                                        checked={isGranted}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleMenuItemPermission(menuItem);
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                        }}
+                                      />
+                                      <div className="checkbox-indicator">
+                                        {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                      </div>
+                                      <div className="menu-icon">
+                                        {menuItem.icon}
+                                      </div>
+                                      <div className="menu-content">
+                                        <div className="menu-title">
+                                          {menuItem.title}
+                                          {fromRole && (
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: 400,
+                                              color: 'inherit',
+                                              opacity: 0.7,
+                                              marginLeft: '0.5rem'
+                                            }}>
+                                              (default from role)
+                                            </span>
+                                          )}
+                                          {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: 400,
+                                              color: '#6366f1',
+                                              opacity: 0.8,
+                                              marginLeft: '0.5rem'
+                                            }}>
+                                              (user override - granted)
+                                            </span>
+                                          )}
+                                          {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: 400,
+                                              color: '#ef4444',
+                                              opacity: 0.8,
+                                              marginLeft: '0.5rem'
+                                            }}>
+                                              (user override - denied)
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="menu-description">{menuItem.description}</div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  </React.Fragment>
+                                );
+                              })}
+                              {section.expenseItems && (
+                                <>
+                                  <ColumnSeparator />
+                                  {section.expenseItems.map((menuItem, itemIdx) => {
+                                    const isGranted = isMenuItemGranted(menuItem);
+                                    const fromRole = isMenuItemFromRole(menuItem);
+                                    const checkboxId = `checkbox-expense-${menuItem.path}-${itemIdx}`;
+                                    return (
+                                      <DropdownMenuItem
+                                        key={`expense-${itemIdx}`}
+                                        $color={menuItem.color}
+                                        $checked={isGranted}
+                                        $inherited={fromRole}
+                                        htmlFor={checkboxId}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          id={checkboxId}
+                                          checked={isGranted}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            toggleMenuItemPermission(menuItem);
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                          }}
+                                        />
+                                        <div className="checkbox-indicator">
+                                          {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                        </div>
+                                        <div className="menu-icon">
+                                          {menuItem.icon}
+                                        </div>
+                                        <div className="menu-content">
+                                          <div className="menu-title">
+                                            {menuItem.title}
+                                            {fromRole && (
+                                              <span style={{
+                                                fontSize: '0.65rem',
+                                                fontWeight: 400,
+                                                color: 'inherit',
+                                                opacity: 0.7,
+                                                marginLeft: '0.5rem'
+                                              }}>
+                                                (default from role)
+                                              </span>
+                                            )}
+                                            {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !fromRole && isGranted && (
+                                              <span style={{
+                                                fontSize: '0.65rem',
+                                                fontWeight: 400,
+                                                color: '#6366f1',
+                                                opacity: 0.8,
+                                                marginLeft: '0.5rem'
+                                              }}>
+                                                (user override - granted)
+                                              </span>
+                                            )}
+                                            {userPermissions.has(getPermissionIdForPath(menuItem.path) || 0) && !isGranted && (
+                                              <span style={{
+                                                fontSize: '0.65rem',
+                                                fontWeight: 400,
+                                                color: '#ef4444',
+                                                opacity: 0.8,
+                                                marginLeft: '0.5rem'
+                                              }}>
+                                                (user override - denied)
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="menu-description">{menuItem.description}</div>
+                                        </div>
+                                      </DropdownMenuItem>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </DropdownColumn>
+                          );
+                        })}
+                      </MenuDropdown>
+                    </MenuSectionWrapper>
+                  );
+                })}
+              </MenuContainer>
+
+              {filteredMenuStructure.length === 0 && (
+                <EmptyState>
+                  <p>No menu items found matching your search.</p>
+                </EmptyState>
+              )}
+
+              {/* Standalone Pages/Features Section */}
+              <MenuSectionWrapper>
+                <MenuSectionHeader
+                  $isOpen={openMenus.has('Standalone Pages/Features')}
+                  onClick={() => toggleMenu('Standalone Pages/Features')}
+                >
+                  <PersonIcon />
+                  <span>Standalone Pages/Features</span>
+                </MenuSectionHeader>
+                <MenuDropdown $isOpen={openMenus.has('Standalone Pages/Features')} $columns={2}>
+                  {/* Pages Column */}
+                  <DropdownColumn>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <ColumnTitle>Pages</ColumnTitle>
                       <Button
                         $variant="secondary"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const isGranted = isWhatsAppPermissionGranted();
+                          const standalonePages = [
+                            { path: '/dashboard' },
+                            { path: '/students/profile/:id' },
+                            { path: '/profile' },
+                            { path: '/setup-accounts' },
+                            { path: '/balance-sheet' }
+                          ];
+                          const allSelected = standalonePages.every(page => {
+                            const permissionId = getPermissionIdForPath(page.path);
+                            return permissionId !== null && isPermissionGranted(permissionId);
+                          });
+
+                          // Create a new permissions map
                           const newUserPerms = new Map(userPermissions);
-                          
+
                           // If user has no saved permissions yet, initialize with role defaults
                           if (newUserPerms.size === 0) {
                             rolePermissions.forEach(rolePermId => {
                               newUserPerms.set(rolePermId, true);
                             });
                           }
-                          
-                          if (isGranted) {
-                            newUserPerms.set(whatsappPermissionId, false);
-                          } else {
-                            newUserPerms.set(whatsappPermissionId, true);
-                          }
+
+                          // Update standalone pages
+                          standalonePages.forEach(page => {
+                            const permissionId = getPermissionIdForPath(page.path);
+                            if (permissionId) {
+                              if (allSelected) {
+                                // Deselect all - set to false (explicitly deny)
+                                newUserPerms.set(permissionId, false);
+                              } else {
+                                // Select all - set to true (explicitly grant)
+                                newUserPerms.set(permissionId, true);
+                              }
+                            }
+                          });
                           setUserPermissions(newUserPerms);
                         }}
-                        style={{ 
-                          fontSize: '0.7rem', 
+                        style={{
+                          fontSize: '0.7rem',
                           padding: '0.25rem 0.5rem',
                           minWidth: 'auto'
                         }}
                       >
-                        {isWhatsAppPermissionGranted() ? 'Deselect All' : 'Select All'}
+                        {(() => {
+                          const standalonePages = [
+                            { path: '/dashboard' },
+                            { path: '/students/profile/:id' },
+                            { path: '/profile' },
+                            { path: '/setup-accounts' },
+                            { path: '/balance-sheet' }
+                          ];
+                          const allSelected = standalonePages.every(page => {
+                            const permissionId = getPermissionIdForPath(page.path);
+                            return permissionId !== null && isPermissionGranted(permissionId);
+                          });
+                          return allSelected ? 'Deselect All' : 'Select All';
+                        })()}
                       </Button>
-                    )}
-                  </div>
-                  {/* WhatsApp Notification Permission */}
-                  {whatsappPermissionId && (
-                    <DropdownMenuItem
-                      $color="#25d366"
-                      $checked={isWhatsAppPermissionGranted()}
-                      $inherited={isWhatsAppPermissionFromRole()}
-                      htmlFor="whatsapp-notification-permission"
-                    >
-                      <input
-                        type="checkbox"
-                        id="whatsapp-notification-permission"
-                        checked={isWhatsAppPermissionGranted()}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handlePermissionToggle(whatsappPermissionId);
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                      <div className="checkbox-indicator">
-                        {isWhatsAppPermissionGranted() ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                      </div>
-                      <div className="menu-icon">
-                        <WhatsAppIcon />
-                      </div>
-                      <div className="menu-content">
-                        <div className="menu-title">
-                          Send WhatsApp Notifications
-                          {isWhatsAppPermissionFromRole() && (
-                            <span style={{ 
-                              fontSize: '0.65rem', 
-                              fontWeight: 400, 
-                              color: 'inherit', 
-                              opacity: 0.7, 
-                              marginLeft: '0.5rem' 
-                            }}>
-                              (default from role)
-                            </span>
+                    </div>
+                    {[
+                      {
+                        title: 'Dashboard',
+                        description: 'View comprehensive dashboard with attendance, fees, admissions, and homework analytics',
+                        path: '/dashboard',
+                        color: '#6366f1',
+                        icon: React.createElement(DashboardIcon)
+                      },
+                      {
+                        title: 'Student Profile',
+                        description: 'View detailed student profile including attendance, exams, fees, and reports',
+                        path: '/students/profile/:id',
+                        color: '#3b82f6',
+                        icon: React.createElement(PersonIcon)
+                      },
+                      {
+                        title: 'Teacher Profile',
+                        description: 'View detailed teacher profile including attendance, timetable, test analysis, and diary assignments',
+                        path: '/profile',
+                        color: '#8b5cf6',
+                        icon: React.createElement(WorkIcon)
+                      },
+                      {
+                        title: 'Setup Accounts',
+                        description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
+                        path: '/setup-accounts',
+                        color: '#3b82f6',
+                        icon: React.createElement(AccountBalanceWallet)
+                      },
+                      {
+                        title: 'Balance Sheet',
+                        description: 'View account balances including income and expenses',
+                        path: '/balance-sheet',
+                        color: '#10b981',
+                        icon: React.createElement(AccountBalanceIcon)
+                      },
+                      {
+                        title: 'Cash Flow',
+                        description: 'View cash inflows, outflows, and net cash flow statement',
+                        path: '/cash-flow',
+                        color: '#f59e0b',
+                        icon: React.createElement(TrendingUpIcon)
+                      }
+                    ].map((pageItem, itemIdx) => {
+                      const isGranted = isMenuItemGranted(pageItem);
+                      const fromRole = isMenuItemFromRole(pageItem);
+                      const isDashboard = pageItem.path === '/dashboard';
+                      const dashboardTabs = isDashboard ? [
+                        { path: '/dashboard/tab/attendance', label: 'Attendance', icon: <EventNote />, color: '#3b82f6' },
+                        { path: '/dashboard/tab/fee', label: 'Fee Collection', icon: <AccountBalanceWallet />, color: '#10b981' },
+                        { path: '/dashboard/tab/admissions', label: 'Admissions', icon: <PersonAdd />, color: '#8b5cf6' },
+                        { path: '/dashboard/tab/homework', label: 'Homework Diary', icon: <Assignment />, color: '#f59e0b' },
+                        { path: '/dashboard/tab/employeeAttendance', label: 'Employee Attendance', icon: <Groups />, color: '#06b6d4' },
+                        { path: '/dashboard/tab/accounts', label: 'Accounts', icon: <AccountBalanceIcon />, color: '#ec4899' },
+                        { path: '/dashboard/tab/predictions', label: 'Predictions (ML)', icon: <Lightbulb />, color: '#eab308' },
+                      ] : [];
+                      return (
+                        <React.Fragment key={itemIdx}>
+                          <DropdownMenuItem
+                            $color={pageItem.color}
+                            $checked={isGranted}
+                            $inherited={fromRole}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isGranted}
+                              onChange={() => toggleMenuItemPermission(pageItem)}
+                            />
+                            <div className="checkbox-indicator">
+                              {isGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                            </div>
+                            <div className="menu-icon">
+                              {pageItem.icon}
+                            </div>
+                            <div className="menu-content">
+                              <div className="menu-title">
+                                {pageItem.title}
+                                {fromRole && (
+                                  <span style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 400,
+                                    color: 'inherit',
+                                    opacity: 0.7,
+                                    marginLeft: '0.5rem'
+                                  }}>
+                                    (default from role)
+                                  </span>
+                                )}
+                                {userPermissions.has(getPermissionIdForPath(pageItem.path) || 0) && !fromRole && isGranted && (
+                                  <span style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 400,
+                                    color: '#6366f1',
+                                    opacity: 0.8,
+                                    marginLeft: '0.5rem'
+                                  }}>
+                                    (user override - granted)
+                                  </span>
+                                )}
+                                {userPermissions.has(getPermissionIdForPath(pageItem.path) || 0) && !isGranted && (
+                                  <span style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 400,
+                                    color: '#ef4444',
+                                    opacity: 0.8,
+                                    marginLeft: '0.5rem'
+                                  }}>
+                                    (user override - denied)
+                                  </span>
+                                )}
+                              </div>
+                              <div className="menu-description">{pageItem.description}</div>
+                            </div>
+                          </DropdownMenuItem>
+                          {isDashboard && isGranted && (
+                            <SubItemsContainer $isOpen={true}>
+                              {dashboardTabs.map((tab, tabIdx) => {
+                                const tabPermissionId = getPermissionIdForPath(tab.path);
+                                const tabGranted = tabPermissionId ? isPermissionGranted(tabPermissionId) : false;
+                                const tabFromRole = tabPermissionId ? isPermissionFromRole(tabPermissionId) : false;
+                                return (
+                                  <SubItemCheckbox
+                                    key={tabIdx}
+                                    $color={tab.color}
+                                    $checked={tabGranted}
+                                    $inherited={tabFromRole}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      if (tabPermissionId) handlePermissionToggle(tabPermissionId);
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={tabGranted}
+                                      readOnly
+                                    />
+                                    <div className="sub-checkbox-indicator">
+                                      {tabGranted ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                    </div>
+                                    <div className="sub-icon">{tab.icon}</div>
+                                    <span className="sub-label">
+                                      {tab.label}
+                                      {tabFromRole && (
+                                        <span style={{ fontSize: '0.6rem', fontWeight: 400, color: 'inherit', opacity: 0.7, marginLeft: '0.4rem' }}>
+                                          (role)
+                                        </span>
+                                      )}
+                                    </span>
+                                  </SubItemCheckbox>
+                                );
+                              })}
+                            </SubItemsContainer>
                           )}
-                          {userPermissions.has(whatsappPermissionId) && !isWhatsAppPermissionFromRole() && isWhatsAppPermissionGranted() && (
-                            <span style={{ 
-                              fontSize: '0.65rem', 
-                              fontWeight: 400, 
-                              color: '#6366f1', 
-                              opacity: 0.8, 
-                              marginLeft: '0.5rem' 
-                            }}>
-                              (user override - granted)
-                            </span>
-                          )}
-                          {userPermissions.has(whatsappPermissionId) && !isWhatsAppPermissionGranted() && (
-                            <span style={{ 
-                              fontSize: '0.65rem', 
-                              fontWeight: 400, 
-                              color: '#ef4444', 
-                              opacity: 0.8, 
-                              marginLeft: '0.5rem' 
-                            }}>
-                              (user override - denied)
-                            </span>
-                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </DropdownColumn>
+
+                  {/* Features Column */}
+                  <DropdownColumn>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <ColumnTitle>Features</ColumnTitle>
+                      {whatsappPermissionId && (
+                        <Button
+                          $variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isGranted = isWhatsAppPermissionGranted();
+                            const newUserPerms = new Map(userPermissions);
+
+                            // If user has no saved permissions yet, initialize with role defaults
+                            if (newUserPerms.size === 0) {
+                              rolePermissions.forEach(rolePermId => {
+                                newUserPerms.set(rolePermId, true);
+                              });
+                            }
+
+                            if (isGranted) {
+                              newUserPerms.set(whatsappPermissionId, false);
+                            } else {
+                              newUserPerms.set(whatsappPermissionId, true);
+                            }
+                            setUserPermissions(newUserPerms);
+                          }}
+                          style={{
+                            fontSize: '0.7rem',
+                            padding: '0.25rem 0.5rem',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          {isWhatsAppPermissionGranted() ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      )}
+                    </div>
+                    {/* WhatsApp Notification Permission */}
+                    {whatsappPermissionId && (
+                      <DropdownMenuItem
+                        $color="#25d366"
+                        $checked={isWhatsAppPermissionGranted()}
+                        $inherited={isWhatsAppPermissionFromRole()}
+                        htmlFor="whatsapp-notification-permission"
+                      >
+                        <input
+                          type="checkbox"
+                          id="whatsapp-notification-permission"
+                          checked={isWhatsAppPermissionGranted()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handlePermissionToggle(whatsappPermissionId);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                        <div className="checkbox-indicator">
+                          {isWhatsAppPermissionGranted() ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
                         </div>
-                        <div className="menu-description">Allow sending WhatsApp and SMS notifications when marking attendance</div>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownColumn>
-              </MenuDropdown>
-            </MenuSectionWrapper>
-          </>
-        ) : (
-          <EmptyState>
-            <p>Please select a user to manage permissions</p>
-          </EmptyState>
-        )}
+                        <div className="menu-icon">
+                          <WhatsAppIcon />
+                        </div>
+                        <div className="menu-content">
+                          <div className="menu-title">
+                            Send WhatsApp Notifications
+                            {isWhatsAppPermissionFromRole() && (
+                              <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 400,
+                                color: 'inherit',
+                                opacity: 0.7,
+                                marginLeft: '0.5rem'
+                              }}>
+                                (default from role)
+                              </span>
+                            )}
+                            {userPermissions.has(whatsappPermissionId) && !isWhatsAppPermissionFromRole() && isWhatsAppPermissionGranted() && (
+                              <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 400,
+                                color: '#6366f1',
+                                opacity: 0.8,
+                                marginLeft: '0.5rem'
+                              }}>
+                                (user override - granted)
+                              </span>
+                            )}
+                            {userPermissions.has(whatsappPermissionId) && !isWhatsAppPermissionGranted() && (
+                              <span style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 400,
+                                color: '#ef4444',
+                                opacity: 0.8,
+                                marginLeft: '0.5rem'
+                              }}>
+                                (user override - denied)
+                              </span>
+                            )}
+                          </div>
+                          <div className="menu-description">Allow sending WhatsApp and SMS notifications when marking attendance</div>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownColumn>
+                </MenuDropdown>
+              </MenuSectionWrapper>
+            </>
+          ) : (
+            <EmptyState>
+              <p>Please select a user to manage permissions</p>
+            </EmptyState>
+          )}
         </Content>
       </Container>
       {selectedUserId && (
         <StickyFooter>
           {userPermissions.size > 0 && (
-            <Button 
-              $variant="secondary" 
-              onClick={handleResetToDefault} 
-              disabled={saving} 
+            <Button
+              $variant="secondary"
+              onClick={handleResetToDefault}
+              disabled={saving}
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
             >
               <ResetIcon style={{ fontSize: '1rem' }} />
@@ -2016,19 +2159,19 @@ const UserPermissionManagement: React.FC = () => {
             </ModalIconContainer>
             <ModalTitleStyled>Reset to Default Permissions</ModalTitleStyled>
             <ModalMessageStyled>
-              Are you sure you want to reset this user's permissions to their role defaults? 
+              Are you sure you want to reset this user's permissions to their role defaults?
               All custom permissions will be removed and the user will inherit permissions from their assigned role.
             </ModalMessageStyled>
             <ModalButtonRow>
-              <ModalButton 
-                $variant="secondary" 
+              <ModalButton
+                $variant="secondary"
                 onClick={() => setResetModalOpen(false)}
                 disabled={saving}
               >
                 Cancel
               </ModalButton>
-              <ModalButton 
-                $variant="primary" 
+              <ModalButton
+                $variant="primary"
                 onClick={confirmResetToDefault}
                 disabled={saving}
               >

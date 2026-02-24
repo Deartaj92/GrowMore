@@ -45,6 +45,7 @@ export const fetchAdmissionsData = async (
         .from('students')
         .select('id', { count: 'exact', head: true })
         .eq('school_id', schoolId)
+        .eq('status', 'active')
         .gte('created_at', dataStartDate)
         .lte('created_at', dataEndDate),
       supabase
@@ -64,7 +65,8 @@ export const fetchAdmissionsData = async (
       supabase
         .from('students')
         .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId),
+        .eq('school_id', schoolId)
+        .eq('status', 'active'),
       supabase
         .from('families')
         .select('id', { count: 'exact', head: true })

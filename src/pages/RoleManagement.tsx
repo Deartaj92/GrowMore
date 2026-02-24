@@ -16,6 +16,11 @@ import {
   WhatsApp as WhatsAppIcon,
   AccountBalanceWallet,
   AccountBalance as AccountBalanceIcon,
+  EventNote,
+  PersonAdd,
+  Assignment,
+  Groups,
+  Lightbulb,
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
@@ -269,14 +274,14 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number }>`
   
   @media (max-width: 1024px) {
     ${props => {
-      if (props.$columns === 3) {
-        return `grid-template-columns: repeat(2, 1fr);`;
-      }
-      if (props.$columns === 2) {
-        return `grid-template-columns: 1fr;`;
-      }
-      return '';
-    }}
+    if (props.$columns === 3) {
+      return `grid-template-columns: repeat(2, 1fr);`;
+    }
+    if (props.$columns === 2) {
+      return `grid-template-columns: 1fr;`;
+    }
+    return '';
+  }}
   }
   
   @media (max-width: 768px) {
@@ -360,11 +365,11 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean }>`
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 2px solid ${props => props.$checked 
-    ? props.$color 
+  border: 2px solid ${props => props.$checked
+    ? props.$color
     : props.theme.BORDER};
-  background: ${props => props.$checked 
-    ? `${props.$color}15` 
+  background: ${props => props.$checked
+    ? `${props.$color}15`
     : props.theme.CARD};
   border-radius: 8px;
   cursor: pointer;
@@ -374,9 +379,9 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean }>`
   position: relative;
   
   &:hover {
-    background: ${props => props.$checked 
-      ? `${props.$color}25` 
-      : props.theme.BG};
+    background: ${props => props.$checked
+    ? `${props.$color}25`
+    : props.theme.BG};
     border-color: ${props => props.$color};
     transform: translateX(3px);
   }
@@ -407,17 +412,17 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean }>`
     width: 28px;
     height: 28px;
     border-radius: 6px;
-    background: ${props => props.$checked 
-      ? `linear-gradient(135deg, ${props.$color} 0%, ${props.$color}dd 100%)`
-      : `linear-gradient(135deg, ${props.$color}40 0%, ${props.$color}60 100%)`};
+    background: ${props => props.$checked
+    ? `linear-gradient(135deg, ${props.$color} 0%, ${props.$color}dd 100%)`
+    : `linear-gradient(135deg, ${props.$color}40 0%, ${props.$color}60 100%)`};
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     flex-shrink: 0;
-    box-shadow: ${props => props.$checked 
-      ? `0 2px 8px ${props.$color}60`
-      : `0 1px 3px ${props.$color}20`};
+    box-shadow: ${props => props.$checked
+    ? `0 2px 8px ${props.$color}60`
+    : `0 1px 3px ${props.$color}20`};
     opacity: ${props => props.$checked ? 1 : 0.5};
     transition: all 0.2s ease;
     
@@ -434,9 +439,9 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean }>`
   .menu-title {
     font-size: 0.8rem;
     font-weight: ${props => props.$checked ? 700 : 600};
-    color: ${props => props.$checked 
-      ? props.$color 
-      : props.theme.TEXT_PRIMARY};
+    color: ${props => props.$checked
+    ? props.$color
+    : props.theme.TEXT_PRIMARY};
     margin: 0 0 3px 0;
     line-height: 1.2;
     transition: all 0.2s ease;
@@ -444,9 +449,9 @@ const DropdownMenuItem = styled.label<{ $color: string; $checked: boolean }>`
   
   .menu-description {
     font-size: 0.7rem;
-    color: ${props => props.$checked 
-      ? props.theme.TEXT_PRIMARY 
-      : props.theme.TEXT_SECONDARY};
+    color: ${props => props.$checked
+    ? props.theme.TEXT_PRIMARY
+    : props.theme.TEXT_SECONDARY};
     margin: 0;
     line-height: 1.3;
     display: -webkit-box;
@@ -500,6 +505,72 @@ const EmptyState = styled.div`
   text-align: center;
   padding: 3rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const SubItemsContainer = styled.div<{ $isOpen: boolean }>`
+  display: ${props => props.$isOpen ? 'flex' : 'none'};
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  margin-left: 20px;
+  padding-left: 12px;
+  border-left: 2px solid ${({ theme }) => theme.BORDER};
+`;
+
+const SubItemCheckbox = styled.label<{ $color: string; $checked: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid ${props => props.$checked ? props.$color : props.theme.BORDER};
+  background: ${props => props.$checked ? `${props.$color}10` : 'transparent'};
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.75rem;
+  
+  &:hover {
+    background: ${props => props.$checked ? `${props.$color}20` : props.theme.BG};
+    border-color: ${props => props.$color};
+  }
+
+  input[type="checkbox"] {
+    display: none;
+  }
+  
+  .sub-checkbox-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 2px solid ${props => props.$checked ? props.$color : props.theme.BORDER};
+    background: ${props => props.$checked ? props.$color : 'transparent'};
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    
+    svg {
+      font-size: 12px;
+      color: white;
+    }
+  }
+  
+  .sub-icon {
+    display: flex;
+    align-items: center;
+    color: ${props => props.$checked ? props.$color : props.theme.TEXT_SECONDARY};
+    
+    svg {
+      font-size: 16px;
+    }
+  }
+  
+  .sub-label {
+    font-weight: ${props => props.$checked ? 600 : 500};
+    color: ${props => props.$checked ? props.$color : props.theme.TEXT_PRIMARY};
+    transition: all 0.2s ease;
+  }
 `;
 
 const RoleDescription = styled.div`
@@ -600,7 +671,7 @@ const RoleManagement: React.FC = () => {
     const query = searchQuery.toLowerCase();
     return menuStructure.map(menu => {
       const filteredSections = menu.menuItems.map(section => {
-        const filteredItems = section.items.filter(item => 
+        const filteredItems = section.items.filter(item =>
           item.title.toLowerCase().includes(query) ||
           item.description.toLowerCase().includes(query)
         );
@@ -613,7 +684,7 @@ const RoleManagement: React.FC = () => {
           items: filteredItems,
           ...(section.expenseItems && { expenseItems: filteredExpenseItems })
         };
-      }).filter(section => 
+      }).filter(section =>
         section.items.length > 0 || (section.expenseItems && section.expenseItems.length > 0)
       );
 
@@ -637,7 +708,7 @@ const RoleManagement: React.FC = () => {
 
       if (error) throw error;
       setRoles(data || []);
-      
+
       if (data && data.length > 0 && !selectedRoleId) {
         setSelectedRoleId(data[0].id);
       }
@@ -728,7 +799,7 @@ const RoleManagement: React.FC = () => {
     const menuPermissionIds = items
       .map(item => getPermissionIdForPath(item.path))
       .filter((id): id is number => id !== null);
-    
+
     // Also include standalone pages (Standalone Pages/Features section)
     const standalonePages = [
       '/dashboard',
@@ -740,15 +811,29 @@ const RoleManagement: React.FC = () => {
     const standalonePermissionIds = standalonePages
       .map(path => getPermissionIdForPath(path))
       .filter((id): id is number => id !== null);
-    
+
+    // Also include dashboard tab permissions
+    const dashboardTabPaths = [
+      '/dashboard/tab/attendance',
+      '/dashboard/tab/fee',
+      '/dashboard/tab/admissions',
+      '/dashboard/tab/homework',
+      '/dashboard/tab/employeeAttendance',
+      '/dashboard/tab/accounts',
+      '/dashboard/tab/predictions'
+    ];
+    const dashboardTabPermissionIds = dashboardTabPaths
+      .map(path => getPermissionIdForPath(path))
+      .filter((id): id is number => id !== null);
+
     // Also include WhatsApp notification permission
     const featurePermissionIds: number[] = [];
     if (whatsappPermissionId) {
       featurePermissionIds.push(whatsappPermissionId);
     }
-    
+
     // Combine and return unique IDs
-    return Array.from(new Set([...menuPermissionIds, ...standalonePermissionIds, ...featurePermissionIds]));
+    return Array.from(new Set([...menuPermissionIds, ...standalonePermissionIds, ...dashboardTabPermissionIds, ...featurePermissionIds]));
   };
 
   const handleSelectAll = () => {
@@ -910,131 +995,266 @@ const RoleManagement: React.FC = () => {
         </Header>
 
         <Content>
-        <RoleSection>
-          <RoleHeader>
-            <RoleSelectWrapper>
-              <RoleSelect
-                value={selectedRoleId || ''}
-                onChange={(e) => setSelectedRoleId(Number(e.target.value) || null)}
-              >
-                <option value="">-- Select a role --</option>
-                {roles.map(role => (
-                  <option key={role.id} value={role.id}>
-                    {role.name} {role.is_system_role && '(System)'}
-                  </option>
-                ))}
-              </RoleSelect>
-              {selectedRole && !selectedRole.is_system_role && (
-                <Button
-                  $variant="danger"
-                  onClick={() => handleDeleteRole(selectedRole.id, selectedRole.name)}
+          <RoleSection>
+            <RoleHeader>
+              <RoleSelectWrapper>
+                <RoleSelect
+                  value={selectedRoleId || ''}
+                  onChange={(e) => setSelectedRoleId(Number(e.target.value) || null)}
                 >
-                  <DeleteIcon />
-                  Delete
+                  <option value="">-- Select a role --</option>
+                  {roles.map(role => (
+                    <option key={role.id} value={role.id}>
+                      {role.name} {role.is_system_role && '(System)'}
+                    </option>
+                  ))}
+                </RoleSelect>
+                {selectedRole && !selectedRole.is_system_role && (
+                  <Button
+                    $variant="danger"
+                    onClick={() => handleDeleteRole(selectedRole.id, selectedRole.name)}
+                  >
+                    <DeleteIcon />
+                    Delete
+                  </Button>
+                )}
+              </RoleSelectWrapper>
+              {!showAddRole ? (
+                <Button onClick={() => setShowAddRole(true)}>
+                  <AddIcon />
+                  New Role
+                </Button>
+              ) : (
+                <Button $variant="secondary" onClick={() => {
+                  setShowAddRole(false);
+                  setNewRoleName('');
+                  setNewRoleDescription('');
+                }}>
+                  Cancel
                 </Button>
               )}
-            </RoleSelectWrapper>
-            {!showAddRole ? (
-              <Button onClick={() => setShowAddRole(true)}>
-                <AddIcon />
-                New Role
-              </Button>
-            ) : (
-              <Button $variant="secondary" onClick={() => {
-                setShowAddRole(false);
-                setNewRoleName('');
-                setNewRoleDescription('');
-              }}>
-                Cancel
-              </Button>
+            </RoleHeader>
+
+            {selectedRole && (
+              <>
+                {selectedRole.description && (
+                  <RoleDescription>{selectedRole.description}</RoleDescription>
+                )}
+                <RoleDescription style={{ marginTop: selectedRole.description ? '0.5rem' : '0' }}>
+                  <strong>Default Permissions:</strong> Permissions assigned to this role are the default permissions
+                  for all users with this role. To customize permissions for individual users, use the User Permission Management page.
+                </RoleDescription>
+              </>
             )}
-          </RoleHeader>
-          
-          {selectedRole && (
+
+            {showAddRole && (
+              <AddRoleForm>
+                <Input
+                  type="text"
+                  placeholder="Role name"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddRole()}
+                />
+                <Input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={newRoleDescription}
+                  onChange={(e) => setNewRoleDescription(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddRole()}
+                />
+                <Button $variant="primary" onClick={handleAddRole} disabled={!newRoleName.trim()}>
+                  <AddIcon />
+                  Create
+                </Button>
+              </AddRoleForm>
+            )}
+          </RoleSection>
+
+          {selectedRoleId ? (
             <>
-              {selectedRole.description && (
-                <RoleDescription>{selectedRole.description}</RoleDescription>
-              )}
-              <RoleDescription style={{ marginTop: selectedRole.description ? '0.5rem' : '0' }}>
-                <strong>Default Permissions:</strong> Permissions assigned to this role are the default permissions 
-                for all users with this role. To customize permissions for individual users, use the User Permission Management page.
-              </RoleDescription>
-            </>
-          )}
+              <SearchBox>
+                <SearchIconWrapper>
+                  <SearchIcon style={{ fontSize: '1.2rem' }} />
+                </SearchIconWrapper>
+                <SearchInput
+                  type="text"
+                  placeholder="Search permissions..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Button
+                  $variant="secondary"
+                  onClick={isAllSelected() ? handleDeselectAll : handleSelectAll}
+                  style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+                >
+                  {isAllSelected() ? 'Deselect All' : 'Select All'}
+                </Button>
+              </SearchBox>
 
-          {showAddRole && (
-            <AddRoleForm>
-              <Input
-                type="text"
-                placeholder="Role name"
-                value={newRoleName}
-                onChange={(e) => setNewRoleName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddRole()}
-              />
-              <Input
-                type="text"
-                placeholder="Description (optional)"
-                value={newRoleDescription}
-                onChange={(e) => setNewRoleDescription(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddRole()}
-              />
-              <Button $variant="primary" onClick={handleAddRole} disabled={!newRoleName.trim()}>
-                <AddIcon />
-                Create
-              </Button>
-            </AddRoleForm>
-          )}
-        </RoleSection>
+              <MenuContainer>
+                {filteredMenuStructure.map((menu) => {
+                  const isOpen = openMenus.has(menu.label);
 
-        {selectedRoleId ? (
-          <>
-            <SearchBox>
-              <SearchIconWrapper>
-                <SearchIcon style={{ fontSize: '1.2rem' }} />
-              </SearchIconWrapper>
-              <SearchInput
-                type="text"
-                placeholder="Search permissions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button 
-                $variant="secondary" 
-                onClick={isAllSelected() ? handleDeselectAll : handleSelectAll}
-                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
-              >
-                {isAllSelected() ? 'Deselect All' : 'Select All'}
-              </Button>
-            </SearchBox>
+                  return (
+                    <MenuSectionWrapper key={menu.label}>
+                      <MenuSectionHeader
+                        $isOpen={isOpen}
+                        onClick={() => toggleMenu(menu.label)}
+                      >
+                        {menu.icon}
+                        <span>{menu.label}</span>
+                      </MenuSectionHeader>
+                      <MenuDropdown $isOpen={isOpen} $columns={menu.columns}>
+                        {menu.menuItems.map((section, sectionIdx) => {
+                          // For Finance menu, combine Expense Management and Fine Management in the same column (3rd column)
+                          const isFinance = menu.label === 'Finance';
+                          const isExpenseManagement = section.title === 'Expense Management';
+                          const isFineManagement = section.title === 'Fine Management';
 
-            <MenuContainer>
-              {filteredMenuStructure.map((menu) => {
-                const isOpen = openMenus.has(menu.label);
-                
-                return (
-                  <MenuSectionWrapper key={menu.label}>
-                    <MenuSectionHeader
-                      $isOpen={isOpen}
-                      onClick={() => toggleMenu(menu.label)}
-                    >
-                      {menu.icon}
-                      <span>{menu.label}</span>
-                    </MenuSectionHeader>
-                    <MenuDropdown $isOpen={isOpen} $columns={menu.columns}>
-                      {menu.menuItems.map((section, sectionIdx) => {
-                        // For Finance menu, combine Expense Management and Fine Management in the same column (3rd column)
-                        const isFinance = menu.label === 'Finance';
-                        const isExpenseManagement = section.title === 'Expense Management';
-                        const isFineManagement = section.title === 'Fine Management';
-                        
-                        // Skip rendering Fine Management as separate column, it will be rendered with Expense Management
-                        if (isFinance && isFineManagement && sectionIdx === 3) {
-                          return null;
-                        }
-                        
-                        // If this is Expense Management in Finance menu, render both Expense and Fine sections together
-                        if (isFinance && isExpenseManagement) {
-                          const fineSection = menu.menuItems.find((s: MenuSection) => s.title === 'Fine Management');
+                          // Skip rendering Fine Management as separate column, it will be rendered with Expense Management
+                          if (isFinance && isFineManagement && sectionIdx === 3) {
+                            return null;
+                          }
+
+                          // If this is Expense Management in Finance menu, render both Expense and Fine sections together
+                          if (isFinance && isExpenseManagement) {
+                            const fineSection = menu.menuItems.find((s: MenuSection) => s.title === 'Fine Management');
+                            return (
+                              <DropdownColumn key={sectionIdx}>
+                                <div style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginBottom: '8px'
+                                }}>
+                                  <ColumnTitle>{section.title}</ColumnTitle>
+                                  <Button
+                                    $variant="secondary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isSectionAllSelected(section)) {
+                                        handleDeselectSection(section);
+                                      } else {
+                                        handleSelectSection(section);
+                                      }
+                                    }}
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      padding: '0.25rem 0.5rem',
+                                      minWidth: 'auto'
+                                    }}
+                                  >
+                                    {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
+                                  </Button>
+                                </div>
+                                {section.items.map((menuItem, itemIdx) => {
+                                  const isChecked = isMenuItemChecked(menuItem);
+                                  const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
+                                  return (
+                                    <DropdownMenuItem
+                                      key={itemIdx}
+                                      $color={menuItem.color}
+                                      $checked={isChecked}
+                                      htmlFor={checkboxId}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        id={checkboxId}
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleMenuItemPermission(menuItem);
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                        }}
+                                      />
+                                      <div className="checkbox-indicator">
+                                        {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                      </div>
+                                      <div className="menu-icon">
+                                        {menuItem.icon}
+                                      </div>
+                                      <div className="menu-content">
+                                        <div className="menu-title">{menuItem.title}</div>
+                                        <div className="menu-description">{menuItem.description}</div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  );
+                                })}
+                                {fineSection && (
+                                  <>
+                                    <ColumnSeparator />
+                                    <div style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      marginBottom: '8px',
+                                      marginTop: '8px'
+                                    }}>
+                                      <ColumnTitle>{fineSection.title}</ColumnTitle>
+                                      <Button
+                                        $variant="secondary"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (isSectionAllSelected(fineSection)) {
+                                            handleDeselectSection(fineSection);
+                                          } else {
+                                            handleSelectSection(fineSection);
+                                          }
+                                        }}
+                                        style={{
+                                          fontSize: '0.7rem',
+                                          padding: '0.25rem 0.5rem',
+                                          minWidth: 'auto'
+                                        }}
+                                      >
+                                        {isSectionAllSelected(fineSection) ? 'Deselect All' : 'Select All'}
+                                      </Button>
+                                    </div>
+                                    {fineSection.items.map((menuItem, itemIdx) => {
+                                      const isChecked = isMenuItemChecked(menuItem);
+                                      const checkboxId = `checkbox-fine-${menuItem.path}-${itemIdx}`;
+                                      return (
+                                        <DropdownMenuItem
+                                          key={`fine-${itemIdx}`}
+                                          $color={menuItem.color}
+                                          $checked={isChecked}
+                                          htmlFor={checkboxId}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            id={checkboxId}
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              e.stopPropagation();
+                                              toggleMenuItemPermission(menuItem);
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                            }}
+                                          />
+                                          <div className="checkbox-indicator">
+                                            {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                          </div>
+                                          <div className="menu-icon">
+                                            {menuItem.icon}
+                                          </div>
+                                          <div className="menu-content">
+                                            <div className="menu-title">{menuItem.title}</div>
+                                            <div className="menu-description">{menuItem.description}</div>
+                                          </div>
+                                        </DropdownMenuItem>
+                                      );
+                                    })}
+                                  </>
+                                )}
+                              </DropdownColumn>
+                            );
+                          }
+
+                          // Render other sections normally
                           return (
                             <DropdownColumn key={sectionIdx}>
                               <div style={{
@@ -1054,8 +1274,8 @@ const RoleManagement: React.FC = () => {
                                       handleSelectSection(section);
                                     }
                                   }}
-                                  style={{ 
-                                    fontSize: '0.7rem', 
+                                  style={{
+                                    fontSize: '0.7rem',
                                     padding: '0.25rem 0.5rem',
                                     minWidth: 'auto'
                                   }}
@@ -1066,74 +1286,60 @@ const RoleManagement: React.FC = () => {
                               {section.items.map((menuItem, itemIdx) => {
                                 const isChecked = isMenuItemChecked(menuItem);
                                 const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
+                                // Add separator before Reports items in Students and Employees menus
+                                const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
+                                const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
+                                // Add separator before Timetable in Employee Management section
+                                const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
+                                // Add separator before Payroll in Fee Record section
+                                const isFeeRecordSection = menu.label === 'Finance' && section.title === 'Fee Record';
+                                const isPayrollItem = menuItem.path === '/payroll';
+                                const prevItem = itemIdx > 0 ? section.items[itemIdx - 1] : null;
+                                const isFirstPayrollItem = isFeeRecordSection && isPayrollItem && prevItem && prevItem.path !== '/payroll';
+                                const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable || isFirstPayrollItem;
                                 return (
-                                  <DropdownMenuItem
-                                    key={itemIdx}
-                                    $color={menuItem.color}
-                                    $checked={isChecked}
-                                    htmlFor={checkboxId}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      id={checkboxId}
-                                      checked={isChecked}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        toggleMenuItemPermission(menuItem);
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
-                                    />
-                                    <div className="checkbox-indicator">
-                                      {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                    </div>
-                                    <div className="menu-icon">
-                                      {menuItem.icon}
-                                    </div>
-                                    <div className="menu-content">
-                                      <div className="menu-title">{menuItem.title}</div>
-                                      <div className="menu-description">{menuItem.description}</div>
-                                    </div>
-                                  </DropdownMenuItem>
+                                  <React.Fragment key={itemIdx}>
+                                    {shouldShowSeparator && <ColumnSeparator />}
+                                    <DropdownMenuItem
+                                      $color={menuItem.color}
+                                      $checked={isChecked}
+                                      htmlFor={checkboxId}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        id={checkboxId}
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleMenuItemPermission(menuItem);
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                        }}
+                                      />
+                                      <div className="checkbox-indicator">
+                                        {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                      </div>
+                                      <div className="menu-icon">
+                                        {menuItem.icon}
+                                      </div>
+                                      <div className="menu-content">
+                                        <div className="menu-title">{menuItem.title}</div>
+                                        <div className="menu-description">{menuItem.description}</div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  </React.Fragment>
                                 );
                               })}
-                              {fineSection && (
+                              {section.expenseItems && (
                                 <>
                                   <ColumnSeparator />
-                                  <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '8px',
-                                    marginTop: '8px'
-                                  }}>
-                                    <ColumnTitle>{fineSection.title}</ColumnTitle>
-                                    <Button
-                                      $variant="secondary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isSectionAllSelected(fineSection)) {
-                                          handleDeselectSection(fineSection);
-                                        } else {
-                                          handleSelectSection(fineSection);
-                                        }
-                                      }}
-                                      style={{ 
-                                        fontSize: '0.7rem', 
-                                        padding: '0.25rem 0.5rem',
-                                        minWidth: 'auto'
-                                      }}
-                                    >
-                                      {isSectionAllSelected(fineSection) ? 'Deselect All' : 'Select All'}
-                                    </Button>
-                                  </div>
-                                  {fineSection.items.map((menuItem, itemIdx) => {
+                                  {section.expenseItems.map((menuItem, itemIdx) => {
                                     const isChecked = isMenuItemChecked(menuItem);
-                                    const checkboxId = `checkbox-fine-${menuItem.path}-${itemIdx}`;
+                                    const checkboxId = `checkbox-expense-${menuItem.path}-${itemIdx}`;
                                     return (
                                       <DropdownMenuItem
-                                        key={`fine-${itemIdx}`}
+                                        key={`expense-${itemIdx}`}
                                         $color={menuItem.color}
                                         $checked={isChecked}
                                         htmlFor={checkboxId}
@@ -1167,346 +1373,266 @@ const RoleManagement: React.FC = () => {
                               )}
                             </DropdownColumn>
                           );
-                        }
-                        
-                        // Render other sections normally
-                        return (
-                          <DropdownColumn key={sectionIdx}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginBottom: '8px'
-                            }}>
-                              <ColumnTitle>{section.title}</ColumnTitle>
-                              <Button
-                                $variant="secondary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isSectionAllSelected(section)) {
-                                    handleDeselectSection(section);
-                                  } else {
-                                    handleSelectSection(section);
-                                  }
-                                }}
-                                style={{ 
-                                  fontSize: '0.7rem', 
-                                  padding: '0.25rem 0.5rem',
-                                  minWidth: 'auto'
-                                }}
-                              >
-                                {isSectionAllSelected(section) ? 'Deselect All' : 'Select All'}
-                              </Button>
-                            </div>
-                            {section.items.map((menuItem, itemIdx) => {
-                              const isChecked = isMenuItemChecked(menuItem);
-                              const checkboxId = `checkbox-${menuItem.path}-${itemIdx}`;
-                              // Add separator before Reports items in Students and Employees menus
-                              const isStudentReports = menu.label === 'Students' && sectionIdx === 1 && menuItem.path === '/reports';
-                              const isEmployeeReports = menu.label === 'Employees' && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
-                              // Add separator before Timetable in Employee Management section
-                              const isTimetable = menu.label === 'Employees' && sectionIdx === 0 && menuItem.path === '/timetable';
-                              // Add separator before Payroll in Fee Record section
-                              const isFeeRecordSection = menu.label === 'Finance' && section.title === 'Fee Record';
-                              const isPayrollItem = menuItem.path === '/payroll';
-                              const prevItem = itemIdx > 0 ? section.items[itemIdx - 1] : null;
-                              const isFirstPayrollItem = isFeeRecordSection && isPayrollItem && prevItem && prevItem.path !== '/payroll';
-                              const shouldShowSeparator = isStudentReports || isEmployeeReports || isTimetable || isFirstPayrollItem;
-                              return (
-                                <React.Fragment key={itemIdx}>
-                                  {shouldShowSeparator && <ColumnSeparator />}
-                                  <DropdownMenuItem
-                                    $color={menuItem.color}
-                                    $checked={isChecked}
-                                    htmlFor={checkboxId}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      id={checkboxId}
-                                      checked={isChecked}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        toggleMenuItemPermission(menuItem);
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
-                                    />
-                                    <div className="checkbox-indicator">
-                                      {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                    </div>
-                                    <div className="menu-icon">
-                                      {menuItem.icon}
-                                    </div>
-                                    <div className="menu-content">
-                                      <div className="menu-title">{menuItem.title}</div>
-                                      <div className="menu-description">{menuItem.description}</div>
-                                    </div>
-                                  </DropdownMenuItem>
-                                </React.Fragment>
-                              );
-                            })}
-                            {section.expenseItems && (
-                              <>
-                                <ColumnSeparator />
-                                {section.expenseItems.map((menuItem, itemIdx) => {
-                                  const isChecked = isMenuItemChecked(menuItem);
-                                  const checkboxId = `checkbox-expense-${menuItem.path}-${itemIdx}`;
-                                  return (
-                                    <DropdownMenuItem
-                                      key={`expense-${itemIdx}`}
-                                      $color={menuItem.color}
-                                      $checked={isChecked}
-                                      htmlFor={checkboxId}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        id={checkboxId}
-                                        checked={isChecked}
-                                        onChange={(e) => {
-                                          e.stopPropagation();
-                                          toggleMenuItemPermission(menuItem);
-                                        }}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                        }}
-                                      />
-                                      <div className="checkbox-indicator">
-                                        {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                      </div>
-                                      <div className="menu-icon">
-                                        {menuItem.icon}
-                                      </div>
-                                      <div className="menu-content">
-                                        <div className="menu-title">{menuItem.title}</div>
-                                        <div className="menu-description">{menuItem.description}</div>
-                                      </div>
-                                    </DropdownMenuItem>
-                                  );
-                                })}
-                              </>
-                            )}
-                          </DropdownColumn>
-                        );
-                      })}
-                    </MenuDropdown>
-                  </MenuSectionWrapper>
-                );
-              })}
-            </MenuContainer>
+                        })}
+                      </MenuDropdown>
+                    </MenuSectionWrapper>
+                  );
+                })}
+              </MenuContainer>
 
-            {filteredMenuStructure.length === 0 && (
-              <EmptyState>
-                <p>No menu items found matching your search.</p>
-              </EmptyState>
-            )}
+              {filteredMenuStructure.length === 0 && (
+                <EmptyState>
+                  <p>No menu items found matching your search.</p>
+                </EmptyState>
+              )}
 
-            {/* Standalone Pages/Features Section */}
-            <MenuSectionWrapper>
-              <MenuSectionHeader
-                $isOpen={openMenus.has('Standalone Pages/Features')}
-                onClick={() => toggleMenu('Standalone Pages/Features')}
-              >
-                <PersonIcon />
-                <span>Standalone Pages/Features</span>
-              </MenuSectionHeader>
-              <MenuDropdown $isOpen={openMenus.has('Standalone Pages/Features')} $columns={2}>
-                {/* Pages Column */}
-                <DropdownColumn>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '8px'
-                  }}>
-                    <ColumnTitle>Pages</ColumnTitle>
-                    <Button
-                      $variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const standalonePages = [
-                          { path: '/dashboard' },
-                          { path: '/students/profile/:id' },
-                          { path: '/profile' },
-                          { path: '/setup-accounts' },
-                          { path: '/balance-sheet' }
-                        ];
-                        const allSelected = standalonePages.every(page => {
-                          const permissionId = getPermissionIdForPath(page.path);
-                          return permissionId !== null && rolePermissions.has(permissionId);
-                        });
-                        
-                        const newPermissions = new Set(rolePermissions);
-                        standalonePages.forEach(page => {
-                          const permissionId = getPermissionIdForPath(page.path);
-                          if (permissionId) {
-                            if (allSelected) {
-                              // Deselect all
-                              newPermissions.delete(permissionId);
-                            } else {
-                              // Select all
-                              newPermissions.add(permissionId);
-                            }
-                          }
-                        });
-                        setRolePermissions(newPermissions);
-                      }}
-                      style={{ 
-                        fontSize: '0.7rem', 
-                        padding: '0.25rem 0.5rem',
-                        minWidth: 'auto'
-                      }}
-                    >
-                      {(() => {
-                        const standalonePages = [
-                          { path: '/dashboard' },
-                          { path: '/students/profile/:id' },
-                          { path: '/profile' },
-                          { path: '/setup-accounts' },
-                          { path: '/balance-sheet' }
-                        ];
-                        const allSelected = standalonePages.every(page => {
-                          const permissionId = getPermissionIdForPath(page.path);
-                          return permissionId !== null && rolePermissions.has(permissionId);
-                        });
-                        return allSelected ? 'Deselect All' : 'Select All';
-                      })()}
-                    </Button>
-                  </div>
-                  {[
-                    { 
-                      title: 'Dashboard', 
-                      description: 'View comprehensive dashboard with attendance, fees, admissions, and homework analytics',
-                      path: '/dashboard', 
-                      color: '#6366f1', 
-                      icon: React.createElement(DashboardIcon) 
-                    },
-                    { 
-                      title: 'Student Profile', 
-                      description: 'View detailed student profile including attendance, exams, fees, and reports',
-                      path: '/students/profile/:id', 
-                      color: '#3b82f6', 
-                      icon: React.createElement(PersonIcon) 
-                    },
-                    { 
-                      title: 'Teacher Profile', 
-                      description: 'View detailed teacher profile including attendance, timetable, test analysis, and diary assignments',
-                      path: '/profile', 
-                      color: '#8b5cf6', 
-                      icon: React.createElement(WorkIcon) 
-                    },
-                    { 
-                      title: 'Setup Accounts', 
-                      description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
-                      path: '/setup-accounts', 
-                      color: '#3b82f6', 
-                      icon: React.createElement(AccountBalanceWallet) 
-                    }
-                  ].map((pageItem, itemIdx) => {
-                    const isChecked = isMenuItemChecked(pageItem);
-                    return (
-                      <DropdownMenuItem
-                        key={itemIdx}
-                        $color={pageItem.color}
-                        $checked={isChecked}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleMenuItemPermission(pageItem)}
-                        />
-                        <div className="checkbox-indicator">
-                          {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                        </div>
-                        <div className="menu-icon">
-                          {pageItem.icon}
-                        </div>
-                        <div className="menu-content">
-                          <div className="menu-title">{pageItem.title}</div>
-                          <div className="menu-description">{pageItem.description}</div>
-                        </div>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownColumn>
-                
-                {/* Features Column */}
-                <DropdownColumn>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '8px'
-                  }}>
-                    <ColumnTitle>Features</ColumnTitle>
-                    {whatsappPermissionId && (
+              {/* Standalone Pages/Features Section */}
+              <MenuSectionWrapper>
+                <MenuSectionHeader
+                  $isOpen={openMenus.has('Standalone Pages/Features')}
+                  onClick={() => toggleMenu('Standalone Pages/Features')}
+                >
+                  <PersonIcon />
+                  <span>Standalone Pages/Features</span>
+                </MenuSectionHeader>
+                <MenuDropdown $isOpen={openMenus.has('Standalone Pages/Features')} $columns={2}>
+                  {/* Pages Column */}
+                  <DropdownColumn>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <ColumnTitle>Pages</ColumnTitle>
                       <Button
                         $variant="secondary"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const isChecked = isWhatsAppPermissionChecked();
+                          const standalonePages = [
+                            { path: '/dashboard' },
+                            { path: '/students/profile/:id' },
+                            { path: '/profile' },
+                            { path: '/setup-accounts' },
+                            { path: '/balance-sheet' }
+                          ];
+                          const allSelected = standalonePages.every(page => {
+                            const permissionId = getPermissionIdForPath(page.path);
+                            return permissionId !== null && rolePermissions.has(permissionId);
+                          });
+
                           const newPermissions = new Set(rolePermissions);
-                          if (isChecked) {
-                            newPermissions.delete(whatsappPermissionId);
-                          } else {
-                            newPermissions.add(whatsappPermissionId);
-                          }
+                          standalonePages.forEach(page => {
+                            const permissionId = getPermissionIdForPath(page.path);
+                            if (permissionId) {
+                              if (allSelected) {
+                                // Deselect all
+                                newPermissions.delete(permissionId);
+                              } else {
+                                // Select all
+                                newPermissions.add(permissionId);
+                              }
+                            }
+                          });
                           setRolePermissions(newPermissions);
                         }}
-                        style={{ 
-                          fontSize: '0.7rem', 
+                        style={{
+                          fontSize: '0.7rem',
                           padding: '0.25rem 0.5rem',
                           minWidth: 'auto'
                         }}
                       >
-                        {isWhatsAppPermissionChecked() ? 'Deselect All' : 'Select All'}
+                        {(() => {
+                          const standalonePages = [
+                            { path: '/dashboard' },
+                            { path: '/students/profile/:id' },
+                            { path: '/profile' },
+                            { path: '/setup-accounts' },
+                            { path: '/balance-sheet' }
+                          ];
+                          const allSelected = standalonePages.every(page => {
+                            const permissionId = getPermissionIdForPath(page.path);
+                            return permissionId !== null && rolePermissions.has(permissionId);
+                          });
+                          return allSelected ? 'Deselect All' : 'Select All';
+                        })()}
                       </Button>
+                    </div>
+                    {[
+                      {
+                        title: 'Dashboard',
+                        description: 'View comprehensive dashboard with attendance, fees, admissions, and homework analytics',
+                        path: '/dashboard',
+                        color: '#6366f1',
+                        icon: React.createElement(DashboardIcon)
+                      },
+                      {
+                        title: 'Student Profile',
+                        description: 'View detailed student profile including attendance, exams, fees, and reports',
+                        path: '/students/profile/:id',
+                        color: '#3b82f6',
+                        icon: React.createElement(PersonIcon)
+                      },
+                      {
+                        title: 'Teacher Profile',
+                        description: 'View detailed teacher profile including attendance, timetable, test analysis, and diary assignments',
+                        path: '/profile',
+                        color: '#8b5cf6',
+                        icon: React.createElement(WorkIcon)
+                      },
+                      {
+                        title: 'Setup Accounts',
+                        description: 'Manage bank accounts, EasyPaisa, JazzCash and other payment accounts',
+                        path: '/setup-accounts',
+                        color: '#3b82f6',
+                        icon: React.createElement(AccountBalanceWallet)
+                      }
+                    ].map((pageItem, itemIdx) => {
+                      const isChecked = isMenuItemChecked(pageItem);
+                      const isDashboard = pageItem.path === '/dashboard';
+                      const dashboardTabs = isDashboard ? [
+                        { path: '/dashboard/tab/attendance', label: 'Attendance', icon: <EventNote />, color: '#3b82f6' },
+                        { path: '/dashboard/tab/fee', label: 'Fee Collection', icon: <AccountBalanceWallet />, color: '#10b981' },
+                        { path: '/dashboard/tab/admissions', label: 'Admissions', icon: <PersonAdd />, color: '#8b5cf6' },
+                        { path: '/dashboard/tab/homework', label: 'Homework Diary', icon: <Assignment />, color: '#f59e0b' },
+                        { path: '/dashboard/tab/employeeAttendance', label: 'Employee Attendance', icon: <Groups />, color: '#06b6d4' },
+                        { path: '/dashboard/tab/accounts', label: 'Accounts', icon: <AccountBalanceIcon />, color: '#ec4899' },
+                        { path: '/dashboard/tab/predictions', label: 'Predictions (ML)', icon: <Lightbulb />, color: '#eab308' },
+                      ] : [];
+                      return (
+                        <React.Fragment key={itemIdx}>
+                          <DropdownMenuItem
+                            $color={pageItem.color}
+                            $checked={isChecked}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleMenuItemPermission(pageItem)}
+                            />
+                            <div className="checkbox-indicator">
+                              {isChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                            </div>
+                            <div className="menu-icon">
+                              {pageItem.icon}
+                            </div>
+                            <div className="menu-content">
+                              <div className="menu-title">{pageItem.title}</div>
+                              <div className="menu-description">{pageItem.description}</div>
+                            </div>
+                          </DropdownMenuItem>
+                          {isDashboard && isChecked && (
+                            <SubItemsContainer $isOpen={true}>
+                              {dashboardTabs.map((tab, tabIdx) => {
+                                const tabPermissionId = getPermissionIdForPath(tab.path);
+                                const tabChecked = tabPermissionId ? rolePermissions.has(tabPermissionId) : false;
+                                return (
+                                  <SubItemCheckbox
+                                    key={tabIdx}
+                                    $color={tab.color}
+                                    $checked={tabChecked}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      if (tabPermissionId) handlePermissionToggle(tabPermissionId);
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={tabChecked}
+                                      readOnly
+                                    />
+                                    <div className="sub-checkbox-indicator">
+                                      {tabChecked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                                    </div>
+                                    <div className="sub-icon">{tab.icon}</div>
+                                    <span className="sub-label">{tab.label}</span>
+                                  </SubItemCheckbox>
+                                );
+                              })}
+                            </SubItemsContainer>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </DropdownColumn>
+
+                  {/* Features Column */}
+                  <DropdownColumn>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <ColumnTitle>Features</ColumnTitle>
+                      {whatsappPermissionId && (
+                        <Button
+                          $variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isChecked = isWhatsAppPermissionChecked();
+                            const newPermissions = new Set(rolePermissions);
+                            if (isChecked) {
+                              newPermissions.delete(whatsappPermissionId);
+                            } else {
+                              newPermissions.add(whatsappPermissionId);
+                            }
+                            setRolePermissions(newPermissions);
+                          }}
+                          style={{
+                            fontSize: '0.7rem',
+                            padding: '0.25rem 0.5rem',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          {isWhatsAppPermissionChecked() ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      )}
+                    </div>
+                    {/* WhatsApp Notification Permission */}
+                    {whatsappPermissionId && (
+                      <DropdownMenuItem
+                        $color="#25d366"
+                        $checked={isWhatsAppPermissionChecked()}
+                        htmlFor="whatsapp-notification-permission"
+                      >
+                        <input
+                          type="checkbox"
+                          id="whatsapp-notification-permission"
+                          checked={isWhatsAppPermissionChecked()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handlePermissionToggle(whatsappPermissionId);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                        <div className="checkbox-indicator">
+                          {isWhatsAppPermissionChecked() ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+                        </div>
+                        <div className="menu-icon">
+                          <WhatsAppIcon />
+                        </div>
+                        <div className="menu-content">
+                          <div className="menu-title">Send WhatsApp Notifications</div>
+                          <div className="menu-description">Allow sending WhatsApp and SMS notifications when marking attendance</div>
+                        </div>
+                      </DropdownMenuItem>
                     )}
-                  </div>
-                  {/* WhatsApp Notification Permission */}
-                  {whatsappPermissionId && (
-                    <DropdownMenuItem
-                      $color="#25d366"
-                      $checked={isWhatsAppPermissionChecked()}
-                      htmlFor="whatsapp-notification-permission"
-                    >
-                      <input
-                        type="checkbox"
-                        id="whatsapp-notification-permission"
-                        checked={isWhatsAppPermissionChecked()}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handlePermissionToggle(whatsappPermissionId);
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                      <div className="checkbox-indicator">
-                        {isWhatsAppPermissionChecked() ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                      </div>
-                      <div className="menu-icon">
-                        <WhatsAppIcon />
-                      </div>
-                      <div className="menu-content">
-                        <div className="menu-title">Send WhatsApp Notifications</div>
-                        <div className="menu-description">Allow sending WhatsApp and SMS notifications when marking attendance</div>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownColumn>
-              </MenuDropdown>
-            </MenuSectionWrapper>
-          </>
-        ) : (
-          <EmptyState>
-            <p>Please select a role to manage permissions</p>
-            <RoleDescription style={{ marginTop: '1rem' }}>
-              <strong>Note:</strong> Permissions assigned to a role are the default permissions for all users with that role. 
-              To customize permissions for individual users, use the User Permission Management page.
-            </RoleDescription>
-          </EmptyState>
-        )}
+                  </DropdownColumn>
+                </MenuDropdown>
+              </MenuSectionWrapper>
+            </>
+          ) : (
+            <EmptyState>
+              <p>Please select a role to manage permissions</p>
+              <RoleDescription style={{ marginTop: '1rem' }}>
+                <strong>Note:</strong> Permissions assigned to a role are the default permissions for all users with that role.
+                To customize permissions for individual users, use the User Permission Management page.
+              </RoleDescription>
+            </EmptyState>
+          )}
         </Content>
       </Container>
       {selectedRoleId && (

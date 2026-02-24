@@ -9,7 +9,7 @@ import { Dashboard as DashboardIcon, Person as PersonIcon, Work as WorkIcon } fr
  */
 function getAllMenuItems(): MenuItemType[] {
   const items: MenuItemType[] = [];
-  
+
   menuStructure.forEach(menu => {
     menu.menuItems.forEach(section => {
       items.push(...section.items);
@@ -18,7 +18,7 @@ function getAllMenuItems(): MenuItemType[] {
       }
     });
   });
-  
+
   // Add standalone pages (not in menu structure but need permissions)
   // These are handled in the "Other Pages" section of RoleManagement
   const standalonePages = [
@@ -44,9 +44,22 @@ function getAllMenuItems(): MenuItemType[] {
       icon: React.createElement(WorkIcon)
     }
   ];
-  
+
   items.push(...standalonePages);
-  
+
+  // Add dashboard tab permissions (virtual paths for tab-level access control)
+  const dashboardTabItems = [
+    { title: 'Dashboard - Attendance Tab', description: 'Access the Attendance tab on the Dashboard', path: '/dashboard/tab/attendance', color: '#3b82f6', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Fee Collection Tab', description: 'Access the Fee Collection tab on the Dashboard', path: '/dashboard/tab/fee', color: '#10b981', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Admissions Tab', description: 'Access the Admissions tab on the Dashboard', path: '/dashboard/tab/admissions', color: '#8b5cf6', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Homework Tab', description: 'Access the Homework Diary tab on the Dashboard', path: '/dashboard/tab/homework', color: '#f59e0b', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Employee Attendance Tab', description: 'Access the Employee Attendance tab on the Dashboard', path: '/dashboard/tab/employeeAttendance', color: '#06b6d4', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Accounts Tab', description: 'Access the Accounts tab on the Dashboard', path: '/dashboard/tab/accounts', color: '#ec4899', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Predictions Tab', description: 'Access the Predictions (ML) tab on the Dashboard', path: '/dashboard/tab/predictions', color: '#eab308', icon: React.createElement(DashboardIcon) },
+  ];
+
+  items.push(...dashboardTabItems);
+
   return items;
 }
 

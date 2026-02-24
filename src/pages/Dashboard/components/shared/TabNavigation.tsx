@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import {
   MoreVert,
@@ -20,6 +20,7 @@ interface TabNavigationProps {
   setDashboardDate: (date: string) => void;
   setAbsentDate: (date: string) => void;
   setFineDate: (date: string) => void;
+  allowedTabs?: Set<DashboardTab>;
 }
 
 interface TabInfo {
@@ -34,7 +35,8 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   dashboardDate,
   setDashboardDate,
   setAbsentDate,
-  setFineDate
+  setFineDate,
+  allowedTabs
 }) => {
   const tabsWrapperRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const tabs: TabInfo[] = [
+  const allTabs: TabInfo[] = [
     { id: 'attendance', label: 'Attendance', icon: <EventNote /> },
     { id: 'fee', label: 'Fee Collection', icon: <AccountBalanceWallet /> },
     { id: 'admissions', label: 'Admissions', icon: <PersonAdd /> },
@@ -53,6 +55,12 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     { id: 'accounts', label: 'Accounts', icon: <AccountBalance /> },
     { id: 'predictions', label: 'Predictions (ML)', icon: <Lightbulb /> }
   ];
+
+  // Filter tabs based on allowedTabs (if provided and non-empty, only show allowed tabs)
+  const tabs = useMemo(() => {
+    if (!allowedTabs || allowedTabs.size === 0) return allTabs;
+    return allTabs.filter(tab => allowedTabs.has(tab.id));
+  }, [allowedTabs]);
 
   // Get all hidden tabs (not visible in container)
   const getHiddenTabs = useCallback(() => {
