@@ -134,6 +134,8 @@
     "@mui/material": "^5.15.12",
     "@mui/x-date-pickers": "^6.19.7",
     "@react-pdf/renderer": "^4.3.2",
+    "@react-three/drei": "^9.93.0",
+    "@react-three/fiber": "^8.15.12",
     "@supabase/supabase-js": "^2.49.9",
     "@techstack/react-textfit": "^1.0.0",
     "@tinymce/tinymce-react": "^6.3.0",
@@ -180,7 +182,7 @@
     "react-window": "^1.8.11",
     "recharts": "^2.15.3",
     "styled-components": "^5.3.11",
-    "three": "^0.177.0",
+    "three": "^0.160.0",
     "tinymce": "^8.2.2",
     "zustand": "^4.3.9"
   },

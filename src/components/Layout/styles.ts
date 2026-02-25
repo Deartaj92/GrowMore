@@ -33,32 +33,30 @@ export const LayoutWrapper = styled.div`
 export const MainArea = styled.div<{ $isTeacher?: boolean }>`
   position: relative;
   margin-left: ${props => props.$isTeacher ? '0' : '54px'};
-  margin-top: 44px;
+  margin-top: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* Critical for flex children */
-  overflow: hidden;
+  min-height: 0;
   background: ${props => props.theme.BG};
   
   @media (max-width: 700px) {
     margin-left: 0;
-    margin-top: 44px;
+    margin-top: 0;
   }
 `;
 
 export const ContentArea = styled.main`
-  width: 100%;
-  flex: 1;
-  min-height: 0; /* Critical for flex children - allows scrolling */
-  overflow-y: auto; /* Enable vertical scrolling */
-  overflow-x: hidden; /* Prevent horizontal scrolling */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: ${props => props.theme.BG};
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  position: relative;
+  -webkit-overflow-scrolling: touch;
 `;
 
 export const Overlay = styled.div<{ open: boolean }>`
@@ -80,33 +78,101 @@ export const Overlay = styled.div<{ open: boolean }>`
 // ==========================================
 export const Header = styled.header<{ $hasSidebar?: boolean }>`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 6px;
+  left: ${props => props.$hasSidebar ? 'calc(56px + 10px)' : '10px'};
+  right: 10px;
   z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: ${props => props.theme.CARD};
-  box-shadow: 0 1.8px 7.2px 0 #0003;
-  border-radius: 0;
-  margin: 0;
-  margin-left: ${props => props.$hasSidebar ? '56px' : '0'};
-  padding: 0 16px;
-  height: 44px;
-  border-bottom: 1px solid ${props => props.theme.BORDER};
+  border-radius: 24px;
+  padding: 0 8px;
+  height: 48px;
   -webkit-app-region: drag;
   
+  /* Glass background */
+  background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'linear-gradient(180deg, rgba(45, 50, 80, 0.1) 0%, rgba(25, 28, 48, 0.05) 100%)'
+    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'};
+  
+  /* Standard CSS blur for crystal clear frosting without vector distortion */
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+
+  /* Luminous border */
+  border: 1px solid ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.5)'};
+
+  /* Multi-layer shadow for depth */
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.1' : '0.6'}),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+
+  /* Specular top-edge highlight */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 8px;
+    right: 8px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.15' : '0.7'}) 20%,
+      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.25' : '0.9'}) 50%,
+      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.15' : '0.7'}) 80%,
+      transparent 100%
+    );
+    border-radius: 24px 24px 0 0;
+    pointer-events: none;
+  }
+
+  /* Animated light sweep */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.03' : '0.08'}) 45%,
+      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.06' : '0.14'}) 50%,
+      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.03' : '0.08'}) 55%,
+      transparent 60%,
+      transparent 100%
+    );
+    border-radius: 24px;
+    pointer-events: none;
+    animation: glassShimmer 6s ease-in-out infinite;
+  }
+
+  @keyframes glassShimmer {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+  }
+  
   @media (max-width: 700px) {
-    padding: 0 8px;
-    margin-left: 0;
+    top: 4px;
+    left: 6px;
+    right: 6px;
+    padding: 0 14px;
+    height: 44px;
+    border-radius: 20px;
   }
 `;
 
 export const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -197,13 +263,13 @@ export const InstituteLogo = styled.img`
 export const HeaderActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   -webkit-app-region: no-drag;
   flex-shrink: 0;
   margin-left: auto;
   
   @media (max-width: 700px) {
-    gap: 4px;
+    gap: 6px;
     min-width: auto;
     justify-content: flex-end;
   }
@@ -220,32 +286,38 @@ export const NavigationButtonsContainer = styled.div`
 `;
 
 export const HeaderIconCircle = styled.div`
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => props.theme.CARD};
-  box-shadow: ${props => props.theme.SHADOW};
+  background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.45)'};
   color: ${props => props.theme.TEXT_SECONDARY};
   font-size: 0.95rem;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
+  border: 1px solid ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.06)'
+    : 'rgba(255, 255, 255, 0.5)'};
   
   &:hover {
-    background: ${props => props.theme.HOVER_BG};
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.12)'
+    : 'rgba(255, 255, 255, 0.65)'};
     color: ${props => props.theme.ACCENT};
-    transform: scale(1.05);
-    box-shadow: ${props => `0 2px 8px ${props.theme.ACCENT}33`};
+    transform: scale(1.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 
   @media (max-width: 700px) {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     font-size: 1rem;
   }
 
@@ -870,7 +942,7 @@ export const NetworkActions = styled.div`
   justify-content: center;
 `;
 
-export const NetworkButton = styled(ModalButton)<{ variant?: 'primary' | 'danger' }>`
+export const NetworkButton = styled(ModalButton) <{ variant?: 'primary' | 'danger' }>`
   min-width: 120px;
   background: ${({ variant }) => variant === 'danger' ? '#ef4444' : '#4a6cf7'};
   &:hover {
@@ -1351,9 +1423,9 @@ export const DashboardCard = styled.div`
   &:hover {
     transform: translateY(-2px);
     box-shadow: ${props => {
-      const isLight = props.theme.BG === lightTheme.BG;
-      return isLight ? '0 8px 32px 0 #d0e2ff' : '0 8px 24px rgba(0, 0, 0, 0.2)';
-    }};
+    const isLight = props.theme.BG === lightTheme.BG;
+    return isLight ? '0 8px 32px 0 #d0e2ff' : '0 8px 24px rgba(0, 0, 0, 0.2)';
+  }};
   }
 `;
 

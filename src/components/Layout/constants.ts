@@ -34,7 +34,7 @@ export const darkTheme = {
 };
 
 export const lightTheme = {
-  BG: '#f5f7fa',
+  BG: '#e8edf8',
   SIDEBAR_BG: '#ffffff',
   CARD: '#ffffff',
   ACCENT: '#4a6cf7',
@@ -44,7 +44,7 @@ export const lightTheme = {
   BORDER: 'rgba(0, 0, 0, 0.05)',
   ICON_BG: 'rgba(74, 108, 247, 0.1)',
   HOVER_BG: 'rgba(74, 108, 247, 0.15)',
-  FIELD_BG: '#f7faff',
+  FIELD_BG: '#f0f3fc',
   FIELD_BORDER: '#b6c2d9',
   ACCENT_INPUT: '#4a6cf7',
   CANCEL_BG: '#ededed',

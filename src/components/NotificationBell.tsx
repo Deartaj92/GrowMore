@@ -73,7 +73,7 @@ const BellButton = styled.button<{ $hasUnread: boolean; $hasNew: boolean }>`
   color: ${props => props.$hasUnread ? props.theme.ACCENT : props.theme.TEXT_SECONDARY};
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 8px;
+  padding: 6px;
   border-radius: 50%;
   transition: all 0.2s ease;
   display: flex;
@@ -94,14 +94,16 @@ const BellButton = styled.button<{ $hasUnread: boolean; $hasNew: boolean }>`
   }
 
   &:hover {
-    background: ${props => props.theme.HOVER_BG};
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.45)'};
     color: ${props => props.theme.ACCENT};
     transform: scale(1.05);
   }
 
   svg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     transition: transform 0.2s ease;
   }
 `;
@@ -452,17 +454,17 @@ const NotificationItem = styled.div<{ $isRead: boolean; $isImportant: boolean }>
 
   &:hover {
     background: ${props => {
-      // Read items on hover: subtle hover background
-      if (props.$isRead) {
-        return props.theme.HOVER_BG;
-      }
-      // Unread important items on hover: maintain visibility
-      if (props.$isImportant) {
-        return `${props.theme.ACCENT}20`;
-      }
-      // Unread normal items on hover: slightly more visible
-      return `${props.theme.ACCENT}15`;
-    }};
+    // Read items on hover: subtle hover background
+    if (props.$isRead) {
+      return props.theme.HOVER_BG;
+    }
+    // Unread important items on hover: maintain visibility
+    if (props.$isImportant) {
+      return `${props.theme.ACCENT}20`;
+    }
+    // Unread normal items on hover: slightly more visible
+    return `${props.theme.ACCENT}15`;
+  }};
   }
 
   &:last-child {
@@ -481,26 +483,26 @@ const NotificationIcon = styled.div<{ $type: string; $isImportant: boolean }>`
   flex-shrink: 0;
   background: ${props => {
     if (props.$isImportant) return '#ef4444';
-    
+
     // Category-specific colors for letter indicators
     switch (props.$type) {
       case 'attendance': return '#3b82f6'; // Blue for Attendance (A)
       case 'test_marks': return '#10b981'; // Green for Test (T)
       case 'homework_diary': return '#f59e0b'; // Orange/Amber for Diary (D)
-      
+
       // Other activity types
       case 'examination_marks': return '#8b5cf6'; // Purple
       case 'subject_assignment': return '#06b6d4'; // Cyan
       case 'class_management': return '#ec4899'; // Pink
       case 'student_management': return '#14b8a6'; // Teal
-      
+
       // System types
       case 'activity': return props.theme.ACCENT;
       case 'system': return '#10b981';
       case 'alert': return '#f59e0b';
       case 'report': return '#ef4444'; // Red for reports
       case 'announcement': return '#6366f1'; // Indigo
-      
+
       default: return props.theme.ACCENT;
     }
   }};
@@ -619,27 +621,27 @@ const NotificationBell: React.FC = () => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
   const previousUnreadCountRef = useRef(unreadCount);
-  
+
   // Use refs to track current values for IntersectionObserver callback
   const hasMoreRef = useRef(hasMore);
   const isLoadingRef = useRef(isLoading);
   const isOpenRef = useRef(isOpen);
   const loadMoreRef = useRef(loadMore);
   const activeTabRef = useRef(activeTab);
-  
+
   // Update refs when values change
   useEffect(() => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
-  
+
   useEffect(() => {
     isLoadingRef.current = isLoading;
   }, [isLoading]);
-  
+
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
-  
+
   useEffect(() => {
     loadMoreRef.current = loadMore;
   }, [loadMore]);
@@ -655,7 +657,7 @@ const NotificationBell: React.FC = () => {
     // Exclude all report notifications - they go to Reports tab
     return n.notification_type !== 'report';
   });
-  
+
   // Calculate hasMore for the active tab
   // Activity tab: use the context's hasMore (tracks activity notifications pagination)
   // Reports tab: always false (all reports are loaded at once)
@@ -705,13 +707,13 @@ const NotificationBell: React.FC = () => {
         const currentIsLoading = isLoadingRef.current;
         const currentIsOpen = isOpenRef.current;
         const currentActiveTab = activeTabRef.current;
-        
+
         // Only trigger if intersecting, has more, not loading, dropdown is still open, and on Activity tab
         if (entry.isIntersecting && currentHasMore && !currentIsLoading && currentIsOpen && currentActiveTab === 'activity') {
           loadMoreRef.current();
         }
       },
-      { 
+      {
         threshold: 0.1,
         rootMargin: '50px'
       }
@@ -767,7 +769,7 @@ const NotificationBell: React.FC = () => {
         setIsOpen(false);
         return;
       }
-      
+
       // Navigate to leave requests page for leave_request notifications
       // ONLY navigate for "New Leave Request Submitted" notifications (for reviewers)
       // DO NOT navigate for "Leave Request Approved/Rejected" (status updates for requesters)
@@ -779,10 +781,10 @@ const NotificationBell: React.FC = () => {
         }
 
         // Check if this is a "new request" notification (for reviewers) vs status update (for requesters)
-        const isNewRequestNotification = notification.title?.includes('New Leave Request Submitted') || 
-                                         notification.message?.includes('submitted a new');
-        const isStatusUpdate = notification.title?.includes('Approved') || 
-                              notification.title?.includes('Rejected');
+        const isNewRequestNotification = notification.title?.includes('New Leave Request Submitted') ||
+          notification.message?.includes('submitted a new');
+        const isStatusUpdate = notification.title?.includes('Approved') ||
+          notification.title?.includes('Rejected');
 
         // Only navigate for "new request" notifications, NOT for status updates
         if (isNewRequestNotification && !isStatusUpdate) {
@@ -806,7 +808,7 @@ const NotificationBell: React.FC = () => {
         }
         return;
       }
-      
+
       // Navigate to complaints/suggestions page
       // ONLY navigate for "New Complaint Submitted" notifications (for reviewers)
       // DO NOT navigate for "Complaint Reviewed" (status updates for requesters)
@@ -818,10 +820,10 @@ const NotificationBell: React.FC = () => {
         }
 
         // Check if this is a "new complaint" notification (for reviewers) vs status update (for requesters)
-        const isNewComplaintNotification = notification.title?.includes('New Complaint Submitted') || 
-                                           notification.message?.includes('submitted a new complaint');
-        const isStatusUpdate = notification.title?.includes('Reviewed') || 
-                              notification.title?.includes('Complaint Reviewed');
+        const isNewComplaintNotification = notification.title?.includes('New Complaint Submitted') ||
+          notification.message?.includes('submitted a new complaint');
+        const isStatusUpdate = notification.title?.includes('Reviewed') ||
+          notification.title?.includes('Complaint Reviewed');
 
         // Only navigate for "new complaint" notifications, NOT for status updates
         if (isNewComplaintNotification && !isStatusUpdate) {
@@ -845,7 +847,7 @@ const NotificationBell: React.FC = () => {
         }
         return;
       }
-      
+
       // Navigate to complaints/suggestions page for suggestions
       // ONLY navigate for "New Suggestion Submitted" notifications (for reviewers)
       // DO NOT navigate for "Suggestion Reviewed" (status updates for requesters)
@@ -857,10 +859,10 @@ const NotificationBell: React.FC = () => {
         }
 
         // Check if this is a "new suggestion" notification (for reviewers) vs status update (for requesters)
-        const isNewSuggestionNotification = notification.title?.includes('New Suggestion Submitted') || 
-                                            notification.message?.includes('submitted a new suggestion');
-        const isStatusUpdate = notification.title?.includes('Reviewed') || 
-                              notification.title?.includes('Suggestion Reviewed');
+        const isNewSuggestionNotification = notification.title?.includes('New Suggestion Submitted') ||
+          notification.message?.includes('submitted a new suggestion');
+        const isStatusUpdate = notification.title?.includes('Reviewed') ||
+          notification.title?.includes('Suggestion Reviewed');
 
         // Only navigate for "new suggestion" notifications, NOT for status updates
         if (isNewSuggestionNotification && !isStatusUpdate) {
@@ -884,38 +886,38 @@ const NotificationBell: React.FC = () => {
         }
         return;
       }
-      
+
       // If it's a report notification, try to open it first
       if (notification.notification_type === 'report') {
         try {
           // Get school_id from user or parentInfo
           const schoolId = user?.school_id || parentInfo?.school_id;
-          
+
           if (!schoolId) {
             showToast('Unable to access reports', 'error');
             return;
           }
-          
+
           // Use activity_log_id to get the report ID (same approach as notification generation)
           if (!notification.activity_log_id) {
             showToast('Report notification is missing activity log reference', 'error');
             setIsOpen(false);
             return;
           }
-          
+
           // Fetch activity log to get entity_id (report ID)
           const { data: activityLog, error: activityLogError } = await supabase
             .from('activity_logs')
             .select('entity_id, activity_action, teacher_id, school_id')
             .eq('id', notification.activity_log_id)
             .maybeSingle();
-          
+
           if (activityLogError || !activityLog) {
             showToast('Unable to find activity log for this notification', 'error');
             setIsOpen(false);
             return;
           }
-          
+
           // Check if report was deleted
           if (activityLog.activity_action === 'delete') {
             let deletedBy = notification.title || 'Unknown';
@@ -931,16 +933,16 @@ const NotificationBell: React.FC = () => {
             setIsOpen(false);
             return;
           }
-          
+
           // Get report ID from entity_id
           if (!activityLog.entity_id) {
             showToast('Report ID not found in activity log', 'error');
             setIsOpen(false);
             return;
           }
-          
+
           const reportId = activityLog.entity_id.toString();
-          
+
           // Simple approach: Get ID from activity log → Fetch report by ID
           // Try student_reports first (most common), then employee_reports
           // Try student_reports first
@@ -949,7 +951,7 @@ const NotificationBell: React.FC = () => {
             .select('id, school_id')
             .eq('id', reportId)
             .maybeSingle();
-          
+
           // If not found in student_reports, try employee_reports
           if (!report && !reportError) {
             const employeeResult = await supabase
@@ -957,30 +959,30 @@ const NotificationBell: React.FC = () => {
               .select('id, school_id')
               .eq('id', reportId)
               .maybeSingle();
-            
+
             report = employeeResult.data;
             reportError = employeeResult.error;
           }
-          
+
           if (reportError) {
             showToast('Error loading report: ' + (reportError.message || 'Unknown error'), 'error');
             setIsOpen(false);
             return;
           }
-          
+
           if (!report) {
             showToast('Report not found. It may have been deleted.', 'error');
             setIsOpen(false);
             return;
           }
-          
+
           // Verify school_id matches (security check)
           if (report.school_id !== schoolId) {
             showToast('Report belongs to a different school', 'error');
             setIsOpen(false);
             return;
           }
-          
+
           // Report exists and school matches - open it
           setSelectedReportId(reportId);
           setReportModalOpen(true);
@@ -1007,11 +1009,11 @@ const NotificationBell: React.FC = () => {
   const getNotificationIcon = (type: string, isImportant: boolean, message?: string, activityAction?: string) => {
     // Check if this is a deleted report using activity_action
     const isDeleted = activityAction === 'delete' && type === 'report';
-    
+
     if (isDeleted) {
       return <DeleteIcon />;
     }
-    
+
     if (isImportant) return <ErrorIcon />;
 
     switch (type) {
@@ -1019,7 +1021,7 @@ const NotificationBell: React.FC = () => {
       case 'attendance': return <CategoryLetter>A</CategoryLetter>;
       case 'test_marks': return <CategoryLetter>T</CategoryLetter>;
       case 'homework_diary': return <CategoryLetter>D</CategoryLetter>;
-      
+
       // Other activity types
       case 'examination_marks': return <GradeIcon />;
       case 'subject_assignment': return <AssignmentIcon />;
@@ -1057,18 +1059,18 @@ const NotificationBell: React.FC = () => {
   const reportNotifications = notifications.filter((n: Notification) => {
     return n.notification_type === 'report';
   });
-  
+
   // Remove duplicates by creating a unique key (id + notification_type)
   const getUniqueKey = (n: Notification) => `${n.id}_${n.notification_type}`;
   const seenKeys = new Set<string>();
-  
+
   const deduplicatedActivityNotifications = activityNotifications.filter((n: Notification) => {
     const key = getUniqueKey(n);
     if (seenKeys.has(key)) return false;
     seenKeys.add(key);
     return true;
   });
-  
+
   seenKeys.clear();
   const deduplicatedReportNotifications = reportNotifications.filter((n: Notification) => {
     const key = getUniqueKey(n);
@@ -1087,219 +1089,219 @@ const NotificationBell: React.FC = () => {
   return (
     <>
       <NotificationBellContainer>
-      <BellButton
-        ref={buttonRef}
-        $hasUnread={unreadCount > 0}
-        $hasNew={hasNewNotification}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
-      >
-        {unreadCount > 0 ? <BellActiveIcon /> : <BellIcon />}
-        {unreadCount > 0 && (
-          <UnreadBadge $isNew={hasNewNotification}>
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </UnreadBadge>
-        )}
+        <BellButton
+          ref={buttonRef}
+          $hasUnread={unreadCount > 0}
+          $hasNew={hasNewNotification}
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
+        >
+          {unreadCount > 0 ? <BellActiveIcon /> : <BellIcon />}
+          {unreadCount > 0 && (
+            <UnreadBadge $isNew={hasNewNotification}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </UnreadBadge>
+          )}
+          <AnimatePresence>
+            {hasNewNotification && unreadCount > 0 && (
+              <NewNotificationPopup
+                initial={{ opacity: 0, y: 5, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 5, scale: 0.9 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                {unreadCount === 1 ? '1 new...' : `${unreadCount} new...`}
+              </NewNotificationPopup>
+            )}
+          </AnimatePresence>
+        </BellButton>
+
         <AnimatePresence>
-          {hasNewNotification && unreadCount > 0 && (
-            <NewNotificationPopup
-              initial={{ opacity: 0, y: 5, scale: 0.9 }}
+          {isOpen && (
+            <NotificationDropdown
+              ref={dropdownRef}
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 5, scale: 0.9 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
-              {unreadCount === 1 ? '1 new...' : `${unreadCount} new...`}
-            </NewNotificationPopup>
+              <NotificationHeader>
+                <NotificationHeaderLeft>
+                  <NotificationTitle>
+                    Notifications
+                    {activeTab === 'activity' && activityUnreadCount > 0 && (
+                      <UnreadCountBadge>
+                        {activityUnreadCount}
+                      </UnreadCountBadge>
+                    )}
+                    {activeTab === 'reports' && reportUnreadCount > 0 && (
+                      <UnreadCountBadge>
+                        {reportUnreadCount}
+                      </UnreadCountBadge>
+                    )}
+                  </NotificationTitle>
+                </NotificationHeaderLeft>
+                <NotificationHeaderRight>
+                  <HeaderActionButton
+                    onClick={refreshNotifications}
+                    title="Refresh notifications"
+                    aria-label="Refresh notifications"
+                  >
+                    <RefreshIcon />
+                  </HeaderActionButton>
+                  {(activeTab === 'activity' ? activityUnreadCount : reportUnreadCount) > 0 && (
+                    <HeaderActionButton
+                      onClick={handleMarkAllRead}
+                      title="Mark all as read"
+                      aria-label="Mark all as read"
+                    >
+                      <DoneAllIcon />
+                    </HeaderActionButton>
+                  )}
+                </NotificationHeaderRight>
+              </NotificationHeader>
+
+              <TabContainer>
+                <TabButton
+                  $isActive={activeTab === 'activity'}
+                  onClick={() => setActiveTab('activity')}
+                >
+                  Activity
+                  {activityUnreadCount > 0 && (
+                    <TabBadge>{activityUnreadCount}</TabBadge>
+                  )}
+                </TabButton>
+                <TabButton
+                  $isActive={activeTab === 'reports'}
+                  onClick={() => setActiveTab('reports')}
+                >
+                  Reports
+                  {reportUnreadCount > 0 && (
+                    <TabBadge>{reportUnreadCount}</TabBadge>
+                  )}
+                </TabButton>
+              </TabContainer>
+
+              <NotificationList>
+                {isLoading && filteredNotifications.length === 0 ? (
+                  <LoadingState>Loading notifications...</LoadingState>
+                ) : filteredNotifications.length === 0 ? (
+                  <EmptyState>
+                    <EmptyIcon>
+                      <BellIcon />
+                    </EmptyIcon>
+                    <EmptyTitle>No {activeTab === 'activity' ? 'activities' : 'reports'}</EmptyTitle>
+                    <EmptyMessage>
+                      {activeTab === 'activity'
+                        ? "You're all caught up with activities and announcements!"
+                        : "No reports available."}
+                    </EmptyMessage>
+                  </EmptyState>
+                ) : (
+                  <>
+                    {filteredNotifications.map((notification: Notification) => (
+                      <NotificationItem
+                        key={`${notification.id}_${notification.notification_type}`}
+                        $isRead={notification.is_read}
+                        $isImportant={notification.is_important}
+                        onClick={() => handleNotificationClick(notification.id)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <NotificationIcon
+                            $type={notification.notification_type}
+                            $isImportant={notification.is_important}
+                          >
+                            {getNotificationIcon(notification.notification_type, notification.is_important, notification.message, notification.activity_action)}
+                          </NotificationIcon>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* First line: Teacher name + Time */}
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '4px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, gap: '8px' }}>
+                                <NotificationTitleText $isRead={notification.is_read}>
+                                  {notification.title}
+                                </NotificationTitleText>
+                                {!notification.is_read && <UnreadDot />}
+                              </div>
+                              <NotificationDate $isRead={notification.is_read}>
+                                {formatTime(notification.created_at)}
+                              </NotificationDate>
+                            </div>
+
+                            {/* Second line: Description only */}
+                            <NotificationMessage $isRead={notification.is_read}>
+                              {notification.message}
+                            </NotificationMessage>
+                          </div>
+                        </div>
+                      </NotificationItem>
+                    ))}
+
+                    {/* Sentinel for infinite scroll - only show when there's more to load and not currently loading */}
+                    {/* Only show pagination for activity tab (reports are loaded separately) */}
+                    {activeTab === 'activity' && hasMoreForActiveTab && !isLoading && (
+                      <div ref={observerTarget} style={{ height: '20px', width: '100%' }} />
+                    )}
+
+                    {/* Loading indicator for pagination */}
+                    {activeTab === 'activity' && isLoading && hasMoreForActiveTab && (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '12px',
+                        color: '#888',
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          border: '2px solid #888',
+                          borderTopColor: 'transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }} />
+                        Loading more...
+                      </div>
+                    )}
+
+                    {/* End of list indicator - only show when not loading and hasMore is false */}
+                    {activeTab === 'activity' && !hasMoreForActiveTab && !isLoading && filteredNotifications.length > 0 && (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '12px',
+                        color: '#888',
+                        fontSize: '0.85rem'
+                      }}>
+                        No more notifications
+                      </div>
+                    )}
+
+                  </>
+                )}
+              </NotificationList>
+            </NotificationDropdown>
           )}
         </AnimatePresence>
-      </BellButton>
+      </NotificationBellContainer>
 
-      <AnimatePresence>
-        {isOpen && (
-          <NotificationDropdown
-            ref={dropdownRef}
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-          >
-            <NotificationHeader>
-              <NotificationHeaderLeft>
-                <NotificationTitle>
-                  Notifications
-                  {activeTab === 'activity' && activityUnreadCount > 0 && (
-                    <UnreadCountBadge>
-                      {activityUnreadCount}
-                    </UnreadCountBadge>
-                  )}
-                  {activeTab === 'reports' && reportUnreadCount > 0 && (
-                    <UnreadCountBadge>
-                      {reportUnreadCount}
-                    </UnreadCountBadge>
-                  )}
-                </NotificationTitle>
-              </NotificationHeaderLeft>
-              <NotificationHeaderRight>
-                <HeaderActionButton
-                  onClick={refreshNotifications}
-                  title="Refresh notifications"
-                  aria-label="Refresh notifications"
-                >
-                  <RefreshIcon />
-                </HeaderActionButton>
-                {(activeTab === 'activity' ? activityUnreadCount : reportUnreadCount) > 0 && (
-                  <HeaderActionButton
-                    onClick={handleMarkAllRead}
-                    title="Mark all as read"
-                    aria-label="Mark all as read"
-                  >
-                    <DoneAllIcon />
-                  </HeaderActionButton>
-                )}
-              </NotificationHeaderRight>
-            </NotificationHeader>
-
-            <TabContainer>
-              <TabButton
-                $isActive={activeTab === 'activity'}
-                onClick={() => setActiveTab('activity')}
-              >
-                Activity
-                {activityUnreadCount > 0 && (
-                  <TabBadge>{activityUnreadCount}</TabBadge>
-                )}
-              </TabButton>
-              <TabButton
-                $isActive={activeTab === 'reports'}
-                onClick={() => setActiveTab('reports')}
-              >
-                Reports
-                {reportUnreadCount > 0 && (
-                  <TabBadge>{reportUnreadCount}</TabBadge>
-                )}
-              </TabButton>
-            </TabContainer>
-
-            <NotificationList>
-              {isLoading && filteredNotifications.length === 0 ? (
-                <LoadingState>Loading notifications...</LoadingState>
-              ) : filteredNotifications.length === 0 ? (
-                <EmptyState>
-                  <EmptyIcon>
-                    <BellIcon />
-                  </EmptyIcon>
-                  <EmptyTitle>No {activeTab === 'activity' ? 'activities' : 'reports'}</EmptyTitle>
-                  <EmptyMessage>
-                    {activeTab === 'activity' 
-                      ? "You're all caught up with activities and announcements!" 
-                      : "No reports available."}
-                  </EmptyMessage>
-                </EmptyState>
-              ) : (
-                <>
-                  {filteredNotifications.map((notification: Notification) => (
-                    <NotificationItem
-                      key={`${notification.id}_${notification.notification_type}`}
-                      $isRead={notification.is_read}
-                      $isImportant={notification.is_important}
-                      onClick={() => handleNotificationClick(notification.id)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <NotificationIcon
-                          $type={notification.notification_type}
-                          $isImportant={notification.is_important}
-                        >
-                          {getNotificationIcon(notification.notification_type, notification.is_important, notification.message, notification.activity_action)}
-                        </NotificationIcon>
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          {/* First line: Teacher name + Time */}
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '4px'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, gap: '8px' }}>
-                              <NotificationTitleText $isRead={notification.is_read}>
-                                {notification.title}
-                              </NotificationTitleText>
-                              {!notification.is_read && <UnreadDot />}
-                            </div>
-                            <NotificationDate $isRead={notification.is_read}>
-                              {formatTime(notification.created_at)}
-                            </NotificationDate>
-                          </div>
-
-                          {/* Second line: Description only */}
-                          <NotificationMessage $isRead={notification.is_read}>
-                            {notification.message}
-                          </NotificationMessage>
-                        </div>
-                      </div>
-                    </NotificationItem>
-                  ))}
-
-                  {/* Sentinel for infinite scroll - only show when there's more to load and not currently loading */}
-                  {/* Only show pagination for activity tab (reports are loaded separately) */}
-                  {activeTab === 'activity' && hasMoreForActiveTab && !isLoading && (
-                    <div ref={observerTarget} style={{ height: '20px', width: '100%' }} />
-                  )}
-
-                  {/* Loading indicator for pagination */}
-                  {activeTab === 'activity' && isLoading && hasMoreForActiveTab && (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '12px',
-                      color: '#888',
-                      fontSize: '0.85rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        border: '2px solid #888',
-                        borderTopColor: 'transparent',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }} />
-                      Loading more...
-                    </div>
-                  )}
-                  
-                  {/* End of list indicator - only show when not loading and hasMore is false */}
-                  {activeTab === 'activity' && !hasMoreForActiveTab && !isLoading && filteredNotifications.length > 0 && (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '12px',
-                      color: '#888',
-                      fontSize: '0.85rem'
-                    }}>
-                      No more notifications
-                    </div>
-                  )}
-                  
-                </>
-              )}
-            </NotificationList>
-          </NotificationDropdown>
-        )}
-      </AnimatePresence>
-    </NotificationBellContainer>
-    
-    {reportModalOpen && selectedReportId && (
-      <ReportDetailsModal
-        open={reportModalOpen}
-        onClose={() => {
-          setReportModalOpen(false);
-          setSelectedReportId(null);
-        }}
-        reportId={selectedReportId}
-      />
-    )}
+      {reportModalOpen && selectedReportId && (
+        <ReportDetailsModal
+          open={reportModalOpen}
+          onClose={() => {
+            setReportModalOpen(false);
+            setSelectedReportId(null);
+          }}
+          reportId={selectedReportId}
+        />
+      )}
     </>
   );
 };

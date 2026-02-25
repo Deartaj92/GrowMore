@@ -64,6 +64,7 @@ import {
 import { StudentInfo, ParentInfo, InstituteProfile } from '../../types';
 import NotificationBell from '../../../NotificationBell';
 import ProfileDropdown from '../ProfileDropdown/ProfileDropdown';
+import GlassSurface from './GlassSurface';
 
 // Mac-style window controls (for Electron)
 const MacWindowControls = styled.div`
@@ -140,20 +141,31 @@ const AppLogo = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
-  color: white;
-  margin-right: 14px;
+  background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.5)'};
+  color: ${props => props.theme.TEXT_PRIMARY};
+  margin-right: 10px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   overflow: hidden;
   -webkit-app-region: no-drag;
+  border: 1.5px solid ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.1)'
+    : 'rgba(255, 255, 255, 0.6)'};
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: scale(1.06);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+  }
   
   svg {
-    font-size: 18px;
+    font-size: 20px;
   }
   
   img {
@@ -164,12 +176,12 @@ const AppLogo = styled.div`
   }
   
   @media (max-width: 700px) {
-    width: 28px;
-    height: 28px;
-    margin-right: 10px;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
     
     svg {
-      font-size: 16px;
+      font-size: 18px;
     }
   }
 `;
@@ -178,7 +190,7 @@ const AppLogo = styled.div`
 const NavMenu = styled.nav`
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
   position: relative;
   z-index: 100002;
@@ -192,44 +204,37 @@ const NavMenu = styled.nav`
 const NavMenuItem = styled.button<{ $hasDropdown?: boolean; $isDashboard?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 6px 12px;
   border: none;
   background: transparent;
   color: ${props => props.theme.TEXT_SECONDARY};
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 500;
   cursor: ${props => props.$hasDropdown ? 'default' : 'pointer'};
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   white-space: nowrap;
   -webkit-app-region: no-drag;
+  letter-spacing: 0.01em;
   
   ${props => props.$isDashboard && `
-    color: #9333ea;
+    color: ${props.theme.ACCENT};
     font-weight: 600;
   `}
   
   &:hover {
-    background: ${props => props.theme.BG};
-    color: ${props => props.$isDashboard ? '#9333ea' : props.theme.TEXT_PRIMARY};
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 12px;
-      right: 12px;
-      height: 2px;
-      background: ${props => props.$isDashboard ? 'linear-gradient(90deg, #9333ea, #7c3aed)' : 'linear-gradient(90deg, #3b82f6, #2563eb)'};
-      border-radius: 2px 2px 0 0;
-    }
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.45)'};
+    color: ${props => props.theme.TEXT_PRIMARY};
   }
   
   svg {
     font-size: 16px;
     flex-shrink: 0;
+    opacity: 0.75;
   }
   
   span {
@@ -254,10 +259,10 @@ const MenuWrapper = styled.div`
 
 const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualColumns?: number }>`
   position: fixed;
-  background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : props.theme.CARD};
-  border: 1px solid ${props => props.theme.BORDER};
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+  background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : 'rgba(255, 255, 255, 0.95)'};
+  border: 1px solid ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? props.theme.BORDER : 'rgba(107, 141, 247, 0.15)'};
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(107, 141, 247, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
   padding: 10px;
   z-index: 100001;
   overflow: visible;
@@ -440,10 +445,11 @@ const Badge = styled.span`
   margin-left: 8px;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
   opacity: 1 !important;
   visibility: visible !important;
   z-index: 3;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
 `;
 
 const DropdownMenuItem = styled.button<{ $color: string }>`
@@ -834,11 +840,13 @@ const HamburgerButton = styled.button`
   cursor: pointer;
   padding: 8px;
   margin-right: 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: background 0.2s ease;
   
   &:hover {
-    background: ${props => props.theme.BG};
+    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(255, 255, 255, 0.45)'};
   }
   
   svg {
@@ -853,22 +861,21 @@ const HamburgerButton = styled.button`
 `;
 
 const ProfileAvatarContainer = styled(HeaderIconCircle) <{ $hasImage: boolean }>`
-  border: ${props => props.$hasImage ? `2.5px solid ${props.theme.BORDER}` : 'none'};
-  box-shadow: ${props => props.$hasImage
-    ? `0 2px 10px rgba(0, 0, 0, 0.12), 0 0 0 1px ${props.theme.BG}40`
-    : props.theme.SHADOW};
-  background: ${props => props.$hasImage ? 'transparent' : props.theme.CARD};
+  border: ${props => props.$hasImage
+    ? `2px solid ${props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.6)'}`
+    : `1px solid ${props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.45)'}`};
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  background: ${props => props.$hasImage ? 'transparent' : (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.45)')};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   padding: 0;
+  width: 34px;
+  height: 34px;
   
   &:hover {
     transform: scale(1.1);
-    box-shadow: ${props => props.$hasImage
-    ? `0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 3px ${props.theme.ACCENT}40`
-    : `0 2px 8px ${props.theme.ACCENT}33`};
-    border-color: ${props => props.$hasImage ? props.theme.ACCENT : 'transparent'};
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
   }
   
   img {
@@ -2380,6 +2387,18 @@ const Header: React.FC<HeaderProps> = ({
         </>
       )}
       <HeaderStyled $hasSidebar={false}>
+        <GlassSurface
+          displace={0}
+          distortionScale={0}
+          redOffset={0}
+          greenOffset={0}
+          blueOffset={0}
+          brightness={150}
+          opacity={0.1}
+          mixBlendMode="normal"
+          borderRadius={24}
+          style={{ position: 'absolute', inset: 0, zIndex: -1 }}
+        />
         <HeaderLeft>
           {!isRestrictedRole && (
             <HamburgerButton
@@ -2755,13 +2774,12 @@ const Header: React.FC<HeaderProps> = ({
           )}
         </HeaderLeft>
         <HeaderActions>
-          {/* Show notification bell for all authenticated users (staff and students) */}
           {(user || studentInfo || parentInfo) && <NotificationBell />}
           <HeaderIconCircle
-            as="button"
+            role="button"
+            tabIndex={0}
             onClick={onRefresh}
             aria-label="Refresh page"
-            disabled={isDownloadActive}
             style={{
               opacity: isDownloadActive ? 0.5 : 1,
               cursor: isDownloadActive ? 'not-allowed' : 'pointer',
@@ -2773,8 +2791,9 @@ const Header: React.FC<HeaderProps> = ({
           </HeaderIconCircle>
           <div style={{ position: 'relative' }}>
             <ProfileAvatarContainer
-              as="button"
-              ref={profileIconRef}
+              role="button"
+              tabIndex={0}
+              ref={profileIconRef as any}
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
               aria-label="Profile"
               $hasImage={!!(avatarUrl || parentInfo?.avatar_url) && !imageError}

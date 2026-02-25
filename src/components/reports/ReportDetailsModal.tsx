@@ -104,11 +104,11 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
     // Get school_id from user or parentInfo
     const schoolId = user?.school_id || parentInfo?.school_id;
     if (!reportId || !schoolId) return;
-    
+
     setLoading(true);
     try {
       const data = await reportService.getReportById(reportId, schoolId);
-      
+
       // Transform the data to match our local Report type
       // Updates are already included in the response from getReportById
       const transformedData = {
@@ -124,7 +124,7 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
         action_taken: '',
         updates: data.updates || []
       } as unknown as Report;
-      
+
       setReport(transformedData);
     } catch (error) {
       showToast('Failed to load report details', 'error');
@@ -155,9 +155,9 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
         }
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
+      <DialogTitle sx={{
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'space-between',
         pb: 1
       }}>
@@ -171,6 +171,7 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
 
       <DialogContent sx={{ p: 0 }}>
         {loading ? (
+          // @ts-ignore - MUI sx prop union type too complex for TS
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
             <CircularProgress />
           </Box>

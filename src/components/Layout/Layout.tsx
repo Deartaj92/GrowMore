@@ -1034,31 +1034,32 @@ const Layout: React.FC = () => {
         <GlobalStyles />
         <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
         <AppContainer>
+          {/* Header floats independently outside MainArea for true glass see-through effect */}
+          <Header
+            user={user}
+            studentInfo={studentInfo}
+            parentInfo={parentInfo}
+            isDownloadActive={isDownloadActive}
+            onRefresh={handleRefresh}
+            avatarUrl={avatarUrl}
+            staffName={staffName}
+            profileMenuOpen={profileMenuOpen}
+            setProfileMenuOpen={setProfileMenuOpen}
+            profileIconRef={profileIconRef}
+            profileDropdownRef={profileDropdownRef}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onOpenChangePassword={openChangePasswordModal}
+            isWeb={isWeb}
+            onCheckForUpdates={handleCheckForUpdates}
+            isCheckingUpdate={isCheckingUpdate}
+            onAboutUsClick={() => setAboutUsModalOpen(true)}
+            onLogout={handleLogout}
+            appVersion={appVersion}
+            instituteProfile={instituteProfile}
+          />
           <LayoutWrapper>
             <MainArea $isTeacher={true}>
-              <Header
-                user={user}
-                studentInfo={studentInfo}
-                parentInfo={parentInfo}
-                isDownloadActive={isDownloadActive}
-                onRefresh={handleRefresh}
-                avatarUrl={avatarUrl}
-                staffName={staffName}
-                profileMenuOpen={profileMenuOpen}
-                setProfileMenuOpen={setProfileMenuOpen}
-                profileIconRef={profileIconRef}
-                profileDropdownRef={profileDropdownRef}
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                onOpenChangePassword={openChangePasswordModal}
-                isWeb={isWeb}
-                onCheckForUpdates={handleCheckForUpdates}
-                isCheckingUpdate={isCheckingUpdate}
-                onAboutUsClick={() => setAboutUsModalOpen(true)}
-                onLogout={handleLogout}
-                appVersion={appVersion}
-                instituteProfile={instituteProfile}
-              />
               <ContentArea>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
@@ -1070,10 +1071,11 @@ const Layout: React.FC = () => {
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      height: '100%',
-                      minHeight: 0
+                      minHeight: '100%',
                     }}
                   >
+                    {/* Spacer for floating glass header — scrolls with content */}
+                    <div style={{ height: 62, flexShrink: 0 }} />
                     <div
                       style={{
                         flex: 1,
