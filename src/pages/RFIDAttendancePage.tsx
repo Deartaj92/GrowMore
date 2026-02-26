@@ -638,8 +638,8 @@ const MobileNfcBtn = styled.button<{ $active?: boolean }>`
   
   &:active { transform: translateY(0); }
 
-  @media (min-width: 961px) {
-    display: none; /* Hide on desktop */
+  @media (min-width: 1200px) {
+    display: none; /* Hide on large desktop screens */
   }
 `;
 
@@ -1205,19 +1205,28 @@ const RFIDAttendancePage: React.FC = () => {
             setIsNfcScanning(true);
             await ndef.scan({ signal: nfcAbortControllerRef.current.signal });
 
-            ndef.addEventListener("readingerror", () => {
+            ndef.onreadingerror = (event: any) => {
+                console.error("NFC Reading Error:", event);
                 setScanStatus('error');
-                setStatusMsg('NFC Read Error');
-            });
+                setStatusMsg('NFC Read Error: Hold card steady against the back of your phone');
 
-            ndef.addEventListener("reading", ({ serialNumber }: any) => {
+                setTimeout(() => {
+                    if (isNfcScanning) setStatusMsg('NFC Scanner Active...');
+                }, 2000);
+            };
+
+            ndef.onreading = ({ serialNumber }: any) => {
+                console.log("NFC Card detected:", serialNumber);
                 if (serialNumber) {
-                    processUID(serialNumber);
+                    const cleanUID = serialNumber.replace(/:/g, '').toUpperCase();
+                    processUID(cleanUID);
                 }
-            });
+            };
         } catch (error: any) {
             setIsNfcScanning(false);
-            alert("NFC Error: " + error.message);
+            if (error.name !== 'AbortError') {
+                alert("NFC Error: " + error.message);
+            }
         }
     };
 

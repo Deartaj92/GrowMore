@@ -286,7 +286,7 @@ const MobileNfcBtn = styled.button<{ $active?: boolean }>`
   
   &:hover { background: ${({ $active }) => $active ? '#16a34a' : 'rgba(59, 130, 246, 0.15)'}; }
 
-  @media (min-width: 769px) {
+  @media (min-width: 1200px) {
     display: none;
   }
 `;
@@ -559,22 +559,25 @@ const RFIDCardAssignmentPage: React.FC = () => {
             setIsNfcScanning(true);
             await ndef.scan({ signal: nfcAbortControllerRef.current.signal });
 
-            ndef.addEventListener("readingerror", () => {
-                toast.showToast("NFC Read Error", "error");
-            });
+            ndef.onreadingerror = (_event: any) => {
+                toast.showToast("NFC Read Error: Hold card steady against the back of your phone", "error");
+            };
 
-            ndef.addEventListener("reading", ({ serialNumber }: any) => {
+            ndef.onreading = ({ serialNumber }: any) => {
+                console.log("NFC Card detected:", serialNumber);
                 if (serialNumber) {
-                    setEditValue(serialNumber);
-                    // Automatically trigger save if it's a valid UID
-                    if (serialNumber.length >= 4) {
-                        toast.showToast(`Card detected: ${serialNumber}`, "success");
+                    const cleanUID = serialNumber.replace(/:/g, '').toUpperCase();
+                    setEditValue(cleanUID);
+                    if (cleanUID.length >= 4) {
+                        toast.showToast(`Card detected: ${cleanUID}`, "success");
                     }
                 }
-            });
+            };
         } catch (error: any) {
             setIsNfcScanning(false);
-            toast.showToast("NFC Error: " + error.message, "error");
+            if (error.name !== 'AbortError') {
+                toast.showToast("NFC Error: " + error.message, "error");
+            }
         }
     };
 
