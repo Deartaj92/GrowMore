@@ -5,6 +5,8 @@ import styled, { keyframes, css } from 'styled-components';
 declare global {
     interface Window {
         NDEFReader: any;
+        nfc?: any;
+        util?: any;
     }
 }
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
@@ -643,6 +645,17 @@ const MobileNfcBtn = styled.button<{ $active?: boolean }>`
   }
 `;
 
+const NfcDiagnosticTxt = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px dashed rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  text-align: center;
+`;
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -757,8 +770,10 @@ const RFIDAttendancePage: React.FC = () => {
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        setIsNfcSupported('NDEFReader' in window);
+        setIsNfcSupported(('NDEFReader' in window) || (!!(window as any).nfc));
     }, []);
+
+    const isSecureContext = window.isSecureContext;
 
     // Buffer for USB reader (acts like keyboard input)
     const bufferRef = useRef('');
@@ -772,7 +787,7 @@ const RFIDAttendancePage: React.FC = () => {
     const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
     const [showSuccess, setShowSuccess] = useState(false);
     const [syncStats, setSyncStats] = useState({ success: 0, failed: 0 });
-    const [scannedPerson, setScannedPerson] = useState<{ name: string; photo_url?: string } | null>(null);
+    const [scannedPerson, setScannedPerson] = useState<{ name: string; picture_url?: string } | null>(null);
 
     // Initial cache and queue check
     useEffect(() => {
@@ -967,7 +982,7 @@ const RFIDAttendancePage: React.FC = () => {
                 // ── Student Logic ──
                 const { data: student, error } = await supabase
                     .from('students')
-                    .select('id, name, roll_number, photo_url, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                    .select('id, name, roll_number, picture_url, class_id, section_id, classes:class_id(name), sections:section_id(name)')
                     .eq('school_id', user.school_id)
                     .eq('rfid_uid', cleanUID)
                     .maybeSingle();
@@ -1018,7 +1033,7 @@ const RFIDAttendancePage: React.FC = () => {
                 const classLabel = [(student as any).classes?.name, (student as any).sections?.name].filter(Boolean).join(' - ');
                 setScanStatus('success');
                 setStatusMsg(`✓ ${student.name}`);
-                setScannedPerson({ name: student.name, photo_url: student.photo_url || undefined });
+                setScannedPerson({ name: student.name, picture_url: student.picture_url || undefined });
                 setPresentCount(p => p + 1);
                 addFeedItem({
                     type: 'success',
@@ -1037,7 +1052,7 @@ const RFIDAttendancePage: React.FC = () => {
                 // ── Employee Logic ──
                 const { data: staffMember, error } = await supabase
                     .from('staff')
-                    .select('id, name, role, photo_url')
+                    .select('id, name, role, picture_url')
                     .eq('school_id', user.school_id)
                     .eq('rfid_uid', cleanUID)
                     .maybeSingle();
@@ -1076,7 +1091,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                     setScanStatus('success');
                     setStatusMsg(`OUT ✓ ${staffMember.name}`);
-                    setScannedPerson({ name: staffMember.name, photo_url: staffMember.photo_url || undefined });
+                    setScannedPerson({ name: staffMember.name, picture_url: staffMember.picture_url || undefined });
                     addFeedItem({
                         type: 'success',
                         name: `${staffMember.name} (OUT)`,
@@ -1101,7 +1116,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                 setScanStatus('success');
                 setStatusMsg(`IN ✓ ${staffMember.name}`);
-                setScannedPerson({ name: staffMember.name, photo_url: staffMember.photo_url || undefined });
+                setScannedPerson({ name: staffMember.name, picture_url: staffMember.picture_url || undefined });
                 setPresentCount(p => p + 1);
                 addFeedItem({
                     type: 'success',
@@ -1139,7 +1154,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                     setScanStatus('success');
                     setStatusMsg(`✓ ${mapping.name} (Offline)`);
-                    setScannedPerson({ name: mapping.name, photo_url: mapping.photo_url });
+                    setScannedPerson({ name: mapping.name, picture_url: mapping.picture_url });
                     setPresentCount(p => p + 1);
                     addFeedItem({
                         type: 'success',
@@ -1189,6 +1204,50 @@ const RFIDAttendancePage: React.FC = () => {
     }, [user?.school_id, selectedDate, addFeedItem, fetchSession]);
 
     const handleStartNfc = async () => {
+        // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
+        if (window.nfc) {
+            if (isNfcScanning) {
+                window.nfc.removeTagDiscoveredListener();
+                setIsNfcScanning(false);
+                setStatusMsg('NFC Scanner Deactivated');
+                return;
+            }
+
+            try {
+                setIsNfcScanning(true);
+                setStatusMsg('NFC Scanner Active (Native)...');
+
+                window.nfc.addTagDiscoveredListener(
+                    (nfcEvent: any) => {
+                        console.log("Native NFC Tag detected:", nfcEvent);
+                        const tagId = nfcEvent.tag.id;
+                        if (tagId) {
+                            // Convert byte array to HEX UID
+                            const cleanUID = tagId.map((b: number) => {
+                                let s = (b & 0xFF).toString(16).toUpperCase();
+                                return s.length === 1 ? '0' + s : s;
+                            }).join('');
+
+                            processUID(cleanUID);
+
+                            // Visual feedback
+                            setScanStatus('success');
+                            setTimeout(() => setStatusMsg('NFC Scanner Active (Native)...'), 2000);
+                        }
+                    },
+                    () => console.log("NFC listener started"),
+                    (err: any) => {
+                        setIsNfcScanning(false);
+                        alert("Native NFC Error: " + err);
+                    }
+                );
+                return; // Exit as we used native
+            } catch (err) {
+                console.error("Native NFC catch:", err);
+            }
+        }
+
+        // --- 2. Standard Web Browser Browser (Web NFC) ---
         if (isNfcScanning) {
             if (nfcAbortControllerRef.current) {
                 nfcAbortControllerRef.current.abort();
@@ -1318,7 +1377,7 @@ const RFIDAttendancePage: React.FC = () => {
                 // Employee Check-out
                 setScanStatus('success');
                 setStatusMsg(`OUT ✓ ${name}`);
-                setScannedPerson({ name, photo_url: photo });
+                setScannedPerson({ name, picture_url: photo });
                 setTestScanStates(prev => ({ ...prev, [name]: 'out' }));
                 addFeedItem({
                     type: 'success',
@@ -1352,7 +1411,7 @@ const RFIDAttendancePage: React.FC = () => {
 
         setScanStatus('success');
         setStatusMsg(`${isEmployee ? 'IN ' : ''}✓ ${name}`);
-        setScannedPerson({ name, photo_url: photo });
+        setScannedPerson({ name, picture_url: photo });
         setPresentCount(p => p + 1);
 
         addFeedItem({
@@ -1503,8 +1562,8 @@ const RFIDAttendancePage: React.FC = () => {
                 {/* \u2500\u2500 Left: Scanner \u2500\u2500 */}
                 <ScannerCard theme={themeObj}>
                     <ScanArea $status={scanStatus}>
-                        {scanStatus === 'success' && scannedPerson?.photo_url ? (
-                            <ScannedImage src={scannedPerson.photo_url} alt={scannedPerson.name} />
+                        {scanStatus === 'success' && scannedPerson?.picture_url ? (
+                            <ScannedImage src={scannedPerson.picture_url} alt={scannedPerson.name} />
                         ) : (
                             scanIcon
                         )}
@@ -1550,11 +1609,17 @@ const RFIDAttendancePage: React.FC = () => {
                         readOnly
                     />
 
-                    {isNfcSupported && (
+                    {isNfcSupported ? (
                         <MobileNfcBtn $active={isNfcScanning} onClick={handleStartNfc}>
                             <NfcIcon style={{ fontSize: 20 }} />
                             {isNfcScanning ? 'NFC Scanner Active...' : 'Tap to use Mobile NFC'}
                         </MobileNfcBtn>
+                    ) : (
+                        !isSecureContext && (
+                            <NfcDiagnosticTxt theme={themeObj}>
+                                NFC blocked: Use <b>HTTPS</b> to enable mobile scanning.
+                            </NfcDiagnosticTxt>
+                        )
                     )}
                 </ScannerCard>
 

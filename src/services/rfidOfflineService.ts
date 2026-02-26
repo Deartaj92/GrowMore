@@ -16,7 +16,7 @@ export interface RFIDMapping {
     section_id?: number;
     roll_number?: string;
     role?: string;
-    photo_url?: string;
+    picture_url?: string;
 }
 
 export interface QueuedScan {
@@ -73,14 +73,14 @@ class RFIDOfflineService {
             // Fetch students
             const { data: students } = await supabase
                 .from('students')
-                .select('id, name, rfid_uid, roll_number, photo_url, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                .select('id, name, rfid_uid, roll_number, picture_url, class_id, section_id, classes:class_id(name), sections:section_id(name)')
                 .eq('school_id', schoolId)
                 .not('rfid_uid', 'is', null);
 
             // Fetch staff
             const { data: staff } = await supabase
                 .from('staff')
-                .select('id, name, rfid_uid, role, photo_url')
+                .select('id, name, rfid_uid, role, picture_url')
                 .eq('school_id', schoolId)
                 .not('rfid_uid', 'is', null);
 
@@ -103,7 +103,7 @@ class RFIDOfflineService {
                     class_id: s.class_id,
                     section_id: s.section_id,
                     roll_number: s.roll_number,
-                    photo_url: s.photo_url,
+                    picture_url: s.picture_url,
                 });
             });
 
@@ -114,7 +114,7 @@ class RFIDOfflineService {
                     name: s.name,
                     type: 'employee',
                     role: s.role,
-                    photo_url: s.photo_url,
+                    picture_url: s.picture_url,
                 });
             });
         } catch (error) {

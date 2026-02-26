@@ -138,9 +138,10 @@ import InitialRouteHandler from './components/InitialRouteHandler';
 import { Capacitor } from '@capacitor/core';
 import { isWeb } from './utils/platformDetection';
 
-// Use HashRouter in Electron, BrowserRouter in web
+// Use HashRouter in Electron and Capacitor, BrowserRouter in standard web
 const isElectron = Boolean((window as any).electronAPI);
-const AppRouter = isElectron ? HashRouter : BrowserRouter;
+const isNative = Capacitor.isNativePlatform();
+const AppRouter = (isElectron || isNative) ? HashRouter : BrowserRouter;
 
 const App: React.FC = () => {
   const { theme } = useContext(ThemeContext);

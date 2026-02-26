@@ -5,6 +5,7 @@ import styled, { keyframes, css } from 'styled-components';
 declare global {
     interface Window {
         NDEFReader: any;
+        nfc?: any;
     }
 }
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
@@ -291,6 +292,17 @@ const MobileNfcBtn = styled.button<{ $active?: boolean }>`
   }
 `;
 
+const NfcDiagnosticTxt = styled.div`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.4rem;
+  padding: 0.4rem;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px dashed rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+  text-align: center;
+`;
+
 const EmptyState = styled.div`
   padding: 3rem 1rem;
   text-align: center;
@@ -376,8 +388,10 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        setIsNfcSupported('NDEFReader' in window);
+        setIsNfcSupported(('NDEFReader' in window) || (!!(window as any).nfc));
     }, []);
+
+    const isSecureContext = window.isSecureContext;
 
     const classesMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
     const sectionsMap = useMemo(() => new Map(sections.map(s => [s.id, s.name])), [sections]);
@@ -543,6 +557,45 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const handleStartNfc = async () => {
         if (!editingId) return;
 
+        // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
+        if (window.nfc) {
+            if (isNfcScanning) {
+                window.nfc.removeTagDiscoveredListener();
+                setIsNfcScanning(false);
+                return;
+            }
+
+            try {
+                setIsNfcScanning(true);
+                toast.showToast("NFC Scanner Active (Native)...", "success");
+
+                window.nfc.addTagDiscoveredListener(
+                    (nfcEvent: any) => {
+                        const tagId = nfcEvent.tag.id;
+                        if (tagId) {
+                            // Convert byte array to HEX UID
+                            const cleanUID = tagId.map((b: number) => {
+                                let s = (b & 0xFF).toString(16).toUpperCase();
+                                return s.length === 1 ? '0' + s : s;
+                            }).join('');
+
+                            setEditValue(cleanUID);
+                            toast.showToast(`Card read: ${cleanUID}`, "success");
+                        }
+                    },
+                    () => console.log("NFC listener started"),
+                    (err: any) => {
+                        setIsNfcScanning(false);
+                        toast.showToast("Native NFC Error: " + err, "error");
+                    }
+                );
+                return; // Use native and skip web
+            } catch (err) {
+                console.error("Native NFC catch:", err);
+            }
+        }
+
+        // --- 2. Standard Web Browser (Web NFC) ---
         if (isNfcScanning) {
             if (nfcAbortControllerRef.current) {
                 nfcAbortControllerRef.current.abort();
@@ -560,7 +613,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
             await ndef.scan({ signal: nfcAbortControllerRef.current.signal });
 
             ndef.onreadingerror = (_event: any) => {
-                toast.showToast("NFC Read Error: Hold card steady against the back of your phone", "error");
+                toast.showToast("Bank cards are blocked by browsers. Use a standard NFC/RFID card.", "error");
             };
 
             ndef.onreading = ({ serialNumber }: any) => {
@@ -696,13 +749,19 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                                 onChange={e => setEditValue(e.target.value)}
                                                                 onKeyDown={e => handleEditKeyDown(e, person.id)}
                                                             />
-                                                            {isNfcSupported && (
+                                                            {isNfcSupported ? (
                                                                 <div style={{ marginTop: '0.4rem' }}>
                                                                     <MobileNfcBtn $active={isNfcScanning} onClick={handleStartNfc}>
                                                                         <NfcIcon style={{ fontSize: 16 }} />
                                                                         {isNfcScanning ? 'Listening...' : 'Scan with Phone NFC'}
                                                                     </MobileNfcBtn>
                                                                 </div>
+                                                            ) : (
+                                                                !isSecureContext && (
+                                                                    <NfcDiagnosticTxt theme={themeObj}>
+                                                                        HTTPS required for mobile NFC.
+                                                                    </NfcDiagnosticTxt>
+                                                                )
                                                             )}
                                                         </>
                                                     ) : (
