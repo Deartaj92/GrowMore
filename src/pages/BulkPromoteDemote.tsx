@@ -893,7 +893,7 @@ const BulkPromoteDemote: React.FC = () => {
   const [sourceSections, setSourceSections] = useState<any[]>([]);
   const [sourceStudents, setSourceStudents] = useState<any[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
-  const [action, setAction] = useState<'promote' | 'demote'>('promote');
+  const [action, setAction] = useState<'promote' | 'demote' | 'passout'>('promote');
   const [targetClass, setTargetClass] = useState('');
   const [targetSection, setTargetSection] = useState('');
   const [targetSections, setTargetSections] = useState<any[]>([]);
@@ -1141,7 +1141,7 @@ const BulkPromoteDemote: React.FC = () => {
 
   // Auto-select target class based on action
   useEffect(() => {
-    if (!sourceClass) {
+    if (!sourceClass || action === 'passout') {
       setTargetClass('');
       setTargetSection('');
       setTargetSections([]);
@@ -1425,7 +1425,73 @@ const BulkPromoteDemote: React.FC = () => {
   }, [targetClass, targetSection, classes, activeSession, user?.school_id]);
 
   const handleConfirm = async () => {
-    // Check if source class has sections
+    // --- PASSOUT path: only update status, no class/section change ---
+    if (action === 'passout') {
+      if (!sourceClass || selectedStudents.size === 0) return;
+      const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
+      const sourceHasSections = sourceClassObj?.has_sections ?? true;
+      if (sourceHasSections && !sourceSection) return;
+
+      const minDuration = 2000;
+      const start = Date.now();
+      setProcessing(true);
+      setLoading(true);
+      try {
+        const studentIds = Array.from(selectedStudents);
+        let processedCount = 0;
+
+        for (const studentId of studentIds) {
+          try {
+            const student = sourceStudents.find(s => s.id === studentId);
+            const oldClassId = student?.class_id;
+            const oldStatus = student?.status;
+
+            // Only update status to 'passout'; keep class/section unchanged
+            await supabase.from('students').update({
+              status: 'passout'
+            }).eq('id', studentId);
+
+            // Record in student_status_history
+            await supabase.from('student_status_history').insert({
+              student_id: studentId,
+              school_id: user?.school_id,
+              action: 'passout',
+              old_status: oldStatus,
+              new_status: 'passout',
+              old_class_id: oldClassId,
+              new_class_id: oldClassId,
+              reason: null,
+              performed_by: user?.id || null,
+              new_section_id: student?.section_id || null
+            });
+
+            processedCount++;
+          } catch (error) { }
+        }
+
+        toast.showToast(`Successfully marked ${processedCount} students as Passed Out`, 'success');
+
+        // Reset form
+        setSourceClass('');
+        setSourceSection('');
+        setSelectedStudents(new Set());
+        setSourceStudents([]);
+        setTargetStatus('retain');
+      } catch (err: any) {
+        toast.showToast(err.message, 'error');
+      } finally {
+        setProcessing(false);
+        const elapsed = Date.now() - start;
+        if (elapsed < minDuration) {
+          setTimeout(() => setLoading(false), minDuration - elapsed);
+        } else {
+          setLoading(false);
+        }
+      }
+      return;
+    }
+
+    // --- PROMOTE / DEMOTE path ---
     const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
     const sourceHasSections = sourceClassObj?.has_sections ?? true;
 
@@ -1527,21 +1593,32 @@ const BulkPromoteDemote: React.FC = () => {
   }, []);
 
   const handleConfirmClick = useCallback(async () => {
-    // Check if source class has sections
     const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
     const sourceHasSections = sourceClassObj?.has_sections ?? true;
 
-    // Check if target class has sections
-    const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
-    const targetHasSections = targetClassObj?.has_sections ?? true;
-
-    // Validate required fields
-    if (!sourceClass || !targetClass || selectedStudents.size === 0) {
+    // Validate source
+    if (!sourceClass || selectedStudents.size === 0) {
       toast.showToast('Please select all required fields and students', 'error');
       return;
     }
     if (sourceHasSections && !sourceSection) {
       toast.showToast('Please select a source section', 'error');
+      return;
+    }
+
+    // For passout, skip target validation
+    if (action === 'passout') {
+      setTargetClassStudentsCount(0);
+      setShowConfirmModal(true);
+      return;
+    }
+
+    // Check if target class has sections
+    const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
+    const targetHasSections = targetClassObj?.has_sections ?? true;
+
+    if (!targetClass) {
+      toast.showToast('Please select all required fields and students', 'error');
       return;
     }
     if (targetHasSections && !targetSection) {
@@ -1553,7 +1630,7 @@ const BulkPromoteDemote: React.FC = () => {
     const existingStudentsCount = await checkTargetClassStudents();
     setTargetClassStudentsCount(existingStudentsCount);
     setShowConfirmModal(true);
-  }, [sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, classes, toast, checkTargetClassStudents]);
+  }, [sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, classes, toast, checkTargetClassStudents, action]);
 
   const handleConfirmModalConfirm = async () => {
     setShowConfirmModal(false);
@@ -1566,9 +1643,12 @@ const BulkPromoteDemote: React.FC = () => {
       const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
       const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
       const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
-      const isDisabled = processing || !sourceClass || !targetClass || selectedStudents.size === 0 ||
-        (sourceClassObj?.has_sections !== false && !sourceSection) ||
-        (targetClassObj?.has_sections !== false && !targetSection);
+      const isDisabled = action === 'passout'
+        ? (processing || !sourceClass || selectedStudents.size === 0 ||
+          (sourceClassObj?.has_sections !== false && !sourceSection))
+        : (processing || !sourceClass || !targetClass || selectedStudents.size === 0 ||
+          (sourceClassObj?.has_sections !== false && !sourceSection) ||
+          (targetClassObj?.has_sections !== false && !targetSection));
 
       return (
         <div style={{
@@ -1634,7 +1714,7 @@ const BulkPromoteDemote: React.FC = () => {
                 opacity: isDisabled ? 0.5 : 1
               }}
             >
-              {processing ? 'Processing...' : `${action === 'promote' ? 'Promote' : 'Demote'} ${selectedStudents.size} Students`}
+              {processing ? 'Processing...' : action === 'passout' ? `Mark ${selectedStudents.size} Students as Passed Out` : `${action === 'promote' ? 'Promote' : 'Demote'} ${selectedStudents.size} Students`}
             </ActionButton>
           </div>
 
@@ -1651,7 +1731,7 @@ const BulkPromoteDemote: React.FC = () => {
               color: '#166534',
               border: '1px solid #bbf7d0'
             }}>
-              {selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected for {action}
+              {selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected for {action === 'passout' ? 'passout' : action}
             </div>
           )}
         </div>
@@ -1666,7 +1746,7 @@ const BulkPromoteDemote: React.FC = () => {
     return () => {
       setFooterContent(null);
     };
-  }, [processing, sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, action, classes, isMobile, theme, setFooterContent, handleCancel, handleConfirmClick]);
+  }, [processing, sourceClass, targetClass, selectedStudents.size, sourceSection, targetSection, action, classes, isMobile, theme, setFooterContent, handleCancel, handleConfirmClick, activeSession]);
 
   if (loading) {
     return <Loader />;
@@ -1756,65 +1836,90 @@ const BulkPromoteDemote: React.FC = () => {
 
               <FormSection>
                 <FormSectionTitle>📥 Target Information</FormSectionTitle>
-                <ControlField>
-                  <Label>Target Session</Label>
-                  <Select value={activeSession?.id || ''} disabled>
-                    <option value={activeSession?.id || ''}>{activeSession?.name || 'Active Session'}</option>
-                  </Select>
-                </ControlField>
 
-                <ControlGrid>
-                  <ControlField>
-                    <Label>Target Class</Label>
-                    <Select value={targetClass} onChange={e => {
-                      e.preventDefault();
-                      setTargetClass(e.target.value);
-                    }} disabled={!sourceClass}>
-                      <option value="">Select Class</option>
-                      {classes
-                        .filter((cls, idx) => {
-                          const currentIdx = classes.findIndex(c => String(c.id) === sourceClass);
-                          const targetIdx = action === 'promote' ? currentIdx + 1 : currentIdx - 1;
-                          return targetIdx >= 0 && targetIdx < classes.length && classes[targetIdx].id === cls.id;
-                        })
-                        .map(cls => (
-                          <option key={cls.id} value={cls.id}>{cls.name}</option>
-                        ))}
-                    </Select>
-                  </ControlField>
+                {action === 'passout' ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    padding: '1rem',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1.5px dashed rgba(245, 158, 11, 0.5)',
+                    borderRadius: '8px',
+                    color: (theme as any).BG === '#252525' ? '#fbbf24' : '#92400e',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.6
+                  }}>
+                    <div style={{ fontSize: '1.3rem' }}>🎓</div>
+                    <div>
+                      <strong>Passout action selected.</strong><br />
+                      No target class or section is required. The selected students&apos; status will be set to
+                      &nbsp;<strong>Passed Out</strong> and their existing class and section will remain unchanged.
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <ControlField>
+                      <Label>Target Session</Label>
+                      <Select value={activeSession?.id || ''} disabled>
+                        <option value={activeSession?.id || ''}>{activeSession?.name || 'Active Session'}</option>
+                      </Select>
+                    </ControlField>
 
-                  {(() => {
-                    const selectedClass = classes.find(c => String(c.id) === String(targetClass));
-                    const hasSections = selectedClass?.has_sections ?? true;
-                    return hasSections ? (
+                    <ControlGrid>
                       <ControlField>
-                        <Label>Target Section</Label>
-                        <Select value={targetSection} onChange={e => {
+                        <Label>Target Class</Label>
+                        <Select value={targetClass} onChange={e => {
                           e.preventDefault();
-                          setTargetSection(e.target.value);
-                        }} disabled={!targetClass}>
-                          <option value="">Select Section</option>
-                          {targetSections.map(sec => (
-                            <option key={sec.id} value={sec.id}>{sec.name}</option>
-                          ))}
+                          setTargetClass(e.target.value);
+                        }} disabled={!sourceClass}>
+                          <option value="">Select Class</option>
+                          {classes
+                            .filter((cls, idx) => {
+                              const currentIdx = classes.findIndex(c => String(c.id) === sourceClass);
+                              const targetIdx = action === 'promote' ? currentIdx + 1 : currentIdx - 1;
+                              return targetIdx >= 0 && targetIdx < classes.length && classes[targetIdx].id === cls.id;
+                            })
+                            .map(cls => (
+                              <option key={cls.id} value={cls.id}>{cls.name}</option>
+                            ))}
                         </Select>
                       </ControlField>
-                    ) : null;
-                  })()}
-                </ControlGrid>
 
-                <ControlField>
-                  <Label>Target Status</Label>
-                  <Select value={targetStatus} onChange={e => {
-                    e.preventDefault();
-                    setTargetStatus(e.target.value);
-                  }}>
-                    <option value="retain">Retain Current Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="withdrawn">Withdrawn</option>
-                  </Select>
-                </ControlField>
+                      {(() => {
+                        const selectedClass = classes.find(c => String(c.id) === String(targetClass));
+                        const hasSections = selectedClass?.has_sections ?? true;
+                        return hasSections ? (
+                          <ControlField>
+                            <Label>Target Section</Label>
+                            <Select value={targetSection} onChange={e => {
+                              e.preventDefault();
+                              setTargetSection(e.target.value);
+                            }} disabled={!targetClass}>
+                              <option value="">Select Section</option>
+                              {targetSections.map(sec => (
+                                <option key={sec.id} value={sec.id}>{sec.name}</option>
+                              ))}
+                            </Select>
+                          </ControlField>
+                        ) : null;
+                      })()}
+                    </ControlGrid>
+
+                    <ControlField>
+                      <Label>Target Status</Label>
+                      <Select value={targetStatus} onChange={e => {
+                        e.preventDefault();
+                        setTargetStatus(e.target.value);
+                      }}>
+                        <option value="retain">Retain Current Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="withdrawn">Withdrawn</option>
+                      </Select>
+                    </ControlField>
+                  </>
+                )}
               </FormSection>
             </FormRow>
           </form>
@@ -1839,6 +1944,16 @@ const BulkPromoteDemote: React.FC = () => {
                 }}
               >
                 Demote
+              </ToggleButton>
+              <ToggleButton
+                active={action === 'passout'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setAction('passout');
+                }}
+                style={action === 'passout' ? { background: '#f59e0b', color: '#fff' } : {}}
+              >
+                🎓 Passout
               </ToggleButton>
             </ActionToggle>
           </ActionSelector>
@@ -1994,15 +2109,21 @@ const BulkPromoteDemote: React.FC = () => {
             <ModalHeader>
               <ModalTitle>
                 <SchoolIcon style={{ fontSize: '1.4rem' }} />
-                Confirm {action === 'promote' ? 'Promotion' : 'Demotion'}
+                Confirm {action === 'promote' ? 'Promotion' : action === 'demote' ? 'Demotion' : 'Passout'}
               </ModalTitle>
             </ModalHeader>
 
             <ModalContent>
               <ModalText>
-                Are you sure you want to {action} <strong>{selectedStudents.size} students</strong> from{' '}
-                <strong>{classes.find(c => c.id === parseInt(sourceClass))?.name}</strong> to{' '}
-                <strong>{classes.find(c => c.id === parseInt(targetClass))?.name}</strong>?
+                {action === 'passout' ? (
+                  <>Are you sure you want to mark <strong>{selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''}</strong> from{' '}
+                    <strong>{classes.find(c => c.id === parseInt(sourceClass))?.name}</strong> as <strong>Passed Out</strong>?{' '}
+                    Their status will be updated to &quot;passout&quot; and their class/section will remain unchanged.</>
+                ) : (
+                  <>Are you sure you want to {action} <strong>{selectedStudents.size} students</strong> from{' '}
+                    <strong>{classes.find(c => c.id === parseInt(sourceClass))?.name}</strong> to{' '}
+                    <strong>{classes.find(c => c.id === parseInt(targetClass))?.name}</strong>?</>
+                )}
               </ModalText>
 
               <div>
@@ -2058,7 +2179,7 @@ const BulkPromoteDemote: React.FC = () => {
                 }}
                 disabled={processing}
               >
-                {processing ? 'Processing...' : `Confirm ${action === 'promote' ? 'Promotion' : 'Demotion'}`}
+                {processing ? 'Processing...' : `Confirm ${action === 'promote' ? 'Promotion' : action === 'demote' ? 'Demotion' : 'Passout'}`}
               </ModalButton>
             </ModalFooter>
           </ModalBox>

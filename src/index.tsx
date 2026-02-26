@@ -6,6 +6,15 @@ import { ToastProvider } from './components/useToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import Loader from './components/Loader';
 
+// Register Service Worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => {
+      console.log('SW registration failed: ', err);
+    });
+  });
+}
+
 // Handle chunk loading errors (common in production builds)
 window.addEventListener('error', (event) => {
   // Check if it's a chunk loading error

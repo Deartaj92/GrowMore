@@ -31,6 +31,12 @@ export async function hasPermission(
   permissionKey: string,
   schoolId: number
 ): Promise<boolean> {
+  // 1. Check offline cache first to avoid blocking UI if offline
+  const cachedPerms = getCachedPermissions();
+  if (cachedPerms && cachedPerms.has(permissionKey)) {
+    return true;
+  }
+
   try {
     // First, get the permission by key
     const { data: permission, error: permError } = await supabase
@@ -82,8 +88,15 @@ export async function hasPermission(
     }
 
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error checking permission:', error);
+
+    // If we're offline or there's a network error, fall back to cache
+    if (!navigator.onLine || error.message?.includes('fetch')) {
+      const cached = getCachedPermissions();
+      return cached ? cached.has(permissionKey) : false;
+    }
+
     return false;
   }
 }
@@ -144,11 +157,34 @@ export async function getUserPermissions(
       });
     }
 
+    // CACHE THE RESULTS for offline use
+    localStorage.setItem('gm_permissions_cache', JSON.stringify(Array.from(permissionKeys)));
+
     return permissionKeys;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting user permissions:', error);
+
+    // Fallback to cache if offline
+    const cached = getCachedPermissions();
+    if (cached) return cached;
+
     return new Set<string>();
   }
+}
+
+/**
+ * Helper to get permissions from localStorage cache
+ */
+export function getCachedPermissions(): Set<string> | null {
+  try {
+    const cached = localStorage.getItem('gm_permissions_cache');
+    if (cached) {
+      return new Set(JSON.parse(cached));
+    }
+  } catch (e) {
+    console.error('Error reading permission cache:', e);
+  }
+  return null;
 }
 
 /**
@@ -252,7 +288,7 @@ export async function getUsersWithPermission(
     // 4. Check each user
     for (const user of allUsers) {
       const hasAnyCustomPerms = usersWithAnyCustomPerms.has(user.id);
-      
+
       if (hasAnyCustomPerms) {
         // User has custom permissions - check if this specific permission is granted
         // If permission is in their custom list, use that value

@@ -118,6 +118,10 @@ import AssetsLiabilitiesManager from './pages/AssetsLiabilities/AssetsLiabilitie
 import StudentAttendanceAnalyticsPage from './pages/StudentAttendanceAnalyticsPage';
 // Staff Attendance Analytics
 import StaffAttendanceAnalyticsPage from './pages/StaffAttendanceAnalyticsPage';
+// RFID Attendance Scanner
+import RFIDAttendancePage from './pages/RFIDAttendancePage';
+// RFID Card Assignment
+import RFIDCardAssignmentPage from './pages/RFIDCardAssignmentPage';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
 // Communication Management Components
@@ -1016,6 +1020,24 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="attendance-staff-analytics">
                                 <StaffAttendanceAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/rfid-scanner"
+                            element={
+                              <ProtectedRoute requiredPermission="rfid-scanner">
+                                <RFIDAttendancePage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/rfid-cards"
+                            element={
+                              <ProtectedRoute requiredPermission="rfid-card-assignment">
+                                <RFIDCardAssignmentPage />
                               </ProtectedRoute>
                             }
                           />

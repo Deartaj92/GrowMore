@@ -12,6 +12,7 @@ interface User {
   school_id?: number;
   session_id?: number;
   status: string;
+  is_super_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -121,10 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
 
       // Check super admin first
-      const superAdminData = superAdminResult.status === 'fulfilled' && 
-        superAdminResult.value?.data && 
+      const superAdminData = superAdminResult.status === 'fulfilled' &&
+        superAdminResult.value?.data &&
         !superAdminResult.value?.error
-        ? superAdminResult.value.data 
+        ? superAdminResult.value.data
         : null;
 
       if (superAdminData && superAdminData.password === password && superAdminData.status === 'active') {
@@ -134,7 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: superAdminData.name,
           role: 'Super Admin',
           school_id: 1, // Super admins default to school 1
-          status: superAdminData.status
+          status: superAdminData.status,
+          is_super_admin: true
         };
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
@@ -145,40 +147,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Check regular user
-      const userData = userResult.status === 'fulfilled' && 
-        userResult.value?.data && 
+      const userData = userResult.status === 'fulfilled' &&
+        userResult.value?.data &&
         !userResult.value?.error
-        ? userResult.value.data 
+        ? userResult.value.data
         : null;
 
       if (userData && userData.password === password && userData.status === 'active') {
         // OPTIMIZED: Fetch session and update online status in parallel
         const [sessionResult, updateStatusResult] = await Promise.allSettled([
-          userData.school_id 
+          userData.school_id
             ? Promise.resolve(
-                supabase
-                  .from('sessions')
-                  .select('id')
-                  .eq('school_id', userData.school_id)
-                  .eq('is_active', true)
-                  .single()
-              )
-                .then(result => result.data?.id)
-                .catch(() => undefined)
+              supabase
+                .from('sessions')
+                .select('id')
+                .eq('school_id', userData.school_id)
+                .eq('is_active', true)
+                .single()
+            )
+              .then(result => result.data?.id)
+              .catch(() => undefined)
             : Promise.resolve(undefined),
           userData.staff_id
             ? Promise.resolve(
-                supabase
-                  .from('staff')
-                  .update({
-                    is_online: true,
-                    last_online: new Date().toISOString(),
-                    app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
-                  })
-                  .eq('id', userData.staff_id)
-              )
-                .then(() => true)
-                .catch(() => false)
+              supabase
+                .from('staff')
+                .update({
+                  is_online: true,
+                  last_online: new Date().toISOString(),
+                  app_version: process.env.REACT_APP_VERSION || 'v1.4.0'
+                })
+                .eq('id', userData.staff_id)
+            )
+              .then(() => true)
+              .catch(() => false)
             : Promise.resolve(false)
         ]);
 

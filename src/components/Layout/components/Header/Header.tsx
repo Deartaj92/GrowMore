@@ -53,6 +53,8 @@ import {
   TrendingUp as TrendingUpIcon,
   Calculate as CalculateIcon,
   Badge as BadgeIcon,
+  Nfc as NfcIcon,
+  CreditCard as CreditCardIcon,
 } from '@mui/icons-material';
 import styled from 'styled-components';
 import {
@@ -1384,6 +1386,20 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BarChartIcon />,
       path: '/attendance/analytics',
       color: '#0ea5e9'
+    },
+    {
+      title: 'RFID Scanner',
+      description: 'Mark attendance via RFID card scanning',
+      icon: <NfcIcon />,
+      path: '/attendance/rfid-scanner',
+      color: '#6366f1'
+    },
+    {
+      title: 'RFID Card Assignment',
+      description: 'Assign RFID cards to students and employees',
+      icon: <CreditCardIcon />,
+      path: '/attendance/rfid-cards',
+      color: '#a855f7'
     }
   ];
 

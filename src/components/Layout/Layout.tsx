@@ -1086,7 +1086,7 @@ const Layout: React.FC = () => {
                         boxSizing: 'border-box'
                       }}
                     >
-                      {isOnline ? (
+                      {isOnline || location.pathname.includes('/attendance/rfid-scanner') || location.pathname.includes('/attendance/rfid-cards') ? (
                         <Outlet />
                       ) : (
                         <OfflineContainer>

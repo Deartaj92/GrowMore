@@ -79,23 +79,24 @@ export const GlobalStyles = createGlobalStyle`
     -webkit-text-size-adjust: 100%; /* Prevent iOS font size adjustment */
     -moz-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: auto;
+    /* Reserve gutter space so vertical scrollbar appearance never shifts layout */
+    scrollbar-gutter: stable;
   }
   
   html, body {
-    overflow-x: auto;
-    overflow-y: auto;
+    overflow-x: hidden;
     max-width: 100vw;
   }
   
   body {
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: auto;
   }
   
   #root {
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: auto;
   }
   

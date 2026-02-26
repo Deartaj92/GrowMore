@@ -41,6 +41,8 @@ import {
   Analytics as AnalyticsIcon,
   AccountBalanceWallet as AccountBalanceWalletIcon,
   Badge as BadgeIcon,
+  Nfc as NfcIcon,
+  CreditCard as CreditCardIcon,
 } from '@mui/icons-material';
 
 export interface MenuItem {
@@ -155,6 +157,20 @@ export const attendanceMenuItems: MenuItem[] = [
     icon: React.createElement(AnalyticsIcon),
     path: '/attendance/analytics',
     color: '#0ea5e9'
+  },
+  {
+    title: 'RFID Scanner',
+    description: 'Mark attendance via RFID card scanning at school entrance',
+    icon: React.createElement(NfcIcon),
+    path: '/attendance/rfid-scanner',
+    color: '#6366f1'
+  },
+  {
+    title: 'RFID Card Assignment',
+    description: 'Assign and manage RFID cards for students and employees',
+    icon: React.createElement(CreditCardIcon),
+    path: '/attendance/rfid-cards',
+    color: '#a855f7'
   }
 ];
 

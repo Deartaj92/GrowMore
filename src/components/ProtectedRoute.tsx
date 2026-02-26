@@ -53,41 +53,26 @@ export default function ProtectedRoute({
         return;
       }
 
-      // Check if user is Super Admin (from super_admins table)
-      if (user.id && !user.school_id) {
-        try {
-          const { data: superAdminData } = await supabase
-            .from('super_admins')
-            .select('id')
-            .eq('username', user.username)
-            .maybeSingle();
-          
-          if (superAdminData) {
-            setIsSuperAdmin(true);
-            setHasAccess(true); // Super Admin has access to everything
-            setPermissionChecked(true);
-            return;
-          }
-        } catch (error) {
-          console.error('Error checking super admin:', error);
-        }
+      // 1. Check if user is Super Admin (using cached flag or role)
+      if (user.is_super_admin || user.role === 'Super Admin') {
+        setIsSuperAdmin(true);
+        setHasAccess(true);
+        setPermissionChecked(true);
+        return;
       }
 
-      // For all other users, check permission using role_id
+      // 2. For all other users, check permission using role_id
       if (requiredPermission && user.id && user.school_id) {
         try {
           const hasPerm = await hasPermission(user.id, requiredPermission, user.school_id);
           setHasAccess(hasPerm);
         } catch (error) {
           console.error('Error checking permission:', error);
+          // If error occurs (likely offline), hasPermission now handles fallback internally
           setHasAccess(false);
         } finally {
           setPermissionChecked(true);
         }
-      } else if (!requiredPermission) {
-        // If no permission required, deny access (permission is required)
-        setHasAccess(false);
-        setPermissionChecked(true);
       } else {
         setPermissionChecked(true);
         setHasAccess(false);
@@ -126,7 +111,7 @@ export default function ProtectedRoute({
         // If parsing fails, fall through to login redirect
       }
     }
-    
+
     const parentSession = localStorage.getItem('parentSession');
     if (parentSession) {
       try {
@@ -146,7 +131,7 @@ export default function ProtectedRoute({
         // If parsing fails, fall through to login redirect
       }
     }
-    
+
     // No user, student, or parent session, redirect to login
     return <Navigate to="/login" replace />;
   }
