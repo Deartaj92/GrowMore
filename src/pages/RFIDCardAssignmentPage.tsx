@@ -483,18 +483,53 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
         setSaving(true);
         try {
-            // Check for duplicates
+            // Check for duplicates across BOTH students and staff tables
             if (cleanUID) {
-                const { data: existing } = await supabase
+                const otherTable = table === 'students' ? 'staff' : 'students';
+
+                // Check same table
+                const sameSelect = table === 'students'
+                    ? 'id,name'
+                    : 'id,name,role';
+                const { data: existingSameData } = await supabase
                     .from(table)
-                    .select('id,name')
+                    .select(sameSelect)
                     .eq('school_id', user.school_id)
                     .eq('rfid_uid', cleanUID)
                     .neq('id', personId)
                     .maybeSingle();
 
-                if (existing) {
-                    toast.showToast(`This card is already assigned to ${existing.name}`, 'error');
+                if (existingSameData) {
+                    const existingSame = existingSameData as any;
+                    if (table === 'students') {
+                        // For students, fetch class/section data separately or use simpler joins if needed
+                        // But here we just want the name for the toast
+                        toast.showToast(`Already assigned to student: ${existingSame.name}`, 'error');
+                    } else {
+                        toast.showToast(`Already assigned to staff: ${existingSame.name}${existingSame.role ? ` (${existingSame.role})` : ''}`, 'error');
+                    }
+                    setSaving(false);
+                    return;
+                }
+
+                // Check other table
+                const otherSelect = otherTable === 'students'
+                    ? 'id,name'
+                    : 'id,name,role';
+                const { data: existingOtherData } = await supabase
+                    .from(otherTable)
+                    .select(otherSelect)
+                    .eq('school_id', user.school_id)
+                    .eq('rfid_uid', cleanUID)
+                    .maybeSingle();
+
+                if (existingOtherData) {
+                    const existingOther = existingOtherData as any;
+                    if (otherTable === 'students') {
+                        toast.showToast(`Already assigned to student: ${existingOther.name}`, 'error');
+                    } else {
+                        toast.showToast(`Already assigned to staff: ${existingOther.name}${existingOther.role ? ` (${existingOther.role})` : ''}`, 'error');
+                    }
                     setSaving(false);
                     return;
                 }

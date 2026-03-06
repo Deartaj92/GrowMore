@@ -1,28 +1,38 @@
-const CACHE_NAME = 'growmore-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'growmore-v2';
+const STATIC_ASSETS = [
     '/',
     '/index.html',
-    '/manifest.json',
     '/favicon.ico',
+    '/manifest.json',
+    '/icon-192.png',
+    '/icon-512.png'
 ];
 
-// Install Event
+// Helper to determine if an asset is a static file (JS, CSS, Font, etc.)
+const isStaticAsset = (url) => {
+    return url.match(/\.(js|css|png|jpg|jpeg|svg|woff|woff2|json)$/) ||
+        url.includes('/static/');
+};
+
+// Install Event - Pre-cache essential files
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
+            console.log('[SW] Pre-caching core assets');
+            return cache.addAll(STATIC_ASSETS);
         })
     );
     self.skipWaiting();
 });
 
-// Activate Event
+// Activate Event - Clean up old caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cache) => {
                     if (cache !== CACHE_NAME) {
+                        console.log('[SW] Deleting old cache:', cache);
                         return caches.delete(cache);
                     }
                 })
@@ -32,33 +42,58 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch Event
+// Fetch Event - Strategic Caching
 self.addEventListener('fetch', (event) => {
-    // Only handle GET requests
-    if (event.request.method !== 'GET') return;
+    const { request } = event;
+    const url = new URL(request.url);
 
-    // For navigate requests, try network first, then cache
-    if (event.request.mode === 'navigate') {
+    // 1. Only handle GET requests and exclude Supabase Realtime/Auth calls (unless specifically needed)
+    if (request.method !== 'GET') return;
+    if (url.hostname.includes('supabase.co')) return; // Let Supabase handle its own offline logic or return errors
+
+    // 2. Navigation Request (index.html) - Network First
+    if (request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request).catch(() => {
-                return caches.match('/index.html') || caches.match('/');
+            fetch(request)
+                .then((response) => {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                    return response;
+                })
+                .catch(() => caches.match('/index.html') || caches.match('/'))
+        );
+        return;
+    }
+
+    // 3. Static Assets - Cache First, then Network
+    if (isStaticAsset(request.url)) {
+        event.respondWith(
+            caches.match(request).then((cachedResponse) => {
+                if (cachedResponse) return cachedResponse;
+
+                return fetch(request).then((networkResponse) => {
+                    if (!networkResponse || networkResponse.status !== 200) return networkResponse;
+
+                    const copy = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                    return networkResponse;
+                }).catch(() => {
+                    // Fail silently or return empty/fallback for failed assets
+                    return null;
+                });
             })
         );
         return;
     }
 
-    // For other assets, try cache, then network
+    // 4. Default: Network First, falling back to cache
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request).then((fetchResponse) => {
-                // Cache new assets on the fly (optional but good for speed)
-                return fetchResponse;
-            });
-        }).catch(() => {
-            // Fallback for offline if not in cache
-            if (event.request.destination === 'image') {
-                return caches.match('/icon-192.png');
-            }
-        })
+        fetch(request)
+            .then((response) => {
+                const copy = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                return response;
+            })
+            .catch(() => caches.match(request))
     );
 });

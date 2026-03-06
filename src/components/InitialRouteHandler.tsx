@@ -15,56 +15,54 @@ const InitialRouteHandler: React.FC = () => {
   // Check if user is Super Admin and dashboard permission
   useEffect(() => {
     const checkPermission = async () => {
-      if (loading) {
-        // Still loading, wait
-        return;
-      }
-
+      // 1. Initial basic checks
+      if (loading) return;
       if (!user) {
-        // No user, permission check complete
         setPermissionChecked(true);
         return;
       }
 
-      // Check if user is Super Admin (from super_admins table)
-      // Super Admin is identified by checking the super_admins table
-      try {
-        const { data: superAdminData } = await supabase
-          .from('super_admins')
-          .select('id')
-          .eq('username', user.username)
-          .maybeSingle();
-        
-        if (superAdminData) {
-          setIsSuperAdmin(true);
-          setHasDashboardPerm(true); // Super Admin always has dashboard access
-          setPermissionChecked(true);
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking super admin:', error);
-        // Continue to check permissions even if super admin check fails
+      // 2. Trust the user object from AuthContext first (most efficient)
+      if (user.is_super_admin || user.role === 'Super Admin') {
+        setIsSuperAdmin(true);
+        setHasDashboardPerm(true);
+        setPermissionChecked(true);
+        return;
       }
 
-      // For all other users, check dashboard permission using role_id
-      if (user.id && user.school_id) {
+      // 3. For regular users, check permissions
+      // We prioritize the cached check inside hasPermission()
+      if (user.id && (user.school_id || user.role)) {
         try {
-          const hasPerm = await hasPermission(user.id, 'dashboard', user.school_id);
+          // If we are offline, hasPermission will use the local cache immediately
+          const hasPerm = await hasPermission(user.id, 'dashboard', user.school_id || 1);
           setHasDashboardPerm(hasPerm);
+
+          // Only attempt a network-based super-admin check if we are online 
+          // AND the user's role suggests they might be an administrator but not explicitly marked
+          if (navigator.onLine && !isSuperAdmin) {
+            try {
+              const { data: superAdminData } = await supabase
+                .from('super_admins')
+                .select('id')
+                .eq('username', user.username)
+                .maybeSingle();
+
+              if (superAdminData) {
+                setIsSuperAdmin(true);
+                setHasDashboardPerm(true);
+              }
+            } catch (err) {
+              // Silently ignore network errors for super admin check during boot
+            }
+          }
         } catch (error) {
-          console.error('Error checking dashboard permission:', error);
+          console.error('Error in boot sequence:', error);
           setHasDashboardPerm(false);
         } finally {
           setPermissionChecked(true);
         }
-      } else if (user.id && user.role === 'Super Admin') {
-        // Super Admin from AuthContext (has school_id: 1)
-        setIsSuperAdmin(true);
-        setHasDashboardPerm(true);
-        setPermissionChecked(true);
       } else {
-        // User has no school_id and is not super admin
-        setHasDashboardPerm(false);
         setPermissionChecked(true);
       }
     };

@@ -3,6 +3,25 @@ import { supabase, setAuthContext } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { crypt, gen_salt } from '../utils/crypto';
 
+// Save school_id to native Android SharedPreferences so the background NFC service can read it
+const saveSchoolIdNative = async (schoolId: number | undefined) => {
+  if (!schoolId) return;
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (!Capacitor.isNativePlatform()) return;
+
+    // Capacitor Preferences stores keys as "CapacitorStorage.KEY" in SharedPreferences
+    const { Preferences } = await import('@capacitor/preferences');
+    if (Preferences) {
+      await Preferences.set({ key: 'school_id', value: String(schoolId) });
+      console.log('Saved school_id for native NFC background scanning:', schoolId);
+    }
+  } catch (e) {
+    // If anything fails (module not found, not native, etc), silently ignore
+    console.debug('Native school_id save skipped:', e);
+  }
+};
+
 interface User {
   id: number;
   username: string;
@@ -58,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
+          saveSchoolIdNative(parsedUser.school_id); // Sync school_id to native for background NFC scanning on load
         } catch (error) {
           localStorage.removeItem('user');
         }
@@ -140,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
+        saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
         navigate('/welcome', { replace: true });
         clearNavigationHistory('/welcome');
         setLoading(false);
@@ -198,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
+        saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
 
         // Don't redirect here - let Login.tsx or InitialRouteHandler handle redirects based on permissions
         // This allows permission checks to happen before navigation

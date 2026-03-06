@@ -17,14 +17,16 @@ if ('serviceWorker' in navigator) {
 
 // Handle chunk loading errors (common in production builds)
 window.addEventListener('error', (event) => {
-  // Check if it's a chunk loading error
   if (
     event.message.includes('Loading chunk') ||
     event.message.includes('Failed to fetch dynamically imported module') ||
     event.message.includes('ChunkLoadError')
   ) {
-    // Reload the page to get fresh chunks
-    window.location.reload();
+    if (navigator.onLine) {
+      window.location.reload();
+    } else {
+      console.warn('Offline: Postponing asset reload until connection is restored.');
+    }
   }
 });
 
@@ -34,7 +36,11 @@ window.addEventListener('unhandledrejection', (event) => {
     event.reason?.message?.includes('Loading chunk') ||
     event.reason?.message?.includes('Failed to fetch dynamically imported module')
   ) {
-    window.location.reload();
+    if (navigator.onLine) {
+      window.location.reload();
+    } else {
+      console.warn('Offline: Postponing asset reload until connection is restored.');
+    }
   }
 });
 
@@ -42,15 +48,37 @@ const SPLASH_DURATION_MS = 2600;
 
 function Root() {
   const [showSplash, setShowSplash] = useState(true);
+  const [offlineNotice, setOfflineNotice] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), SPLASH_DURATION_MS);
-    return () => clearTimeout(t);
+    const splashTimer = setTimeout(() => setShowSplash(false), SPLASH_DURATION_MS);
+
+    // If it takes >10s and we're offline, show a hint
+    const offlineTimer = setTimeout(() => {
+      if (!navigator.onLine) setOfflineNotice(true);
+    }, 10000);
+
+    return () => {
+      clearTimeout(splashTimer);
+      clearTimeout(offlineTimer);
+    };
   }, []);
 
   return (
     <>
-      {showSplash && <Loader fullScreenDark size="medium" centered />}
+      {showSplash && (
+        <div style={{ position: 'relative' }}>
+          <Loader fullScreenDark size="medium" centered />
+          {offlineNotice && (
+            <div style={{
+              position: 'fixed', bottom: '20%', left: '50%', transform: 'translateX(-50%)',
+              color: '#94a3b8', fontSize: '0.9rem', textAlign: 'center', zIndex: 10001
+            }}>
+              Starting in Offline Mode...
+            </div>
+          )}
+        </div>
+      )}
       {!showSplash && (
         <ToastProvider theme="dark">
           <App />

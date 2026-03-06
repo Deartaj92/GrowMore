@@ -157,7 +157,7 @@ const SyncBadge = styled.div<{ $syncing?: boolean }>`
   svg { animation: ${({ $syncing }) => $syncing ? css`${keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`} 1s linear infinite` : 'none'}; }
 `;
 
-const BigStatusOverlay = styled.div<{ $status: 'present' | 'late' | 'out' | 'already_marked' | 'already_left' }>`
+const BigStatusOverlay = styled.div<{ $status: 'present' | 'late' | 'out' | 'already_marked' | 'already_left' | 'early_checkout' }>`
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
@@ -761,7 +761,7 @@ const RFIDAttendancePage: React.FC = () => {
 
     const [showSettings, setShowSettings] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
-    const [bigStatus, setBigStatus] = useState<'present' | 'late' | 'out' | 'already_marked' | 'already_left' | null>(null);
+    const [bigStatus, setBigStatus] = useState<'present' | 'late' | 'out' | 'already_marked' | 'already_left' | 'early_checkout' | null>(null);
     const bigStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [testScanStates, setTestScanStates] = useState<Record<string, 'in' | 'out'>>({});
 
@@ -834,6 +834,25 @@ const RFIDAttendancePage: React.FC = () => {
             handleSync();
         }
     }, [isOnline, queueCount]);
+
+    // Auto-start NFC scanning logic - unified with GlobalNFCListener
+    useEffect(() => {
+        const checkAndSyncNfcStatus = async () => {
+            // Wait for bridge
+            await new Promise(resolve => setTimeout(resolve, 800));
+            if (window.nfc) {
+                // If native, the GlobalNFCListener is already handling it
+                // We just update the local UI status
+                setIsNfcScanning(true);
+                setStatusMsg('NFC Scanner Active (Native Global)...');
+            }
+        };
+        checkAndSyncNfcStatus();
+
+        // On this page, we handle scans via both listeners, but GlobalNFCListener 
+        // will show the toast. We can keep it or silence it. 
+        // For now, let's just make sure we don't double bind if we don't have to.
+    }, []);
 
     const formatTime = () => {
         const now = new Date();
@@ -928,43 +947,48 @@ const RFIDAttendancePage: React.FC = () => {
         setStatusMsg('Processing...');
 
         try {
-            const sessionId = await fetchSession();
-            const now = new Date().toISOString();
-            const time = formatTime();
+            // result = { success, person, type }
+            const result = await rfidOfflineService.markAttendance(cleanUID, user.school_id!, selectedDate);
 
-            // 1. Check local cache first for fast detection
-            const mapping = await rfidOfflineService.lookupRFID(cleanUID);
-            let personType: Mode = mapping?.type || 'student';
-            let personData: any = null;
+            const time = result.recorded_time
+                ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : formatTime();
 
-            if (mapping) {
-                personType = mapping.type;
-            } else if (isOnline) {
-                // If not in cache, try finding in DB (First Student, then Staff)
-                const { data: student } = await supabase
-                    .from('students')
-                    .select('id, name, type:id') // Dummy type field for checking
-                    .eq('school_id', user.school_id)
-                    .eq('rfid_uid', cleanUID)
-                    .maybeSingle();
-
-                if (student) {
-                    personType = 'student';
-                } else {
-                    const { data: staff } = await supabase
-                        .from('staff')
-                        .select('id')
-                        .eq('school_id', user.school_id)
-                        .eq('rfid_uid', cleanUID)
-                        .maybeSingle();
-                    if (staff) personType = 'employee';
-                    else personType = null as any; // Not found
+            if (!result.success || !result.person) {
+                if (result.type === 'error_checkout_early' && result.person) {
+                    setScanStatus('error');
+                    setStatusMsg(`Too Early to Check Out`);
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: `Check out disabled before allowed time`,
+                        time,
+                        personType: 'employee',
+                    });
+                    if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                    setBigStatus('early_checkout');
+                    bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                    return;
                 }
-            } else {
-                personType = null as any; // Offline and not in cache
-            }
 
-            if (!personType) {
+                if (result.type === 'error_inactive' && result.person) {
+                    const statusLabel = (result.person.status || 'inactive').replace('_', ' ');
+                    setScanStatus('error');
+                    setStatusMsg(`Not Active: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name, picture_url: result.person.picture_url });
+                    addFeedItem({
+                        type: 'error',
+                        name: result.person.name,
+                        sub: `Status: ${statusLabel} — Attendance rejected`,
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                    });
+                    if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                    setBigStatus('already_left');
+                    bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                    return;
+                }
+
                 setScanStatus('error');
                 setStatusMsg(`Unknown Card: ${cleanUID}`);
                 setUnknownCount(p => p + 1);
@@ -978,222 +1002,85 @@ const RFIDAttendancePage: React.FC = () => {
                 return;
             }
 
-            if (personType === 'student') {
-                // ── Student Logic ──
-                const { data: student, error } = await supabase
-                    .from('students')
-                    .select('id, name, roll_number, picture_url, class_id, section_id, classes:class_id(name), sections:section_id(name)')
-                    .eq('school_id', user.school_id)
-                    .eq('rfid_uid', cleanUID)
-                    .maybeSingle();
+            const p = result.person;
+            const personType = p.type === 'student' ? 'student' : 'employee';
 
-                if (error) throw error;
-                if (!student) throw new Error('Student data disappeared');
+            // UI Feedback
+            setScannedPerson({ name: p.name, picture_url: p.picture_url });
 
-                // Check for duplicate
-                const { data: existing } = await supabase
-                    .from('attendance_records')
-                    .select('id, status')
-                    .eq('student_id', student.id)
-                    .eq('date', selectedDate)
-                    .eq('school_id', user.school_id)
-                    .maybeSingle();
-
-                if (existing) {
-                    setScanStatus('error');
-                    const className = (student as any).classes?.name || '';
-                    const sectionName = (student as any).sections?.name || '';
-                    const classLabel = [className, sectionName].filter(Boolean).join(' - ');
-                    setStatusMsg(`Already marked: ${student.name}`);
-                    setDupCount(p => p + 1);
-                    addFeedItem({
-                        type: 'warn',
-                        name: student.name,
-                        sub: `Already marked ${existing.status} • ${classLabel}`,
-                        time,
-                        personType: 'student',
-                    });
-                    return;
-                }
-
-                const status = determineStatus('student');
-
-                await supabase.from('attendance_records').insert({
-                    student_id: student.id,
-                    class_id: student.class_id,
-                    section_id: student.section_id,
-                    school_id: user.school_id,
-                    session_id: sessionId,
-                    date: selectedDate,
-                    status: status,
-                    source: 'rfid',
-                    check_in_time: now,
+            if (result.type === 'already' || result.type === 'already_out') {
+                const isAlreadyOut = result.type === 'already_out';
+                setScanStatus('error');
+                setStatusMsg(isAlreadyOut ? `Already Left: ${p.name}` : `Already marked: ${p.name}`);
+                setDupCount(c => c + 1);
+                addFeedItem({
+                    type: 'warn',
+                    name: p.name,
+                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked Present`,
+                    time,
+                    personType
                 });
-
-                const classLabel = [(student as any).classes?.name, (student as any).sections?.name].filter(Boolean).join(' - ');
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus(isAlreadyOut ? 'already_left' : 'already_marked');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+            } else if (result.type === 'out') {
                 setScanStatus('success');
-                setStatusMsg(`✓ ${student.name}`);
-                setScannedPerson({ name: student.name, picture_url: student.picture_url || undefined });
-                setPresentCount(p => p + 1);
+                setStatusMsg(`OUT ✓ ${p.name}`);
                 addFeedItem({
                     type: 'success',
-                    name: student.name,
-                    sub: `${status === 'late' ? 'LATE • ' : ''}${classLabel} • Roll: ${student.roll_number || student.id}`,
+                    name: `${p.name} (OUT)`,
+                    sub: `Checked Out • ${p.role || 'Staff'}`,
                     time,
-                    personType: 'student',
+                    personType: 'employee'
                 });
-
-                // Show big message
                 if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus(status === 'late' ? 'late' : 'present');
+                setBigStatus('out');
                 bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
-
             } else {
-                // ── Employee Logic ──
-                const { data: staffMember, error } = await supabase
-                    .from('staff')
-                    .select('id, name, role, picture_url')
-                    .eq('school_id', user.school_id)
-                    .eq('rfid_uid', cleanUID)
-                    .maybeSingle();
-
-                if (error) throw error;
-                if (!staffMember) throw new Error('Staff data disappeared');
-
-                const { data: existing } = await supabase
-                    .from('staff_attendance_records')
-                    .select('id, status, check_in_time, check_out_time')
-                    .eq('staff_id', staffMember.id)
-                    .eq('date', selectedDate)
-                    .eq('school_id', user.school_id)
-                    .maybeSingle();
-
-                if (existing) {
-                    if (existing.check_out_time) {
-                        setScanStatus('error');
-                        setStatusMsg(`Already Left: ${staffMember.name}`);
-                        setDupCount(p => p + 1);
-                        addFeedItem({
-                            type: 'warn',
-                            name: staffMember.name,
-                            sub: `Checked out at ${new Date(existing.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-                            time,
-                            personType: 'employee',
-                        });
-                        return;
-                    }
-
-                    // Check out the employee
-                    await supabase
-                        .from('staff_attendance_records')
-                        .update({ check_out_time: now })
-                        .eq('id', existing.id);
-
-                    setScanStatus('success');
-                    setStatusMsg(`OUT ✓ ${staffMember.name}`);
-                    setScannedPerson({ name: staffMember.name, picture_url: staffMember.picture_url || undefined });
-                    addFeedItem({
-                        type: 'success',
-                        name: `${staffMember.name} (OUT)`,
-                        sub: `Checked Out • ${staffMember.role || 'Staff'}`,
-                        time,
-                        personType: 'employee',
-                    });
-                    return;
-                }
-
-                const status = determineStatus('employee');
-
-                await supabase.from('staff_attendance_records').insert({
-                    staff_id: staffMember.id,
-                    school_id: user.school_id,
-                    session_id: sessionId,
-                    date: selectedDate,
-                    status: status,
-                    source: 'rfid',
-                    check_in_time: now,
-                });
-
+                // 'new' or 'offline'
+                const isOffline = result.type === 'offline';
+                const isLate = result.attendance_status === 'late';
                 setScanStatus('success');
-                setStatusMsg(`IN ✓ ${staffMember.name}`);
-                setScannedPerson({ name: staffMember.name, picture_url: staffMember.picture_url || undefined });
-                setPresentCount(p => p + 1);
+                setStatusMsg(`${isOffline ? '(Offline) ' : ''}✓ ${p.name}`);
+                setPresentCount(c => c + 1);
+
+                const subLabel = p.type === 'student'
+                    ? `${p.class_name || ''} ${p.section_name || ''}`.trim()
+                    : p.role || 'Staff';
+
                 addFeedItem({
                     type: 'success',
-                    name: `${staffMember.name} (IN)`,
-                    sub: `${status === 'late' ? 'LATE • ' : ''}${staffMember.role || 'Staff'}`,
+                    name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
+                    sub: `${isLate ? 'LATE • ' : ''}${subLabel}`,
                     time,
-                    personType: 'employee',
+                    personType
                 });
 
-                // Show big message
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus(status === 'late' ? 'late' : 'present');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
-            }
-        } catch (err: any) {
-            // ── Offline Logic ──
-            if (!navigator.onLine || err?.message?.includes('fetch')) {
-                const mapping = await rfidOfflineService.lookupRFID(cleanUID);
-                if (mapping) {
-                    await rfidOfflineService.queueScan({
-                        rfid_uid: cleanUID,
-                        person_id: mapping.person_id,
-                        person_type: mapping.type,
-                        school_id: String(user.school_id),
-                        session_id: await fetchSession().catch(() => null),
-                        date: selectedDate,
-                        timestamp: new Date().toISOString(),
-                        class_id: mapping.class_id,
-                        section_id: mapping.section_id,
-                        source: 'rfid-offline'
-                    });
-
+                if (isOffline) {
                     const q = await rfidOfflineService.getQueue();
                     setQueueCount(q.length);
-
-                    setScanStatus('success');
-                    setStatusMsg(`✓ ${mapping.name} (Offline)`);
-                    setScannedPerson({ name: mapping.name, picture_url: mapping.picture_url });
-                    setPresentCount(p => p + 1);
-                    addFeedItem({
-                        type: 'success',
-                        name: `${mapping.name} (Offline)`,
-                        sub: mapping.type === 'student'
-                            ? `${mapping.class_name || ''} ${mapping.section_name || ''} • Roll: ${mapping.roll_number || ''}`
-                            : (mapping.role || 'Staff'),
-                        time: formatTime(),
-                        personType: mapping.type,
-                    });
-                    return;
-                } else {
-                    setScanStatus('error');
-                    setStatusMsg(`Unknown Offline Card: ${cleanUID}`);
-                    setUnknownCount(p => p + 1);
-                    addFeedItem({
-                        type: 'error',
-                        name: 'Unknown Card',
-                        sub: `UID: ${cleanUID} (Offline)`,
-                        time: formatTime(),
-                        personType: 'student', // Fallback
-                    });
-                    return;
                 }
+
+                // Show big message
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus(isLate ? 'late' : 'present');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
             }
 
+        } catch (err: any) {
+            console.error('Scan processing error:', err);
             setScanStatus('error');
-            setStatusMsg('Error: ' + (err?.message || 'Unknown'));
+            setStatusMsg('Scan Failed');
             addFeedItem({
                 type: 'error',
-                name: 'Error',
-                sub: err?.message || 'Database error',
+                name: 'System Error',
+                sub: err?.message || 'Check connection',
                 time: formatTime(),
-                personType: 'student', // Fallback
+                personType: 'student'
             });
         } finally {
             isProcessingRef.current = false;
-
-            // Set/Reset the 4-second preview timer
+            // Reset preview
             resetTimerRef.current = setTimeout(() => {
                 setScanStatus('idle');
                 setStatusMsg('Waiting for card scan...');
@@ -1201,50 +1088,21 @@ const RFIDAttendancePage: React.FC = () => {
                 resetTimerRef.current = null;
             }, 4000);
         }
-    }, [user?.school_id, selectedDate, addFeedItem, fetchSession]);
+    }, [user?.school_id, addFeedItem, selectedDate]);
 
     const handleStartNfc = async () => {
         // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
         if (window.nfc) {
+            // On native, GlobalNFCListener is already active.
+            // Toggling here just updates UI state or shows status.
             if (isNfcScanning) {
-                window.nfc.removeTagDiscoveredListener();
                 setIsNfcScanning(false);
-                setStatusMsg('NFC Scanner Deactivated');
-                return;
-            }
-
-            try {
+                setStatusMsg('NFC UI Feedback Deactivated');
+            } else {
                 setIsNfcScanning(true);
                 setStatusMsg('NFC Scanner Active (Native)...');
-
-                window.nfc.addTagDiscoveredListener(
-                    (nfcEvent: any) => {
-                        console.log("Native NFC Tag detected:", nfcEvent);
-                        const tagId = nfcEvent.tag.id;
-                        if (tagId) {
-                            // Convert byte array to HEX UID
-                            const cleanUID = tagId.map((b: number) => {
-                                let s = (b & 0xFF).toString(16).toUpperCase();
-                                return s.length === 1 ? '0' + s : s;
-                            }).join('');
-
-                            processUID(cleanUID);
-
-                            // Visual feedback
-                            setScanStatus('success');
-                            setTimeout(() => setStatusMsg('NFC Scanner Active (Native)...'), 2000);
-                        }
-                    },
-                    () => console.log("NFC listener started"),
-                    (err: any) => {
-                        setIsNfcScanning(false);
-                        alert("Native NFC Error: " + err);
-                    }
-                );
-                return; // Exit as we used native
-            } catch (err) {
-                console.error("Native NFC catch:", err);
             }
+            return;
         }
 
         // --- 2. Standard Web Browser Browser (Web NFC) ---
@@ -1317,6 +1175,124 @@ const RFIDAttendancePage: React.FC = () => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
+    // UI synchronization with global background scanner
+    useEffect(() => {
+        const handleGlobalScan = (e: any) => {
+            const { uid, result } = e.detail;
+            if (!result || !result.person) return;
+
+            const time = result.recorded_time
+                ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : formatTime();
+            const p = result.person;
+            const personType = p.type === 'student' ? 'student' : 'employee';
+
+            // UI Feedback update
+            setScannedPerson({ name: p.name, picture_url: p.picture_url });
+
+            if (result.type === 'error_checkout_early') {
+                setScanStatus('error');
+                setStatusMsg(`Too Early to Check Out`);
+                addFeedItem({
+                    type: 'warn',
+                    name: p.name,
+                    sub: `Check out disabled before allowed time`,
+                    time,
+                    personType: 'employee',
+                });
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus('early_checkout');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                return;
+            }
+
+            if (result.type === 'error_inactive') {
+                const statusLabel = (p.status || 'inactive').replace('_', ' ');
+                setScanStatus('error');
+                setStatusMsg(`Not Active: ${p.name}`);
+                addFeedItem({
+                    type: 'error',
+                    name: p.name,
+                    sub: `Status: ${statusLabel} — Attendance rejected`,
+                    time,
+                    personType
+                });
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus('already_left');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                return;
+            }
+
+            if (result.type === 'already' || result.type === 'already_out') {
+                const isAlreadyOut = result.type === 'already_out';
+                setScanStatus('error');
+                setStatusMsg(isAlreadyOut ? `Already Left: ${p.name}` : `Already marked: ${p.name}`);
+                setDupCount(c => c + 1);
+                addFeedItem({
+                    type: 'warn',
+                    name: p.name,
+                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked Present`,
+                    time,
+                    personType
+                });
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus(isAlreadyOut ? 'already_left' : 'already_marked');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+            } else if (result.type === 'out') {
+                setScanStatus('success');
+                setStatusMsg(`OUT ✓ ${p.name}`);
+                addFeedItem({
+                    type: 'success',
+                    name: `${p.name} (OUT)`,
+                    sub: `Checked Out • ${p.role || 'Staff'}`,
+                    time,
+                    personType: 'employee'
+                });
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus('out');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+            } else {
+                const isOffline = result.type === 'offline';
+                const isLate = result.attendance_status === 'late';
+                setScanStatus('success');
+                setStatusMsg(`${isOffline ? '(Offline) ' : ''}✓ ${p.name}`);
+                setPresentCount(c => c + 1);
+
+                const subLabel = p.type === 'student'
+                    ? `${p.class_name || ''} ${p.section_name || ''}`.trim()
+                    : p.role || 'Staff';
+
+                addFeedItem({
+                    type: 'success',
+                    name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
+                    sub: `${isLate ? 'LATE • ' : ''}${subLabel}`,
+                    time,
+                    personType
+                });
+
+                if (isOffline) {
+                    rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
+                }
+
+                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
+                setBigStatus(isLate ? 'late' : 'present');
+                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+            }
+
+            // Auto-reset preview after 4 seconds
+            if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+            resetTimerRef.current = setTimeout(() => {
+                setScanStatus('idle');
+                setStatusMsg('Waiting for card scan...');
+                setScannedPerson(null);
+                resetTimerRef.current = null;
+            }, 4000);
+        };
+
+        window.addEventListener('rfid-scan-processed', handleGlobalScan);
+        return () => window.removeEventListener('rfid-scan-processed', handleGlobalScan);
+    }, [addFeedItem]);
+
     const handleClear = () => {
         setFeed([]);
         setPresentCount(0);
@@ -1350,7 +1326,7 @@ const RFIDAttendancePage: React.FC = () => {
         const isEmployee = sub.includes('Staff');
         const currentState = testScanStates[name];
 
-        const triggerBigStatus = (status: 'present' | 'late' | 'out' | 'already_marked' | 'already_left') => {
+        const triggerBigStatus = (status: 'present' | 'late' | 'out' | 'already_marked' | 'already_left' | 'early_checkout') => {
             if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
             setBigStatus(status);
             bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
@@ -1511,6 +1487,16 @@ const RFIDAttendancePage: React.FC = () => {
                                 type="time"
                                 value={attnSettings.staff_start_time}
                                 onChange={e => setAttnSettings({ ...attnSettings, staff_start_time: e.target.value })}
+                            />
+                        </FormGroup>
+
+                        <FormGroup>
+                            <Label theme={themeObj}>Staff Check-out Allowed After</Label>
+                            <TimeInput
+                                theme={themeObj}
+                                type="time"
+                                value={attnSettings.staff_end_time || '14:00'}
+                                onChange={e => setAttnSettings({ ...attnSettings, staff_end_time: e.target.value })}
                             />
                         </FormGroup>
 
@@ -1788,7 +1774,7 @@ const RFIDAttendancePage: React.FC = () => {
             {bigStatus && (
                 <BigStatusOverlay $status={bigStatus}>
                     <div className="status-label">
-                        {bigStatus === 'already_marked' || bigStatus === 'already_left' ? 'Scan Warning' : 'Scan Success'}
+                        {bigStatus === 'already_marked' || bigStatus === 'already_left' || bigStatus === 'early_checkout' ? 'Scan Warning' : 'Scan Success'}
                     </div>
                     <div className="status-msg">
                         {bigStatus === 'late' && 'Marked as Late Arrival!'}
@@ -1796,6 +1782,7 @@ const RFIDAttendancePage: React.FC = () => {
                         {bigStatus === 'out' && 'Employee Checked Out !'}
                         {bigStatus === 'already_marked' && 'Already Marked Present!'}
                         {bigStatus === 'already_left' && 'Already Checked Out!'}
+                        {bigStatus === 'early_checkout' && 'Too Early to Check Out!'}
                     </div>
                 </BigStatusOverlay>
             )}

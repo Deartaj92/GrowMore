@@ -137,6 +137,7 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import InitialRouteHandler from './components/InitialRouteHandler';
 import { Capacitor } from '@capacitor/core';
 import { isWeb } from './utils/platformDetection';
+import GlobalNFCListener from './components/GlobalNFCListener';
 
 // Use HashRouter in Electron and Capacitor, BrowserRouter in standard web
 const isElectron = Boolean((window as any).electronAPI);
@@ -204,6 +205,7 @@ const App: React.FC = () => {
                 <AuthProvider>
                   <NavigationProvider>
                     <ToastProvider theme={theme} muted={false}>
+                      <GlobalNFCListener />
                       <Routes>
                         {/* Public Routes */}
                         <Route path="/login" element={<Login />} />

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon, ToggleOn as StatusIcon, Close as CloseIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
@@ -125,9 +126,13 @@ const CardGrid = styled.div`
 
 const getStatusColor = (status: string) =>
   status === 'active' ? '34,197,94' : // green
-    status === 'suspended' ? '245,158,11' : // orange
-      status === 'withdrawn' ? '239,68,68' : // red
-        '99,102,241'; // blue
+    status === 'inactive' ? '107,114,128' : // gray
+      status === 'suspended' ? '245,158,11' : // orange
+        status === 'terminated' ? '239,68,68' : // red
+          status === 'left' ? '139,92,246' : // purple
+            status === 'contract_ended' ? '236,72,153' : // pink
+              status === 'withdrawn' ? '239,68,68' : // red
+                '99,102,241'; // blue
 
 const EmployeeCard = styled.div<{ status: string }>`
   background: ${({ theme }) => theme.CARD};
@@ -161,14 +166,22 @@ const StatusBadge = styled.div<{ status: string }>`
   font-weight: 600;
   background: ${({ status }) =>
     status === 'active' ? 'rgba(34, 197, 94, 0.15)' :
-      status === 'suspended' ? 'rgba(245, 158, 11, 0.15)' :
-        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.15)' :
-          'rgba(99, 102, 241, 0.15)'};
+      status === 'inactive' ? 'rgba(107, 114, 128, 0.15)' :
+        status === 'suspended' ? 'rgba(245, 158, 11, 0.15)' :
+          status === 'terminated' ? 'rgba(239, 68, 68, 0.15)' :
+            status === 'left' ? 'rgba(139, 92, 246, 0.15)' :
+              status === 'contract_ended' ? 'rgba(236, 72, 153, 0.15)' :
+                status === 'withdrawn' ? 'rgba(239, 68, 68, 0.15)' :
+                  'rgba(99, 102, 241, 0.15)'};
   color: ${({ status }) =>
     status === 'active' ? 'rgb(21, 128, 61)' :
-      status === 'suspended' ? 'rgb(161, 98, 7)' :
-        status === 'withdrawn' ? 'rgb(185, 28, 28)' :
-          'rgb(67, 56, 202)'};
+      status === 'inactive' ? 'rgb(75, 85, 99)' :
+        status === 'suspended' ? 'rgb(161, 98, 7)' :
+          status === 'terminated' ? 'rgb(185, 28, 28)' :
+            status === 'left' ? 'rgb(109, 40, 217)' :
+              status === 'contract_ended' ? 'rgb(190, 24, 93)' :
+                status === 'withdrawn' ? 'rgb(185, 28, 28)' :
+                  'rgb(67, 56, 202)'};
   box-shadow: none;
   letter-spacing: 0.02em;
   display: inline-flex;
@@ -178,9 +191,13 @@ const StatusBadge = styled.div<{ status: string }>`
   line-height: 1;
   border: 1px solid ${({ status }) =>
     status === 'active' ? 'rgba(34, 197, 94, 0.3)' :
-      status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
-        status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
-          'rgba(99, 102, 241, 0.3)'};
+      status === 'inactive' ? 'rgba(107, 114, 128, 0.3)' :
+        status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
+          status === 'terminated' ? 'rgba(239, 68, 68, 0.3)' :
+            status === 'left' ? 'rgba(139, 92, 246, 0.3)' :
+              status === 'contract_ended' ? 'rgba(236, 72, 153, 0.3)' :
+                status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
+                  'rgba(99, 102, 241, 0.3)'};
 
   ${({ status }) => status === 'active' && `
     &::before {
@@ -351,12 +368,89 @@ const AddEmployeeCard = styled(EmployeeCard)`
   justify-content: center;
 `;
 
+// ── Status Modal ────────────────────────────────────────────────────────────
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+`;
+
+const ModalBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 16px;
+  padding: 1.5rem;
+  width: 380px;
+  max-width: 92vw;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  animation: slideUp 0.25s ease;
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const ModalSub = styled.p`
+  margin: 0 0 1.25rem 0;
+  font-size: 0.82rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const StatusGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+`;
+
+const StatusOption = styled.button<{ $color: string; $active: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid ${({ $active, $color }) => $active ? $color : 'transparent'};
+  background: ${({ $active, $color }) => $active ? $color + '18' : 'rgba(128,128,128,0.08)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+
+  &:hover {
+    background: ${({ $color }) => $color + '22'};
+    border-color: ${({ $color }) => $color}88;
+    transform: translateY(-1px);
+  }
+`;
+
+const StatusDot = styled.div<{ $color: string }>`
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: ${({ $color }) => $color};
+  flex-shrink: 0;
+`;
+
 
 const EmployeeList: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
+  const [statusModal, setStatusModal] = useState<{ employee: any; open: boolean }>({ employee: null, open: false });
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Check if user has school_id
   if (!user?.school_id) {
@@ -437,6 +531,38 @@ const EmployeeList: React.FC = () => {
 
   const handleProfile = (employee: any) => {
     navigate(`/employees/profile/${employee.id}`);
+  };
+
+  const statusOptions = [
+    { value: 'active', label: 'Active', color: '#22c55e' },
+    { value: 'inactive', label: 'Inactive', color: '#6b7280' },
+    { value: 'suspended', label: 'Suspended', color: '#f59e0b' },
+    { value: 'terminated', label: 'Terminated', color: '#ef4444' },
+    { value: 'left', label: 'Left / Absent', color: '#8b5cf6' },
+    { value: 'contract_ended', label: 'Contract Ended', color: '#ec4899' },
+  ];
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!statusModal.employee) return;
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .update({ status: newStatus })
+        .eq('id', statusModal.employee.id);
+      if (!error) {
+        setEmployees(prev =>
+          prev.map(emp =>
+            emp.id === statusModal.employee.id ? { ...emp, status: newStatus } : emp
+          )
+        );
+        setStatusModal({ employee: null, open: false });
+      }
+    } catch (err) {
+      console.error('Status update failed:', err);
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   // Delete functionality intentionally removed per requirements.
@@ -549,6 +675,16 @@ const EmployeeList: React.FC = () => {
               </CardTop>
               <CardActions>
                 <CardActionBtn
+                  title="Change Status"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStatusModal({ employee, open: true });
+                  }}
+                  style={{ background: '#8b5cf6', color: '#fff' }}
+                >
+                  <StatusIcon fontSize="inherit" />
+                </CardActionBtn>
+                <CardActionBtn
                   title="View Profile"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -572,6 +708,40 @@ const EmployeeList: React.FC = () => {
           ))}
         </CardGrid>
       </MainContent>
+
+      {statusModal.open && statusModal.employee && ReactDOM.createPortal(
+        <ModalOverlay onClick={() => !updatingStatus && setStatusModal({ employee: null, open: false })}>
+          <ModalBox onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+              <div>
+                <ModalTitle>Change Status</ModalTitle>
+                <ModalSub>{statusModal.employee.name} &bull; {statusModal.employee.role || 'Staff'}</ModalSub>
+              </div>
+              <CardActionBtn
+                style={{ background: 'rgba(128,128,128,0.15)', color: 'inherit', width: 28, height: 28 }}
+                onClick={() => setStatusModal({ employee: null, open: false })}
+              >
+                <CloseIcon style={{ fontSize: 16 }} />
+              </CardActionBtn>
+            </div>
+            <StatusGrid>
+              {statusOptions.map(opt => (
+                <StatusOption
+                  key={opt.value}
+                  $color={opt.color}
+                  $active={(statusModal.employee.status || 'active') === opt.value}
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange(opt.value)}
+                >
+                  <StatusDot $color={opt.color} />
+                  {opt.label}
+                </StatusOption>
+              ))}
+            </StatusGrid>
+          </ModalBox>
+        </ModalOverlay>,
+        document.body
+      )}
     </PageContainer>
   );
 };
