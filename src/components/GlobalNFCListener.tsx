@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { rfidOfflineService, RFIDMapping } from '../services/rfidOfflineService';
-import toast, { Toaster } from 'react-hot-toast';
+import { useToast } from './useToast';
 import { Capacitor } from '@capacitor/core';
 
 const GlobalNFCListener: React.FC = () => {
@@ -24,13 +24,8 @@ const GlobalNFCListener: React.FC = () => {
         };
     }, []);
 
+    const { showToast } = useToast();
     const isDark = currentTheme === 'dark';
-    const toastBg = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(40, 40, 40, 0.95)';
-    const toastText = isDark ? '#000000' : '#ffffff';
-    const toastBorder = isDark ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.1)';
-    const toastShadow = isDark ? '0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.5)';
-    const subTextColor = isDark ? '#4b5563' : '#94a3b8';
-    const timeTextColor = isDark ? '#111827' : '#cbd5e1';
 
     const lastScanRef = useRef<{ uid: string, time: number }>({ uid: '', time: 0 });
 
@@ -61,143 +56,63 @@ const GlobalNFCListener: React.FC = () => {
             console.log('Global RFID/NFC Scan:', uid);
             const result = await rfidOfflineService.markAttendance(uid, user.school_id);
 
-            if (result.type === 'error_checkout_early' && result.person) {
-                // Dispatch for RFID page
-                window.dispatchEvent(new CustomEvent('rfid-scan-processed', {
-                    detail: { uid, result }
-                }));
+            // Notify RFID page
+            window.dispatchEvent(new CustomEvent('rfid-scan-processed', {
+                detail: { uid, result }
+            }));
 
-                if (!isAttendancePageRef.current) {
-                    toast.custom((t) => (
-                        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} pointer-events-auto`}
-                            style={{
-                                background: toastBg,
-                                color: toastText,
-                                padding: '6px 14px',
-                                borderRadius: '50px',
-                                fontSize: '11px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                boxShadow: toastShadow,
-                                border: toastBorder,
-                                whiteSpace: 'nowrap',
-                                marginBottom: '2px',
-                                zIndex: 2147483647,
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                            <span>
-                                <strong>{result.person!.name}</strong> <span style={{ color: '#fb923c', fontWeight: 'bold' }}>Too Early to Check Out</span>
-                            </span>
-                        </div>
-                    ), { duration: 4000 });
+            if (isAttendancePageRef.current) return;
+
+            const p = result.person;
+            const timeStr = result.recorded_time
+                ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+            let type: 'success' | 'error' | 'warning' | 'info' = 'success';
+            let title = '';
+            let sub = '';
+
+            if (result.type === 'error_checkout_early' && p) {
+                type = 'warning';
+                title = p.name;
+                sub = 'Too Early to Check Out';
+            } else if (result.type === 'error_inactive' && p) {
+                type = 'error';
+                const statusLabel = (p.status || 'inactive').replace('_', ' ');
+                title = p.name;
+                sub = `Not Active (${statusLabel})`;
+            } else if (result.success && p) {
+                let statusStr = 'Present';
+                if (result.type === 'out') {
+                    statusStr = 'Checked Out';
+                    type = 'info';
                 }
-            } else if (result.type === 'error_inactive' && result.person) {
-                // Dispatch for RFID page
-                window.dispatchEvent(new CustomEvent('rfid-scan-processed', {
-                    detail: { uid, result }
-                }));
-
-                if (!isAttendancePageRef.current) {
-                    const statusLabel = (result.person!.status || 'inactive').replace('_', ' ');
-                    toast.custom((t) => (
-                        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} pointer-events-auto`}
-                            style={{
-                                background: toastBg,
-                                color: toastText,
-                                padding: '6px 14px',
-                                borderRadius: '50px',
-                                fontSize: '11px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                boxShadow: toastShadow,
-                                border: toastBorder,
-                                whiteSpace: 'nowrap',
-                                marginBottom: '2px',
-                                zIndex: 2147483647,
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                            <span>
-                                <strong>{result.person!.name}</strong> <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Not Active ({statusLabel})</span>
-                            </span>
-                        </div>
-                    ), { duration: 4000 });
+                else if (result.type === 'already') {
+                    statusStr = 'Already Marked';
+                    type = 'warning';
                 }
-            } else if (result.success && result.person) {
-                // Dispatch custom event for RFID page to hear
-                window.dispatchEvent(new CustomEvent('rfid-scan-processed', {
-                    detail: { uid, result }
-                }));
-
-                // Only show toast if we are NOT on the dedicated attendance page
-                if (!isAttendancePageRef.current) {
-                    const p = result.person;
-                    const timeStr = result.recorded_time
-                        ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-                        : new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-                    let statusStr = 'Chk IN';
-                    if (result.type === 'out') statusStr = 'Chk Out';
-                    else if (result.type === 'already') statusStr = 'Already Marked';
-                    else if (result.type === 'already_out') statusStr = 'Already Checked Out';
-                    else if (result.attendance_status === 'late') statusStr = 'Chk Late';
-
-                    const statusColor = statusStr === 'Chk IN' ? '#4ade80'
-                        : statusStr === 'Chk Out' ? '#60a5fa'
-                            : statusStr === 'Chk Late' ? '#fb923c'
-                                : '#fbbf24';
-
-                    toast.custom((t) => (
-                        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} pointer-events-auto`}
-                            style={{
-                                background: toastBg,
-                                color: toastText,
-                                padding: '6px 14px',
-                                borderRadius: '50px',
-                                fontSize: '11px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                boxShadow: toastShadow,
-                                border: toastBorder,
-                                whiteSpace: 'nowrap',
-                                marginBottom: '2px', // Tightly pack the multiple stacked msgs
-                                zIndex: 2147483647,
-                                backdropFilter: 'blur(10px)'
-                            }}>
-                            {p.type === 'employee' ? (
-                                <span>
-                                    <strong>{p.name}</strong> <span style={{ color: subTextColor }}>(Attendance Status: <span style={{ color: statusColor, fontWeight: 'bold' }}>{statusStr}</span>)</span> <span style={{ color: timeTextColor, marginLeft: '6px' }}>{timeStr}</span>
-                                </span>
-                            ) : (
-                                <span>
-                                    <strong>{p.name}{p.father_name ? ` - ${p.father_name}` : ''}</strong> <span style={{ color: subTextColor }}>({p.class_name || 'N/A'}{p.section_name ? `-${p.section_name}` : ''}),</span> <span style={{ color: statusColor, fontWeight: 'bold' }}>{statusStr}</span>
-                                </span>
-                            )}
-                        </div>
-                    ), { duration: 4000 });
+                else if (result.type === 'already_out') {
+                    statusStr = 'Already Left';
+                    type = 'warning';
                 }
-            } else if (uid && !isAttendancePageRef.current) {
-                toast.custom((t) => (
-                    <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} pointer-events-auto`}
-                        style={{
-                            background: toastBg,
-                            color: toastText,
-                            padding: '6px 14px',
-                            borderRadius: '50px',
-                            fontSize: '11px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            boxShadow: toastShadow,
-                            border: toastBorder,
-                            whiteSpace: 'nowrap',
-                            marginBottom: '2px',
-                            zIndex: 2147483647,
-                            backdropFilter: 'blur(10px)'
-                        }}>
-                        <span>
-                            <strong style={{ color: '#ef4444' }}>Unknown Card:</strong> <span style={{ marginLeft: '6px' }}>{uid}</span>
-                        </span>
-                    </div>
-                ), { id: 'unknown-card', duration: 4000 });
+                else if (result.attendance_status === 'late') {
+                    statusStr = 'Late';
+                    type = 'warning';
+                }
+
+                title = p.name;
+                const personInfo = p.type === 'employee'
+                    ? (p.role || 'Staff')
+                    : `${p.class_name || 'N/A'}${p.section_name ? `-${p.section_name}` : ''}`;
+                sub = `${statusStr} • ${personInfo} • ${timeStr}`;
+            } else if (uid) {
+                type = 'error';
+                title = 'Unknown Card';
+                sub = `UID: ${uid}`;
+            }
+
+            if (title) {
+                showToast(`${title}: ${sub}`, type);
             }
         } catch (err) {
             console.error('Global NFC Handler Error:', err);
@@ -280,13 +195,7 @@ const GlobalNFCListener: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [user?.school_id]);
 
-    return (
-        <Toaster
-            position="bottom-right"
-            containerStyle={{ bottom: 40, right: 30, zIndex: 2147483647 }}
-            toastOptions={{ style: { zIndex: 2147483647 } }}
-        />
-    );
+    return null;
 };
 
 export default GlobalNFCListener;

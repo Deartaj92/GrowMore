@@ -5,8 +5,8 @@ import { FONT, lightTheme } from './constants';
 // LAYOUT COMPONENTS
 // ==========================================
 export const AppContainer = styled.div`
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   position: relative;
   background: ${props => props.theme.BG};
@@ -78,94 +78,25 @@ export const Overlay = styled.div<{ open: boolean }>`
 // ==========================================
 export const Header = styled.header<{ $hasSidebar?: boolean }>`
   position: fixed;
-  top: 6px;
-  left: ${props => props.$hasSidebar ? 'calc(56px + 10px)' : '10px'};
-  right: 10px;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-radius: 24px;
-  padding: 0 8px;
+  padding: 0 16px;
   height: 48px;
   -webkit-app-region: drag;
   
-  /* Glass background */
-  background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'linear-gradient(180deg, rgba(45, 50, 80, 0.1) 0%, rgba(25, 28, 48, 0.05) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'};
-  
-  /* Standard CSS blur for crystal clear frosting without vector distortion */
-  backdrop-filter: blur(6px) saturate(1.2);
-  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  background: ${props => props.theme.CARD};
 
-  /* Luminous border */
-  border: 1px solid ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.5)'};
-
-  /* Multi-layer shadow for depth */
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.1' : '0.6'}),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
-
-  /* Specular top-edge highlight */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 8px;
-    right: 8px;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.15' : '0.7'}) 20%,
-      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.25' : '0.9'}) 50%,
-      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.15' : '0.7'}) 80%,
-      transparent 100%
-    );
-    border-radius: 24px 24px 0 0;
-    pointer-events: none;
-  }
-
-  /* Animated light sweep */
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(
-      105deg,
-      transparent 0%,
-      transparent 40%,
-      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.03' : '0.08'}) 45%,
-      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.06' : '0.14'}) 50%,
-      rgba(255, 255, 255, ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '0.03' : '0.08'}) 55%,
-      transparent 60%,
-      transparent 100%
-    );
-    border-radius: 24px;
-    pointer-events: none;
-    animation: glassShimmer 6s ease-in-out infinite;
-  }
-
-  @keyframes glassShimmer {
-    0%, 100% { left: -100%; }
-    50% { left: 100%; }
-  }
+  border-bottom: 1.5px solid ${({ theme }) => theme.BORDER};
+  box-shadow: 0 4px 12px 0 #0002;
   
   @media (max-width: 700px) {
-    top: 4px;
-    left: 6px;
-    right: 6px;
-    padding: 0 14px;
-    height: 44px;
-    border-radius: 20px;
+    height: 48px;
+    padding: 0 12px;
   }
 `;
 
@@ -685,10 +616,13 @@ export const ProfileDropdown = styled.div`
   position: absolute;
   right: 0;
   top: 110%;
+  
   background: ${({ theme }) => theme.CARD};
+
   border: 1.5px solid ${({ theme }) => theme.BORDER};
-  border-radius: 14px;
   box-shadow: 0 8px 32px 0 #0003, 0 1.5px 6px #0005;
+    
+  border-radius: 14px;
   min-width: 210px;
   z-index: 100000; /* Higher than GlobalLoaderOverlay (99999) to ensure logout button works during loading */
   padding: 14px 0 8px 0;

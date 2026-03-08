@@ -162,8 +162,7 @@ const AppLogo = styled.div`
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   
   &:hover {
-    transform: scale(1.06);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+    /* Animation removed */
   }
   
   svg {
@@ -261,10 +260,13 @@ const MenuWrapper = styled.div`
 
 const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualColumns?: number }>`
   position: fixed;
+  
   background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : 'rgba(255, 255, 255, 0.95)'};
+
   border: 1px solid ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? props.theme.BORDER : 'rgba(107, 141, 247, 0.15)'};
-  border-radius: 14px;
   box-shadow: 0 8px 32px rgba(107, 141, 247, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
+    
+  border-radius: 14px;
   padding: 10px;
   z-index: 100001;
   overflow: visible;
@@ -2403,18 +2405,6 @@ const Header: React.FC<HeaderProps> = ({
         </>
       )}
       <HeaderStyled $hasSidebar={false}>
-        <GlassSurface
-          displace={0}
-          distortionScale={0}
-          redOffset={0}
-          greenOffset={0}
-          blueOffset={0}
-          brightness={150}
-          opacity={0.1}
-          mixBlendMode="normal"
-          borderRadius={24}
-          style={{ position: 'absolute', inset: 0, zIndex: -1 }}
-        />
         <HeaderLeft>
           {!isRestrictedRole && (
             <HamburgerButton

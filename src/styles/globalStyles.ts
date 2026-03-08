@@ -80,24 +80,20 @@ export const GlobalStyles = createGlobalStyle`
     -moz-text-size-adjust: 100%;
     text-size-adjust: 100%;
     overflow-x: hidden;
-    overflow-y: auto;
-    /* Reserve gutter space so vertical scrollbar appearance never shifts layout */
-    scrollbar-gutter: stable;
   }
   
   html, body {
     overflow-x: hidden;
-    max-width: 100vw;
+    margin: 0;
+    padding: 0;
   }
   
   body {
     overflow-x: hidden;
-    overflow-y: auto;
   }
   
   #root {
     overflow-x: hidden;
-    overflow-y: auto;
   }
   
   /* Mobile touch optimizations */

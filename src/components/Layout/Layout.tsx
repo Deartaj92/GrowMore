@@ -1060,7 +1060,7 @@ const Layout: React.FC = () => {
           />
           <LayoutWrapper>
             <MainArea $isTeacher={true}>
-              <ContentArea>
+              <ContentArea style={{ top: '48px', bottom: footerHeight > 0 ? `${footerHeight}px` : '0' }}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={location.pathname + location.search}
@@ -1074,15 +1074,12 @@ const Layout: React.FC = () => {
                       minHeight: '100%',
                     }}
                   >
-                    {/* Spacer for floating glass header — scrolls with content */}
-                    <div style={{ height: 62, flexShrink: 0 }} />
                     <div
                       style={{
                         flex: 1,
                         minHeight: 0,
                         display: 'flex',
                         flexDirection: 'column',
-                        paddingBottom: footerHeight > 0 ? `${footerHeight}px` : '0',
                         boxSizing: 'border-box'
                       }}
                     >

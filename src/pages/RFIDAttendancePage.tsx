@@ -12,6 +12,7 @@ declare global {
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
 import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
 import {
     CheckCircle,
@@ -157,43 +158,6 @@ const SyncBadge = styled.div<{ $syncing?: boolean }>`
   svg { animation: ${({ $syncing }) => $syncing ? css`${keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`} 1s linear infinite` : 'none'}; }
 `;
 
-const BigStatusOverlay = styled.div<{ $status: 'present' | 'late' | 'out' | 'already_marked' | 'already_left' | 'early_checkout' }>`
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  padding: 1.5rem 2.5rem;
-  background: ${({ $status }) =>
-        $status === 'late' ? '#eab308' :
-            $status === 'present' ? '#22c55e' :
-                $status === 'out' ? '#3b82f6' :
-                    '#ef4444' // errors/warnings
-    };
-  color: #fff;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  animation: ${slideUp} 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-
-  .status-label {
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    opacity: 0.9;
-  }
-
-  .status-msg {
-    font-size: 2.2rem;
-    font-weight: 900;
-    white-space: nowrap;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.15);
-  }
-`;
 
 const SyncOverlay = styled.div`
   position: fixed;
@@ -740,6 +704,7 @@ const TimeInput = styled.input`
 
 const RFIDAttendancePage: React.FC = () => {
     const { theme } = useTheme();
+    const { showToast } = useToast();
     const themeObj = theme === 'dark' ? darkTheme : lightTheme;
     const { user } = useAuth();
     const today = new Date().toISOString().slice(0, 10);
@@ -761,8 +726,6 @@ const RFIDAttendancePage: React.FC = () => {
 
     const [showSettings, setShowSettings] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
-    const [bigStatus, setBigStatus] = useState<'present' | 'late' | 'out' | 'already_marked' | 'already_left' | 'early_checkout' | null>(null);
-    const bigStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [testScanStates, setTestScanStates] = useState<Record<string, 'in' | 'out'>>({});
 
     const [isNfcSupported, setIsNfcSupported] = useState(false);
@@ -798,12 +761,23 @@ const RFIDAttendancePage: React.FC = () => {
 
         const handleOnline = () => setIsOnline(true);
         const handleOffline = () => setIsOnline(false);
+        const handleSyncCompleted = (e: any) => {
+            const { success, failed } = e.detail;
+            rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
+            if (success > 0) {
+                // If on this page, maybe refresh the feed or just let the counts update
+                console.log(`[RFIDPage] Background sync detected: ${success} success`);
+            }
+        };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        window.addEventListener('offline-sync-completed', handleSyncCompleted);
 
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('offline-sync-completed', handleSyncCompleted);
         };
     }, [user?.school_id]);
 
@@ -965,9 +939,7 @@ const RFIDAttendancePage: React.FC = () => {
                         time,
                         personType: 'employee',
                     });
-                    if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                    setBigStatus('early_checkout');
-                    bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                    showToast(`Too Early to Check Out!`, 'error');
                     return;
                 }
 
@@ -983,9 +955,7 @@ const RFIDAttendancePage: React.FC = () => {
                         time,
                         personType: result.person.type === 'student' ? 'student' : 'employee',
                     });
-                    if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                    setBigStatus('already_left');
-                    bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                    showToast(`Already Checked Out!`, 'error');
                     return;
                 }
 
@@ -1020,9 +990,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType
                 });
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus(isAlreadyOut ? 'already_left' : 'already_marked');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast(isAlreadyOut ? `${p.name}: Already Left` : `${p.name}: Already Marked`, 'error');
             } else if (result.type === 'out') {
                 setScanStatus('success');
                 setStatusMsg(`OUT ✓ ${p.name}`);
@@ -1033,9 +1001,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType: 'employee'
                 });
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus('out');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast('Employee Checked Out!', 'success');
             } else {
                 // 'new' or 'offline'
                 const isOffline = result.type === 'offline';
@@ -1062,9 +1028,7 @@ const RFIDAttendancePage: React.FC = () => {
                 }
 
                 // Show big message
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus(isLate ? 'late' : 'present');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
             }
 
         } catch (err: any) {
@@ -1200,9 +1164,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType: 'employee',
                 });
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus('early_checkout');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast(`Too Early to Check Out!`, 'error');
                 return;
             }
 
@@ -1217,9 +1179,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType
                 });
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus('already_left');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast(`Already Checked Out!`, 'error');
                 return;
             }
 
@@ -1235,9 +1195,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType
                 });
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus(isAlreadyOut ? 'already_left' : 'already_marked');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast(isAlreadyOut ? 'Already Checked Out!' : 'Already Marked Present!', 'error');
             } else if (result.type === 'out') {
                 setScanStatus('success');
                 setStatusMsg(`OUT ✓ ${p.name}`);
@@ -1248,9 +1206,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType: 'employee'
                 });
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus('out');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast('Employee Checked Out!', 'success');
             } else {
                 const isOffline = result.type === 'offline';
                 const isLate = result.attendance_status === 'late';
@@ -1274,9 +1230,7 @@ const RFIDAttendancePage: React.FC = () => {
                     rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
                 }
 
-                if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-                setBigStatus(isLate ? 'late' : 'present');
-                bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
+                showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
             }
 
             // Auto-reset preview after 4 seconds
@@ -1326,11 +1280,6 @@ const RFIDAttendancePage: React.FC = () => {
         const isEmployee = sub.includes('Staff');
         const currentState = testScanStates[name];
 
-        const triggerBigStatus = (status: 'present' | 'late' | 'out' | 'already_marked' | 'already_left' | 'early_checkout') => {
-            if (bigStatusTimerRef.current) clearTimeout(bigStatusTimerRef.current);
-            setBigStatus(status);
-            bigStatusTimerRef.current = setTimeout(() => setBigStatus(null), 3500);
-        };
 
         // --- Handle Existing State (Duplicate or Check-out) ---
         if (currentState === 'out') {
@@ -1344,7 +1293,7 @@ const RFIDAttendancePage: React.FC = () => {
                 time: formatTime(),
                 personType: isEmployee ? 'employee' : 'student',
             });
-            triggerBigStatus('already_left');
+            showToast('Already Checked Out!', 'error');
             return;
         }
 
@@ -1362,7 +1311,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time: formatTime(),
                     personType: 'employee',
                 });
-                triggerBigStatus('out');
+                showToast('Employee Checked Out!', 'success');
                 return;
             } else {
                 // Student Duplicate
@@ -1376,7 +1325,7 @@ const RFIDAttendancePage: React.FC = () => {
                     time: formatTime(),
                     personType: 'student',
                 });
-                triggerBigStatus('already_marked');
+                showToast('Already Marked Present!', 'error');
                 return;
             }
         }
@@ -1398,7 +1347,7 @@ const RFIDAttendancePage: React.FC = () => {
             personType: isEmployee ? 'employee' : 'student',
         });
 
-        triggerBigStatus(isLate ? 'late' : 'present');
+        showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
 
         // Start fresh 4s timer
         resetTimerRef.current = setTimeout(() => {
@@ -1770,22 +1719,6 @@ const RFIDAttendancePage: React.FC = () => {
                 </SyncOverlay>
             )}
 
-            {/* Big Status Msg in Bottom Right */}
-            {bigStatus && (
-                <BigStatusOverlay $status={bigStatus}>
-                    <div className="status-label">
-                        {bigStatus === 'already_marked' || bigStatus === 'already_left' || bigStatus === 'early_checkout' ? 'Scan Warning' : 'Scan Success'}
-                    </div>
-                    <div className="status-msg">
-                        {bigStatus === 'late' && 'Marked as Late Arrival!'}
-                        {bigStatus === 'present' && 'Marked as Present !'}
-                        {bigStatus === 'out' && 'Employee Checked Out !'}
-                        {bigStatus === 'already_marked' && 'Already Marked Present!'}
-                        {bigStatus === 'already_left' && 'Already Checked Out!'}
-                        {bigStatus === 'early_checkout' && 'Too Early to Check Out!'}
-                    </div>
-                </BigStatusOverlay>
-            )}
         </Page>
     );
 };

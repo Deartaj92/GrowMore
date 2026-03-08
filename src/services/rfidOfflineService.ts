@@ -33,6 +33,7 @@ export interface QueuedScan {
     session_id: number | null;
     date: string;
     timestamp: string;
+    scan_type: 'in' | 'out'; // Track if entering or leaving
     class_id?: number;
     section_id?: number;
     source: 'rfid-offline';
@@ -244,32 +245,52 @@ class RFIDOfflineService {
 
             try {
                 const table = scan.person_type === 'student' ? 'attendance_records' : 'staff_attendance_records';
-                const payload: any = {
-                    school_id: Number(scan.school_id),
-                    session_id: Number(scan.session_id || cachedSession),
-                    date: scan.date,
-                    status: scan.status || 'present',
-                    source: 'rfid',
-                    check_in_time: scan.timestamp,
-                };
+                const idCol = scan.person_type === 'student' ? 'student_id' : 'staff_id';
 
-                if (scan.person_type === 'student') {
-                    payload.student_id = Number(scan.person_id);
-                    if (scan.class_id) payload.class_id = Number(scan.class_id);
-                    if (scan.section_id) payload.section_id = Number(scan.section_id);
+                if (scan.scan_type === 'out') {
+                    // Update existing record for check-out
+                    const { error } = await supabase.from(table)
+                        .update({ check_out_time: scan.timestamp })
+                        .eq(idCol, scan.person_id)
+                        .eq('date', scan.date)
+                        .is('check_out_time', null); // Only update if not already checked out
+
+                    if (!error) {
+                        if (scan.id) await this.removeFromQueue(scan.id);
+                        successCount++;
+                    } else {
+                        failedCount++;
+                    }
                 } else {
-                    payload.staff_id = Number(scan.person_id);
-                }
+                    // Insert new record for check-in
+                    const payload: any = {
+                        school_id: Number(scan.school_id),
+                        session_id: Number(scan.session_id || cachedSession),
+                        date: scan.date,
+                        status: scan.status || 'present',
+                        source: 'rfid',
+                        check_in_time: scan.timestamp,
+                    };
 
-                const { error } = await supabase.from(table).insert(payload);
+                    if (scan.person_type === 'student') {
+                        payload.student_id = Number(scan.person_id);
+                        if (scan.class_id) payload.class_id = Number(scan.class_id);
+                        if (scan.section_id) payload.section_id = Number(scan.section_id);
+                    } else {
+                        payload.staff_id = Number(scan.person_id);
+                    }
 
-                if (!error || error.code === '23505') {
-                    if (scan.id) await this.removeFromQueue(scan.id);
-                    successCount++;
-                } else {
-                    failedCount++;
+                    const { error } = await supabase.from(table).insert(payload);
+
+                    if (!error || error.code === '23505') {
+                        if (scan.id) await this.removeFromQueue(scan.id);
+                        successCount++;
+                    } else {
+                        failedCount++;
+                    }
                 }
             } catch (error) {
+                console.error('Error syncing individual queue item:', error);
                 failedCount++;
             }
         }
@@ -420,7 +441,52 @@ class RFIDOfflineService {
 
                 return { success: true, person, type: error?.code === '23505' ? 'already' : 'new', attendance_status: checkStatus };
             } else {
-                // Offline queuing
+                // Offline queuing with check-in/check-out detection
+                const queue = await this.getQueue();
+                const existing = queue.filter(q => q.person_id === person!.person_id && q.date === today);
+                const hasIn = existing.some(q => q.scan_type === 'in');
+                const hasOut = existing.some(q => q.scan_type === 'out');
+
+                if (hasOut) {
+                    return { success: true, person, type: 'already_out', attendance_status: checkStatus, recorded_time: existing.find(q => q.scan_type === 'out')?.timestamp };
+                }
+
+                if (hasIn) {
+                    // If it's a student, they usually don't have OUT logic in the queue-first approach
+                    if (person.type === 'student') {
+                        return { success: true, person, type: 'already', attendance_status: checkStatus, recorded_time: existing.find(q => q.scan_type === 'in')?.timestamp };
+                    }
+
+                    // For employees, check-out allowed?
+                    if (settings && settings.staff_end_time) {
+                        const [endH, endM] = settings.staff_end_time.split(':').map(Number);
+                        const endLimit = new Date();
+                        endLimit.setHours(endH, endM, 0, 0);
+                        if (new Date() < endLimit) {
+                            return { success: false, person, type: 'error_checkout_early' };
+                        }
+                    }
+
+                    // Queue a Check-out
+                    const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
+                    await this.queueScan({
+                        rfid_uid: cleanUID,
+                        person_id: person.person_id,
+                        person_type: person.type,
+                        school_id: schoolId,
+                        session_id: cachedSession || null,
+                        date: today,
+                        timestamp: now,
+                        scan_type: 'out',
+                        class_id: person.class_id,
+                        section_id: person.section_id,
+                        source: 'rfid-offline',
+                        status: checkStatus
+                    });
+                    return { success: true, person, type: 'out', attendance_status: checkStatus, recorded_time: now };
+                }
+
+                // Default: Queue a Check-in
                 const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
                 await this.queueScan({
                     rfid_uid: cleanUID,
@@ -430,6 +496,7 @@ class RFIDOfflineService {
                     session_id: cachedSession || null,
                     date: today,
                     timestamp: now,
+                    scan_type: 'in',
                     class_id: person.class_id,
                     section_id: person.section_id,
                     source: 'rfid-offline',

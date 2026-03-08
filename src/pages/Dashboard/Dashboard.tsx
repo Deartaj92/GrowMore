@@ -69,7 +69,7 @@ import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAt
 import AccountsTab from './components/AccountsTab/AccountsTab';
 import PredictionsTab from './components/PredictionsTab/PredictionsTab';
 import { Box } from '@mui/material';
-import { Assessment, Groups, Payment, PersonAdd, BarChart, People, AttachMoney, AccountBalanceWallet } from '@mui/icons-material';
+import { Assessment, Groups, Payment, PersonAdd, BarChart, People, AttachMoney, AccountBalanceWallet, Contactless } from '@mui/icons-material';
 
 // TypeScript declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -2138,6 +2138,76 @@ const Dashboard: React.FC = () => {
                         }}
                       >
                         Add Student
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          border: '3px solid transparent',
+                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* RFID Scanner Button */}
+                {canAccessFooterShortcut('/attendance/rfid-scanner') && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setHoveredButton('rfidScanner')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    <button
+                      onClick={() => navigate('/attendance/rfid-scanner')}
+                      className="footer-icon-button"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: hoveredButton === 'rfidScanner' ? 'rgba(249, 115, 22, 0.25)' : 'transparent',
+                        border: `1.5px solid ${hoveredButton === 'rfidScanner' ? '#fb923c' : 'rgba(249, 115, 22, 0.4)'}`,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'visible',
+                        transition: 'none !important'
+                      }}
+                    >
+                      <Contactless
+                        sx={{
+                          fontSize: '16px',
+                          color: hoveredButton === 'rfidScanner' ? '#fb923c' : '#f97316',
+                          transition: 'none !important'
+                        }}
+                      />
+                    </button>
+                    {hoveredButton === 'rfidScanner' && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: isDark ? '#1e293b' : '#0f172a',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          pointerEvents: 'none',
+                          zIndex: 10001,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
+                          maxWidth: 'calc(100vw - 16px)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Scanner mode
                         <div style={{
                           position: 'absolute',
                           top: '100%',
