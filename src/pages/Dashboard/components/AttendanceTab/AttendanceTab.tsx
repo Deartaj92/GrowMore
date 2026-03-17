@@ -260,18 +260,18 @@ interface AttendanceTabProps {
   latePercent: number;
   halfLeavePercent: number;
   attendanceStatsLoading?: boolean;
-  
+
   // Charts data
   attendanceChartsLoading: boolean;
   attendanceTrendData: any[];
   classAttendanceData: any[];
   todayAttendanceRate: number;
   weekAvgAttendanceRate: number;
-  
+
   // Consecutive absent
   consecutiveAbsentLoading: boolean;
   consecutiveAbsentStudents: any[];
-  
+
   // Absentees
   absentDate: string;
   setAbsentDate: (date: string) => void;
@@ -513,41 +513,41 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       return [`${value} (${percentage}%)`, name];
                     }}
                   />
-                  <Legend 
+                  <Legend
                     wrapperStyle={{ fontSize: '0.75rem', paddingTop: '10px' }}
                     iconType="line"
                   />
-                  <Line 
-                    type="monotone" 
+                  <Line
+                    type="monotone"
                     dataKey="presentWithLate"
-                    stroke="#10b981" 
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Present"
                     dot={false}
                     activeDot={{ r: 5 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="absent" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="absent"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     name="Absent"
                     dot={false}
                     activeDot={{ r: 5 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="leave" 
-                    stroke="#3b82f6" 
+                  <Line
+                    type="monotone"
+                    dataKey="leave"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Leave"
                     dot={false}
                     activeDot={{ r: 5 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="late" 
-                    stroke="#f59e0b" 
+                  <Line
+                    type="monotone"
+                    dataKey="late"
+                    stroke="#f59e0b"
                     strokeWidth={2}
                     name="Late"
                     dot={false}
@@ -693,112 +693,112 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
               </ExportButton>
             )}
           </CardTitle>
-        {consecutiveAbsentLoading ? (
-          <EmptyState theme={theme}>
-            <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-          </EmptyState>
-        ) : consecutiveAbsentStudents.length === 0 ? (
-          <EmptyState theme={theme}>
-            <div style={{ fontSize: '0.9rem' }}>No students with consecutive absences found</div>
-          </EmptyState>
-        ) : (
-          <>
-            {/* Mobile Card View */}
-            <ConsecutiveAbsentGrid>
-              {consecutiveAbsentStudents.map((student, index) => (
-                <ConsecutiveAbsentMobileCard key={`${student.student_id}-${index}`} $index={index}>
-                  <StudentAvatar>
-                    {student.picture_url ? (
-                      <img
-                        src={student.picture_url}
-                        alt={student.student_name}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          if (target.nextSibling) {
-                            (target.nextSibling as HTMLElement).style.display = 'flex';
-                          }
-                        }}
-                      />
-                    ) : null}
-                    <div style={{ display: student.picture_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                      {student.student_name?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
-                  </StudentAvatar>
-                  <ConsecutiveAbsentCardContent>
-                    <ConsecutiveAbsentRow>
-                      <ConsecutiveAbsentId>
-                        {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
-                      </ConsecutiveAbsentId>
-                      <Dot />
-                      <ConsecutiveAbsentName>{student.student_name}</ConsecutiveAbsentName>
-                      {student.father_name && (
-                        <>
-                          <Dot />
-                          <AbsenteeFather>{student.father_name}</AbsenteeFather>
-                        </>
-                      )}
-                    </ConsecutiveAbsentRow>
-                    <ConsecutiveAbsentRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
-                      <span>
-                        {student.class_name}
-                        {student.section_name && ` (${student.section_name})`}
-                      </span>
-                      {student.mobile && (
-                        <>
-                          <Dot />
-                          <span>{student.mobile}</span>
-                        </>
-                      )}
-                    </ConsecutiveAbsentRow>
-                  </ConsecutiveAbsentCardContent>
-                  <ConsecutiveAbsentDaysContainer>
-                    <ConsecutiveDaysBadge days={student.consecutive_days}>
-                      {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
-                    </ConsecutiveDaysBadge>
-                  </ConsecutiveAbsentDaysContainer>
-                </ConsecutiveAbsentMobileCard>
-              ))}
-            </ConsecutiveAbsentGrid>
+          {consecutiveAbsentLoading ? (
+            <EmptyState theme={theme}>
+              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+            </EmptyState>
+          ) : consecutiveAbsentStudents.length === 0 ? (
+            <EmptyState theme={theme}>
+              <div style={{ fontSize: '0.9rem' }}>No students with consecutive absences found</div>
+            </EmptyState>
+          ) : (
+            <>
+              {/* Mobile Card View */}
+              <ConsecutiveAbsentGrid>
+                {consecutiveAbsentStudents.map((student, index) => (
+                  <ConsecutiveAbsentMobileCard key={`${student.student_id}-${index}`} $index={index}>
+                    <StudentAvatar>
+                      {student.picture_url ? (
+                        <img
+                          src={student.picture_url}
+                          alt={student.student_name}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            if (target.nextSibling) {
+                              (target.nextSibling as HTMLElement).style.display = 'flex';
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div style={{ display: student.picture_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                        {student.student_name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                    </StudentAvatar>
+                    <ConsecutiveAbsentCardContent>
+                      <ConsecutiveAbsentRow>
+                        <ConsecutiveAbsentId>
+                          {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
+                        </ConsecutiveAbsentId>
+                        <Dot />
+                        <ConsecutiveAbsentName>{student.student_name}</ConsecutiveAbsentName>
+                        {student.father_name && (
+                          <>
+                            <Dot />
+                            <AbsenteeFather>{student.father_name}</AbsenteeFather>
+                          </>
+                        )}
+                      </ConsecutiveAbsentRow>
+                      <ConsecutiveAbsentRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                        <span>
+                          {student.class_name}
+                          {student.section_name && ` (${student.section_name})`}
+                        </span>
+                        {student.mobile && (
+                          <>
+                            <Dot />
+                            <span>{student.mobile}</span>
+                          </>
+                        )}
+                      </ConsecutiveAbsentRow>
+                    </ConsecutiveAbsentCardContent>
+                    <ConsecutiveAbsentDaysContainer>
+                      <ConsecutiveDaysBadge days={student.consecutive_days}>
+                        {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                      </ConsecutiveDaysBadge>
+                    </ConsecutiveAbsentDaysContainer>
+                  </ConsecutiveAbsentMobileCard>
+                ))}
+              </ConsecutiveAbsentGrid>
 
-            {/* Desktop Table View */}
-            <ConsecutiveAbsentTableContainer>
-              <ConsecutiveAbsentTable>
-                <ConsecutiveAbsentTableHeader>
-                  <tr>
-                    <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
-                    <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
-                    <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
-                    <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
-                    <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
-                    <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
-                  </tr>
-                </ConsecutiveAbsentTableHeader>
-                <ConsecutiveAbsentTableBody>
-                  {consecutiveAbsentStudents.map((student, index) => (
-                    <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
-                      <ConsecutiveAbsentTableCell>
-                        {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
-                      </ConsecutiveAbsentTableCell>
-                      <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
-                      <ConsecutiveAbsentTableCell>{student.father_name || '-'}</ConsecutiveAbsentTableCell>
-                      <ConsecutiveAbsentTableCell>{student.mobile || '-'}</ConsecutiveAbsentTableCell>
-                      <ConsecutiveAbsentTableCell>
-                        {student.class_name}
-                        {student.section_name && ` (${student.section_name})`}
-                      </ConsecutiveAbsentTableCell>
-                      <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
-                        <ConsecutiveDaysBadge days={student.consecutive_days}>
-                          {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
-                        </ConsecutiveDaysBadge>
-                      </ConsecutiveAbsentTableCell>
-                    </ConsecutiveAbsentTableRow>
-                  ))}
-                </ConsecutiveAbsentTableBody>
-              </ConsecutiveAbsentTable>
-            </ConsecutiveAbsentTableContainer>
-          </>
-        )}
+              {/* Desktop Table View */}
+              <ConsecutiveAbsentTableContainer>
+                <ConsecutiveAbsentTable>
+                  <ConsecutiveAbsentTableHeader>
+                    <tr>
+                      <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
+                      <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
+                      <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
+                      <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
+                      <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
+                      <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
+                    </tr>
+                  </ConsecutiveAbsentTableHeader>
+                  <ConsecutiveAbsentTableBody>
+                    {consecutiveAbsentStudents.map((student, index) => (
+                      <ConsecutiveAbsentTableRow key={`${student.student_id}-${index}`}>
+                        <ConsecutiveAbsentTableCell>
+                          {getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number })}
+                        </ConsecutiveAbsentTableCell>
+                        <ConsecutiveAbsentTableCell>{student.student_name}</ConsecutiveAbsentTableCell>
+                        <ConsecutiveAbsentTableCell>{student.father_name || '-'}</ConsecutiveAbsentTableCell>
+                        <ConsecutiveAbsentTableCell>{student.mobile || '-'}</ConsecutiveAbsentTableCell>
+                        <ConsecutiveAbsentTableCell>
+                          {student.class_name}
+                          {student.section_name && ` (${student.section_name})`}
+                        </ConsecutiveAbsentTableCell>
+                        <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
+                          <ConsecutiveDaysBadge days={student.consecutive_days}>
+                            {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                          </ConsecutiveDaysBadge>
+                        </ConsecutiveAbsentTableCell>
+                      </ConsecutiveAbsentTableRow>
+                    ))}
+                  </ConsecutiveAbsentTableBody>
+                </ConsecutiveAbsentTable>
+              </ConsecutiveAbsentTableContainer>
+            </>
+          )}
         </ContentCard>
       </ContentGrid>
 
@@ -811,403 +811,761 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 Today's Absentees
               </CardTitle>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
-                      <WhatsAppButton
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (whatsappProcessing || absentees.length === 0) return;
+                <WhatsAppButton
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (whatsappProcessing || absentees.length === 0) return;
 
-                        setWhatsappProcessing(true);
-                        try {
-                          let lateRecords: { student_id: number; status: string; date: string; remarks?: string }[] = [];
-                          if (user?.school_id) {
-                            const { data: sessionData, error: sessionError } = await supabase
-                              .from('sessions')
-                              .select('id')
-                              .eq('is_active', true)
-                              .eq('school_id', user.school_id)
-                              .single();
+                    setWhatsappProcessing(true);
+                    try {
+                      let lateRecords: { student_id: number; status: string; date: string; remarks?: string }[] = [];
+                      if (user?.school_id) {
+                        const { data: sessionData, error: sessionError } = await supabase
+                          .from('sessions')
+                          .select('id')
+                          .eq('is_active', true)
+                          .eq('school_id', user.school_id)
+                          .single();
 
-                            if (!sessionError && sessionData?.id) {
-                              const { data: lateData, error: lateError } = await supabase
-                                .from('attendance_records')
-                                .select('student_id, status, date, remarks')
-                                .eq('date', absentDate)
-                                .eq('session_id', sessionData.id)
-                                .eq('school_id', user.school_id)
-                                .eq('status', 'late');
+                        if (!sessionError && sessionData?.id) {
+                          const { data: lateData, error: lateError } = await supabase
+                            .from('attendance_records')
+                            .select('student_id, status, date, remarks')
+                            .eq('date', absentDate)
+                            .eq('session_id', sessionData.id)
+                            .eq('school_id', user.school_id)
+                            .eq('status', 'late');
 
-                              if (!lateError && lateData) {
-                                lateRecords = lateData as any;
-                              }
-                            }
+                          if (!lateError && lateData) {
+                            lateRecords = lateData as any;
                           }
-
-                          const attendanceForNotify = [
-                            ...absentees.map(a => ({
-                              id: a.student_id,
-                              status: a.status,
-                              date: absentDate,
-                              remarks: a.remarks
-                            })),
-                            ...lateRecords.map(l => ({
-                              id: l.student_id,
-                              status: l.status,
-                              date: l.date || absentDate,
-                              remarks: l.remarks
-                            }))
-                          ];
-
-                          const seen = new Set<number>();
-                          const uniqueAttendance = attendanceForNotify.filter(entry => {
-                            if (seen.has(entry.id)) return false;
-                            seen.add(entry.id);
-                            return true;
-                          });
-
-                          const notificationData = await whatsappSemiAutoService.prepareAttendanceNotifications(
-                            uniqueAttendance,
-                            user?.school_id!,
-                            schoolName || 'School',
-                            'All Classes',
-                            undefined
-                          );
-
-                          if (notificationData.length > 0) {
-                            setWhatsappNotificationData(notificationData);
-                            setShowWhatsAppSender(true);
-                            toast.showToast(`Prepared ${notificationData.length} notifications`, 'success');
-                          } else {
-                            toast.showToast('No students with phone numbers found', 'success');
-                          }
-                        } catch (error) {
-                          toast.showToast('Failed to prepare notifications', 'error');
-                        } finally {
-                          setWhatsappProcessing(false);
                         }
+                      }
+
+                      const attendanceForNotify = [
+                        ...absentees.map(a => ({
+                          id: a.student_id,
+                          status: a.status,
+                          date: absentDate,
+                          remarks: a.remarks
+                        })),
+                        ...lateRecords.map(l => ({
+                          id: l.student_id,
+                          status: l.status,
+                          date: l.date || absentDate,
+                          remarks: l.remarks
+                        }))
+                      ];
+
+                      const seen = new Set<number>();
+                      const uniqueAttendance = attendanceForNotify.filter(entry => {
+                        if (seen.has(entry.id)) return false;
+                        seen.add(entry.id);
+                        return true;
+                      });
+
+                      const notificationData = await whatsappSemiAutoService.prepareAttendanceNotifications(
+                        uniqueAttendance,
+                        user?.school_id!,
+                        schoolName || 'School',
+                        'All Classes',
+                        undefined
+                      );
+
+                      if (notificationData.length > 0) {
+                        setWhatsappNotificationData(notificationData);
+                        setShowWhatsAppSender(true);
+                        toast.showToast(`Prepared ${notificationData.length} notifications`, 'success');
+                      } else {
+                        toast.showToast('No students with phone numbers found', 'success');
+                      }
+                    } catch (error) {
+                      toast.showToast('Failed to prepare notifications', 'error');
+                    } finally {
+                      setWhatsappProcessing(false);
+                    }
+                  }}
+                  disabled={whatsappProcessing || absentees.length === 0}
+                  style={{
+                    opacity: (whatsappProcessing || absentees.length === 0) ? 0.5 : 1,
+                    cursor: (whatsappProcessing || absentees.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
+                  title="Send WhatsApp/SMS notifications to absent students"
+                >
+                  {whatsappProcessing ? (
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #25d366',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                  ) : (
+                    <WhatsApp />
+                  )}
+                </WhatsAppButton>
+                {isMobile ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ExportButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportAbsenteesPDF();
                       }}
-                      disabled={whatsappProcessing || absentees.length === 0}
+                      disabled={exportAbsentLoading}
                       style={{
-                        opacity: (whatsappProcessing || absentees.length === 0) ? 0.5 : 1,
-                        cursor: (whatsappProcessing || absentees.length === 0) ? 'not-allowed' : 'pointer'
+                        background: 'rgba(239,68,68,0.1)',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239,68,68,0.2)',
+                        opacity: exportAbsentLoading ? 0.5 : 1
                       }}
-                      title="Send WhatsApp/SMS notifications to absent students"
                     >
-                      {whatsappProcessing ? (
-                        <div style={{
-                          width: '16px',
-                          height: '16px',
-                          border: '2px solid #25d366',
-                          borderTop: '2px solid transparent',
-                          borderRadius: '50%',
-                          animation: 'spin 1s linear infinite'
-                        }} />
-                      ) : (
-                        <WhatsApp />
-                      )}
-                    </WhatsAppButton>
-                    {isMobile ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ExportButton
+                      A
+                    </ExportButton>
+                    <ExportButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportPresentStudentsPDF();
+                      }}
+                      disabled={exportPresentLoading}
+                      style={{
+                        background: 'rgba(34,197,94,0.1)',
+                        color: '#16a34a',
+                        border: '1px solid rgba(34,197,94,0.2)',
+                        opacity: exportPresentLoading ? 0.5 : 1
+                      }}
+                    >
+                      P
+                    </ExportButton>
+                  </div>
+                ) : (
+                  <ExportButton
+                    ref={exportDropdownRef}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowExportDropdown(!showExportDropdown);
+                    }}
+                  >
+                    <ExportIcon fontSize="small" />
+                    Export
+                    <ExpandIcon $expanded={showExportDropdown} />
+                    {showExportDropdown && (
+                      <ExportDropdown>
+                        <ExportDropdownItem
+                          $type="absent"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setShowExportDropdown(false);
                             exportAbsenteesPDF();
                           }}
-                          disabled={exportAbsentLoading}
-                          style={{
-                            background: 'rgba(239,68,68,0.1)',
-                            color: '#ef4444',
-                            border: '1px solid rgba(239,68,68,0.2)',
-                            opacity: exportAbsentLoading ? 0.5 : 1
-                          }}
                         >
-                          A
-                        </ExportButton>
-                        <ExportButton
+                          <ExportIcon fontSize="small" />
+                          Absent Students
+                        </ExportDropdownItem>
+                        <ExportDropdownItem
+                          $type="present"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setShowExportDropdown(false);
                             exportPresentStudentsPDF();
                           }}
-                          disabled={exportPresentLoading}
-                          style={{
-                            background: 'rgba(34,197,94,0.1)',
-                            color: '#16a34a',
-                            border: '1px solid rgba(34,197,94,0.2)',
-                            opacity: exportPresentLoading ? 0.5 : 1
-                          }}
                         >
-                          P
-                        </ExportButton>
-                      </div>
-                    ) : (
-                      <ExportButton
-                        ref={exportDropdownRef}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowExportDropdown(!showExportDropdown);
-                        }}
-                      >
-                        <ExportIcon fontSize="small" />
-                        Export
-                        <ExpandIcon $expanded={showExportDropdown} />
-                        {showExportDropdown && (
-                          <ExportDropdown>
-                            <ExportDropdownItem
-                              $type="absent"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowExportDropdown(false);
-                                exportAbsenteesPDF();
-                              }}
-                            >
-                              <ExportIcon fontSize="small" />
-                              Absent Students
-                            </ExportDropdownItem>
-                            <ExportDropdownItem
-                              $type="present"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowExportDropdown(false);
-                                exportPresentStudentsPDF();
-                              }}
-                            >
-                              <ExportIcon fontSize="small" />
-                              Present Students
-                            </ExportDropdownItem>
-                          </ExportDropdown>
-                      )}
-                    </ExportButton>
+                          <ExportIcon fontSize="small" />
+                          Present Students
+                        </ExportDropdownItem>
+                      </ExportDropdown>
                     )}
+                  </ExportButton>
+                )}
                 <ExpandIcon $expanded={isAbsenteesExpanded} />
               </div>
             </div>
             {isAbsenteesExpanded && (
               <div>
                 <AbsenteesGrid>
-                    {(() => {
-                      const selectedDate = new Date(absentDate);
-                      const isSunday = selectedDate.getDay() === 0;
-                      const hasAttendanceRecords = attendanceDataForDate.length > 0;
-                      const hasAbsentStudents = absentees.length > 0;
+                  {(() => {
+                    const selectedDate = new Date(absentDate);
+                    const isSunday = selectedDate.getDay() === 0;
+                    const hasAttendanceRecords = attendanceDataForDate.length > 0;
+                    const hasAbsentStudents = absentees.length > 0;
 
-                      if (isSunday) {
-                        return (
+                    if (isSunday) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: isDark ? '#a0a7b8' : '#64748b',
+                          minHeight: '200px'
+                        }}>
                           <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '2rem',
-                            textAlign: 'center',
-                            color: isDark ? '#a0a7b8' : '#64748b',
-                            minHeight: '200px'
+                            fontSize: '3rem',
+                            marginBottom: '1rem',
+                            color: '#6366f1',
+                            opacity: 0.7
                           }}>
-                            <div style={{
-                              fontSize: '3rem',
-                              marginBottom: '1rem',
-                              color: '#6366f1',
-                              opacity: 0.7
-                            }}>
-                              🏖️
-                            </div>
-                            <div style={{
-                              fontSize: '1.2rem',
-                              fontWeight: 600,
-                              marginBottom: '0.5rem',
-                              color: isDark ? '#e2e8f0' : '#1e293b'
-                            }}>
-                              Sunday - No Classes
-                            </div>
-                            <div style={{
-                              fontSize: '0.95rem',
-                              opacity: 0.8
-                            }}>
-                              School is closed on Sundays
-                            </div>
+                            🏖️
                           </div>
-                        );
-                      }
-
-                      if (!hasAttendanceRecords) {
-                        return (
                           <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '2rem',
-                            textAlign: 'center',
-                            color: isDark ? '#a0a7b8' : '#64748b',
-                            minHeight: '200px'
+                            fontSize: '1.2rem',
+                            fontWeight: 600,
+                            marginBottom: '0.5rem',
+                            color: isDark ? '#e2e8f0' : '#1e293b'
                           }}>
-                            <div style={{
-                              fontSize: '3rem',
-                              marginBottom: '1rem',
-                              color: '#6366f1',
-                              opacity: 0.7
-                            }}>
-                              📊
-                            </div>
-                            <div style={{
-                              fontSize: '1.2rem',
-                              fontWeight: 600,
-                              marginBottom: '0.5rem',
-                              color: isDark ? '#e2e8f0' : '#1e293b'
-                            }}>
-                              No Attendance Records
-                            </div>
-                            <div style={{
-                              fontSize: '0.95rem',
-                              opacity: 0.8
-                            }}>
-                              No attendance has been recorded for {new Date(absentDate).toLocaleDateString()}
-                            </div>
+                            Sunday - No Classes
                           </div>
-                        );
-                      }
-
-                      if (!hasAbsentStudents) {
-                        return (
                           <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '2rem',
-                            textAlign: 'center',
-                            color: isDark ? '#a0a7b8' : '#64748b',
-                            minHeight: '200px'
+                            fontSize: '0.95rem',
+                            opacity: 0.8
                           }}>
-                            <div style={{
-                              fontSize: '3rem',
-                              marginBottom: '1rem',
-                              color: '#22c55e',
-                              opacity: 0.7
-                            }}>
-                              ✅
-                            </div>
-                            <div style={{
-                              fontSize: '1.2rem',
-                              fontWeight: 600,
-                              marginBottom: '0.5rem',
-                              color: isDark ? '#e2e8f0' : '#1e293b'
-                            }}>
-                              No Absent Students
-                            </div>
-                            <div style={{
-                              fontSize: '0.95rem',
-                              opacity: 0.8
-                            }}>
-                              All students are present on {new Date(absentDate).toLocaleDateString()}
-                            </div>
+                            School is closed on Sundays
                           </div>
-                        );
-                      }
+                        </div>
+                      );
+                    }
 
-                      return absentees.map((absentee, globalIdx) => {
-                        const student = studentDetails[absentee.student_id];
-                        if (!student) return null;
+                    if (!hasAttendanceRecords) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: isDark ? '#a0a7b8' : '#64748b',
+                          minHeight: '200px'
+                        }}>
+                          <div style={{
+                            fontSize: '3rem',
+                            marginBottom: '1rem',
+                            color: '#6366f1',
+                            opacity: 0.7
+                          }}>
+                            📊
+                          </div>
+                          <div style={{
+                            fontSize: '1.2rem',
+                            fontWeight: 600,
+                            marginBottom: '0.5rem',
+                            color: isDark ? '#e2e8f0' : '#1e293b'
+                          }}>
+                            No Attendance Records
+                          </div>
+                          <div style={{
+                            fontSize: '0.95rem',
+                            opacity: 0.8
+                          }}>
+                            No attendance has been recorded for {new Date(absentDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      );
+                    }
 
-                        return (
-                          <CompactAnimatedAbsenteeCard key={absentee.id} $index={globalIdx}>
-                            <StudentAvatar
-                              onMouseEnter={(e) => {
-                                if (student.picture_url) {
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  setHoveredAvatar({
-                                    url: student.picture_url,
-                                    x: rect.left + rect.width / 2,
-                                    y: rect.top
-                                  });
-                                }
-                              }}
-                              onMouseLeave={() => setHoveredAvatar(null)}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setHoveredAvatar(null);
-                                navigate(`/students/profile/${student.id}`);
-                              }}
-                              title={`View profile of ${student.name}`}
-                              style={{ cursor: 'pointer' }}
-                            >
-                              {student.picture_url ? (
-                                <img src={student.picture_url} alt={student.name} />
-                              ) : (
-                                <AccountCircle style={{ fontSize: '1.3em', color: '#b0b8d1' }} />
-                              )}
-                            </StudentAvatar>
-                            <AbsenteeCardContent>
-                              <AbsenteeRow>
-                                <AbsenteeId>{getStudentDisplayId(student)}</AbsenteeId>
-                                <Dot />
-                                <AbsenteeName>{student.name}</AbsenteeName>
-                                {student.father_name && (
-                                  <>
-                                    <Dot />
-                                    <AbsenteeFather>{student.father_name}</AbsenteeFather>
-                                  </>
-                                )}
-                              </AbsenteeRow>
-                              <AbsenteeRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
-                                <span>{student.class_name}</span>
-                                {student.section_name && (
-                                  <>
-                                    <Dot />
-                                    <span>{student.section_name}</span>
-                                  </>
-                                )}
-                                <Dot />
-                                <span>{student.monthly_absences || 0} M.A</span>
-                                <Dot />
-                                <span>{student.monthly_leaves || 0} M.L</span>
-                                <Dot />
-                                <span style={{
-                                  color: student.attendance_percentage < 75 ? '#ef4444' :
-                                    student.attendance_percentage < 85 ? '#eab308' : '#22c55e',
-                                  fontWeight: 600
-                                }}>
-                                  {student.attendance_percentage || 0}%
-                                </span>
-                              </AbsenteeRow>
-                            </AbsenteeCardContent>
-                            <StatusPill
-                              $status={absentee.status}
-                              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                e.preventDefault();
-                                e.stopPropagation();
+                    if (!hasAbsentStudents) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: isDark ? '#a0a7b8' : '#64748b',
+                          minHeight: '200px'
+                        }}>
+                          <div style={{
+                            fontSize: '3rem',
+                            marginBottom: '1rem',
+                            color: '#22c55e',
+                            opacity: 0.7
+                          }}>
+                            ✅
+                          </div>
+                          <div style={{
+                            fontSize: '1.2rem',
+                            fontWeight: 600,
+                            marginBottom: '0.5rem',
+                            color: isDark ? '#e2e8f0' : '#1e293b'
+                          }}>
+                            No Absent Students
+                          </div>
+                          <div style={{
+                            fontSize: '0.95rem',
+                            opacity: 0.8
+                          }}>
+                            All students are present on {new Date(absentDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      );
+                    }
 
+                    return absentees.map((absentee, globalIdx) => {
+                      const student = studentDetails[absentee.student_id];
+                      if (!student) return null;
+
+                      return (
+                        <CompactAnimatedAbsenteeCard key={absentee.id} $index={globalIdx}>
+                          <StudentAvatar
+                            onMouseEnter={(e) => {
+                              if (student.picture_url) {
                                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                const spaceBelow = window.innerHeight - rect.bottom;
-                                const spaceAbove = rect.top;
-                                setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
-                                setDropdownPos({ top: rect.top, left: rect.left });
-                                setDropdownIdx(globalIdx);
-                                return false;
-                              }}
-                            >
-                              {absentee.status === 'absent' ? 'Absent' : 'Leave'}
-                            </StatusPill>
-                            {dropdownIdx === globalIdx && dropdownPos &&
-                              ReactDOM.createPortal(
-                                <StatusDropdown
-                                  ref={dropdownRef}
-                                  direction={dropdownDirection}
-                                  style={{
-                                    position: 'fixed',
-                                    left: dropdownPos.left,
-                                    top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
-                                    bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                setHoveredAvatar({
+                                  url: student.picture_url,
+                                  x: rect.left + rect.width / 2,
+                                  y: rect.top
+                                });
+                              }
+                            }}
+                            onMouseLeave={() => setHoveredAvatar(null)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHoveredAvatar(null);
+                              navigate(`/students/profile/${student.id}`);
+                            }}
+                            title={`View profile of ${student.name}`}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {student.picture_url ? (
+                              <img src={student.picture_url} alt={student.name} />
+                            ) : (
+                              <AccountCircle style={{ fontSize: '1.3em', color: '#b0b8d1' }} />
+                            )}
+                          </StudentAvatar>
+                          <AbsenteeCardContent>
+                            <AbsenteeRow>
+                              <AbsenteeId>{getStudentDisplayId(student)}</AbsenteeId>
+                              <Dot />
+                              <AbsenteeName>{student.name}</AbsenteeName>
+                              {student.father_name && (
+                                <>
+                                  <Dot />
+                                  <AbsenteeFather>{student.father_name}</AbsenteeFather>
+                                </>
+                              )}
+                            </AbsenteeRow>
+                            <AbsenteeRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                              <span>{student.class_name}</span>
+                              {student.section_name && (
+                                <>
+                                  <Dot />
+                                  <span>{student.section_name}</span>
+                                </>
+                              )}
+                              <Dot />
+                              <span>{student.monthly_absences || 0} M.A</span>
+                              <Dot />
+                              <span>{student.monthly_leaves || 0} M.L</span>
+                              <Dot />
+                              <span style={{
+                                color: student.attendance_percentage < 75 ? '#ef4444' :
+                                  student.attendance_percentage < 85 ? '#eab308' : '#22c55e',
+                                fontWeight: 600
+                              }}>
+                                {student.attendance_percentage || 0}%
+                              </span>
+                            </AbsenteeRow>
+                          </AbsenteeCardContent>
+                          <StatusPill
+                            $status={absentee.status}
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+                              setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
+                              setDropdownPos({ top: rect.top, left: rect.left });
+                              setDropdownIdx(globalIdx);
+                              return false;
+                            }}
+                          >
+                            {absentee.status === 'absent' ? 'Absent' : 'Leave'}
+                          </StatusPill>
+                          {dropdownIdx === globalIdx && dropdownPos &&
+                            ReactDOM.createPortal(
+                              <StatusDropdown
+                                ref={dropdownRef}
+                                direction={dropdownDirection}
+                                style={{
+                                  position: 'fixed',
+                                  left: dropdownPos.left,
+                                  top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
+                                  bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                }}
+                              >
+                                {STATUS_OPTIONS.map(opt => (
+                                  <StatusOption
+                                    key={opt.value}
+                                    type="button"
+                                    color={opt.color}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+
+                                      const handleStatusUpdate = async () => {
+                                        const absentee = absentees[globalIdx];
+                                        if (!user?.school_id) {
+                                          toast.showToast('User school information not found', 'error');
+                                          return;
+                                        }
+
+                                        try {
+                                          const { data: sessionData, error: sessionError } = await supabase
+                                            .from('sessions')
+                                            .select('id')
+                                            .eq('is_active', true)
+                                            .eq('school_id', user.school_id)
+                                            .single();
+
+                                          if (sessionError) throw sessionError;
+                                          if (!sessionData?.id) {
+                                            toast.showToast('No active session found for this school', 'error');
+                                            return;
+                                          }
+
+                                          if (opt.value === 'present' || opt.value === 'late') {
+                                            const { error: deleteError } = await supabase
+                                              .from('attendance_records')
+                                              .delete()
+                                              .match({
+                                                id: absentee.id,
+                                                student_id: absentee.student_id,
+                                                date: absentDate,
+                                                session_id: sessionData.id,
+                                                school_id: user.school_id
+                                              });
+
+                                            if (deleteError) throw deleteError;
+
+                                            setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+                                          } else {
+                                            const { error: updateError } = await supabase
+                                              .from('attendance_records')
+                                              .update({
+                                                status: opt.value
+                                              })
+                                              .match({
+                                                id: absentee.id,
+                                                student_id: absentee.student_id,
+                                                date: absentDate,
+                                                session_id: sessionData.id,
+                                                school_id: user.school_id
+                                              });
+
+                                            if (updateError) throw updateError;
+
+                                            setAbsentees(prev => prev.map(a =>
+                                              a.id === absentee.id
+                                                ? { ...a, status: opt.value }
+                                                : a
+                                            ));
+                                          }
+
+                                          setAttendanceDataForDate(prev => {
+                                            if (opt.value === 'present' || opt.value === 'late') {
+                                              return prev.filter(r => r.student_id !== absentee.student_id);
+                                            } else {
+                                              return prev.map(r =>
+                                                r.student_id === absentee.student_id
+                                                  ? { ...r, status: opt.value }
+                                                  : r
+                                              );
+                                            }
+                                          });
+
+                                          toast.showToast('Status updated successfully', 'success');
+                                        } catch (err) {
+                                          toast.showToast('Failed to update status', 'error');
+                                        }
+                                        setDropdownIdx(null);
+                                      };
+
+                                      handleStatusUpdate();
+                                      return false;
+                                    }}
+                                  >
+                                    {opt.label}
+                                  </StatusOption>
+                                ))}
+                                <StatusOption
+                                  type="button"
+                                  color={DELETE_OPTION.color}
+                                  separator
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    const absentee = absentees[globalIdx];
+                                    if (!user?.school_id) {
+                                      toast.showToast('User school information not found', 'error');
+                                      return;
+                                    }
+
+                                    try {
+                                      const { data: sessionData, error: sessionError } = await supabase
+                                        .from('sessions')
+                                        .select('id')
+                                        .eq('is_active', true)
+                                        .eq('school_id', user.school_id)
+                                        .single();
+
+                                      if (sessionError) throw sessionError;
+                                      if (!sessionData?.id) {
+                                        toast.showToast('No active session found for this school', 'error');
+                                        return;
+                                      }
+
+                                      const { error: deleteError } = await supabase
+                                        .from('attendance_records')
+                                        .delete()
+                                        .match({
+                                          id: absentee.id,
+                                          student_id: absentee.student_id,
+                                          date: absentDate,
+                                          session_id: sessionData.id,
+                                          school_id: user.school_id
+                                        });
+
+                                      if (deleteError) throw deleteError;
+
+                                      setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+
+                                      setAttendanceDataForDate(prev =>
+                                        prev.filter(r => r.student_id !== absentee.student_id)
+                                      );
+
+                                      toast.showToast('Attendance record deleted', 'success');
+                                    } catch (err) {
+                                      toast.showToast('Failed to delete record', 'error');
+                                    }
+                                    setDropdownIdx(null);
+                                    return false;
                                   }}
                                 >
-                                  {STATUS_OPTIONS.map(opt => (
-                                    <StatusOption
-                                      key={opt.value}
-                                      type="button"
-                                      color={opt.color}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
+                                  {DELETE_OPTION.label}
+                                </StatusOption>
+                              </StatusDropdown>,
+                              document.body
+                            )}
+                        </CompactAnimatedAbsenteeCard>
+                      );
+                    });
+                  })()}
+                </AbsenteesGrid>
+                {/* Desktop Table View */}
+                <AbsenteesDesktopTable>
+                  {(() => {
+                    const selectedDate = new Date(absentDate);
+                    const isSunday = selectedDate.getDay() === 0;
+                    const hasAttendanceRecords = attendanceDataForDate.length > 0;
+                    const hasAbsentStudents = absentees.length > 0;
 
-                                        const handleStatusUpdate = async () => {
+                    if (isSunday || !hasAttendanceRecords || !hasAbsentStudents) {
+                      return null;
+                    }
+
+                    return (
+                      <>
+                        <AbsenteesTableHeader>
+                          <AbsenteesTableHeaderCell></AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>ID</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Student Name</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Father Name</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Class</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Absence This Month</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Monthly Leave</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Status</AbsenteesTableHeaderCell>
+                        </AbsenteesTableHeader>
+                        {absentees.map((absentee, globalIdx) => {
+                          const student = studentDetails[absentee.student_id];
+                          if (!student) return null;
+
+                          return (
+                            <AbsenteesTableRow key={absentee.id} $index={globalIdx}>
+                              <AbsenteesTableCell>
+                                <AbsenteesTableAvatar
+                                  onMouseEnter={(e) => {
+                                    if (student.picture_url) {
+                                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                      setHoveredAvatar({
+                                        url: student.picture_url,
+                                        x: rect.left + rect.width / 2,
+                                        y: rect.top
+                                      });
+                                    }
+                                  }}
+                                  onMouseLeave={() => setHoveredAvatar(null)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredAvatar(null);
+                                    navigate(`/students/profile/${student.id}`);
+                                  }}
+                                  title={`View profile of ${student.name}`}
+                                >
+                                  {student.picture_url ? (
+                                    <img src={student.picture_url} alt={student.name} />
+                                  ) : (
+                                    <AccountCircle style={{ fontSize: '1.5em', color: isDark ? '#b0b8d1' : '#94a3b8' }} />
+                                  )}
+                                </AbsenteesTableAvatar>
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell>
+                                <span style={{ color: isDark ? '#b0b8d1' : '#6366f1', fontWeight: 600 }}>
+                                  {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
+                                </span>
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ fontWeight: 700 }}>
+                                {student.name}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#94a3b8' }}>
+                                {student.father_name || '-'}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                {student.class_name || '-'}{student.section_name ? ` (${student.section_name})` : ''}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                {student.monthly_absences || 0}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                {student.monthly_leaves || 0}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell>
+                                <AbsenteesTableStatusPill
+                                  $status={absentee.status}
+                                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
+                                    setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
+                                    setDropdownPos({ top: rect.top, left: rect.left });
+                                    setDropdownIdx(globalIdx);
+                                    return false;
+                                  }}
+                                >
+                                  {absentee.status === 'absent' ? 'Absent' : 'Leave'}
+                                </AbsenteesTableStatusPill>
+                                {dropdownIdx === globalIdx && dropdownPos &&
+                                  ReactDOM.createPortal(
+                                    <StatusDropdown
+                                      ref={dropdownRef}
+                                      direction={dropdownDirection}
+                                      style={{
+                                        position: 'fixed',
+                                        left: dropdownPos.left,
+                                        top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
+                                        bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                      }}
+                                    >
+                                      {STATUS_OPTIONS.map(opt => (
+                                        <StatusOption
+                                          key={opt.value}
+                                          type="button"
+                                          color={opt.color}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+
+                                            const handleStatusUpdate = async () => {
+                                              const absentee = absentees[globalIdx];
+                                              if (!user?.school_id) {
+                                                toast.showToast('User school information not found', 'error');
+                                                return;
+                                              }
+
+                                              try {
+                                                const { data: sessionData, error: sessionError } = await supabase
+                                                  .from('sessions')
+                                                  .select('id')
+                                                  .eq('is_active', true)
+                                                  .eq('school_id', user.school_id)
+                                                  .single();
+
+                                                if (sessionError) throw sessionError;
+                                                if (!sessionData?.id) {
+                                                  toast.showToast('No active session found for this school', 'error');
+                                                  return;
+                                                }
+
+                                                if (opt.value === 'present' || opt.value === 'late') {
+                                                  const { error: deleteError } = await supabase
+                                                    .from('attendance_records')
+                                                    .delete()
+                                                    .match({
+                                                      id: absentee.id,
+                                                      student_id: absentee.student_id,
+                                                      date: absentDate,
+                                                      session_id: sessionData.id,
+                                                      school_id: user.school_id
+                                                    });
+
+                                                  if (deleteError) throw deleteError;
+
+                                                  setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+                                                } else {
+                                                  const { error: updateError } = await supabase
+                                                    .from('attendance_records')
+                                                    .update({
+                                                      status: opt.value
+                                                    })
+                                                    .match({
+                                                      id: absentee.id,
+                                                      student_id: absentee.student_id,
+                                                      date: absentDate,
+                                                      session_id: sessionData.id,
+                                                      school_id: user.school_id
+                                                    });
+
+                                                  if (updateError) throw updateError;
+
+                                                  setAbsentees(prev => prev.map(a =>
+                                                    a.id === absentee.id
+                                                      ? { ...a, status: opt.value }
+                                                      : a
+                                                  ));
+                                                }
+
+                                                setAttendanceDataForDate(prev => {
+                                                  if (opt.value === 'present' || opt.value === 'late') {
+                                                    return prev.filter(r => r.student_id !== absentee.student_id);
+                                                  } else {
+                                                    return prev.map(r =>
+                                                      r.student_id === absentee.student_id
+                                                        ? { ...r, status: opt.value }
+                                                        : r
+                                                    );
+                                                  }
+                                                });
+
+                                                toast.showToast('Status updated successfully', 'success');
+                                              } catch (err) {
+                                                toast.showToast('Failed to update status', 'error');
+                                              }
+                                              setDropdownIdx(null);
+                                            };
+
+                                            handleStatusUpdate();
+                                            return false;
+                                          }}
+                                        >
+                                          {opt.label}
+                                        </StatusOption>
+                                      ))}
+                                      <StatusOption
+                                        type="button"
+                                        color={DELETE_OPTION.color}
+                                        separator
+                                        onClick={async (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+
                                           const absentee = absentees[globalIdx];
                                           if (!user?.school_id) {
                                             toast.showToast('User school information not found', 'error');
@@ -1228,412 +1586,54 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                               return;
                                             }
 
-                                            if (opt.value === 'present' || opt.value === 'late') {
-                                              const { error: deleteError } = await supabase
-                                                .from('attendance_records')
-                                                .delete()
-                                                .match({
-                                                  id: absentee.id,
-                                                  student_id: absentee.student_id,
-                                                  date: absentDate,
-                                                  session_id: sessionData.id,
-                                                  school_id: user.school_id
-                                                });
+                                            const { error: deleteError } = await supabase
+                                              .from('attendance_records')
+                                              .delete()
+                                              .match({
+                                                id: absentee.id,
+                                                student_id: absentee.student_id,
+                                                date: absentDate,
+                                                session_id: sessionData.id,
+                                                school_id: user.school_id
+                                              });
 
-                                              if (deleteError) throw deleteError;
+                                            if (deleteError) throw deleteError;
 
-                                              setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-                                            } else {
-                                              const { error: updateError } = await supabase
-                                                .from('attendance_records')
-                                                .update({
-                                                  status: opt.value
-                                                })
-                                                .match({
-                                                  id: absentee.id,
-                                                  student_id: absentee.student_id,
-                                                  date: absentDate,
-                                                  session_id: sessionData.id,
-                                                  school_id: user.school_id
-                                                });
+                                            setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
 
-                                              if (updateError) throw updateError;
+                                            setAttendanceDataForDate(prev =>
+                                              prev.filter(r => r.student_id !== absentee.student_id)
+                                            );
 
-                                              setAbsentees(prev => prev.map(a =>
-                                                a.id === absentee.id
-                                                  ? { ...a, status: opt.value }
-                                                  : a
-                                              ));
-                                            }
-
-                                            setAttendanceDataForDate(prev => {
-                                              if (opt.value === 'present' || opt.value === 'late') {
-                                                return prev.filter(r => r.student_id !== absentee.student_id);
-                                              } else {
-                                                return prev.map(r =>
-                                                  r.student_id === absentee.student_id
-                                                    ? { ...r, status: opt.value }
-                                                    : r
-                                                );
-                                              }
-                                            });
-
-                                            toast.showToast('Status updated successfully', 'success');
+                                            toast.showToast('Attendance record deleted', 'success');
                                           } catch (err) {
-                                            toast.showToast('Failed to update status', 'error');
+                                            toast.showToast('Failed to delete record', 'error');
                                           }
                                           setDropdownIdx(null);
-                                        };
-
-                                        handleStatusUpdate();
-                                        return false;
-                                      }}
-                                    >
-                                      {opt.label}
-                                    </StatusOption>
-                                  ))}
-                                  <StatusOption
-                                    type="button"
-                                    color={DELETE_OPTION.color}
-                                    separator
-                                    onClick={async (e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-
-                                      const absentee = absentees[globalIdx];
-                                      if (!user?.school_id) {
-                                        toast.showToast('User school information not found', 'error');
-                                        return;
-                                      }
-
-                                      try {
-                                        const { data: sessionData, error: sessionError } = await supabase
-                                          .from('sessions')
-                                          .select('id')
-                                          .eq('is_active', true)
-                                          .eq('school_id', user.school_id)
-                                          .single();
-
-                                        if (sessionError) throw sessionError;
-                                        if (!sessionData?.id) {
-                                          toast.showToast('No active session found for this school', 'error');
-                                          return;
-                                        }
-
-                                        const { error: deleteError } = await supabase
-                                          .from('attendance_records')
-                                          .delete()
-                                          .match({
-                                            id: absentee.id,
-                                            student_id: absentee.student_id,
-                                            date: absentDate,
-                                            session_id: sessionData.id,
-                                            school_id: user.school_id
-                                          });
-
-                                        if (deleteError) throw deleteError;
-
-                                        setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-
-                                        setAttendanceDataForDate(prev =>
-                                          prev.filter(r => r.student_id !== absentee.student_id)
-                                        );
-
-                                        toast.showToast('Attendance record deleted', 'success');
-                                      } catch (err) {
-                                        toast.showToast('Failed to delete record', 'error');
-                                      }
-                                      setDropdownIdx(null);
-                                      return false;
-                                    }}
-                                  >
-                                    {DELETE_OPTION.label}
-                                  </StatusOption>
-                                </StatusDropdown>,
-                                document.body
-                              )}
-                          </CompactAnimatedAbsenteeCard>
-                        );
-                      });
-                    })()}
-                  </AbsenteesGrid>
-                  {/* Desktop Table View */}
-                  <AbsenteesDesktopTable>
-                    {(() => {
-                      const selectedDate = new Date(absentDate);
-                      const isSunday = selectedDate.getDay() === 0;
-                      const hasAttendanceRecords = attendanceDataForDate.length > 0;
-                      const hasAbsentStudents = absentees.length > 0;
-
-                      if (isSunday || !hasAttendanceRecords || !hasAbsentStudents) {
-                        return null;
-                      }
-
-                      return (
-                        <>
-                          <AbsenteesTableHeader>
-                            <AbsenteesTableHeaderCell></AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>ID</AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>Student Name</AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>Father Name</AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>Class</AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>Absence This Month</AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>Monthly Leave</AbsenteesTableHeaderCell>
-                            <AbsenteesTableHeaderCell>Status</AbsenteesTableHeaderCell>
-                          </AbsenteesTableHeader>
-                          {absentees.map((absentee, globalIdx) => {
-                            const student = studentDetails[absentee.student_id];
-                            if (!student) return null;
-
-                            return (
-                              <AbsenteesTableRow key={absentee.id} $index={globalIdx}>
-                                <AbsenteesTableCell>
-                                  <AbsenteesTableAvatar
-                                    onMouseEnter={(e) => {
-                                      if (student.picture_url) {
-                                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                        setHoveredAvatar({
-                                          url: student.picture_url,
-                                          x: rect.left + rect.width / 2,
-                                          y: rect.top
-                                        });
-                                      }
-                                    }}
-                                    onMouseLeave={() => setHoveredAvatar(null)}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setHoveredAvatar(null);
-                                      navigate(`/students/profile/${student.id}`);
-                                    }}
-                                    title={`View profile of ${student.name}`}
-                                  >
-                                    {student.picture_url ? (
-                                      <img src={student.picture_url} alt={student.name} />
-                                    ) : (
-                                      <AccountCircle style={{ fontSize: '1.5em', color: isDark ? '#b0b8d1' : '#94a3b8' }} />
-                                    )}
-                                  </AbsenteesTableAvatar>
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell>
-                                  <span style={{ color: isDark ? '#b0b8d1' : '#6366f1', fontWeight: 600 }}>
-                                    {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
-                                  </span>
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell style={{ fontWeight: 700 }}>
-                                  {student.name}
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#94a3b8' }}>
-                                  {student.father_name || '-'}
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
-                                  {student.class_name || '-'}{student.section_name ? ` (${student.section_name})` : ''}
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
-                                  {student.monthly_absences || 0}
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
-                                  {student.monthly_leaves || 0}
-                                </AbsenteesTableCell>
-                                <AbsenteesTableCell>
-                                  <AbsenteesTableStatusPill
-                                    $status={absentee.status}
-                                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-
-                                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                      const spaceBelow = window.innerHeight - rect.bottom;
-                                      const spaceAbove = rect.top;
-                                      setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
-                                      setDropdownPos({ top: rect.top, left: rect.left });
-                                      setDropdownIdx(globalIdx);
-                                      return false;
-                                    }}
-                                  >
-                                    {absentee.status === 'absent' ? 'Absent' : 'Leave'}
-                                  </AbsenteesTableStatusPill>
-                                  {dropdownIdx === globalIdx && dropdownPos &&
-                                    ReactDOM.createPortal(
-                                      <StatusDropdown
-                                        ref={dropdownRef}
-                                        direction={dropdownDirection}
-                                        style={{
-                                          position: 'fixed',
-                                          left: dropdownPos.left,
-                                          top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
-                                          bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                          return false;
                                         }}
                                       >
-                                        {STATUS_OPTIONS.map(opt => (
-                                          <StatusOption
-                                            key={opt.value}
-                                            type="button"
-                                            color={opt.color}
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-
-                                              const handleStatusUpdate = async () => {
-                                                const absentee = absentees[globalIdx];
-                                                if (!user?.school_id) {
-                                                  toast.showToast('User school information not found', 'error');
-                                                  return;
-                                                }
-
-                                                try {
-                                                  const { data: sessionData, error: sessionError } = await supabase
-                                                    .from('sessions')
-                                                    .select('id')
-                                                    .eq('is_active', true)
-                                                    .eq('school_id', user.school_id)
-                                                    .single();
-
-                                                  if (sessionError) throw sessionError;
-                                                  if (!sessionData?.id) {
-                                                    toast.showToast('No active session found for this school', 'error');
-                                                    return;
-                                                  }
-
-                                                  if (opt.value === 'present' || opt.value === 'late') {
-                                                    const { error: deleteError } = await supabase
-                                                      .from('attendance_records')
-                                                      .delete()
-                                                      .match({
-                                                        id: absentee.id,
-                                                        student_id: absentee.student_id,
-                                                        date: absentDate,
-                                                        session_id: sessionData.id,
-                                                        school_id: user.school_id
-                                                      });
-
-                                                    if (deleteError) throw deleteError;
-
-                                                    setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-                                                  } else {
-                                                    const { error: updateError } = await supabase
-                                                      .from('attendance_records')
-                                                      .update({
-                                                        status: opt.value
-                                                      })
-                                                      .match({
-                                                        id: absentee.id,
-                                                        student_id: absentee.student_id,
-                                                        date: absentDate,
-                                                        session_id: sessionData.id,
-                                                        school_id: user.school_id
-                                                      });
-
-                                                    if (updateError) throw updateError;
-
-                                                    setAbsentees(prev => prev.map(a =>
-                                                      a.id === absentee.id
-                                                        ? { ...a, status: opt.value }
-                                                        : a
-                                                    ));
-                                                  }
-
-                                                  setAttendanceDataForDate(prev => {
-                                                    if (opt.value === 'present' || opt.value === 'late') {
-                                                      return prev.filter(r => r.student_id !== absentee.student_id);
-                                                    } else {
-                                                      return prev.map(r =>
-                                                        r.student_id === absentee.student_id
-                                                          ? { ...r, status: opt.value }
-                                                          : r
-                                                      );
-                                                    }
-                                                  });
-
-                                                  toast.showToast('Status updated successfully', 'success');
-                                                } catch (err) {
-                                                  toast.showToast('Failed to update status', 'error');
-                                                }
-                                                setDropdownIdx(null);
-                                              };
-
-                                              handleStatusUpdate();
-                                              return false;
-                                            }}
-                                          >
-                                            {opt.label}
-                                          </StatusOption>
-                                        ))}
-                                        <StatusOption
-                                          type="button"
-                                          color={DELETE_OPTION.color}
-                                          separator
-                                          onClick={async (e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-
-                                            const absentee = absentees[globalIdx];
-                                            if (!user?.school_id) {
-                                              toast.showToast('User school information not found', 'error');
-                                              return;
-                                            }
-
-                                            try {
-                                              const { data: sessionData, error: sessionError } = await supabase
-                                                .from('sessions')
-                                                .select('id')
-                                                .eq('is_active', true)
-                                                .eq('school_id', user.school_id)
-                                                .single();
-
-                                              if (sessionError) throw sessionError;
-                                              if (!sessionData?.id) {
-                                                toast.showToast('No active session found for this school', 'error');
-                                                return;
-                                              }
-
-                                              const { error: deleteError } = await supabase
-                                                .from('attendance_records')
-                                                .delete()
-                                                .match({
-                                                  id: absentee.id,
-                                                  student_id: absentee.student_id,
-                                                  date: absentDate,
-                                                  session_id: sessionData.id,
-                                                  school_id: user.school_id
-                                                });
-
-                                              if (deleteError) throw deleteError;
-
-                                              setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-
-                                              setAttendanceDataForDate(prev =>
-                                                prev.filter(r => r.student_id !== absentee.student_id)
-                                              );
-
-                                              toast.showToast('Attendance record deleted', 'success');
-                                            } catch (err) {
-                                              toast.showToast('Failed to delete record', 'error');
-                                            }
-                                            setDropdownIdx(null);
-                                            return false;
-                                          }}
-                                        >
-                                          {DELETE_OPTION.label}
-                                        </StatusOption>
-                                      </StatusDropdown>,
-                                      document.body
-                                    )}
-                                </AbsenteesTableCell>
-                              </AbsenteesTableRow>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </AbsenteesDesktopTable>
-                  <AbsenteesStatsRow>
-                    <span className="stat total">T: <b>{attendanceDataForDate.length}</b></span>
-                    <span className="stat present">P: <b>{attendanceDataForDate.filter(a => a.status === 'present').length}</b></span>
-                    <span className="stat absent">A: <b>{attendanceDataForDate.filter(a => a.status === 'absent').length}</b></span>
-                    <span className="stat leave">L: <b>{attendanceDataForDate.filter(a => a.status === 'leave').length}</b></span>
-                    <span className="stat late">LT: <b>{attendanceDataForDate.filter(a => a.status === 'late').length}</b></span>
-                    <span className="stat avg">P%: <b>{attendanceDataForDate.length ? Math.round(((attendanceDataForDate.filter(a => a.status === 'present').length + attendanceDataForDate.filter(a => a.status === 'late').length) / attendanceDataForDate.length) * 100) : 0}%</b></span>
-                  </AbsenteesStatsRow>
+                                        {DELETE_OPTION.label}
+                                      </StatusOption>
+                                    </StatusDropdown>,
+                                    document.body
+                                  )}
+                              </AbsenteesTableCell>
+                            </AbsenteesTableRow>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </AbsenteesDesktopTable>
+                <AbsenteesStatsRow>
+                  <span className="stat total">T: <b>{attendanceDataForDate.length}</b></span>
+                  <span className="stat present">P: <b>{attendanceDataForDate.filter(a => a.status === 'present').length}</b></span>
+                  <span className="stat absent">A: <b>{attendanceDataForDate.filter(a => a.status === 'absent').length}</b></span>
+                  <span className="stat leave">L: <b>{attendanceDataForDate.filter(a => a.status === 'leave').length}</b></span>
+                  <span className="stat late">LT: <b>{attendanceDataForDate.filter(a => a.status === 'late').length}</b></span>
+                  <span className="stat avg">P%: <b>{attendanceDataForDate.length ? Math.round(((attendanceDataForDate.filter(a => a.status === 'present').length + attendanceDataForDate.filter(a => a.status === 'late').length) / attendanceDataForDate.length) * 100) : 0}%</b></span>
+                </AbsenteesStatsRow>
               </div>
             )}
           </ContentCard>

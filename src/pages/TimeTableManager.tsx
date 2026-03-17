@@ -11,7 +11,23 @@ import jsPDF from 'jspdf';
 import autoTable, { CellHookData } from 'jspdf-autotable';
 import { UserOptions, Styles } from 'jspdf-autotable';
 import { useAuth } from '../contexts/AuthContext';
-import { Info, PersonAdd, Save, PictureAsPdf, Description } from '@mui/icons-material';
+import { Info, PersonAdd, Save, PictureAsPdf, Description, Settings, Timer, AccessTime, Close } from '@mui/icons-material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  IconButton,
+  Typography,
+  Grid,
+  Divider,
+  Table as MuiTable,
+  TableBody as MuiTableBody,
+  TableCell as MuiTableCell,
+  TableHead as MuiTableHead,
+  TableRow as MuiTableRow
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import NoTeachersFound from '../components/NoTeachersFound';
 import Loader from '../components/Loader';
@@ -104,10 +120,10 @@ const TimetableGrid = styled.div`
 `;
 const Cell = styled.div<{ header?: boolean; breakCol?: boolean; classCol?: boolean; isEditing?: boolean }>`
   background: ${({ header, breakCol, classCol, isEditing, theme }) =>
-    header ? theme.ACCENT + '22' : 
-    breakCol ? theme.ACCENT + '44' : 
-    classCol ? theme.ACCENT + '33' : 
-    isEditing ? theme.ACCENT + '11' : theme.CARD};
+    header ? theme.ACCENT + '22' :
+      breakCol ? theme.ACCENT + '44' :
+        classCol ? theme.ACCENT + '33' :
+          isEditing ? theme.ACCENT + '11' : theme.CARD};
   color: ${({ header, breakCol, classCol, theme }) =>
     header || breakCol || classCol ? theme.TEXT_PRIMARY : theme.TEXT_SECONDARY};
   font-weight: ${({ header, classCol }) => (header || classCol ? 700 : 500)};
@@ -127,8 +143,8 @@ const Cell = styled.div<{ header?: boolean; breakCol?: boolean; classCol?: boole
   transition: background-color 0.2s ease;
 
   &:hover {
-    background: ${({ theme, header, breakCol, classCol }) => 
-      header || breakCol || classCol ? 'inherit' : theme.ACCENT + '11'};
+    background: ${({ theme, header, breakCol, classCol }) =>
+    header || breakCol || classCol ? 'inherit' : theme.ACCENT + '11'};
   }
 
   select {
@@ -193,17 +209,12 @@ const BreakCell = styled(Cell)`
   border-right: 2px solid ${({ theme }) => theme.BORDER};
 `;
 
-const periods = [
-  { num: 1, time: '08:30-09:00' },
-  { num: 2, time: '09:00-09:30' },
-  { num: 3, time: '09:30-10:00' },
-  { num: 4, time: '10:00-10:30' },
-  { num: 5, time: '10:30-11:00' },
-  { num: 6, time: '11:15-11:45' },
-  { num: 7, time: '11:45-12:15' },
-  { num: 8, time: '12:15-12:45' },
-];
-const breakText = 'Break\n11:00-11:15';
+// Type definitions
+interface TimetablePeriod {
+  num: number;
+  time: string;
+}
+
 
 // Add type definitions
 interface SubjectTeacherPair {
@@ -345,9 +356,9 @@ const Th = styled.th<{ breakCol?: boolean; classCol?: boolean }>`
   font-size: 0.8rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
   background: ${({ theme, breakCol, classCol }) =>
-    breakCol ? theme.ACCENT + '20' : 
-    classCol ? theme.ACCENT + '15' : 
-    theme.FIELD_BG};
+    breakCol ? theme.ACCENT + '20' :
+      classCol ? theme.ACCENT + '15' :
+        theme.FIELD_BG};
   ${({ breakCol }) => breakCol && `border-bottom: none !important;`}
   min-width: ${({ breakCol }) => (breakCol ? '45px' : '100px')};
   width: ${({ breakCol }) => (breakCol ? '4%' : 'auto')};
@@ -369,9 +380,9 @@ const Td = styled.td<{ breakCol?: boolean; classCol?: boolean; hasContent?: bool
   border: 1px solid ${({ theme }) => theme.BORDER};
   text-align: center;
   background: ${({ theme, breakCol, classCol, hasContent }) =>
-    breakCol ? theme.ACCENT + '20' : 
-    classCol ? theme.ACCENT + '15' : 
-    hasContent ? theme.CARD : theme.CARD};
+    breakCol ? theme.ACCENT + '20' :
+      classCol ? theme.ACCENT + '15' :
+        hasContent ? theme.CARD : theme.CARD};
   min-width: ${({ breakCol }) => (breakCol ? '45px' : '100px')};
   width: ${({ breakCol }) => (breakCol ? '4%' : 'auto')};
   vertical-align: middle;
@@ -379,8 +390,8 @@ const Td = styled.td<{ breakCol?: boolean; classCol?: boolean; hasContent?: bool
   transition: background 0.2s ease;
   
   &:hover {
-    background: ${({ theme, breakCol, classCol, hasContent }) => 
-      breakCol || classCol ? 'inherit' : 
+    background: ${({ theme, breakCol, classCol, hasContent }) =>
+    breakCol || classCol ? 'inherit' :
       hasContent ? theme.ACCENT + '08' : theme.FIELD_BG};
   }
   
@@ -549,7 +560,7 @@ const TimeTableManager: React.FC = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [cellSelections, setCellSelections] = useState<Record<string, string[]>>({});
-  
+
   // Consolidated loading state that tracks all data checks
   const [allDataLoaded, setAllDataLoaded] = useState(false);
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -558,11 +569,20 @@ const TimeTableManager: React.FC = () => {
   const selectRefs = useRef<Record<string, HTMLSelectElement | null>>({});
   const [dropdown, setDropdown] = useState<{ cellKey: string, rect: DOMRect | null } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [breakIdx, setBreakIdx] = useState(5); // Default: after 5th period
+  const [breakIdx, setBreakIdx] = useState(4); // Default: after 5th period (0-indexed)
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionName, setSessionName] = useState<string>('');
   const [exportLoading, setExportLoading] = useState(false);
   const [teacherSlipsLoading, setTeacherSlipsLoading] = useState(false);
+
+  const [periods, setPeriods] = useState<any[]>([]);
+  const [breakSettings, setBreakSettings] = useState({ start: '11:00', end: '11:15' });
+
+  // Timing Modal states
+  const [timingModalOpen, setTimingModalOpen] = useState(false);
+  const [tempPeriods, setTempPeriods] = useState<any[]>([]);
+  const [tempBreakSettings, setTempBreakSettings] = useState({ start: '11:00', end: '11:15' });
+  const [tempBreakIdx, setTempBreakIdx] = useState(4);
 
   // Fetch active session on mount
   useEffect(() => {
@@ -592,15 +612,15 @@ const TimeTableManager: React.FC = () => {
   // Helper functions for getting names
   const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
   const getTeacherName = (id: number): string => teachers.find(t => t.id === id)?.name || '';
-  
+
   // Helper function to get teacher name with gender-based prefix
   const getTeacherNameWithPrefix = (id: number): string => {
     const teacher = teachers.find(t => t.id === id);
     if (!teacher) return '';
-    
+
     const name = teacher.name;
     const gender = teacher.gender;
-    
+
     // Determine prefix based on gender
     let prefix = '';
     if (gender === 'Male') {
@@ -611,7 +631,7 @@ const TimeTableManager: React.FC = () => {
       // For 'Other' or any other gender, use a neutral prefix or no prefix
       prefix = '';
     }
-    
+
     return prefix ? `${prefix} ${name}` : name;
   };
 
@@ -638,6 +658,7 @@ const TimeTableManager: React.FC = () => {
             return await supabase.from('staff')
               .select('id, name, role, gender')
               .eq('role', 'Teacher')
+              .eq('status', 'active')
               .eq('school_id', user?.school_id || '')
               .order('name')
               .range(from, to);
@@ -655,6 +676,40 @@ const TimeTableManager: React.FC = () => {
               .range(from, to);
           }),
         ]);
+
+        // Fetch Timetable Settings & Periods
+        const [{ data: periodsData }, { data: settingsData }] = await Promise.all([
+          supabase.from('timetable_periods').select('*').eq('school_id', user?.school_id).order('period_index'),
+          supabase.from('timetable_settings').select('*').eq('school_id', user?.school_id).single()
+        ]);
+
+        if (periodsData && periodsData.length > 0) {
+          setPeriods(periodsData.map((p: any) => ({
+            num: p.period_index + 1,
+            time: `${p.start_time}-${p.end_time}`
+          })));
+        } else {
+          // Fallback to defaults
+          setPeriods([
+            { num: 1, time: '08:30-09:00' },
+            { num: 2, time: '09:00-09:30' },
+            { num: 3, time: '09:30-10:00' },
+            { num: 4, time: '10:00-10:30' },
+            { num: 5, time: '10:30-11:00' },
+            { num: 6, time: '11:15-11:45' },
+            { num: 7, time: '11:45-12:15' },
+            { num: 8, time: '12:15-12:45' },
+          ]);
+        }
+
+        if (settingsData) {
+          setBreakIdx(settingsData.break_after_period_index);
+          setBreakSettings({
+            start: settingsData.break_start_time,
+            end: settingsData.break_end_time
+          });
+        }
+
         setClasses(cls);
         setSubjects(subs);
         setTeachers(tchs);
@@ -663,8 +718,12 @@ const TimeTableManager: React.FC = () => {
 
         // Build classAssignments map
         const assignments: ClassAssignment = {};
+        const activeTeacherIds = new Set(tchs.map((t: any) => t.id));
+
         tcs?.forEach((tcsItem: any) => {
           if (tcsItem.class_subjects && tcsItem.class_subjects.class_id && tcsItem.class_subjects.subject_id) {
+            if (!activeTeacherIds.has(tcsItem.teacher_id)) return;
+
             const classId = tcsItem.class_subjects.class_id;
             if (!assignments[classId]) assignments[classId] = [];
             assignments[classId].push({
@@ -733,7 +792,7 @@ const TimeTableManager: React.FC = () => {
     const teacherSubjects = getTeacherSubjects(teacherId, classId);
     const currentSelections = cellSelections[currentCellKey] || [];
     const selectedInCurrentCell = currentSelections.map(sel => Number(sel.split('_')[0]));
-    
+
     // Return all subjects that aren't selected in the current cell
     return teacherSubjects.filter(subjectId => !selectedInCurrentCell.includes(subjectId));
   }
@@ -761,10 +820,10 @@ const TimeTableManager: React.FC = () => {
 
     // Get all subject-teacher pairs for this class
     const allPairs = classAssignments[classId] || [];
-    
+
     // Group by teacher for better organization
     const teacherMap = groupByTeacher(allPairs);
-    
+
     Object.entries(teacherMap).forEach(([teacherId, subjectIds]) => {
       subjectIds.forEach(sid => {
         const pair = `${sid}_${teacherId}`;
@@ -857,11 +916,11 @@ const TimeTableManager: React.FC = () => {
           .eq('school_id', schoolId)
           .eq('day_of_week', dayOfWeek)
           .in('class_id', uniqueClassIds);
-        
+
         if (checkError) {
           // Error checking existing records
         }
-        
+
         const { error: deleteError } = await supabase
           .from('timetable')
           .delete()
@@ -869,7 +928,7 @@ const TimeTableManager: React.FC = () => {
           .eq('school_id', schoolId)
           .eq('day_of_week', dayOfWeek)
           .in('class_id', uniqueClassIds);
-        
+
         if (deleteError) {
           throw deleteError;
         }
@@ -884,7 +943,7 @@ const TimeTableManager: React.FC = () => {
         if (insertError) {
           throw insertError;
         }
-        
+
         // Verify the data was actually inserted
         const { data: verifyData, error: verifyError } = await supabase
           .from('timetable')
@@ -893,7 +952,7 @@ const TimeTableManager: React.FC = () => {
           .eq('school_id', schoolId)
           .eq('day_of_week', 1)
           .in('class_id', uniqueClassIds);
-        
+
         if (verifyError) {
           // Verify error
         }
@@ -910,7 +969,7 @@ const TimeTableManager: React.FC = () => {
   // Load Timetable
   useEffect(() => {
     const loadTimetable = async () => {
-      if (!sessionId || !user?.school_id) return;
+      if (!sessionId || !user?.school_id || !allDataLoaded) return;
       const schoolId = user.school_id; // Extract to const for type narrowing
       setLoading(true);
       try {
@@ -927,7 +986,11 @@ const TimeTableManager: React.FC = () => {
         const loadedSelections: Record<string, string[]> = {};
         let loadedBreakIndex: number | undefined;
 
+        const activeTeacherIds = new Set(teachers.map(t => t.id));
+
         data.forEach((item: any) => {
+          if (!activeTeacherIds.has(item.teacher_id)) return;
+
           const cellKey = `${item.class_id}_${item.period_index}`;
           const selectionValue = `${item.subject_id}_${item.teacher_id}`;
 
@@ -953,7 +1016,7 @@ const TimeTableManager: React.FC = () => {
       }
     };
     loadTimetable();
-  }, [sessionId, user?.school_id, toast]); // Dependency on sessionId, school_id, and toast
+  }, [sessionId, user?.school_id, toast, allDataLoaded, teachers]);
 
   // Helper function to get free teachers for a period
   const getFreeTeachers = (periodIndex: number): string[] => {
@@ -1115,7 +1178,7 @@ const TimeTableManager: React.FC = () => {
         for (let i = 0; i <= breakIdx; i++) {
           const cellKey = `${cls.id}_${i}`;
           const selected = cellSelections[cellKey] || [];
-          
+
           if (selected.length > 0) {
             const teacherGroups = selected.reduce((acc: { [key: string]: string[] }, sel) => {
               const [subjectId, teacherId] = sel.split('_');
@@ -1169,7 +1232,7 @@ const TimeTableManager: React.FC = () => {
         for (let i = breakIdx + 1; i < periods.length; i++) {
           const cellKey = `${cls.id}_${i}`;
           const selected = cellSelections[cellKey] || [];
-          
+
           if (selected.length > 0) {
             const teacherGroups = selected.reduce((acc: { [key: string]: string[] }, sel) => {
               const [subjectId, teacherId] = sel.split('_');
@@ -1247,8 +1310,8 @@ const TimeTableManager: React.FC = () => {
         startY: 30,
         theme: 'grid',
         tableWidth: tableWidth,
-        margin: { 
-          left: margin, 
+        margin: {
+          left: margin,
           right: margin,
           bottom: 20
         },
@@ -1289,7 +1352,7 @@ const TimeTableManager: React.FC = () => {
             }
           })).reduce((acc, curr) => ({ ...acc, ...curr }), {})
         },
-        didParseCell: function(data: CellHookData) {
+        didParseCell: function (data: CellHookData) {
           const rowData = data.row.raw as unknown as (string | { content: string, colSpan: number })[];
           if (rowData) {
             // Existing cell styling
@@ -1322,11 +1385,11 @@ const TimeTableManager: React.FC = () => {
 
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
       }
-      
+
       // Format date as dd-mmm-yyyy for filename
       const formatDateForFileName = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
@@ -1337,13 +1400,13 @@ const TimeTableManager: React.FC = () => {
       };
 
       const fileName = `Timetable (${formatDateForFileName(new Date())}).pdf`;
-      
+
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach
         try {
           // Generate PDF as base64 string
           const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
+
           // Create unique filename with timestamp to prevent overwriting
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const mobileFileName = `timetable-${timestamp}.pdf`;
@@ -1365,11 +1428,11 @@ const TimeTableManager: React.FC = () => {
               });
 
               // Show success message and trigger native Android "Open with" dialog
-              
+
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
-              
+
             } catch (fsError) {
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
@@ -1379,7 +1442,7 @@ const TimeTableManager: React.FC = () => {
             try {
               const pdfBlob = doc.output('blob');
               const url = URL.createObjectURL(pdfBlob);
-              
+
               // Create a visible download button for mobile
               const downloadContainer = document.createElement('div');
               downloadContainer.style.cssText = `
@@ -1396,7 +1459,7 @@ const TimeTableManager: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
+
               downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Timetable Report</p>
@@ -1412,9 +1475,9 @@ const TimeTableManager: React.FC = () => {
                   Close
                 </button>
               `;
-              
+
               document.body.appendChild(downloadContainer);
-              
+
               // Auto-remove after 30 seconds
               setTimeout(() => {
                 if (downloadContainer.parentElement) {
@@ -1422,10 +1485,10 @@ const TimeTableManager: React.FC = () => {
                 }
                 URL.revokeObjectURL(url);
               }, 30000);
-              
-              
+
+
             } catch (webError) {
-              
+
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
               const newWindow = window.open('', '_blank');
@@ -1471,7 +1534,7 @@ const TimeTableManager: React.FC = () => {
         // For desktop, use the standard approach
         doc.save(fileName);
       }
-      
+
       toast.showToast('PDF generated successfully!', 'success');
     } catch (error) {
       toast.showToast('Failed to generate PDF', 'error');
@@ -1485,7 +1548,7 @@ const TimeTableManager: React.FC = () => {
   const getTeacherSchedule = (teacherId: number, classes: Class[]) => {
     const scheduleMap = new Map<number, { classes: string[]; subjects: string[] }>();
     const filteredClasses = classes.filter(cls => classAssignments[cls.id] && classAssignments[cls.id].length > 0);
-    
+
     filteredClasses.forEach((cls: Class) => {
       periods.forEach((period, idx) => {
         const cellKey = `${cls.id}_${idx}`;
@@ -1507,14 +1570,14 @@ const TimeTableManager: React.FC = () => {
         });
       });
     });
-    
+
     // Convert map to array and sort by period
     return Array.from(scheduleMap.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([period, entry]) => ({
         period: period,
-        class: entry.classes.join(' / '),
-        subject: entry.subjects.join(' / ')
+        class: Array.from(new Set(entry.classes)).join(' / '),
+        subject: Array.from(new Set(entry.subjects)).join(' / ')
       }));
   };
 
@@ -1539,7 +1602,7 @@ const TimeTableManager: React.FC = () => {
       const pageWidth = 210;
       const pageHeight = 297;
       const margin = 10;
-      
+
       // Calculate dimensions for 2x2 grid
       const gridCols = 2;
       const gridRows = 2;
@@ -1547,7 +1610,7 @@ const TimeTableManager: React.FC = () => {
       const horizontalGap = 25; // Increased from 10 to 25mm
       const slipWidth = (pageWidth - (2 * margin) - horizontalGap) / gridCols;
       const slipHeight = (pageHeight - (2 * margin) - 10) / gridRows; // 10mm gap between rows
-      
+
       // Get all teachers who have classes
       const activeTeachers = new Set<number>();
       Object.values(cellSelections).forEach(selections => {
@@ -1581,12 +1644,10 @@ const TimeTableManager: React.FC = () => {
         // Get all periods including break
         const allPeriods: PeriodInfo[] = [];
         for (let i = 1; i <= periods.length; i++) {
-          if (i === breakIdx + 2) {
-            allPeriods.push({ period: 'Break', time: '11:00-11:15' });
+          if (i === breakIdx + 1) {
+            allPeriods.push({ period: 'Break', time: `${breakSettings.start}-${breakSettings.end}` });
           }
-          if (i <= periods.length) {
-            allPeriods.push({ period: i, time: periods[i-1].time });
-          }
+          allPeriods.push({ period: i, time: periods[i - 1].time });
         }
 
         // Draw teacher name
@@ -1637,7 +1698,7 @@ const TimeTableManager: React.FC = () => {
             minCellHeight: 6
           },
           // Add custom styles for specific rows
-          didParseCell: function(data: CellHookData) {
+          didParseCell: function (data: CellHookData) {
             const rowData = data.row.raw as unknown as (string | { content: string, colSpan: number })[];
             if (rowData) {
               // Highlight break row
@@ -1663,11 +1724,11 @@ const TimeTableManager: React.FC = () => {
 
       // Check if it's a mobile device
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // Show immediate feedback for mobile users
       if (isMobileDevice) {
       }
-      
+
       // Format date as dd-mmm-yyyy for filename
       const formatDateForFileName = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
@@ -1678,13 +1739,13 @@ const TimeTableManager: React.FC = () => {
       };
 
       const fileName = `Teacher Schedules (${formatDateForFileName(new Date())}).pdf`;
-      
+
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach
         try {
           // Generate PDF as base64 string
           const pdfBase64 = doc.output('datauristring').split(',')[1];
-          
+
           // Create unique filename with timestamp to prevent overwriting
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const mobileFileName = `teacher-schedules-${timestamp}.pdf`;
@@ -1706,11 +1767,11 @@ const TimeTableManager: React.FC = () => {
               });
 
               // Show success message and trigger native Android "Open with" dialog
-              
+
               // Trigger native Android "Open with" dialog by opening the file URI
               // This will show the native Android app chooser dialog
               window.open(uriResult.uri, '_blank');
-              
+
             } catch (fsError) {
               // If filesystem fails, fallback to regular download
               doc.save(mobileFileName);
@@ -1720,7 +1781,7 @@ const TimeTableManager: React.FC = () => {
             try {
               const pdfBlob = doc.output('blob');
               const url = URL.createObjectURL(pdfBlob);
-              
+
               // Create a visible download button for mobile
               const downloadContainer = document.createElement('div');
               downloadContainer.style.cssText = `
@@ -1737,7 +1798,7 @@ const TimeTableManager: React.FC = () => {
                 text-align: center;
                 max-width: 90vw;
               `;
-              
+
               downloadContainer.innerHTML = `
                 <h3 style="margin: 0 0 15px 0; color: #4a6cf7;">PDF Ready for Download</h3>
                 <p style="margin: 0 0 15px 0; color: #666;">Teacher Schedules Report</p>
@@ -1753,9 +1814,9 @@ const TimeTableManager: React.FC = () => {
                   Close
                 </button>
               `;
-              
+
               document.body.appendChild(downloadContainer);
-              
+
               // Auto-remove after 30 seconds
               setTimeout(() => {
                 if (downloadContainer.parentElement) {
@@ -1763,10 +1824,10 @@ const TimeTableManager: React.FC = () => {
                 }
                 URL.revokeObjectURL(url);
               }, 30000);
-              
-              
+
+
             } catch (webError) {
-              
+
               // Final fallback: Open PDF in new tab with data URI
               const pdfDataUri = doc.output('datauristring');
               const newWindow = window.open('', '_blank');
@@ -1812,7 +1873,7 @@ const TimeTableManager: React.FC = () => {
         // For desktop, use the standard approach
         doc.save(fileName);
       }
-      
+
       toast.showToast('Teacher slips generated successfully!', 'success');
     } catch (error) {
       toast.showToast('Failed to generate teacher slips', 'error');
@@ -1821,6 +1882,48 @@ const TimeTableManager: React.FC = () => {
       setLoading(false);
     }
   }, [sessionId, breakIdx, cellSelections, classes, classAssignments, teachers, subjects, sections, toast]);
+
+  const handleSaveTimings = async () => {
+    if (!user?.school_id) return;
+    setLoading(true);
+    try {
+      // Save timetable periods
+      const { error: pError } = await supabase
+        .from('timetable_periods')
+        .upsert(tempPeriods.map((p, idx) => ({
+          period_index: idx,
+          start_time: p.time.split('-')[0],
+          end_time: p.time.split('-')[1],
+          school_id: user.school_id
+        })), {
+          onConflict: 'school_id,period_index'
+        });
+
+      if (pError) throw pError;
+
+      // Save timetable settings
+      const { error: sError } = await supabase
+        .from('timetable_settings')
+        .upsert({
+          school_id: user.school_id,
+          break_after_period_index: tempBreakIdx,
+          break_start_time: tempBreakSettings.start,
+          break_end_time: tempBreakSettings.end
+        });
+
+      if (sError) throw sError;
+
+      setPeriods([...tempPeriods]);
+      setBreakSettings({ ...tempBreakSettings });
+      setBreakIdx(tempBreakIdx);
+      setTimingModalOpen(false);
+      toast.showToast('Timetable settings saved successfully!', 'success');
+    } catch (error: any) {
+      toast.showToast('Failed to save settings: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Set global footer content (must be before conditional returns)
   useEffect(() => {
@@ -1863,10 +1966,10 @@ const TimeTableManager: React.FC = () => {
           <ActionButtonsGroup theme={theme}>
             <Tooltip title="Save Timetable" arrow placement="top">
               <span>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  onClick={handleSaveTimetable} 
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSaveTimetable}
                   disabled={loading || !sessionId}
                   size={isMobile ? 'small' : 'medium'}
                   sx={{
@@ -1885,10 +1988,10 @@ const TimeTableManager: React.FC = () => {
             </Tooltip>
             <Tooltip title="Export PDF" arrow placement="top">
               <span>
-                <Button 
-                  variant="contained" 
-                  color="secondary" 
-                  onClick={handleExportPDF} 
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleExportPDF}
                   disabled={loading || exportLoading || !sessionId}
                   size={isMobile ? 'small' : 'medium'}
                   sx={{
@@ -1903,22 +2006,22 @@ const TimeTableManager: React.FC = () => {
                 >
                   {exportLoading ? (
                     isMobile ? (
-                      <div style={{ 
-                        width: 12, 
-                        height: 12, 
-                        border: '2px solid #e0e7ff', 
-                        borderTop: '2px solid #4a6cf7', 
-                        borderRadius: '50%', 
+                      <div style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid #e0e7ff',
+                        borderTop: '2px solid #4a6cf7',
+                        borderRadius: '50%',
                         animation: 'spin 1s linear infinite',
                       }} />
                     ) : (
                       <>
-                        <div style={{ 
-                          width: 16, 
-                          height: 16, 
-                          border: '2px solid #e0e7ff', 
-                          borderTop: '2px solid #4a6cf7', 
-                          borderRadius: '50%', 
+                        <div style={{
+                          width: 16,
+                          height: 16,
+                          border: '2px solid #e0e7ff',
+                          borderTop: '2px solid #4a6cf7',
+                          borderRadius: '50%',
                           animation: 'spin 1s linear infinite',
                           marginRight: '8px'
                         }} />
@@ -1933,10 +2036,10 @@ const TimeTableManager: React.FC = () => {
             </Tooltip>
             <Tooltip title="Export Teacher Slips" arrow placement="top">
               <span>
-                <Button 
-                  variant="contained" 
-                  color="info" 
-                  onClick={handleExportTeacherSlips} 
+                <Button
+                  variant="contained"
+                  color="info"
+                  onClick={handleExportTeacherSlips}
                   disabled={loading || teacherSlipsLoading || !sessionId}
                   size={isMobile ? 'small' : 'medium'}
                   sx={{
@@ -1951,22 +2054,22 @@ const TimeTableManager: React.FC = () => {
                 >
                   {teacherSlipsLoading ? (
                     isMobile ? (
-                      <div style={{ 
-                        width: 12, 
-                        height: 12, 
-                        border: '2px solid #e0e7ff', 
-                        borderTop: '2px solid #4a6cf7', 
-                        borderRadius: '50%', 
+                      <div style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid #e0e7ff',
+                        borderTop: '2px solid #4a6cf7',
+                        borderRadius: '50%',
                         animation: 'spin 1s linear infinite',
                       }} />
                     ) : (
                       <>
-                        <div style={{ 
-                          width: 16, 
-                          height: 16, 
-                          border: '2px solid #e0e7ff', 
-                          borderTop: '2px solid #4a6cf7', 
-                          borderRadius: '50%', 
+                        <div style={{
+                          width: 16,
+                          height: 16,
+                          border: '2px solid #e0e7ff',
+                          borderTop: '2px solid #4a6cf7',
+                          borderRadius: '50%',
                           animation: 'spin 1s linear infinite',
                           marginRight: '8px'
                         }} />
@@ -1974,8 +2077,35 @@ const TimeTableManager: React.FC = () => {
                       </>
                     )
                   ) : (
-                    isMobile ? '' : 'Export Teacher Slips'
+                    isMobile ? '' : 'Export Slips'
                   )}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Timetable Settings" arrow placement="top">
+              <span>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={() => {
+                    setTempPeriods([...periods]);
+                    setTempBreakSettings({ ...breakSettings });
+                    setTempBreakIdx(breakIdx);
+                    setTimingModalOpen(true);
+                  }}
+                  disabled={loading}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    minWidth: isMobile ? 'auto' : 'auto',
+                    padding: isMobile ? '4px 8px' : '6px 16px',
+                    fontSize: '0.875rem',
+                    '& .MuiButton-startIcon': {
+                      margin: isMobile ? '0' : '0 8px 0 0',
+                    }
+                  }}
+                  startIcon={<Settings style={{ fontSize: isMobile ? '14px' : '18px' }} />}
+                >
+                  {isMobile ? '' : 'Settings'}
                 </Button>
               </span>
             </Tooltip>
@@ -1988,21 +2118,21 @@ const TimeTableManager: React.FC = () => {
       visible: true,
       content: <FooterContent />
     });
-    
+
     return () => {
       setFooterContent(null);
     };
-  }, [breakIdx, loading, exportLoading, teacherSlipsLoading, sessionId, isMobile, theme, handleSaveTimetable, handleExportPDF, handleExportTeacherSlips, setFooterContent]);
+  }, [breakIdx, loading, exportLoading, teacherSlipsLoading, sessionId, isMobile, theme, handleSaveTimetable, handleExportPDF, handleExportTeacherSlips, setFooterContent, periods, breakSettings, setTempPeriods, setTempBreakSettings, setTempBreakIdx, setTimingModalOpen]);
 
   // Check if user has school_id (after all hooks)
   if (!user?.school_id) {
     return (
       <Container>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          padding: '2rem', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
           gap: 16,
           color: '#888',
           fontSize: '1.1rem',
@@ -2026,9 +2156,9 @@ const TimeTableManager: React.FC = () => {
   }
 
   // Check if no subjects are assigned to teachers
-  const hasAssignments = Object.keys(classAssignments).length > 0 && 
+  const hasAssignments = Object.keys(classAssignments).length > 0 &&
     Object.values(classAssignments).some(assignments => assignments.length > 0);
-  
+
   if (!hasAssignments) {
     return (
       <Container>
@@ -2070,233 +2200,234 @@ const TimeTableManager: React.FC = () => {
       <MainContent>
         {loading ? <Loader /> : (
           <TableWrapper>
-          <TimetableTable>
-            <thead>
-              <tr>
-                <Th classCol>Class</Th>
-                {Array.from({ length: 8 + 1 }).map((_, idx) => {
-                  if (idx === breakIdx + 1) {
-                    return <Th breakCol key="break"></Th>;
-                  } else {
+            <TimetableTable>
+              <thead>
+                <tr>
+                  <Th classCol>Class</Th>
+                  {Array.from({ length: periods.length + 1 }).map((_, idx) => {
+                    if (idx === breakIdx + 1) {
+                      return <Th breakCol key="break"></Th>;
+                    } else {
                       const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
                       const period = periods[periodIdx];
+                      if (!period) return null;
                       return (
                         <Th key={period.num}>
                           <div style={{ fontWeight: 700, marginBottom: '2px' }}>P{period.num}</div>
                           <div style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>{period.time}</div>
                         </Th>
                       );
-                  }
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                const filteredClasses = sortClassesLocal(
-                  classes.filter(cls => classAssignments[cls.id] && classAssignments[cls.id].length > 0)
-                );
-                return [
-                  ...filteredClasses.map((cls, rowIdx) => (
-                    <tr key={cls.id}>
-                      <Td classCol style={{ fontWeight: 600, fontSize: '0.85rem' }}>{cls.name}</Td>
-                      {Array.from({ length: 8 + 1 }).map((_, idx) => {
-                        if (idx === breakIdx + 1) {
-                          if (rowIdx === 0) {
-                            return (
-                              <BreakColumn
-                                key="break"
-                                rowSpan={filteredClasses.length + 1} // +1 for free teachers row
-                              >
-                                BREAK<br />11:00-11:15
-                              </BreakColumn>
-                            );
+                    }
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const filteredClasses = sortClassesLocal(
+                    classes.filter(cls => classAssignments[cls.id] && classAssignments[cls.id].length > 0)
+                  );
+                  return [
+                    ...filteredClasses.map((cls, rowIdx) => (
+                      <tr key={cls.id}>
+                        <Td classCol style={{ fontWeight: 600, fontSize: '0.85rem' }}>{cls.name}</Td>
+                        {Array.from({ length: periods.length + 1 }).map((_, idx) => {
+                          if (idx === breakIdx + 1) {
+                            if (rowIdx === 0) {
+                              return (
+                                <BreakColumn
+                                  key="break"
+                                  rowSpan={filteredClasses.length + 1} // +1 for free teachers row
+                                >
+                                  BREAK<br />{breakSettings.start}-{breakSettings.end}
+                                </BreakColumn>
+                              );
+                            }
+                            return null;
                           }
-                          return null;
+                          const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
+                          const cellKey = `${cls.id}_${periodIdx}`;
+                          const selected = cellSelections[cellKey] || [];
+                          const isEditing = dropdown?.cellKey === cellKey;
+                          const options = getAvailablePairs(cls.id, cellKey);
+                          let display;
+                          if (selected.length > 0) {
+                            const teacherGroups = selected.reduce((acc: { [key: string]: string[] }, sel) => {
+                              const [subjectId, teacherId] = sel.split('_');
+                              if (!acc[teacherId]) acc[teacherId] = [];
+                              acc[teacherId].push(getSubjectName(Number(subjectId)));
+                              return acc;
+                            }, {});
+                            display = (
+                              <>
+                                {Object.entries(teacherGroups).map(([teacherId, subjects], idx) => (
+                                  <div key={teacherId} style={{
+                                    marginBottom: idx < Object.keys(teacherGroups).length - 1 ? '6px' : 0,
+                                    lineHeight: '1.3'
+                                  }}>
+                                    <div style={{
+                                      fontWeight: 600,
+                                      fontSize: '0.8rem',
+                                      color: 'inherit',
+                                      marginBottom: '2px'
+                                    }}>
+                                      {subjects.sort().join(' / ')}
+                                    </div>
+                                    <div style={{
+                                      fontSize: '0.75rem',
+                                      color: 'inherit',
+                                      opacity: 0.7
+                                    }}>
+                                      {getTeacherName(Number(teacherId))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </>
+                            );
+                          } else {
+                            display = <span style={{ color: 'inherit', opacity: 0.4, fontSize: '0.8rem' }}>Click to assign</span>;
+                          }
+                          return (
+                            <Td
+                              key={idx}
+                              hasContent={selected.length > 0}
+                              style={{ cursor: 'pointer', position: 'relative' }}
+                              onClick={e => {
+                                if (dropdown?.cellKey !== cellKey) {
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  setDropdown({ cellKey, rect });
+                                }
+                              }}
+                            >
+                              <div className="cell-content" style={{
+                                padding: selected.length > 0 ? '4px 2px' : '2px',
+                                lineHeight: '1.4'
+                              }}>
+                                {display}
+                              </div>
+                              {dropdown?.cellKey === cellKey && dropdown.rect &&
+                                ReactDOM.createPortal(
+                                  (() => {
+                                    const rect = dropdown.rect;
+                                    const dropdownWidth = Math.max(rect.width, 220);
+                                    let top = rect.bottom + 4;
+                                    let left = rect.left;
+                                    // Adjust vertical position, preferring below but checking for space
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
+                                    if (spaceBelow < 180 + 8 && spaceAbove > 180 + 8) { // Not enough space below, but enough above
+                                      top = rect.top - 180 - 4; // Position above the cell
+                                    } else if (spaceBelow < 180 + 8) { // Not enough space below and not enough above
+                                      top = window.innerHeight - 180 - 8; // Position at bottom edge
+                                      if (top < 8) top = 8; // Prevent going off top edge
+                                    }
+
+                                    // Adjust horizontal position, preferring left alignment but checking for space
+                                    const spaceRight = window.innerWidth - rect.left;
+                                    const spaceLeft = rect.left + rect.width;
+                                    let finalLeft = rect.left;
+                                    if (spaceRight < dropdownWidth + 8 && spaceLeft > dropdownWidth + 8) { // Not enough space right, but enough left (aligned to cell's right)
+                                      finalLeft = rect.right - dropdownWidth; // Position to the left of the cell, aligned to cell's right edge
+                                    } else if (spaceRight < dropdownWidth + 8) { // Not enough space right and not enough left
+                                      finalLeft = window.innerWidth - dropdownWidth - 8; // Position at right edge
+                                      if (finalLeft < 8) finalLeft = 8; // Prevent going off left edge
+                                    }
+
+                                    // Use the calculated finalLeft
+                                    left = finalLeft;
+
+                                    return (
+                                      <Dropdown
+                                        ref={dropdownRef}
+                                        style={{
+                                          top,
+                                          left,
+                                          minWidth: dropdownWidth,
+                                          maxHeight: '180px',
+                                          overflowY: 'auto',
+                                          overflowX: 'hidden',
+                                        }}
+                                      >
+                                        {(cellSelections[cellKey] && cellSelections[cellKey].length > 0) && <>
+                                          <DropdownOption
+                                            style={{ color: '#dc2626', fontWeight: 700 }}
+                                            onClick={() => {
+                                              setCellSelections(s => ({ ...s, [cellKey]: [] }));
+                                              setDropdown(null);
+                                            }}
+                                          >
+                                            Deselect
+                                          </DropdownOption>
+                                          <DropdownDivider />
+                                        </>}
+                                        {options.length === 0 ? (
+                                          <DropdownOption disabled>No options</DropdownOption>
+                                        ) : options.map((opt, i) => (
+                                          <DropdownOption
+                                            key={i}
+                                            onClick={() => {
+                                              setCellSelections(s => {
+                                                const current = s[cellKey] || [];
+                                                const [newSubjectId, newTeacherId] = opt.value.split('_');
+                                                if (current.length === 0) {
+                                                  // No selection yet, just add
+                                                  const newSelections = { ...s, [cellKey]: [opt.value] };
+                                                  return newSelections;
+                                                }
+                                                // Get teacherId of current selection(s)
+                                                const [, currentTeacherId] = current[0].split('_');
+
+                                                if (current.every(sel => sel.split('_')[1] === newTeacherId)) {
+                                                  // Same teacher, add if not already present
+                                                  if (!current.includes(opt.value)) {
+                                                    const newSelections = { ...s, [cellKey]: [...current, opt.value] };
+                                                    return newSelections;
+                                                  } else {
+                                                    return s; // Already selected
+                                                  }
+                                                } else {
+                                                  // Different teacher, replace selection
+                                                  const newSelections = { ...s, [cellKey]: [opt.value] };
+                                                  return newSelections;
+                                                }
+                                              });
+                                              setDropdown(null);
+                                            }}
+                                          >
+                                            {opt.label}
+                                          </DropdownOption>
+                                        ))}
+                                      </Dropdown>
+                                    );
+                                  })(),
+                                  document.body
+                                )
+                              }
+                            </Td>
+                          );
+                        })}
+                      </tr>
+                    )),
+                    // Free teachers row
+                    <tr key="free-teachers">
+                      <Td classCol style={{ fontWeight: 700, fontSize: '0.8rem', opacity: 0.8 }}>Free Teachers</Td>
+                      {Array.from({ length: periods.length + 1 }).map((_, idx) => {
+                        if (idx === breakIdx + 1) {
+                          return null; // Skip break column as it's already spanned
                         }
                         const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
-                        const cellKey = `${cls.id}_${periodIdx}`;
-                        const selected = cellSelections[cellKey] || [];
-                        const isEditing = dropdown?.cellKey === cellKey;
-                        const options = getAvailablePairs(cls.id, cellKey);
-                        let display;
-                        if (selected.length > 0) {
-                          const teacherGroups = selected.reduce((acc: { [key: string]: string[] }, sel) => {
-                            const [subjectId, teacherId] = sel.split('_');
-                            if (!acc[teacherId]) acc[teacherId] = [];
-                            acc[teacherId].push(getSubjectName(Number(subjectId)));
-                            return acc;
-                          }, {});
-                          display = (
-                            <>
-                              {Object.entries(teacherGroups).map(([teacherId, subjects], idx) => (
-                                <div key={teacherId} style={{ 
-                                  marginBottom: idx < Object.keys(teacherGroups).length - 1 ? '6px' : 0,
-                                  lineHeight: '1.3'
-                                }}>
-                                  <div style={{ 
-                                    fontWeight: 600, 
-                                    fontSize: '0.8rem',
-                                    color: 'inherit',
-                                    marginBottom: '2px'
-                                  }}>
-                                    {subjects.sort().join(' / ')}
-                                  </div>
-                                  <div style={{ 
-                                    fontSize: '0.75rem', 
-                                    color: 'inherit',
-                                    opacity: 0.7
-                                  }}>
-                                    {getTeacherName(Number(teacherId))}
-                                  </div>
-                                </div>
-                              ))}
-                            </>
-                          );
-                        } else {
-                          display = <span style={{ color: 'inherit', opacity: 0.4, fontSize: '0.8rem' }}>Click to assign</span>;
-                        }
+                        const freeTeachers = getFreeTeachers(periodIdx);
                         return (
-                          <Td
-                            key={idx}
-                            hasContent={selected.length > 0}
-                            style={{ cursor: 'pointer', position: 'relative' }}
-                            onClick={e => {
-                              if (dropdown?.cellKey !== cellKey) {
-                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                setDropdown({ cellKey, rect });
-                              }
-                            }}
-                          >
-                            <div className="cell-content" style={{ 
-                            padding: selected.length > 0 ? '4px 2px' : '2px',
-                            lineHeight: '1.4'
-                          }}>
-                              {display}
-                            </div>
-                            {dropdown?.cellKey === cellKey && dropdown.rect &&
-                              ReactDOM.createPortal(
-                                (() => {
-                                  const rect = dropdown.rect;
-                                  const dropdownWidth = Math.max(rect.width, 220);
-                                  let top = rect.bottom + 4;
-                                  let left = rect.left;
-                                  // Adjust vertical position, preferring below but checking for space
-                                  const spaceBelow = window.innerHeight - rect.bottom;
-                                  const spaceAbove = rect.top;
-                                  if (spaceBelow < 180 + 8 && spaceAbove > 180 + 8) { // Not enough space below, but enough above
-                                    top = rect.top - 180 - 4; // Position above the cell
-                                  } else if (spaceBelow < 180 + 8) { // Not enough space below and not enough above
-                                    top = window.innerHeight - 180 - 8; // Position at bottom edge
-                                    if (top < 8) top = 8; // Prevent going off top edge
-                                  }
-                                  
-                                  // Adjust horizontal position, preferring left alignment but checking for space
-                                  const spaceRight = window.innerWidth - rect.left;
-                                  const spaceLeft = rect.left + rect.width;
-                                  let finalLeft = rect.left;
-                                  if (spaceRight < dropdownWidth + 8 && spaceLeft > dropdownWidth + 8) { // Not enough space right, but enough left (aligned to cell's right)
-                                    finalLeft = rect.right - dropdownWidth; // Position to the left of the cell, aligned to cell's right edge
-                                  } else if (spaceRight < dropdownWidth + 8) { // Not enough space right and not enough left
-                                    finalLeft = window.innerWidth - dropdownWidth - 8; // Position at right edge
-                                    if (finalLeft < 8) finalLeft = 8; // Prevent going off left edge
-                                  }
-
-                                  // Use the calculated finalLeft
-                                  left = finalLeft;
-
-                                  return (
-                                    <Dropdown
-                                      ref={dropdownRef}
-                                      style={{
-                                        top,
-                                        left,
-                                        minWidth: dropdownWidth,
-                                        maxHeight: '180px',
-                                        overflowY: 'auto',
-                                        overflowX: 'hidden',
-                                      }}
-                                    >
-                                      {(cellSelections[cellKey] && cellSelections[cellKey].length > 0) && <>
-                                        <DropdownOption
-                                          style={{ color: '#dc2626', fontWeight: 700 }}
-                                          onClick={() => {
-                                            setCellSelections(s => ({ ...s, [cellKey]: [] }));
-                                            setDropdown(null);
-                                          }}
-                                        >
-                                          Deselect
-                                        </DropdownOption>
-                                        <DropdownDivider />
-                                      </>}
-                                      {options.length === 0 ? (
-                                        <DropdownOption disabled>No options</DropdownOption>
-                                      ) : options.map((opt, i) => (
-                                        <DropdownOption
-                                          key={i}
-                                          onClick={() => {
-                                            setCellSelections(s => {
-                                              const current = s[cellKey] || [];
-                                              const [newSubjectId, newTeacherId] = opt.value.split('_');
-                                              if (current.length === 0) {
-                                                // No selection yet, just add
-                                                const newSelections = { ...s, [cellKey]: [opt.value] };
-                                                return newSelections;
-                                              }
-                                              // Get teacherId of current selection(s)
-                                              const [, currentTeacherId] = current[0].split('_');
-                                              
-                                              if (current.every(sel => sel.split('_')[1] === newTeacherId)) {
-                                                // Same teacher, add if not already present
-                                                if (!current.includes(opt.value)) {
-                                                  const newSelections = { ...s, [cellKey]: [...current, opt.value] };
-                                                  return newSelections;
-                                                } else {
-                                                  return s; // Already selected
-                                                }
-                                              } else {
-                                                // Different teacher, replace selection
-                                                const newSelections = { ...s, [cellKey]: [opt.value] };
-                                                return newSelections;
-                                              }
-                                            });
-                                            setDropdown(null);
-                                          }}
-                                        >
-                                          {opt.label}
-                                        </DropdownOption>
-                                      ))}
-                                    </Dropdown>
-                                  );
-                                })(),
-                                document.body
-                              )
-                            }
+                          <Td key={idx} style={{ fontSize: '0.8rem', opacity: 0.7, fontStyle: 'italic' }}>
+                            {freeTeachers.length > 0 ? freeTeachers.join(', ') : '-'}
                           </Td>
                         );
                       })}
                     </tr>
-                  )),
-                  // Free teachers row
-                  <tr key="free-teachers">
-                    <Td classCol style={{ fontWeight: 700, fontSize: '0.8rem', opacity: 0.8 }}>Free Teachers</Td>
-                    {Array.from({ length: 8 + 1 }).map((_, idx) => {
-                      if (idx === breakIdx + 1) {
-                        return null; // Skip break column as it's already spanned
-                      }
-                      const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
-                      const freeTeachers = getFreeTeachers(periodIdx);
-                      return (
-                        <Td key={idx} style={{ fontSize: '0.8rem', opacity: 0.7, fontStyle: 'italic' }}>
-                          {freeTeachers.length > 0 ? freeTeachers.join(', ') : '-'}
-                        </Td>
-                      );
-                    })}
-                  </tr>
-                ];
-              })()}
-            </tbody>
-          </TimetableTable>
-        </TableWrapper>
+                  ];
+                })()}
+              </tbody>
+            </TimetableTable>
+          </TableWrapper>
         )}
       </MainContent>
       <style>{`
@@ -2305,6 +2436,162 @@ const TimeTableManager: React.FC = () => {
           100% { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Settings Modal */}
+      <Dialog
+        open={timingModalOpen}
+        onClose={() => setTimingModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3, bgcolor: theme.CARD }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: 1, borderColor: theme.BORDER, color: theme.TEXT_PRIMARY
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Timer color="primary" />
+            <Typography variant="h6" fontWeight={700}>Timetable Timing Settings</Typography>
+          </Box>
+          <IconButton onClick={() => setTimingModalOpen(false)} size="small" sx={{ color: theme.TEXT_SECONDARY }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, bgcolor: theme.CARD }}>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: theme.TEXT_PRIMARY }}>
+              Period Timings
+            </Typography>
+            <MuiTable size="small">
+              <MuiTableHead>
+                <MuiTableRow>
+                  <MuiTableCell sx={{ borderBottom: 1, borderColor: theme.BORDER, color: theme.TEXT_SECONDARY }}>Period</MuiTableCell>
+                  <MuiTableCell sx={{ borderBottom: 1, borderColor: theme.BORDER, color: theme.TEXT_SECONDARY }}>Start Time</MuiTableCell>
+                  <MuiTableCell sx={{ borderBottom: 1, borderColor: theme.BORDER, color: theme.TEXT_SECONDARY }}>End Time</MuiTableCell>
+                  <MuiTableCell align="center" sx={{ borderBottom: 1, borderColor: theme.BORDER, color: theme.TEXT_SECONDARY }}>Actions</MuiTableCell>
+                </MuiTableRow>
+              </MuiTableHead>
+              <MuiTableBody>
+                {tempPeriods.map((p, idx) => (
+                  <MuiTableRow key={idx}>
+                    <MuiTableCell sx={{ borderBottom: 1, borderColor: theme.BORDER, color: theme.TEXT_PRIMARY, fontWeight: 600 }}>
+                      Period {idx + 1}
+                    </MuiTableCell>
+                    <MuiTableCell sx={{ borderBottom: 1, borderColor: theme.BORDER }}>
+                      <TextField
+                        type="time"
+                        size="small"
+                        value={p.time.split('-')[0]}
+                        onChange={(e) => {
+                          const newPeriods = [...tempPeriods];
+                          const endTime = p.time.split('-')[1];
+                          newPeriods[idx].time = `${e.target.value}-${endTime}`;
+                          setTempPeriods(newPeriods);
+                        }}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ input: { color: theme.TEXT_PRIMARY } }}
+                      />
+                    </MuiTableCell>
+                    <MuiTableCell sx={{ borderBottom: 1, borderColor: theme.BORDER }}>
+                      <TextField
+                        type="time"
+                        size="small"
+                        value={p.time.split('-')[1]}
+                        onChange={(e) => {
+                          const newPeriods = [...tempPeriods];
+                          const startTime = p.time.split('-')[0];
+                          newPeriods[idx].time = `${startTime}-${e.target.value}`;
+                          setTempPeriods(newPeriods);
+                        }}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ input: { color: theme.TEXT_PRIMARY } }}
+                      />
+                    </MuiTableCell>
+                    <MuiTableCell align="center" sx={{ borderBottom: 1, borderColor: theme.BORDER }}>
+                      <IconButton color="error" size="small" onClick={() => {
+                        setTempPeriods(tempPeriods.filter((_, i) => i !== idx));
+                      }}>
+                        <Close fontSize="small" />
+                      </IconButton>
+                    </MuiTableCell>
+                  </MuiTableRow>
+                ))}
+                <MuiTableRow>
+                  <MuiTableCell colSpan={4} sx={{ borderBottom: 0 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => setTempPeriods([...tempPeriods, { num: tempPeriods.length + 1, time: '08:00-08:30' }])}
+                      sx={{ borderColor: theme.BORDER, color: theme.ACCENT }}
+                    >
+                      + Add Period
+                    </Button>
+                  </MuiTableCell>
+                </MuiTableRow>
+              </MuiTableBody>
+            </MuiTable>
+          </Box>
+
+          <Divider sx={{ my: 3, borderColor: theme.BORDER }} />
+
+          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: theme.TEXT_PRIMARY }}>
+            Break Settings
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Break After Period</Typography>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={tempBreakIdx}
+                onChange={(e) => setTempBreakIdx(Number(e.target.value))}
+                SelectProps={{ native: true }}
+                sx={{ input: { color: theme.TEXT_PRIMARY }, '& select': { color: theme.TEXT_PRIMARY, bgcolor: theme.CARD } }}
+              >
+                {tempPeriods.map((p, idx) => (
+                  <option key={idx} value={idx} style={{ background: theme.CARD, color: theme.TEXT_PRIMARY }}>
+                    Period {idx + 1}
+                  </option>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Break Start Time</Typography>
+              <TextField
+                type="time"
+                fullWidth
+                size="small"
+                value={tempBreakSettings.start}
+                onChange={(e) => setTempBreakSettings({ ...tempBreakSettings, start: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                sx={{ input: { color: theme.TEXT_PRIMARY } }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Break End Time</Typography>
+              <TextField
+                type="time"
+                fullWidth
+                size="small"
+                value={tempBreakSettings.end}
+                onChange={(e) => setTempBreakSettings({ ...tempBreakSettings, end: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                sx={{ input: { color: theme.TEXT_PRIMARY } }}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, bgcolor: theme.CARD, borderTop: 1, borderColor: theme.BORDER }}>
+          <Button onClick={() => setTimingModalOpen(false)} sx={{ color: theme.TEXT_SECONDARY }}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveTimings} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Timing Settings'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

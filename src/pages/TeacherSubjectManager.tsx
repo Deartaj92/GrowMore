@@ -17,13 +17,13 @@ import { useActivityTracking } from '../hooks/useActivityTracking';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
 import { darkTheme, lightTheme } from '../components/Layout';
-import { 
-  Info, 
-  Search, 
-  Person, 
-  Assignment, 
-  Close, 
-  School, 
+import {
+  Info,
+  Search,
+  Person,
+  Assignment,
+  Close,
+  School,
   Groups,
   Edit,
   CheckCircle,
@@ -420,6 +420,36 @@ const AssignButton = styled.button`
   }
 `;
 
+const ClearButton = styled.button`
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border: 2px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  
+  &:hover {
+    background: #ef4444;
+    color: white;
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+  
+  svg {
+    font-size: 0.9rem !important;
+  }
+`;
+
 const AssignmentsSection = styled.div`
   margin-top: 12px;
 `;
@@ -714,9 +744,9 @@ const ModalSubjectsGrid = styled.div`
 
 const ModalSubjectCard = styled.div<{ isSelected?: boolean; hasConflict?: boolean }>`
   padding: 12px;
-  border: 2px solid ${({ isSelected, hasConflict, theme }) => 
+  border: 2px solid ${({ isSelected, hasConflict, theme }) =>
     hasConflict ? '#f59e0b' :
-    isSelected ? theme.ACCENT : theme.BORDER
+      isSelected ? theme.ACCENT : theme.BORDER
   };
   border-radius: 10px;
   background: ${({ isSelected, theme }) => isSelected ? theme.ACCENT + '08' : theme.CARD};
@@ -769,17 +799,17 @@ const ModalSectionChip = styled.div<{ selected?: boolean; conflicted?: boolean }
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border: 2px solid ${({ selected, conflicted, theme }) => 
+  border: 2px solid ${({ selected, conflicted, theme }) =>
     conflicted ? '#f59e0b' :
-    selected ? theme.ACCENT : theme.BORDER
+      selected ? theme.ACCENT : theme.BORDER
   };
-  background: ${({ selected, conflicted, theme }) => 
+  background: ${({ selected, conflicted, theme }) =>
     conflicted ? '#fef3c7' :
-    selected ? theme.ACCENT + '15' : 'transparent'
+      selected ? theme.ACCENT + '15' : 'transparent'
   };
-  color: ${({ selected, conflicted, theme }) => 
+  color: ${({ selected, conflicted, theme }) =>
     conflicted ? '#92400e' :
-    selected ? theme.ACCENT : theme.TEXT_PRIMARY
+      selected ? theme.ACCENT : theme.TEXT_PRIMARY
   };
   
   &:hover {
@@ -830,7 +860,7 @@ const TeacherSubjectManager = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assigningTeacher, setAssigningTeacher] = useState<Teacher | null>(null);
   const [assignSelectedClassSubjects, setAssignSelectedClassSubjects] = useState<string[]>([]);
-  const [assignSelectedSections, setAssignSelectedSections] = useState<{[key: string]: string[]}>({});
+  const [assignSelectedSections, setAssignSelectedSections] = useState<{ [key: string]: string[] }>({});
   const [classes, setClasses] = useState<{ id: number; name: string; has_sections: boolean }[]>([]);
   const [sections, setSections] = useState<{ id: number; name: string; class_id: number }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -906,6 +936,7 @@ const TeacherSubjectManager = () => {
               sections:sections(id, name, class_id, teacher_id, classes(id, name))
             `)
             .eq('role', 'Teacher')
+            .eq('status', 'active')
             .eq('school_id', user.school_id)
             .order('name');
 
@@ -915,11 +946,11 @@ const TeacherSubjectManager = () => {
               ...teacher,
               section: Array.isArray(teacher.sections)
                 ? teacher.sections
-                    .filter(sec => sec.teacher_id === teacher.id)
-                    .map(sec => ({
-                      class_name: getClassName(sec.class_id),
-                      section_name: sec.name || 'Unknown'
-                    }))
+                  .filter(sec => sec.teacher_id === teacher.id)
+                  .map(sec => ({
+                    class_name: getClassName(sec.class_id),
+                    section_name: sec.name || 'Unknown'
+                  }))
                 : null
             })) as Teacher[];
             setTeachers(transformedData);
@@ -953,37 +984,37 @@ const TeacherSubjectManager = () => {
   const filteredTeachers = useMemo(() => {
     if (!searchQuery.trim()) return teachers;
     const query = searchQuery.toLowerCase();
-    return teachers.filter(teacher => 
+    return teachers.filter(teacher =>
       teacher.name.toLowerCase().includes(query)
     );
   }, [teachers, searchQuery]);
 
   // Calculate stats
   const stats = useMemo(() => {
-    const assignedCount = teacherClassSubjects.length === 0 
-      ? 0 
+    const assignedCount = teacherClassSubjects.length === 0
+      ? 0
       : (() => {
-          const uniqueIds: string[] = [];
-          teacherClassSubjects.forEach(tcs => {
-            const teacherId = tcs.teacher_id.toString();
-            if (!uniqueIds.includes(teacherId)) {
-              uniqueIds.push(teacherId);
-            }
-          });
-          return uniqueIds.length;
-        })();
-    
+        const uniqueIds: string[] = [];
+        teacherClassSubjects.forEach(tcs => {
+          const teacherId = tcs.teacher_id.toString();
+          if (!uniqueIds.includes(teacherId)) {
+            uniqueIds.push(teacherId);
+          }
+        });
+        return uniqueIds.length;
+      })();
+
     const classesCount = classSubjects.length === 0
       ? 0
       : (() => {
-          const uniqueClasses: string[] = [];
-          classSubjects.forEach(cs => {
-            if (!uniqueClasses.includes(cs.classes.name)) {
-              uniqueClasses.push(cs.classes.name);
-            }
-          });
-          return uniqueClasses.length;
-        })();
+        const uniqueClasses: string[] = [];
+        classSubjects.forEach(cs => {
+          if (!uniqueClasses.includes(cs.classes.name)) {
+            uniqueClasses.push(cs.classes.name);
+          }
+        });
+        return uniqueClasses.length;
+      })();
 
     return {
       totalTeachers: teachers.length,
@@ -993,32 +1024,32 @@ const TeacherSubjectManager = () => {
   }, [teachers.length, teacherClassSubjects, classSubjects]);
 
   const getTeacherAssignmentsGrouped = (teacherId: number) => {
-    const assignments = teacherClassSubjects.filter(ts => 
+    const assignments = teacherClassSubjects.filter(ts =>
       ts.teacher_id.toString() === teacherId.toString()
     );
-    
-    const grouped: {[key: string]: {subjects: string[], sections: string[]}} = {};
-    
+
+    const grouped: { [key: string]: { subjects: string[], sections: string[] } } = {};
+
     assignments.forEach(assignment => {
       const className = assignment.class_subjects.classes.name;
       const subjectName = assignment.class_subjects.subjects.name;
-      const sectionName = assignment.section_id 
+      const sectionName = assignment.section_id
         ? sections.find(s => s.id === parseInt(assignment.section_id!))?.name || 'All'
         : 'All';
-      
+
       if (!grouped[className]) {
         grouped[className] = { subjects: [], sections: [] };
       }
-      
+
       if (!grouped[className].subjects.includes(subjectName)) {
         grouped[className].subjects.push(subjectName);
       }
-      
+
       if (!grouped[className].sections.includes(sectionName)) {
         grouped[className].sections.push(sectionName);
       }
     });
-    
+
     return grouped;
   };
 
@@ -1029,15 +1060,15 @@ const TeacherSubjectManager = () => {
   const openAssignModal = (teacher: Teacher) => {
     setAssigningTeacher(teacher);
     setActiveTab(0);
-    
+
     const assigned = teacherClassSubjects
       .filter(ts => ts.teacher_id.toString() === teacher.id.toString())
       .map(ts => ts.class_subject_id.toString());
-    
+
     const uniqueAssigned = assigned.filter((id, index) => assigned.indexOf(id) === index);
     setAssignSelectedClassSubjects(uniqueAssigned);
-    
-    const sectionAssignments: {[key: string]: string[]} = {};
+
+    const sectionAssignments: { [key: string]: string[] } = {};
     teacherClassSubjects
       .filter(ts => ts.teacher_id.toString() === teacher.id.toString())
       .forEach(ts => {
@@ -1048,7 +1079,7 @@ const TeacherSubjectManager = () => {
         }
       });
     setAssignSelectedSections(sectionAssignments);
-    
+
     setAssignModalOpen(true);
   };
 
@@ -1062,54 +1093,54 @@ const TeacherSubjectManager = () => {
 
   const isAssignmentValid = () => {
     if (assignSelectedClassSubjects.length === 0) return false;
-    
+
     return assignSelectedClassSubjects.every(class_subject_id => {
       const classSubject = classSubjects.find(cs => cs.id.toString() === class_subject_id);
       const selectedSections = assignSelectedSections[class_subject_id] || [];
-      
+
       if (classSubject?.classes.has_sections) {
         return selectedSections.length > 0;
       }
-      
+
       return true;
     });
   };
 
   const handleAssignModalSave = async () => {
     if (!assigningTeacher || !user?.school_id) return;
-    
+
     try {
       const validationErrors: string[] = [];
-      
+
       assignSelectedClassSubjects.forEach(class_subject_id => {
         const classSubject = classSubjects.find(cs => cs.id.toString() === class_subject_id);
         const selectedSections = assignSelectedSections[class_subject_id] || [];
-        
+
         if (classSubject?.classes.has_sections && selectedSections.length === 0) {
           validationErrors.push(`${classSubject.classes.name} - ${classSubject.subjects.name}`);
         }
       });
-      
+
       if (validationErrors.length > 0) {
         showToast(`Please select sections for: ${validationErrors.join(', ')}`, 'error');
         return;
       }
-      
+
       const conflictingAssignments: string[] = [];
-      
+
       assignSelectedClassSubjects.forEach(class_subject_id => {
         const classSubject = classSubjects.find(cs => cs.id.toString() === class_subject_id);
         const selectedSections = assignSelectedSections[class_subject_id] || [];
-        
+
         if (classSubject?.classes.has_sections) {
           selectedSections.forEach(section_id => {
-            const existingAssignment = teacherClassSubjects.find(ts => 
-              ts.class_subject_id.toString() === class_subject_id && 
+            const existingAssignment = teacherClassSubjects.find(ts =>
+              ts.class_subject_id.toString() === class_subject_id &&
               ts.section_id != null &&
               parseInt(ts.section_id.toString()) === parseInt(section_id) &&
               ts.teacher_id.toString() !== assigningTeacher.id.toString()
             );
-            
+
             if (existingAssignment) {
               const teacherName = existingAssignment.staff?.name || 'Unknown Teacher';
               const sectionName = sections.find(s => s.id === parseInt(section_id))?.name || 'Unknown Section';
@@ -1117,49 +1148,49 @@ const TeacherSubjectManager = () => {
             }
           });
         } else {
-          const existingAssignment = teacherClassSubjects.find(ts => 
-            ts.class_subject_id.toString() === class_subject_id && 
+          const existingAssignment = teacherClassSubjects.find(ts =>
+            ts.class_subject_id.toString() === class_subject_id &&
             ts.section_id === null &&
             ts.teacher_id.toString() !== assigningTeacher.id.toString()
           );
-          
+
           if (existingAssignment && classSubject) {
             const teacherName = existingAssignment.staff?.name || 'Unknown Teacher';
             conflictingAssignments.push(`${classSubject.subjects.name} (${teacherName})`);
           }
         }
       });
-      
+
       if (conflictingAssignments.length > 0) {
         showToast(`Conflict: ${conflictingAssignments.join(', ')}`, 'error');
         return;
       }
-      
-    const { error: delError } = await supabase
-      .from('teacher_class_subjects')
-      .delete()
-      .eq('teacher_id', assigningTeacher.id)
-      .eq('school_id', user.school_id);
-      
-    if (delError) {
-      showToast('Error removing previous assignments.', 'error');
-      return;
-    }
 
-    if (assignSelectedClassSubjects.length > 0) {
+      const { error: delError } = await supabase
+        .from('teacher_class_subjects')
+        .delete()
+        .eq('teacher_id', assigningTeacher.id)
+        .eq('school_id', user.school_id);
+
+      if (delError) {
+        showToast('Error removing previous assignments.', 'error');
+        return;
+      }
+
+      if (assignSelectedClassSubjects.length > 0) {
         const assignments: any[] = [];
-        
+
         assignSelectedClassSubjects.forEach(class_subject_id => {
           const classSubject = classSubjects.find(cs => cs.id.toString() === class_subject_id);
           const selectedSections = assignSelectedSections[class_subject_id] || [];
-          
+
           if (classSubject?.classes.has_sections) {
             selectedSections.forEach(section_id => {
               assignments.push({
-        teacher_id: assigningTeacher.id,
-        class_subject_id,
+                teacher_id: assigningTeacher.id,
+                class_subject_id,
                 section_id: parseInt(section_id),
-        school_id: user.school_id,
+                school_id: user.school_id,
               });
             });
           } else {
@@ -1176,16 +1207,16 @@ const TeacherSubjectManager = () => {
           const { error: insError } = await supabase
             .from('teacher_class_subjects')
             .insert(assignments);
-          
-      if (insError) {
-        showToast('Error assigning class-subjects.', 'error');
-        return;
+
+          if (insError) {
+            showToast('Error assigning class-subjects.', 'error');
+            return;
+          }
+        }
       }
-    }
-      }
-      
-    showToast('Assignments updated successfully.', 'success');
-      
+
+      showToast('Assignments updated successfully.', 'success');
+
       try {
         const subjectCount = assignSelectedClassSubjects.length;
         const uniqueClassNames: string[] = [];
@@ -1197,7 +1228,7 @@ const TeacherSubjectManager = () => {
           }
         });
         const classCount = uniqueClassNames.length;
-        
+
         await logSubjectAssignmentActivity(
           'create',
           assigningTeacher.name,
@@ -1207,11 +1238,41 @@ const TeacherSubjectManager = () => {
       } catch (activityError) {
         // Silent fail for activity logging
       }
-      
-    fetchTeacherClassSubjects();
-    closeAssignModal();
+
+      fetchTeacherClassSubjects();
+      closeAssignModal();
     } catch (error) {
       showToast('Error saving assignments.', 'error');
+    }
+  };
+
+  const handleClearAssignments = async (teacher: Teacher) => {
+    if (!user?.school_id) return;
+    if (!window.confirm(`Are you sure you want to clear all assignments for ${teacher.name}?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('teacher_class_subjects')
+        .delete()
+        .eq('teacher_id', teacher.id)
+        .eq('school_id', user.school_id);
+
+      if (error) throw error;
+
+      showToast('Assignments cleared successfully.', 'success');
+
+      try {
+        await logSubjectAssignmentActivity(
+          'delete',
+          teacher.name,
+          0,
+          0
+        );
+      } catch (activityError) { }
+
+      fetchTeacherClassSubjects();
+    } catch (error) {
+      showToast('Error clearing assignments.', 'error');
     }
   };
 
@@ -1221,7 +1282,7 @@ const TeacherSubjectManager = () => {
     if (!classMap[cs.classes.name]) classMap[cs.classes.name] = [];
     classMap[cs.classes.name].push(cs);
   });
-  
+
   const classObjects = Object.keys(classMap).map(name => ({ name }));
   const sortedClassObjects = sortClasses(classObjects);
   const sortedClassNames = sortedClassObjects.map(cls => cls.name);
@@ -1232,25 +1293,25 @@ const TeacherSubjectManager = () => {
     const isMobile = window.innerWidth <= 700;
 
     const FooterContent = React.memo(() => (
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        alignItems: 'center', 
-        justifyContent: isMobile ? 'center' : 'space-between', 
+        alignItems: 'center',
+        justifyContent: isMobile ? 'center' : 'space-between',
         width: '100%',
         gap: isMobile ? '6px' : '12px',
         flexWrap: 'wrap'
       }}>
-        <div style={{ 
+        <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: isMobile ? '8px' : '16px',
           flexWrap: 'wrap',
           justifyContent: isMobile ? 'center' : 'flex-start'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '6px',
             fontSize: isMobile ? '0.75rem' : '0.85rem',
             color: themeObj.TEXT_SECONDARY,
@@ -1261,9 +1322,9 @@ const TeacherSubjectManager = () => {
             <span>Teachers</span>
           </div>
           <span style={{ color: themeObj.BORDER }}>|</span>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '6px',
             fontSize: isMobile ? '0.75rem' : '0.85rem',
             color: themeObj.TEXT_SECONDARY,
@@ -1274,9 +1335,9 @@ const TeacherSubjectManager = () => {
             <span>Assigned</span>
           </div>
           <span style={{ color: themeObj.BORDER }}>|</span>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '6px',
             fontSize: isMobile ? '0.75rem' : '0.85rem',
             color: themeObj.TEXT_SECONDARY,
@@ -1307,16 +1368,16 @@ const TeacherSubjectManager = () => {
   if (!user?.school_id) {
     return (
       <Container>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           padding: '2rem',
           minHeight: '100%'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '16px',
             color: '#888',
             fontSize: '1.1rem',
@@ -1337,14 +1398,14 @@ const TeacherSubjectManager = () => {
   if (classSubjects.length === 0) {
     return (
       <Container>
-        <div style={{ 
+        <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: '2rem',
           minHeight: '100%'
         }}>
-          <div style={{ 
+          <div style={{
             textAlign: 'center',
             padding: '60px 20px',
             color: '#888'
@@ -1410,83 +1471,91 @@ const TeacherSubjectManager = () => {
 
       <MainContent>
         <TeachersGrid>
-        {filteredTeachers.map(teacher => {
-          const assignments = getTeacherAssignmentsGrouped(teacher.id);
-          const assignmentCount = Object.keys(assignments).length;
-                                    
-                                    return (
-            <TeacherCard key={teacher.id}>
-              <TeacherHeader>
-                <TeacherInfo>
-                  <TeacherName>
-                    <div className="avatar">{getInitials(teacher.name)}</div>
-                    {teacher.name}
-                  </TeacherName>
-                  <TeacherBadges>
-                    {teacher.section && teacher.section.length > 0 && (
-                      <BadgeChip variant="primary">
-                        <Groups style={{ fontSize: '0.9rem' }} />
-                        Class Teacher
-                      </BadgeChip>
-                    )}
-                    {assignmentCount > 0 && (
-                      <BadgeChip variant="success">
-                        <CheckCircle style={{ fontSize: '0.9rem' }} />
-                        {assignmentCount} Assignment{assignmentCount !== 1 ? 's' : ''}
-                      </BadgeChip>
-                    )}
-                  </TeacherBadges>
-                  {teacher.section && teacher.section.length > 0 && (
-                    <div style={{ marginTop: '12px', fontSize: '0.85rem', color: '#888' }}>
-                      {teacher.section.map((s, idx) => (
-                        <span key={idx}>
-                          <strong style={{ color: '#4a6cf7' }}>{s.class_name}</strong>
-                          {' - '}
-                          <span style={{ color: '#f7b84a', fontWeight: 600 }}>{s.section_name}</span>
-                          {idx < teacher.section!.length - 1 && ', '}
-                        </span>
-                      ))}
-                                  </div>
-                                )}
-                </TeacherInfo>
-            <AssignButton onClick={() => openAssignModal(teacher)}>
-                  <Edit style={{ fontSize: '1rem' }} />
-                  Assign
-            </AssignButton>
-              </TeacherHeader>
+          {filteredTeachers.map(teacher => {
+            const assignments = getTeacherAssignmentsGrouped(teacher.id);
+            const assignmentCount = Object.keys(assignments).length;
 
-              <AssignmentsSection>
-                <SectionTitle>
-                  <Assignment style={{ fontSize: '1rem' }} />
-                  Current Assignments
-                </SectionTitle>
-                {assignmentCount > 0 ? (
-                  <AssignmentList>
-                    {Object.entries(assignments).map(([className, data]) => (
-                      <AssignmentItem key={className}>
-                        <AssignmentHeader>
-                          <ClassSection>
-                            {className}
-                            <span className="section">({data.sections.join(', ')})</span>
-                </ClassSection>
-                        </AssignmentHeader>
-                        <SubjectsList>
-                          {data.subjects.map((subject, idx) => (
-                            <SubjectTag key={idx}>{subject}</SubjectTag>
-                          ))}
-                        </SubjectsList>
-                      </AssignmentItem>
-                    ))}
-                  </AssignmentList>
-                ) : (
-                  <EmptyAssignments>
-                    No assignments yet. Click "Assign" to add subjects.
-                  </EmptyAssignments>
-                )}
-              </AssignmentsSection>
-            </TeacherCard>
-          );
-        })}
+            return (
+              <TeacherCard key={teacher.id}>
+                <TeacherHeader>
+                  <TeacherInfo>
+                    <TeacherName>
+                      <div className="avatar">{getInitials(teacher.name)}</div>
+                      {teacher.name}
+                    </TeacherName>
+                    <TeacherBadges>
+                      {teacher.section && teacher.section.length > 0 && (
+                        <BadgeChip variant="primary">
+                          <Groups style={{ fontSize: '0.9rem' }} />
+                          Class Teacher
+                        </BadgeChip>
+                      )}
+                      {assignmentCount > 0 && (
+                        <BadgeChip variant="success">
+                          <CheckCircle style={{ fontSize: '0.9rem' }} />
+                          {assignmentCount} Assignment{assignmentCount !== 1 ? 's' : ''}
+                        </BadgeChip>
+                      )}
+                    </TeacherBadges>
+                    {teacher.section && teacher.section.length > 0 && (
+                      <div style={{ marginTop: '12px', fontSize: '0.85rem', color: '#888' }}>
+                        {teacher.section.map((s, idx) => (
+                          <span key={idx}>
+                            <strong style={{ color: '#4a6cf7' }}>{s.class_name}</strong>
+                            {' - '}
+                            <span style={{ color: '#f7b84a', fontWeight: 600 }}>{s.section_name}</span>
+                            {idx < teacher.section!.length - 1 && ', '}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </TeacherInfo>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <AssignButton onClick={() => openAssignModal(teacher)}>
+                      <Edit style={{ fontSize: '1rem' }} />
+                      Assign
+                    </AssignButton>
+                    {assignmentCount > 0 && (
+                      <ClearButton onClick={() => handleClearAssignments(teacher)}>
+                        <Close style={{ fontSize: '1rem' }} />
+                        Clear
+                      </ClearButton>
+                    )}
+                  </div>
+                </TeacherHeader>
+
+                <AssignmentsSection>
+                  <SectionTitle>
+                    <Assignment style={{ fontSize: '1rem' }} />
+                    Current Assignments
+                  </SectionTitle>
+                  {assignmentCount > 0 ? (
+                    <AssignmentList>
+                      {Object.entries(assignments).map(([className, data]) => (
+                        <AssignmentItem key={className}>
+                          <AssignmentHeader>
+                            <ClassSection>
+                              {className}
+                              <span className="section">({data.sections.join(', ')})</span>
+                            </ClassSection>
+                          </AssignmentHeader>
+                          <SubjectsList>
+                            {data.subjects.map((subject, idx) => (
+                              <SubjectTag key={idx}>{subject}</SubjectTag>
+                            ))}
+                          </SubjectsList>
+                        </AssignmentItem>
+                      ))}
+                    </AssignmentList>
+                  ) : (
+                    <EmptyAssignments>
+                      No assignments yet. Click "Assign" to add subjects.
+                    </EmptyAssignments>
+                  )}
+                </AssignmentsSection>
+              </TeacherCard>
+            );
+          })}
         </TeachersGrid>
       </MainContent>
 
@@ -1503,14 +1572,14 @@ const TeacherSubjectManager = () => {
                 <Close />
               </CloseButton>
             </ModalHeader>
-            
+
             <ModalContent>
               {assignSelectedClassSubjects.length > 0 && !isAssignmentValid() && (
-                <div style={{ 
-                  marginBottom: 20, 
-                  padding: 12, 
-                  background: 'rgba(220, 38, 38, 0.1)', 
-                  border: '1px solid rgba(220, 38, 38, 0.3)', 
+                <div style={{
+                  marginBottom: 20,
+                  padding: 12,
+                  background: 'rgba(220, 38, 38, 0.1)',
+                  border: '1px solid rgba(220, 38, 38, 0.3)',
                   borderRadius: 10,
                   fontSize: '0.875rem',
                   color: '#dc2626',
@@ -1519,18 +1588,18 @@ const TeacherSubjectManager = () => {
                   ⚠️ Please select sections for sectioned classes
                 </div>
               )}
-              
+
               <StyledTabs
                 value={activeTab}
                 onChange={(_, newValue) => setActiveTab(newValue)}
                 variant="scrollable"
                 scrollButtons="auto"
               >
-              {sortedClassNames.map(className => (
+                {sortedClassNames.map(className => (
                   <Tab key={className} label={className} />
                 ))}
               </StyledTabs>
-              
+
               {sortedClassNames.map((className, index) => (
                 <Box key={className} hidden={activeTab !== index} role="tabpanel">
                   <ModalSubjectsGrid>
@@ -1540,13 +1609,13 @@ const TeacherSubjectManager = () => {
                         const classSections = sections.filter(s => s.class_id === parseInt(cs.class_id));
                         const isSelected = assignSelectedClassSubjects.includes(cs.id.toString());
                         const selectedSections = assignSelectedSections[cs.id.toString()] || [];
-                        
-                        const existingAssignments = teacherClassSubjects.filter(ts => 
-                          ts.class_subject_id === cs.id && 
+
+                        const existingAssignments = teacherClassSubjects.filter(ts =>
+                          ts.class_subject_id === cs.id &&
                           ts.teacher_id.toString() !== assigningTeacher?.id.toString()
                         );
                         const hasConflict = existingAssignments.length > 0;
-                        
+
                         const toggleSubject = () => {
                           if (isSelected) {
                             setAssignSelectedClassSubjects(assignSelectedClassSubjects.filter(id => id !== cs.id.toString()));
@@ -1560,7 +1629,7 @@ const TeacherSubjectManager = () => {
 
                         return (
                           <ModalSubjectCard
-                          key={cs.id}
+                            key={cs.id}
                             isSelected={isSelected}
                             hasConflict={hasConflict}
                             onClick={toggleSubject}
@@ -1570,16 +1639,16 @@ const TeacherSubjectManager = () => {
                                 <ModalSubjectName>{cs.subjects.name}</ModalSubjectName>
                                 <ModalSubjectCode>Code: {cs.subjects.code}</ModalSubjectCode>
                               </div>
-                            <Checkbox
-                                  checked={isSelected}
+                              <Checkbox
+                                checked={isSelected}
                                 onChange={(e) => {
                                   e.stopPropagation();
-                                    toggleSubject();
-                                  }}
+                                  toggleSubject();
+                                }}
                                 size="small"
                               />
                             </ModalSubjectHeader>
-                            
+
                             {hasConflict && (
                               <div style={{
                                 display: 'inline-flex',
@@ -1594,9 +1663,9 @@ const TeacherSubjectManager = () => {
                                 marginBottom: '8px'
                               }}>
                                 ⚠️ {existingAssignments.length} other teacher{existingAssignments.length > 1 ? 's' : ''}
-                                </div>
+                              </div>
                             )}
-                            
+
                             {isSelected && cs.classes.has_sections && classSections.length > 0 && (
                               <ModalSectionsContainer onClick={e => e.stopPropagation()}>
                                 <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '8px', fontWeight: 600 }}>
@@ -1605,11 +1674,11 @@ const TeacherSubjectManager = () => {
                                 <ModalSectionsGrid>
                                   {classSections.map(section => {
                                     const isSectionSelected = selectedSections.includes(section.id.toString());
-                                    const isConflicted = existingAssignments.some(assignment => 
+                                    const isConflicted = existingAssignments.some(assignment =>
                                       assignment.section_id != null &&
                                       parseInt(assignment.section_id.toString()) === section.id
                                     );
-                                    
+
                                     return (
                                       <ModalSectionChip
                                         key={section.id}
@@ -1619,7 +1688,7 @@ const TeacherSubjectManager = () => {
                                           e.stopPropagation();
                                           const newSections = { ...assignSelectedSections };
                                           if (!newSections[cs.id.toString()]) newSections[cs.id.toString()] = [];
-                                          
+
                                           if (isSectionSelected) {
                                             newSections[cs.id.toString()] = newSections[cs.id.toString()].filter(id => id !== section.id.toString());
                                           } else {
@@ -1634,10 +1703,10 @@ const TeacherSubjectManager = () => {
                                   })}
                                 </ModalSectionsGrid>
                                 {selectedSections.length === 0 && (
-                                  <div style={{ 
-                                    marginTop: 10, 
-                                    color: '#dc2626', 
-                                    fontSize: '0.8rem', 
+                                  <div style={{
+                                    marginTop: 10,
+                                    color: '#dc2626',
+                                    fontSize: '0.8rem',
                                     fontWeight: 600
                                   }}>
                                     ⚠️ Select at least one section
@@ -1645,17 +1714,17 @@ const TeacherSubjectManager = () => {
                                 )}
                               </ModalSectionsContainer>
                             )}
-                            
+
                             {isSelected && !cs.classes.has_sections && (
-                              <div style={{ 
-                                marginTop: 10, 
-                                padding: 8, 
-                                  background: '#f0f9ff', 
-                                  border: '1px solid #0ea5e9', 
+                              <div style={{
+                                marginTop: 10,
+                                padding: 8,
+                                background: '#f0f9ff',
+                                border: '1px solid #0ea5e9',
                                 borderRadius: 8,
-                                  color: '#0369a1',
+                                color: '#0369a1',
                                 fontSize: '0.8rem',
-                                  fontWeight: 500
+                                fontWeight: 500
                               }}>
                                 ℹ️ Applies to entire class
                               </div>
@@ -1667,14 +1736,14 @@ const TeacherSubjectManager = () => {
                 </Box>
               ))}
             </ModalContent>
-            
+
             <ModalFooter>
               <ModalButton variant="secondary" onClick={closeAssignModal}>
                 <Cancel style={{ fontSize: '1.1rem' }} />
                 Cancel
               </ModalButton>
-              <ModalButton 
-                variant="primary" 
+              <ModalButton
+                variant="primary"
                 onClick={handleAssignModalSave}
                 disabled={!isAssignmentValid()}
               >

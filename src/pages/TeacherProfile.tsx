@@ -92,7 +92,7 @@ const GlassCard = styled(Paper)(({ theme }) => ({
     : alpha(theme.palette.background.paper, 0.7),
   backdropFilter: 'blur(10px)',
   borderRadius: 16,
-  border: `1px solid ${theme.palette.mode === 'dark' 
+  border: `1px solid ${theme.palette.mode === 'dark'
     ? alpha(theme.palette.divider, 0.1)
     : alpha(theme.palette.divider, 0.1)}`,
   boxShadow: theme.palette.mode === 'dark'
@@ -143,7 +143,7 @@ const ProfileHeader = styled(Box)(({ theme }) => ({
       minWidth: 0,
     }
   },
-  
+
   '&::before, &::after': {
     content: '""',
     position: 'absolute',
@@ -225,7 +225,7 @@ const ProfileAvatar = styled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
     border: `1.5px solid ${alpha(theme.palette.primary.main, 0.3)}`,
     marginTop: theme.spacing(0.5),
   },
-  
+
   '&::before': {
     content: '""',
     position: 'absolute',
@@ -317,7 +317,7 @@ const TabsContainer = styled(Box)(({ theme }) => ({
 
 
 const ModernTabs = styled(Tabs)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.5)
     : alpha(theme.palette.background.paper, 0.8),
   borderRadius: 16,
@@ -442,7 +442,7 @@ const InfoCard = styled(GlassCard)(({ theme }) => ({
 const InfoSection = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius * 2,
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? alpha(theme.palette.background.paper, 0.6)
     : alpha(theme.palette.background.paper, 0.8),
   backdropFilter: 'blur(10px)',
@@ -552,7 +552,7 @@ const RecentAttendanceContainer = styled(Box)(({ theme }) => ({
 }));
 
 const AttendanceStatsCard = styled(GlassCard)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`
     : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`,
   backdropFilter: 'blur(10px)',
@@ -610,7 +610,7 @@ const StatsGrid = styled(Grid)(({ theme }) => ({
 
 const MonthCard = styled(GlassCard)(({ theme }) => ({
   height: '100%',
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.4)} 100%)`
     : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`,
   backdropFilter: 'blur(10px)',
@@ -1168,8 +1168,8 @@ const StatusChip = styled('span')<{ status: string }>(({ theme, status }) => ({
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
     borderRadius: '16px',
-    background: theme.palette.mode === 'dark' 
-      ? theme.palette.background.paper 
+    background: theme.palette.mode === 'dark'
+      ? theme.palette.background.paper
       : theme.palette.background.paper,
     maxWidth: '900px',
     width: '90%',
@@ -1209,8 +1209,8 @@ const DialogHeader = styled(Box)(({ theme }) => ({
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: '8px 16px',
-  borderBottom: `1px solid ${theme.palette.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.05)' 
+  borderBottom: `1px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(0, 0, 0, 0.05)'}`,
   background: theme.palette.mode === 'dark'
     ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
@@ -1323,8 +1323,8 @@ const PhotoUploadSection = styled(Box)(({ theme }) => ({
   padding: '24px',
   marginBottom: '24px',
   borderRadius: '12px',
-  border: `2px dashed ${theme.palette.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.2)' 
+  border: `2px dashed ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.2)'
     : 'rgba(0, 0, 0, 0.2)'}`,
   background: theme.palette.mode === 'dark'
     ? 'rgba(255, 255, 255, 0.02)'
@@ -1488,11 +1488,11 @@ const getWeeklyAttendance = (
   records.forEach(record => {
     const recordDate = new Date(record.date);
     const dayIndex = recordDate.getDay() - 1; // Convert to 0-5 index (Mon-Sat)
-    
+
     // Only process Mon-Sat (-1 is Sunday, which we skip)
     if (dayIndex >= 0 && dayIndex < 6) {
       weeklyData[dayIndex].count++;
-      
+
       // Update the details for this day
       const status = record.status.toLowerCase();
       if (status === 'present') weeklyData[dayIndex].details.present++;
@@ -1507,7 +1507,7 @@ const getWeeklyAttendance = (
     halfLeavesMap.forEach((halfLeave, dateStr) => {
       const recordDate = new Date(dateStr);
       const dayIndex = recordDate.getDay() - 1;
-      
+
       if (dayIndex >= 0 && dayIndex < 6) {
         weeklyData[dayIndex].details.halfLeave++;
         // Don't increment count for half leaves as they're already counted in records
@@ -1536,13 +1536,13 @@ const getWeeklyAttendance = (
         { status: 'leave', count: details.leave },
         { status: 'halfLeave', count: details.halfLeave }
       ];
-      
-      const dominantStatus = statusCounts.reduce((prev, current) => 
+
+      const dominantStatus = statusCounts.reduce((prev, current) =>
         current.count > prev.count ? current : prev
       );
-      
-      day.status = dominantStatus.count > 0 ? 
-        dominantStatus.status : 
+
+      day.status = dominantStatus.count > 0 ?
+        dominantStatus.status :
         null;
     } else {
       day.percentages = {
@@ -1571,32 +1571,32 @@ const getAttendancePattern = (
   const absents = records.filter(r => r.status.toLowerCase() === 'absent').length;
 
   return [
-    { 
-      label: 'On Time', 
+    {
+      label: 'On Time',
       value: `${Math.round((onTime / total) * 100)}%`,
       count: onTime,
       colorKey: 'success' as const
     },
-    { 
-      label: 'Late Arrivals', 
+    {
+      label: 'Late Arrivals',
       value: `${Math.round((late / total) * 100)}%`,
       count: late,
       colorKey: 'warning' as const
     },
-    { 
-      label: 'Absents', 
+    {
+      label: 'Absents',
       value: `${Math.round((absents / total) * 100)}%`,
       count: absents,
       colorKey: 'error' as const
     },
-    { 
-      label: 'Leaves', 
+    {
+      label: 'Leaves',
       value: `${Math.round((leaves / total) * 100)}%`,
       count: leaves,
       colorKey: 'info' as const
     },
-    { 
-      label: 'Half Leaves', 
+    {
+      label: 'Half Leaves',
       value: `${Math.round((halfLeavesCount / total) * 100)}%`,
       count: halfLeavesCount,
       colorKey: 'secondary' as const
@@ -1684,10 +1684,10 @@ const calculateTeacherScore = (
   if (enableDiaryDeduction && homeworkSummary && attendanceStats) {
     // Calculate average assignments per day based on present and late attendance days
     const attendedDays = (attendanceStats.present || 0) + (attendanceStats.late || 0);
-    
+
     if (attendedDays > 0 && homeworkSummary.totalAssignments > 0) {
       const averageAssignmentsPerDay = homeworkSummary.totalAssignments / attendedDays;
-      
+
       // Deduction logic:
       // - If average >= 3: no deduction
       // - If average < 3 and >= 2: deduct 0.5
@@ -1707,7 +1707,7 @@ const calculateTeacherScore = (
   // Calculate test performance deduction (optional)
   if (enableTestDeduction && testSummary && testSummary.totalTests > 0) {
     const averagePercentage = testSummary.averagePercentage;
-    
+
     // Deduction logic based on average test performance (relaxed):
     // - If average >= 60%: no deduction (acceptable performance)
     // - If average < 60% and >= 50%: deduct 0.3 (below average)
@@ -1781,7 +1781,7 @@ const calculateScoreBreakdown = (
     attendanceDetails.late = attendanceStats.late || 0;
     attendanceDetails.halfLeave = halfLeavesCount;
 
-    attendanceDeduction = 
+    attendanceDeduction =
       (attendanceDetails.absent * 0.2) +
       (attendanceDetails.leave * 0.1) +
       (attendanceDetails.late * 0.1) +
@@ -1791,11 +1791,11 @@ const calculateScoreBreakdown = (
   // Calculate diary assignment deduction
   if (enableDiaryDeduction && homeworkSummary && attendanceStats) {
     const attendedDays = (attendanceStats.present || 0) + (attendanceStats.late || 0);
-    
+
     if (attendedDays > 0 && homeworkSummary.totalAssignments > 0) {
       const averageAssignmentsPerDay = homeworkSummary.totalAssignments / attendedDays;
       diaryDetails = { averagePerDay: averageAssignmentsPerDay, deductionReason: '' };
-      
+
       if (averageAssignmentsPerDay < 1) {
         diaryDeduction = 2;
         diaryDetails.deductionReason = 'Average < 1 assignment per day';
@@ -1815,7 +1815,7 @@ const calculateScoreBreakdown = (
   if (enableTestDeduction && testSummary && testSummary.totalTests > 0) {
     const averagePercentage = testSummary.averagePercentage;
     testDetails = { averagePercentage, deductionReason: '' };
-    
+
     if (averagePercentage < 40) {
       testDeduction = 1;
       testDetails.deductionReason = 'Average < 40%';
@@ -1869,7 +1869,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { showToast } = useToast();
   const { setPageHeader } = React.useContext(PageHeaderContext);
-  
+
   // For my-profile route, use staff_id from user context instead of URL
   const staffId = isMyProfile && user?.staff_id ? user.staff_id.toString() : id;
   const [loading, setLoading] = useState(true);
@@ -1907,6 +1907,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const [enableTestDeduction, setEnableTestDeduction] = useState<boolean>(false);
   const [scoreBreakdownOpen, setScoreBreakdownOpen] = useState<boolean>(false);
   const [renderSettings, setRenderSettings] = useState<RenderSettings | null>(null);
+  const [periods, setPeriods] = useState<any[]>([]);
+  const [breakIdx, setBreakIdx] = useState<number>(4);
+  const [breakSettings, setBreakSettings] = useState({ start: '11:00', end: '11:15' });
   const [homeworkSummary, setHomeworkSummary] = useState<{
     totalAssignments: number;
     averagePerDay: number;
@@ -1967,7 +1970,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const diaryLoadingRef = useRef(false);
   const lastDiarySessionIdRef = useRef<number | null>(null);
   const { startProgress, setProgress, completeProgress } = useProgress();
-  
+
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -1992,13 +1995,13 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const [editLoading, setEditLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFormRef = useRef<HTMLFormElement>(null);
-  
+
   // Constants for form
   const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
   const RELIGION_OPTIONS = ['Muslim', 'Christianity', 'Hinduism', 'Sikhism', 'Other'];
   const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'];
   const ROLE_OPTIONS = ['Principal', 'Management Staff', 'Teacher', 'Accountant', 'Store Manager', 'Other'];
-  
+
   // Check if current user is viewing their own profile
   const isOwnProfile = user?.staff_id && staffId && parseInt(staffId) === user.staff_id;
 
@@ -2006,7 +2009,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   useEffect(() => {
     const fetchRenderSettingsData = async () => {
       if (!user?.school_id) return;
-      
+
       try {
         const settings = await fetchRenderSettings(user.school_id);
         setRenderSettings(settings);
@@ -2023,7 +2026,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   useEffect(() => {
     const fetchTeacherScoreSettings = async () => {
       if (!user?.school_id || !staffId) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('teacher_score_deduction_settings')
@@ -2097,7 +2100,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       halfLeavesMap.forEach((halfLeave, dateStr) => {
         const date = parseISO(dateStr);
         const monthKey = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        
+
         if (monthlyData[monthKey]) {
           monthlyData[monthKey].halfLeaves++;
         }
@@ -2155,9 +2158,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
         const userId = userResult.data?.id;
 
-        // Parallel fetch: sections, subjects, classes, timetable
+        // Parallel fetch: sections, subjects, classes, timetable, settings
         setProgress(35);
-        const [sectionsData, subjectsData, classesData, timetableResult] = await Promise.all([
+        const [sectionsData, subjectsData, classesData, timetableResult, periodsResult, settingsResult] = await Promise.all([
           // Fetch sections linked to teacher (teacher_id is at section level, not session-specific)
           fetchAllRows(async (from, to) => {
             return await supabase
@@ -2186,17 +2189,50 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           }),
           sessionData
             ? fetchAllRows(async (from, to) => {
-                return await supabase
-                  .from('timetable')
-                  .select('period_index, subject_id, class_id, day_of_week')
-                  .eq('teacher_id', parseInt(staffId))
-                  .eq('session_id', sessionData.id)
-                  .eq('school_id', user.school_id)
-                  .eq('day_of_week', 1)
-                  .range(from, to);
-              })
-            : Promise.resolve([])
+              return await supabase
+                .from('timetable')
+                .select('period_index, subject_id, class_id, day_of_week')
+                .eq('teacher_id', parseInt(staffId))
+                .eq('session_id', sessionData.id)
+                .eq('school_id', user.school_id)
+                .eq('day_of_week', 1)
+                .range(from, to);
+            })
+            : Promise.resolve([]),
+          // Fetch Timetable Settings & Periods
+          supabase.from('timetable_periods').select('*').eq('school_id', user.school_id).order('period_index'),
+          supabase.from('timetable_settings').select('*').eq('school_id', user.school_id).single()
         ]);
+
+        const periodsData = periodsResult.data;
+        const settingsData = settingsResult.data;
+
+
+        if (periodsData && periodsData.length > 0) {
+          setPeriods(periodsData.map((p: any) => ({
+            num: p.period_index + 1,
+            time: `${p.start_time}-${p.end_time}`
+          })));
+        } else {
+          setPeriods([
+            { num: 1, time: '08:30-09:00' },
+            { num: 2, time: '09:00-09:30' },
+            { num: 3, time: '09:30-10:00' },
+            { num: 4, time: '10:00-10:30' },
+            { num: 5, time: '10:30-11:00' },
+            { num: 6, time: '11:15-11:45' },
+            { num: 7, time: '11:45-12:15' },
+            { num: 8, time: '12:15-12:45' },
+          ]);
+        }
+
+        if (settingsData) {
+          setBreakIdx(settingsData.break_after_period_index);
+          setBreakSettings({
+            start: settingsData.break_start_time,
+            end: settingsData.break_end_time
+          });
+        }
 
         if (sectionsData && sectionsData.length > 0) {
           const formattedSections = sectionsData.map((sec: any) => ({
@@ -2443,7 +2479,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                       allSubjects.push(...chunkSubjects);
                     }
                   }
-                  
+
                   let allClasses: any[] = [];
                   if (classIds.length > 0) {
                     for (let i = 0; i < classIds.length; i += 1000) {
@@ -2581,7 +2617,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   useEffect(() => {
     const loadTestData = async () => {
       if (activeTab !== 3 || !id || !user?.school_id || !testAnalysisSessionId) return;
-      
+
       // Prevent loading if already loading or if same session is already loaded
       if (isLoadingRef.current) return;
       if (lastSessionIdRef.current === testAnalysisSessionId && tabDataLoaded[3]) return;
@@ -2661,7 +2697,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             allClasses.push(...chunkClasses);
           }
         }
-        
+
         let allSections: any[] = [];
         if (sectionIds.length > 0) {
           for (let i = 0; i < sectionIds.length; i += 1000) {
@@ -2740,21 +2776,21 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
           // Convert to array format
           const monthlyArray = Array.from(monthlyMap.values())
-          .map(monthData => ({
-            month: monthData.month,
-            monthKey: monthData.monthKey,
-            weeks: Array.from(monthData.weeks.values())
-              .map(week => ({
-                week: week.week,
-                weekNumber: week.weekNumber,
-                tests: week.tests,
-                classes: Array.from(week.classes.entries())
-                  .map(([className, testCount]) => ({ className, testCount }))
-                  .sort((a, b) => a.className.localeCompare(b.className)),
-              }))
-              .sort((a, b) => a.weekNumber - b.weekNumber),
-            totalTests: monthData.totalTests,
-          }))
+            .map(monthData => ({
+              month: monthData.month,
+              monthKey: monthData.monthKey,
+              weeks: Array.from(monthData.weeks.values())
+                .map(week => ({
+                  week: week.week,
+                  weekNumber: week.weekNumber,
+                  tests: week.tests,
+                  classes: Array.from(week.classes.entries())
+                    .map(([className, testCount]) => ({ className, testCount }))
+                    .sort((a, b) => a.className.localeCompare(b.className)),
+                }))
+                .sort((a, b) => a.weekNumber - b.weekNumber),
+              totalTests: monthData.totalTests,
+            }))
             .sort((a, b) => new Date(a.monthKey).getTime() - new Date(b.monthKey).getTime());
 
           setTestMonthlyData(monthlyArray);
@@ -2848,13 +2884,13 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   useEffect(() => {
     const fetchSessions = async () => {
       if (!user?.school_id || activeTab !== 3) return;
-      
+
       const { data, error } = await supabase
         .from('sessions')
         .select('id, name, is_active')
         .eq('school_id', user.school_id)
         .order('name', { ascending: false });
-      
+
       if (!error && data) {
         setSessions(data);
         // Auto-select active session or first session only if not already set
@@ -2868,7 +2904,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         }
       }
     };
-    
+
     fetchSessions();
   }, [activeTab, user?.school_id]); // Removed testAnalysisSessionId from dependencies
 
@@ -2876,13 +2912,13 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   useEffect(() => {
     const fetchSessionsForDiary = async () => {
       if (!user?.school_id || activeTab !== 4) return;
-      
+
       const { data, error } = await supabase
         .from('sessions')
         .select('id, name, is_active')
         .eq('school_id', user.school_id)
         .order('name', { ascending: false });
-      
+
       if (!error && data) {
         setSessions(data);
         // Auto-select active session or first session only if not already set
@@ -2896,7 +2932,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         }
       }
     };
-    
+
     fetchSessionsForDiary();
   }, [activeTab, user?.school_id]); // Removed diaryAnalysisSessionId from dependencies
 
@@ -2904,7 +2940,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   useEffect(() => {
     const loadDiaryData = async () => {
       if (activeTab !== 4 || !id || !user?.school_id || !diaryAnalysisSessionId) return;
-      
+
       // Prevent loading if already loading or if same session is already loaded
       if (diaryLoadingRef.current) return;
       if (lastDiarySessionIdRef.current === diaryAnalysisSessionId && tabDataLoaded[4]) return;
@@ -3003,7 +3039,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             allClasses.push(...chunkClasses);
           }
         }
-        
+
         let allSections: any[] = [];
         if (sectionIds.length > 0) {
           for (let i = 0; i < sectionIds.length; i += 1000) {
@@ -3018,7 +3054,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             allSections.push(...chunkSections);
           }
         }
-        
+
         let allSubjects: any[] = [];
         if (subjectIds.length > 0) {
           for (let i = 0; i < subjectIds.length; i += 1000) {
@@ -3305,7 +3341,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
       showToast('Profile updated successfully', 'success');
       handleCloseEditModal();
-      
+
       // Reload teacher data
       const { data: updatedTeacher, error: fetchError } = await supabase
         .from('staff')
@@ -3313,7 +3349,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         .eq('id', parseInt(staffId))
         .eq('school_id', user.school_id)
         .single();
-      
+
       if (!fetchError && updatedTeacher) {
         setTeacher(updatedTeacher);
       }
@@ -3336,8 +3372,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   // Calculate teacher score based on attendance, diary assignments, and test performance
   useEffect(() => {
     const score = calculateTeacherScore(
-      attendanceStats, 
-      halfLeavesMap.size, 
+      attendanceStats,
+      halfLeavesMap.size,
       homeworkSummary,
       testSummary,
       enableDiaryScoreDeduction,
@@ -3372,11 +3408,11 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             label: tabConfig.label.replace(' Tab', ''), // Remove "Tab" suffix for display
             icon: (
               originalIndex === 0 ? <Person /> :
-              originalIndex === 1 ? <HistoryIcon /> :
-              originalIndex === 2 ? <CalendarToday /> :
-              originalIndex === 3 ? <Assessment /> :
-              originalIndex === 4 ? <Assignment /> :
-              <Person />
+                originalIndex === 1 ? <HistoryIcon /> :
+                  originalIndex === 2 ? <CalendarToday /> :
+                    originalIndex === 3 ? <Assessment /> :
+                      originalIndex === 4 ? <Assignment /> :
+                        <Person />
             )
           });
         }
@@ -3452,40 +3488,40 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             {teacher.name.charAt(0).toUpperCase()}
           </ProfileAvatar>
         </Box>
-        <Box sx={{ 
-          flex: 1, 
-          position: 'relative', 
-          zIndex: 2, 
-          minWidth: 0, 
-          display: 'flex', 
+        <Box sx={{
+          flex: 1,
+          position: 'relative',
+          zIndex: 2,
+          minWidth: 0,
+          display: 'flex',
           flexDirection: 'column',
           [theme.breakpoints.up('sm')]: {
             justifyContent: 'center',
           }
         }}>
           {/* Top Row: Name, Score Badge, Edit Button */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: { xs: 'center', sm: 'center' }, 
-            justifyContent: 'space-between', 
-            gap: { xs: 1, sm: 2 }, 
+          <Box sx={{
+            display: 'flex',
+            alignItems: { xs: 'center', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: { xs: 1, sm: 2 },
             mb: { xs: 1, sm: 2 },
             flexWrap: { xs: 'wrap', sm: 'nowrap' }
           }}>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: { xs: 0.25, sm: 0.5 }, 
-              flex: 1, 
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: { xs: 0.25, sm: 0.5 },
+              flex: 1,
               minWidth: 0,
               [theme.breakpoints.up('sm')]: {
                 justifyContent: 'center',
               }
             }}>
-              <Typography 
-                variant="h4" 
-                sx={{ 
-                  fontWeight: 700, 
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 700,
                   fontSize: { xs: '1rem', sm: '1.5rem' },
                   lineHeight: 1.2,
                   overflow: 'hidden',
@@ -3495,9 +3531,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               >
                 {teacher.name}
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: 'text.secondary',
                   fontSize: { xs: '0.75rem', sm: '0.875rem' },
                   fontWeight: 500,
@@ -3566,8 +3602,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   },
                 }}
               >
-                <Box sx={{ 
-                  width: { xs: 28, sm: 36 }, 
+                <Box sx={{
+                  width: { xs: 28, sm: 36 },
                   height: { xs: 28, sm: 36 },
                   position: 'relative',
                   zIndex: 1,
@@ -3615,7 +3651,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
-                    <Typography 
+                    <Typography
                       variant="body2"
                       sx={{
                         fontSize: { xs: '0.625rem', sm: '0.8rem' },
@@ -3628,7 +3664,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   </Box>
                 </Box>
                 <Box sx={{ position: 'relative', zIndex: 1, display: { xs: 'none', sm: 'block' } }}>
-                  <Typography 
+                  <Typography
                     variant="body2"
                     sx={{
                       fontSize: '0.7rem',
@@ -3639,7 +3675,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   >
                     Teacher Score
                   </Typography>
-                  <Typography 
+                  <Typography
                     variant="body2"
                     sx={{
                       fontSize: '0.75rem',
@@ -3681,9 +3717,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               )}
             </Box>
           </Box>
-          
+
           {/* Info Items: Organized in a grid */}
-          <Box sx={{ 
+          <Box sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
             gap: { xs: 1, sm: 1.5 },
@@ -3707,7 +3743,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 </Box>
                 <Box className="info-content">
                   <Typography className="info-label">Email</Typography>
-                  <Typography 
+                  <Typography
                     className="info-value"
                     sx={{
                       overflow: 'hidden',
@@ -3729,3079 +3765,2505 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         <Grid container spacing={2}>
           {/* Attendance Card */}
           {isTeacherSummaryCardVisible(renderSettings, 'attendance_summary_card') && (
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{
-              p: 3,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{
+                p: 3,
                 height: '100%',
-                background: theme => `
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: theme => `
                   linear-gradient(135deg, 
                     ${alpha(theme.palette.background.paper, 0.95)} 0%,
                     ${alpha(theme.palette.background.paper, 0.85)} 100%)
                 `,
-                borderRadius: 'inherit',
-                zIndex: 0,
-              }
-            }}>
-              {/* Main Content */}
-              <Box sx={{ position: 'relative', zIndex: 1 }}>
-                {/* Progress Ring */}
-                <Box sx={{ 
-                  position: 'relative', 
-                  width: '180px',
-                  height: '180px',
-                  margin: '0 auto',
-                  mb: 3
-                }}>
-                  <Box sx={{ 
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                }
+              }}>
+                {/* Main Content */}
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  {/* Progress Ring */}
+                  <Box sx={{
+                    position: 'relative',
+                    width: '180px',
+                    height: '180px',
+                    margin: '0 auto',
+                    mb: 3
                   }}>
-                    {/* Background Circle */}
                     <Box sx={{
                       position: 'absolute',
+                      top: 0,
+                      left: 0,
                       width: '100%',
                       height: '100%',
-                      borderRadius: '50%',
-                      border: theme => `10px solid ${alpha(theme.palette.divider, 0.08)}`,
-                    }} />
-                    
-                    {/* Progress Circle */}
-                    <Box sx={{
-                      position: 'absolute',
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '50%',
-                      border: theme => `10px solid ${
-                        attendancePercentage >= 75 ? theme.palette.success.main :
-                        attendancePercentage >= 65 ? theme.palette.warning.main :
-                        theme.palette.error.main
-                      }`,
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      transform: `rotate(${45 + (attendancePercentage * 1.8)}deg)`,
-                      transition: 'all 0.5s ease-out',
-                    }} />
-
-                    {/* Center Content */}
-                    <Box sx={{
-                      position: 'relative',
-                      textAlign: 'center'
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}>
-                      <Typography variant="h3" sx={{ 
-                        fontWeight: 700,
-                        color: theme => 
-                          attendancePercentage >= 75 ? theme.palette.success.main :
+                      {/* Background Circle */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        border: theme => `10px solid ${alpha(theme.palette.divider, 0.08)}`,
+                      }} />
+
+                      {/* Progress Circle */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        border: theme => `10px solid ${attendancePercentage >= 75 ? theme.palette.success.main :
                           attendancePercentage >= 65 ? theme.palette.warning.main :
-                          theme.palette.error.main,
-                        mb: 0.5,
-                        fontSize: '2.5rem'
+                            theme.palette.error.main
+                          }`,
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        transform: `rotate(${45 + (attendancePercentage * 1.8)}deg)`,
+                        transition: 'all 0.5s ease-out',
+                      }} />
+
+                      {/* Center Content */}
+                      <Box sx={{
+                        position: 'relative',
+                        textAlign: 'center'
                       }}>
-                        {attendancePercentage}%
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: 'text.secondary',
-                        display: 'block',
-                        fontSize: '0.75rem',
-                        letterSpacing: '0.5px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Attendance
-                      </Typography>
+                        <Typography variant="h3" sx={{
+                          fontWeight: 700,
+                          color: theme =>
+                            attendancePercentage >= 75 ? theme.palette.success.main :
+                              attendancePercentage >= 65 ? theme.palette.warning.main :
+                                theme.palette.error.main,
+                          mb: 0.5,
+                          fontSize: '2.5rem'
+                        }}>
+                          {attendancePercentage}%
+                        </Typography>
+                        <Typography variant="caption" sx={{
+                          color: 'text.secondary',
+                          display: 'block',
+                          fontSize: '0.75rem',
+                          letterSpacing: '0.5px',
+                          textTransform: 'uppercase'
+                        }}>
+                          Attendance
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
-                </Box>
 
-                {/* Stats Grid */}
-                <Grid container spacing={2}>
-                  {([
-                    { 
-                      label: 'Present', 
-                      value: attendanceStats?.present || 0,
-                      icon: <CheckCircle />,
-                      color: 'success' as const
-                    },
-                    { 
-                      label: 'Late', 
-                      value: attendanceStats?.late || 0,
-                      icon: <Timer />,
-                      color: 'warning' as const
-                    },
-                    { 
-                      label: 'Absent / Leave', 
-                      value: (attendanceStats?.absent || 0) + (attendanceStats?.leave || 0),
-                      icon: <Cancel />,
-                      color: 'error' as const,
-                      showSeparateCounts: true,
-                      absentCount: attendanceStats?.absent || 0,
-                      leaveCount: attendanceStats?.leave || 0
-                    },
-                    { 
-                      label: 'Half Leaves', 
-                      value: halfLeavesMap.size,
-                      icon: <AccessTime />,
-                      color: 'secondary' as const,
-                      customColor: '#ec4899'
-                    }
-                  ]).map((stat, index) => (
-                    <Grid item xs={6} key={index}>
-                      <Box sx={{
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: stat.customColor 
-                          ? alpha(stat.customColor, 0.2)
-                          : theme => alpha(theme.palette[stat.color].main, 0.2),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        position: 'relative'
-                      }}>
+                  {/* Stats Grid */}
+                  <Grid container spacing={2}>
+                    {([
+                      {
+                        label: 'Present',
+                        value: attendanceStats?.present || 0,
+                        icon: <CheckCircle />,
+                        color: 'success' as const
+                      },
+                      {
+                        label: 'Late',
+                        value: attendanceStats?.late || 0,
+                        icon: <Timer />,
+                        color: 'warning' as const
+                      },
+                      {
+                        label: 'Absent / Leave',
+                        value: (attendanceStats?.absent || 0) + (attendanceStats?.leave || 0),
+                        icon: <Cancel />,
+                        color: 'error' as const,
+                        showSeparateCounts: true,
+                        absentCount: attendanceStats?.absent || 0,
+                        leaveCount: attendanceStats?.leave || 0
+                      },
+                      {
+                        label: 'Half Leaves',
+                        value: halfLeavesMap.size,
+                        icon: <AccessTime />,
+                        color: 'secondary' as const,
+                        customColor: '#ec4899'
+                      }
+                    ]).map((stat, index) => (
+                      <Grid item xs={6} key={index}>
                         <Box sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '8px',
+                          p: 1.5,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: stat.customColor
+                            ? alpha(stat.customColor, 0.2)
+                            : theme => alpha(theme.palette[stat.color].main, 0.2),
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: stat.customColor 
-                            ? alpha(stat.customColor, 0.1)
-                            : theme => alpha(theme.palette[stat.color].main, 0.1),
-                          color: stat.customColor || `${stat.color}.main`,
-                          flexShrink: 0
+                          gap: 1,
+                          position: 'relative'
                         }}>
-                          {stat.icon}
-                        </Box>
-                        <Box sx={{
-                          flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          textAlign: 'center'
-                        }}>
-                          <Typography variant="h6" sx={{ 
-                            color: stat.customColor || `${stat.color}.main`,
-                            fontWeight: 600,
-                            lineHeight: 1,
-                            fontSize: '1.25rem',
+                          <Box sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 0.5,
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            bgcolor: stat.customColor
+                              ? alpha(stat.customColor, 0.1)
+                              : theme => alpha(theme.palette[stat.color].main, 0.1),
+                            color: stat.customColor || `${stat.color}.main`,
+                            flexShrink: 0
                           }}>
-                            {(stat as any).showSeparateCounts ? (
-                              <>
-                                <Box component="span" sx={{ color: theme => theme.palette.error.main }}>
-                                  {(stat as any).absentCount}
-                                </Box>
-                                <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.9em' }}>+</Box>
-                                <Box component="span" sx={{ color: theme => theme.palette.info.main }}>
-                                  {(stat as any).leaveCount}
-                                </Box>
-                              </>
-                            ) : (
-                              stat.value
-                            )}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: 'text.secondary',
-                            fontSize: '0.7rem',
-                            letterSpacing: '0.4px'
+                            {stat.icon}
+                          </Box>
+                          <Box sx={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textAlign: 'center'
                           }}>
-                            {stat.label}
-                          </Typography>
+                            <Typography variant="h6" sx={{
+                              color: stat.customColor || `${stat.color}.main`,
+                              fontWeight: 600,
+                              lineHeight: 1,
+                              fontSize: '1.25rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              justifyContent: 'center'
+                            }}>
+                              {(stat as any).showSeparateCounts ? (
+                                <>
+                                  <Box component="span" sx={{ color: theme => theme.palette.error.main }}>
+                                    {(stat as any).absentCount}
+                                  </Box>
+                                  <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.9em' }}>+</Box>
+                                  <Box component="span" sx={{ color: theme => theme.palette.info.main }}>
+                                    {(stat as any).leaveCount}
+                                  </Box>
+                                </>
+                              ) : (
+                                stat.value
+                              )}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: 'text.secondary',
+                              fontSize: '0.7rem',
+                              letterSpacing: '0.4px'
+                            }}>
+                              {stat.label}
+                            </Typography>
+                          </Box>
                         </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            </StatCard>
-          </Grid>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </StatCard>
+            </Grid>
           )}
 
           {/* Test Summary Card */}
           {isTeacherSummaryCardVisible(renderSettings, 'test_summary_card') && (
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{
-              p: 1.5,
-              px: 1.5,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{
+                p: 1.5,
+                px: 1.5,
                 height: '100%',
-                background: theme => `
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: theme => `
                   linear-gradient(135deg, 
                     ${alpha(theme.palette.background.paper, 0.95)} 0%,
                     ${alpha(theme.palette.background.paper, 0.85)} 100%)
                 `,
-                borderRadius: 'inherit',
-                zIndex: 0,
-              }
-            }}>
-              <Box sx={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  mb: 1.25,
-                  flexShrink: 0
-                }}>
-                  <Assessment sx={{ 
-                    fontSize: 18, 
-                    color: '#8b5cf6',
-                    flexShrink: 0
-                  }} />
-                  <Typography variant="subtitle2" sx={{ 
-                    color: '#8b5cf6',
-                    fontWeight: 600,
-                    fontSize: '0.8rem',
-                    lineHeight: 1
-                  }}>
-                    Test Summary
-                  </Typography>
-                </Box>
-
-                {testSummary.totalTests === 0 ? (
-                  <Box sx={{ 
-                    textAlign: 'center', 
-                    py: 2,
-                    flex: 1,
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                }
+              }}>
+                <Box sx={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    gap: 0.75,
+                    mb: 1.25,
+                    flexShrink: 0
                   }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                      No tests created
+                    <Assessment sx={{
+                      fontSize: 18,
+                      color: '#8b5cf6',
+                      flexShrink: 0
+                    }} />
+                    <Typography variant="subtitle2" sx={{
+                      color: '#8b5cf6',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      lineHeight: 1
+                    }}>
+                      Test Summary
                     </Typography>
                   </Box>
-                ) : (
-                  <Box sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    '&::-webkit-scrollbar': {
-                      width: '4px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: 'transparent',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: theme => alpha('#8b5cf6', 0.3),
-                      borderRadius: '2px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: theme => alpha('#8b5cf6', 0.5),
-                    },
-                  }}>
-                    <Stack spacing={1} sx={{ width: '100%' }}>
-                      {/* Summary Stats */}
-                      <Box sx={{
-                        py: 1.25,
-                        px: 1.25,
-                        borderRadius: 1,
-                        border: '1.5px solid',
-                        borderColor: alpha('#8b5cf6', 0.3),
-                        bgcolor: alpha('#8b5cf6', 0.08),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.25,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: alpha('#8b5cf6', 0.12),
-                          borderColor: alpha('#8b5cf6', 0.4),
-                          transform: 'translateY(-1px)',
-                          boxShadow: `0 2px 8px ${alpha('#8b5cf6', 0.15)}`,
-                        }
-                      }}>
-                        <Box sx={{
-                          minWidth: '75px',
-                          flexShrink: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start'
-                        }}>
-                          <Typography variant="caption" sx={{ 
-                            fontWeight: 800,
-                            color: '#8b5cf6',
-                            fontSize: '0.9rem',
-                            lineHeight: 1.2,
-                            letterSpacing: '0.3px'
-                          }}>
-                            {testSummary.totalTests}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: alpha('#8b5cf6', 0.7),
-                            fontSize: '0.7rem',
-                            fontWeight: 500,
-                            lineHeight: 1,
-                            mt: 0.25
-                          }}>
-                            Tests
-                          </Typography>
-                        </Box>
-                        <Box sx={{
-                          width: '1.5px',
-                          height: '24px',
-                          bgcolor: alpha('#8b5cf6', 0.25),
-                          flexShrink: 0,
-                          borderRadius: '1px'
-                        }} />
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="caption" sx={{ 
-                            color: 'text.primary',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            display: 'block',
-                            lineHeight: 1.3,
-                            mb: 0.25
-                          }}>
-                            {testSummary.averagePercentage.toFixed(1)}%
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: 'text.secondary',
-                            fontSize: '0.7rem',
-                            fontWeight: 500,
-                            display: 'block',
-                            lineHeight: 1
-                          }}>
-                            Average Performance
-                          </Typography>
-                        </Box>
-                      </Box>
 
-                      {/* Students Assessed */}
-                      <Box sx={{
-                        py: 1.25,
-                        px: 1.25,
-                        borderRadius: 1,
-                        border: '1.5px solid',
-                        borderColor: alpha('#8b5cf6', 0.3),
-                        bgcolor: alpha('#8b5cf6', 0.08),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.25,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: alpha('#8b5cf6', 0.12),
-                          borderColor: alpha('#8b5cf6', 0.4),
-                          transform: 'translateY(-1px)',
-                          boxShadow: `0 2px 8px ${alpha('#8b5cf6', 0.15)}`,
-                        }
-                      }}>
+                  {testSummary.totalTests === 0 ? (
+                    <Box sx={{
+                      textAlign: 'center',
+                      py: 2,
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                        No tests created
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: 'auto',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      '&::-webkit-scrollbar': {
+                        width: '4px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: theme => alpha('#8b5cf6', 0.3),
+                        borderRadius: '2px',
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: theme => alpha('#8b5cf6', 0.5),
+                      },
+                    }}>
+                      <Stack spacing={1} sx={{ width: '100%' }}>
+                        {/* Summary Stats */}
                         <Box sx={{
-                          minWidth: '75px',
-                          flexShrink: 0,
+                          py: 1.25,
+                          px: 1.25,
+                          borderRadius: 1,
+                          border: '1.5px solid',
+                          borderColor: alpha('#8b5cf6', 0.3),
+                          bgcolor: alpha('#8b5cf6', 0.08),
                           display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start'
-                        }}>
-                          <Typography variant="caption" sx={{ 
-                            fontWeight: 800,
-                            color: '#8b5cf6',
-                            fontSize: '0.9rem',
-                            lineHeight: 1.2,
-                            letterSpacing: '0.3px'
-                          }}>
-                            {testSummary.totalStudents}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: alpha('#8b5cf6', 0.7),
-                            fontSize: '0.7rem',
-                            fontWeight: 500,
-                            lineHeight: 1,
-                            mt: 0.25
-                          }}>
-                            Students
-                          </Typography>
-                        </Box>
-                        <Box sx={{
-                          width: '1.5px',
-                          height: '24px',
-                          bgcolor: alpha('#8b5cf6', 0.25),
-                          flexShrink: 0,
-                          borderRadius: '1px'
-                        }} />
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="caption" sx={{ 
-                            color: 'text.primary',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            display: 'block',
-                            lineHeight: 1.3
-                          }}>
-                            Assessed
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {/* Tests by Subject */}
-                      {testSummary.testsBySubject.length > 0 && (
-                        <Box sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 0.75,
+                          alignItems: 'center',
+                          gap: 1.25,
                           width: '100%',
-                          maxHeight: '200px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 0.5,
-                          '&::-webkit-scrollbar': {
-                            width: '6px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => theme.palette.mode === 'dark' 
-                              ? alpha(theme.palette.common.white, 0.05) 
-                              : alpha(theme.palette.common.black, 0.05),
-                            borderRadius: '3px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => theme.palette.mode === 'dark'
-                              ? alpha(theme.palette.common.white, 0.2)
-                              : alpha(theme.palette.common.black, 0.2),
-                            borderRadius: '3px',
-                            '&:hover': {
-                              background: theme => theme.palette.mode === 'dark'
-                                ? alpha(theme.palette.common.white, 0.3)
-                                : alpha(theme.palette.common.black, 0.3),
-                            }
-                          },
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => theme.palette.mode === 'dark'
-                            ? `${alpha(theme.palette.common.white, 0.2)} ${alpha(theme.palette.common.white, 0.05)}`
-                            : `${alpha(theme.palette.common.black, 0.2)} ${alpha(theme.palette.common.black, 0.05)}`,
+                          boxSizing: 'border-box',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: alpha('#8b5cf6', 0.12),
+                            borderColor: alpha('#8b5cf6', 0.4),
+                            transform: 'translateY(-1px)',
+                            boxShadow: `0 2px 8px ${alpha('#8b5cf6', 0.15)}`,
+                          }
                         }}>
-                          {testSummary.testsBySubject.map((item, index) => (
-                            <Box
-                              key={index}
-                              sx={{
-                                py: 0.9,
-                                px: 1,
-                                borderRadius: 0.875,
-                                border: '1px solid',
-                                borderColor: alpha('#10b981', 0.25),
-                                bgcolor: alpha('#10b981', 0.08),
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.75,
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                minWidth: 0,
-                                flexShrink: 0,
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                  bgcolor: alpha('#10b981', 0.12),
-                                  borderColor: alpha('#10b981', 0.4),
-                                  transform: 'translateY(-1px)',
-                                  boxShadow: `0 1px 4px ${alpha('#10b981', 0.15)}`,
-                                }
-                              }}
-                            >
-                              <Box sx={{
-                                minWidth: '36px',
-                                flexShrink: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                py: 0.4,
-                                px: 0.6,
-                                borderRadius: 0.5,
-                                bgcolor: alpha('#10b981', 0.18),
-                                border: `1px solid ${alpha('#10b981', 0.3)}`
-                              }}>
-                                <Typography variant="caption" sx={{ 
-                                  fontWeight: 800,
-                                  color: '#10b981',
-                                  fontSize: '0.75rem',
-                                  lineHeight: 1,
-                                  letterSpacing: '0.2px'
-                                }}>
-                                  {item.count}
-                                </Typography>
-                              </Box>
-                              
-                              <Box sx={{
-                                width: '1px',
-                                height: '18px',
-                                bgcolor: alpha('#10b981', 0.25),
-                                flexShrink: 0,
-                                borderRadius: '1px'
-                              }} />
-                              
-                              <Typography variant="caption" sx={{ 
-                                color: 'text.primary',
-                                fontSize: '0.75rem',
-                                fontWeight: 500,
-                                flex: 1,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                minWidth: 0,
-                                lineHeight: 1.4
-                              }}>
-                                {item.subject}
-                              </Typography>
-                            </Box>
-                          ))}
+                          <Box sx={{
+                            minWidth: '75px',
+                            flexShrink: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start'
+                          }}>
+                            <Typography variant="caption" sx={{
+                              fontWeight: 800,
+                              color: '#8b5cf6',
+                              fontSize: '0.9rem',
+                              lineHeight: 1.2,
+                              letterSpacing: '0.3px'
+                            }}>
+                              {testSummary.totalTests}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: alpha('#8b5cf6', 0.7),
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                              lineHeight: 1,
+                              mt: 0.25
+                            }}>
+                              Tests
+                            </Typography>
+                          </Box>
+                          <Box sx={{
+                            width: '1.5px',
+                            height: '24px',
+                            bgcolor: alpha('#8b5cf6', 0.25),
+                            flexShrink: 0,
+                            borderRadius: '1px'
+                          }} />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="caption" sx={{
+                              color: 'text.primary',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              display: 'block',
+                              lineHeight: 1.3,
+                              mb: 0.25
+                            }}>
+                              {testSummary.averagePercentage.toFixed(1)}%
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: 'text.secondary',
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                              display: 'block',
+                              lineHeight: 1
+                            }}>
+                              Average Performance
+                            </Typography>
+                          </Box>
                         </Box>
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-              </Box>
-            </StatCard>
-          </Grid>
-          )}
 
-          {/* Homework Diary Summary Card */}
-          {isTeacherSummaryCardVisible(renderSettings, 'homework_diary_summary_card') && (
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{
-              p: 1.5,
-              px: 1.5,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                background: theme => `
-                  linear-gradient(135deg, 
-                    ${alpha(theme.palette.background.paper, 0.95)} 0%,
-                    ${alpha(theme.palette.background.paper, 0.85)} 100%)
-                `,
-                borderRadius: 'inherit',
-                zIndex: 0,
-              }
-            }}>
-              <Box sx={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  mb: 1.25,
-                  flexShrink: 0
-                }}>
-                  <Assignment sx={{ 
-                    fontSize: 18, 
-                    color: '#ec4899',
-                    flexShrink: 0
-                  }} />
-                  <Typography variant="subtitle2" sx={{ 
-                    color: '#ec4899',
-                    fontWeight: 600,
-                    fontSize: '0.8rem',
-                    lineHeight: 1
-                  }}>
-                    Homework Diary
-                  </Typography>
-                </Box>
-
-                {homeworkSummary.totalAssignments === 0 ? (
-                  <Box sx={{ 
-                    textAlign: 'center', 
-                    py: 2,
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                      No assignments
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    '&::-webkit-scrollbar': {
-                      width: '4px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: 'transparent',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: theme => alpha('#ec4899', 0.3),
-                      borderRadius: '2px',
-                    },
-                    '&::-webkit-scrollbar-thumb:hover': {
-                      background: theme => alpha('#ec4899', 0.5),
-                    },
-                  }}>
-                    <Stack spacing={1} sx={{ width: '100%' }}>
-                      {/* Summary Stats */}
-                      <Box sx={{
-                        py: 1.25,
-                        px: 1.25,
-                        borderRadius: 1,
-                        border: '1.5px solid',
-                        borderColor: alpha('#ec4899', 0.3),
-                        bgcolor: alpha('#ec4899', 0.08),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.25,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: alpha('#ec4899', 0.12),
-                          borderColor: alpha('#ec4899', 0.4),
-                          transform: 'translateY(-1px)',
-                          boxShadow: `0 2px 8px ${alpha('#ec4899', 0.15)}`,
-                        }
-                      }}>
+                        {/* Students Assessed */}
                         <Box sx={{
-                          minWidth: '75px',
-                          flexShrink: 0,
+                          py: 1.25,
+                          px: 1.25,
+                          borderRadius: 1,
+                          border: '1.5px solid',
+                          borderColor: alpha('#8b5cf6', 0.3),
+                          bgcolor: alpha('#8b5cf6', 0.08),
                           display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start'
-                        }}>
-                          <Typography variant="caption" sx={{ 
-                            fontWeight: 800,
-                            color: '#ec4899',
-                            fontSize: '0.9rem',
-                            lineHeight: 1.2,
-                            letterSpacing: '0.3px'
-                          }}>
-                            {homeworkSummary.totalAssignments}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: alpha('#ec4899', 0.7),
-                            fontSize: '0.7rem',
-                            fontWeight: 500,
-                            lineHeight: 1,
-                            mt: 0.25
-                          }}>
-                            Assignments
-                          </Typography>
-                        </Box>
-                        <Box sx={{
-                          width: '1.5px',
-                          height: '24px',
-                          bgcolor: alpha('#ec4899', 0.25),
-                          flexShrink: 0,
-                          borderRadius: '1px'
-                        }} />
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="caption" sx={{ 
-                            color: 'text.primary',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            display: 'block',
-                            lineHeight: 1.3,
-                            mb: 0.25
-                          }}>
-                            {homeworkSummary.averagePerDay.toFixed(1)}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: 'text.secondary',
-                            fontSize: '0.7rem',
-                            fontWeight: 500,
-                            display: 'block',
-                            lineHeight: 1
-                          }}>
-                            Avg per Day
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {/* Classes Count */}
-                      <Box sx={{
-                        py: 1,
-                        px: 1.25,
-                        borderRadius: 1,
-                        border: '1.5px solid',
-                        borderColor: alpha('#ec4899', 0.3),
-                        bgcolor: alpha('#ec4899', 0.08),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.25,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: alpha('#ec4899', 0.12),
-                          borderColor: alpha('#ec4899', 0.4),
-                          transform: 'translateY(-1px)',
-                          boxShadow: `0 2px 8px ${alpha('#ec4899', 0.15)}`,
-                        }
-                      }}>
-                        <Box sx={{
-                          minWidth: '75px',
-                          flexShrink: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start'
-                        }}>
-                          <Typography variant="caption" sx={{ 
-                            fontWeight: 800,
-                            color: '#ec4899',
-                            fontSize: '0.9rem',
-                            lineHeight: 1.2,
-                            letterSpacing: '0.3px'
-                          }}>
-                            {homeworkSummary.assignmentsByClass.length}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            color: alpha('#ec4899', 0.7),
-                            fontSize: '0.7rem',
-                            fontWeight: 500,
-                            lineHeight: 1,
-                            mt: 0.25
-                          }}>
-                            Classes
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {/* Assignments by Subject */}
-                      {homeworkSummary.assignmentsBySubject.length > 0 && (
-                        <Box sx={{ 
+                          alignItems: 'center',
+                          gap: 1.25,
                           width: '100%',
-                          maxHeight: '200px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 0.5,
-                          '&::-webkit-scrollbar': {
-                            width: '6px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => theme.palette.mode === 'dark' 
-                              ? alpha(theme.palette.common.white, 0.05) 
-                              : alpha(theme.palette.common.black, 0.05),
-                            borderRadius: '3px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => theme.palette.mode === 'dark'
-                              ? alpha(theme.palette.common.white, 0.2)
-                              : alpha(theme.palette.common.black, 0.2),
-                            borderRadius: '3px',
-                            '&:hover': {
-                              background: theme => theme.palette.mode === 'dark'
-                                ? alpha(theme.palette.common.white, 0.3)
-                                : alpha(theme.palette.common.black, 0.3),
-                            }
-                          },
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => theme.palette.mode === 'dark'
-                            ? `${alpha(theme.palette.common.white, 0.2)} ${alpha(theme.palette.common.white, 0.05)}`
-                            : `${alpha(theme.palette.common.black, 0.2)} ${alpha(theme.palette.common.black, 0.05)}`,
+                          boxSizing: 'border-box',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: alpha('#8b5cf6', 0.12),
+                            borderColor: alpha('#8b5cf6', 0.4),
+                            transform: 'translateY(-1px)',
+                            boxShadow: `0 2px 8px ${alpha('#8b5cf6', 0.15)}`,
+                          }
                         }}>
-                          <Stack spacing={0.5} sx={{ width: '100%' }}>
-                            {homeworkSummary.assignmentsBySubject.map((item, index) => (
+                          <Box sx={{
+                            minWidth: '75px',
+                            flexShrink: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start'
+                          }}>
+                            <Typography variant="caption" sx={{
+                              fontWeight: 800,
+                              color: '#8b5cf6',
+                              fontSize: '0.9rem',
+                              lineHeight: 1.2,
+                              letterSpacing: '0.3px'
+                            }}>
+                              {testSummary.totalStudents}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: alpha('#8b5cf6', 0.7),
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                              lineHeight: 1,
+                              mt: 0.25
+                            }}>
+                              Students
+                            </Typography>
+                          </Box>
+                          <Box sx={{
+                            width: '1.5px',
+                            height: '24px',
+                            bgcolor: alpha('#8b5cf6', 0.25),
+                            flexShrink: 0,
+                            borderRadius: '1px'
+                          }} />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="caption" sx={{
+                              color: 'text.primary',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              display: 'block',
+                              lineHeight: 1.3
+                            }}>
+                              Assessed
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {/* Tests by Subject */}
+                        {testSummary.testsBySubject.length > 0 && (
+                          <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 0.75,
+                            width: '100%',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 0.5,
+                            '&::-webkit-scrollbar': {
+                              width: '6px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.common.white, 0.05)
+                                : alpha(theme.palette.common.black, 0.05),
+                              borderRadius: '3px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.common.white, 0.2)
+                                : alpha(theme.palette.common.black, 0.2),
+                              borderRadius: '3px',
+                              '&:hover': {
+                                background: theme => theme.palette.mode === 'dark'
+                                  ? alpha(theme.palette.common.white, 0.3)
+                                  : alpha(theme.palette.common.black, 0.3),
+                              }
+                            },
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => theme.palette.mode === 'dark'
+                              ? `${alpha(theme.palette.common.white, 0.2)} ${alpha(theme.palette.common.white, 0.05)}`
+                              : `${alpha(theme.palette.common.black, 0.2)} ${alpha(theme.palette.common.black, 0.05)}`,
+                          }}>
+                            {testSummary.testsBySubject.map((item, index) => (
                               <Box
                                 key={index}
                                 sx={{
-                                  py: 0.875,
+                                  py: 0.9,
                                   px: 1,
-                                  borderRadius: 0.75,
+                                  borderRadius: 0.875,
                                   border: '1px solid',
-                                  borderColor: alpha('#10b981', 0.2),
-                                  bgcolor: alpha('#10b981', 0.06),
+                                  borderColor: alpha('#10b981', 0.25),
+                                  bgcolor: alpha('#10b981', 0.08),
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: 1,
+                                  gap: 0.75,
                                   width: '100%',
                                   boxSizing: 'border-box',
+                                  minWidth: 0,
+                                  flexShrink: 0,
                                   transition: 'all 0.2s ease',
                                   '&:hover': {
-                                    bgcolor: alpha('#10b981', 0.1),
-                                    borderColor: alpha('#10b981', 0.3),
+                                    bgcolor: alpha('#10b981', 0.12),
+                                    borderColor: alpha('#10b981', 0.4),
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: `0 1px 4px ${alpha('#10b981', 0.15)}`,
                                   }
                                 }}
                               >
-                                <Typography variant="caption" sx={{ 
-                                  color: 'text.primary',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 500,
-                                  flex: 1,
-                                  minWidth: 0,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {item.subject}
-                                </Typography>
                                 <Box sx={{
-                                  minWidth: '24px',
-                                  height: '20px',
-                                  borderRadius: '4px',
-                                  bgcolor: alpha('#10b981', 0.15),
+                                  minWidth: '36px',
+                                  flexShrink: 0,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  px: 0.5,
-                                  flexShrink: 0
+                                  py: 0.4,
+                                  px: 0.6,
+                                  borderRadius: 0.5,
+                                  bgcolor: alpha('#10b981', 0.18),
+                                  border: `1px solid ${alpha('#10b981', 0.3)}`
                                 }}>
-                                  <Typography variant="caption" sx={{ 
+                                  <Typography variant="caption" sx={{
+                                    fontWeight: 800,
                                     color: '#10b981',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 700,
-                                    lineHeight: 1
+                                    fontSize: '0.75rem',
+                                    lineHeight: 1,
+                                    letterSpacing: '0.2px'
                                   }}>
                                     {item.count}
                                   </Typography>
                                 </Box>
+
+                                <Box sx={{
+                                  width: '1px',
+                                  height: '18px',
+                                  bgcolor: alpha('#10b981', 0.25),
+                                  flexShrink: 0,
+                                  borderRadius: '1px'
+                                }} />
+
+                                <Typography variant="caption" sx={{
+                                  color: 'text.primary',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500,
+                                  flex: 1,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 0,
+                                  lineHeight: 1.4
+                                }}>
+                                  {item.subject}
+                                </Typography>
                               </Box>
                             ))}
-                          </Stack>
-                        </Box>
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-              </Box>
-            </StatCard>
-          </Grid>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+                </Box>
+              </StatCard>
+            </Grid>
           )}
 
-          {/* Timetable Card */}
-          {isTeacherSummaryCardVisible(renderSettings, 'timetable_summary_card') && (
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard sx={{
-              p: 1.5,
-              px: 1.5,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
+          {/* Homework Diary Summary Card */}
+          {isTeacherSummaryCardVisible(renderSettings, 'homework_diary_summary_card') && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{
+                p: 1.5,
+                px: 1.5,
                 height: '100%',
-                background: theme => `
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: theme => `
                   linear-gradient(135deg, 
                     ${alpha(theme.palette.background.paper, 0.95)} 0%,
                     ${alpha(theme.palette.background.paper, 0.85)} 100%)
                 `,
-                borderRadius: 'inherit',
-                zIndex: 0,
-              }
-            }}>
-              <Box sx={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  mb: 1.25,
-                  flexShrink: 0
-                }}>
-                  <CalendarToday sx={{ 
-                    fontSize: 18, 
-                    color: 'info.main',
-                    flexShrink: 0
-                  }} />
-                  <Typography variant="subtitle2" sx={{ 
-                    color: 'info.main',
-                    fontWeight: 600,
-                    fontSize: '0.8rem',
-                    lineHeight: 1
-                  }}>
-                    Timetable
-                  </Typography>
-                </Box>
-
-                {timetablePeriods === 0 ? (
-                  <Box sx={{ 
-                    textAlign: 'center', 
-                    py: 2,
-                    flex: 1,
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                }
+              }}>
+                <Box sx={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    gap: 0.75,
+                    mb: 1.25,
+                    flexShrink: 0
                   }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                      No timetable assigned
+                    <Assignment sx={{
+                      fontSize: 18,
+                      color: '#ec4899',
+                      flexShrink: 0
+                    }} />
+                    <Typography variant="subtitle2" sx={{
+                      color: '#ec4899',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      lineHeight: 1
+                    }}>
+                      Homework Diary
                     </Typography>
                   </Box>
-                ) : (
-                  <Box sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    pr: 0.5,
-                    '&::-webkit-scrollbar': {
-                      width: '6px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: theme => theme.palette.mode === 'dark' 
-                        ? alpha(theme.palette.common.white, 0.05) 
-                        : alpha(theme.palette.common.black, 0.05),
-                      borderRadius: '3px',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: theme => theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.white, 0.2)
-                        : alpha(theme.palette.common.black, 0.2),
-                      borderRadius: '3px',
-                      '&:hover': {
-                        background: theme => theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.common.white, 0.3)
-                          : alpha(theme.palette.common.black, 0.3),
-                      }
-                    },
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: theme => theme.palette.mode === 'dark'
-                      ? `${alpha(theme.palette.common.white, 0.2)} ${alpha(theme.palette.common.white, 0.05)}`
-                      : `${alpha(theme.palette.common.black, 0.2)} ${alpha(theme.palette.common.black, 0.05)}`,
-                  }}>
-                    <Stack spacing={0.5} sx={{ width: '100%' }}>
-                      {(() => {
-                        const periods = [
-                          { num: 1, time: '08:30-09:00' },
-                          { num: 2, time: '09:00-09:30' },
-                          { num: 3, time: '09:30-10:00' },
-                          { num: 4, time: '10:00-10:30' },
-                          { num: 5, time: '10:30-11:00' },
-                          { num: 6, time: '11:15-11:45' },
-                          { num: 7, time: '11:45-12:15' },
-                          { num: 8, time: '12:15-12:45' },
-                        ];
 
-                        const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
-                        const getClassName = (id: number): string => classes.find(c => c.id === id)?.name || '';
-
-                        const scheduleMap = new Map<number, { classes: string[]; subjects: string[] }>();
-                        
-                        timetableData.forEach((item: any) => {
-                          const period = item.period_index + 1;
-                          const className = getClassName(item.class_id);
-                          const subjectName = getSubjectName(item.subject_id);
-                          
-                          if (!scheduleMap.has(period)) {
-                            scheduleMap.set(period, { classes: [className], subjects: [subjectName] });
-                          } else {
-                            const existing = scheduleMap.get(period)!;
-                            existing.classes.push(className);
-                            existing.subjects.push(subjectName);
+                  {homeworkSummary.totalAssignments === 0 ? (
+                    <Box sx={{
+                      textAlign: 'center',
+                      py: 2,
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                        No assignments
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: 'auto',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      '&::-webkit-scrollbar': {
+                        width: '4px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: 'transparent',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: theme => alpha('#ec4899', 0.3),
+                        borderRadius: '2px',
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: theme => alpha('#ec4899', 0.5),
+                      },
+                    }}>
+                      <Stack spacing={1} sx={{ width: '100%' }}>
+                        {/* Summary Stats */}
+                        <Box sx={{
+                          py: 1.25,
+                          px: 1.25,
+                          borderRadius: 1,
+                          border: '1.5px solid',
+                          borderColor: alpha('#ec4899', 0.3),
+                          bgcolor: alpha('#ec4899', 0.08),
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.25,
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: alpha('#ec4899', 0.12),
+                            borderColor: alpha('#ec4899', 0.4),
+                            transform: 'translateY(-1px)',
+                            boxShadow: `0 2px 8px ${alpha('#ec4899', 0.15)}`,
                           }
-                        });
+                        }}>
+                          <Box sx={{
+                            minWidth: '75px',
+                            flexShrink: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start'
+                          }}>
+                            <Typography variant="caption" sx={{
+                              fontWeight: 800,
+                              color: '#ec4899',
+                              fontSize: '0.9rem',
+                              lineHeight: 1.2,
+                              letterSpacing: '0.3px'
+                            }}>
+                              {homeworkSummary.totalAssignments}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: alpha('#ec4899', 0.7),
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                              lineHeight: 1,
+                              mt: 0.25
+                            }}>
+                              Assignments
+                            </Typography>
+                          </Box>
+                          <Box sx={{
+                            width: '1.5px',
+                            height: '24px',
+                            bgcolor: alpha('#ec4899', 0.25),
+                            flexShrink: 0,
+                            borderRadius: '1px'
+                          }} />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="caption" sx={{
+                              color: 'text.primary',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              display: 'block',
+                              lineHeight: 1.3,
+                              mb: 0.25
+                            }}>
+                              {homeworkSummary.averagePerDay.toFixed(1)}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: 'text.secondary',
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                              display: 'block',
+                              lineHeight: 1
+                            }}>
+                              Avg per Day
+                            </Typography>
+                          </Box>
+                        </Box>
 
-                        const allPeriods = [];
-                        for (let i = 1; i <= periods.length; i++) {
-                          if (i === 6) {
-                            allPeriods.push({ period: 'Break', time: '11:00-11:15' });
+                        {/* Classes Count */}
+                        <Box sx={{
+                          py: 1,
+                          px: 1.25,
+                          borderRadius: 1,
+                          border: '1.5px solid',
+                          borderColor: alpha('#ec4899', 0.3),
+                          bgcolor: alpha('#ec4899', 0.08),
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.25,
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: alpha('#ec4899', 0.12),
+                            borderColor: alpha('#ec4899', 0.4),
+                            transform: 'translateY(-1px)',
+                            boxShadow: `0 2px 8px ${alpha('#ec4899', 0.15)}`,
                           }
-                          
-                          const scheduleItem = scheduleMap.get(i);
-                          if (scheduleItem) {
-                            const uniqueSubjects = Array.from(new Set(scheduleItem.subjects));
-                            const uniqueClasses = Array.from(new Set(scheduleItem.classes));
-                            allPeriods.push({
-                              period: i,
-                              time: periods[i-1].time,
-                              class: uniqueClasses.join(' / '),
-                              subject: uniqueSubjects.join(' / ')
-                            });
-                          } else {
-                            allPeriods.push({
-                              period: i,
-                              time: periods[i-1].time,
-                              class: 'Free',
-                              subject: '-'
-                            });
-                          }
-                        }
+                        }}>
+                          <Box sx={{
+                            minWidth: '75px',
+                            flexShrink: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start'
+                          }}>
+                            <Typography variant="caption" sx={{
+                              fontWeight: 800,
+                              color: '#ec4899',
+                              fontSize: '0.9rem',
+                              lineHeight: 1.2,
+                              letterSpacing: '0.3px'
+                            }}>
+                              {homeworkSummary.assignmentsByClass.length}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: alpha('#ec4899', 0.7),
+                              fontSize: '0.7rem',
+                              fontWeight: 500,
+                              lineHeight: 1,
+                              mt: 0.25
+                            }}>
+                              Classes
+                            </Typography>
+                          </Box>
+                        </Box>
 
-                        return allPeriods.map((item, index) => {
-                          if (item.period === 'Break') {
-                            return (
-                              <Box
-                                key={index}
-                                sx={{
-                                  py: 0.5,
-                                  px: 0.875,
-                                  borderRadius: 0.5,
-                                  bgcolor: alpha('#f59e0b', 0.1),
-                                  border: '1px solid',
-                                  borderColor: alpha('#f59e0b', 0.2),
-                                  textAlign: 'center',
-                                  width: '100%',
-                                  boxSizing: 'border-box',
-                                }}
-                              >
-                                <Typography variant="caption" sx={{ 
-                                  fontWeight: 600, 
-                                  color: '#f59e0b',
-                                  fontSize: '0.65rem',
-                                  lineHeight: 1.2
-                                }}>
-                                  BREAK
-                                </Typography>
-                              </Box>
-                            );
-                          }
-
-                          const isFree = item.class === 'Free';
-                          return (
-                            <Box
-                              key={index}
-                              sx={{
-                                py: 0.75,
-                                px: 0.875,
-                                borderRadius: 0.5,
-                                border: '1px solid',
-                                borderColor: isFree 
-                                  ? alpha('#9e9e9e', 0.15)
-                                  : theme => alpha(theme.palette.info.main, 0.2),
-                                bgcolor: isFree 
-                                  ? alpha('#9e9e9e', 0.03)
-                                  : theme => alpha(theme.palette.info.main, 0.05),
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.875,
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                minWidth: 0,
-                              }}
-                            >
-                              {/* Period Number */}
-                              <Typography variant="caption" sx={{ 
-                                fontWeight: 700,
-                                color: isFree ? 'text.secondary' : 'info.main',
-                                fontSize: '0.7rem',
-                                minWidth: '26px',
-                                flexShrink: 0
-                              }}>
-                                P{item.period}
-                              </Typography>
-                              
-                              {/* Separator */}
-                              <Box sx={{
-                                width: '1px',
-                                height: '14px',
-                                bgcolor: isFree 
-                                  ? alpha('#9e9e9e', 0.2)
-                                  : theme => alpha(theme.palette.info.main, 0.2),
-                                flexShrink: 0
-                              }} />
-                              
-                              {/* Class */}
-                              {!isFree ? (
-                                <>
-                                  <Typography variant="caption" sx={{ 
-                                    color: 'text.secondary',
-                                    fontSize: '0.65rem',
+                        {/* Assignments by Subject */}
+                        {homeworkSummary.assignmentsBySubject.length > 0 && (
+                          <Box sx={{
+                            width: '100%',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 0.5,
+                            '&::-webkit-scrollbar': {
+                              width: '6px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.common.white, 0.05)
+                                : alpha(theme.palette.common.black, 0.05),
+                              borderRadius: '3px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.common.white, 0.2)
+                                : alpha(theme.palette.common.black, 0.2),
+                              borderRadius: '3px',
+                              '&:hover': {
+                                background: theme => theme.palette.mode === 'dark'
+                                  ? alpha(theme.palette.common.white, 0.3)
+                                  : alpha(theme.palette.common.black, 0.3),
+                              }
+                            },
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => theme.palette.mode === 'dark'
+                              ? `${alpha(theme.palette.common.white, 0.2)} ${alpha(theme.palette.common.white, 0.05)}`
+                              : `${alpha(theme.palette.common.black, 0.2)} ${alpha(theme.palette.common.black, 0.05)}`,
+                          }}>
+                            <Stack spacing={0.5} sx={{ width: '100%' }}>
+                              {homeworkSummary.assignmentsBySubject.map((item, index) => (
+                                <Box
+                                  key={index}
+                                  sx={{
+                                    py: 0.875,
+                                    px: 1,
+                                    borderRadius: 0.75,
+                                    border: '1px solid',
+                                    borderColor: alpha('#10b981', 0.2),
+                                    bgcolor: alpha('#10b981', 0.06),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 1,
+                                    width: '100%',
+                                    boxSizing: 'border-box',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                      bgcolor: alpha('#10b981', 0.1),
+                                      borderColor: alpha('#10b981', 0.3),
+                                    }
+                                  }}
+                                >
+                                  <Typography variant="caption" sx={{
+                                    color: 'text.primary',
+                                    fontSize: '0.7rem',
                                     fontWeight: 500,
-                                    minWidth: '55px',
-                                    flexShrink: 0,
+                                    flex: 1,
+                                    minWidth: 0,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                   }}>
-                                    {item.class}
-                                  </Typography>
-                                  
-                                  {/* Separator */}
-                                  <Box sx={{
-                                    width: '1px',
-                                    height: '14px',
-                                    bgcolor: theme => alpha(theme.palette.info.main, 0.2),
-                                    flexShrink: 0
-                                  }} />
-                                  
-                                  {/* Subject */}
-                                  <Typography variant="caption" sx={{ 
-                                    color: 'info.main',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 600,
-                                    flex: 1,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    minWidth: 0
-                                  }}>
                                     {item.subject}
                                   </Typography>
-                                </>
-                              ) : (
-                                <Typography variant="caption" sx={{ 
-                                  color: 'text.secondary',
-                                  fontSize: '0.65rem',
-                                  fontStyle: 'italic',
-                                  flex: 1,
-                                  minWidth: 0
-                                }}>
-                                  Free Period
-                                </Typography>
-                              )}
-                            </Box>
-                          );
-                        });
-                      })()}
-                    </Stack>
+                                  <Box sx={{
+                                    minWidth: '24px',
+                                    height: '20px',
+                                    borderRadius: '4px',
+                                    bgcolor: alpha('#10b981', 0.15),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    px: 0.5,
+                                    flexShrink: 0
+                                  }}>
+                                    <Typography variant="caption" sx={{
+                                      color: '#10b981',
+                                      fontSize: '0.65rem',
+                                      fontWeight: 700,
+                                      lineHeight: 1
+                                    }}>
+                                      {item.count}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+                </Box>
+              </StatCard>
+            </Grid>
+          )}
+
+          {/* Timetable Card */}
+          {isTeacherSummaryCardVisible(renderSettings, 'timetable_summary_card') && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{
+                p: 1.5,
+                px: 1.5,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: theme => `
+                  linear-gradient(135deg, 
+                    ${alpha(theme.palette.background.paper, 0.95)} 0%,
+                    ${alpha(theme.palette.background.paper, 0.85)} 100%)
+                `,
+                  borderRadius: 'inherit',
+                  zIndex: 0,
+                }
+              }}>
+                <Box sx={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    mb: 1.25,
+                    flexShrink: 0
+                  }}>
+                    <CalendarToday sx={{
+                      fontSize: 18,
+                      color: 'info.main',
+                      flexShrink: 0
+                    }} />
+                    <Typography variant="subtitle2" sx={{
+                      color: 'info.main',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      lineHeight: 1
+                    }}>
+                      Timetable
+                    </Typography>
                   </Box>
-                )}
-              </Box>
-            </StatCard>
-          </Grid>
+
+                  {timetablePeriods === 0 ? (
+                    <Box sx={{
+                      textAlign: 'center',
+                      py: 2,
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                        No timetable assigned
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: 'auto',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      pr: 0.5,
+                      '&::-webkit-scrollbar': {
+                        width: '6px',
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: theme => theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.common.white, 0.05)
+                          : alpha(theme.palette.common.black, 0.05),
+                        borderRadius: '3px',
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: theme => theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.common.white, 0.2)
+                          : alpha(theme.palette.common.black, 0.2),
+                        borderRadius: '3px',
+                        '&:hover': {
+                          background: theme => theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.common.white, 0.3)
+                            : alpha(theme.palette.common.black, 0.3),
+                        }
+                      },
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: theme => theme.palette.mode === 'dark'
+                        ? `${alpha(theme.palette.common.white, 0.2)} ${alpha(theme.palette.common.white, 0.05)}`
+                        : `${alpha(theme.palette.common.black, 0.2)} ${alpha(theme.palette.common.black, 0.05)}`,
+                    }}>
+                      <Stack spacing={0.5} sx={{ width: '100%' }}>
+                        {(() => {
+                          if (periods.length === 0) return null;
+
+
+                          const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
+                          const getClassName = (id: number): string => classes.find(c => c.id === id)?.name || '';
+
+                          const scheduleMap = new Map<number, { classes: string[]; subjects: string[] }>();
+
+                          timetableData.forEach((item: any) => {
+                            const period = item.period_index + 1;
+                            const className = getClassName(item.class_id);
+                            const subjectName = getSubjectName(item.subject_id);
+
+                            if (!scheduleMap.has(period)) {
+                              scheduleMap.set(period, { classes: [className], subjects: [subjectName] });
+                            } else {
+                              const existing = scheduleMap.get(period)!;
+                              existing.classes.push(className);
+                              existing.subjects.push(subjectName);
+                            }
+                          });
+
+                          const allPeriods = [];
+                          for (let i = 1; i <= periods.length; i++) {
+                            if (i === breakIdx + 1) {
+                              allPeriods.push({ period: 'Break', time: `${breakSettings.start}-${breakSettings.end}` });
+                            }
+
+                            const scheduleItem = scheduleMap.get(i);
+                            if (scheduleItem) {
+                              const uniqueSubjects = Array.from(new Set(scheduleItem.subjects));
+                              const uniqueClasses = Array.from(new Set(scheduleItem.classes));
+                              allPeriods.push({
+                                period: i,
+                                time: periods[i - 1].time,
+                                class: uniqueClasses.join(' / '),
+                                subject: uniqueSubjects.join(' / ')
+                              });
+                            } else {
+                              allPeriods.push({
+                                period: i,
+                                time: periods[i - 1].time,
+                                class: 'Free',
+                                subject: '-'
+                              });
+                            }
+                          }
+
+                          return allPeriods.map((item, index) => {
+                            if (item.period === 'Break') {
+                              return (
+                                <Box
+                                  key={index}
+                                  sx={{
+                                    py: 0.5,
+                                    px: 0.875,
+                                    borderRadius: 0.5,
+                                    bgcolor: alpha('#f59e0b', 0.1),
+                                    border: '1px solid',
+                                    borderColor: alpha('#f59e0b', 0.2),
+                                    textAlign: 'center',
+                                    width: '100%',
+                                    boxSizing: 'border-box',
+                                  }}
+                                >
+                                  <Typography variant="caption" sx={{
+                                    fontWeight: 600,
+                                    color: '#f59e0b',
+                                    fontSize: '0.65rem',
+                                    lineHeight: 1.2
+                                  }}>
+                                    BREAK
+                                  </Typography>
+                                </Box>
+                              );
+                            }
+
+                            const isFree = item.class === 'Free';
+                            return (
+                              <Box
+                                key={index}
+                                sx={{
+                                  py: 0.75,
+                                  px: 0.875,
+                                  borderRadius: 0.5,
+                                  border: '1px solid',
+                                  borderColor: isFree
+                                    ? alpha('#9e9e9e', 0.15)
+                                    : theme => alpha(theme.palette.info.main, 0.2),
+                                  bgcolor: isFree
+                                    ? alpha('#9e9e9e', 0.03)
+                                    : theme => alpha(theme.palette.info.main, 0.05),
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.875,
+                                  width: '100%',
+                                  boxSizing: 'border-box',
+                                  minWidth: 0,
+                                }}
+                              >
+                                {/* Period Number */}
+                                <Typography variant="caption" sx={{
+                                  fontWeight: 700,
+                                  color: isFree ? 'text.secondary' : 'info.main',
+                                  fontSize: '0.7rem',
+                                  minWidth: '26px',
+                                  flexShrink: 0
+                                }}>
+                                  P{item.period}
+                                </Typography>
+
+                                {/* Separator */}
+                                <Box sx={{
+                                  width: '1px',
+                                  height: '14px',
+                                  bgcolor: isFree
+                                    ? alpha('#9e9e9e', 0.2)
+                                    : theme => alpha(theme.palette.info.main, 0.2),
+                                  flexShrink: 0
+                                }} />
+
+                                {/* Class */}
+                                {!isFree ? (
+                                  <>
+                                    <Typography variant="caption" sx={{
+                                      color: 'text.secondary',
+                                      fontSize: '0.65rem',
+                                      fontWeight: 500,
+                                      minWidth: '55px',
+                                      flexShrink: 0,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {item.class}
+                                    </Typography>
+
+                                    {/* Separator */}
+                                    <Box sx={{
+                                      width: '1px',
+                                      height: '14px',
+                                      bgcolor: theme => alpha(theme.palette.info.main, 0.2),
+                                      flexShrink: 0
+                                    }} />
+
+                                    {/* Subject */}
+                                    <Typography variant="caption" sx={{
+                                      color: 'info.main',
+                                      fontSize: '0.65rem',
+                                      fontWeight: 600,
+                                      flex: 1,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      minWidth: 0
+                                    }}>
+                                      {item.subject}
+                                    </Typography>
+                                  </>
+                                ) : (
+                                  <Typography variant="caption" sx={{
+                                    color: 'text.secondary',
+                                    fontSize: '0.65rem',
+                                    fontStyle: 'italic',
+                                    flex: 1,
+                                    minWidth: 0
+                                  }}>
+                                    Free Period
+                                  </Typography>
+                                )}
+                              </Box>
+                            );
+                          });
+                        })()}
+                      </Stack>
+                    </Box>
+                  )}
+                </Box>
+              </StatCard>
+            </Grid>
           )}
         </Grid>
       </Box>
 
       {/* Tabs */}
       {visibleTabs.length > 0 && (
-      <GlassCard>
-        <TabsContainer>
-          <ModernTabs
-            value={getVisibleTabIndex(activeTab) >= 0 ? getVisibleTabIndex(activeTab) : 0}
-            onChange={(_, newVisibleIndex) => {
-              const originalIndex = getOriginalTabIndex(newVisibleIndex);
-              setActiveTab(originalIndex);
-            }}
-            variant={isMobile ? "standard" : "scrollable"}
-            scrollButtons={isMobile ? false : "auto"}
-            sx={{
-              [theme.breakpoints.down('sm')]: {
-                '& .MuiTabs-flexContainer': {
-                  flexWrap: 'wrap',
+        <GlassCard>
+          <TabsContainer>
+            <ModernTabs
+              value={getVisibleTabIndex(activeTab) >= 0 ? getVisibleTabIndex(activeTab) : 0}
+              onChange={(_, newVisibleIndex) => {
+                const originalIndex = getOriginalTabIndex(newVisibleIndex);
+                setActiveTab(originalIndex);
+              }}
+              variant={isMobile ? "standard" : "scrollable"}
+              scrollButtons={isMobile ? false : "auto"}
+              sx={{
+                [theme.breakpoints.down('sm')]: {
+                  '& .MuiTabs-flexContainer': {
+                    flexWrap: 'wrap',
+                  }
                 }
-              }
-            }}
-          >
-            {visibleTabs.map((tab) => (
-              <TabItem
-                key={tab.originalIndex}
-                label={
-                  <Box className="tab-wrapper">
-                    <Box className="icon-wrapper">
-                      {tab.icon}
+              }}
+            >
+              {visibleTabs.map((tab) => (
+                <TabItem
+                  key={tab.originalIndex}
+                  label={
+                    <Box className="tab-wrapper">
+                      <Box className="icon-wrapper">
+                        {tab.icon}
+                      </Box>
+                      <span className="tab-label">{tab.label}</span>
                     </Box>
-                    <span className="tab-label">{tab.label}</span>
-                  </Box>
-                }
-              />
-            ))}
-          </ModernTabs>
-        </TabsContainer>
+                  }
+                />
+              ))}
+            </ModernTabs>
+          </TabsContainer>
 
-        {/* Info Tab */}
-        {activeTab === 0 && isTeacherTabVisible(renderSettings, 'info_tab') && (
-          <TabPanel>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <InfoSection>
-                  <SectionTitle>
-                    <Box className="icon-wrapper">
-                      <Person />
-                    </Box>
-                    <Box className="title-content">
-                      <Typography variant="h6" sx={{ 
-                        fontWeight: 700,
-                        fontSize: { xs: '0.95rem', sm: '1.25rem' }
-                      }}>
-                        Personal Information
-                      </Typography>
-                    </Box>
-                  </SectionTitle>
-                  <InfoGrid container spacing={2}>
-                    {teacher.dob && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Cake />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Date of Birth</Typography>
-                          <Typography className="info-value">
-                            {format(parseISO(teacher.dob), 'MMM dd, yyyy')}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.gender && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Person />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Gender</Typography>
-                          <Typography className="info-value">{teacher.gender}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.blood_group && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Bloodtype />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Blood Group</Typography>
-                          <Typography className="info-value">{teacher.blood_group}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.father_name && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Person />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Father's Name</Typography>
-                          <Typography className="info-value">{teacher.father_name}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.national_id && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Assignment />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">National ID</Typography>
-                          <Typography className="info-value">{teacher.national_id}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.religion && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Person />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Religion</Typography>
-                          <Typography className="info-value">{teacher.religion}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.address && (
-                      <Grid item xs={12} className="info-item">
-                        <Box className="icon-container">
-                          <LocationOn />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Address</Typography>
-                          <Typography className="info-value">{teacher.address}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                  </InfoGrid>
-                </InfoSection>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <InfoSection>
-                  <SectionTitle>
-                    <Box className="icon-wrapper">
-                      <Work />
-                    </Box>
-                    <Box className="title-content">
-                      <Typography variant="h6" sx={{ 
-                        fontWeight: 700,
-                        fontSize: { xs: '0.95rem', sm: '1.25rem' }
-                      }}>
-                        Professional Information
-                      </Typography>
-                    </Box>
-                  </SectionTitle>
-                  <InfoGrid container spacing={2}>
-                    {teacher.education && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <School />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Education</Typography>
-                          <Typography className="info-value">{teacher.education}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.experience && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Work />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Experience</Typography>
-                          <Typography className="info-value">{teacher.experience}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.role && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Work />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Role</Typography>
-                          <Typography className="info-value">{teacher.role}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.joining_date && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <CalendarToday />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Joining Date</Typography>
-                          <Typography className="info-value">
-                            {format(parseISO(teacher.joining_date), 'MMM dd, yyyy')}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.salary && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <AttachMoney />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Salary</Typography>
-                          <Typography className="info-value">Rs. {teacher.salary.toLocaleString()}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.mobile && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Phone />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Mobile</Typography>
-                          <Typography className="info-value">{teacher.mobile}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {teacher.email && (
-                      <Grid item xs={12} sm={6} className="info-item">
-                        <Box className="icon-container">
-                          <Email />
-                        </Box>
-                        <Box className="info-content">
-                          <Typography className="info-label">Email</Typography>
-                          <Typography className="info-value">{teacher.email}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                  </InfoGrid>
-                </InfoSection>
-              </Grid>
-            </Grid>
-          </TabPanel>
-        )}
-
-        {/* Attendance Tab */}
-        {activeTab === 1 && isTeacherTabVisible(renderSettings, 'attendance_tab') && (() => {
-          const theme = useTheme();
-          return (
+          {/* Info Tab */}
+          {activeTab === 0 && isTeacherTabVisible(renderSettings, 'info_tab') && (
             <TabPanel>
               <Grid container spacing={3}>
-                {/* Left Column */}
-                <Grid item xs={12} md={8}>
-                  {/* Attendance Stats */}
-                  <AttendanceStatsCard sx={{ mb: 3 }}>
-                    <StatsHeader>
-                      <Box>
-                        <Typography variant="h5" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CalendarToday sx={{ fontSize: '1.8rem', color: 'primary.main' }} />
-                          Attendance Overview
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                          {attendanceStats?.total || 0} total tracked days
-                        </Typography>
+                <Grid item xs={12} md={6}>
+                  <InfoSection>
+                    <SectionTitle>
+                      <Box className="icon-wrapper">
+                        <Person />
                       </Box>
-                    </StatsHeader>
-
-                    <StatsGrid container>
-                      <Grid item>
-                        <StatBox status="present">
-                          <CheckCircle className="stat-icon" />
-                          <Box className="stat-header">
-                            <CheckCircle className="icon" />
-                            <Typography className="stat-label">Present Days</Typography>
-                          </Box>
-                          <Typography className="stat-value">{attendanceStats?.present || 0}</Typography>
-                          <Box className="stat-percentage">
-                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                            {attendanceStats && attendanceStats.total > 0 
-                              ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100) 
-                              : 0}% Attendance Rate
-                          </Box>
-                        </StatBox>
-                      </Grid>
-
-                      <Grid item>
-                        <StatBox status="late">
-                          <Timer className="stat-icon" />
-                          <Box className="stat-header">
-                            <Timer className="icon" />
-                            <Typography className="stat-label">Late Arrivals</Typography>
-                          </Box>
-                          <Typography className="stat-value">{attendanceStats?.late || 0}</Typography>
-                          <Box className="stat-percentage">
-                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                            {attendanceStats ? Math.round((attendanceStats.late / attendanceStats.total) * 100) : 0}% Tardiness Rate
-                          </Box>
-                        </StatBox>
-                      </Grid>
-
-                      <Grid item>
-                        <StatBox status="absence">
-                          <Cancel className="stat-icon" />
-                          <Box className="stat-header">
-                            <Cancel className="icon" />
-                            <Typography className="stat-label">Total Absences</Typography>
-                          </Box>
-                          <Typography className="stat-value">
-                            {(attendanceStats?.absent || 0) + (attendanceStats?.leave || 0)}
-                          </Typography>
-                          <Box className="stat-subvalue">
-                            <EventBusy sx={{ fontSize: '0.9rem', opacity: 0.7 }} />
-                            Including {attendanceStats?.leave || 0} granted leaves
-                          </Box>
-                          <Box className="stat-percentage">
-                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                            {attendanceStats ? Math.round(((attendanceStats.absent + attendanceStats.leave) / attendanceStats.total) * 100) : 0}% Absence Rate
-                          </Box>
-                        </StatBox>
-                      </Grid>
-
-                      <Grid item>
-                        <Box
-                          sx={{
-                            padding: theme.spacing(2.5),
-                            borderRadius: theme.shape.borderRadius,
-                            background: alpha('#ec4899', 0.08),
-                            border: `1px solid ${alpha('#ec4899', 0.12)}`,
-                            position: 'relative',
-                            overflow: 'hidden',
-                            transition: 'all 0.3s ease',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: theme.spacing(1),
-                            height: '100%',
-                            '&:hover': {
-                              transform: 'translateY(-2px)',
-                              boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
-                              background: alpha('#ec4899', 0.12),
-                              '& .stat-icon': {
-                                transform: 'scale(1.1) rotate(10deg)',
-                                opacity: 0.2,
-                              }
-                            },
-                            '& .stat-icon': {
-                              position: 'absolute',
-                              right: -10,
-                              bottom: -10,
-                              fontSize: '5rem',
-                              color: '#ec4899',
-                              opacity: 0.1,
-                              transition: 'all 0.3s ease',
-                              transform: 'rotate(-10deg)',
-                            },
-                            '& .stat-header': {
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: theme.spacing(1),
-                              '& .icon': {
-                                fontSize: '1.2rem',
-                                color: '#ec4899',
-                                background: alpha('#ec4899', 0.1),
-                                padding: theme.spacing(0.8),
-                                borderRadius: '8px',
-                              }
-                            },
-                            '& .stat-value': {
-                              fontSize: '2.2rem',
-                              fontWeight: 700,
-                              color: '#ec4899',
-                              lineHeight: 1,
-                            },
-                            '& .stat-label': {
-                              fontSize: '0.85rem',
-                              fontWeight: 500,
-                              color: theme.palette.text.secondary,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.5px',
-                            },
-                          }}
-                        >
-                          <AccessTime className="stat-icon" />
-                          <Box className="stat-header">
-                            <AccessTime className="icon" />
-                            <Typography className="stat-label">Half Leaves</Typography>
-                          </Box>
-                          <Typography className="stat-value">{halfLeavesMap.size}</Typography>
-                          <Box className="stat-percentage" sx={{
-                            fontSize: '0.9rem',
-                            fontWeight: 600,
-                            color: '#ec4899',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: theme.spacing(0.5),
-                            marginTop: 'auto',
-                            background: alpha('#ec4899', 0.08),
-                            padding: theme.spacing(0.5, 1),
-                            borderRadius: '4px',
-                            width: 'fit-content',
-                          }}>
-                            <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
-                            {attendanceStats?.total ? Math.round((halfLeavesMap.size / attendanceStats.total) * 100) : 0}% of total days
-                          </Box>
-                        </Box>
-                      </Grid>
-                    </StatsGrid>
-                  </AttendanceStatsCard>
-
-                  {/* Monthly Attendance */}
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight="600">
-                      Monthly Attendance Breakdown
-                    </Typography>
-                  </Box>
-                  <Grid container spacing={2}>
-                    {monthlyStats.map((month) => (
-                      <Grid item xs={12} key={month.month}>
-                        <MonthCard>
-                          <MonthHeader>
-                            <MonthTitle>
-                              <Typography variant="h6" fontWeight="600">
-                                {month.month.split(' ')[0]}
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary">
-                                {month.month.split(' ')[1]}
-                              </Typography>
-                            </MonthTitle>
-                            <MonthBadge>
-                              <CalendarToday sx={{ fontSize: '0.875rem' }} />
-                              <Box component="span">
-                                {month.total} Days • {month.total > 0 ? Math.round(((month.present + month.late) / month.total) * 100) : 0}% Attendance
-                              </Box>
-                            </MonthBadge>
-                          </MonthHeader>
-
-                          <StatGrid container spacing={2}>
-                            <Grid item xs={6} sm={3}>
-                              <StatBox status="present">
-                                <CheckCircle className="stat-icon" />
-                                <StatValue color={theme.palette.success.main}>
-                                  {month.present}
-                                  <span className="percentage">
-                                    ({((month.present / month.total) * 100).toFixed(1)}%)
-                                  </span>
-                                </StatValue>
-                                <StatLabel>Present</StatLabel>
-                              </StatBox>
-                            </Grid>
-                            <Grid item xs={6} sm={3}>
-                              <StatBox status="absence">
-                                <Cancel className="stat-icon" />
-                                <StatValue color={theme.palette.error.main}>
-                                  {month.absent + month.leave}
-                                  <span className="percentage">
-                                    ({(((month.absent + month.leave) / month.total) * 100).toFixed(1)}%)
-                                  </span>
-                                </StatValue>
-                                <StatLabel>Absences</StatLabel>
-                              </StatBox>
-                            </Grid>
-                            <Grid item xs={6} sm={3}>
-                              <StatBox status="late">
-                                <Timer className="stat-icon" />
-                                <StatValue color={theme.palette.warning.main}>
-                                  {month.late}
-                                  <span className="percentage">
-                                    ({((month.late / month.total) * 100).toFixed(1)}%)
-                                  </span>
-                                </StatValue>
-                                <StatLabel>Late</StatLabel>
-                              </StatBox>
-                            </Grid>
-                            <Grid item xs={6} sm={3}>
-                              <Box
-                                sx={{
-                                  padding: theme.spacing(2.5),
-                                  borderRadius: theme.shape.borderRadius,
-                                  background: alpha('#ec4899', 0.08),
-                                  border: `1px solid ${alpha('#ec4899', 0.12)}`,
-                                  position: 'relative',
-                                  overflow: 'hidden',
-                                  transition: 'all 0.3s ease',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: theme.spacing(1),
-                                  height: '100%',
-                                  '&:hover': {
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
-                                    background: alpha('#ec4899', 0.12),
-                                    '& .stat-icon': {
-                                      transform: 'scale(1.1) rotate(10deg)',
-                                      opacity: 0.2,
-                                    }
-                                  },
-                                  '& .stat-icon': {
-                                    position: 'absolute',
-                                    right: -10,
-                                    bottom: -10,
-                                    fontSize: '5rem',
-                                    color: '#ec4899',
-                                    opacity: 0.1,
-                                    transition: 'all 0.3s ease',
-                                    transform: 'rotate(-10deg)',
-                                  },
-                                }}
-                              >
-                                <AccessTime className="stat-icon" />
-                                <StatValue color="#ec4899">
-                                  {month.halfLeaves || 0}
-                                  <span className="percentage">
-                                    ({month.total > 0 ? ((month.halfLeaves || 0) / month.total * 100).toFixed(1) : 0}%)
-                                  </span>
-                                </StatValue>
-                                <StatLabel>Half Leaves</StatLabel>
-                              </Box>
-                            </Grid>
-                          </StatGrid>
-                        </MonthCard>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Grid>
-
-                {/* Right Column */}
-                <Grid item xs={12} md={4}>
-                  <Grid container spacing={3}>
-                    {/* Recent Attendance Section */}
-                    <Grid item xs={12}>
-                      <GlassCard>
-                        <Box sx={{ 
-                          p: 2, 
-                          borderBottom: 1, 
-                          borderColor: 'divider',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
+                      <Box className="title-content">
+                        <Typography variant="h6" sx={{
+                          fontWeight: 700,
+                          fontSize: { xs: '0.95rem', sm: '1.25rem' }
                         }}>
-                          <Typography variant="subtitle1" fontWeight="600">
-                            Recent Attendance
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            Last {Math.min(recentAttendance.length, 20)} records
-                          </Typography>
-                        </Box>
-                        <RecentAttendanceContainer>
-                          {recentAttendance.slice(0, 20).map((record, idx) => {
-                            const recordDate = new Date(record.date);
-                            const dayName = recordDate.toLocaleDateString('en-US', { weekday: 'long' });
-                            const formattedDate = recordDate.toLocaleDateString('en-US', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            });
-                            const dateStr = record.date;
-                            const halfLeave = halfLeavesMap.get(dateStr);
-                            
-                            return (
-                              <RecentAttendanceItem key={idx}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                  <Box>
-                                    <DayLabel>{dayName}</DayLabel>
-                                    <DateLabel>
-                                      <CalendarToday sx={{ fontSize: '0.875rem', opacity: 0.7 }} />
-                                      {formattedDate}
-                                    </DateLabel>
-                                  </Box>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {halfLeave && (
-                                      <Box
-                                        sx={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          px: 0.75,
-                                          py: 0.25,
-                                          borderRadius: '4px',
-                                          bgcolor: '#ec4899',
-                                          color: 'white',
-                                          fontSize: '0.65rem',
-                                          fontWeight: 700,
-                                          lineHeight: 1,
-                                        }}
-                                        title="Half Leave"
-                                      >
-                                        HL
-                                      </Box>
-                                    )}
-                                    <StatusChip status={record.status.toLowerCase()}>
-                                      {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                                    </StatusChip>
-                                  </Box>
-                                </Box>
-                                {halfLeave && (
-                                  <Box sx={{ 
-                                    mt: 0.5,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 0.5,
-                                    color: '#ec4899',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 500,
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    bgcolor: alpha('#ec4899', 0.1),
-                                    width: 'fit-content'
-                                  }}>
-                                    <AccessTime sx={{ fontSize: '0.75rem' }} />
-                                    Half Leave
-                                    {halfLeave.leave_type === 'first_half' && halfLeave.arrival_time && ` (Arrived: ${halfLeave.arrival_time})`}
-                                    {halfLeave.leave_type === 'second_half' && halfLeave.departure_time && ` (Departed: ${halfLeave.departure_time})`}
-                                  </Box>
-                                )}
-                                {record.remarks && (
-                                  <Typography 
-                                    variant="caption" 
-                                    color="textSecondary"
-                                    sx={{
-                                      display: 'block',
-                                      mt: 0.5,
-                                      fontSize: '0.75rem',
-                                      fontStyle: 'italic'
-                                    }}
-                                  >
-                                    {record.remarks}
-                                  </Typography>
-                                )}
-                              </RecentAttendanceItem>
-                            );
-                          })}
-                          {recentAttendance.length === 0 && (
-                            <Box sx={{ 
-                              p: 4, 
-                              textAlign: 'center',
-                              color: 'text.secondary'
-                            }}>
-                              <Typography>No attendance records found</Typography>
-                            </Box>
-                          )}
-                        </RecentAttendanceContainer>
-                      </GlassCard>
-                    </Grid>
-
-                    {/* Weekly Day Patterns */}
-                    <Grid item xs={12}>
-                      <GlassCard>
-                        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                      <Typography variant="subtitle1" fontWeight="600">
-                        Weekly Day Patterns
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        Attendance patterns by day of week
-                      </Typography>
-                    </Box>
-                    <Box sx={{ p: 2, height: '250px', display: 'flex', alignItems: 'flex-end' }}>
-                      <Box sx={{ 
-                        width: '100%', 
-                        display: 'flex', 
-                        alignItems: 'flex-end', 
-                        gap: 2,
-                        height: '200px',
-                        position: 'relative'
-                      }}>
-                        {weeklyAttendance.map((data) => {
-                          const { day, status, count, details, percentages } = data;
-                          
-                          const getStatusColor = (status: string | null, theme: Theme) => {
-                            if (!status) return alpha(theme.palette.divider, 0.1);
-                            switch (status.toLowerCase()) {
-                              case 'present': return theme.palette.success.main;
-                              case 'late': return theme.palette.warning.main;
-                              case 'absent': return theme.palette.error.main;
-                              case 'leave': return theme.palette.info.main;
-                              case 'halfleave': return '#ec4899';
-                              default: return alpha(theme.palette.divider, 0.1);
-                            }
-                          };
-
-                          return (
-                            <Box 
-                              key={day} 
-                              sx={{ 
-                                flex: 1, 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center',
-                                gap: 1,
-                                position: 'relative'
-                              }}
-                            >
-                              <Tooltip
-                                title={
-                                  <Box sx={{ p: 1 }}>
-                                    <Typography variant="caption" display="block" sx={{ fontWeight: 600, mb: 1 }}>
-                                      {day} Statistics
-                                    </Typography>
-                                    {details && (
-                                      <>
-                                        <Typography variant="caption" display="block" color="success.main">
-                                          Present: {details.present} ({percentages.present.toFixed(1)}%)
-                                        </Typography>
-                                        <Typography variant="caption" display="block" color="warning.main">
-                                          Late: {details.late} ({percentages.late.toFixed(1)}%)
-                                        </Typography>
-                                        <Typography variant="caption" display="block" color="error.main">
-                                          Absent: {details.absent} ({percentages.absent.toFixed(1)}%)
-                                        </Typography>
-                                        <Typography variant="caption" display="block" color="info.main">
-                                          Leave: {details.leave} ({percentages.leave.toFixed(1)}%)
-                                        </Typography>
-                                        <Typography variant="caption" display="block" sx={{ color: '#ec4899' }}>
-                                          Half Leave: {details.halfLeave} ({percentages.halfLeave.toFixed(1)}%)
-                                        </Typography>
-                                        <Divider sx={{ my: 1 }} />
-                                        <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
-                                          Total Records: {count + details.halfLeave}
-                                        </Typography>
-                                      </>
-                                    )}
-                                  </Box>
-                                }
-                                arrow
-                                placement="top"
-                              >
-                                <Box sx={{
-                                  width: '100%',
-                                  height: '150px',
-                                  position: 'relative',
-                                  borderRadius: '4px',
-                                  overflow: 'hidden',
-                                  border: theme => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                  cursor: 'pointer',
-                                  transition: 'transform 0.2s ease',
-                                  '&:hover': {
-                                    transform: 'translateY(-2px)'
-                                  }
-                                }}>
-                                  {/* Stacked bars for each status */}
-                                  {details && (
-                                    <>
-                                      <Box sx={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        height: `${percentages.present}%`,
-                                        bgcolor: theme => alpha(theme.palette.success.main, 0.3),
-                                        transition: 'height 0.3s ease'
-                                      }} />
-                                      <Box sx={{
-                                        position: 'absolute',
-                                        bottom: `${percentages.present}%`,
-                                        left: 0,
-                                        width: '100%',
-                                        height: `${percentages.late}%`,
-                                        bgcolor: theme => alpha(theme.palette.warning.main, 0.3),
-                                        transition: 'height 0.3s ease'
-                                      }} />
-                                      <Box sx={{
-                                        position: 'absolute',
-                                        bottom: `${percentages.present + percentages.late}%`,
-                                        left: 0,
-                                        width: '100%',
-                                        height: `${percentages.absent}%`,
-                                        bgcolor: theme => alpha(theme.palette.error.main, 0.3),
-                                        transition: 'height 0.3s ease'
-                                      }} />
-                                      <Box sx={{
-                                        position: 'absolute',
-                                        bottom: `${percentages.present + percentages.late + percentages.absent}%`,
-                                        left: 0,
-                                        width: '100%',
-                                        height: `${percentages.leave}%`,
-                                        bgcolor: theme => alpha(theme.palette.info.main, 0.3),
-                                        transition: 'height 0.3s ease'
-                                      }} />
-                                      <Box sx={{
-                                        position: 'absolute',
-                                        bottom: `${percentages.present + percentages.late + percentages.absent + percentages.leave}%`,
-                                        left: 0,
-                                        width: '100%',
-                                        height: `${percentages.halfLeave}%`,
-                                        bgcolor: alpha('#ec4899', 0.3),
-                                        transition: 'height 0.3s ease'
-                                      }} />
-                                    </>
-                                  )}
-                                </Box>
-                              </Tooltip>
-                              <Box sx={{ textAlign: 'center' }}>
-                                <Typography 
-                                  variant="caption" 
-                                  sx={{ 
-                                    color: 'text.primary',
-                                    fontWeight: 600,
-                                    display: 'block'
-                                  }}
-                                >
-                                  {day}
-                                </Typography>
-                                <Typography 
-                                  variant="caption" 
-                                  sx={{ 
-                                    color: theme => getStatusColor(status, theme),
-                                    fontSize: '0.7rem',
-                                    display: 'block',
-                                    mt: 0.5,
-                                    fontWeight: 500
-                                  }}
-                                >
-                                  {count + details.halfLeave > 0 ? `${count + details.halfLeave} Days` : 'No Data'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          );
-                        })}
+                          Personal Information
+                        </Typography>
                       </Box>
-                    </Box>
-                      </GlassCard>
-                    </Grid>
-
-                    {/* Attendance Pattern */}
-                    <Grid item xs={12}>
-                      <GlassCard>
-                        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                      <Typography variant="subtitle1" fontWeight="600">
-                        Attendance Pattern
-                      </Typography>
-                    </Box>
-                    <Box sx={{ p: 2 }}>
-                      <Grid container spacing={2}>
-                        {attendancePattern.map((stat) => {
-                          const color = stat.colorKey === 'secondary' ? '#ec4899' : undefined;
-                          
-                          return (
-                            <Grid item xs={12} key={stat.label}>
-                              <Box sx={{ mb: 1 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                  <Typography variant="caption" color="textSecondary">
-                                    {stat.label}
-                                  </Typography>
-                                  <Typography variant="caption" sx={{ 
-                                    color: color || (theme => {
-                                      const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
-                                      return paletteColor?.main || theme.palette.primary.main;
-                                    })
-                                  }}>
-                                    {stat.count} days ({stat.value})
-                                  </Typography>
-                                </Box>
-                                <Box sx={{ 
-                                  width: '100%', 
-                                  height: '4px', 
-                                  bgcolor: color ? alpha(color, 0.1) : (theme => {
-                                    const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
-                                    return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
-                                  }),
-                                  borderRadius: '2px',
-                                  overflow: 'hidden'
-                                }}>
-                                  <Box sx={{ 
-                                    width: stat.value,
-                                    height: '100%',
-                                    bgcolor: color || (theme => {
-                                      const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
-                                      return paletteColor?.main || theme.palette.primary.main;
-                                    }),
-                                    transition: 'width 1s ease-in-out'
-                                  }} />
-                                </Box>
-                              </Box>
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-                    </Box>
-                      </GlassCard>
-                    </Grid>
-
-                    {/* Yearly Overview */}
-                    <Grid item xs={12}>
-                      <GlassCard>
-                        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                      <Typography variant="subtitle1" fontWeight="600">
-                        Yearly Overview
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {new Date().getFullYear()} Attendance
-                      </Typography>
-                    </Box>
-                    <Box sx={{ p: 2 }}>
-                      <Box sx={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(20px, 1fr))', 
-                        gap: 0.5 
-                      }}>
-                        {yearlyOverview.map((week, i) => (
-                          <Tooltip
-                            key={i}
-                            title={
-                              <>
-                                <Typography variant="caption" display="block">
-                                  {week.startDate.toLocaleDateString()} - {week.endDate.toLocaleDateString()}
-                                </Typography>
-                                <Typography variant="caption" display="block">
-                                  Attendance: {Math.round(week.percentage * 100)}%
-                                </Typography>
-                              </>
-                            }
-                            arrow
-                          >
-                            <Box
-                              sx={{
-                                width: '100%',
-                                paddingBottom: '100%',
-                                bgcolor: theme => {
-                                  if (week.percentage === 0) return alpha(theme.palette.divider, 0.1);
-                                  if (week.percentage > 0.8) return alpha(theme.palette.success.main, 0.8);
-                                  if (week.percentage > 0.6) return alpha(theme.palette.success.main, 0.6);
-                                  if (week.percentage > 0.4) return alpha(theme.palette.success.main, 0.4);
-                                  return alpha(theme.palette.success.main, 0.2);
-                                },
-                                borderRadius: '2px',
-                                transition: 'all 0.2s ease',
-                                cursor: 'pointer',
-                                '&:hover': {
-                                  transform: 'scale(1.2)',
-                                  zIndex: 1
-                                }
-                              }}
-                            />
-                          </Tooltip>
-                        ))}
+                    </SectionTitle>
+                    <InfoGrid container spacing={2}>
+                      {teacher.dob && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Cake />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Date of Birth</Typography>
+                            <Typography className="info-value">
+                              {format(parseISO(teacher.dob), 'MMM dd, yyyy')}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.gender && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Person />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Gender</Typography>
+                            <Typography className="info-value">{teacher.gender}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.blood_group && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Bloodtype />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Blood Group</Typography>
+                            <Typography className="info-value">{teacher.blood_group}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.father_name && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Person />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Father's Name</Typography>
+                            <Typography className="info-value">{teacher.father_name}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.national_id && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Assignment />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">National ID</Typography>
+                            <Typography className="info-value">{teacher.national_id}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.religion && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Person />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Religion</Typography>
+                            <Typography className="info-value">{teacher.religion}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.address && (
+                        <Grid item xs={12} className="info-item">
+                          <Box className="icon-container">
+                            <LocationOn />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Address</Typography>
+                            <Typography className="info-value">{teacher.address}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                    </InfoGrid>
+                  </InfoSection>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <InfoSection>
+                    <SectionTitle>
+                      <Box className="icon-wrapper">
+                        <Work />
                       </Box>
-                    </Box>
-                      </GlassCard>
-                    </Grid>
-                  </Grid>
+                      <Box className="title-content">
+                        <Typography variant="h6" sx={{
+                          fontWeight: 700,
+                          fontSize: { xs: '0.95rem', sm: '1.25rem' }
+                        }}>
+                          Professional Information
+                        </Typography>
+                      </Box>
+                    </SectionTitle>
+                    <InfoGrid container spacing={2}>
+                      {teacher.education && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <School />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Education</Typography>
+                            <Typography className="info-value">{teacher.education}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.experience && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Work />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Experience</Typography>
+                            <Typography className="info-value">{teacher.experience}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.role && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Work />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Role</Typography>
+                            <Typography className="info-value">{teacher.role}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.joining_date && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <CalendarToday />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Joining Date</Typography>
+                            <Typography className="info-value">
+                              {format(parseISO(teacher.joining_date), 'MMM dd, yyyy')}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.salary && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <AttachMoney />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Salary</Typography>
+                            <Typography className="info-value">Rs. {teacher.salary.toLocaleString()}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.mobile && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Phone />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Mobile</Typography>
+                            <Typography className="info-value">{teacher.mobile}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                      {teacher.email && (
+                        <Grid item xs={12} sm={6} className="info-item">
+                          <Box className="icon-container">
+                            <Email />
+                          </Box>
+                          <Box className="info-content">
+                            <Typography className="info-label">Email</Typography>
+                            <Typography className="info-value">{teacher.email}</Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                    </InfoGrid>
+                  </InfoSection>
                 </Grid>
               </Grid>
             </TabPanel>
-          );
-        })()}
+          )}
 
-        {/* Timetable Tab */}
-        {activeTab === 2 && isTeacherTabVisible(renderSettings, 'timetable_tab') && (
-          <TabPanel>
-            <TimetableContainer>
-              {timetableData.length === 0 ? (
-                <NoTimetableMessage>
-                  <NoTimetableIcon>📅</NoTimetableIcon>
-                  <Typography variant="h6" sx={{ mb: 1 }}>
-                    No timetable assigned yet
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    Please contact your administrator to assign your teaching schedule.
-                  </Typography>
-                </NoTimetableMessage>
-              ) : (
-                <TimetableGrid>
-                  {(() => {
-                    const periods = [
-                      { num: 1, time: '08:30-09:00' },
-                      { num: 2, time: '09:00-09:30' },
-                      { num: 3, time: '09:30-10:00' },
-                      { num: 4, time: '10:00-10:30' },
-                      { num: 5, time: '10:30-11:00' },
-                      { num: 6, time: '11:15-11:45' },
-                      { num: 7, time: '11:45-12:15' },
-                      { num: 8, time: '12:15-12:45' },
-                    ];
-
-                    const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
-                    const getClassName = (id: number): string => classes.find(c => c.id === id)?.name || '';
-
-                    const scheduleMap = new Map<number, { classes: string[]; subjects: string[] }>();
-                    
-                    timetableData.forEach((item: any) => {
-                      const period = item.period_index + 1;
-                      const className = getClassName(item.class_id);
-                      const subjectName = getSubjectName(item.subject_id);
-                      
-                      if (!scheduleMap.has(period)) {
-                        scheduleMap.set(period, { classes: [className], subjects: [subjectName] });
-                      } else {
-                        const existing = scheduleMap.get(period)!;
-                        existing.classes.push(className);
-                        existing.subjects.push(subjectName);
-                      }
-                    });
-
-                    const allPeriods = [];
-                    for (let i = 1; i <= periods.length; i++) {
-                      if (i === 6) {
-                        allPeriods.push({ period: 'Break', time: '11:00-11:15', class: '', subject: '' });
-                      }
-                      
-                      const scheduleItem = scheduleMap.get(i);
-                      if (scheduleItem) {
-                        const uniqueSubjects = Array.from(new Set(scheduleItem.subjects));
-                        const uniqueClasses = Array.from(new Set(scheduleItem.classes));
-                        allPeriods.push({
-                          period: i,
-                          time: periods[i-1].time,
-                          class: uniqueClasses.join(' / '),
-                          subject: uniqueSubjects.join(' / ')
-                        });
-                      } else {
-                        allPeriods.push({
-                          period: i,
-                          time: periods[i-1].time,
-                          class: 'Free Period',
-                          subject: '-'
-                        });
-                      }
-                    }
-
-                    return allPeriods.map((item, index) => {
-                      if (item.period === 'Break') {
-                        return (
-                          <BreakCard key={index}>
-                            <BreakHeader>
-                              <BreakText>BREAK</BreakText>
-                              <BreakTime>{item.time}</BreakTime>
-                            </BreakHeader>
-                          </BreakCard>
-                        );
-                      }
-
-                      if (item.class === 'Free Period') {
-                        return (
-                          <FreePeriodCard key={index}>
-                            <FreePeriodHeader>
-                              <PeriodNumber>Period {item.period}</PeriodNumber>
-                              <PeriodTime>{item.time}</PeriodTime>
-                            </FreePeriodHeader>
-                            <FreePeriodContent>
-                              Free Period
-                            </FreePeriodContent>
-                          </FreePeriodCard>
-                        );
-                      }
-
-                      return (
-                        <PeriodCard key={index}>
-                          <PeriodHeader>
-                            <PeriodNumber>Period {item.period}</PeriodNumber>
-                            <PeriodTime>{item.time}</PeriodTime>
-                          </PeriodHeader>
-                          <PeriodContent>
-                            <ContentCard>
-                              <ContentText>{item.class}</ContentText>
-                            </ContentCard>
-                            <ContentCard>
-                              <ContentText>{item.subject}</ContentText>
-                            </ContentCard>
-                          </PeriodContent>
-                        </PeriodCard>
-                      );
-                    });
-                  })()}
-                </TimetableGrid>
-              )}
-            </TimetableContainer>
-          </TabPanel>
-        )}
-
-        {/* Test Analysis Tab */}
-        {activeTab === 3 && isTeacherTabVisible(renderSettings, 'test_analysis_tab') && (
-          <TabPanel>
-            {/* Session Selector */}
-            {sessions.length > 0 && (
-              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel>Session</InputLabel>
-                  <Select
-                    value={testAnalysisSessionId || ''}
-                    label="Session"
-                    onChange={(e) => {
-                      const newSessionId = Number(e.target.value);
-                      setTestAnalysisSessionId(newSessionId);
-                      setTabDataLoaded(prev => ({ ...prev, [3]: false })); // Reset loaded state to reload data
-                      lastSessionIdRef.current = null; // Reset ref to allow reload
-                      isLoadingRef.current = false; // Reset loading ref
-                      setTestMonthlyData([]); // Clear monthly data
-                      setTestSummary({ // Clear summary data
-                        totalTests: 0,
-                        totalStudents: 0,
-                        averagePercentage: 0,
-                        testsBySubject: [],
-                        recentTests: [],
-                      });
-                    }}
-                  >
-                    {sessions.map((session) => (
-                      <MenuItem key={session.id} value={session.id}>
-                        {session.name} {session.is_active && '(Active)'}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-            )}
-            {!testAnalysisSessionId ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body1" color="text.secondary">
-                  Please select a session
-                </Typography>
-              </Box>
-            ) : testSummary.totalTests === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Assessment sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="body1" color="text.secondary">
-                  No test records found
-                </Typography>
-              </Box>
-            ) : (
-              <Grid container spacing={3}>
-                {/* Overview Stats */}
-                <Grid item xs={12} md={4}>
-                  <InfoCard>
-                    <CardContent>
-                      <SectionTitle>
-                        <Box className="icon-wrapper">
-                          <Assessment />
-                        </Box>
-                        <Box className="title-content">
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            Total Tests
+          {/* Attendance Tab */}
+          {activeTab === 1 && isTeacherTabVisible(renderSettings, 'attendance_tab') && (() => {
+            const theme = useTheme();
+            return (
+              <TabPanel>
+                <Grid container spacing={3}>
+                  {/* Left Column */}
+                  <Grid item xs={12} md={8}>
+                    {/* Attendance Stats */}
+                    <AttendanceStatsCard sx={{ mb: 3 }}>
+                      <StatsHeader>
+                        <Box>
+                          <Typography variant="h5" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <CalendarToday sx={{ fontSize: '1.8rem', color: 'primary.main' }} />
+                            Attendance Overview
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            {attendanceStats?.total || 0} total tracked days
                           </Typography>
                         </Box>
-                      </SectionTitle>
-                      <Typography variant="h2" sx={{ fontWeight: 700, color: 'primary.main', textAlign: 'center', my: 2 }}>
-                        {testSummary.totalTests}
-                      </Typography>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <InfoCard>
-                    <CardContent>
-                      <SectionTitle>
-                        <Box className="icon-wrapper">
-                          <Groups />
-                        </Box>
-                        <Box className="title-content">
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            Students Assessed
-                          </Typography>
-                        </Box>
-                      </SectionTitle>
-                      <Typography variant="h2" sx={{ fontWeight: 700, color: 'success.main', textAlign: 'center', my: 2 }}>
-                        {testSummary.totalStudents}
-                      </Typography>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <InfoCard>
-                    <CardContent>
-                      <SectionTitle>
-                        <Box className="icon-wrapper">
-                          <TrendingUp />
-                        </Box>
-                        <Box className="title-content">
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            Average Performance
-                          </Typography>
-                        </Box>
-                      </SectionTitle>
-                      <Typography variant="h2" sx={{ fontWeight: 700, color: 'info.main', textAlign: 'center', my: 2 }}>
-                        {testSummary.averagePercentage.toFixed(1)}%
-                      </Typography>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
+                      </StatsHeader>
 
-                {/* Monthly Test Distribution */}
-                {testMonthlyData.length > 0 && (
-                  <Grid item xs={12}>
-                    <InfoCard>
-                      <CardContent>
-                        <SectionTitle>
-                          <Box className="icon-wrapper">
-                            <CalendarToday />
-                          </Box>
-                          <Box className="title-content">
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              Monthly Test Distribution
+                      <StatsGrid container>
+                        <Grid item>
+                          <StatBox status="present">
+                            <CheckCircle className="stat-icon" />
+                            <Box className="stat-header">
+                              <CheckCircle className="icon" />
+                              <Typography className="stat-label">Present Days</Typography>
+                            </Box>
+                            <Typography className="stat-value">{attendanceStats?.present || 0}</Typography>
+                            <Box className="stat-percentage">
+                              <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                              {attendanceStats && attendanceStats.total > 0
+                                ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100)
+                                : 0}% Attendance Rate
+                            </Box>
+                          </StatBox>
+                        </Grid>
+
+                        <Grid item>
+                          <StatBox status="late">
+                            <Timer className="stat-icon" />
+                            <Box className="stat-header">
+                              <Timer className="icon" />
+                              <Typography className="stat-label">Late Arrivals</Typography>
+                            </Box>
+                            <Typography className="stat-value">{attendanceStats?.late || 0}</Typography>
+                            <Box className="stat-percentage">
+                              <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                              {attendanceStats ? Math.round((attendanceStats.late / attendanceStats.total) * 100) : 0}% Tardiness Rate
+                            </Box>
+                          </StatBox>
+                        </Grid>
+
+                        <Grid item>
+                          <StatBox status="absence">
+                            <Cancel className="stat-icon" />
+                            <Box className="stat-header">
+                              <Cancel className="icon" />
+                              <Typography className="stat-label">Total Absences</Typography>
+                            </Box>
+                            <Typography className="stat-value">
+                              {(attendanceStats?.absent || 0) + (attendanceStats?.leave || 0)}
                             </Typography>
+                            <Box className="stat-subvalue">
+                              <EventBusy sx={{ fontSize: '0.9rem', opacity: 0.7 }} />
+                              Including {attendanceStats?.leave || 0} granted leaves
+                            </Box>
+                            <Box className="stat-percentage">
+                              <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                              {attendanceStats ? Math.round(((attendanceStats.absent + attendanceStats.leave) / attendanceStats.total) * 100) : 0}% Absence Rate
+                            </Box>
+                          </StatBox>
+                        </Grid>
+
+                        <Grid item>
+                          <Box
+                            sx={{
+                              padding: theme.spacing(2.5),
+                              borderRadius: theme.shape.borderRadius,
+                              background: alpha('#ec4899', 0.08),
+                              border: `1px solid ${alpha('#ec4899', 0.12)}`,
+                              position: 'relative',
+                              overflow: 'hidden',
+                              transition: 'all 0.3s ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: theme.spacing(1),
+                              height: '100%',
+                              '&:hover': {
+                                transform: 'translateY(-2px)',
+                                boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
+                                background: alpha('#ec4899', 0.12),
+                                '& .stat-icon': {
+                                  transform: 'scale(1.1) rotate(10deg)',
+                                  opacity: 0.2,
+                                }
+                              },
+                              '& .stat-icon': {
+                                position: 'absolute',
+                                right: -10,
+                                bottom: -10,
+                                fontSize: '5rem',
+                                color: '#ec4899',
+                                opacity: 0.1,
+                                transition: 'all 0.3s ease',
+                                transform: 'rotate(-10deg)',
+                              },
+                              '& .stat-header': {
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: theme.spacing(1),
+                                '& .icon': {
+                                  fontSize: '1.2rem',
+                                  color: '#ec4899',
+                                  background: alpha('#ec4899', 0.1),
+                                  padding: theme.spacing(0.8),
+                                  borderRadius: '8px',
+                                }
+                              },
+                              '& .stat-value': {
+                                fontSize: '2.2rem',
+                                fontWeight: 700,
+                                color: '#ec4899',
+                                lineHeight: 1,
+                              },
+                              '& .stat-label': {
+                                fontSize: '0.85rem',
+                                fontWeight: 500,
+                                color: theme.palette.text.secondary,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              },
+                            }}
+                          >
+                            <AccessTime className="stat-icon" />
+                            <Box className="stat-header">
+                              <AccessTime className="icon" />
+                              <Typography className="stat-label">Half Leaves</Typography>
+                            </Box>
+                            <Typography className="stat-value">{halfLeavesMap.size}</Typography>
+                            <Box className="stat-percentage" sx={{
+                              fontSize: '0.9rem',
+                              fontWeight: 600,
+                              color: '#ec4899',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: theme.spacing(0.5),
+                              marginTop: 'auto',
+                              background: alpha('#ec4899', 0.08),
+                              padding: theme.spacing(0.5, 1),
+                              borderRadius: '4px',
+                              width: 'fit-content',
+                            }}>
+                              <ArrowForwardIcon sx={{ fontSize: '0.9rem' }} />
+                              {attendanceStats?.total ? Math.round((halfLeavesMap.size / attendanceStats.total) * 100) : 0}% of total days
+                            </Box>
                           </Box>
-                        </SectionTitle>
-                        <Box sx={{ 
-                          mt: 2,
-                          maxHeight: '500px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 1,
-                          '&::-webkit-scrollbar': {
-                            width: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => alpha(theme.palette.divider, 0.1),
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => alpha(theme.palette.primary.main, 0.4),
-                            borderRadius: '4px',
-                            border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            background: theme => alpha(theme.palette.primary.main, 0.6),
-                          },
-                          // Firefox scrollbar
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
-                        }}>
-                          <Grid container spacing={2}>
-                            {testMonthlyData.length > 0 ? (
-                              testMonthlyData.map((monthData, monthIndex) => {
-                                // Array of distinct colors for months
-                                const monthColors = [
-                                  { bg: '#3b82f6', hover: '#2563eb' }, // Blue
-                                  { bg: '#8b5cf6', hover: '#7c3aed' }, // Purple
-                                  { bg: '#ec4899', hover: '#db2777' }, // Pink
-                                  { bg: '#10b981', hover: '#059669' }, // Green
-                                  { bg: '#f59e0b', hover: '#d97706' }, // Amber
-                                  { bg: '#ef4444', hover: '#dc2626' }, // Red
-                                  { bg: '#06b6d4', hover: '#0891b2' }, // Cyan
-                                  { bg: '#84cc16', hover: '#65a30d' }, // Lime
-                                  { bg: '#f97316', hover: '#ea580c' }, // Orange
-                                  { bg: '#6366f1', hover: '#4f46e5' }, // Indigo
-                                  { bg: '#14b8a6', hover: '#0d9488' }, // Teal
-                                  { bg: '#a855f7', hover: '#9333ea' }, // Violet
-                                ];
-                                const colorIndex = monthIndex % monthColors.length;
-                                const monthColor = monthColors[colorIndex];
-                                
-                                return (
-                              <Grid item xs={12} sm={6} md={3} key={monthData.monthKey}>
+                        </Grid>
+                      </StatsGrid>
+                    </AttendanceStatsCard>
+
+                    {/* Monthly Attendance */}
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="h6" fontWeight="600">
+                        Monthly Attendance Breakdown
+                      </Typography>
+                    </Box>
+                    <Grid container spacing={2}>
+                      {monthlyStats.map((month) => (
+                        <Grid item xs={12} key={month.month}>
+                          <MonthCard>
+                            <MonthHeader>
+                              <MonthTitle>
+                                <Typography variant="h6" fontWeight="600">
+                                  {month.month.split(' ')[0]}
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                  {month.month.split(' ')[1]}
+                                </Typography>
+                              </MonthTitle>
+                              <MonthBadge>
+                                <CalendarToday sx={{ fontSize: '0.875rem' }} />
+                                <Box component="span">
+                                  {month.total} Days • {month.total > 0 ? Math.round(((month.present + month.late) / month.total) * 100) : 0}% Attendance
+                                </Box>
+                              </MonthBadge>
+                            </MonthHeader>
+
+                            <StatGrid container spacing={2}>
+                              <Grid item xs={6} sm={3}>
+                                <StatBox status="present">
+                                  <CheckCircle className="stat-icon" />
+                                  <StatValue color={theme.palette.success.main}>
+                                    {month.present}
+                                    <span className="percentage">
+                                      ({((month.present / month.total) * 100).toFixed(1)}%)
+                                    </span>
+                                  </StatValue>
+                                  <StatLabel>Present</StatLabel>
+                                </StatBox>
+                              </Grid>
+                              <Grid item xs={6} sm={3}>
+                                <StatBox status="absence">
+                                  <Cancel className="stat-icon" />
+                                  <StatValue color={theme.palette.error.main}>
+                                    {month.absent + month.leave}
+                                    <span className="percentage">
+                                      ({(((month.absent + month.leave) / month.total) * 100).toFixed(1)}%)
+                                    </span>
+                                  </StatValue>
+                                  <StatLabel>Absences</StatLabel>
+                                </StatBox>
+                              </Grid>
+                              <Grid item xs={6} sm={3}>
+                                <StatBox status="late">
+                                  <Timer className="stat-icon" />
+                                  <StatValue color={theme.palette.warning.main}>
+                                    {month.late}
+                                    <span className="percentage">
+                                      ({((month.late / month.total) * 100).toFixed(1)}%)
+                                    </span>
+                                  </StatValue>
+                                  <StatLabel>Late</StatLabel>
+                                </StatBox>
+                              </Grid>
+                              <Grid item xs={6} sm={3}>
                                 <Box
                                   sx={{
-                                    p: 2,
-                                    borderRadius: 2,
-                                    border: '1px solid',
-                                    borderColor: alpha(monthColor.bg, 0.3),
-                                    bgcolor: alpha(monthColor.bg, 0.05),
-                                    height: '100%',
+                                    padding: theme.spacing(2.5),
+                                    borderRadius: theme.shape.borderRadius,
+                                    background: alpha('#ec4899', 0.08),
+                                    border: `1px solid ${alpha('#ec4899', 0.12)}`,
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    transition: 'all 0.3s ease',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    transition: 'all 0.2s ease',
+                                    gap: theme.spacing(1),
+                                    height: '100%',
                                     '&:hover': {
-                                      bgcolor: alpha(monthColor.bg, 0.1),
-                                      borderColor: monthColor.bg,
+                                      transform: 'translateY(-2px)',
+                                      boxShadow: `0 4px 20px ${alpha('#ec4899', 0.15)}`,
+                                      background: alpha('#ec4899', 0.12),
+                                      '& .stat-icon': {
+                                        transform: 'scale(1.1) rotate(10deg)',
+                                        opacity: 0.2,
+                                      }
+                                    },
+                                    '& .stat-icon': {
+                                      position: 'absolute',
+                                      right: -10,
+                                      bottom: -10,
+                                      fontSize: '5rem',
+                                      color: '#ec4899',
+                                      opacity: 0.1,
+                                      transition: 'all 0.3s ease',
+                                      transform: 'rotate(-10deg)',
                                     },
                                   }}
                                 >
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexShrink: 0 }}>
-                                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                                      {monthData.month}
-                                    </Typography>
-                                    <Chip
-                                      label={`${monthData.totalTests} test${monthData.totalTests !== 1 ? 's' : ''}`}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: alpha(monthColor.bg, 0.15),
-                                        color: monthColor.bg,
-                                        fontWeight: 600,
-                                        border: `1px solid ${alpha(monthColor.bg, 0.3)}`,
-                                      }}
-                                    />
-                                  </Box>
-                                  <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-                                    <Stack spacing={1}>
-                                      {monthData.weeks.map((week) => (
+                                  <AccessTime className="stat-icon" />
+                                  <StatValue color="#ec4899">
+                                    {month.halfLeaves || 0}
+                                    <span className="percentage">
+                                      ({month.total > 0 ? ((month.halfLeaves || 0) / month.total * 100).toFixed(1) : 0}%)
+                                    </span>
+                                  </StatValue>
+                                  <StatLabel>Half Leaves</StatLabel>
+                                </Box>
+                              </Grid>
+                            </StatGrid>
+                          </MonthCard>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Grid>
+
+                  {/* Right Column */}
+                  <Grid item xs={12} md={4}>
+                    <Grid container spacing={3}>
+                      {/* Recent Attendance Section */}
+                      <Grid item xs={12}>
+                        <GlassCard>
+                          <Box sx={{
+                            p: 2,
+                            borderBottom: 1,
+                            borderColor: 'divider',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <Typography variant="subtitle1" fontWeight="600">
+                              Recent Attendance
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              Last {Math.min(recentAttendance.length, 20)} records
+                            </Typography>
+                          </Box>
+                          <RecentAttendanceContainer>
+                            {recentAttendance.slice(0, 20).map((record, idx) => {
+                              const recordDate = new Date(record.date);
+                              const dayName = recordDate.toLocaleDateString('en-US', { weekday: 'long' });
+                              const formattedDate = recordDate.toLocaleDateString('en-US', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              });
+                              const dateStr = record.date;
+                              const halfLeave = halfLeavesMap.get(dateStr);
+
+                              return (
+                                <RecentAttendanceItem key={idx}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                    <Box>
+                                      <DayLabel>{dayName}</DayLabel>
+                                      <DateLabel>
+                                        <CalendarToday sx={{ fontSize: '0.875rem', opacity: 0.7 }} />
+                                        {formattedDate}
+                                      </DateLabel>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      {halfLeave && (
                                         <Box
-                                          key={week.weekNumber}
                                           sx={{
-                                            p: 1.5,
-                                            borderRadius: 1,
-                                            border: '1px solid',
-                                            borderColor: alpha(monthColor.bg, 0.2),
-                                            bgcolor: alpha(monthColor.bg, 0.03),
-                                            transition: 'all 0.2s ease',
-                                            '&:hover': {
-                                              bgcolor: alpha(monthColor.bg, 0.08),
-                                              transform: 'translateX(4px)',
-                                            },
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            px: 0.75,
+                                            py: 0.25,
+                                            borderRadius: '4px',
+                                            bgcolor: '#ec4899',
+                                            color: 'white',
+                                            fontSize: '0.65rem',
+                                            fontWeight: 700,
+                                            lineHeight: 1,
                                           }}
+                                          title="Half Leave"
                                         >
-                                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                              Week {week.weekNumber}: {week.week}
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ fontWeight: 700, color: monthColor.bg }}>
-                                              {week.tests} test{week.tests !== 1 ? 's' : ''}
-                                            </Typography>
-                                          </Box>
-                                          {week.classes.length > 0 && (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                                              {week.classes.map((classData, idx) => (
-                                                <Chip
-                                                  key={idx}
-                                                  label={`${classData.className} (${classData.testCount})`}
-                                                  size="small"
-                                                  sx={{
-                                                    fontSize: '0.7rem',
-                                                    height: '24px',
-                                                    bgcolor: alpha('#8b5cf6', 0.1),
-                                                    color: '#8b5cf6',
-                                                    border: `1px solid ${alpha('#8b5cf6', 0.3)}`,
-                                                  }}
-                                                />
-                                              ))}
-                                            </Box>
-                                          )}
+                                          HL
                                         </Box>
-                                      ))}
-                                    </Stack>
+                                      )}
+                                      <StatusChip status={record.status.toLowerCase()}>
+                                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                      </StatusChip>
+                                    </Box>
                                   </Box>
-                                </Box>
-                              </Grid>
-                                );
-                              })
-                            ) : (
-                              <Grid item xs={12}>
-                                <Box sx={{ textAlign: 'center', py: 4 }}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    No monthly test data available
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                            )}
-                          </Grid>
-                        </Box>
-                      </CardContent>
-                    </InfoCard>
-                  </Grid>
-                )}
-
-                {/* Tests by Subject */}
-                {testSummary.testsBySubject.length > 0 && (
-                  <Grid item xs={12} md={6}>
-                    <InfoCard>
-                      <CardContent>
-                        <SectionTitle>
-                          <Box className="icon-wrapper">
-                            <Class />
-                          </Box>
-                          <Box className="title-content">
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              Tests by Subject
-                            </Typography>
-                          </Box>
-                        </SectionTitle>
-                        <Stack spacing={1} sx={{ mt: 2 }}>
-                          {testSummary.testsBySubject.map((item, index) => (
-                            <Box
-                              key={index}
-                              sx={{
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: '1px solid',
-                                borderColor: alpha('#10b981', 0.2),
-                                bgcolor: alpha('#10b981', 0.06),
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                  bgcolor: alpha('#10b981', 0.1),
-                                  borderColor: alpha('#10b981', 0.3),
-                                },
-                              }}
-                            >
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                {item.subject}
-                              </Typography>
-                              <Chip
-                                label={item.count}
-                                size="small"
-                                sx={{
-                                  bgcolor: alpha('#10b981', 0.15),
-                                  color: '#10b981',
-                                  fontWeight: 700,
-                                }}
-                              />
-                            </Box>
-                          ))}
-                        </Stack>
-                      </CardContent>
-                    </InfoCard>
-                  </Grid>
-                )}
-
-                {/* Recent Tests */}
-                {testSummary.recentTests.length > 0 && (
-                  <Grid item xs={12} md={6}>
-                    <InfoCard>
-                      <CardContent>
-                        <SectionTitle>
-                          <Box className="icon-wrapper">
-                            <HistoryIcon />
-                          </Box>
-                          <Box className="title-content">
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              Recent Tests
-                            </Typography>
-                          </Box>
-                        </SectionTitle>
-                        <Box sx={{ 
-                          mt: 2,
-                          maxHeight: '400px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 1,
-                          '&::-webkit-scrollbar': {
-                            width: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => alpha(theme.palette.divider, 0.1),
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => alpha(theme.palette.primary.main, 0.4),
-                            borderRadius: '4px',
-                            border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            background: theme => alpha(theme.palette.primary.main, 0.6),
-                          },
-                          // Firefox scrollbar
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
-                        }}>
-                          <Stack spacing={1}>
-                            {testSummary.recentTests.map((test) => (
-                            <Box
-                              key={test.id}
-                              sx={{
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                  bgcolor: alpha('#3b82f6', 0.05),
-                                  transform: 'translateX(4px)',
-                                },
-                              }}
-                            >
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                {test.name}
-                              </Typography>
-                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
-                                <Chip
-                                  label={test.subject}
-                                  size="small"
-                                  sx={{ fontSize: '0.7rem', height: '20px' }}
-                                />
-                                <Chip
-                                  label={test.class}
-                                  size="small"
-                                  sx={{ fontSize: '0.7rem', height: '20px' }}
-                                />
-                                <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                                  {format(parseISO(test.date), 'MMM dd, yyyy')}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          ))}
-                          </Stack>
-                        </Box>
-                      </CardContent>
-                    </InfoCard>
-                  </Grid>
-                )}
-              </Grid>
-            )}
-          </TabPanel>
-        )}
-
-        {/* Diary Analysis Tab */}
-        {activeTab === 4 && isTeacherTabVisible(renderSettings, 'diary_analysis_tab') && (
-          <TabPanel>
-            {/* Session Selector */}
-            {sessions.length > 0 && (
-              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel>Session</InputLabel>
-                  <Select
-                    value={diaryAnalysisSessionId || ''}
-                    label="Session"
-                    onChange={(e) => setDiaryAnalysisSessionId(e.target.value as number)}
-                  >
-                    {sessions.map((session) => (
-                      <MenuItem key={session.id} value={session.id}>
-                        {session.name} {session.is_active && '(Active)'}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-            )}
-
-            {tabDataLoading[4] ? (
-              <Grid container spacing={3}>
-                {/* Session Selector Skeleton */}
-                {sessions.length > 0 && (
-                  <Grid item xs={12}>
-                    <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                      <Skeleton variant="rectangular" width={200} height={40} sx={{ borderRadius: 1 }} />
-                    </Box>
-                  </Grid>
-                )}
-
-                {/* Overview Stats Skeleton */}
-                <Grid item xs={12} md={4}>
-                  <InfoCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                        <Skeleton variant="circular" width={40} height={40} />
-                        <Skeleton variant="text" width={150} height={28} />
-                      </Box>
-                      <Box sx={{ mt: 2, textAlign: 'center' }}>
-                        <Skeleton variant="text" width={80} height={56} sx={{ mx: 'auto', mb: 1 }} />
-                        <Skeleton variant="text" width={120} height={20} sx={{ mx: 'auto' }} />
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <InfoCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                        <Skeleton variant="circular" width={40} height={40} />
-                        <Skeleton variant="text" width={140} height={28} />
-                      </Box>
-                      <Box sx={{ mt: 2, textAlign: 'center' }}>
-                        <Skeleton variant="text" width={60} height={56} sx={{ mx: 'auto', mb: 1 }} />
-                        <Skeleton variant="text" width={140} height={20} sx={{ mx: 'auto' }} />
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
-
-                {/* Monthly Diary Distribution Skeleton */}
-                <Grid item xs={12}>
-                  <InfoCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                        <Skeleton variant="circular" width={40} height={40} />
-                        <Skeleton variant="text" width={220} height={28} />
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Grid container spacing={2}>
-                          {[1, 2, 3, 4].map((i) => (
-                            <Grid item xs={12} sm={6} md={3} key={i}>
-                              <Box
-                                sx={{
-                                  p: 2,
-                                  borderRadius: 2,
-                                  border: '1px solid',
-                                  borderColor: 'divider',
-                                  bgcolor: 'background.paper',
-                                  height: '200px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                  <Skeleton variant="text" width={80} height={24} />
-                                  <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 1 }} />
-                                </Box>
-                                <Stack spacing={1} sx={{ flex: 1 }}>
-                                  {[1, 2].map((j) => (
-                                    <Box
-                                      key={j}
+                                  {halfLeave && (
+                                    <Box sx={{
+                                      mt: 0.5,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.5,
+                                      color: '#ec4899',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 500,
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      bgcolor: alpha('#ec4899', 0.1),
+                                      width: 'fit-content'
+                                    }}>
+                                      <AccessTime sx={{ fontSize: '0.75rem' }} />
+                                      Half Leave
+                                      {halfLeave.leave_type === 'first_half' && halfLeave.arrival_time && ` (Arrived: ${halfLeave.arrival_time})`}
+                                      {halfLeave.leave_type === 'second_half' && halfLeave.departure_time && ` (Departed: ${halfLeave.departure_time})`}
+                                    </Box>
+                                  )}
+                                  {record.remarks && (
+                                    <Typography
+                                      variant="caption"
+                                      color="textSecondary"
                                       sx={{
-                                        p: 1.5,
-                                        borderRadius: 1,
-                                        border: '1px solid',
-                                        borderColor: 'divider',
+                                        display: 'block',
+                                        mt: 0.5,
+                                        fontSize: '0.75rem',
+                                        fontStyle: 'italic'
                                       }}
                                     >
-                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                        <Skeleton variant="text" width={100} height={20} />
-                                        <Skeleton variant="text" width={80} height={20} />
+                                      {record.remarks}
+                                    </Typography>
+                                  )}
+                                </RecentAttendanceItem>
+                              );
+                            })}
+                            {recentAttendance.length === 0 && (
+                              <Box sx={{
+                                p: 4,
+                                textAlign: 'center',
+                                color: 'text.secondary'
+                              }}>
+                                <Typography>No attendance records found</Typography>
+                              </Box>
+                            )}
+                          </RecentAttendanceContainer>
+                        </GlassCard>
+                      </Grid>
+
+                      {/* Weekly Day Patterns */}
+                      <Grid item xs={12}>
+                        <GlassCard>
+                          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                            <Typography variant="subtitle1" fontWeight="600">
+                              Weekly Day Patterns
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              Attendance patterns by day of week
+                            </Typography>
+                          </Box>
+                          <Box sx={{ p: 2, height: '250px', display: 'flex', alignItems: 'flex-end' }}>
+                            <Box sx={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'flex-end',
+                              gap: 2,
+                              height: '200px',
+                              position: 'relative'
+                            }}>
+                              {weeklyAttendance.map((data) => {
+                                const { day, status, count, details, percentages } = data;
+
+                                const getStatusColor = (status: string | null, theme: Theme) => {
+                                  if (!status) return alpha(theme.palette.divider, 0.1);
+                                  switch (status.toLowerCase()) {
+                                    case 'present': return theme.palette.success.main;
+                                    case 'late': return theme.palette.warning.main;
+                                    case 'absent': return theme.palette.error.main;
+                                    case 'leave': return theme.palette.info.main;
+                                    case 'halfleave': return '#ec4899';
+                                    default: return alpha(theme.palette.divider, 0.1);
+                                  }
+                                };
+
+                                return (
+                                  <Box
+                                    key={day}
+                                    sx={{
+                                      flex: 1,
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      gap: 1,
+                                      position: 'relative'
+                                    }}
+                                  >
+                                    <Tooltip
+                                      title={
+                                        <Box sx={{ p: 1 }}>
+                                          <Typography variant="caption" display="block" sx={{ fontWeight: 600, mb: 1 }}>
+                                            {day} Statistics
+                                          </Typography>
+                                          {details && (
+                                            <>
+                                              <Typography variant="caption" display="block" color="success.main">
+                                                Present: {details.present} ({percentages.present.toFixed(1)}%)
+                                              </Typography>
+                                              <Typography variant="caption" display="block" color="warning.main">
+                                                Late: {details.late} ({percentages.late.toFixed(1)}%)
+                                              </Typography>
+                                              <Typography variant="caption" display="block" color="error.main">
+                                                Absent: {details.absent} ({percentages.absent.toFixed(1)}%)
+                                              </Typography>
+                                              <Typography variant="caption" display="block" color="info.main">
+                                                Leave: {details.leave} ({percentages.leave.toFixed(1)}%)
+                                              </Typography>
+                                              <Typography variant="caption" display="block" sx={{ color: '#ec4899' }}>
+                                                Half Leave: {details.halfLeave} ({percentages.halfLeave.toFixed(1)}%)
+                                              </Typography>
+                                              <Divider sx={{ my: 1 }} />
+                                              <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
+                                                Total Records: {count + details.halfLeave}
+                                              </Typography>
+                                            </>
+                                          )}
+                                        </Box>
+                                      }
+                                      arrow
+                                      placement="top"
+                                    >
+                                      <Box sx={{
+                                        width: '100%',
+                                        height: '150px',
+                                        position: 'relative',
+                                        borderRadius: '4px',
+                                        overflow: 'hidden',
+                                        border: theme => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s ease',
+                                        '&:hover': {
+                                          transform: 'translateY(-2px)'
+                                        }
+                                      }}>
+                                        {/* Stacked bars for each status */}
+                                        {details && (
+                                          <>
+                                            <Box sx={{
+                                              position: 'absolute',
+                                              bottom: 0,
+                                              left: 0,
+                                              width: '100%',
+                                              height: `${percentages.present}%`,
+                                              bgcolor: theme => alpha(theme.palette.success.main, 0.3),
+                                              transition: 'height 0.3s ease'
+                                            }} />
+                                            <Box sx={{
+                                              position: 'absolute',
+                                              bottom: `${percentages.present}%`,
+                                              left: 0,
+                                              width: '100%',
+                                              height: `${percentages.late}%`,
+                                              bgcolor: theme => alpha(theme.palette.warning.main, 0.3),
+                                              transition: 'height 0.3s ease'
+                                            }} />
+                                            <Box sx={{
+                                              position: 'absolute',
+                                              bottom: `${percentages.present + percentages.late}%`,
+                                              left: 0,
+                                              width: '100%',
+                                              height: `${percentages.absent}%`,
+                                              bgcolor: theme => alpha(theme.palette.error.main, 0.3),
+                                              transition: 'height 0.3s ease'
+                                            }} />
+                                            <Box sx={{
+                                              position: 'absolute',
+                                              bottom: `${percentages.present + percentages.late + percentages.absent}%`,
+                                              left: 0,
+                                              width: '100%',
+                                              height: `${percentages.leave}%`,
+                                              bgcolor: theme => alpha(theme.palette.info.main, 0.3),
+                                              transition: 'height 0.3s ease'
+                                            }} />
+                                            <Box sx={{
+                                              position: 'absolute',
+                                              bottom: `${percentages.present + percentages.late + percentages.absent + percentages.leave}%`,
+                                              left: 0,
+                                              width: '100%',
+                                              height: `${percentages.halfLeave}%`,
+                                              bgcolor: alpha('#ec4899', 0.3),
+                                              transition: 'height 0.3s ease'
+                                            }} />
+                                          </>
+                                        )}
                                       </Box>
-                                      <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
-                                        <Skeleton variant="rectangular" width={60} height={20} sx={{ borderRadius: 1 }} />
-                                        <Skeleton variant="rectangular" width={60} height={20} sx={{ borderRadius: 1 }} />
+                                    </Tooltip>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          color: 'text.primary',
+                                          fontWeight: 600,
+                                          display: 'block'
+                                        }}
+                                      >
+                                        {day}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          color: theme => getStatusColor(status, theme),
+                                          fontSize: '0.7rem',
+                                          display: 'block',
+                                          mt: 0.5,
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        {count + details.halfLeave > 0 ? `${count + details.halfLeave} Days` : 'No Data'}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </GlassCard>
+                      </Grid>
+
+                      {/* Attendance Pattern */}
+                      <Grid item xs={12}>
+                        <GlassCard>
+                          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                            <Typography variant="subtitle1" fontWeight="600">
+                              Attendance Pattern
+                            </Typography>
+                          </Box>
+                          <Box sx={{ p: 2 }}>
+                            <Grid container spacing={2}>
+                              {attendancePattern.map((stat) => {
+                                const color = stat.colorKey === 'secondary' ? '#ec4899' : undefined;
+
+                                return (
+                                  <Grid item xs={12} key={stat.label}>
+                                    <Box sx={{ mb: 1 }}>
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                        <Typography variant="caption" color="textSecondary">
+                                          {stat.label}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{
+                                          color: color || (theme => {
+                                            const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                            return paletteColor?.main || theme.palette.primary.main;
+                                          })
+                                        }}>
+                                          {stat.count} days ({stat.value})
+                                        </Typography>
+                                      </Box>
+                                      <Box sx={{
+                                        width: '100%',
+                                        height: '4px',
+                                        bgcolor: color ? alpha(color, 0.1) : (theme => {
+                                          const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                          return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
+                                        }),
+                                        borderRadius: '2px',
+                                        overflow: 'hidden'
+                                      }}>
+                                        <Box sx={{
+                                          width: stat.value,
+                                          height: '100%',
+                                          bgcolor: color || (theme => {
+                                            const paletteColor = (theme.palette as any)[stat.colorKey] as { main: string } | undefined;
+                                            return paletteColor?.main || theme.palette.primary.main;
+                                          }),
+                                          transition: 'width 1s ease-in-out'
+                                        }} />
                                       </Box>
                                     </Box>
-                                  ))}
-                                </Stack>
-                              </Box>
+                                  </Grid>
+                                );
+                              })}
                             </Grid>
-                          ))}
-                        </Grid>
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
+                          </Box>
+                        </GlassCard>
+                      </Grid>
 
-                {/* Assignments by Subject Skeleton */}
-                <Grid item xs={12} md={6}>
-                  <InfoCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                        <Skeleton variant="circular" width={40} height={40} />
-                        <Skeleton variant="text" width={180} height={28} />
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Stack spacing={1}>
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <Box
-                              key={i}
-                              sx={{
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                              }}
-                            >
-                              <Skeleton variant="text" width={120} height={20} />
-                              <Skeleton variant="rectangular" width={30} height={24} sx={{ borderRadius: 1 }} />
+                      {/* Yearly Overview */}
+                      <Grid item xs={12}>
+                        <GlassCard>
+                          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                            <Typography variant="subtitle1" fontWeight="600">
+                              Yearly Overview
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {new Date().getFullYear()} Attendance
+                            </Typography>
+                          </Box>
+                          <Box sx={{ p: 2 }}>
+                            <Box sx={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fill, minmax(20px, 1fr))',
+                              gap: 0.5
+                            }}>
+                              {yearlyOverview.map((week, i) => (
+                                <Tooltip
+                                  key={i}
+                                  title={
+                                    <>
+                                      <Typography variant="caption" display="block">
+                                        {week.startDate.toLocaleDateString()} - {week.endDate.toLocaleDateString()}
+                                      </Typography>
+                                      <Typography variant="caption" display="block">
+                                        Attendance: {Math.round(week.percentage * 100)}%
+                                      </Typography>
+                                    </>
+                                  }
+                                  arrow
+                                >
+                                  <Box
+                                    sx={{
+                                      width: '100%',
+                                      paddingBottom: '100%',
+                                      bgcolor: theme => {
+                                        if (week.percentage === 0) return alpha(theme.palette.divider, 0.1);
+                                        if (week.percentage > 0.8) return alpha(theme.palette.success.main, 0.8);
+                                        if (week.percentage > 0.6) return alpha(theme.palette.success.main, 0.6);
+                                        if (week.percentage > 0.4) return alpha(theme.palette.success.main, 0.4);
+                                        return alpha(theme.palette.success.main, 0.2);
+                                      },
+                                      borderRadius: '2px',
+                                      transition: 'all 0.2s ease',
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        transform: 'scale(1.2)',
+                                        zIndex: 1
+                                      }
+                                    }}
+                                  />
+                                </Tooltip>
+                              ))}
                             </Box>
-                          ))}
-                        </Stack>
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
+                          </Box>
+                        </GlassCard>
+                      </Grid>
+                    </Grid>
+                  </Grid>
                 </Grid>
+              </TabPanel>
+            );
+          })()}
 
-                {/* Recent Assignments Skeleton */}
-                <Grid item xs={12} md={6}>
-                  <InfoCard>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                        <Skeleton variant="circular" width={40} height={40} />
-                        <Skeleton variant="text" width={160} height={28} />
-                      </Box>
-                      <Box sx={{ mt: 2 }}>
-                        <Stack spacing={1}>
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <Box
-                              key={i}
-                              sx={{
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                                <Skeleton variant="rectangular" width={80} height={20} sx={{ borderRadius: 1 }} />
-                                <Skeleton variant="rectangular" width={100} height={20} sx={{ borderRadius: 1 }} />
-                                <Skeleton variant="text" width={90} height={16} sx={{ ml: 'auto' }} />
-                              </Box>
-                              <Skeleton variant="text" width="100%" height={16} />
-                              <Skeleton variant="text" width="80%" height={16} sx={{ mt: 0.5 }} />
-                            </Box>
-                          ))}
-                        </Stack>
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
-              </Grid>
-            ) : (
-              <Grid container spacing={3}>
-                {/* Overview Stats */}
-                <Grid item xs={12} md={4}>
-                  <InfoCard>
-                    <CardContent>
-                      <SectionTitle>
-                        <Box className="icon-wrapper">
-                          <Assignment />
-                        </Box>
-                        <Box className="title-content">
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            Total Assignments
-                          </Typography>
-                        </Box>
-                      </SectionTitle>
-                      <Box sx={{ mt: 2, textAlign: 'center' }}>
-                        <Typography variant="h3" sx={{ fontWeight: 700, color: '#ec4899' }}>
-                          {diaryAnalysisData.totalAssignments}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          Assignments Created
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
+          {/* Timetable Tab */}
+          {activeTab === 2 && isTeacherTabVisible(renderSettings, 'timetable_tab') && (
+            <TabPanel>
+              <TimetableContainer>
+                {timetableData.length === 0 ? (
+                  <NoTimetableMessage>
+                    <NoTimetableIcon>📅</NoTimetableIcon>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                      No timetable assigned yet
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      Please contact your administrator to assign your teaching schedule.
+                    </Typography>
+                  </NoTimetableMessage>
+                ) : (
+                  <TimetableGrid>
+                    {(() => {
+                      const periods = [
+                        { num: 1, time: '08:30-09:00' },
+                        { num: 2, time: '09:00-09:30' },
+                        { num: 3, time: '09:30-10:00' },
+                        { num: 4, time: '10:00-10:30' },
+                        { num: 5, time: '10:30-11:00' },
+                        { num: 6, time: '11:15-11:45' },
+                        { num: 7, time: '11:45-12:15' },
+                        { num: 8, time: '12:15-12:45' },
+                      ];
 
-                <Grid item xs={12} md={6}>
-                  <InfoCard>
-                    <CardContent>
-                      <SectionTitle>
-                        <Box className="icon-wrapper">
-                          <TrendingUp />
-                        </Box>
-                        <Box className="title-content">
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            Average per Day
-                          </Typography>
-                        </Box>
-                      </SectionTitle>
-                      <Box sx={{ mt: 2, textAlign: 'center' }}>
-                        <Typography variant="h3" sx={{ fontWeight: 700, color: '#10b981' }}>
-                          {diaryAnalysisData.averagePerDay.toFixed(1)}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          Assignments per Day
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </InfoCard>
-                </Grid>
+                      const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
+                      const getClassName = (id: number): string => classes.find(c => c.id === id)?.name || '';
 
-                {/* Monthly Diary Distribution */}
-                {diaryMonthlyData.length > 0 && (
-                  <Grid item xs={12}>
+                      const scheduleMap = new Map<number, { classes: string[]; subjects: string[] }>();
+
+                      timetableData.forEach((item: any) => {
+                        const period = item.period_index + 1;
+                        const className = getClassName(item.class_id);
+                        const subjectName = getSubjectName(item.subject_id);
+
+                        if (!scheduleMap.has(period)) {
+                          scheduleMap.set(period, { classes: [className], subjects: [subjectName] });
+                        } else {
+                          const existing = scheduleMap.get(period)!;
+                          existing.classes.push(className);
+                          existing.subjects.push(subjectName);
+                        }
+                      });
+
+                      const allPeriods = [];
+                      for (let i = 1; i <= periods.length; i++) {
+                        if (i === 6) {
+                          allPeriods.push({ period: 'Break', time: '11:00-11:15', class: '', subject: '' });
+                        }
+
+                        const scheduleItem = scheduleMap.get(i);
+                        if (scheduleItem) {
+                          const uniqueSubjects = Array.from(new Set(scheduleItem.subjects));
+                          const uniqueClasses = Array.from(new Set(scheduleItem.classes));
+                          allPeriods.push({
+                            period: i,
+                            time: periods[i - 1].time,
+                            class: uniqueClasses.join(' / '),
+                            subject: uniqueSubjects.join(' / ')
+                          });
+                        } else {
+                          allPeriods.push({
+                            period: i,
+                            time: periods[i - 1].time,
+                            class: 'Free Period',
+                            subject: '-'
+                          });
+                        }
+                      }
+
+                      return allPeriods.map((item, index) => {
+                        if (item.period === 'Break') {
+                          return (
+                            <BreakCard key={index}>
+                              <BreakHeader>
+                                <BreakText>BREAK</BreakText>
+                                <BreakTime>{item.time}</BreakTime>
+                              </BreakHeader>
+                            </BreakCard>
+                          );
+                        }
+
+                        if (item.class === 'Free Period') {
+                          return (
+                            <FreePeriodCard key={index}>
+                              <FreePeriodHeader>
+                                <PeriodNumber>Period {item.period}</PeriodNumber>
+                                <PeriodTime>{item.time}</PeriodTime>
+                              </FreePeriodHeader>
+                              <FreePeriodContent>
+                                Free Period
+                              </FreePeriodContent>
+                            </FreePeriodCard>
+                          );
+                        }
+
+                        return (
+                          <PeriodCard key={index}>
+                            <PeriodHeader>
+                              <PeriodNumber>Period {item.period}</PeriodNumber>
+                              <PeriodTime>{item.time}</PeriodTime>
+                            </PeriodHeader>
+                            <PeriodContent>
+                              <ContentCard>
+                                <ContentText>{item.class}</ContentText>
+                              </ContentCard>
+                              <ContentCard>
+                                <ContentText>{item.subject}</ContentText>
+                              </ContentCard>
+                            </PeriodContent>
+                          </PeriodCard>
+                        );
+                      });
+                    })()}
+                  </TimetableGrid>
+                )}
+              </TimetableContainer>
+            </TabPanel>
+          )}
+
+          {/* Test Analysis Tab */}
+          {activeTab === 3 && isTeacherTabVisible(renderSettings, 'test_analysis_tab') && (
+            <TabPanel>
+              {/* Session Selector */}
+              {sessions.length > 0 && (
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>Session</InputLabel>
+                    <Select
+                      value={testAnalysisSessionId || ''}
+                      label="Session"
+                      onChange={(e) => {
+                        const newSessionId = Number(e.target.value);
+                        setTestAnalysisSessionId(newSessionId);
+                        setTabDataLoaded(prev => ({ ...prev, [3]: false })); // Reset loaded state to reload data
+                        lastSessionIdRef.current = null; // Reset ref to allow reload
+                        isLoadingRef.current = false; // Reset loading ref
+                        setTestMonthlyData([]); // Clear monthly data
+                        setTestSummary({ // Clear summary data
+                          totalTests: 0,
+                          totalStudents: 0,
+                          averagePercentage: 0,
+                          testsBySubject: [],
+                          recentTests: [],
+                        });
+                      }}
+                    >
+                      {sessions.map((session) => (
+                        <MenuItem key={session.id} value={session.id}>
+                          {session.name} {session.is_active && '(Active)'}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+              {!testAnalysisSessionId ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    Please select a session
+                  </Typography>
+                </Box>
+              ) : testSummary.totalTests === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Assessment sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    No test records found
+                  </Typography>
+                </Box>
+              ) : (
+                <Grid container spacing={3}>
+                  {/* Overview Stats */}
+                  <Grid item xs={12} md={4}>
                     <InfoCard>
                       <CardContent>
                         <SectionTitle>
                           <Box className="icon-wrapper">
-                            <CalendarToday />
+                            <Assessment />
                           </Box>
                           <Box className="title-content">
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              Monthly Diary Distribution
+                              Total Tests
                             </Typography>
                           </Box>
                         </SectionTitle>
-                        <Box sx={{ 
-                          mt: 2,
-                          maxHeight: '500px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 1,
-                          '&::-webkit-scrollbar': {
-                            width: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => alpha(theme.palette.divider, 0.1),
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => alpha('#ec4899', 0.4),
-                            borderRadius: '4px',
-                            border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            background: theme => alpha('#ec4899', 0.6),
-                          },
-                          // Firefox scrollbar
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => `${alpha('#ec4899', 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
-                        }}>
-                          <Grid container spacing={2}>
-                            {diaryMonthlyData.map((monthData, monthIndex) => {
-                              // Array of distinct colors for months (pink theme)
-                              const monthColors = [
-                                { bg: '#ec4899', hover: '#db2777' }, // Pink
-                                { bg: '#f472b6', hover: '#f43f5e' }, // Rose
-                                { bg: '#fb7185', hover: '#f43f5e' }, // Pink Rose
-                                { bg: '#fda4af', hover: '#fb7185' }, // Light Pink
-                                { bg: '#f97316', hover: '#ea580c' }, // Orange
-                                { bg: '#f59e0b', hover: '#d97706' }, // Amber
-                                { bg: '#8b5cf6', hover: '#7c3aed' }, // Purple
-                                { bg: '#a855f7', hover: '#9333ea' }, // Violet
-                                { bg: '#c084fc', hover: '#a855f7' }, // Light Purple
-                                { bg: '#d946ef', hover: '#c026d3' }, // Fuchsia
-                                { bg: '#e879f9', hover: '#d946ef' }, // Light Fuchsia
-                                { bg: '#f0abfc', hover: '#e879f9' }, // Very Light Fuchsia
-                              ];
-                              const colorIndex = monthIndex % monthColors.length;
-                              const monthColor = monthColors[colorIndex];
-                              
-                              return (
-                                <Grid item xs={12} sm={6} md={3} key={monthData.monthKey}>
-                                  <Box
-                                    sx={{
-                                      p: 2,
-                                      borderRadius: 2,
-                                      border: '1px solid',
-                                      borderColor: alpha(monthColor.bg, 0.3),
-                                      bgcolor: alpha(monthColor.bg, 0.05),
-                                      height: '100%',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      transition: 'all 0.2s ease',
-                                      '&:hover': {
-                                        bgcolor: alpha(monthColor.bg, 0.1),
-                                        borderColor: monthColor.bg,
-                                      },
-                                    }}
-                                  >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexShrink: 0 }}>
-                                      <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                                        {monthData.month}
-                                      </Typography>
-                                      <Chip
-                                        label={`${monthData.totalAssignments} assignment${monthData.totalAssignments !== 1 ? 's' : ''}`}
-                                        size="small"
-                                        sx={{
-                                          bgcolor: alpha(monthColor.bg, 0.15),
-                                          color: monthColor.bg,
-                                          fontWeight: 600,
-                                          border: `1px solid ${alpha(monthColor.bg, 0.3)}`,
-                                        }}
-                                      />
-                                    </Box>
-                                    <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-                                      <Stack spacing={1}>
-                                        {monthData.weeks.map((week) => (
-                                          <Box
-                                            key={week.weekNumber}
-                                            sx={{
-                                              p: 1.5,
-                                              borderRadius: 1,
-                                              border: '1px solid',
-                                              borderColor: alpha(monthColor.bg, 0.2),
-                                              bgcolor: alpha(monthColor.bg, 0.03),
-                                              transition: 'all 0.2s ease',
-                                              '&:hover': {
-                                                bgcolor: alpha(monthColor.bg, 0.08),
-                                                transform: 'translateX(4px)',
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                Week {week.weekNumber}: {week.week}
-                                              </Typography>
-                                              <Typography variant="body2" sx={{ fontWeight: 700, color: monthColor.bg }}>
-                                                {week.assignments} assignment{week.assignments !== 1 ? 's' : ''}
-                                              </Typography>
-                                            </Box>
-                                            {week.classes.length > 0 && (
-                                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                                                {week.classes.map((classData, idx) => (
-                                                  <Chip
-                                                    key={idx}
-                                                    label={`${classData.className} (${classData.assignmentCount})`}
-                                                    size="small"
-                                                    sx={{
-                                                      fontSize: '0.7rem',
-                                                      height: '24px',
-                                                      bgcolor: alpha('#8b5cf6', 0.1),
-                                                      color: '#8b5cf6',
-                                                      border: `1px solid ${alpha('#8b5cf6', 0.3)}`,
-                                                    }}
-                                                  />
-                                                ))}
-                                              </Box>
-                                            )}
-                                          </Box>
-                                        ))}
-                                      </Stack>
-                                    </Box>
-                                  </Box>
-                                </Grid>
-                              );
-                            })}
-                          </Grid>
-                        </Box>
+                        <Typography variant="h2" sx={{ fontWeight: 700, color: 'primary.main', textAlign: 'center', my: 2 }}>
+                          {testSummary.totalTests}
+                        </Typography>
                       </CardContent>
                     </InfoCard>
                   </Grid>
-                )}
-
-                {/* Assignments by Subject */}
-                {diaryAnalysisData.assignmentsBySubject.length > 0 && (
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={4}>
                     <InfoCard>
                       <CardContent>
                         <SectionTitle>
                           <Box className="icon-wrapper">
-                            <Assignment />
+                            <Groups />
                           </Box>
                           <Box className="title-content">
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              Assignments by Subject
+                              Students Assessed
                             </Typography>
                           </Box>
                         </SectionTitle>
-                        <Box sx={{ 
-                          mt: 2,
-                          maxHeight: '400px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 1,
-                          '&::-webkit-scrollbar': {
-                            width: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => alpha(theme.palette.divider, 0.1),
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => alpha('#10b981', 0.4),
-                            borderRadius: '4px',
-                            border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            background: theme => alpha('#10b981', 0.6),
-                          },
-                          // Firefox scrollbar
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => `${alpha('#10b981', 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
-                        }}>
-                          <Stack spacing={1}>
-                            {diaryAnalysisData.assignmentsBySubject.map((item, index) => (
+                        <Typography variant="h2" sx={{ fontWeight: 700, color: 'success.main', textAlign: 'center', my: 2 }}>
+                          {testSummary.totalStudents}
+                        </Typography>
+                      </CardContent>
+                    </InfoCard>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <InfoCard>
+                      <CardContent>
+                        <SectionTitle>
+                          <Box className="icon-wrapper">
+                            <TrendingUp />
+                          </Box>
+                          <Box className="title-content">
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                              Average Performance
+                            </Typography>
+                          </Box>
+                        </SectionTitle>
+                        <Typography variant="h2" sx={{ fontWeight: 700, color: 'info.main', textAlign: 'center', my: 2 }}>
+                          {testSummary.averagePercentage.toFixed(1)}%
+                        </Typography>
+                      </CardContent>
+                    </InfoCard>
+                  </Grid>
+
+                  {/* Monthly Test Distribution */}
+                  {testMonthlyData.length > 0 && (
+                    <Grid item xs={12}>
+                      <InfoCard>
+                        <CardContent>
+                          <SectionTitle>
+                            <Box className="icon-wrapper">
+                              <CalendarToday />
+                            </Box>
+                            <Box className="title-content">
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Monthly Test Distribution
+                              </Typography>
+                            </Box>
+                          </SectionTitle>
+                          <Box sx={{
+                            mt: 2,
+                            maxHeight: '500px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 1,
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => alpha(theme.palette.divider, 0.1),
+                              borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => alpha(theme.palette.primary.main, 0.4),
+                              borderRadius: '4px',
+                              border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                              background: theme => alpha(theme.palette.primary.main, 0.6),
+                            },
+                            // Firefox scrollbar
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
+                          }}>
+                            <Grid container spacing={2}>
+                              {testMonthlyData.length > 0 ? (
+                                testMonthlyData.map((monthData, monthIndex) => {
+                                  // Array of distinct colors for months
+                                  const monthColors = [
+                                    { bg: '#3b82f6', hover: '#2563eb' }, // Blue
+                                    { bg: '#8b5cf6', hover: '#7c3aed' }, // Purple
+                                    { bg: '#ec4899', hover: '#db2777' }, // Pink
+                                    { bg: '#10b981', hover: '#059669' }, // Green
+                                    { bg: '#f59e0b', hover: '#d97706' }, // Amber
+                                    { bg: '#ef4444', hover: '#dc2626' }, // Red
+                                    { bg: '#06b6d4', hover: '#0891b2' }, // Cyan
+                                    { bg: '#84cc16', hover: '#65a30d' }, // Lime
+                                    { bg: '#f97316', hover: '#ea580c' }, // Orange
+                                    { bg: '#6366f1', hover: '#4f46e5' }, // Indigo
+                                    { bg: '#14b8a6', hover: '#0d9488' }, // Teal
+                                    { bg: '#a855f7', hover: '#9333ea' }, // Violet
+                                  ];
+                                  const colorIndex = monthIndex % monthColors.length;
+                                  const monthColor = monthColors[colorIndex];
+
+                                  return (
+                                    <Grid item xs={12} sm={6} md={3} key={monthData.monthKey}>
+                                      <Box
+                                        sx={{
+                                          p: 2,
+                                          borderRadius: 2,
+                                          border: '1px solid',
+                                          borderColor: alpha(monthColor.bg, 0.3),
+                                          bgcolor: alpha(monthColor.bg, 0.05),
+                                          height: '100%',
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          transition: 'all 0.2s ease',
+                                          '&:hover': {
+                                            bgcolor: alpha(monthColor.bg, 0.1),
+                                            borderColor: monthColor.bg,
+                                          },
+                                        }}
+                                      >
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexShrink: 0 }}>
+                                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                                            {monthData.month}
+                                          </Typography>
+                                          <Chip
+                                            label={`${monthData.totalTests} test${monthData.totalTests !== 1 ? 's' : ''}`}
+                                            size="small"
+                                            sx={{
+                                              bgcolor: alpha(monthColor.bg, 0.15),
+                                              color: monthColor.bg,
+                                              fontWeight: 600,
+                                              border: `1px solid ${alpha(monthColor.bg, 0.3)}`,
+                                            }}
+                                          />
+                                        </Box>
+                                        <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                                          <Stack spacing={1}>
+                                            {monthData.weeks.map((week) => (
+                                              <Box
+                                                key={week.weekNumber}
+                                                sx={{
+                                                  p: 1.5,
+                                                  borderRadius: 1,
+                                                  border: '1px solid',
+                                                  borderColor: alpha(monthColor.bg, 0.2),
+                                                  bgcolor: alpha(monthColor.bg, 0.03),
+                                                  transition: 'all 0.2s ease',
+                                                  '&:hover': {
+                                                    bgcolor: alpha(monthColor.bg, 0.08),
+                                                    transform: 'translateX(4px)',
+                                                  },
+                                                }}
+                                              >
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                    Week {week.weekNumber}: {week.week}
+                                                  </Typography>
+                                                  <Typography variant="body2" sx={{ fontWeight: 700, color: monthColor.bg }}>
+                                                    {week.tests} test{week.tests !== 1 ? 's' : ''}
+                                                  </Typography>
+                                                </Box>
+                                                {week.classes.length > 0 && (
+                                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                                    {week.classes.map((classData, idx) => (
+                                                      <Chip
+                                                        key={idx}
+                                                        label={`${classData.className} (${classData.testCount})`}
+                                                        size="small"
+                                                        sx={{
+                                                          fontSize: '0.7rem',
+                                                          height: '24px',
+                                                          bgcolor: alpha('#8b5cf6', 0.1),
+                                                          color: '#8b5cf6',
+                                                          border: `1px solid ${alpha('#8b5cf6', 0.3)}`,
+                                                        }}
+                                                      />
+                                                    ))}
+                                                  </Box>
+                                                )}
+                                              </Box>
+                                            ))}
+                                          </Stack>
+                                        </Box>
+                                      </Box>
+                                    </Grid>
+                                  );
+                                })
+                              ) : (
+                                <Grid item xs={12}>
+                                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      No monthly test data available
+                                    </Typography>
+                                  </Box>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Box>
+                        </CardContent>
+                      </InfoCard>
+                    </Grid>
+                  )}
+
+                  {/* Tests by Subject */}
+                  {testSummary.testsBySubject.length > 0 && (
+                    <Grid item xs={12} md={6}>
+                      <InfoCard>
+                        <CardContent>
+                          <SectionTitle>
+                            <Box className="icon-wrapper">
+                              <Class />
+                            </Box>
+                            <Box className="title-content">
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Tests by Subject
+                              </Typography>
+                            </Box>
+                          </SectionTitle>
+                          <Stack spacing={1} sx={{ mt: 2 }}>
+                            {testSummary.testsBySubject.map((item, index) => (
                               <Box
                                 key={index}
                                 sx={{
@@ -6816,11 +6278,11 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                   transition: 'all 0.2s ease',
                                   '&:hover': {
                                     bgcolor: alpha('#10b981', 0.1),
-                                    transform: 'translateX(4px)',
+                                    borderColor: alpha('#10b981', 0.3),
                                   },
                                 }}
                               >
-                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                   {item.subject}
                                 </Typography>
                                 <Chip
@@ -6829,103 +6291,253 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                   sx={{
                                     bgcolor: alpha('#10b981', 0.15),
                                     color: '#10b981',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                   }}
                                 />
                               </Box>
                             ))}
                           </Stack>
+                        </CardContent>
+                      </InfoCard>
+                    </Grid>
+                  )}
+
+                  {/* Recent Tests */}
+                  {testSummary.recentTests.length > 0 && (
+                    <Grid item xs={12} md={6}>
+                      <InfoCard>
+                        <CardContent>
+                          <SectionTitle>
+                            <Box className="icon-wrapper">
+                              <HistoryIcon />
+                            </Box>
+                            <Box className="title-content">
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Recent Tests
+                              </Typography>
+                            </Box>
+                          </SectionTitle>
+                          <Box sx={{
+                            mt: 2,
+                            maxHeight: '400px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 1,
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => alpha(theme.palette.divider, 0.1),
+                              borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => alpha(theme.palette.primary.main, 0.4),
+                              borderRadius: '4px',
+                              border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                              background: theme => alpha(theme.palette.primary.main, 0.6),
+                            },
+                            // Firefox scrollbar
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha(theme.palette.primary.main, 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
+                          }}>
+                            <Stack spacing={1}>
+                              {testSummary.recentTests.map((test) => (
+                                <Box
+                                  key={test.id}
+                                  sx={{
+                                    p: 1.5,
+                                    borderRadius: 1,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                      bgcolor: alpha('#3b82f6', 0.05),
+                                      transform: 'translateX(4px)',
+                                    },
+                                  }}
+                                >
+                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                    {test.name}
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                                    <Chip
+                                      label={test.subject}
+                                      size="small"
+                                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                    <Chip
+                                      label={test.class}
+                                      size="small"
+                                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                    <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                                      {format(parseISO(test.date), 'MMM dd, yyyy')}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Stack>
+                          </Box>
+                        </CardContent>
+                      </InfoCard>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+            </TabPanel>
+          )}
+
+          {/* Diary Analysis Tab */}
+          {activeTab === 4 && isTeacherTabVisible(renderSettings, 'diary_analysis_tab') && (
+            <TabPanel>
+              {/* Session Selector */}
+              {sessions.length > 0 && (
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>Session</InputLabel>
+                    <Select
+                      value={diaryAnalysisSessionId || ''}
+                      label="Session"
+                      onChange={(e) => setDiaryAnalysisSessionId(e.target.value as number)}
+                    >
+                      {sessions.map((session) => (
+                        <MenuItem key={session.id} value={session.id}>
+                          {session.name} {session.is_active && '(Active)'}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+
+              {tabDataLoading[4] ? (
+                <Grid container spacing={3}>
+                  {/* Session Selector Skeleton */}
+                  {sessions.length > 0 && (
+                    <Grid item xs={12}>
+                      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Skeleton variant="rectangular" width={200} height={40} sx={{ borderRadius: 1 }} />
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* Overview Stats Skeleton */}
+                  <Grid item xs={12} md={4}>
+                    <InfoCard>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                          <Skeleton variant="circular" width={40} height={40} />
+                          <Skeleton variant="text" width={150} height={28} />
+                        </Box>
+                        <Box sx={{ mt: 2, textAlign: 'center' }}>
+                          <Skeleton variant="text" width={80} height={56} sx={{ mx: 'auto', mb: 1 }} />
+                          <Skeleton variant="text" width={120} height={20} sx={{ mx: 'auto' }} />
                         </Box>
                       </CardContent>
                     </InfoCard>
                   </Grid>
-                )}
 
-                {/* Recent Assignments */}
-                {diaryAnalysisData.recentAssignments.length > 0 && (
                   <Grid item xs={12} md={6}>
                     <InfoCard>
                       <CardContent>
-                        <SectionTitle>
-                          <Box className="icon-wrapper">
-                            <HistoryIcon />
-                          </Box>
-                          <Box className="title-content">
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              Recent Assignments
-                            </Typography>
-                          </Box>
-                        </SectionTitle>
-                        <Box sx={{ 
-                          mt: 2,
-                          maxHeight: '400px',
-                          overflowY: 'auto',
-                          overflowX: 'hidden',
-                          pr: 1,
-                          '&::-webkit-scrollbar': {
-                            width: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            background: theme => alpha(theme.palette.divider, 0.1),
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            background: theme => alpha('#ec4899', 0.4),
-                            borderRadius: '4px',
-                            border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            background: theme => alpha('#ec4899', 0.6),
-                          },
-                          // Firefox scrollbar
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: theme => `${alpha('#ec4899', 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
-                        }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                          <Skeleton variant="circular" width={40} height={40} />
+                          <Skeleton variant="text" width={140} height={28} />
+                        </Box>
+                        <Box sx={{ mt: 2, textAlign: 'center' }}>
+                          <Skeleton variant="text" width={60} height={56} sx={{ mx: 'auto', mb: 1 }} />
+                          <Skeleton variant="text" width={140} height={20} sx={{ mx: 'auto' }} />
+                        </Box>
+                      </CardContent>
+                    </InfoCard>
+                  </Grid>
+
+                  {/* Monthly Diary Distribution Skeleton */}
+                  <Grid item xs={12}>
+                    <InfoCard>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                          <Skeleton variant="circular" width={40} height={40} />
+                          <Skeleton variant="text" width={220} height={28} />
+                        </Box>
+                        <Box sx={{ mt: 2 }}>
+                          <Grid container spacing={2}>
+                            {[1, 2, 3, 4].map((i) => (
+                              <Grid item xs={12} sm={6} md={3} key={i}>
+                                <Box
+                                  sx={{
+                                    p: 2,
+                                    borderRadius: 2,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    bgcolor: 'background.paper',
+                                    height: '200px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Skeleton variant="text" width={80} height={24} />
+                                    <Skeleton variant="rectangular" width={100} height={24} sx={{ borderRadius: 1 }} />
+                                  </Box>
+                                  <Stack spacing={1} sx={{ flex: 1 }}>
+                                    {[1, 2].map((j) => (
+                                      <Box
+                                        key={j}
+                                        sx={{
+                                          p: 1.5,
+                                          borderRadius: 1,
+                                          border: '1px solid',
+                                          borderColor: 'divider',
+                                        }}
+                                      >
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                          <Skeleton variant="text" width={100} height={20} />
+                                          <Skeleton variant="text" width={80} height={20} />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
+                                          <Skeleton variant="rectangular" width={60} height={20} sx={{ borderRadius: 1 }} />
+                                          <Skeleton variant="rectangular" width={60} height={20} sx={{ borderRadius: 1 }} />
+                                        </Box>
+                                      </Box>
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </Box>
+                      </CardContent>
+                    </InfoCard>
+                  </Grid>
+
+                  {/* Assignments by Subject Skeleton */}
+                  <Grid item xs={12} md={6}>
+                    <InfoCard>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                          <Skeleton variant="circular" width={40} height={40} />
+                          <Skeleton variant="text" width={180} height={28} />
+                        </Box>
+                        <Box sx={{ mt: 2 }}>
                           <Stack spacing={1}>
-                            {diaryAnalysisData.recentAssignments.map((assignment) => (
+                            {[1, 2, 3, 4, 5].map((i) => (
                               <Box
-                                key={assignment.id}
+                                key={i}
                                 sx={{
                                   p: 1.5,
                                   borderRadius: 1,
                                   border: '1px solid',
                                   borderColor: 'divider',
-                                  transition: 'all 0.2s ease',
-                                  '&:hover': {
-                                    bgcolor: alpha('#ec4899', 0.05),
-                                    transform: 'translateX(4px)',
-                                  },
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
                                 }}
                               >
-                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
-                                  <Chip
-                                    label={assignment.subject}
-                                    size="small"
-                                    sx={{ fontSize: '0.7rem', height: '20px', bgcolor: alpha('#10b981', 0.1), color: '#10b981' }}
-                                  />
-                                  <Chip
-                                    label={assignment.class}
-                                    size="small"
-                                    sx={{ fontSize: '0.7rem', height: '20px' }}
-                                  />
-                                  <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                                    {format(parseISO(assignment.date), 'MMM dd, yyyy')}
-                                  </Typography>
-                                </Box>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    color: 'text.primary',
-                                    fontSize: '0.85rem',
-                                    lineHeight: 1.6,
-                                    mt: 0.75,
-                                    mb: 0.25,
-                                    wordWrap: 'break-word',
-                                    whiteSpace: 'pre-wrap'
-                                  }}
-                                >
-                                  {assignment.description || ''}
-                                </Typography>
+                                <Skeleton variant="text" width={120} height={20} />
+                                <Skeleton variant="rectangular" width={30} height={24} sx={{ borderRadius: 1 }} />
                               </Box>
                             ))}
                           </Stack>
@@ -6933,28 +6545,443 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                       </CardContent>
                     </InfoCard>
                   </Grid>
-                )}
 
-                {/* Empty State */}
-                {!tabDataLoading[4] && diaryAnalysisData.totalAssignments === 0 && (
-                  <Grid item xs={12}>
-                    <Box sx={{ textAlign: 'center', py: 8 }}>
-                      <Assignment sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                      <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                        No Diary Assignments
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        No homework diary assignments found for the selected session.
-                      </Typography>
-                    </Box>
+                  {/* Recent Assignments Skeleton */}
+                  <Grid item xs={12} md={6}>
+                    <InfoCard>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                          <Skeleton variant="circular" width={40} height={40} />
+                          <Skeleton variant="text" width={160} height={28} />
+                        </Box>
+                        <Box sx={{ mt: 2 }}>
+                          <Stack spacing={1}>
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <Box
+                                key={i}
+                                sx={{
+                                  p: 1.5,
+                                  borderRadius: 1,
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                                  <Skeleton variant="rectangular" width={80} height={20} sx={{ borderRadius: 1 }} />
+                                  <Skeleton variant="rectangular" width={100} height={20} sx={{ borderRadius: 1 }} />
+                                  <Skeleton variant="text" width={90} height={16} sx={{ ml: 'auto' }} />
+                                </Box>
+                                <Skeleton variant="text" width="100%" height={16} />
+                                <Skeleton variant="text" width="80%" height={16} sx={{ mt: 0.5 }} />
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                      </CardContent>
+                    </InfoCard>
                   </Grid>
-                )}
-              </Grid>
-            )}
-          </TabPanel>
-        )}
+                </Grid>
+              ) : (
+                <Grid container spacing={3}>
+                  {/* Overview Stats */}
+                  <Grid item xs={12} md={4}>
+                    <InfoCard>
+                      <CardContent>
+                        <SectionTitle>
+                          <Box className="icon-wrapper">
+                            <Assignment />
+                          </Box>
+                          <Box className="title-content">
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                              Total Assignments
+                            </Typography>
+                          </Box>
+                        </SectionTitle>
+                        <Box sx={{ mt: 2, textAlign: 'center' }}>
+                          <Typography variant="h3" sx={{ fontWeight: 700, color: '#ec4899' }}>
+                            {diaryAnalysisData.totalAssignments}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Assignments Created
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </InfoCard>
+                  </Grid>
 
-      </GlassCard>
+                  <Grid item xs={12} md={6}>
+                    <InfoCard>
+                      <CardContent>
+                        <SectionTitle>
+                          <Box className="icon-wrapper">
+                            <TrendingUp />
+                          </Box>
+                          <Box className="title-content">
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                              Average per Day
+                            </Typography>
+                          </Box>
+                        </SectionTitle>
+                        <Box sx={{ mt: 2, textAlign: 'center' }}>
+                          <Typography variant="h3" sx={{ fontWeight: 700, color: '#10b981' }}>
+                            {diaryAnalysisData.averagePerDay.toFixed(1)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Assignments per Day
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </InfoCard>
+                  </Grid>
+
+                  {/* Monthly Diary Distribution */}
+                  {diaryMonthlyData.length > 0 && (
+                    <Grid item xs={12}>
+                      <InfoCard>
+                        <CardContent>
+                          <SectionTitle>
+                            <Box className="icon-wrapper">
+                              <CalendarToday />
+                            </Box>
+                            <Box className="title-content">
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Monthly Diary Distribution
+                              </Typography>
+                            </Box>
+                          </SectionTitle>
+                          <Box sx={{
+                            mt: 2,
+                            maxHeight: '500px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 1,
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => alpha(theme.palette.divider, 0.1),
+                              borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => alpha('#ec4899', 0.4),
+                              borderRadius: '4px',
+                              border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                              background: theme => alpha('#ec4899', 0.6),
+                            },
+                            // Firefox scrollbar
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha('#ec4899', 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
+                          }}>
+                            <Grid container spacing={2}>
+                              {diaryMonthlyData.map((monthData, monthIndex) => {
+                                // Array of distinct colors for months (pink theme)
+                                const monthColors = [
+                                  { bg: '#ec4899', hover: '#db2777' }, // Pink
+                                  { bg: '#f472b6', hover: '#f43f5e' }, // Rose
+                                  { bg: '#fb7185', hover: '#f43f5e' }, // Pink Rose
+                                  { bg: '#fda4af', hover: '#fb7185' }, // Light Pink
+                                  { bg: '#f97316', hover: '#ea580c' }, // Orange
+                                  { bg: '#f59e0b', hover: '#d97706' }, // Amber
+                                  { bg: '#8b5cf6', hover: '#7c3aed' }, // Purple
+                                  { bg: '#a855f7', hover: '#9333ea' }, // Violet
+                                  { bg: '#c084fc', hover: '#a855f7' }, // Light Purple
+                                  { bg: '#d946ef', hover: '#c026d3' }, // Fuchsia
+                                  { bg: '#e879f9', hover: '#d946ef' }, // Light Fuchsia
+                                  { bg: '#f0abfc', hover: '#e879f9' }, // Very Light Fuchsia
+                                ];
+                                const colorIndex = monthIndex % monthColors.length;
+                                const monthColor = monthColors[colorIndex];
+
+                                return (
+                                  <Grid item xs={12} sm={6} md={3} key={monthData.monthKey}>
+                                    <Box
+                                      sx={{
+                                        p: 2,
+                                        borderRadius: 2,
+                                        border: '1px solid',
+                                        borderColor: alpha(monthColor.bg, 0.3),
+                                        bgcolor: alpha(monthColor.bg, 0.05),
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                          bgcolor: alpha(monthColor.bg, 0.1),
+                                          borderColor: monthColor.bg,
+                                        },
+                                      }}
+                                    >
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexShrink: 0 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                                          {monthData.month}
+                                        </Typography>
+                                        <Chip
+                                          label={`${monthData.totalAssignments} assignment${monthData.totalAssignments !== 1 ? 's' : ''}`}
+                                          size="small"
+                                          sx={{
+                                            bgcolor: alpha(monthColor.bg, 0.15),
+                                            color: monthColor.bg,
+                                            fontWeight: 600,
+                                            border: `1px solid ${alpha(monthColor.bg, 0.3)}`,
+                                          }}
+                                        />
+                                      </Box>
+                                      <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                                        <Stack spacing={1}>
+                                          {monthData.weeks.map((week) => (
+                                            <Box
+                                              key={week.weekNumber}
+                                              sx={{
+                                                p: 1.5,
+                                                borderRadius: 1,
+                                                border: '1px solid',
+                                                borderColor: alpha(monthColor.bg, 0.2),
+                                                bgcolor: alpha(monthColor.bg, 0.03),
+                                                transition: 'all 0.2s ease',
+                                                '&:hover': {
+                                                  bgcolor: alpha(monthColor.bg, 0.08),
+                                                  transform: 'translateX(4px)',
+                                                },
+                                              }}
+                                            >
+                                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                  Week {week.weekNumber}: {week.week}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ fontWeight: 700, color: monthColor.bg }}>
+                                                  {week.assignments} assignment{week.assignments !== 1 ? 's' : ''}
+                                                </Typography>
+                                              </Box>
+                                              {week.classes.length > 0 && (
+                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                                  {week.classes.map((classData, idx) => (
+                                                    <Chip
+                                                      key={idx}
+                                                      label={`${classData.className} (${classData.assignmentCount})`}
+                                                      size="small"
+                                                      sx={{
+                                                        fontSize: '0.7rem',
+                                                        height: '24px',
+                                                        bgcolor: alpha('#8b5cf6', 0.1),
+                                                        color: '#8b5cf6',
+                                                        border: `1px solid ${alpha('#8b5cf6', 0.3)}`,
+                                                      }}
+                                                    />
+                                                  ))}
+                                                </Box>
+                                              )}
+                                            </Box>
+                                          ))}
+                                        </Stack>
+                                      </Box>
+                                    </Box>
+                                  </Grid>
+                                );
+                              })}
+                            </Grid>
+                          </Box>
+                        </CardContent>
+                      </InfoCard>
+                    </Grid>
+                  )}
+
+                  {/* Assignments by Subject */}
+                  {diaryAnalysisData.assignmentsBySubject.length > 0 && (
+                    <Grid item xs={12} md={6}>
+                      <InfoCard>
+                        <CardContent>
+                          <SectionTitle>
+                            <Box className="icon-wrapper">
+                              <Assignment />
+                            </Box>
+                            <Box className="title-content">
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Assignments by Subject
+                              </Typography>
+                            </Box>
+                          </SectionTitle>
+                          <Box sx={{
+                            mt: 2,
+                            maxHeight: '400px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 1,
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => alpha(theme.palette.divider, 0.1),
+                              borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => alpha('#10b981', 0.4),
+                              borderRadius: '4px',
+                              border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                              background: theme => alpha('#10b981', 0.6),
+                            },
+                            // Firefox scrollbar
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha('#10b981', 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
+                          }}>
+                            <Stack spacing={1}>
+                              {diaryAnalysisData.assignmentsBySubject.map((item, index) => (
+                                <Box
+                                  key={index}
+                                  sx={{
+                                    p: 1.5,
+                                    borderRadius: 1,
+                                    border: '1px solid',
+                                    borderColor: alpha('#10b981', 0.2),
+                                    bgcolor: alpha('#10b981', 0.06),
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                      bgcolor: alpha('#10b981', 0.1),
+                                      transform: 'translateX(4px)',
+                                    },
+                                  }}
+                                >
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                    {item.subject}
+                                  </Typography>
+                                  <Chip
+                                    label={item.count}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: alpha('#10b981', 0.15),
+                                      color: '#10b981',
+                                      fontWeight: 600,
+                                    }}
+                                  />
+                                </Box>
+                              ))}
+                            </Stack>
+                          </Box>
+                        </CardContent>
+                      </InfoCard>
+                    </Grid>
+                  )}
+
+                  {/* Recent Assignments */}
+                  {diaryAnalysisData.recentAssignments.length > 0 && (
+                    <Grid item xs={12} md={6}>
+                      <InfoCard>
+                        <CardContent>
+                          <SectionTitle>
+                            <Box className="icon-wrapper">
+                              <HistoryIcon />
+                            </Box>
+                            <Box className="title-content">
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Recent Assignments
+                              </Typography>
+                            </Box>
+                          </SectionTitle>
+                          <Box sx={{
+                            mt: 2,
+                            maxHeight: '400px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            pr: 1,
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              background: theme => alpha(theme.palette.divider, 0.1),
+                              borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              background: theme => alpha('#ec4899', 0.4),
+                              borderRadius: '4px',
+                              border: theme => `1px solid ${alpha(theme.palette.background.paper, 0.2)}`,
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                              background: theme => alpha('#ec4899', 0.6),
+                            },
+                            // Firefox scrollbar
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: theme => `${alpha('#ec4899', 0.4)} ${alpha(theme.palette.divider, 0.1)}`,
+                          }}>
+                            <Stack spacing={1}>
+                              {diaryAnalysisData.recentAssignments.map((assignment) => (
+                                <Box
+                                  key={assignment.id}
+                                  sx={{
+                                    p: 1.5,
+                                    borderRadius: 1,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                      bgcolor: alpha('#ec4899', 0.05),
+                                      transform: 'translateX(4px)',
+                                    },
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
+                                    <Chip
+                                      label={assignment.subject}
+                                      size="small"
+                                      sx={{ fontSize: '0.7rem', height: '20px', bgcolor: alpha('#10b981', 0.1), color: '#10b981' }}
+                                    />
+                                    <Chip
+                                      label={assignment.class}
+                                      size="small"
+                                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                                      {format(parseISO(assignment.date), 'MMM dd, yyyy')}
+                                    </Typography>
+                                  </Box>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: 'text.primary',
+                                      fontSize: '0.85rem',
+                                      lineHeight: 1.6,
+                                      mt: 0.75,
+                                      mb: 0.25,
+                                      wordWrap: 'break-word',
+                                      whiteSpace: 'pre-wrap'
+                                    }}
+                                  >
+                                    {assignment.description || ''}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Stack>
+                          </Box>
+                        </CardContent>
+                      </InfoCard>
+                    </Grid>
+                  )}
+
+                  {/* Empty State */}
+                  {!tabDataLoading[4] && diaryAnalysisData.totalAssignments === 0 && (
+                    <Grid item xs={12}>
+                      <Box sx={{ textAlign: 'center', py: 8 }}>
+                        <Assignment sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                        <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                          No Diary Assignments
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          No homework diary assignments found for the selected session.
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+            </TabPanel>
+          )}
+
+        </GlassCard>
       )}
 
       {/* Edit Profile Modal */}
@@ -6969,8 +6996,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             Edit Profile
           </DialogTitleStyled>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button 
-              onClick={handleCloseEditModal} 
+            <Button
+              onClick={handleCloseEditModal}
               disabled={editLoading}
               sx={{ textTransform: 'none' }}
             >
@@ -6984,7 +7011,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               }}
               variant="contained"
               disabled={editLoading}
-              sx={{ 
+              sx={{
                 textTransform: 'none',
                 minWidth: 100,
                 background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
@@ -7050,9 +7077,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   </IconButton>
                 )}
               </AvatarContainer>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: 'text.secondary',
                   fontWeight: 500,
                   mt: 1,
@@ -7061,9 +7088,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               >
                 {editImage || teacher?.picture_url ? 'Click to change photo' : 'Click to upload photo'}
               </Typography>
-              <Typography 
-                variant="caption" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                sx={{
                   color: 'text.secondary',
                   mt: 0.5,
                   textAlign: 'center',
@@ -7264,9 +7291,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           }
         }}
       >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <DialogTitle sx={{
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between',
           pb: 1,
           borderBottom: 1,

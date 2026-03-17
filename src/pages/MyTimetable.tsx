@@ -197,6 +197,9 @@ const MyTimetable: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionName, setSessionName] = useState<string>('');
+  const [periods, setPeriods] = useState<any[]>([]);
+  const [breakIdx, setBreakIdx] = useState<number>(4);
+  const [breakSettings, setBreakSettings] = useState({ start: '11:00', end: '11:15' });
 
   // Helper functions
   const getSubjectName = (id: number): string => subjects.find(s => s.id === id)?.name || '';
@@ -204,57 +207,44 @@ const MyTimetable: React.FC = () => {
 
   // Helper function to get teacher's schedule
   const getTeacherSchedule = () => {
-    const periods = [
-      { num: 1, time: '08:30-09:00' },
-      { num: 2, time: '09:00-09:30' },
-      { num: 3, time: '09:30-10:00' },
-      { num: 4, time: '10:00-10:30' },
-      { num: 5, time: '10:30-11:00' },
-      { num: 6, time: '11:15-11:45' },
-      { num: 7, time: '11:45-12:15' },
-      { num: 8, time: '12:15-12:45' },
-    ];
+    if (periods.length === 0) return [];
 
     const scheduleMap = new Map<number, { classes: string[]; subjects: string[] }>();
-    
+
     timetableData.forEach((item: any) => {
       const period = item.period_index + 1; // Convert 0-based to 1-based
       const className = getClassName(item.class_id);
       const subjectName = getSubjectName(item.subject_id);
-      
+
       if (!scheduleMap.has(period)) {
         scheduleMap.set(period, { classes: [className], subjects: [subjectName] });
       } else {
-        // Add both class and subject (allowing duplicates)
         const existing = scheduleMap.get(period)!;
         existing.classes.push(className);
         existing.subjects.push(subjectName);
       }
     });
 
-    // Create schedule array with all periods
     const allPeriods = [];
     for (let i = 1; i <= periods.length; i++) {
-      if (i === 6) {
-        // Add break after 5th period
-        allPeriods.push({ period: 'Break', time: '11:00-11:15', class: '', subject: '' });
+      if (i === breakIdx + 1) {
+        allPeriods.push({ period: 'Break', time: `${breakSettings.start}-${breakSettings.end}`, class: '', subject: '' });
       }
-      
+
       const scheduleItem = scheduleMap.get(i);
       if (scheduleItem) {
-        // Remove duplicate subjects and classes (similar to how double subjects are handled)
         const uniqueSubjects = Array.from(new Set(scheduleItem.subjects));
         const uniqueClasses = Array.from(new Set(scheduleItem.classes));
         allPeriods.push({
           period: i,
-          time: periods[i-1].time,
+          time: periods[i - 1].time,
           class: uniqueClasses.join(' / '),
           subject: uniqueSubjects.join(' / ')
         });
       } else {
         allPeriods.push({
           period: i,
-          time: periods[i-1].time,
+          time: periods[i - 1].time,
           class: 'Free Period',
           subject: '-'
         });
@@ -292,6 +282,38 @@ const MyTimetable: React.FC = () => {
 
         setSubjects(subjectsResult);
         if (classesResult && classesResult.length > 0) setClasses(classesResult);
+
+        // Fetch Timetable Settings & Periods
+        const [{ data: periodsData }, { data: settingsData }] = await Promise.all([
+          supabase.from('timetable_periods').select('*').eq('school_id', user.school_id).order('period_index'),
+          supabase.from('timetable_settings').select('*').eq('school_id', user.school_id).single()
+        ]);
+
+        if (periodsData && periodsData.length > 0) {
+          setPeriods(periodsData.map((p: any) => ({
+            num: p.period_index + 1,
+            time: `${p.start_time}-${p.end_time}`
+          })));
+        } else {
+          setPeriods([
+            { num: 1, time: '08:30-09:00' },
+            { num: 2, time: '09:00-09:30' },
+            { num: 3, time: '09:30-10:00' },
+            { num: 4, time: '10:00-10:30' },
+            { num: 5, time: '10:30-11:00' },
+            { num: 6, time: '11:15-11:45' },
+            { num: 7, time: '11:45-12:15' },
+            { num: 8, time: '12:15-12:45' },
+          ]);
+        }
+
+        if (settingsData) {
+          setBreakIdx(settingsData.break_after_period_index);
+          setBreakSettings({
+            start: settingsData.break_start_time,
+            end: settingsData.break_end_time
+          });
+        }
 
         // Get active session
         const { data: session } = await supabase

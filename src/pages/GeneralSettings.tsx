@@ -34,7 +34,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  TextField
+  TextField,
+  Grid
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -46,10 +47,10 @@ import {
   Help as HelpIcon,
   Close as CloseIcon,
   AccessTime,
+  Timer,
   Assignment,
   Assessment,
-  EventBusy,
-  Timer
+  EventBusy
 } from '@mui/icons-material';
 
 const Container = styled.div<{ $theme: any }>`
@@ -184,13 +185,13 @@ const ActionsContainer = styled.div<{ $theme: any }>`
 
 const StyledTable = styled(TableContainer).attrs(() => ({
   component: Paper
-}))<{ $theme: any }>`
+})) <{ $theme: any }>`
   background: ${({ $theme }) => $theme?.CARD || '#ffffff'};
   border-radius: 8px;
   overflow: hidden;
 `;
 
-const StyledTableRow = styled(TableRow)<{ $theme: any }>`
+const StyledTableRow = styled(TableRow) <{ $theme: any }>`
   &:hover {
     background: ${({ $theme }) => $theme?.BG || '#f9fafb'};
   }
@@ -219,9 +220,10 @@ const GeneralSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teacherSettings, setTeacherSettings] = useState<Map<number, TeacherScoreSettings>>(new Map());
+
   const [hasChanges, setHasChanges] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-  
+
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
 
   useEffect(() => {
@@ -235,7 +237,7 @@ const GeneralSettings: React.FC = () => {
 
     try {
       setLoading(true);
-      
+
       // Fetch all staff members (teachers)
       const { data: teachersData, error: teachersError } = await supabase
         .from('staff')
@@ -331,9 +333,9 @@ const GeneralSettings: React.FC = () => {
           });
 
         if (error) throw error;
-        setHasChanges(false);
       }
 
+      setHasChanges(false);
       toast.showToast('Settings saved successfully!', 'success');
     } catch (error: any) {
       toast.showToast('Failed to save settings: ' + error.message, 'error');
@@ -430,13 +432,13 @@ const GeneralSettings: React.FC = () => {
                           </Box>
                         </Tooltip>
                       </TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 600 }}>
-                            <Tooltip title="Deduct score based on average test performance of students. Average < 60% deducts score (0.3-1 points based on performance level).">
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, cursor: 'help' }}>
-                                Test
-                              </Box>
-                            </Tooltip>
-                          </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 600 }}>
+                        <Tooltip title="Deduct score based on average test performance of students. Average < 60% deducts score (0.3-1 points based on performance level).">
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, cursor: 'help' }}>
+                            Test
+                          </Box>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -518,7 +520,6 @@ const GeneralSettings: React.FC = () => {
                 </Table>
               </StyledTable>
             )}
-
             <ActionsContainer $theme={theme}>
               <Button
                 variant="outlined"
@@ -552,9 +553,9 @@ const GeneralSettings: React.FC = () => {
             }
           }}
         >
-          <DialogTitle sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <DialogTitle sx={{
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
             pb: 1,
             borderBottom: 1,
@@ -587,7 +588,7 @@ const GeneralSettings: React.FC = () => {
                   Overview
                 </Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  Teachers start with a base score of 10. Points are deducted based on various factors. 
+                  Teachers start with a base score of 10. Points are deducted based on various factors.
                   Each deduction type can be enabled or disabled individually for each teacher.
                 </Typography>
               </Box>
@@ -607,7 +608,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'error.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Absent"
                       secondary="Deducts 0.2 points per absence"
                     />
@@ -616,7 +617,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <EventBusy sx={{ color: 'info.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Leave"
                       secondary="Deducts 0.1 points per leave"
                     />
@@ -625,7 +626,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Timer sx={{ color: 'warning.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Late"
                       secondary="Deducts 0.1 points per late arrival"
                     />
@@ -634,7 +635,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <AccessTime sx={{ color: '#ec4899', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Half Leave"
                       secondary="Deducts 0.05 points per half leave"
                     />
@@ -660,7 +661,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <CheckCircle sx={{ color: 'success.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average ≥ 3 assignments/day"
                       secondary="No deduction"
                     />
@@ -669,7 +670,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'warning.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average < 3 and ≥ 2 assignments/day"
                       secondary="Deducts 0.5 points"
                     />
@@ -678,7 +679,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'error.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average < 2 and ≥ 1 assignment/day"
                       secondary="Deducts 1 point"
                     />
@@ -687,7 +688,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'error.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average < 1 assignment/day"
                       secondary="Deducts 2 points"
                     />
@@ -713,7 +714,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <CheckCircle sx={{ color: 'success.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average ≥ 60%"
                       secondary="No deduction"
                     />
@@ -722,7 +723,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'warning.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average < 60% and ≥ 50%"
                       secondary="Deducts 0.3 points"
                     />
@@ -731,7 +732,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'error.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average < 50% and ≥ 40%"
                       secondary="Deducts 0.5 points"
                     />
@@ -740,7 +741,7 @@ const GeneralSettings: React.FC = () => {
                     <ListItemIcon>
                       <Cancel sx={{ color: 'error.main', fontSize: 20 }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Average < 40%"
                       secondary="Deducts 1 point"
                     />
@@ -768,7 +769,7 @@ const GeneralSettings: React.FC = () => {
           </DialogContent>
         </Dialog>
       </Container>
-    </ThemeProvider>
+    </ThemeProvider >
   );
 };
 
