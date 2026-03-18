@@ -59,6 +59,7 @@ interface Examination {
   id: number;
   name: string;
   session: string;
+  session_id: number;
   passing_marks?: number;
   end_date?: string;
 }
@@ -452,6 +453,8 @@ const PageFooter = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 100;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.15);
   }
 `;
 
@@ -543,14 +546,15 @@ const StatLabel = styled.span`
 
 const DMCContainer = styled.div`
   width: 100%;
-  height: 100vh;
-  max-height: 100vh;
+  flex: 1;
+  min-height: 0;
   margin: 0;
   padding: 16px;
   display: grid;
   grid-template-columns: 300px 1fr 250px;
   gap: 16px;
   overflow: hidden;
+  position: relative;
   
   @media (max-width: 1200px) {
     grid-template-columns: 280px 1fr 220px;
@@ -560,13 +564,15 @@ const DMCContainer = styled.div`
   @media (max-width: 768px) {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    min-height: 0;
+    flex: 1;
     margin: 0;
     border-radius: 0;
     box-shadow: none;
     border: none;
     gap: 0;
     padding: 0;
+    overflow-y: auto;
   }
 `;
 
@@ -947,6 +953,10 @@ const MobileFooter = styled.div`
     gap: 8px;
     flex-shrink: 0;
     min-height: 100px;
+    position: sticky;
+    bottom: 50px;
+    z-index: 20;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
   }
   
   @media (min-width: 769px) {
@@ -1588,34 +1598,94 @@ const DetailedMarksCertificate: React.FC = () => {
       }, 200);
       
 
-      // Use the exact same approach as MasterSheetManager.tsx
-      // Get all students for the selected class/section
-      let studentQuery = supabase
-        .from('students')
-        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
-        .eq('school_id', user?.school_id)
-        .eq('class_id', selectedClass.id)
-        .eq('status', 'active');
+      const classId = selectedClass.id;
+      const sectionId = hasSections ? selectedSection?.id : null;
+      const sessionId = selectedExamination.session_id;
 
-      // Add section filter only if the class has sections
-      if (hasSections && selectedSection) {
-        studentQuery = studentQuery.eq('section_id', selectedSection.id);
-      } else if (!hasSections) {
-        studentQuery = studentQuery.is('section_id', null);
-      }
-
-      const { data: students, error: studentsError } = await studentQuery;
-      if (studentsError) throw studentsError;
-
-      if (!students || students.length === 0) {
-        setDmcData(null);
-        setAllDmcData([]);
-        setError(`No students found for class ${selectedClass.name}${hasSections && selectedSection?.name ? ` (${selectedSection.name})` : ''}. Please check if students are enrolled in this class${hasSections ? ' and section' : ''}.`);
+      if (!sessionId) {
+        toast.error('No session associated with this examination.');
+        setLoading(false);
         return;
       }
 
-      // Fetch exam results for the selected examination (matching MasterSheetManager pattern)
-      const { data: examResults, error: resultsError } = await supabase
+      // 1. Fetch student IDs from student_class_history for this session and class
+      let schQuery = supabase
+        .from('student_class_history')
+        .select('student_id')
+        .eq('session_id', sessionId)
+        .eq('new_class_id', classId)
+        .eq('school_id', user?.school_id);
+
+      if (sectionId === null || sectionId === undefined) {
+        schQuery = schQuery.is('new_section_id', null);
+      } else {
+        schQuery = schQuery.eq('new_section_id', sectionId);
+      }
+
+      const { data: schData, error: schError } = await schQuery;
+      if (schError) throw schError;
+
+      // 2. Fetch student IDs that already have marks stored for this class + section in the selected exam
+      let erStudentQuery = supabase
+        .from('exam_results')
+        .select('student_id')
+        .eq('exam_id', selectedExamination.id)
+        .eq('class_id', classId)
+        .eq('school_id', user?.school_id);
+
+      if (sectionId === null || sectionId === undefined) {
+        erStudentQuery = erStudentQuery.is('section_id', null);
+      } else {
+        erStudentQuery = erStudentQuery.eq('section_id', sectionId);
+      }
+
+      const { data: erStudentData } = await erStudentQuery;
+      
+      // Combine student IDs
+      const historyStudentIds = (schData || []).map(sch => sch.student_id);
+      const resultStudentIds = (erStudentData || []).map(er => er.student_id);
+      const allStudentIds = Array.from(new Set([...historyStudentIds, ...resultStudentIds]));
+
+      if (allStudentIds.length === 0) {
+        setAllDmcData([]);
+        setDmcData(null);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Fetch full student details for all identified students
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
+        .eq('school_id', user?.school_id)
+        .in('id', allStudentIds);
+
+      if (studentsError) throw studentsError;
+
+      // 4. Check for exclusions
+      let excludedIds = new Set<number>();
+      const { data: exclusionsData } = await supabase
+        .from('exam_exclusions')
+        .select('student_id')
+        .eq('exam_id', selectedExamination.id)
+        .eq('school_id', user?.school_id);
+
+      if (exclusionsData) {
+        excludedIds = new Set(exclusionsData.map(e => e.student_id));
+      }
+
+      // Filter out excluded students
+      const students = (studentsData || []).filter(student => !excludedIds.has(student.id));
+
+      if (!students || students.length === 0) {
+        setAllDmcData([]);
+        setDmcData(null);
+        setLoading(false);
+        return;
+      }
+
+      // 5. Get exam results filtered by exam, class, and section for these students
+      let resultsQuery = supabase
         .from('exam_results')
         .select(`
           student_id,
@@ -1625,11 +1695,20 @@ const DetailedMarksCertificate: React.FC = () => {
           grade,
           remarks,
           subject_id,
-          subjects!inner(name)
+          subjects!inner(name, short_name)
         `)
         .eq('exam_id', selectedExamination.id)
+        .eq('class_id', classId)
         .eq('school_id', user?.school_id)
         .in('student_id', students.map(s => s.id));
+
+      if (sectionId === null || sectionId === undefined) {
+        resultsQuery = resultsQuery.is('section_id', null);
+      } else {
+        resultsQuery = resultsQuery.eq('section_id', sectionId);
+      }
+
+      const { data: examResults, error: resultsError } = await resultsQuery;
 
       if (resultsError) throw resultsError;
 

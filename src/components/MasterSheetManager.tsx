@@ -1209,35 +1209,79 @@ const MasterSheetManager: React.FC = () => {
       // The examination summaries are stored for quick access in StudentProfile
       // but MasterSheetManager should always show the full detailed view
 
-      // Get all students for the selected class/section (regardless of status)
-      const studentQuery = supabase
+      const classId = selectedClass.id;
+      const sectionId = hasSections ? selectedSection?.id : null;
+      const sessionId = selectedExam.session_id;
+
+      if (!sessionId) {
+        showToast('No session associated with this examination.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // 1. Fetch student IDs from student_class_history for this session and class
+      let schQuery = supabase
+        .from('student_class_history')
+        .select('student_id')
+        .eq('session_id', sessionId)
+        .eq('new_class_id', classId)
+        .eq('school_id', user?.school_id);
+
+      if (sectionId === null || sectionId === undefined) {
+        schQuery = schQuery.is('new_section_id', null);
+      } else {
+        schQuery = schQuery.eq('new_section_id', sectionId);
+      }
+
+      const { data: schData, error: schError } = await schQuery;
+      if (schError) throw schError;
+
+      // 2. Fetch student IDs that already have marks stored for this class + section in the selected exam
+      // This covers cases where history might be missing but results are recorded
+      let erStudentQuery = supabase
+        .from('exam_results')
+        .select('student_id')
+        .eq('exam_id', selectedExam.id)
+        .eq('class_id', classId)
+        .eq('school_id', user?.school_id);
+
+      if (sectionId === null || sectionId === undefined) {
+        erStudentQuery = erStudentQuery.is('section_id', null);
+      } else {
+        erStudentQuery = erStudentQuery.eq('section_id', sectionId);
+      }
+
+      const { data: erStudentData } = await erStudentQuery;
+      
+      // Combine student IDs
+      const historyStudentIds = (schData || []).map(sch => sch.student_id);
+      const resultStudentIds = (erStudentData || []).map(er => er.student_id);
+      const allStudentIds = Array.from(new Set([...historyStudentIds, ...resultStudentIds]));
+
+      if (allStudentIds.length === 0) {
+        setMasterSheetData([]);
+        return;
+      }
+
+      // 3. Fetch full student details for all identified students
+      const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
-        .eq('class_id', selectedClass.id);
+        .in('id', allStudentIds);
 
-      // Add section filter only if the class has sections
-      if (hasSections && selectedSection) {
-        studentQuery.eq('section_id', selectedSection.id);
-      } else if (!hasSections) {
-        studentQuery.is('section_id', null);
-      }
-
-      const { data: studentsData, error: studentsError } = await studentQuery;
       if (studentsError) throw studentsError;
 
-      // Check for exclusions if an exam is selected
+      // 4. Check for exclusions
       let excludedIds = new Set<number>();
-      if (selectedExam) {
-        const { data: exclusionsData } = await supabase
-          .from('exam_exclusions')
-          .select('student_id')
-          .eq('exam_id', selectedExam.id)
-          .eq('school_id', user?.school_id);
+      const { data: exclusionsData } = await supabase
+        .from('exam_exclusions')
+        .select('student_id')
+        .eq('exam_id', selectedExam.id)
+        .eq('school_id', user?.school_id);
 
-        if (exclusionsData) {
-          excludedIds = new Set(exclusionsData.map(e => e.student_id));
-        }
+      if (exclusionsData) {
+        excludedIds = new Set(exclusionsData.map(e => e.student_id));
       }
 
       // Filter out excluded students
@@ -1248,8 +1292,8 @@ const MasterSheetManager: React.FC = () => {
         return;
       }
 
-      // Get exam results for all subjects in this exam
-      const { data: examResults, error: resultsError } = await supabase
+      // 5. Get exam results filtered by exam, class, and section
+      let resultsQuery = supabase
         .from('exam_results')
         .select(`
           student_id,
@@ -1262,8 +1306,17 @@ const MasterSheetManager: React.FC = () => {
           subjects!inner(name, short_name)
         `)
         .eq('exam_id', selectedExam.id)
+        .eq('class_id', classId)
         .eq('school_id', user?.school_id)
         .in('student_id', students.map(s => s.id));
+
+      if (sectionId === null || sectionId === undefined) {
+        resultsQuery = resultsQuery.is('section_id', null);
+      } else {
+        resultsQuery = resultsQuery.eq('section_id', sectionId);
+      }
+
+      const { data: examResults, error: resultsError } = await resultsQuery;
 
       if (resultsError) throw resultsError;
 

@@ -27,22 +27,16 @@ import { CashFlowData } from '../../services/accountsService';
 import DottedLoader from '../shared/DottedLoader';
 import { format } from 'date-fns';
 
-// Helper function to check if theme is dark
-const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+import { clayCardStyle, isDark, CARD_RADIUS_LG } from '../../../../styles/DesignSystem';
 
 const ContentCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 1.5rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 1.1rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -79,14 +73,13 @@ const CashFlowGrid = styled.div`
 `;
 
 const CashFlowCard = styled.div`
-  background: ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.03)'
-    : 'rgba(0, 0, 0, 0.02)'};
-  border-radius: 8px;
-  padding: 1rem;
-  border: 1px solid ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
+  ${clayCardStyle}
+  padding: 1rem 1.1rem;
+
+  @media (max-width: 768px) {
+    padding: 0.85rem;
+    border-radius: ${CARD_RADIUS_LG};
+  }
 `;
 
 const CashFlowLabel = styled.div`
@@ -781,7 +774,6 @@ const CashFlowComponent: React.FC<CashFlowComponentProps> = ({ cashFlow, loading
 };
 
 export default CashFlowComponent;
-
 
 
 

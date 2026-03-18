@@ -30,8 +30,7 @@ import { formatCurrency } from '../../utils/dashboardUtils';
 import { AccountsData } from '../../services/accountsService';
 import CashFlowComponent from './CashFlowComponent';
 
-// Helper function to check if theme is dark
-const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+import { clayCardStyle, isDark, CARD_RADIUS_LG } from '../../../../styles/DesignSystem';
 
 // ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
 
@@ -48,22 +47,17 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  ${clayCardStyle}
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  position: relative;
+  overflow: hidden;
   
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    gap: 0.375rem;
+  @media (max-width: 600px) {
+    padding: 0.85rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -101,18 +95,13 @@ const ContentGrid = styled.div`
 `;
 
 const ContentCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 1.5rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 1.1rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -706,4 +695,3 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
 };
 
 export default AccountsTab;
-

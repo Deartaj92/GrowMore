@@ -63,6 +63,7 @@ import {
   HeaderActions,
   HeaderIconCircle,
 } from '../../styles';
+import { clayCardStyle, isDark, clayInsetStyle, getLayoutPalette, CARD_RADIUS_LG, CARD_RADIUS_MD } from '../../../../styles/DesignSystem';
 import { StudentInfo, ParentInfo, InstituteProfile } from '../../types';
 import NotificationBell from '../../../NotificationBell';
 import ProfileDropdown from '../ProfileDropdown/ProfileDropdown';
@@ -146,19 +147,15 @@ const AppLogo = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.5)'};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   color: ${props => props.theme.TEXT_PRIMARY};
   margin-right: 10px;
   flex-shrink: 0;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   cursor: pointer;
   overflow: hidden;
   -webkit-app-region: no-drag;
-  border: 1.5px solid ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(255, 255, 255, 0.6)'};
+  border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   
   &:hover {
@@ -213,7 +210,7 @@ const NavMenuItem = styled.button<{ $hasDropdown?: boolean; $isDashboard?: boole
   font-size: 0.82rem;
   font-weight: 500;
   cursor: ${props => props.$hasDropdown ? 'default' : 'pointer'};
-  border-radius: 12px;
+  border-radius: ${CARD_RADIUS_LG};
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   white-space: nowrap;
@@ -221,15 +218,14 @@ const NavMenuItem = styled.button<{ $hasDropdown?: boolean; $isDashboard?: boole
   letter-spacing: 0.01em;
   
   ${props => props.$isDashboard && `
-    color: ${props.theme.ACCENT};
+    color: ${getLayoutPalette(props.theme).navActiveText};
     font-weight: 600;
   `}
   
   &:hover {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.45)'};
+    background: ${({ theme }) => getLayoutPalette(theme).navHoverBg};
     color: ${props => props.theme.TEXT_PRIMARY};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).navHoverShadow};
   }
   
   svg {
@@ -261,12 +257,9 @@ const MenuWrapper = styled.div`
 const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualColumns?: number }>`
   position: fixed;
   
-  background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : 'rgba(255, 255, 255, 0.95)'};
-
-  border: 1px solid ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? props.theme.BORDER : 'rgba(107, 141, 247, 0.15)'};
-  box-shadow: 0 8px 32px rgba(107, 141, 247, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
+  ${clayCardStyle}
     
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   padding: 10px;
   z-index: 100001;
   overflow: visible;
@@ -313,22 +306,16 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
   }
   
   &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.2)'
-    : 'rgba(0, 0, 0, 0.2)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
     border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.3)'
-    : 'rgba(0, 0, 0, 0.3)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
   }
   
   scrollbar-width: thin;
-  scrollbar-color: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.2) transparent'
-    : 'rgba(0, 0, 0, 0.2) transparent'};
+  scrollbar-color: ${({ theme }) => `${getLayoutPalette(theme).dropdownThumb} transparent`};
   
   @media (max-width: 1400px) {
     ${props => {
@@ -441,7 +428,7 @@ const Badge = styled.span`
   height: 18px;
   padding: 0 6px;
   border-radius: 9px;
-  background: #ef4444;
+  background: ${({ theme }) => getLayoutPalette(theme).badgeBg};
   color: white;
   font-size: 0.7rem;
   font-weight: 600;
@@ -449,11 +436,11 @@ const Badge = styled.span`
   margin-left: 8px;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).badgeShadow};
   opacity: 1 !important;
   visibility: visible !important;
   z-index: 3;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).badgeBorder};
 `;
 
 const DropdownMenuItem = styled.button<{ $color: string }>`
@@ -462,8 +449,8 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   gap: 8px;
   padding: 6px;
   border: none;
-  background: ${props => (props.theme.BG === '#252525' || props.theme.BG === '#181c2a') ? '#2f2f2f' : props.theme.CARD};
-  border-radius: 5px;
+  background: transparent;
+  border-radius: ${CARD_RADIUS_MD};
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -471,14 +458,15 @@ const DropdownMenuItem = styled.button<{ $color: string }>`
   position: relative;
   
   &:hover {
-    background: ${props => props.theme.BG};
-    transform: translateX(2px);
+    background: ${({ theme }) => getLayoutPalette(theme).navHoverBg};
+    transform: translateX(4px);
+    box-shadow: ${({ theme }) => isDark(theme) ? 'none' : getLayoutPalette(theme).navHoverShadow};
   }
   
   .menu-icon {
     width: 24px;
     height: 24px;
-    border-radius: 5px;
+    border-radius: ${CARD_RADIUS_MD};
     background: linear-gradient(135deg, ${props => props.$color} 0%, ${props => props.$color}dd 100%);
     display: flex;
     align-items: center;
@@ -547,7 +535,7 @@ const MobileSidebarBackdrop = styled.div<{ $isOpen: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: ${({ theme }) => getLayoutPalette(theme).shellOverlay};
   z-index: 9998;
   opacity: ${props => props.$isOpen ? 1 : 0};
   visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
@@ -566,14 +554,14 @@ const MobileSidebar = styled.div<{ $isOpen: boolean }>`
   max-width: 320px;
   height: 100dvh;
   max-height: 100dvh;
-  background: ${props => props.theme.CARD};
+  background: ${({ theme }) => getLayoutPalette(theme).sidebarBg};
   z-index: 9999;
   transform: translateX(${props => props.$isOpen ? '0' : '-100%'});
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).sidebarShadow};
   
   /* Fallback for browsers that don't support dvh */
   @supports not (height: 100dvh) {
@@ -591,8 +579,8 @@ const MobileSidebarHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid ${props => props.theme.BORDER};
-  background: ${props => props.theme.CARD};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).sidebarHeaderBg};
   position: sticky;
   top: 0;
   z-index: 1;
@@ -614,11 +602,11 @@ const MobileSidebarCloseButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: ${CARD_RADIUS_MD};
   transition: background 0.2s ease;
   
   &:hover {
-    background: ${props => props.theme.BG};
+    background: ${({ theme }) => getLayoutPalette(theme).sidebarHoverBg};
   }
   
   svg {
@@ -650,22 +638,16 @@ const MobileMenuSection = styled.div`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.2)'
-    : 'rgba(0, 0, 0, 0.2)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
     border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.3)'
-    : 'rgba(0, 0, 0, 0.3)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
   }
   
   scrollbar-width: thin;
-  scrollbar-color: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.2) transparent'
-    : 'rgba(0, 0, 0, 0.2) transparent'};
+  scrollbar-color: ${({ theme }) => `${getLayoutPalette(theme).dropdownThumb} transparent`};
 `;
 
 const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
@@ -676,7 +658,7 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
   padding: 12px 12px;
   background: none;
   border: none;
-  color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
+  color: ${({ theme }) => getLayoutPalette(theme).shellText} !important;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -693,14 +675,14 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
   }
   
   &:hover {
-    background: ${props => props.theme.BG};
+    background: ${({ theme }) => getLayoutPalette(theme).sidebarHoverBg};
   }
   
   .menu-icon {
     margin-right: 12px;
     display: flex !important;
     align-items: center;
-    color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
+    color: ${({ theme }) => getLayoutPalette(theme).shellSoftText} !important;
     flex-shrink: 0;
     opacity: 1 !important;
     visibility: visible !important;
@@ -717,14 +699,14 @@ const MobileMenuItem = styled.button<{ $hasSubmenu?: boolean }>`
   
   .menu-label {
     flex: 1;
-    color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
+    color: ${({ theme }) => getLayoutPalette(theme).shellText} !important;
     opacity: 1 !important;
     visibility: visible !important;
     display: block !important;
   }
   
   .menu-arrow {
-    color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
+    color: ${({ theme }) => getLayoutPalette(theme).shellSoftText} !important;
     transition: transform 0.2s ease;
     transform: ${props => props.$hasSubmenu ? 'rotate(0deg)' : 'rotate(-90deg)'};
     flex-shrink: 0;
@@ -737,7 +719,7 @@ const MobileSubmenu = styled.div<{ $isOpen: boolean }>`
   max-height: ${props => props.$isOpen ? '5000px' : '0'};
   overflow: hidden;
   transition: max-height 0.3s ease;
-  background: ${props => props.theme.BG};
+  background: ${({ theme }) => getLayoutPalette(theme).sidebarSubmenuBg};
   opacity: 1 !important;
   visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
   
@@ -762,7 +744,7 @@ const MobileSubmenuItem = styled.button`
   padding: 10px 16px 10px 32px;
   background: none;
   border: none;
-  color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
+  color: ${({ theme }) => getLayoutPalette(theme).shellSoftText} !important;
   font-size: 0.85rem;
   cursor: pointer;
   text-align: left;
@@ -779,8 +761,8 @@ const MobileSubmenuItem = styled.button`
   }
   
   &:hover {
-    background: ${props => props.theme.CARD};
-    color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
+    background: ${({ theme }) => getLayoutPalette(theme).sidebarHoverBg};
+    color: ${props => props.theme.TEXT_PRIMARY} !important;
   }
   
   .submenu-icon {
@@ -788,7 +770,7 @@ const MobileSubmenuItem = styled.button`
     height: 24px !important;
     min-width: 24px !important;
     min-height: 24px !important;
-    border-radius: 4px;
+    border-radius: ${CARD_RADIUS_MD};
     display: flex !important;
     align-items: center;
     justify-content: center;
@@ -818,7 +800,7 @@ const MobileSubmenuItem = styled.button`
   
   .submenu-title {
     font-weight: 500;
-    color: ${props => props.theme.TEXT_PRIMARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#e2e8f0' : '#1e293b')} !important;
+    color: ${({ theme }) => getLayoutPalette(theme).shellText} !important;
     font-size: 0.85rem;
     opacity: 1 !important;
     visibility: visible !important;
@@ -828,7 +810,7 @@ const MobileSubmenuItem = styled.button`
   
   .submenu-description {
     font-size: 0.7rem;
-    color: ${props => props.theme.TEXT_SECONDARY || (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? '#94a3b8' : '#64748b')} !important;
+    color: ${({ theme }) => getLayoutPalette(theme).shellSoftText} !important;
     opacity: 0.85 !important;
     line-height: 1.3;
     display: block !important;
@@ -844,13 +826,12 @@ const HamburgerButton = styled.button`
   cursor: pointer;
   padding: 8px;
   margin-right: 8px;
-  border-radius: 8px;
+  border-radius: ${CARD_RADIUS_MD};
   transition: background 0.2s ease;
   
   &:hover {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.45)'};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
+    color: ${props => props.theme.ACCENT};
   }
   
   svg {
@@ -866,10 +847,10 @@ const HamburgerButton = styled.button`
 
 const ProfileAvatarContainer = styled(HeaderIconCircle) <{ $hasImage: boolean }>`
   border: ${props => props.$hasImage
-    ? `2px solid ${props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.6)'}`
-    : `1px solid ${props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.45)'}`};
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
-  background: ${props => props.$hasImage ? 'transparent' : (props.theme.BG === '#252525' || props.theme.BG === '#181c2a' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.45)')};
+    ? `2.5px solid ${getLayoutPalette(props.theme).surfaceBorder}`
+    : `1.5px solid ${getLayoutPalette(props.theme).surfaceBorder}`};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  background: ${props => props.$hasImage ? 'transparent' : getLayoutPalette(props.theme).surfaceBg};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -879,7 +860,7 @@ const ProfileAvatarContainer = styled(HeaderIconCircle) <{ $hasImage: boolean }>
   
   &:hover {
     transform: scale(1.1);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
   
   img {

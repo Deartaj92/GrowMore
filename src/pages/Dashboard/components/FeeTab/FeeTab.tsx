@@ -33,8 +33,7 @@ import { formatCurrency } from '../../utils/dashboardUtils';
 import { FeeSummary, FeeCollectionDetails } from '../../types';
 import { getStudentDisplayId } from '../../../../utils/studentUtils';
 
-// Helper function to check if theme is dark
-const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+import { clayCardStyle, isDark, CARD_RADIUS_LG, getDashboardPalette } from '../../../../styles/DesignSystem';
 
 // ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
 
@@ -51,22 +50,17 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  ${clayCardStyle}
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  position: relative;
+  overflow: hidden;
   
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    gap: 0.375rem;
+  @media (max-width: 600px) {
+    padding: 0.85rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -104,18 +98,13 @@ const ContentGrid = styled.div`
 `;
 
 const ContentCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 1.5rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 1.1rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -167,7 +156,8 @@ const FeeTab: React.FC<FeeTabProps> = ({
   defaultersLoading
 }) => {
   const theme = useTheme() as any;
-  const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
+  const dashboardPalette = getDashboardPalette(theme);
+  const statusPalette = dashboardPalette.status;
 
   return (
     <Container>
@@ -181,25 +171,25 @@ const FeeTab: React.FC<FeeTabProps> = ({
         </StatCard>
         <StatCard theme={theme}>
           <StatLabel theme={theme}>Total Collected</StatLabel>
-          <StatValue theme={theme} style={{ color: '#22c55e' }}>
+          <StatValue theme={theme} style={{ color: statusPalette.success }}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalCollected || 0)}
           </StatValue>
         </StatCard>
         <StatCard theme={theme}>
           <StatLabel theme={theme}>Discount</StatLabel>
-          <StatValue theme={theme} style={{ color: '#3b82f6' }}>
+          <StatValue theme={theme} style={{ color: statusPalette.info }}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalDiscount || 0)}
           </StatValue>
         </StatCard>
         <StatCard theme={theme}>
           <StatLabel theme={theme}>Outstanding</StatLabel>
-          <StatValue theme={theme} style={{ color: '#ef4444' }}>
+          <StatValue theme={theme} style={{ color: statusPalette.danger }}>
             {feeSummaryLoading ? <DottedLoader /> : formatCurrency(feeSummary?.totalOutstanding || 0)}
           </StatValue>
         </StatCard>
         <StatCard theme={theme}>
           <StatLabel theme={theme}>Collection Rate</StatLabel>
-          <StatValue theme={theme} style={{ color: '#6366f1' }}>
+          <StatValue theme={theme} style={{ color: theme.ACCENT }}>
             {feeSummaryLoading ? <DottedLoader /> : `${(feeSummary?.collectionRate || 0).toFixed(1)}%`}
           </StatValue>
         </StatCard>
@@ -222,19 +212,19 @@ const FeeTab: React.FC<FeeTabProps> = ({
               <BarChart data={dailyCollectionData}>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={isDark ? '#555' : '#d1d5db'}
+                  stroke={dashboardPalette.chartAxis}
                   opacity={0.8}
                   horizontal={true}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                  tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                  tick={{ fill: dashboardPalette.chartTick, fontSize: 12 }}
+                  tickLine={{ stroke: dashboardPalette.chartAxis }}
                 />
                 <YAxis
-                  tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                  tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                  tick={{ fill: dashboardPalette.chartTick, fontSize: 12 }}
+                  tickLine={{ stroke: dashboardPalette.chartAxis }}
                   tickFormatter={(value) => {
                     if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
                     return value.toString();
@@ -242,17 +232,17 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: isDark ? '#1e293b' : '#fff',
-                    border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                    backgroundColor: dashboardPalette.tooltipBg,
+                    border: `1px solid ${dashboardPalette.tooltipBorder}`,
                     borderRadius: '8px',
-                    color: isDark ? '#e2e8f0' : '#1e293b'
+                    color: dashboardPalette.tooltipText
                   }}
                   formatter={(value: any) => formatCurrency(value)}
                   labelFormatter={(label) => `Day ${label}`}
                 />
                 <Bar
                   dataKey="amount"
-                  fill="#3b82f6"
+                  fill={statusPalette.info}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -275,28 +265,28 @@ const FeeTab: React.FC<FeeTabProps> = ({
               <AreaChart data={monthlyCollectionData}>
                 <defs>
                   <linearGradient id="colorCollection" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="5%" stopColor={statusPalette.success} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={statusPalette.success} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={isDark ? '#555' : '#d1d5db'}
+                  stroke={dashboardPalette.chartAxis}
                   opacity={0.8}
                   horizontal={true}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="month"
-                  tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                  tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                  tick={{ fill: dashboardPalette.chartTick, fontSize: 12 }}
+                  tickLine={{ stroke: dashboardPalette.chartAxis }}
                   angle={-45}
                   textAnchor="end"
                   height={60}
                 />
                 <YAxis
-                  tick={{ fill: isDark ? '#888' : '#666', fontSize: 12 }}
-                  tickLine={{ stroke: isDark ? '#444' : '#ddd' }}
+                  tick={{ fill: dashboardPalette.chartTick, fontSize: 12 }}
+                  tickLine={{ stroke: dashboardPalette.chartAxis }}
                   tickFormatter={(value) => {
                     if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
                     return value.toString();
@@ -304,10 +294,10 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: isDark ? '#1e293b' : '#fff',
-                    border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                    backgroundColor: dashboardPalette.tooltipBg,
+                    border: `1px solid ${dashboardPalette.tooltipBorder}`,
                     borderRadius: '8px',
-                    color: isDark ? '#e2e8f0' : '#1e293b'
+                    color: dashboardPalette.tooltipText
                   }}
                   formatter={(value: any) => formatCurrency(value)}
                   labelFormatter={(label) => label}
@@ -315,7 +305,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <Area
                   type="monotone"
                   dataKey="amount"
-                  stroke="#22c55e"
+                  stroke={statusPalette.success}
                   fillOpacity={1}
                   fill="url(#colorCollection)"
                   strokeWidth={2}
@@ -356,7 +346,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#f59e0b"
-                    bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                    bgColor={statusPalette.warningBg}
                   >
                     {formatCurrency(feeCollectionDetails?.previousArrears?.balance || 0)}
                   </StatusBadge>
@@ -365,7 +355,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
-                    bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    bgColor={statusPalette.successBg}
                   >
                     {formatCurrency(feeCollectionDetails?.previousArrears?.paid || 0)}
                   </StatusBadge>
@@ -373,7 +363,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#3b82f6"
-                    bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    bgColor={statusPalette.infoBg}
                   >
                     {formatCurrency(feeCollectionDetails?.previousArrears?.discount || 0)}
                   </StatusBadge>
@@ -381,7 +371,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#ef4444"
-                    bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    bgColor={statusPalette.dangerBg}
                   >
                     {formatCurrency(feeCollectionDetails?.previousArrears?.droppedOut || 0)}
                   </StatusBadge>
@@ -396,7 +386,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#f59e0b"
-                    bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                    bgColor={statusPalette.warningBg}
                   >
                     {formatCurrency(feeCollectionDetails?.currentMonth?.balance || 0)}
                   </StatusBadge>
@@ -405,7 +395,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
-                    bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    bgColor={statusPalette.successBg}
                   >
                     {formatCurrency(feeCollectionDetails?.currentMonth?.paid || 0)}
                   </StatusBadge>
@@ -413,7 +403,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#3b82f6"
-                    bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    bgColor={statusPalette.infoBg}
                   >
                     {formatCurrency(feeCollectionDetails?.currentMonth?.discount || 0)}
                   </StatusBadge>
@@ -421,7 +411,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#ef4444"
-                    bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    bgColor={statusPalette.dangerBg}
                   >
                     {formatCurrency(feeCollectionDetails?.currentMonth?.droppedOut || 0)}
                   </StatusBadge>
@@ -436,7 +426,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#f59e0b"
-                    bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                    bgColor={statusPalette.warningBg}
                   >
                     {formatCurrency(feeCollectionDetails?.nextMonths?.balance || 0)}
                   </StatusBadge>
@@ -445,7 +435,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#16a34a"
-                    bgColor={isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'}
+                    bgColor={statusPalette.successBg}
                   >
                     {formatCurrency(feeCollectionDetails?.nextMonths?.paid || 0)}
                   </StatusBadge>
@@ -453,7 +443,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#3b82f6"
-                    bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                    bgColor={statusPalette.infoBg}
                   >
                     {formatCurrency(feeCollectionDetails?.nextMonths?.discount || 0)}
                   </StatusBadge>
@@ -461,7 +451,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                 <FeeCollectionTableCell>
                   <StatusBadge
                     color="#ef4444"
-                    bgColor={isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'}
+                    bgColor={statusPalette.dangerBg}
                   >
                     {formatCurrency(feeCollectionDetails?.nextMonths?.droppedOut || 0)}
                   </StatusBadge>
@@ -514,7 +504,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                     <DefaultersTableCell align="center">
                       <StatusBadge
                         color="#3b82f6"
-                        bgColor={isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}
+                        bgColor={statusPalette.infoBg}
                       >
                         {row.challanCount}
                       </StatusBadge>
@@ -523,7 +513,7 @@ const FeeTab: React.FC<FeeTabProps> = ({
                       {row.arrearCount > 0 ? (
                         <StatusBadge
                           color="#f59e0b"
-                          bgColor={isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.1)'}
+                          bgColor={statusPalette.warningBg}
                         >
                           {row.arrearCount}
                         </StatusBadge>

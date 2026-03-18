@@ -40,72 +40,110 @@ import { whatsappSemiAutoService } from '../../../../services/whatsappSemiAuto';
 import { STATUS_OPTIONS, DELETE_OPTION } from '../../constants';
 import { getStatus } from '../../utils/dashboardUtils';
 
-// Helper function to check if theme is dark
-const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+import { clayCardStyle, isDark, CARD_RADIUS_LG, getDashboardPalette } from '../../../../styles/DesignSystem';
 
 // ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
   gap: 0.5rem;
   margin-bottom: 0.25rem;
-  
-  @media (max-width: 768px) {
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 600px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.375rem;
+    gap: 0.5rem;
   }
 `;
 
-const StatCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+const StatCard = styled.div<{ $accent?: string }>`
+  ${clayCardStyle}
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    gap: 0.375rem;
+  gap: 0.35rem;
+
+  @media (max-width: 600px) { padding: 0.85rem; border-radius: ${CARD_RADIUS_LG}; }
+`;
+
+/* Row: icon badge + percent chip */
+const StatTopRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+/* Icon — clay bubble: white/opaque circle with accent glow */
+const StatIconBadge = styled.div<{ $accent: string }>`
+  width: 34px; height: 34px;
+  border-radius: 12px;
+  color: ${({ $accent }) => $accent};
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  /* Clay bubble bg: semi-transparent accent to add a tiny hint of color */
+  background: ${({ theme, $accent }) =>
+    isDark(theme)
+      ? `${$accent}18`
+      : `${$accent}15`
+  };
+  /* Neutral subtle shadow, no glow */
+  box-shadow: ${({ theme }) =>
+    isDark(theme)
+      ? '0 2px 6px rgba(0,0,0,0.35), inset 0 1px 3px rgba(255,255,255,0.08)'
+      : '0 2px 6px rgba(0,0,0,0.08), inset 0 1px 3px rgba(255,255,255,0.9)'
+  };
+  border: 1px solid ${({ theme, $accent }) =>
+    isDark(theme) ? `${$accent}25` : `${$accent}15`
+  };
+  svg {
+    font-size: 1rem !important;
   }
+`;
+
+/* Percentage chip — solid filled accent pill for contrast over tinted card */
+const StatChip = styled.span<{ $accent: string }>`
+  font-size: 0.67rem;
+  font-weight: 700;
+  /* Solid accent fill so it pops against the pastel card */
+  color: #fff;
+  background: ${({ $accent }) => $accent};
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.2px;
+  /* No glow — clean flat accent fill */
+  box-shadow: none;
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.75rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-weight: 500;
+  font-size: 0.65rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  
-  @media (max-width: 768px) {
-    font-size: 0.7rem;
-  }
+  letter-spacing: 0.8px;
+  /* Slightly more opaque in light for readability over pastel bg */
+  color: ${({ theme }) => isDark(theme) ? theme.TEXT_SECONDARY : 'rgba(30,30,60,0.55)'};
 `;
 
 const StatValue = styled.div`
   font-size: 1.5rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.ACCENT};
-  
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
+  font-weight: 800;
+  /* In claymorphism use a darker tone of the accent group or straight primary */
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  line-height: 1;
+  letter-spacing: -0.5px;
+
+  @media (max-width: 600px) { font-size: 1.3rem; }
 `;
 
-const StatChange = styled.div<{ $positive?: boolean }>`
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${({ $positive }) => $positive ? '#22c55e' : '#ef4444'};
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+const StatOf = styled.span`
+  font-size: 0.67rem;
+  font-weight: 400;
+  color: ${({ theme }) => isDark(theme) ? theme.TEXT_SECONDARY : 'rgba(30,30,60,0.45)'};
+  margin-left: 3px;
 `;
 
 const ContentGrid = styled.div`
@@ -113,36 +151,50 @@ const ContentGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 0.5rem;
   margin-bottom: 0.25rem;
-  
+
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
   }
 `;
 
+/* Neutral clay panel + subtle shiny blue pop */
 const ContentCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 1.5rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 1.1rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
+/* Card title with clay icon bubble */
 const CardTitle = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.ACCENT};
-  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  margin: 0 0 0.875rem 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  letter-spacing: -0.1px;
+
+  /* Clay bubble around the leading icon */
+  svg:first-child {
+    background: ${({ theme }) =>
+      isDark(theme) ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.85)'
+    };
+    border-radius: 8px;
+    padding: 3px;
+    box-shadow: ${({ theme }) =>
+      isDark(theme)
+        ? 'inset 0 1px 3px rgba(255,255,255,0.07)'
+        : 'inset 0 1px 3px rgba(255,255,255,0.9)'
+    };
+    color: #6366f1;
+    font-size: 1.1rem !important;
+  }
 `;
 
 const EmptyState = styled.div`
@@ -150,9 +202,11 @@ const EmptyState = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.75rem 1rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   text-align: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
 `;
 
 // Additional styled components for charts summary
@@ -160,12 +214,14 @@ const ChartSummary = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+  gap: 1.25rem;
+  margin-top: 0.625rem;
+  padding-top: 0.625rem;
+  border-top: ${({ theme }) =>
+    isDark(theme)
+      ? '1px solid rgba(99,102,241,0.12)'
+      : '1px solid rgba(99,102,241,0.09)'
+  };
   flex-wrap: wrap;
 `;
 
@@ -368,7 +424,9 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   const theme = useTheme();
   const navigate = useNavigate();
   const toast = useToast();
-  const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
+  const dashboardPalette = getDashboardPalette(theme as any);
+  const statusPalette = dashboardPalette.status;
+  const isDarkTheme = isDark(theme as any);
 
   // Calculate total number of students
   const totalStudents = attendanceDataForDate.length;
@@ -376,80 +434,65 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   return (
     <Container>
       {/* Attendance Stats Cards */}
-      <StatsGrid theme={theme}>
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Present</StatLabel>
-          <StatValue theme={theme}>
-            {attendanceStatsLoading ? <DottedLoader /> : (
-              <>
-                {presentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
-              </>
-            )}
+      <StatsGrid>
+        {/* Present */}
+        <StatCard $accent={statusPalette.success}>
+          <StatTopRow>
+            <StatIconBadge $accent={statusPalette.success}><CheckCircle /></StatIconBadge>
+            {attendanceStatsLoading ? <DottedLoader size={0.55} /> : <StatChip $accent={statusPalette.success}>{presentPercent}%</StatChip>}
+          </StatTopRow>
+          <StatLabel>Present</StatLabel>
+          <StatValue>
+            {attendanceStatsLoading ? <DottedLoader /> : <>{presentToday}<StatOf>/ {totalStudents}</StatOf></>}
           </StatValue>
-          <StatChange $positive={true} theme={theme}>
-            <CheckCircle style={{ fontSize: '0.75rem' }} />
-            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${presentPercent}%`}
-          </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Absent</StatLabel>
-          <StatValue theme={theme}>
-            {attendanceStatsLoading ? <DottedLoader /> : (
-              <>
-                {absentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
-              </>
-            )}
+        {/* Absent */}
+        <StatCard $accent={statusPalette.danger}>
+          <StatTopRow>
+            <StatIconBadge $accent={statusPalette.danger}><Cancel /></StatIconBadge>
+            {attendanceStatsLoading ? <DottedLoader size={0.55} /> : <StatChip $accent={statusPalette.danger}>{absentPercent}%</StatChip>}
+          </StatTopRow>
+          <StatLabel>Absent</StatLabel>
+          <StatValue>
+            {attendanceStatsLoading ? <DottedLoader /> : <>{absentToday}<StatOf>/ {totalStudents}</StatOf></>}
           </StatValue>
-          <StatChange $positive={false} theme={theme}>
-            <Cancel style={{ fontSize: '0.75rem' }} />
-            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${absentPercent}%`}
-          </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Leave</StatLabel>
-          <StatValue theme={theme}>
-            {attendanceStatsLoading ? <DottedLoader /> : (
-              <>
-                {leaveToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
-              </>
-            )}
+        {/* Leave */}
+        <StatCard $accent={statusPalette.info}>
+          <StatTopRow>
+            <StatIconBadge $accent={statusPalette.info}><CalendarMonth /></StatIconBadge>
+            {attendanceStatsLoading ? <DottedLoader size={0.55} /> : <StatChip $accent={statusPalette.info}>{leavePercent}%</StatChip>}
+          </StatTopRow>
+          <StatLabel>Leave</StatLabel>
+          <StatValue>
+            {attendanceStatsLoading ? <DottedLoader /> : <>{leaveToday}<StatOf>/ {totalStudents}</StatOf></>}
           </StatValue>
-          <StatChange $positive={true} theme={theme}>
-            <CalendarMonth style={{ fontSize: '0.75rem' }} />
-            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${leavePercent}%`}
-          </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Late</StatLabel>
-          <StatValue theme={theme}>
-            {attendanceStatsLoading ? <DottedLoader /> : (
-              <>
-                {lateToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
-              </>
-            )}
+        {/* Late */}
+        <StatCard $accent={statusPalette.warning}>
+          <StatTopRow>
+            <StatIconBadge $accent={statusPalette.warning}><AccessTime /></StatIconBadge>
+            {attendanceStatsLoading ? <DottedLoader size={0.55} /> : <StatChip $accent={statusPalette.warning}>{latePercent}%</StatChip>}
+          </StatTopRow>
+          <StatLabel>Late</StatLabel>
+          <StatValue>
+            {attendanceStatsLoading ? <DottedLoader /> : <>{lateToday}<StatOf>/ {totalStudents}</StatOf></>}
           </StatValue>
-          <StatChange $positive={true} theme={theme}>
-            <AccessTime style={{ fontSize: '0.75rem' }} />
-            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${latePercent}%`}
-          </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Half Leave</StatLabel>
-          <StatValue theme={theme}>
-            {attendanceStatsLoading ? <DottedLoader /> : (
-              <>
-                {halfLeaveCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalStudents}</span>
-              </>
-            )}
+        {/* Half Leave */}
+        <StatCard $accent={statusPalette.violet}>
+          <StatTopRow>
+            <StatIconBadge $accent={statusPalette.violet}><HourglassEmpty /></StatIconBadge>
+            {attendanceStatsLoading ? <DottedLoader size={0.55} /> : <StatChip $accent={statusPalette.violet}>{halfLeavePercent}%</StatChip>}
+          </StatTopRow>
+          <StatLabel>Half Leave</StatLabel>
+          <StatValue>
+            {attendanceStatsLoading ? <DottedLoader /> : <>{halfLeaveCount}<StatOf>/ {totalStudents}</StatOf></>}
           </StatValue>
-          <StatChange $positive={true} theme={theme}>
-            <HourglassEmpty style={{ fontSize: '0.75rem' }} />
-            {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${halfLeavePercent}%`}
-          </StatChange>
         </StatCard>
       </StatsGrid>
 
@@ -475,28 +518,28 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 <LineChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                    stroke={dashboardPalette.chartGrid}
                     horizontal={true}
                     vertical={false}
                   />
                   <XAxis
                     dataKey="day"
-                    tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                    tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                    tick={{ fill: dashboardPalette.chartTick, fontSize: 11 }}
+                    tickLine={{ stroke: dashboardPalette.chartAxis }}
+                    axisLine={{ stroke: dashboardPalette.chartAxis }}
                   />
                   <YAxis
-                    tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                    tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                    tick={{ fill: dashboardPalette.chartTick, fontSize: 11 }}
+                    tickLine={{ stroke: dashboardPalette.chartAxis }}
+                    axisLine={{ stroke: dashboardPalette.chartAxis }}
                     width={50}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: isDark ? '#1e293b' : '#ffffff',
-                      border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                      backgroundColor: dashboardPalette.tooltipBg,
+                      border: `1px solid ${dashboardPalette.tooltipBorder}`,
                       borderRadius: '8px',
-                      color: isDark ? '#f3f4f6' : '#1e293b',
+                      color: dashboardPalette.tooltipText,
                       fontSize: '12px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}
@@ -579,21 +622,21 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                    stroke={dashboardPalette.chartGrid}
                     horizontal={true}
                     vertical={false}
                   />
                   <XAxis
                     dataKey="class"
-                    tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                    tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                    tick={{ fill: dashboardPalette.chartTick, fontSize: 11 }}
+                    tickLine={{ stroke: dashboardPalette.chartAxis }}
+                    axisLine={{ stroke: dashboardPalette.chartAxis }}
                   />
                   <YAxis
                     domain={[0, 1]}
-                    tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                    tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                    tick={{ fill: dashboardPalette.chartTick, fontSize: 11 }}
+                    tickLine={{ stroke: dashboardPalette.chartAxis }}
+                    axisLine={{ stroke: dashboardPalette.chartAxis }}
                     tickFormatter={(value) => `${Math.round(value * 100)}%`}
                     width={50}
                   />
@@ -739,7 +782,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           </>
                         )}
                       </ConsecutiveAbsentRow>
-                      <ConsecutiveAbsentRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                      <ConsecutiveAbsentRow style={{ fontSize: '0.82rem', color: dashboardPalette.subtleText }}>
                         <span>
                           {student.class_name}
                           {student.section_name && ` (${student.section_name})`}
@@ -765,14 +808,12 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
               <ConsecutiveAbsentTableContainer>
                 <ConsecutiveAbsentTable>
                   <ConsecutiveAbsentTableHeader>
-                    <tr>
-                      <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
-                      <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
-                      <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
-                      <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
-                      <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
-                      <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
-                    </tr>
+                    <ConsecutiveAbsentTableHeaderCell>ID</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Student Name</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
                   </ConsecutiveAbsentTableHeader>
                   <ConsecutiveAbsentTableBody>
                     {consecutiveAbsentStudents.map((student, index) => (
@@ -998,22 +1039,21 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           justifyContent: 'center',
                           padding: '2rem',
                           textAlign: 'center',
-                          color: isDark ? '#a0a7b8' : '#64748b',
+                          color: dashboardPalette.subtleText,
                           minHeight: '200px'
                         }}>
                           <div style={{
-                            fontSize: '3rem',
                             marginBottom: '1rem',
                             color: '#6366f1',
                             opacity: 0.7
                           }}>
-                            🏖️
+                            <CalendarMonth style={{ fontSize: '2.5rem', color: '#6366f1', opacity: 0.6, marginBottom: '0.75rem' }} />
                           </div>
                           <div style={{
                             fontSize: '1.2rem',
                             fontWeight: 600,
                             marginBottom: '0.5rem',
-                            color: isDark ? '#e2e8f0' : '#1e293b'
+                            color: dashboardPalette.titleText
                           }}>
                             Sunday - No Classes
                           </div>
@@ -1036,22 +1076,21 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           justifyContent: 'center',
                           padding: '2rem',
                           textAlign: 'center',
-                          color: isDark ? '#a0a7b8' : '#64748b',
+                          color: dashboardPalette.subtleText,
                           minHeight: '200px'
                         }}>
                           <div style={{
-                            fontSize: '3rem',
                             marginBottom: '1rem',
                             color: '#6366f1',
                             opacity: 0.7
                           }}>
-                            📊
+                            <HourglassEmpty style={{ fontSize: '2.5rem', color: '#6366f1', opacity: 0.6, marginBottom: '0.75rem' }} />
                           </div>
                           <div style={{
                             fontSize: '1.2rem',
                             fontWeight: 600,
                             marginBottom: '0.5rem',
-                            color: isDark ? '#e2e8f0' : '#1e293b'
+                            color: dashboardPalette.titleText
                           }}>
                             No Attendance Records
                           </div>
@@ -1074,22 +1113,21 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           justifyContent: 'center',
                           padding: '2rem',
                           textAlign: 'center',
-                          color: isDark ? '#a0a7b8' : '#64748b',
+                          color: dashboardPalette.subtleText,
                           minHeight: '200px'
                         }}>
                           <div style={{
-                            fontSize: '3rem',
                             marginBottom: '1rem',
                             color: '#22c55e',
                             opacity: 0.7
                           }}>
-                            ✅
+                            <CheckCircle style={{ fontSize: '2.5rem', color: '#22c55e', opacity: 0.6, marginBottom: '0.75rem' }} />
                           </div>
                           <div style={{
                             fontSize: '1.2rem',
                             fontWeight: 600,
                             marginBottom: '0.5rem',
-                            color: isDark ? '#e2e8f0' : '#1e293b'
+                            color: dashboardPalette.titleText
                           }}>
                             No Absent Students
                           </div>
@@ -1147,7 +1185,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                 </>
                               )}
                             </AbsenteeRow>
-                            <AbsenteeRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                            <AbsenteeRow style={{ fontSize: '0.82rem', color: dashboardPalette.subtleText }}>
                               <span>{student.class_name}</span>
                               {student.section_name && (
                                 <>
@@ -1410,28 +1448,28 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                   {student.picture_url ? (
                                     <img src={student.picture_url} alt={student.name} />
                                   ) : (
-                                    <AccountCircle style={{ fontSize: '1.5em', color: isDark ? '#b0b8d1' : '#94a3b8' }} />
+                                    <AccountCircle style={{ fontSize: '1.5em', color: dashboardPalette.mutedText }} />
                                   )}
                                 </AbsenteesTableAvatar>
                               </AbsenteesTableCell>
                               <AbsenteesTableCell>
-                                <span style={{ color: isDark ? '#b0b8d1' : '#6366f1', fontWeight: 600 }}>
+                                <span style={{ color: isDarkTheme ? '#b0b8d1' : '#6366f1', fontWeight: 600 }}>
                                   {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
                                 </span>
                               </AbsenteesTableCell>
                               <AbsenteesTableCell style={{ fontWeight: 700 }}>
                                 {student.name}
                               </AbsenteesTableCell>
-                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#94a3b8' }}>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.mutedText }}>
                                 {student.father_name || '-'}
                               </AbsenteesTableCell>
-                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.subtleText }}>
                                 {student.class_name || '-'}{student.section_name ? ` (${student.section_name})` : ''}
                               </AbsenteesTableCell>
-                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.subtleText }}>
                                 {student.monthly_absences || 0}
                               </AbsenteesTableCell>
-                              <AbsenteesTableCell style={{ color: isDark ? '#a0a7b8' : '#64748b' }}>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.subtleText }}>
                                 {student.monthly_leaves || 0}
                               </AbsenteesTableCell>
                               <AbsenteesTableCell>
@@ -1626,14 +1664,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                     );
                   })()}
                 </AbsenteesDesktopTable>
-                <AbsenteesStatsRow>
-                  <span className="stat total">T: <b>{attendanceDataForDate.length}</b></span>
-                  <span className="stat present">P: <b>{attendanceDataForDate.filter(a => a.status === 'present').length}</b></span>
-                  <span className="stat absent">A: <b>{attendanceDataForDate.filter(a => a.status === 'absent').length}</b></span>
-                  <span className="stat leave">L: <b>{attendanceDataForDate.filter(a => a.status === 'leave').length}</b></span>
-                  <span className="stat late">LT: <b>{attendanceDataForDate.filter(a => a.status === 'late').length}</b></span>
-                  <span className="stat avg">P%: <b>{attendanceDataForDate.length ? Math.round(((attendanceDataForDate.filter(a => a.status === 'present').length + attendanceDataForDate.filter(a => a.status === 'late').length) / attendanceDataForDate.length) * 100) : 0}%</b></span>
-                </AbsenteesStatsRow>
+
               </div>
             )}
           </ContentCard>
@@ -1643,5 +1674,5 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   );
 };
 
-export default AttendanceTab;
 
+export default AttendanceTab;

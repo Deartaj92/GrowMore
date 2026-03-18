@@ -1192,35 +1192,75 @@ const PositionHolders: React.FC = () => {
         return null;
       }
 
-      // Get students for this class/section
-      const studentQuery = supabase
+      const classId = classInfo.id;
+      const sectionId = hasSections ? section?.id : null;
+      const sessionId = selectedExam.session_id;
+
+      if (!sessionId) {
+        return null; // Can't resolve history without a session
+      }
+
+      // 1. Fetch student IDs from student_class_history for this session and class
+      let schQuery = supabase
+        .from('student_class_history')
+        .select('student_id')
+        .eq('session_id', sessionId)
+        .eq('new_class_id', classId)
+        .eq('school_id', user?.school_id);
+
+      if (sectionId === null || sectionId === undefined) {
+        schQuery = schQuery.is('new_section_id', null);
+      } else {
+        schQuery = schQuery.eq('new_section_id', sectionId);
+      }
+
+      const { data: schData, error: schError } = await schQuery;
+      if (schError) throw schError;
+
+      // 2. Fetch student IDs that already have marks stored for this class + section in the selected exam
+      let erStudentQuery = supabase
+        .from('exam_results')
+        .select('student_id')
+        .eq('exam_id', selectedExam.id)
+        .eq('class_id', classId)
+        .eq('school_id', user?.school_id);
+
+      if (sectionId === null || sectionId === undefined) {
+        erStudentQuery = erStudentQuery.is('section_id', null);
+      } else {
+        erStudentQuery = erStudentQuery.eq('section_id', sectionId);
+      }
+
+      const { data: erStudentData } = await erStudentQuery;
+      
+      // Combine student IDs
+      const historyStudentIds = (schData || []).map(sch => sch.student_id);
+      const resultStudentIds = (erStudentData || []).map(er => er.student_id);
+      const allStudentIds = Array.from(new Set([...historyStudentIds, ...resultStudentIds]));
+
+      if (allStudentIds.length === 0) {
+        return null;
+      }
+
+      // 3. Fetch full student details for all identified students
+      const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('id, name, father_name, picture_url, class_id, section_id, school_id, roll_number')
         .eq('school_id', user?.school_id)
-        .eq('class_id', classInfo.id);
+        .in('id', allStudentIds);
 
-      // Add section filter only if the class has sections
-      if (hasSections && section) {
-        studentQuery.eq('section_id', section.id);
-      } else if (!hasSections) {
-        studentQuery.is('section_id', null);
-      }
-
-      const { data: studentsData, error: studentsError } = await studentQuery;
       if (studentsError) throw studentsError;
 
-      // Check for exclusions if an exam is selected
+      // 4. Check for exclusions
       let excludedIds = new Set<number>();
-      if (selectedExam) {
-        const { data: exclusionsData } = await supabase
-          .from('exam_exclusions')
-          .select('student_id')
-          .eq('exam_id', selectedExam.id)
-          .eq('school_id', user?.school_id);
+      const { data: exclusionsData } = await supabase
+        .from('exam_exclusions')
+        .select('student_id')
+        .eq('exam_id', selectedExam.id)
+        .eq('school_id', user?.school_id);
 
-        if (exclusionsData) {
-          excludedIds = new Set(exclusionsData.map(e => e.student_id));
-        }
+      if (exclusionsData) {
+        excludedIds = new Set(exclusionsData.map(e => e.student_id));
       }
 
       // Filter out excluded students
@@ -1230,8 +1270,8 @@ const PositionHolders: React.FC = () => {
         return null;
       }
 
-      // Get exam results for all subjects in this exam for these students
-      const { data: examResults, error: resultsError } = await supabase
+      // 5. Get exam results filtered by exam, class, and section for these students
+      let resultsQuery = supabase
         .from('exam_results')
         .select(`
           student_id,
@@ -1244,8 +1284,17 @@ const PositionHolders: React.FC = () => {
           subjects!inner(name, short_name)
         `)
         .eq('exam_id', selectedExam.id)
+        .eq('class_id', classId)
         .eq('school_id', user?.school_id)
         .in('student_id', students.map(s => s.id));
+
+      if (sectionId === null || sectionId === undefined) {
+        resultsQuery = resultsQuery.is('section_id', null);
+      } else {
+        resultsQuery = resultsQuery.eq('section_id', sectionId);
+      }
+
+      const { data: examResults, error: resultsError } = await resultsQuery;
 
       if (resultsError) throw resultsError;
 

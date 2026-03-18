@@ -1342,14 +1342,18 @@ const ExaminationAnalytics: React.FC = () => {
     });
 
     const classes = sortClasses(Array.from(classMap.values()));
-    const classIds = Array.from(classMap.keys());
+    const classIds = Array.from(classMap.keys());    // Step 2: Get all students who appeared in this exam (using IDs from results) filtered by school_id
+    const studentIds = Array.from(new Set(allExamResults.map(r => r.student_id)));
+    
+    if (studentIds.length === 0) {
+      return { analytics: getEmptyAnalytics(), classes: [] };
+    }
 
-    // Step 2: Get all students for these classes (ignore sections) filtered by school_id
     const allStudents = await fetchAllRows(async (from, to) => {
       return await supabase
         .from('students')
-          .select('id, name, father_name, class_id, section_id, roll_number')
-        .in('class_id', classIds)
+        .select('id, name, father_name, class_id, section_id, roll_number')
+        .in('id', studentIds)
         .eq('school_id', schoolId)
         .range(from, to);
     });

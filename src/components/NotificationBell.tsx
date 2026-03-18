@@ -32,6 +32,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { hasPermission } from '../services/permissionService';
+import { clayCardStyle, isDark } from '../styles/DesignSystem';
 
 // Helper to get parent session info
 const getParentInfo = () => {
@@ -189,10 +190,7 @@ const NotificationDropdown = styled(motion.div)`
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: ${props => props.theme.CARD};
-  border: 1px solid ${props => props.theme.BORDER};
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  ${clayCardStyle}
   width: 380px;
   max-height: 500px;
   overflow: hidden;
@@ -285,22 +283,24 @@ const TabContainer = styled.div`
   display: flex;
   gap: 0;
   padding: 0;
-  border-bottom: 2px solid ${props => props.theme.BORDER};
-  background: ${props => props.theme.CARD};
+  border-bottom: 2.5px solid ${props => props.theme.BORDER};
+  background: ${props => isDark(props.theme) ? `${props.theme.BG}dd` : props.theme.CARD};
   position: relative;
 `;
 
 const TabButton = styled.button<{ $isActive: boolean }>`
-  background: transparent;
+  background: ${props => props.$isActive 
+    ? (isDark(props.theme) ? 'rgba(99, 102, 241, 0.08)' : 'rgba(79, 70, 229, 0.05)') 
+    : 'transparent'};
   color: ${props => props.$isActive ? props.theme.ACCENT : props.theme.TEXT_SECONDARY};
   border: none;
-  border-bottom: 3px solid ${props => props.$isActive ? props.theme.ACCENT : 'transparent'};
+  border-bottom: 4px solid ${props => props.$isActive ? props.theme.ACCENT : 'transparent'};
   padding: 12px 20px;
   border-radius: 0;
-  font-size: 0.9rem;
-  font-weight: ${props => props.$isActive ? '600' : '500'};
+  font-size: 0.95rem;
+  font-weight: ${props => props.$isActive ? '700' : '600'};
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,12 +310,14 @@ const TabButton = styled.button<{ $isActive: boolean }>`
   margin: 0;
 
   &:hover {
-    background: ${props => props.$isActive ? 'transparent' : props.theme.HOVER_BG};
+    background: ${props => props.$isActive 
+      ? (isDark(props.theme) ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)')
+      : props.theme.HOVER_BG};
     color: ${props => props.$isActive ? props.theme.ACCENT : props.theme.TEXT_PRIMARY};
   }
 
   &:active {
-    transform: none;
+    transform: scale(0.98);
   }
 
   &:focus {
@@ -460,10 +462,10 @@ const NotificationItem = styled.div<{ $isRead: boolean; $isImportant: boolean }>
     }
     // Unread important items on hover: maintain visibility
     if (props.$isImportant) {
-      return `${props.theme.ACCENT}20`;
+      return `${props.theme.ACCENT}25`;
     }
     // Unread normal items on hover: slightly more visible
-    return `${props.theme.ACCENT}15`;
+    return `${props.theme.ACCENT}20`;
   }};
   }
 

@@ -25,6 +25,7 @@ import autoTable from 'jspdf-autotable';
 
 // Import extracted components, types, styles, utils, hooks, and services
 import { DashboardTab, FineToDelete, FeeSummary, FeeCollectionDetails, DefaulterData } from './types';
+import { isDark as checkIsDark } from '../../styles/DesignSystem';
 import { USE_DUMMY_DATA } from './constants';
 import { DashboardContainer } from './styles';
 import { useExpandedState } from './hooks/useExpandedState';
@@ -90,7 +91,8 @@ const Dashboard: React.FC = () => {
   const { setPageHeader } = React.useContext(PageHeaderContext);
   const { setFooterContent } = usePageFooter();
   const theme = useTheme();
-  const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
+  const isDark = checkIsDark(theme);
+  const themeCard = (theme as any).CARD;
   const savePdf = useCapacitorPdfSave();
 
   // Core data state
@@ -1912,7 +1914,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -1982,7 +1984,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2052,7 +2054,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2122,7 +2124,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2192,7 +2194,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2262,7 +2264,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2332,7 +2334,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2402,7 +2404,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -2472,7 +2474,7 @@ const Dashboard: React.FC = () => {
                           bottom: 'calc(100% + 6px)',
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          background: isDark ? '#1e293b' : '#0f172a',
+                          background: isDark ? themeCard : '#0f172a',
                           color: '#fff',
                           padding: '3px 6px',
                           borderRadius: '4px',
@@ -4106,4 +4108,3 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-

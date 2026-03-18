@@ -1,4 +1,5 @@
-import styled, { css } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
+import { clayPanelStyle, isDark, clayCardStyle, getLayoutPalette } from '../../styles/DesignSystem';
 import { FONT, lightTheme } from './constants';
 
 // ==========================================
@@ -89,10 +90,9 @@ export const Header = styled.header<{ $hasSidebar?: boolean }>`
   height: 48px;
   -webkit-app-region: drag;
   
-  background: ${props => props.theme.CARD};
-
-  border-bottom: 1.5px solid ${({ theme }) => theme.BORDER};
-  box-shadow: 0 4px 12px 0 #0002;
+  ${clayPanelStyle}
+  
+  border-bottom: 1.5px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   
   @media (max-width: 700px) {
     height: 48px;
@@ -217,48 +217,48 @@ export const NavigationButtonsContainer = styled.div`
 `;
 
 export const HeaderIconCircle = styled.div`
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.45)'};
-  color: ${props => props.theme.TEXT_SECONDARY};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  color: ${({ theme }) => getLayoutPalette(theme).shellSoftText};
   font-size: 0.95rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
-  border: 1px solid ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.06)'
-    : 'rgba(255, 255, 255, 0.5)'};
-  
+  backdrop-filter: blur(8px);
+  border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+
   &:hover {
-    background: ${props => props.theme.BG === '#252525' || props.theme.BG === '#181c2a'
-    ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.65)'};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
     color: ${props => props.theme.ACCENT};
-    transform: scale(1.08);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+    border-color: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBorder};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
+  }
+
+  svg {
+    font-size: 1.15rem;
+    transition: transform 0.3s ease;
+  }
+
+  &:hover svg {
+    transform: rotate(15deg);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.95);
   }
 
   @media (max-width: 700px) {
     width: 32px;
     height: 32px;
-    font-size: 1rem;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    @media (max-width: 700px) {
-      width: 18px;
-      height: 18px;
-    }
   }
 `;
 
@@ -616,11 +616,7 @@ export const ProfileDropdown = styled.div`
   position: absolute;
   right: 0;
   top: 110%;
-  
-  background: ${({ theme }) => theme.CARD};
-
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  box-shadow: 0 8px 32px 0 #0003, 0 1.5px 6px #0005;
+  ${clayCardStyle}
     
   border-radius: 14px;
   min-width: 210px;
@@ -648,7 +644,11 @@ export const ProfileDropdownItem = styled.button`
   justify-content: space-between;
   gap: 12px;
   &:hover {
-    background: ${({ theme }) => theme.HOVER_BG};
+    background: ${({ theme }) =>
+      isDark(theme)
+        ? 'rgba(99, 102, 241, 0.12)'
+        : 'rgba(79, 70, 229, 0.08)'
+    };
     color: ${({ theme }) => theme.ACCENT};
   }
 `;
@@ -1426,4 +1426,3 @@ export const CardStat = styled.div<{ positive?: boolean }>`
   font-size: 0.9rem;
   font-weight: 500;
 `;
-

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
+import { clayPanelStyle, getLayoutPalette } from '../../../../styles/DesignSystem';
 import { usePageFooter } from '../../contexts/PageFooterContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { darkTheme, lightTheme } from '../../constants';
@@ -10,52 +11,45 @@ const FooterContainer = styled.footer<{ visible: boolean; bottom: number; transf
   display: ${({ visible }) => visible ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
-  background: ${({ theme }) => theme.CARD};
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
-  box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.1);
-  min-height: 36px;
-  padding: 0.5rem 1rem;
-  z-index: 9999; /* Very high z-index to ensure it's above everything */
+  ${clayPanelStyle}
+  border-top: 1.5px solid ${({ theme }) => getLayoutPalette(theme).footerBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).footerShadow};
+  min-height: 48px;
+  padding: 0.65rem 1.25rem;
+  z-index: 9999;
   position: fixed;
   bottom: ${({ bottom }) => `${bottom}px`};
   left: 0;
   right: 0;
   width: 100%;
-  /* Use safe area insets for devices with notches/home indicators */
-  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
   
-  /* Smooth transitions for all position changes */
   transform: translate(${({ transformX }) => `${transformX}px`}, ${({ transformY }) => `${transformY}px`}) translateZ(0);
   will-change: transform, bottom;
   transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
               transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* Ensure footer is positioned relative to viewport, not document */
-  position: fixed;
-  /* Prevent footer from being affected by parent transforms or scrolling */
   isolation: isolate;
-  /* Smooth rendering */
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   
   @media (max-width: 700px) {
-    padding: 0.4rem 0.75rem;
-    padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
-    min-height: 32px;
-    /* Ensure footer stays locked on mobile - independent of scroll */
-    position: fixed;
-    -webkit-transform: translate(${({ transformX }) => `${transformX}px`}, ${({ transformY }) => `${transformY}px`}) translateZ(0);
-    transform: translate(${({ transformX }) => `${transformX}px`}, ${({ transformY }) => `${transformY}px`}) translateZ(0);
-    /* Smoother transitions on mobile */
-    transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0.5rem 1rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    min-height: 42px;
   }
 `;
 
 const FooterContent = styled.div`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  color: ${({ theme }) => getLayoutPalette(theme).footerText};
   font-size: 0.85rem;
+  font-weight: 500;
   width: 100%;
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   @media (max-width: 700px) {
     font-size: 0.8rem;
@@ -349,4 +343,3 @@ const GlobalFooter: React.FC<GlobalFooterProps> = ({ onHeightChange }) => {
 };
 
 export default GlobalFooter;
-

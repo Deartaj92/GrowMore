@@ -1030,8 +1030,9 @@ const Layout: React.FC = () => {
   return (
     <MuiThemeProvider theme={muiTheme}>
       <CssBaseline />
-      <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
-        <GlobalStyles />
+        <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
+          {console.log("THEME_DEBUG", theme, theme === 'dark' ? darkTheme : lightTheme)}
+          <GlobalStyles />
         <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
         <AppContainer>
           {/* Header floats independently outside MainArea for true glass see-through effect */}

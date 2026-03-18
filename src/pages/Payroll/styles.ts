@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { isDark } from '../../styles/DesignSystem';
 
 // ==========================================
 // LAYOUT COMPONENTS
@@ -107,59 +108,61 @@ export const TabsWrapper = styled.div`
 `;
 
 export const TabButton = styled.button<{ active: boolean }>`
-  padding: 0.5rem 1.25rem;
+  padding: 0.65rem 1.35rem;
   border: none;
   border-bottom: ${({ active, theme }) =>
     active
-      ? `2px solid ${theme.ACCENT || '#6366f1'}`
-      : '2px solid transparent'};
-  background: transparent;
+      ? `4px solid ${theme.ACCENT || '#6366f1'}`
+      : '4px solid transparent'};
+  background: ${({ active, theme }) => active 
+    ? (isDark(theme) ? 'rgba(99, 102, 241, 0.08)' : 'rgba(79, 70, 229, 0.05)') 
+    : 'transparent'};
   color: ${({ active, theme }) =>
     active
       ? (theme.ACCENT || '#6366f1')
-      : theme.TEXT_SECONDARY || (theme.BG === '#252525' || theme.BG === '#181c2a' ? '#888' : '#666')};
-  font-size: 0.9rem;
-  font-weight: ${({ active }) => active ? 600 : 500};
+      : theme.TEXT_SECONDARY};
+  font-size: 0.95rem;
+  font-weight: ${({ active }) => active ? 700 : 600};
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   position: relative;
   margin-bottom: -1px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   
   &:hover {
     color: ${({ theme }) => theme.ACCENT || '#6366f1'};
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.02)'
-    : 'rgba(0, 0, 0, 0.02)'};
+    background: ${({ active, theme }) => active 
+      ? (isDark(theme) ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)')
+      : (isDark(theme) ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)')};
   }
   
   &:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
   
   @media (max-width: 768px) {
-    padding: 0.625rem 1rem;
-    font-size: 0.85rem;
+    padding: 0.75rem 1.1rem;
+    font-size: 0.875rem;
     border-bottom: ${({ active, theme }) =>
       active
-        ? `3px solid ${theme.ACCENT || '#6366f1'}`
-        : '3px solid transparent'};
+        ? `4.5px solid ${theme.ACCENT || '#6366f1'}`
+        : '4.5px solid transparent'};
   }
   
   @media (max-width: 480px) {
-    padding: 0.5rem 0.875rem;
-    font-size: 0.8rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.825rem;
   }
   
   svg {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
     
     @media (max-width: 768px) {
-      font-size: 1rem;
+      font-size: 1.1rem;
     }
   }
 `;

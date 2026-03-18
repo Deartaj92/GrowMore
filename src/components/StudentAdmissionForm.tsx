@@ -16,7 +16,6 @@ import {
   Select,
   TextField,
   CircularProgress,
-  styled as muiStyled,
   SelectChangeEvent,
   Radio,
   RadioGroup,
@@ -47,6 +46,15 @@ import { CreateFeePlanModal } from '../pages/FeePlans/components/CreateFeePlanMo
 import { FeeHead } from '../types/fee';
 import { StudentInfo } from '../pages/FeePlans/types';
 import { feeService } from '../services/feeService';
+import {
+  clayCardStyle,
+  clayButtonStyle,
+  neumorphFieldStyle,
+  getFieldPalette,
+  getLayoutPalette,
+  CARD_RADIUS_LG,
+  CARD_RADIUS_MD,
+} from '../styles/DesignSystem';
 
 import Loader from '../components/Loader';
 // --- Modern Compact Form Layout ---
@@ -72,11 +80,8 @@ const Container = styled(Box)`
 `;
 
 const MainCard = styled(Box)`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayCardStyle}
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   flex: 1;
   min-width: 0;
   min-height: 100%;
@@ -94,11 +99,8 @@ const MainCard = styled(Box)`
 `;
 
 const SidebarCard = styled(Box)`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayCardStyle}
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -129,11 +131,11 @@ const SidebarCard = styled(Box)`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
     border-radius: 3px;
     
     &:hover {
-      background: rgba(0, 0, 0, 0.3);
+      background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
     }
   }
 `;
@@ -150,9 +152,10 @@ const ImageBox = styled(Box)`
   width: 100%;
   max-width: 280px;
   aspect-ratio: 1;
-  border-radius: 12px;
-  border: 2px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.FIELD_BG || theme.BG};
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,8 +166,8 @@ const ImageBox = styled(Box)`
   margin: 0 auto;
   
   &:hover {
-    border-color: ${({ theme }) => theme.ACCENT_INPUT};
-    transform: scale(1.01);
+    border-color: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBorder};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
   
   img {
@@ -213,20 +216,15 @@ const ActionButtonsContainer = styled(Box)`
   width: 100%;
 `;
 
-const RemoveBtn = styled(Button)`
-  background: rgba(239, 68, 68, 0.9);
-  color: white;
-  border-radius: 8px;
+const RemoveBtn = styled(Button).attrs({ $variant: 'danger' })`
+  ${clayButtonStyle}
+  border-radius: ${CARD_RADIUS_MD};
   padding: 8px 16px;
   font-size: 0.75rem;
   text-transform: none;
   min-width: auto;
   flex: 0 0 auto;
-  
-  &:hover {
-    background: rgba(239, 68, 68, 1);
-  }
-  
+
   svg {
     font-size: 16px;
   }
@@ -244,7 +242,7 @@ const SectionHeader = styled(Box)`
 const SectionBadge = styled(Box)`
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: ${CARD_RADIUS_MD};
   background: ${({ theme }) => theme.ACCENT_INPUT};
   color: white;
   display: flex;
@@ -257,11 +255,28 @@ const SectionBadge = styled(Box)`
 
 const CompactTextField = styled(TextField)`
   & .MuiOutlinedInput-root {
-    border-radius: 8px;
+    border-radius: ${CARD_RADIUS_MD};
     font-size: 0.875rem;
+    background: ${({ theme }) => getFieldPalette(theme).bg};
+    border: 1.5px solid ${({ theme }) => getFieldPalette(theme).border};
+    box-shadow: ${({ theme }) => getFieldPalette(theme).shadow};
     
     input {
       padding: 10px 12px;
+    }
+
+    fieldset {
+      border: none;
+    }
+
+    &:hover {
+      border-color: ${({ theme }) => getFieldPalette(theme).hoverBorder};
+      box-shadow: ${({ theme }) => getFieldPalette(theme).hoverShadow};
+    }
+
+    &.Mui-focused {
+      border-color: ${({ theme }) => theme.ACCENT_INPUT};
+      box-shadow: ${({ theme }) => getFieldPalette(theme).focusShadow};
     }
   }
   
@@ -272,11 +287,28 @@ const CompactTextField = styled(TextField)`
 
 const CompactSelect = styled(FormControl)`
   & .MuiOutlinedInput-root {
-    border-radius: 8px;
+    border-radius: ${CARD_RADIUS_MD};
     font-size: 0.875rem;
+    background: ${({ theme }) => getFieldPalette(theme).bg};
+    border: 1.5px solid ${({ theme }) => getFieldPalette(theme).border};
+    box-shadow: ${({ theme }) => getFieldPalette(theme).shadow};
     
     .MuiSelect-select {
       padding: 10px 12px;
+    }
+
+    fieldset {
+      border: none;
+    }
+
+    &:hover {
+      border-color: ${({ theme }) => getFieldPalette(theme).hoverBorder};
+      box-shadow: ${({ theme }) => getFieldPalette(theme).hoverShadow};
+    }
+
+    &.Mui-focused {
+      border-color: ${({ theme }) => theme.ACCENT_INPUT};
+      box-shadow: ${({ theme }) => getFieldPalette(theme).focusShadow};
     }
   }
   
@@ -286,7 +318,8 @@ const CompactSelect = styled(FormControl)`
 `;
 
 const ActionButton = styled(Button)`
-  border-radius: 8px;
+  ${clayButtonStyle}
+  border-radius: ${CARD_RADIUS_MD};
   padding: 10px 20px;
   font-weight: 500;
   text-transform: none;
@@ -294,29 +327,19 @@ const ActionButton = styled(Button)`
   min-width: 120px;
 `;
 
-const PrimaryButton = styled(ActionButton)`
-  background: ${({ theme }) => theme.ACCENT_INPUT};
-  color: white;
-  
-  &:hover {
-    background: ${({ theme }) => theme.ACCENT_INPUT};
-    opacity: 0.9;
-  }
-  
+const PrimaryButton = styled(ActionButton).attrs({ $variant: 'primary' })`
   &:disabled {
     opacity: 0.5;
   }
 `;
 
-const SecondaryButton = styled(ActionButton)`
-  background: transparent;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  
-  &:hover {
-    background: ${({ theme }) => theme.BG};
-    border-color: ${({ theme }) => theme.ACCENT_INPUT};
-  }
+const SecondaryButton = styled(ActionButton).attrs({ $variant: 'secondary' })``;
+
+const UploadButton = styled(ActionButton).attrs({ $variant: 'secondary' })`
+  font-size: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
 `;
 
 const ModernForm = FormWrapper;
@@ -332,10 +355,8 @@ const StickyHeader = styled.div`
   width: 100%;
   gap: 8px;
   margin-bottom: 16px;
-  background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 12px 20px;
   min-height: 48px;
 `;
@@ -400,18 +421,10 @@ const shake = keyframes`
 `;
 
 const Input = styled.input<{invalid?: boolean}>`
+  ${neumorphFieldStyle}
   padding: 7px 10px;
-  border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: ${CARD_RADIUS_MD};
   font-size: 0.98rem;
-  outline: none;
-  transition: border 0.18s, box-shadow 0.18s;
-  &:focus {
-    border: 1.2px solid ${({ theme }) => theme.ACCENT_INPUT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT_INPUT}33;
-  }
   animation: ${({invalid}) => invalid ? shake : 'none'} 0.5s;
   width: 100%;
   box-sizing: border-box;
@@ -419,7 +432,7 @@ const Input = styled.input<{invalid?: boolean}>`
   &:-webkit-autofill:focus,
   &:-webkit-autofill:hover,
   &:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 1000px ${({ theme }) => theme.FIELD_BG} inset !important;
+    -webkit-box-shadow: none !important;
     -webkit-text-fill-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
     transition: background-color 5000s ease-in-out 0s;
     caret-color: ${({ theme }) => theme.TEXT_PRIMARY};
@@ -427,26 +440,18 @@ const Input = styled.input<{invalid?: boolean}>`
 `;
 
 const Textarea = styled.textarea`
+  ${neumorphFieldStyle}
   padding: 7px 10px;
-  border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: ${CARD_RADIUS_MD};
   font-size: 0.98rem;
-  outline: none;
   min-height: 48px;
-  transition: border 0.18s, box-shadow 0.18s;
-  &:focus {
-    border: 1.2px solid ${({ theme }) => theme.ACCENT_INPUT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT_INPUT}33;
-  }
   width: 100%;
   box-sizing: border-box;
   &:-webkit-autofill,
   &:-webkit-autofill:focus,
   &:-webkit-autofill:hover,
   &:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 1000px ${({ theme }) => theme.FIELD_BG} inset !important;
+    -webkit-box-shadow: none !important;
     -webkit-text-fill-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
     transition: background-color 5000s ease-in-out 0s;
     caret-color: ${({ theme }) => theme.TEXT_PRIMARY};
@@ -1053,10 +1058,8 @@ const PageContainer = styled.div`
 const Header = StickyHeader;
 
 const FooterCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 4px 16px #0002;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 16px;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 16px 24px 14px 24px;
   margin-top: 18px;
   width: 100%;
@@ -1083,11 +1086,11 @@ const MainContent = styled.div`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
     border-radius: 4px;
     
     &:hover {
-      background: rgba(0, 0, 0, 0.3);
+      background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
     }
   }
 `;
@@ -2718,15 +2721,13 @@ const StudentAdmissionForm: React.FC = () => {
                         />
                       </Box>
                       <ButtonRow>
-                        <Button
+                        <UploadButton
                           variant="outlined"
-                          size="small"
                           startIcon={<CloudUploadIcon />}
                           onClick={handleAvatarClick}
-                          sx={{ fontSize: '0.75rem', textTransform: 'none', flex: 1 }}
                         >
                           Upload Photo
-                        </Button>
+                        </UploadButton>
                         {image && (
                           <RemoveBtn
                             variant="contained"

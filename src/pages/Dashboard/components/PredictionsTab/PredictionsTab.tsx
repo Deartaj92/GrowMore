@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled, { useTheme } from 'styled-components';
+import styled, { useTheme, css } from 'styled-components';
+import { clayCardStyle, isDark, CARD_RADIUS_LG, getDashboardPalette } from '../../../../styles/DesignSystem';
 import { Lightbulb, Assessment, CheckCircle, Warning, Cancel, Group, TrendingDown, ReportProblem } from '@mui/icons-material';
 import { supabase } from '../../../../supabaseClient';
 import Loader from '../../../../components/Loader';
@@ -40,14 +41,15 @@ const SummaryGrid = styled.div`
 `;
 
 const SummaryCard = styled.div<{ $color?: string }>`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
   padding: 1.25rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 1px solid ${({ theme, $color }) => $color ? `${$color}40` : ((theme as any).BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)')};
-  box-shadow: ${({ theme }) => (theme as any).BG === '#252525' ? '0 4px 20px rgba(0, 0, 0, 0.2)' : '0 4px 20px rgba(0, 0, 0, 0.05)'};
+
+  ${({ theme, $color }) => $color && !isDark(theme) && css`
+    border-color: ${$color}40;
+  `}
 `;
 
 const IconWrapper = styled.div<{ $color: string }>`
@@ -86,11 +88,13 @@ const SummaryValue = styled.span`
 `;
 
 const SectionContainer = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
   padding: 1.5rem;
-  border: ${({ theme }) => (theme as any).BG === '#252525' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => (theme as any).BG === '#252525' ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 4px 20px rgba(0, 0, 0, 0.05)'};
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+    border-radius: ${CARD_RADIUS_LG};
+  }
 `;
 
 const SectionTitle = styled.h3<{ $color?: string }>`
@@ -176,6 +180,9 @@ const PredictionsTab: React.FC<PredictionsTabProps> = ({ user }) => {
     const [loading, setLoading] = useState(true);
     const [predictions, setPredictions] = useState<PredictionResult[]>([]);
     const [totalStudentsProcessed, setTotalStudentsProcessed] = useState(0);
+    const theme = useTheme();
+    const dashboardPalette = getDashboardPalette(theme as any);
+    const status = dashboardPalette.status;
 
     const generatePredictions = useCallback(async () => {
         if (!user?.school_id) return;
@@ -303,7 +310,7 @@ const PredictionsTab: React.FC<PredictionsTabProps> = ({ user }) => {
 
     const renderTable = (students: PredictionResult[]) => {
         if (students.length === 0) {
-            return <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem' }}>No students found in this category.</div>;
+            return <div style={{ padding: '2rem', textAlign: 'center', color: dashboardPalette.subtleText, fontSize: '0.9rem' }}>No students found in this category.</div>;
         }
         return (
             <TableWrap>
@@ -369,22 +376,22 @@ const PredictionsTab: React.FC<PredictionsTabProps> = ({ user }) => {
             </div>
 
             <SummaryGrid>
-                <SummaryCard $color="#3b82f6">
-                    <IconWrapper $color="#3b82f6"><Group /></IconWrapper>
+                <SummaryCard $color={status.info}>
+                    <IconWrapper $color={status.info}><Group /></IconWrapper>
                     <SummaryInfo>
                         <SummaryLabel>Total Evaluated</SummaryLabel>
                         <SummaryValue>{totalStudentsProcessed}</SummaryValue>
                     </SummaryInfo>
                 </SummaryCard>
-                <SummaryCard $color="#f59e0b">
-                    <IconWrapper $color="#f59e0b"><Warning /></IconWrapper>
+                <SummaryCard $color={status.warning}>
+                    <IconWrapper $color={status.warning}><Warning /></IconWrapper>
                     <SummaryInfo>
                         <SummaryLabel>At Risk (Monitoring)</SummaryLabel>
                         <SummaryValue>{atRiskStudents.length}</SummaryValue>
                     </SummaryInfo>
                 </SummaryCard>
-                <SummaryCard $color="#ef4444">
-                    <IconWrapper $color="#ef4444"><ReportProblem /></IconWrapper>
+                <SummaryCard $color={status.danger}>
+                    <IconWrapper $color={status.danger}><ReportProblem /></IconWrapper>
                     <SummaryInfo>
                         <SummaryLabel>Critical (Intervention)</SummaryLabel>
                         <SummaryValue>{criticalStudents.length}</SummaryValue>
@@ -393,24 +400,24 @@ const PredictionsTab: React.FC<PredictionsTabProps> = ({ user }) => {
             </SummaryGrid>
 
             {criticalStudents.length > 0 && (
-                <SectionContainer style={{ borderLeft: '4px solid #ef4444' }}>
-                    <SectionTitle $color="#ef4444">
+                <SectionContainer style={{ borderLeft: `4px solid ${status.danger}` }}>
+                    <SectionTitle $color={status.danger}>
                         <Cancel />
                         Action Required: High Risk of Failure or Dropout
                     </SectionTitle>
-                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.85rem', color: dashboardPalette.subtleText, marginTop: '-0.5rem', marginBottom: '1rem' }}>
                         These students have severely low attendance (&lt; 60%) or failing academic grades (&lt; 40%). Immediate parental notification is recommended.
                     </p>
                     {renderTable(criticalStudents)}
                 </SectionContainer>
             )}
 
-            <SectionContainer style={{ borderLeft: '4px solid #f59e0b' }}>
-                <SectionTitle $color="#f59e0b">
+            <SectionContainer style={{ borderLeft: `4px solid ${status.warning}` }}>
+                <SectionTitle $color={status.warning}>
                     <Warning />
                     Monitor Closely: Early Warning Signs
                 </SectionTitle>
-                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.85rem', color: dashboardPalette.subtleText, marginTop: '-0.5rem', marginBottom: '1rem' }}>
                     These students show declining trends in attendance (&lt; 75%) or concerning academic scores (&lt; 55%). Early intervention can prevent escalation.
                 </p>
                 {renderTable(atRiskStudents)}

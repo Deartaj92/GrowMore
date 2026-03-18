@@ -1,5 +1,17 @@
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { KeyboardArrowUpRounded as ChevronDownIcon } from '@mui/icons-material';
+import {
+  clayCardStyle,
+  clayButtonStyle,
+  clayInputStyle,
+  clayPanelStyle,
+  getLayoutPalette,
+  getDashboardPalette,
+  neumorphDateFieldStyle,
+  isDark,
+  CARD_RADIUS_LG,
+  CARD_RADIUS_MD
+} from '../../styles/DesignSystem';
 
 // ==========================================
 // ANIMATIONS
@@ -76,11 +88,11 @@ export const DashboardContainer = styled.div`
   min-height: 100%;
   background: ${({ theme }) => theme.BG};
   padding: 0.5rem;
-  padding-bottom: 0.25rem; /* Match gap between cards */
+  padding-bottom: 0.2rem; /* Match tighter gap between cards */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.18rem;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
@@ -88,8 +100,8 @@ export const DashboardContainer = styled.div`
   
   @media (max-width: 768px) {
     padding: 0.375rem;
-    padding-bottom: 0.2rem; /* Match gap between cards on mobile */
-    gap: 0.2rem;
+    padding-bottom: 0.16rem; /* Match tighter gap between cards on mobile */
+    gap: 0.16rem;
   }
 `;
 
@@ -101,26 +113,19 @@ export const TabContainer = styled.div`
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
-  background: ${({ theme }) => theme.BG};
-  border-bottom: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? '1px solid rgba(255, 255, 255, 0.1)'
-    : '1px solid rgba(0, 0, 0, 0.1)'};
-  padding: 0.4rem 0;
+  ${clayPanelStyle}
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  padding: 0.5rem 0.25rem;
   margin-top: -0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   margin-left: -0.5rem;
   margin-right: -0.5rem;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-  
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
@@ -151,7 +156,7 @@ export const TabsContainer = styled.div`
 
 export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?: boolean; $preventScroll?: boolean }>`
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex: 1;
   align-items: center;
   min-width: 0;
@@ -182,9 +187,7 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
       : `
   scrollbar-width: thin;
           -ms-overflow-style: auto;
-          scrollbar-color: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)'
-        : 'rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05)'};
+          scrollbar-color: ${`${getLayoutPalette(theme).dropdownThumb} transparent`};
   
   &::-webkit-scrollbar {
             display: block;
@@ -192,22 +195,16 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
   }
   
   &::-webkit-scrollbar-track {
-            background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(0, 0, 0, 0.05)'};
+            background: transparent;
     border-radius: 2px;
   }
   
   &::-webkit-scrollbar-thumb {
-            background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.2)'
-        : 'rgba(0, 0, 0, 0.2)'};
+            background: ${getLayoutPalette(theme).dropdownThumb};
     border-radius: 2px;
     
     &:hover {
-              background: ${(theme.BG === '#252525' || theme.BG === '#181c2a')
-        ? 'rgba(255, 255, 255, 0.3)'
-        : 'rgba(0, 0, 0, 0.3)'};
+              background: ${getLayoutPalette(theme).dropdownThumbHover};
     }
           }
         `;
@@ -217,7 +214,7 @@ export const TabsWrapper = styled.div<{ $isScrolling?: boolean; $hideScrollbar?:
   
   @media (max-width: 768px) {
     width: 100%;
-    gap: 0.375rem;
+    gap: 0.3rem;
     padding-bottom: 0.25rem;
     /* Allow scrolling on mobile */
     overflow-x: auto;
@@ -238,27 +235,28 @@ export const OverflowButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
-  border-radius: 8px;
-  border: none;
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  padding: 0.4rem;
+  border-radius: ${CARD_RADIUS_MD};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  color: ${({ theme }) => getLayoutPalette(theme).shellText};
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   flex-shrink: 0;
-  min-width: 36px;
-  height: 36px;
+  min-width: 32px;
+  height: 32px;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   
   &:hover {
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(0, 0, 0, 0.1)'};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
+    border-color: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBorder};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
+    color: ${({ theme }) => theme.ACCENT};
+    transform: translateY(-1px);
   }
   
   svg {
-    font-size: 20px;
+    font-size: 18px;
   }
   
   @media (max-width: 768px) {
@@ -270,10 +268,8 @@ export const DropdownMenu = styled.div`
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  background: ${({ theme }) => theme.CARD || theme.BG};
-  border: 1px solid ${({ theme }) => theme.BORDER || (theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)')};
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   min-width: 200px;
   z-index: 1000;
   padding: 0.25rem 0;
@@ -287,13 +283,14 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
   padding: 0.65rem 1rem;
   border: none;
   background: ${({ $active, theme }) => $active
-    ? 'rgba(99, 102, 241, 0.1)'
+    ? getDashboardPalette(theme).accentTint
     : 'transparent'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-    font-size: 0.85rem;
+  color: ${({ $active, theme }) => $active ? theme.ACCENT : theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  font-weight: ${({ $active }) => $active ? '600' : '500'};
   text-align: left;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   
   svg {
     font-size: 18px;
@@ -303,70 +300,59 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
   
   &:hover {
     background: ${({ $active, theme }) => $active
-    ? 'rgba(99, 102, 241, 0.15)'
-    : (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.05)'};
+      ? getDashboardPalette(theme).accentTintSoft
+      : getLayoutPalette(theme).navHoverBg};
+    color: ${({ theme }) => theme.ACCENT};
   }
   
   &:active {
     background: ${({ $active, theme }) => $active
-    ? 'rgba(99, 102, 241, 0.2)'
-    : (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.08)'};
+      ? `${theme.ACCENT}30`
+      : getLayoutPalette(theme).surfaceHoverBg};
   }
 `;
 
-export const TabButton = styled.button<{ active: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 8px;
-  border: none;
-  background: ${({ active, theme }) => active
-    ? theme.ACCENT || '#f97316'
-    : (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ active, theme }) => active
-    ? '#ffffff'
-    : theme.TEXT_PRIMARY};
-  font-size: 0.85rem;
-  font-weight: ${({ active }) => active ? 600 : 500};
-  cursor: pointer;
-  transition: background 0.2s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-  
+export const TabButton = styled.button.attrs<{ active: boolean }>(props => ({
+  $active: props.active,
+}))<{ active: boolean }>`
+  ${clayButtonStyle}
+  padding: 0.35rem 0.72rem;
+  border-radius: ${CARD_RADIUS_LG};
+  font-size: 0.82rem;
+  min-height: 34px;
+  font-weight: ${({ active }) => active ? '700' : '600'};
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: ${({ active, theme }) => active ? '#ffffff' : getLayoutPalette(theme).shellSoftText};
+  background: ${({ active, theme }) => active ? undefined : getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ active, theme }) => active ? 'transparent' : getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ active, theme }) => active ? undefined : getLayoutPalette(theme).surfaceShadow};
+
   svg {
-    font-size: 18px;
-    flex-shrink: 0;
+    font-size: 17px;
+    color: inherit;
   }
-  
-  &:hover {
-    background: ${({ active, theme }) => active
-    ? theme.ACCENT || '#f97316'
-    : (theme.BG === '#252525' || theme.BG === '#181c2a')
-      ? 'rgba(255, 255, 255, 0.08)'
-      : 'rgba(0, 0, 0, 0.08)'};
-  }
+
+  ${({ active, theme }) => !active && css`
+    &:hover {
+      background: ${getLayoutPalette(theme).navHoverBg};
+      color: ${theme.ACCENT};
+      border-color: ${getLayoutPalette(theme).surfaceHoverBorder};
+      box-shadow: ${getLayoutPalette(theme).surfaceHoverShadow};
+      transform: none;
+    }
+  `}
+
+  ${({ active }) => active && css`
+    pointer-events: none;
+    transform: none;
+  `}
   
   @media (max-width: 768px) {
-    padding: 0.375rem 0.625rem;
-    font-size: 0.8rem;
-    gap: 0.3rem;
-    
-    svg {
-      font-size: 16px;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.75rem;
+    padding: 0.32rem 0.6rem;
+    font-size: 0.74rem;
     gap: 0.25rem;
+    border-radius: ${CARD_RADIUS_MD};
+    min-height: 30px;
     
     svg {
       font-size: 14px;
@@ -375,34 +361,11 @@ export const TabButton = styled.button<{ active: boolean }>`
 `;
 
 export const DashboardDateInput = styled.input`
-  padding: 0.4rem 0.75rem;
-  border: 1px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.2)'
-    : 'rgba(0, 0, 0, 0.2)'};
-  border-radius: 8px;
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  ${neumorphDateFieldStyle}
+  padding: 0.45rem 0.85rem;
+  border-radius: 12px;
   min-width: 140px;
   flex-shrink: 0;
-  
-  &:hover {
-    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a')
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(0, 0, 0, 0.08)'};
-  }
-  
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
-    box-shadow: 0 0 0 3px ${({ theme }) => (theme.ACCENT || '#6366f1')}33;
-  }
   
   @media (max-width: 768px) {
     flex: 1;
@@ -410,7 +373,7 @@ export const DashboardDateInput = styled.input`
     width: 100%;
     padding: 0.375rem 0.625rem;
     font-size: 0.8rem;
-    border-radius: 8px;
+    border-radius: 10px;
   }
   
   @media (max-width: 480px) {
@@ -422,29 +385,29 @@ export const DashboardDateInput = styled.input`
 export const DashboardGrid = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   justify-content: flex-start;
   align-items: stretch;
-  margin-top: 5px;
+  margin-top: 4px;
   width: 100%;
   @media (max-width: 1100px) {
-    gap: 16px;
+    gap: 12px;
   }
   @media (max-width: 900px) {
-    gap: 10px;
+    gap: 8px;
     flex-direction: column;
-    margin-top: 10px;
+    margin-top: 8px;
   }
   @media (max-width: 600px) {
-    gap: 6px;
-    margin-top: 4px;
+    gap: 5px;
+    margin-top: 3px;
   }
 `;
 
 export const TwoColumnGrid = styled.div<{ $columns: number }>`
   display: grid;
   grid-template-columns: ${({ $columns }) => ($columns === 2 ? '1fr 1fr' : '1fr')};
-  gap: 0.5rem;
+  gap: 0.375rem;
   align-items: flex-start;
   width: 100%;
   margin-bottom: 0.25rem;
@@ -454,7 +417,7 @@ export const TwoColumnGrid = styled.div<{ $columns: number }>`
   }
   
   @media (max-width: 768px) {
-    gap: 0.375rem;
+    gap: 0.3rem;
   }
 `;
 
@@ -463,14 +426,14 @@ export const LeftColumn = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.625rem;
   
   @media (max-width: 1024px) {
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
   
   @media (max-width: 768px) {
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 `;
 
@@ -479,10 +442,10 @@ export const RightColumn = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.18rem;
   
   @media (max-width: 768px) {
-    gap: 0.2rem;
+    gap: 0.16rem;
   }
 `;
 
@@ -497,7 +460,7 @@ export const Card = styled.div<{
   min-width: 220px;
   max-width: 400px;
   background: ${({ gradient }) => gradient || 'linear-gradient(135deg, #232a3b 60%, #232a3b 100%)'};
-  border-radius: 20px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 8px 32px 0 #10131b, 0 1.5px 0 #232a3b;
   display: flex;
   flex-direction: row;
@@ -512,7 +475,7 @@ export const Card = styled.div<{
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 20px;
+    border-radius: ${CARD_RADIUS_LG};
     box-shadow: inset 0 2px 16px #1a2233;
     pointer-events: none;
     z-index: 0;
@@ -596,7 +559,7 @@ export const StatCard = styled.div`
   min-width: 220px;
   max-width: 400px;
   background: linear-gradient(135deg, #232a3b 60%, #232a3b 100%);
-  border-radius: 20px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 8px 32px 0 #10131b, 0 1.5px 0 #232a3b;
   display: flex;
   flex-direction: row;
@@ -639,18 +602,18 @@ export const IconCircle = styled.div`
 export const SummaryGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: clamp(0.7rem, 2vw, 1.5rem);
-  margin-bottom: clamp(1rem, 3vw, 2.2rem);
+  gap: clamp(0.45rem, 1.2vw, 0.85rem);
+  margin-bottom: clamp(0.6rem, 2vw, 1rem);
   width: 100%;
   @media (max-width: 600px) {
     grid-template-columns: 1fr 1fr;
-    gap: 0.7rem;
+    gap: 0.45rem;
   }
 `;
 
 export const SummaryCard = styled.div<{ bg?: string }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_MD};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: clamp(0.8rem, 2vw, 1.2rem) clamp(0.8rem, 2vw, 1.2rem) clamp(0.7rem, 1.5vw, 1rem) clamp(0.8rem, 2vw, 1.2rem);
   display: flex;
@@ -766,7 +729,7 @@ export const AttendanceStatsGrid = styled.div`
 
 export const AttendanceStatCard = styled.div<{ accentColor: string; $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 12px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: ${({ theme }) => theme.BG === '#252525'
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
@@ -906,7 +869,7 @@ export const AttendanceChartsGrid = styled.div`
 
 export const AttendanceChartCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 12px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: ${({ theme }) => theme.BG === '#252525'
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
@@ -965,7 +928,7 @@ export const AttendanceChartSummaryValue = styled.div<{ color?: string }>`
 
 export const ConsecutiveAbsentCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 12px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: ${({ theme }) => theme.BG === '#252525'
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
@@ -1021,39 +984,95 @@ export const ConsecutiveAbsentTableContainer = styled.div`
   }
 `;
 
-export const ConsecutiveAbsentTable = styled.table`
+export const ConsecutiveAbsentTable = styled.div`
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  border-collapse: collapse;
   
   @media (max-width: 900px) {
     display: none; /* Hide table on mobile - use cards instead */
   }
 `;
 
-export const ConsecutiveAbsentTableHeader = styled.thead``;
-
-export const ConsecutiveAbsentTableHeaderCell = styled.th`
-  text-align: left;
-  padding: 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-`;
-
-export const ConsecutiveAbsentTableBody = styled.tbody``;
-
-export const ConsecutiveAbsentTableRow = styled.tr`
-  &:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f3f4f6'};
+export const ConsecutiveAbsentTableHeader = styled.div`
+  display: grid;
+  grid-template-columns: 80px 180px 180px 150px 150px 150px;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 0.5rem;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#8b949e' : '#64748b'};
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  @media (min-width: 901px) and (max-width: 1200px) {
+    grid-template-columns: 60px 140px 140px 120px 120px 120px;
+    gap: 0.75rem;
+    font-size: 0.7rem;
   }
 `;
 
-export const ConsecutiveAbsentTableCell = styled.td`
-  padding: 0.75rem;
-  font-size: 0.9rem;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+export const ConsecutiveAbsentTableHeaderCell = styled.div`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const ConsecutiveAbsentTableBody = styled.div``;
+
+export const ConsecutiveAbsentTableRow = styled.div<{ $index?: number }>`
+  display: grid;
+  grid-template-columns: 80px 180px 180px 150px 150px 150px;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  border-radius: ${CARD_RADIUS_LG};
+  
+  /* Claymorphic Background & Shadow - Subtle shiny blue pop */
+  background: ${({ theme }) =>
+    theme.BG === '#252525'
+      ? 'linear-gradient(145deg, #222538 0%, #222222 100%)'
+      : 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)'
+  };
+  border: 1.5px solid ${({ theme }) =>
+    theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(226, 232, 240, 0.8)'
+  };
+  box-shadow: ${({ theme }) =>
+    theme.BG === '#252525'
+      ? `0 2px 8px rgba(0,0,0,0.30),
+         inset 0 1px 2px rgba(220, 235, 255, 0.06),
+         inset 0 -1px 3px rgba(37, 99, 235, 0.08)`
+      : `0 4px 14px rgba(15, 23, 42, 0.03),
+         inset 0 2px 5px rgba(255, 255, 255, 1),
+         inset 0 -2px 5px rgba(37, 99, 235, 0.04)`
+  };
+
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#334155'};
+  
+  animation: ${tableRowSlideIn} 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: ${props => (props.$index || 0) * 0.05 + 0.1}s;
+  opacity: 0;
+  
+  @media (min-width: 901px) and (max-width: 1200px) {
+    grid-template-columns: 60px 140px 140px 120px 120px 120px;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    padding: 0.75rem 0.875rem;
+  }
+`;
+
+export const ConsecutiveAbsentTableCell = styled.div`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 `;
 
 export const ConsecutiveDaysBadge = styled.span<{ days: number }>`
@@ -1109,7 +1128,7 @@ export const ConsecutiveAbsentGrid = styled.div`
 
 export const ConsecutiveAbsentMobileCard = styled.div<{ $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 10px;
+  border-radius: ${CARD_RADIUS_LG};
   border: 1px solid ${({ theme }) => theme.BORDER};
   padding: clamp(0.18rem, 1vw, 0.38rem) clamp(0.5rem, 2vw, 0.7rem);
   font-size: clamp(0.72rem, 1.7vw, 0.8rem);
@@ -1189,7 +1208,7 @@ export const ConsecutiveAbsentDaysContainer = styled.div`
 
 export const AbsentsTableWrapper = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 12px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: ${({ theme }) => theme.BG === '#252525'
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)'};
@@ -1228,24 +1247,11 @@ export const AbsentsControls = styled.div<{ isExpanded?: boolean }>`
 `;
 
 export const DateInput = styled.input`
+  ${neumorphDateFieldStyle}
   padding: 0.5rem 0.75rem;
-  border: 1px solid ${({ theme }) => theme.BORDER};
   border-radius: 8px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#fff'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    border-color: ${({ theme }) => theme.ACCENT};
-  }
-  
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}33;
-  }
 `;
 
 export const WhatsAppButton = styled.button`
@@ -1448,22 +1454,34 @@ export const AbsenteesGrid = styled.div`
 
 // Base AbsenteeCard component
 const AbsenteeCard = styled.div`
-  background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#2a2a2a' : '#fff'};
-  border-radius: 10px;
-  border: 1.5px solid ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#e5e7eb'};
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
-  padding: 0.38rem 0.7rem 0.38rem 0.7rem;
-  margin-bottom: 0.18rem;
-  color: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#fff' : '#232a3b'};
+  padding: 0.5rem 0.85rem;
+  margin-bottom: 0.25rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
   min-width: 0;
-  font-size: 0.85rem;
+  font-size: 0.825rem;
   z-index: 1;
-  transition: background 0.18s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
   &:hover {
-    background: ${({ theme }) => (theme.BG === '#252525' || theme.BG === '#181c2a') ? '#353b4a' : '#f3f4f8'};
+    transform: translateY(-1px);
+    background: ${({ theme }) =>
+    (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? 'linear-gradient(145deg, #2a2d42 0%, #282828 100%)'
+      : 'linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%)'
+    };
+    box-shadow: ${({ theme }) =>
+    (theme.BG === '#252525' || theme.BG === '#181c2a')
+      ? `0 6px 16px rgba(0,0,0,0.50),
+         inset 0 1px 2px rgba(220, 235, 255, 0.08)`
+      : `0 6px 16px rgba(15, 23, 42, 0.06),
+         inset 0 2px 5px rgba(255, 255, 255, 1)`
+    };
   }
 `;
 
@@ -1696,15 +1714,15 @@ export const AbsenteesTableHeader = styled.div`
   display: grid;
   grid-template-columns: 50px 150px 180px 150px 200px 180px 180px 100px;
   gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f9fafb'};
-  border-radius: 8px 8px 0 0;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 0.5rem;
+  background: transparent;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: ${({ theme }) => theme.BG === '#252525' ? '#9ca3af' : '#6b7280'};
-  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+  letter-spacing: 0.8px;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#8b949e' : '#64748b'};
+  border-bottom: none;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -1725,20 +1743,37 @@ export const AbsenteesTableRow = styled.div<{ $index: number }>`
   display: grid;
   grid-template-columns: 50px 150px 180px 150px 200px 180px 180px 100px;
   gap: 1rem;
-  padding: 0.875rem 1rem;
+  padding: 0.85rem 1.25rem;
   align-items: center;
-  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#fff'};
-  transition: background 0.18s;
+  margin-bottom: 0.5rem;
+  border-radius: ${CARD_RADIUS_LG};
+  
+  /* Claymorphic Background & Shadow - Subtle shiny blue pop */
+  background: ${({ theme }) =>
+    theme.BG === '#252525'
+      ? 'linear-gradient(145deg, #222538 0%, #222222 100%)'
+      : 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)'
+  };
+  border: 1.5px solid ${({ theme }) =>
+    theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(226, 232, 240, 0.8)'
+  };
+  box-shadow: ${({ theme }) =>
+    theme.BG === '#252525'
+      ? `0 2px 8px rgba(0,0,0,0.30),
+         inset 0 1px 2px rgba(220, 235, 255, 0.06),
+         inset 0 -1px 3px rgba(37, 99, 235, 0.08)`
+      : `0 4px 14px rgba(15, 23, 42, 0.03),
+         inset 0 2px 5px rgba(255, 255, 255, 1),
+         inset 0 -2px 5px rgba(37, 99, 235, 0.04)`
+  };
+
   font-size: 0.875rem;
-  color: ${({ theme }) => theme.BG === '#252525' ? '#fff' : '#232a3b'};
+  font-weight: 600;
+  color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#334155'};
+  
   animation: ${tableRowSlideIn} 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   animation-delay: ${props => props.$index * 0.05 + 0.1}s;
   opacity: 0;
-  
-  &:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f3f4f8'};
-  }
   
   @media (min-width: 901px) and (max-width: 1200px) {
     grid-template-columns: 40px 120px 140px 120px 160px 140px 140px 80px;
@@ -1872,7 +1907,7 @@ export const FeeStatsGrid = styled.div`
 
 export const FeeStatCard = styled.div<{ $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.2rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -1880,7 +1915,7 @@ export const FeeStatCard = styled.div<{ $index?: number }>`
   
   @media (max-width: 768px) {
     padding: 0.875rem;
-    border-radius: 10px;
+    border-radius: ${CARD_RADIUS_LG};
   }
   
   &:hover {
@@ -1927,7 +1962,7 @@ export const CollectionChartsGrid = styled.div`
 
 export const CollectionChartCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.5rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -1942,7 +1977,7 @@ export const CollectionChartTitle = styled.div`
 
 export const FeeCollectionDetailsCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.5rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -1993,7 +2028,7 @@ export const FeeCollectionTableCell = styled.td`
 
 export const DefaultersCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.5rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -2083,7 +2118,7 @@ export const AdmissionsSummaryGrid = styled.div`
 
 export const AdmissionsSummaryCard = styled.div<{ $index?: number }>`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.2rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -2091,7 +2126,7 @@ export const AdmissionsSummaryCard = styled.div<{ $index?: number }>`
   
   @media (max-width: 768px) {
     padding: 0.875rem;
-    border-radius: 10px;
+    border-radius: ${CARD_RADIUS_LG};
   }
   
   &:hover {
@@ -2181,7 +2216,7 @@ export const AdmissionsChartsGrid = styled.div`
 
 export const AdmissionsChartCard = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
+  border-radius: ${CARD_RADIUS_LG};
   box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
   padding: 1.5rem;
   border: 1px solid ${({ theme }) => theme.BORDER};
@@ -2317,10 +2352,8 @@ export const HomeworkToggleButton = styled.button<{ $active: boolean }>`
 `;
 
 export const HomeworkTableWrapper = styled.div`
-  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD)};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.10);
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   overflow: hidden;
 `;
 
@@ -2462,15 +2495,31 @@ export const HomeworkMobileList = styled.div`
 `;
 
 export const HomeworkMobileCard = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f9fafb'};
-  border-radius: 10px;
+  background: ${({ theme }) =>
+    theme.BG === '#252525' || theme.BG === '#181c2a'
+      ? 'linear-gradient(145deg, #222538 0%, #222222 100%)'
+      : 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)'
+  };
+  border: 1.5px solid ${({ theme }) =>
+    theme.BG === '#252525' || theme.BG === '#181c2a' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(226, 232, 240, 0.8)'
+  };
+  box-shadow: ${({ theme }) =>
+    theme.BG === '#252525' || theme.BG === '#181c2a'
+      ? `0 4px 12px rgba(0,0,0,0.40),
+         inset 0 1px 2px rgba(220, 235, 255, 0.06),
+         inset 0 -1px 3px rgba(37, 99, 235, 0.08)`
+      : `0 4px 14px rgba(15, 23, 42, 0.03),
+         inset 0 2px 5px rgba(255, 255, 255, 1),
+         inset 0 -2px 5px rgba(37, 99, 235, 0.04)`
+  };
+  border-radius: ${CARD_RADIUS_LG};
   border-left: 4px solid ${({ theme }) => theme.ACCENT};
   padding: 1rem;
   transition: all 0.2s ease;
   
   &:active {
     transform: scale(0.98);
-    background: ${({ theme }) => theme.BG === '#252525' ? '#3a4250' : '#f3f4f6'};
+    background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#3a4250' : '#f3f4f6'};
   }
 `;
 
@@ -2678,7 +2727,7 @@ export const ModalOverlay = styled.div`
 
 export const ModalContent = styled.div`
   background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : '#fff')};
-  border-radius: 16px;
+  border-radius: ${CARD_RADIUS_LG};
   padding: 2rem;
   max-width: 500px;
   width: 90%;
@@ -2721,7 +2770,7 @@ export const ModalMessage = styled.div`
 
 export const StudentInfoCard = styled.div`
   background: ${({ theme }) => theme.BG === '#252525' ? '#353b4a' : '#f9fafb'};
-  border-radius: 12px;
+  border-radius: ${CARD_RADIUS_LG};
   padding: 1rem;
   margin-bottom: 1.5rem;
 `;

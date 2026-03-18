@@ -58,8 +58,7 @@ import {
 } from '../../styles';
 import { EMPLOYEE_STATUS_OPTIONS, DELETE_OPTION } from '../../constants';
 
-// Helper function to check if theme is dark
-const isDark = (themeObj: any) => themeObj.BG === '#252525' || themeObj.BG === '#181c2a';
+import { clayCardStyle, isDark, CARD_RADIUS_LG, getDashboardPalette } from '../../../../styles/DesignSystem';
 
 // ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
 
@@ -76,22 +75,17 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  ${clayCardStyle}
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  position: relative;
+  overflow: hidden;
   
-  @media (max-width: 768px) {
-    padding: 0.75rem;
-    gap: 0.375rem;
+  @media (max-width: 600px) {
+    padding: 0.85rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -138,18 +132,13 @@ const ContentGrid = styled.div`
 `;
 
 const ContentCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 1.5rem;
-  border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-    : '0 4px 20px rgba(0, 0, 0, 0.1)'};
   
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 1.1rem;
+    border-radius: ${CARD_RADIUS_LG};
   }
 `;
 
@@ -310,7 +299,8 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
 }) => {
   const theme = useTheme();
   const toast = useToast();
-  const isDark = (theme as any).BG === '#252525' || (theme as any).BG === '#181c2a';
+  const dashboardPalette = getDashboardPalette(theme as any);
+  const statusPalette = dashboardPalette.status;
 
   // Calculate total number of employees
   const totalEmployees = attendanceDataForDate.length;
@@ -327,17 +317,17 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'present':
-        return '#22c55e';
+        return statusPalette.success;
       case 'absent':
-        return '#ef4444';
+        return statusPalette.danger;
       case 'late':
-        return '#eab308';
+        return statusPalette.warningStrong;
       case 'leave':
-        return '#2563eb';
+        return statusPalette.infoStrong;
       case 'half_day':
-        return '#8b5cf6';
+        return statusPalette.violet;
       default:
-        return '#6b7280';
+        return statusPalette.neutral;
     }
   };
 
@@ -348,12 +338,12 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
         <StatCard theme={theme}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <StatLabel theme={theme}>Present</StatLabel>
-            <CheckCircle style={{ fontSize: '1.25rem', color: '#22c55e' }} />
+            <CheckCircle style={{ fontSize: '1.25rem', color: statusPalette.success }} />
           </div>
           <StatValue theme={theme}>
             {attendanceStatsLoading ? <DottedLoader /> : (
               <>
-                {presentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+                {presentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: dashboardPalette.subtleText }}>of {totalEmployees}</span>
               </>
             )}
           </StatValue>
@@ -365,12 +355,12 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
         <StatCard theme={theme}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <StatLabel theme={theme}>Absent</StatLabel>
-            <Cancel style={{ fontSize: '1.25rem', color: '#ef4444' }} />
+            <Cancel style={{ fontSize: '1.25rem', color: statusPalette.danger }} />
           </div>
           <StatValue theme={theme}>
             {attendanceStatsLoading ? <DottedLoader /> : (
               <>
-                {absentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+                {absentToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: dashboardPalette.subtleText }}>of {totalEmployees}</span>
               </>
             )}
           </StatValue>
@@ -382,12 +372,12 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
         <StatCard theme={theme}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <StatLabel theme={theme}>Leave</StatLabel>
-            <CalendarMonth style={{ fontSize: '1.25rem', color: '#3b82f6' }} />
+            <CalendarMonth style={{ fontSize: '1.25rem', color: statusPalette.info }} />
           </div>
           <StatValue theme={theme}>
             {attendanceStatsLoading ? <DottedLoader /> : (
               <>
-                {leaveToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+                {leaveToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: dashboardPalette.subtleText }}>of {totalEmployees}</span>
               </>
             )}
           </StatValue>
@@ -399,12 +389,12 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
         <StatCard theme={theme}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <StatLabel theme={theme}>Late</StatLabel>
-            <AccessTime style={{ fontSize: '1.25rem', color: '#f59e0b' }} />
+            <AccessTime style={{ fontSize: '1.25rem', color: statusPalette.warning }} />
           </div>
           <StatValue theme={theme}>
             {attendanceStatsLoading ? <DottedLoader /> : (
               <>
-                {lateToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+                {lateToday} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: dashboardPalette.subtleText }}>of {totalEmployees}</span>
               </>
             )}
           </StatValue>
@@ -416,12 +406,12 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
         <StatCard theme={theme}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <StatLabel theme={theme}>Half Day</StatLabel>
-            <HourglassEmpty style={{ fontSize: '1.25rem', color: '#8b5cf6' }} />
+            <HourglassEmpty style={{ fontSize: '1.25rem', color: statusPalette.violet }} />
           </div>
           <StatValue theme={theme}>
             {attendanceStatsLoading ? <DottedLoader /> : (
               <>
-                {halfDayCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: isDark ? '#9ca3af' : '#6b7280' }}>of {totalEmployees}</span>
+                {halfDayCount} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: dashboardPalette.subtleText }}>of {totalEmployees}</span>
               </>
             )}
           </StatValue>
@@ -452,28 +442,28 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                 <LineChart data={attendanceTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke={isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}
+                    stroke={dashboardPalette.chartGrid}
                     horizontal={true}
                     vertical={false}
                   />
                   <XAxis
                     dataKey="day"
-                    tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                    tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                    tick={{ fill: dashboardPalette.chartTick, fontSize: 11 }}
+                    tickLine={{ stroke: dashboardPalette.chartAxis }}
+                    axisLine={{ stroke: dashboardPalette.chartAxis }}
                   />
                   <YAxis
-                    tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
-                    tickLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
-                    axisLine={{ stroke: isDark ? '#4b5563' : '#d1d5db' }}
+                    tick={{ fill: dashboardPalette.chartTick, fontSize: 11 }}
+                    tickLine={{ stroke: dashboardPalette.chartAxis }}
+                    axisLine={{ stroke: dashboardPalette.chartAxis }}
                     width={50}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: isDark ? '#1e293b' : '#ffffff',
-                      border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                      backgroundColor: dashboardPalette.tooltipBg,
+                      border: `1px solid ${dashboardPalette.tooltipBorder}`,
                       borderRadius: '8px',
-                      color: isDark ? '#f3f4f6' : '#1e293b',
+                      color: dashboardPalette.tooltipText,
                       fontSize: '12px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                     }}
@@ -647,7 +637,7 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                                     <AbsenteeId>E{staffDetail.id}</AbsenteeId>
                                     <AbsenteeName>{staffDetail.name}</AbsenteeName>
                                   </AbsenteeRow>
-                                  <AbsenteeRow style={{ fontSize: '0.82rem', color: isDark ? '#a0a7b8' : '#64748b' }}>
+                                  <AbsenteeRow style={{ fontSize: '0.82rem', color: dashboardPalette.subtleText }}>
                                     <span>{staffDetail.role || 'Employee'}</span>
                                   </AbsenteeRow>
                                 </AbsenteeCardContent>
@@ -822,4 +812,3 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
 };
 
 export default EmployeeAttendanceTab;
-

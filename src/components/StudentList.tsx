@@ -29,6 +29,16 @@ import {
 } from '@mui/icons-material';
 import { Textfit } from '@techstack/react-textfit';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
+import {
+  clayCardStyle,
+  clayButtonStyle,
+  clayPanelStyle,
+  neumorphFieldStyle,
+  neumorphSelectFieldStyle,
+  getLayoutPalette,
+  CARD_RADIUS_LG,
+  CARD_RADIUS_MD,
+} from '../styles/DesignSystem';
 
 // Lazy load heavy components for mobile optimization
 const AdmissionLetterPrint = lazy(() => import('./AdmissionLetterPrint'));
@@ -57,34 +67,92 @@ const PageContainer = styled.div`
   /* Hardware acceleration for container */
   transform: translateZ(0);
   will-change: transform;
+
+  @media (max-width: 700px) {
+    padding: 0 8px 8px 8px;
+    min-height: 100%;
+    height: auto;
+    overflow: visible;
+  }
 `;
 
 const Header = styled.div`
   flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
   margin: 6px 0 4px 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 1px 6px #0001;
-  border-radius: 10px;
+  ${clayPanelStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 4px 8px 2px 8px;
   min-height: 36px;
+
+  @media (max-width: 700px) {
+    gap: 4px;
+    margin: 4px 0 6px 0;
+    padding: 4px 6px 6px 6px;
+    border-radius: ${CARD_RADIUS_MD};
+  }
+`;
+
+const HeaderTopRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+
+  @media (max-width: 700px) {
+    gap: 6px;
+  }
 `;
 
 const HeaderFilters = styled.div`
   display: flex;
   gap: 6px;
   align-items: center;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 8px;
-  box-shadow: 0 1px 4px #0001;
-  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+`;
+
+const MobileHeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+`;
+
+const MobileHeaderButton = styled.button`
+  ${clayButtonStyle}
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: ${CARD_RADIUS_MD};
+  flex-shrink: 0;
+`;
+
+const MobileSearchSection = styled.div`
+  width: 100%;
+`;
+
+const MobileFiltersPanel = styled.div`
+  width: 100%;
+  margin-top: 2px;
+`;
+
+const MobileFilterGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
 `;
 
 const Title = styled.h2`
@@ -95,14 +163,18 @@ const Title = styled.h2`
   color: ${({ theme }) => theme.ACCENT};
   margin: 0;
   line-height: 1.3;
+
+  @media (max-width: 700px) {
+    font-size: 1rem;
+    line-height: 1.15;
+  }
 `;
 
 const SearchBar = styled.div`
   display: flex;
   align-items: center;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 6px;
+  ${neumorphFieldStyle}
+  border-radius: ${CARD_RADIUS_MD};
   padding: 2px 6px;
   min-width: 120px;
   max-width: 180px;
@@ -110,13 +182,14 @@ const SearchBar = styled.div`
 `;
 
 const SearchInput = styled.input`
+  width: 100%;
   border: none;
   background: transparent;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 0.8rem;
   outline: none;
-  width: 100%;
   margin-left: 4px;
+  box-shadow: none;
 `;
 
 const FilterRow = styled.div`
@@ -133,35 +206,15 @@ const FilterRow = styled.div`
 `;
 
 const FilterSelect = styled.select`
+  ${neumorphSelectFieldStyle}
   padding: 6px 12px;
-  border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? '#2a2a2a'
-    : theme.FIELD_BG};
-  color: ${({ theme }) => theme.BG === '#252525'
-    ? '#e2e8f0'
-    : theme.TEXT_PRIMARY};
+  border-radius: ${CARD_RADIUS_MD};
   font-size: 1rem;
-  outline: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover, &:focus {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? '#2a2a2a'
-    : theme.FIELD_BG};
-  }
 
   & option {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? '#2a2a2a'
-    : '#ffffff'};
-    color: ${({ theme }) => theme.BG === '#252525'
-    ? '#e2e8f0'
-    : '#1e293b'};
+    background: ${({ theme }) => theme.CARD};
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
     padding: 8px;
   }
 
@@ -256,9 +309,8 @@ const CardImageSection = styled.div`
 `;
 
 const StudentCard = styled.div<{ status: string }>`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10);
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
   padding: 0;
   position: relative;
   border: 2px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
@@ -271,12 +323,13 @@ const StudentCard = styled.div<{ status: string }>`
   overflow: hidden;
   
   &:hover {
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
     border-color: rgba(${({ status }) => getStatusColor(status)}, 0.8);
   }
   
   @media (max-width: 700px) {
     min-width: 0;
+    border-width: 1.5px;
+    border-radius: 8px;
   }
 `;
 
@@ -320,6 +373,12 @@ const StatusBadge = styled.div<{ status: string }>`
       opacity: 0.6;
     }
   `}
+
+  @media (max-width: 700px) {
+    padding: 0.08rem 0.32rem;
+    font-size: 0.52rem;
+    gap: 0.22rem;
+  }
 `;
 
 const CardImage = styled.img`
@@ -379,9 +438,10 @@ const Avatar = styled.div`
   }
   
   @media (max-width: 700px) {
-    width: 58px;
-    min-height: 78px;
-    font-size: 1.3rem;
+    width: 48px;
+    min-height: 62px;
+    height: 100%;
+    font-size: 1rem;
   }
 `;
 
@@ -392,7 +452,8 @@ const CardTop = styled.div`
   max-height: 91px;
   
   @media (max-width: 700px) {
-    max-height: 78px;
+    min-height: 62px;
+    max-height: none;
   }
 `;
 
@@ -404,6 +465,12 @@ const StudentName = styled.h3`
   letter-spacing: 0.01em;
   line-height: 1.25;
   margin: 0 0 0.35rem 0;
+
+  @media (max-width: 700px) {
+    font-size: 0.72rem;
+    line-height: 1.15;
+    margin: 0 0 0.06rem 0;
+  }
 `;
 
 const FatherName = styled.div`
@@ -413,6 +480,12 @@ const FatherName = styled.div`
   font-weight: 500;
   line-height: 1.3;
   margin-bottom: 0.1rem;
+
+  @media (max-width: 700px) {
+    font-size: 0.58rem;
+    line-height: 1.15;
+    margin-bottom: 0.04rem;
+  }
 `;
 
 const StudentDetails = styled.p`
@@ -422,6 +495,12 @@ const StudentDetails = styled.p`
   font-weight: 500;
   line-height: 1.3;
   margin: 0.2rem 0;
+
+  @media (max-width: 700px) {
+    font-size: 0.54rem;
+    line-height: 1.15;
+    margin: 0.04rem 0 0 0;
+  }
 `;
 
 const CardActions = styled.div<{ offsetTop?: boolean }>`
@@ -449,22 +528,22 @@ const CardActions = styled.div<{ offsetTop?: boolean }>`
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
+    bottom: 4px;
+    right: 4px;
   }
 `;
 
 const CardActionBtn = styled.button`
+  ${clayButtonStyle}
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: none;
   background: #facc15;
   color: #222;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.88rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-  transition: background 0.18s, color 0.18s, transform 0.18s;
   cursor: pointer;
   &:hover {
     background: #fde047;
@@ -478,6 +557,12 @@ const CardActionBtn = styled.button`
       background: #dc2626;
       color: #fff;
     }
+  }
+
+  @media (max-width: 700px) {
+    width: 18px;
+    height: 18px;
+    font-size: 0.66rem;
   }
 `;
 
@@ -630,11 +715,12 @@ const PaginationControls = styled.div`
 `;
 
 const PaginationButton = styled.button<{ active?: boolean }>`
+  ${clayButtonStyle}
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   padding: 0.25rem 0.55rem;
-  border-radius: 6px;
-  border: 1px solid ${({ theme, active }) => active ? theme.ACCENT : theme.FIELD_BORDER};
-  background: ${({ theme, active }) => active ? theme.ACCENT : theme.FIELD_BG};
+  border-radius: ${CARD_RADIUS_MD};
+  border: 1px solid ${({ theme, active }) => active ? 'transparent' : getLayoutPalette(theme).surfaceBorder};
+  background: ${({ theme, active }) => active ? theme.ACCENT : getLayoutPalette(theme).surfaceBg};
   color: ${({ theme, active }) => active ? '#fff' : theme.TEXT_PRIMARY};
   font-size: 0.8rem;
   font-weight: 600;
@@ -712,21 +798,13 @@ const EditModalOverlay = styled.div`
 `;
 
 const EditModalBox = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? theme.BG
-    : theme.BG};
+  ${clayCardStyle}
   width: 90vw;
   max-width: 1200px;
   max-height: 90vh;
-  border-radius: 16px;
+  border-radius: ${CARD_RADIUS_LG};
   display: flex;
   flex-direction: column;
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-    ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
-    : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
-  border: ${({ theme }) => theme.BG === '#252525'
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
   margin: 32px 16px;
   position: relative;
   z-index: 1301;
@@ -748,12 +826,8 @@ const EditModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).shellBg};
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
@@ -779,21 +853,19 @@ const EditModalTitle = styled.div`
 `;
 
 const StyledIconButton = styled.button`
-  background: none;
-  border: none;
+  ${clayButtonStyle}
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   cursor: pointer;
   display: flex;
   align-items: center;
     justify-content: center;
   border-radius: 50%;
   padding: 8px;
-  transition: background-color 0.2s;
-  color: ${({ theme }) => theme.BG === '#252525' ? '#fff' : '#1e293b'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
 
   &:hover {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(0, 0, 0, 0.05)'};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
   }
 `;
 
@@ -839,55 +911,23 @@ const EditModalFooter = styled.div`
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-top: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).shellBg};
 `;
 
 const EditModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
+  ${clayButtonStyle}
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: ${CARD_RADIUS_MD};
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? 'linear-gradient(45deg, #6366f1, #8b5cf6)'
-      : theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.1)'
-        : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? '#fff'
-      : theme.BG === '#252525'
-        ? '#fff'
-        : '#1e293b'};
-  border: none;
-  box-shadow: ${({ variant }) =>
-    variant === 'primary'
-      ? '0 2px 8px rgba(99, 102, 241, 0.25)'
-      : 'none'};
+  background: ${({ theme, variant }) => variant === 'primary' ? theme.ACCENT : getLayoutPalette(theme).surfaceBg};
+  color: ${({ theme, variant }) => variant === 'primary' ? '#fff' : theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme, variant }) => variant === 'primary' ? 'transparent' : getLayoutPalette(theme).surfaceBorder};
   
   &:hover {
-    transform: translateY(-1px);
-    background: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
-      : theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.15)'
-        : 'rgba(0, 0, 0, 0.1)'};
-    box-shadow: ${({ variant }) =>
-    variant === 'primary'
-      ? '0 4px 12px rgba(99, 102, 241, 0.35)'
-      : 'none'};
-  }
-  
-  &:active {
-    transform: translateY(0);
+    background: ${({ theme, variant }) => variant === 'primary' ? theme.ACCENT : getLayoutPalette(theme).surfaceHoverBg};
   }
   
   &:disabled {
@@ -1091,14 +1131,9 @@ const FormSection = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   margin-bottom: 24px;
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.03)'
-    : 'rgba(0, 0, 0, 0.02)'};
+  ${clayCardStyle}
   padding: 24px;
-  border-radius: 16px;
-  border: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
+  border-radius: ${CARD_RADIUS_LG};
   &:last-child {
     margin-bottom: 0;
   }
@@ -1153,21 +1188,18 @@ const FormLabel = styled.label`
 `;
 
 const FormInputBase = styled.div`
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.03)'
-    : 'rgba(255, 255, 255, 0.8)'};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   backdrop-filter: blur(8px);
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
+  border-radius: ${CARD_RADIUS_MD};
   transition: all 0.2s ease;
   position: relative;
+  padding: 0;
 
   &:hover, &:focus-within {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(255, 255, 255, 0.9)'};
+    border-color: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBorder};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
 `;
 
@@ -1192,44 +1224,21 @@ const FormInput = styled.input`
 `;
 
 const FormSelect = styled.select`
+  ${neumorphSelectFieldStyle}
   width: 100%;
   padding: 16px;
   font-size: 0.95rem;
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.03)'
-    : 'rgba(255, 255, 255, 0.8)'};
   border: none;
-  color: ${({ theme }) => theme.BG === '#252525'
-    ? '#fff'
-    : '#1e293b'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
   outline: none;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525'
-    ? 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")'
-    : 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'black\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")'};
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  background-size: 16px;
   padding-right: 48px;
   height: 48px;
   transition: all 0.2s ease;
 
-  &:hover, &:focus {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(255, 255, 255, 0.9)'};
-  }
-
   & option {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? '#2a2a2a'
-    : '#ffffff'};
-    color: ${({ theme }) => theme.BG === '#252525'
-    ? '#e2e8f0'
-    : '#1e293b'};
+    background: ${({ theme }) => theme.CARD};
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
     padding: 12px 16px;
   }
 `;
@@ -1273,12 +1282,14 @@ const MainContent = styled.div`
     /* Disable smooth scrolling on mobile for better performance */
     scroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     /* Reduce perspective for better performance */
     perspective: none;
     /* Optimize for mobile touch scrolling */
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
     /* Reduce scroll snap for better performance */
     scroll-snap-type: none;
+    padding-bottom: 16px;
   }
   
   /* Desktop scrolling optimizations */
@@ -1321,9 +1332,10 @@ const SEGMENTED_HEIGHT = '32px';
 const SegmentedGroup = styled.div`
   display: flex;
   align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px #2222;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  border-radius: ${CARD_RADIUS_MD};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
@@ -1341,45 +1353,27 @@ const SegmentedBase = css`
   font-weight: 400;
   height: ${SEGMENTED_HEIGHT};
   line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px #2222;
   border: none;
   outline: none;
   transition: background 0.2s;
   appearance: none;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
-  color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
 
 const PerPageSelect = styled.select`
+  ${neumorphSelectFieldStyle}
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 500;
   padding: 4px 24px 4px 8px;
-  border-radius: 8px;
-  border: 1.5px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#ffffff'};
-  color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
+  border-radius: ${CARD_RADIUS_MD};
   outline: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525'
-    ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
-    : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 14px;
-  
-  &:hover, &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    background: ${({ theme }) => theme.BG === '#252525' ? '#333' : '#f8f9fa'};
-  }
   
   & option {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#ffffff'};
-    color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
+    background: ${({ theme }) => theme.CARD};
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
     padding: 8px;
   }
   
@@ -1393,6 +1387,8 @@ const PerPageSelect = styled.select`
 
 const SegmentedInput = styled.input`
   ${SegmentedBase}
+  height: ${SEGMENTED_HEIGHT};
+  line-height: ${SEGMENTED_HEIGHT};
   padding: 0 0.84em;
   min-width: 98px;
   border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
@@ -1400,15 +1396,21 @@ const SegmentedInput = styled.input`
   border-bottom-left-radius: 11px;
   @media (max-width: 700px) {
     width: 100%;
+    height: 30px;
+    line-height: 30px;
+    font-size: 0.82rem;
+    padding: 0 0.7em;
     border-radius: 8px !important;
-    border-right: none;
     min-width: 0;
+    border-right: none;
   }
 `;
 
 const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?: boolean }>`
   ${SegmentedBase}
   padding: 0 1.12em;
+  height: ${SEGMENTED_HEIGHT};
+  line-height: ${SEGMENTED_HEIGHT};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1424,15 +1426,15 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
     border-bottom-right-radius: 11px;
   `}
   cursor: pointer;
-  background: ${({ active, theme }) => active ? theme.ACCENT : theme.BG};
+  background: ${({ active, theme }) => active ? theme.ACCENT : 'transparent'};
   color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
-  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
+  border: 1px solid ${({ active, theme }) => active ? 'transparent' : getLayoutPalette(theme).surfaceBorder};
   font-weight: ${({ active }) => active ? 700 : 400};
   text-align: center;
   &:hover:not(:disabled), &:focus:not(:disabled) {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#353535' : '#e5e7eb'};
+    background: ${({ active, theme }) => active ? theme.ACCENT : getLayoutPalette(theme).surfaceHoverBg};
     opacity: 0.92;
-    border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
+    border: 1px solid ${({ active, theme }) => active ? 'transparent' : getLayoutPalette(theme).surfaceHoverBorder};
   }
   & svg {
     font-size: 15px;
@@ -1441,25 +1443,29 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
   }
   @media (max-width: 700px) {
     width: 100%;
+    height: 30px;
+    line-height: 30px;
+    font-size: 0.8rem;
+    padding: 0 0.8em;
     min-width: 0;
   }
 `;
 
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   ${SegmentedBase}
+  height: ${SEGMENTED_HEIGHT};
+  line-height: ${SEGMENTED_HEIGHT};
   padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   &:last-child { border-right: none; }
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
+  ${({ first }) => `
+    ${first ? 'border-top-left-radius: 11px; border-bottom-left-radius: 11px;' : ''}
   `}
-  ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
+  ${({ last }) => `
+    ${last ? 'border-top-right-radius: 11px; border-bottom-right-radius: 11px;' : ''}
   `}
   &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+    border-left: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   }
   appearance: none;
   -webkit-appearance: none;
@@ -1471,11 +1477,17 @@ const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   background-size: 1em 1em;
   @media (max-width: 700px) {
     width: 100%;
+    height: 30px;
+    line-height: 30px;
+    font-size: 0.82rem;
+    padding: 0 2em 0 0.7em;
     border-radius: 8px !important;
+    min-width: 0;
     border-left: none;
     border-right: none;
-    min-width: 0;
-    background-position: right 1em center;
+    background-position: right 0.7em center;
+    background-size: 0.9em 0.9em;
+    text-overflow: ellipsis;
   }
 `;
 
@@ -1620,15 +1632,18 @@ const AlphaDivider = React.memo(styled.div`
 
 // Icon-only Add button for mobile header
 const AddHeaderIconButton = styled.button`
-  background: ${({ theme }) => theme.BG === '#252525' ? '#23242a' : '#f3f4f6'};
-  border: none;
-  border-radius: 8px;
-  padding: 8px;
-  margin-left: 8px;
+  ${clayButtonStyle}
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  border-radius: ${CARD_RADIUS_MD};
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin-left: 0;
   cursor: pointer;
-  box-shadow: 0 1px 4px #0002;
   display: flex;
   align-items: center;
+  justify-content: center;
   @media (min-width: 701px) {
     display: none;
   }
@@ -1731,20 +1746,21 @@ const MemoizedStudentCard = memo(({
   onProfile: () => void;
 }) => {
   const displayId = getStudentDisplayId(student);
+  const isCompactMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
 
   return (
     <StudentCard status={student.status || 'active'} onClick={onClick} data-student-card>
       <div style={{
         position: 'absolute',
-        top: '5px',
-        right: '5px',
-        fontSize: '0.65rem',
+        top: isCompactMobile ? '4px' : '5px',
+        right: isCompactMobile ? '4px' : '5px',
+        fontSize: isCompactMobile ? '0.58rem' : '0.65rem',
         fontWeight: 600,
         letterSpacing: '0.02em',
         color: 'inherit',
         opacity: 0.75,
         background: 'rgba(0, 0, 0, 0.06)',
-        padding: '3px 6px',
+        padding: isCompactMobile ? '2px 5px' : '3px 6px',
         borderRadius: '5px',
         zIndex: 1,
         fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif"
@@ -1765,7 +1781,7 @@ const MemoizedStudentCard = memo(({
             <span style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PersonIcon
                 style={{
-                  fontSize: 88,
+                  fontSize: isCompactMobile ? 56 : 88,
                   color: '#9ca3af',
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))',
                 }}
@@ -1773,19 +1789,37 @@ const MemoizedStudentCard = memo(({
             </span>
           )}
         </Avatar>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0.52rem 0.65rem 0.52rem 0.45rem' }}>
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: isCompactMobile ? '0.22rem 0.32rem 0.22rem 0.28rem' : '0.52rem 0.65rem 0.52rem 0.45rem',
+          minWidth: 0,
+          height: '100%'
+        }}>
           <StudentName>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <span>{student.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isCompactMobile ? '3px' : '6px', flexWrap: 'wrap', minWidth: 0 }}>
+              <span style={{
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: isCompactMobile ? '100%' : 'unset'
+              }}>
+                {student.name}
+              </span>
               <StatusBadge status={student.status || 'active'}>
-                {(student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
+                {isCompactMobile
+                  ? (student.status || 'active').charAt(0).toUpperCase()
+                  : (student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1)}
               </StatusBadge>
             </div>
           </StudentName>
-          <FatherName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{student.father_name || 'N/A'}</span>
-            {(student.phone || student.father_mobile) && (
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <FatherName style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: isCompactMobile ? '3px' : '8px', minWidth: 0 }}>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.father_name || 'N/A'}</span>
+            {!isCompactMobile && (student.phone || student.father_mobile) && (
+              <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                 {student.notification_channel === 'whatsapp' ? (
                   <WhatsAppIcon style={{ fontSize: '0.8rem', color: '#25D366' }} />
                 ) : student.notification_channel === 'sms' ? (
@@ -1797,18 +1831,32 @@ const MemoizedStudentCard = memo(({
               </span>
             )}
           </FatherName>
-          <StudentDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+          <StudentDetails style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: isCompactMobile ? '3px' : '8px', marginBottom: isCompactMobile ? '0' : '3px', minWidth: 0 }}>
             <span>
               {student.classes?.name || 'N/A'}
               {student.sections?.name && ` (${student.sections.name})`}
             </span>
-            {student.address && (
+            {!isCompactMobile && student.address && (
               <span style={{ fontSize: '0.72rem', fontWeight: 500, opacity: 0.85, textAlign: 'right', maxWidth: '50%', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
                 <LocationIcon style={{ fontSize: '0.75rem' }} />
                 {student.address}
               </span>
             )}
           </StudentDetails>
+          {isCompactMobile && (student.phone || student.father_mobile) && (
+            <StudentDetails style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '1px', minWidth: 0 }}>
+              {student.notification_channel === 'whatsapp' ? (
+                <WhatsAppIcon style={{ fontSize: '0.64rem', color: '#25D366', flexShrink: 0 }} />
+              ) : student.notification_channel === 'sms' ? (
+                <SmsIcon style={{ fontSize: '0.64rem', color: '#4CAF50', flexShrink: 0 }} />
+              ) : (
+                <PhoneIcon style={{ fontSize: '0.64rem', flexShrink: 0 }} />
+              )}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {student.phone || student.father_mobile}
+              </span>
+            </StudentDetails>
+          )}
         </div>
       </CardTop>
       <MemoizedCardActions
@@ -1871,9 +1919,23 @@ const StudentList: React.FC = () => {
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [scrolling, setScrolling] = useState(false);
   const scrollRAFRef = useRef<number | null>(null);
+  const [isMobileView, setIsMobileView] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 700 : false
+  );
 
-  // At the top of the StudentList component, after hooks:
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
+  const isMobile = isMobileView;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth <= 700);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Memoize expensive computations
   const studentIdMap = useMemo(() => {
@@ -3119,50 +3181,28 @@ const StudentList: React.FC = () => {
     <>
       <PageContainer>
         <Header>
-          {/* Header row: always flex row, header left, toggle right */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              gap: 8,
-              marginBottom: window.innerWidth <= 700 ? 4 : 0,
-            }}
-          >
+          <HeaderTopRow>
             <Title theme={theme === 'dark' ? darkTheme : lightTheme}>
-              All Students <span style={{ fontWeight: 400, fontSize: '1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a' }}>({filtered.length})</span>
+              All Students <span style={{ fontWeight: 400, fontSize: isMobile ? '0.9rem' : '1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a' }}>({filtered.length})</span>
             </Title>
-            {/* Mobile filter toggle button and add button */}
-            <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
-              <button
-                aria-label="Show/hide filters"
-                style={{
-                  background: theme === 'dark' ? '#23242a' : '#f3f4f6',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: 8,
-                  marginLeft: 8,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 4px #0002',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                onClick={() => setShowMobileFilters(v => !v)}
-              >
-                <FilterListIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
-              </button>
-              <AddHeaderIconButton
-                aria-label="Add Student"
-                onClick={() => navigate('/students/add')}
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-              >
-                <AddIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
-              </AddHeaderIconButton>
-            </div>
-            {/* Desktop filters */}
-            <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
+            {isMobile ? (
+              <MobileHeaderActions>
+                <MobileHeaderButton
+                  aria-label="Show/hide filters"
+                  onClick={() => setShowMobileFilters(v => !v)}
+                >
+                  <FilterListIcon style={{ fontSize: 18, color: '#fff' }} />
+                </MobileHeaderButton>
+                <AddHeaderIconButton
+                  aria-label="Add Student"
+                  onClick={() => navigate('/students/add')}
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
+                >
+                  <AddIcon style={{ fontSize: 18, color: '#fff' }} />
+                </AddHeaderIconButton>
+              </MobileHeaderActions>
+            ) : (
+              <HeaderFilters>
               <SegmentedGroup>
                 <SegmentedInput
                   theme={theme === 'dark' ? darkTheme : lightTheme}
@@ -3175,7 +3215,6 @@ const StudentList: React.FC = () => {
                 <SegmentedSelect
                   value={classFilter}
                   onChange={handleClassFilterChange}
-                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
                 >
                   <option value="">All Classes</option>
                   {loadingClasses ? <option>Loading...</option> :
@@ -3191,7 +3230,6 @@ const StudentList: React.FC = () => {
                       value={sectionFilter}
                       onChange={handleSectionFilterChange}
                       disabled={!classFilter}
-                      style={{ borderRadius: 0 }}
                     >
                       <option value="">All Sections</option>
                       {loadingSections ? <option>Loading...</option> :
@@ -3204,7 +3242,6 @@ const StudentList: React.FC = () => {
                 <SegmentedSelect
                   value={sessionFilter}
                   onChange={handleSessionFilterChange}
-                  style={{ borderRadius: 0 }}
                 >
                   {loadingSessionsFilter ? <option>Loading...</option> :
                     sessionOptions.map(s => (
@@ -3214,7 +3251,6 @@ const StudentList: React.FC = () => {
                 <SegmentedSelect
                   value={statusFilter}
                   onChange={handleStatusFilterChange}
-                  style={{ borderRadius: 0 }}
                 >
                   {STATUS_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -3256,11 +3292,11 @@ const StudentList: React.FC = () => {
                   </span>
                 </SegmentedButton>
               </SegmentedGroup>
-            </HeaderFilters>
-          </div>
-          {/* Mobile search bar - always visible */}
-          {window.innerWidth <= 700 && (
-            <div style={{ width: '100%' }}>
+              </HeaderFilters>
+            )}
+          </HeaderTopRow>
+          {isMobile && (
+            <MobileSearchSection>
               <SegmentedInput
                 theme={theme === 'dark' ? darkTheme : lightTheme}
                 type="text"
@@ -3269,20 +3305,11 @@ const StudentList: React.FC = () => {
                 onChange={e => setSearchInput(e.target.value)}
                 style={{ width: '100%' }}
               />
-            </div>
+            </MobileSearchSection>
           )}
-          {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
-          {window.innerWidth <= 700 && showMobileFilters && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 10,
-                width: '100%',
-                marginTop: 8,
-                marginBottom: 8,
-              }}
-            >
+          {isMobile && showMobileFilters && (
+            <MobileFiltersPanel>
+              <MobileFilterGrid>
               <SegmentedSelect
                 value={classFilter}
                 onChange={handleClassFilterChange}
@@ -3336,7 +3363,7 @@ const StudentList: React.FC = () => {
                 onClick={handleExportStudentsPdf}
                 disabled={exportLoading}
                 title="Export students to PDF"
-                style={{ width: '100%' }}
+                style={{ width: '100%', gridColumn: '1 / -1', justifyContent: 'center' }}
               >
                 {exportLoading ? (
                   <div style={{
@@ -3354,7 +3381,8 @@ const StudentList: React.FC = () => {
                   {exportLoading ? 'Exporting...' : 'Export'}
                 </span>
               </SegmentedButton>
-            </div>
+              </MobileFilterGrid>
+            </MobileFiltersPanel>
           )}
         </Header>
         <MainContent ref={mainContentRef}>
