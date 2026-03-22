@@ -67,7 +67,6 @@ import { clayCardStyle, isDark, clayInsetStyle, getLayoutPalette, CARD_RADIUS_LG
 import { StudentInfo, ParentInfo, InstituteProfile } from '../../types';
 import NotificationBell from '../../../NotificationBell';
 import ProfileDropdown from '../ProfileDropdown/ProfileDropdown';
-import GlassSurface from './GlassSurface';
 
 // Mac-style window controls (for Electron)
 const MacWindowControls = styled.div`
@@ -140,7 +139,7 @@ function MacWindowControlsComponent() {
 }
 
 // App Logo
-const AppLogo = styled.div`
+const AppLogo = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -157,13 +156,19 @@ const AppLogo = styled.div`
   -webkit-app-region: no-drag;
   border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  padding: 0;
+  font: inherit;
   
   &:hover {
-    /* Animation removed */
+    cursor: pointer;
   }
   
   svg {
     font-size: 20px;
+    pointer-events: none;
   }
   
   img {
@@ -171,6 +176,7 @@ const AppLogo = styled.div`
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
+    pointer-events: none;
   }
   
   @media (max-width: 700px) {
@@ -258,6 +264,9 @@ const MenuDropdown = styled.div<{ $isOpen: boolean; $columns?: number; $actualCo
   position: fixed;
   
   ${clayCardStyle}
+  background: ${({ theme }) => isDark(theme) ? theme.CARD : '#ffffff'};
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
     
   border-radius: ${CARD_RADIUS_LG};
   padding: 10px;
@@ -2395,10 +2404,11 @@ const Header: React.FC<HeaderProps> = ({
               <MenuIcon />
             </HamburgerButton>
           )}
-          <AppLogo
-            onClick={handleLogoClick}
-            title={isRestrictedRole ? 'Go to Home' : 'Go to Dashboard'}
-          >
+            <AppLogo
+              type="button"
+              onClick={handleLogoClick}
+              title={isRestrictedRole ? 'Go to Home' : 'Go to Dashboard'}
+            >
             {instituteProfile?.logo_url ? (
               <img src={instituteProfile.logo_url} alt="App Logo" />
             ) : (

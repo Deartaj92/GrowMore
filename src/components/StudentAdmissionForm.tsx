@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect } from 'react';
+import React, { useState, useContext, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { ThemeProvider, keyframes, createGlobalStyle } from 'styled-components';
 import { AccountCircle, Add as AddIcon, Refresh as RefreshIcon, Close as CloseIcon, Save as SaveIcon, Description as DescriptionIcon, FamilyRestroom, CloudUpload as CloudUploadIcon } from '@mui/icons-material';
@@ -60,13 +60,12 @@ import Loader from '../components/Loader';
 // --- Modern Compact Form Layout ---
 const FormWrapper = styled.form`
   width: 100%;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   padding: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 100%;
+  overflow: visible;
+  min-height: 0;
   background: ${({ theme }) => theme.BG};
 `;
 
@@ -75,13 +74,16 @@ const Container = styled(Box)`
   max-width: 100%;
   margin: 0;
   padding: 0;
-  height: 100%;
-  min-height: 100%;
+  height: auto;
+  min-height: 0;
 `;
 
 const MainCard = styled(Box)`
-  ${clayCardStyle}
-  padding: 20px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
   flex: 1;
   min-width: 0;
   min-height: 100%;
@@ -89,35 +91,40 @@ const MainCard = styled(Box)`
   flex-direction: column;
   
   @media (min-width: 960px) {
-    padding: 24px;
-    min-height: calc(100vh - 32px);
+    padding: 0;
+    min-height: auto;
   }
   
   @media (max-width: 959px) {
-    min-height: calc(100vh - 32px);
+    min-height: auto;
   }
 `;
 
 const SidebarCard = styled(Box)`
-  ${clayCardStyle}
-  padding: 20px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 80px;
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 16px;
+  top: 0;
   height: fit-content;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 16px);
   overflow-y: auto;
   
   @media (min-width: 960px) {
-    min-height: calc(100vh - 120px);
+    min-height: auto;
     align-items: stretch;
   }
   
   @media (max-width: 959px) {
     position: relative;
     top: 0;
-    margin-bottom: 16px;
+    margin-top: 0;
+    margin-bottom: 0;
     max-height: none;
     min-height: auto;
   }
@@ -214,6 +221,17 @@ const ActionButtonsContainer = styled(Box)`
   margin-top: auto;
   padding-top: 20px;
   width: 100%;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (max-width: 959px) {
+    max-width: 200px;
+  }
+
+  @media (min-width: 960px) and (max-width: 1279px) {
+    max-width: 240px;
+  }
 `;
 
 const RemoveBtn = styled(Button).attrs({ $variant: 'danger' })`
@@ -222,8 +240,8 @@ const RemoveBtn = styled(Button).attrs({ $variant: 'danger' })`
   padding: 8px 16px;
   font-size: 0.75rem;
   text-transform: none;
-  min-width: auto;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 1;
 
   svg {
     font-size: 16px;
@@ -324,7 +342,8 @@ const ActionButton = styled(Button)`
   font-weight: 500;
   text-transform: none;
   font-size: 0.875rem;
-  min-width: 120px;
+  min-width: 0;
+  width: 100%;
 `;
 
 const PrimaryButton = styled(ActionButton).attrs({ $variant: 'primary' })`
@@ -340,6 +359,24 @@ const UploadButton = styled(ActionButton).attrs({ $variant: 'secondary' })`
   flex: 1;
   min-width: 0;
   padding: 8px 12px;
+`;
+
+const ImageActionIconButton = styled(Button)<{ $variant?: 'secondary' | 'danger' }>`
+  ${clayButtonStyle}
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: ${CARD_RADIUS_MD};
+  flex: 0 0 40px;
+
+  .MuiButton-startIcon {
+    margin: 0;
+  }
+
+  svg {
+    font-size: 18px;
+  }
 `;
 
 const ModernForm = FormWrapper;
@@ -1043,14 +1080,14 @@ const StandaloneFeePlanButton = styled.button`
 // --- Layout and Section Styles copied from StudentList.tsx ---
 const PageContainer = styled.div`
   width: 100%;
-  height: calc(100vh - 64px);
+  height: auto;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   background: ${({ theme }) => theme.BG};
-  max-width: 100vw;
-  overflow: hidden;
-  min-height: 0;
+  max-width: none;
+  overflow: visible;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 `;
@@ -1066,32 +1103,18 @@ const FooterCard = styled.div`
 `;
 
 const MainContent = styled.div`
-  flex: 1;
-  min-height: 0;
-  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px 20px;
+  flex: 1 1 auto;
+  min-height: auto;
+  height: auto;
+  overflow: visible;
+  padding: 8px 12px 16px;
   
   @media (min-width: 1200px) {
-    padding: 20px 32px;
+    padding: 10px 16px 20px;
   }
-  
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
-    border-radius: 4px;
-    
-    &:hover {
-      background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
-    }
+
+  @media (max-width: 700px) {
+    padding: 8px 8px 16px;
   }
 `;
 
@@ -1119,6 +1142,7 @@ const GlobalStyle = createGlobalStyle<{
 
 const StudentAdmissionForm: React.FC = () => {
   const { theme } = useContext(ThemeContext);
+  const themeObj = theme === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth();
   const { setLoading, loading } = useLoading();
   const { startProgress, completeProgress, setProgress } = useProgress();
@@ -1211,6 +1235,33 @@ const StudentAdmissionForm: React.FC = () => {
   const [familyAvatarPreview, setFamilyAvatarPreview] = useState<string | null>(null);
   const [creatingFamily, setCreatingFamily] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  const fieldPalette = useMemo(() => getFieldPalette(themeObj), [themeObj]);
+  const selectMenuProps = useMemo(() => ({
+    PaperProps: {
+      sx: {
+        bgcolor: fieldPalette.menuBg,
+        color: fieldPalette.menuText,
+        border: `1px solid ${fieldPalette.border}`,
+        boxShadow: fieldPalette.shadow,
+        mt: 0.5,
+        '& .MuiList-root': {
+          py: 0.5,
+        },
+        '& .MuiMenuItem-root': {
+          color: fieldPalette.menuText,
+        },
+        '& .MuiMenuItem-root.Mui-selected': {
+          backgroundColor: `${themeObj.ACCENT}22`,
+        },
+        '& .MuiMenuItem-root.Mui-selected:hover': {
+          backgroundColor: `${themeObj.ACCENT}2e`,
+        },
+        '& .MuiMenuItem-root:hover': {
+          backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)',
+        },
+      },
+    },
+  }), [fieldPalette, themeObj, theme]);
 
   // Helper function to generate next available student ID (school-specific)
   const generateNextStudentId = async (): Promise<number> => {
@@ -2147,8 +2198,7 @@ const StudentAdmissionForm: React.FC = () => {
       <PageContainer theme={theme === 'dark' ? darkTheme : lightTheme}>
         <MainContent>
           <FormWrapper id="admission-form" onSubmit={handleSubmit} style={showConfirm ? { pointerEvents: 'none', userSelect: 'none', opacity: 0.7 } : {}}>
-            <Container>
-              <Grid container spacing={2} sx={{ alignItems: 'flex-start' }}>
+            <Grid container spacing={2} sx={{ alignItems: 'flex-start', width: '100%', margin: 0 }}>
                 {/* Main Form */}
                 <Grid item xs={12} md={8} lg={9}>
                   <MainCard>
@@ -2194,6 +2244,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="class"
                               value={form.class}
                               onChange={handleSelectChange}
+                              MenuProps={selectMenuProps}
                               label="Class*"
                               inputRef={classRef}
                             >
@@ -2217,6 +2268,7 @@ const StudentAdmissionForm: React.FC = () => {
                                 name="section"
                                 value={form.section}
                                 onChange={handleSelectChange}
+                                MenuProps={selectMenuProps}
                                 label="Section*"
                                 disabled={!form.class}
                                 inputRef={sectionRef}
@@ -2272,6 +2324,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="notificationChannel"
                               value={form.notificationChannel}
                               onChange={(e) => setForm(prev => ({ ...prev, notificationChannel: (e.target.value as 'whatsapp' | 'sms') }))}
+                              MenuProps={selectMenuProps}
                               label="Notification Channel"
                             >
                               <MenuItem value="whatsapp">WhatsApp</MenuItem>
@@ -2287,6 +2340,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="family"
                               value={form.family}
                               onChange={handleFamilyChange}
+                              MenuProps={selectMenuProps}
                               label="Family*"
                               required
                               error={invalidField === 'family'}
@@ -2368,6 +2422,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="gender"
                               value={form.gender}
                               onChange={handleSelectChange}
+                              MenuProps={selectMenuProps}
                               label="Gender"
                             >
                               <MenuItem value="Male">Male</MenuItem>
@@ -2424,6 +2479,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="bloodGroup"
                               value={form.bloodGroup || ''}
                               onChange={handleSelectChange}
+                              MenuProps={selectMenuProps}
                               label="Blood Group"
                             >
                               <MenuItem value="">Select</MenuItem>
@@ -2461,6 +2517,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="religion"
                               value={form.religion}
                               onChange={handleSelectChange}
+                              MenuProps={selectMenuProps}
                               label="Religion"
                             >
                               {RELIGIONS.map(r => (
@@ -2477,6 +2534,7 @@ const StudentAdmissionForm: React.FC = () => {
                               name="nationality"
                               value={form.nationality}
                               onChange={handleSelectChange}
+                              MenuProps={selectMenuProps}
                               label="Nationality"
                             >
                               {NATIONALITIES.map(n => (
@@ -2721,22 +2779,35 @@ const StudentAdmissionForm: React.FC = () => {
                         />
                       </Box>
                       <ButtonRow>
-                        <UploadButton
-                          variant="outlined"
-                          startIcon={<CloudUploadIcon />}
-                          onClick={handleAvatarClick}
-                        >
-                          Upload Photo
-                        </UploadButton>
-                        {image && (
-                          <RemoveBtn
-                            variant="contained"
-                            size="small"
-                            startIcon={<CloseIcon />}
-                            onClick={handleRemoveImage}
+                        {image ? (
+                          <>
+                            <ImageActionIconButton
+                              $variant="secondary"
+                              variant="outlined"
+                              onClick={handleAvatarClick}
+                              aria-label="Upload photo"
+                              title="Upload photo"
+                            >
+                              <CloudUploadIcon />
+                            </ImageActionIconButton>
+                            <ImageActionIconButton
+                              $variant="danger"
+                              variant="contained"
+                              onClick={handleRemoveImage}
+                              aria-label="Remove photo"
+                              title="Remove photo"
+                            >
+                              <CloseIcon />
+                            </ImageActionIconButton>
+                          </>
+                        ) : (
+                          <UploadButton
+                            variant="outlined"
+                            startIcon={<CloudUploadIcon />}
+                            onClick={handleAvatarClick}
                           >
-                            Remove
-                          </RemoveBtn>
+                            Upload Photo
+                          </UploadButton>
                         )}
                       </ButtonRow>
                     </AvatarWrapper>
@@ -2794,7 +2865,6 @@ const StudentAdmissionForm: React.FC = () => {
                   </SidebarCard>
                 </Grid>
               </Grid>
-            </Container>
           </FormWrapper>
         </MainContent>
       </PageContainer>

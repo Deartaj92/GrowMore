@@ -25,7 +25,13 @@ import autoTable from 'jspdf-autotable';
 
 // Import extracted components, types, styles, utils, hooks, and services
 import { DashboardTab, FineToDelete, FeeSummary, FeeCollectionDetails, DefaulterData } from './types';
-import { isDark as checkIsDark } from '../../styles/DesignSystem';
+import {
+  isDark as checkIsDark,
+  getFooterNavButtonStyle,
+  getFooterNavIconStyle,
+  getFooterNavTooltipStyle,
+  getFooterNavTooltipArrowStyle
+} from '../../styles/DesignSystem';
 import { USE_DUMMY_DATA } from './constants';
 import { DashboardContainer } from './styles';
 import { useExpandedState } from './hooks/useExpandedState';
@@ -92,7 +98,6 @@ const Dashboard: React.FC = () => {
   const { setFooterContent } = usePageFooter();
   const theme = useTheme();
   const isDark = checkIsDark(theme);
-  const themeCard = (theme as any).CARD;
   const savePdf = useCapacitorPdfSave();
 
   // Core data state
@@ -1883,61 +1888,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/attendance/mark')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'student' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'student' ? '#60a5fa' : 'rgba(59, 130, 246, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#3b82f6', hoveredButton === 'student')}
                     >
                       <Assessment
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'student' ? '#60a5fa' : '#3b82f6',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#3b82f6', hoveredButton === 'student')}
                       />
                     </button>
                     {hoveredButton === 'student' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Mark Student Attendance
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -1953,61 +1913,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/attendance/staff')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'employee' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'employee' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#10b981', hoveredButton === 'employee')}
                     >
                       <Groups
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'employee' ? '#34d399' : '#10b981',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#10b981', hoveredButton === 'employee')}
                       />
                     </button>
                     {hoveredButton === 'employee' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Mark Employee Attendance
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2023,61 +1938,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/fee-collection')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'fee' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'fee' ? '#a78bfa' : 'rgba(139, 92, 246, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#8b5cf6', hoveredButton === 'fee')}
                     >
                       <Payment
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'fee' ? '#a78bfa' : '#8b5cf6',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#8b5cf6', hoveredButton === 'fee')}
                       />
                     </button>
                     {hoveredButton === 'fee' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Fee Collection
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2093,61 +1963,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/students/add')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'addStudent' ? 'rgba(34, 197, 94, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'addStudent' ? '#4ade80' : 'rgba(34, 197, 94, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#22c55e', hoveredButton === 'addStudent')}
                     >
                       <PersonAdd
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'addStudent' ? '#4ade80' : '#22c55e',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#22c55e', hoveredButton === 'addStudent')}
                       />
                     </button>
                     {hoveredButton === 'addStudent' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Add Student
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2163,61 +1988,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/attendance/rfid-scanner')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'rfidScanner' ? 'rgba(249, 115, 22, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'rfidScanner' ? '#fb923c' : 'rgba(249, 115, 22, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#f97316', hoveredButton === 'rfidScanner')}
                     >
                       <Contactless
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'rfidScanner' ? '#fb923c' : '#f97316',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#f97316', hoveredButton === 'rfidScanner')}
                       />
                     </button>
                     {hoveredButton === 'rfidScanner' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Scanner mode
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2233,61 +2013,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/reports')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'reports' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'reports' ? '#fbbf24' : 'rgba(234, 179, 8, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#eab308', hoveredButton === 'reports')}
                     >
                       <BarChart
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'reports' ? '#fbbf24' : '#eab308',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#eab308', hoveredButton === 'reports')}
                       />
                     </button>
                     {hoveredButton === 'reports' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Reports
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2303,61 +2038,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/students/list')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'students' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'students' ? '#818cf8' : 'rgba(99, 102, 241, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#6366f1', hoveredButton === 'students')}
                     >
                       <People
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'students' ? '#818cf8' : '#6366f1',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#6366f1', hoveredButton === 'students')}
                       />
                     </button>
                     {hoveredButton === 'students' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Students List
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2373,61 +2063,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/fines/collect')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'fineCollect' ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'fineCollect' ? '#34d399' : 'rgba(16, 185, 129, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#10b981', hoveredButton === 'fineCollect')}
                     >
                       <AttachMoney
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'fineCollect' ? '#34d399' : '#10b981',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#10b981', hoveredButton === 'fineCollect')}
                       />
                     </button>
                     {hoveredButton === 'fineCollect' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Fine Collection
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>
@@ -2443,61 +2088,16 @@ const Dashboard: React.FC = () => {
                     <button
                       onClick={() => navigate('/fines/remaining')}
                       className="footer-icon-button"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: hoveredButton === 'remainingFine' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
-                        border: `1.5px solid ${hoveredButton === 'remainingFine' ? '#fbbf24' : 'rgba(245, 158, 11, 0.4)'}`,
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        overflow: 'visible',
-                        transition: 'none !important'
-                      }}
+                      style={getFooterNavButtonStyle(theme, '#f59e0b', hoveredButton === 'remainingFine')}
                     >
                       <AccountBalanceWallet
-                        sx={{
-                          fontSize: '16px',
-                          color: hoveredButton === 'remainingFine' ? '#fbbf24' : '#f59e0b',
-                          transition: 'none !important'
-                        }}
+                        sx={getFooterNavIconStyle(theme, '#f59e0b', hoveredButton === 'remainingFine')}
                       />
                     </button>
                     {hoveredButton === 'remainingFine' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 6px)',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: isDark ? themeCard : '#0f172a',
-                          color: '#fff',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
-                          zIndex: 10001,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'}`,
-                          maxWidth: 'calc(100vw - 16px)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
+                      <div style={getFooterNavTooltipStyle(theme)}>
                         Remaining Fine
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          border: '3px solid transparent',
-                          borderTopColor: isDark ? '#1e293b' : '#0f172a'
-                        }} />
+                        <div style={getFooterNavTooltipArrowStyle(theme)} />
                       </div>
                     )}
                   </div>

@@ -35,6 +35,7 @@ import {
   clayPanelStyle,
   neumorphFieldStyle,
   neumorphSelectFieldStyle,
+  minimalSelectMenuStyle,
   getLayoutPalette,
   CARD_RADIUS_LG,
   CARD_RADIUS_MD,
@@ -59,14 +60,11 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
   display: flex;
   flex-direction: column;
-  /* Hardware acceleration for container */
-  transform: translateZ(0);
-  will-change: transform;
 
   @media (max-width: 700px) {
     padding: 0 8px 8px 8px;
@@ -211,12 +209,6 @@ const FilterSelect = styled.select`
   border-radius: ${CARD_RADIUS_MD};
   font-size: 1rem;
   cursor: pointer;
-
-  & option {
-    background: ${({ theme }) => theme.CARD};
-    color: ${({ theme }) => theme.TEXT_PRIMARY};
-    padding: 8px;
-  }
 
   @media (max-width: 700px) {
     width: 100%;
@@ -538,6 +530,11 @@ const CardActionBtn = styled.button`
   width: 22px;
   height: 22px;
   border-radius: 50%;
+  min-width: 22px;
+  padding: 0;
+  line-height: 1;
+  box-sizing: border-box;
+  flex: 0 0 22px;
   background: #facc15;
   color: #222;
   display: flex;
@@ -562,6 +559,8 @@ const CardActionBtn = styled.button`
   @media (max-width: 700px) {
     width: 18px;
     height: 18px;
+    min-width: 18px;
+    flex-basis: 18px;
     font-size: 0.66rem;
   }
 `;
@@ -1235,12 +1234,6 @@ const FormSelect = styled.select`
   padding-right: 48px;
   height: 48px;
   transition: all 0.2s ease;
-
-  & option {
-    background: ${({ theme }) => theme.CARD};
-    color: ${({ theme }) => theme.TEXT_PRIMARY};
-    padding: 12px 16px;
-  }
 `;
 
 const FormTextarea = styled.textarea`
@@ -1267,62 +1260,13 @@ const FormTextarea = styled.textarea`
 
 const MainContent = styled.div`
   flex: 1;
-  min-height: 0;
+  min-height: auto;
   max-height: none;
-  overflow-y: auto;
+  overflow: visible;
   padding: 0 0 8px 0;
   
-  /* Hardware acceleration for better performance */
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: scroll-position;
-  
-  /* Mobile-optimized scrolling */
   @media (max-width: 700px) {
-    /* Disable smooth scrolling on mobile for better performance */
-    scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    /* Reduce perspective for better performance */
-    perspective: none;
-    /* Optimize for mobile touch scrolling */
-    overscroll-behavior: auto;
-    /* Reduce scroll snap for better performance */
-    scroll-snap-type: none;
     padding-bottom: 16px;
-  }
-  
-  /* Desktop scrolling optimizations */
-  @media (min-width: 701px) {
-    scroll-behavior: smooth;
-    scroll-snap-type: y proximity;
-    perspective: 1000px;
-  }
-  
-  /* Optimized scrollbar styling */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
-    border-radius: 3px;
-    transition: background 0.2s;
-  }
-  
-  &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
-  }
-  
-  /* Mobile scrollbar optimization */
-  @media (max-width: 700px) {
-    &::-webkit-scrollbar {
-      width: 4px;
-    }
   }
 `;
 
@@ -1370,12 +1314,6 @@ const PerPageSelect = styled.select`
   border-radius: ${CARD_RADIUS_MD};
   outline: none;
   cursor: pointer;
-  
-  & option {
-    background: ${({ theme }) => theme.CARD};
-    color: ${({ theme }) => theme.TEXT_PRIMARY};
-    padding: 8px;
-  }
   
   @media (max-width: 700px) {
     font-size: 0.8rem;
@@ -1453,6 +1391,7 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
 
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   ${SegmentedBase}
+  ${minimalSelectMenuStyle}
   height: ${SEGMENTED_HEIGHT};
   line-height: ${SEGMENTED_HEIGHT};
   padding: 0 2.2em 0 0.84em;
@@ -2063,9 +2002,6 @@ const StudentList: React.FC = () => {
 
   // Optimized scroll handler with RAF and mobile-specific optimizations
   useEffect(() => {
-    const el = mainContentRef.current;
-    if (!el) return;
-
     let rafId: number | null = null;
     let lastScrollTop = 0;
 
@@ -2073,7 +2009,7 @@ const StudentList: React.FC = () => {
       if (rafId) return; // Skip if already scheduled
 
       rafId = requestAnimationFrame(() => {
-        const scrollTop = el.scrollTop;
+        const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
 
         // Only update state if scroll position changed significantly (mobile optimization)
         if (Math.abs(scrollTop - lastScrollTop) > 10) {
@@ -2085,10 +2021,10 @@ const StudentList: React.FC = () => {
       });
     };
 
-    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
-      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);
@@ -2479,8 +2415,6 @@ const StudentList: React.FC = () => {
 
   // Scroll event for disabling tooltip during scroll
   useEffect(() => {
-    const el = mainContentRef.current;
-    if (!el) return;
     let isScrolling = false;
 
     const onScroll = () => {
@@ -2498,9 +2432,9 @@ const StudentList: React.FC = () => {
         setScrolling(false);
       });
     };
-    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
-      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
       if (scrollRAFRef.current) {
         cancelAnimationFrame(scrollRAFRef.current);
       }
@@ -3031,19 +2965,12 @@ const StudentList: React.FC = () => {
   // Remove redundant scroll handler - now handled by the optimized version above
 
   const handleToTop = () => {
-    const el = mainContentRef.current;
-    if (el) {
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Scroll to top when page changes
   const scrollToTop = () => {
-    if (mainContentRef.current) {
-      mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePageChange = useCallback((newPage: number) => {
@@ -3180,41 +3107,141 @@ const StudentList: React.FC = () => {
   return (
     <>
       <PageContainer>
-        <Header>
-          <HeaderTopRow>
-            <Title theme={theme === 'dark' ? darkTheme : lightTheme}>
-              All Students <span style={{ fontWeight: 400, fontSize: isMobile ? '0.9rem' : '1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a' }}>({filtered.length})</span>
-            </Title>
-            {isMobile ? (
-              <MobileHeaderActions>
-                <MobileHeaderButton
-                  aria-label="Show/hide filters"
-                  onClick={() => setShowMobileFilters(v => !v)}
-                >
-                  <FilterListIcon style={{ fontSize: 18, color: '#fff' }} />
-                </MobileHeaderButton>
-                <AddHeaderIconButton
-                  aria-label="Add Student"
-                  onClick={() => navigate('/students/add')}
-                  theme={theme === 'dark' ? darkTheme : lightTheme}
-                >
-                  <AddIcon style={{ fontSize: 18, color: '#fff' }} />
-                </AddHeaderIconButton>
-              </MobileHeaderActions>
-            ) : (
-              <HeaderFilters>
-              <SegmentedGroup>
+        <MainContent ref={mainContentRef}>
+          <Header>
+            <HeaderTopRow>
+              <Title theme={theme === 'dark' ? darkTheme : lightTheme}>
+                All Students <span style={{ fontWeight: 400, fontSize: isMobile ? '0.9rem' : '1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a' }}>({filtered.length})</span>
+              </Title>
+              {isMobile ? (
+                <MobileHeaderActions>
+                  <MobileHeaderButton
+                    aria-label="Show/hide filters"
+                    onClick={() => setShowMobileFilters(v => !v)}
+                  >
+                    <FilterListIcon style={{ fontSize: 18, color: '#fff' }} />
+                  </MobileHeaderButton>
+                  <AddHeaderIconButton
+                    aria-label="Add Student"
+                    onClick={() => navigate('/students/add')}
+                    theme={theme === 'dark' ? darkTheme : lightTheme}
+                  >
+                    <AddIcon style={{ fontSize: 18, color: '#fff' }} />
+                  </AddHeaderIconButton>
+                </MobileHeaderActions>
+              ) : (
+                <HeaderFilters>
+                <SegmentedGroup>
+                  <SegmentedInput
+                    theme={theme === 'dark' ? darkTheme : lightTheme}
+                    type="text"
+                    placeholder="Search Student..."
+                    value={searchInput}
+                    onChange={e => setSearchInput(e.target.value)}
+                    style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
+                  />
+                  <SegmentedSelect
+                    value={classFilter}
+                    onChange={handleClassFilterChange}
+                  >
+                    <option value="">All Classes</option>
+                    {loadingClasses ? <option>Loading...</option> :
+                      classOptions.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                  </SegmentedSelect>
+                  {(() => {
+                    const selectedClass = classOptions.find(c => String(c.id) === String(classFilter));
+                    const hasSections = selectedClass?.has_sections ?? true;
+                    return hasSections ? (
+                      <SegmentedSelect
+                        value={sectionFilter}
+                        onChange={handleSectionFilterChange}
+                        disabled={!classFilter}
+                      >
+                        <option value="">All Sections</option>
+                        {loadingSections ? <option>Loading...</option> :
+                          sectionOptions.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                      </SegmentedSelect>
+                    ) : null;
+                  })()}
+                  <SegmentedSelect
+                    value={sessionFilter}
+                    onChange={handleSessionFilterChange}
+                  >
+                    {loadingSessionsFilter ? <option>Loading...</option> :
+                      sessionOptions.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </SegmentedSelect>
+                  <SegmentedSelect
+                    value={statusFilter}
+                    onChange={handleStatusFilterChange}
+                  >
+                    {STATUS_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </SegmentedSelect>
+                  <SegmentedButton
+                    theme={theme === 'dark' ? darkTheme : lightTheme}
+                    onClick={handleExportStudentsPdf}
+                    disabled={exportLoading}
+                    title="Export students to PDF"
+                    style={{
+                      minWidth: 110,
+                      maxWidth: 130,
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      background: theme === 'dark' ? '#444' : '#f3f4f6',
+                      border: `1.5px solid ${theme === 'dark' ? '#555' : '#e5e7eb'}`,
+                      color: theme === 'dark' ? '#C0C0C0' : '#444',
+                      fontWeight: 700
+                    }}
+                  >
+                    {exportLoading ? (
+                      <div style={{
+                        width: 15,
+                        height: 15,
+                        border: '2px solid #e0e7ff',
+                        borderTop: '2px solid #4a6cf7',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                    ) : (
+                      <PictureAsPdf style={{ fontSize: 15 }} />
+                    )}
+                    <span style={{ fontWeight: 700, display: 'inline-block' }}>
+                      {exportLoading ? 'Exporting...' : 'Export'}
+                    </span>
+                  </SegmentedButton>
+                </SegmentedGroup>
+                </HeaderFilters>
+              )}
+            </HeaderTopRow>
+            {isMobile && (
+              <MobileSearchSection>
                 <SegmentedInput
                   theme={theme === 'dark' ? darkTheme : lightTheme}
                   type="text"
                   placeholder="Search Student..."
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
-                  style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
+                  style={{ width: '100%' }}
                 />
+              </MobileSearchSection>
+            )}
+            {isMobile && showMobileFilters && (
+              <MobileFiltersPanel>
+                <MobileFilterGrid>
                 <SegmentedSelect
                   value={classFilter}
                   onChange={handleClassFilterChange}
+                  style={{ width: '100%' }}
                 >
                   <option value="">All Classes</option>
                   {loadingClasses ? <option>Loading...</option> :
@@ -3230,6 +3257,7 @@ const StudentList: React.FC = () => {
                       value={sectionFilter}
                       onChange={handleSectionFilterChange}
                       disabled={!classFilter}
+                      style={{ width: '100%' }}
                     >
                       <option value="">All Sections</option>
                       {loadingSections ? <option>Loading...</option> :
@@ -3242,6 +3270,7 @@ const StudentList: React.FC = () => {
                 <SegmentedSelect
                   value={sessionFilter}
                   onChange={handleSessionFilterChange}
+                  style={{ width: '100%' }}
                 >
                   {loadingSessionsFilter ? <option>Loading...</option> :
                     sessionOptions.map(s => (
@@ -3251,6 +3280,7 @@ const StudentList: React.FC = () => {
                 <SegmentedSelect
                   value={statusFilter}
                   onChange={handleStatusFilterChange}
+                  style={{ width: '100%' }}
                 >
                   {STATUS_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -3261,19 +3291,7 @@ const StudentList: React.FC = () => {
                   onClick={handleExportStudentsPdf}
                   disabled={exportLoading}
                   title="Export students to PDF"
-                  style={{
-                    minWidth: 110,
-                    maxWidth: 130,
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    background: theme === 'dark' ? '#444' : '#f3f4f6',
-                    border: `1.5px solid ${theme === 'dark' ? '#555' : '#e5e7eb'}`,
-                    color: theme === 'dark' ? '#C0C0C0' : '#444',
-                    fontWeight: 700
-                  }}
+                  style={{ width: '100%', gridColumn: '1 / -1', justifyContent: 'center' }}
                 >
                   {exportLoading ? (
                     <div style={{
@@ -3287,105 +3305,14 @@ const StudentList: React.FC = () => {
                   ) : (
                     <PictureAsPdf style={{ fontSize: 15 }} />
                   )}
-                  <span style={{ fontWeight: 700, display: 'inline-block' }}>
+                  <span style={{ fontWeight: 700 }}>
                     {exportLoading ? 'Exporting...' : 'Export'}
                   </span>
                 </SegmentedButton>
-              </SegmentedGroup>
-              </HeaderFilters>
+                </MobileFilterGrid>
+              </MobileFiltersPanel>
             )}
-          </HeaderTopRow>
-          {isMobile && (
-            <MobileSearchSection>
-              <SegmentedInput
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                type="text"
-                placeholder="Search Student..."
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                style={{ width: '100%' }}
-              />
-            </MobileSearchSection>
-          )}
-          {isMobile && showMobileFilters && (
-            <MobileFiltersPanel>
-              <MobileFilterGrid>
-              <SegmentedSelect
-                value={classFilter}
-                onChange={handleClassFilterChange}
-                style={{ width: '100%' }}
-              >
-                <option value="">All Classes</option>
-                {loadingClasses ? <option>Loading...</option> :
-                  classOptions.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-              </SegmentedSelect>
-              {(() => {
-                const selectedClass = classOptions.find(c => String(c.id) === String(classFilter));
-                const hasSections = selectedClass?.has_sections ?? true;
-                return hasSections ? (
-                  <SegmentedSelect
-                    value={sectionFilter}
-                    onChange={handleSectionFilterChange}
-                    disabled={!classFilter}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">All Sections</option>
-                    {loadingSections ? <option>Loading...</option> :
-                      sectionOptions.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                  </SegmentedSelect>
-                ) : null;
-              })()}
-              <SegmentedSelect
-                value={sessionFilter}
-                onChange={handleSessionFilterChange}
-                style={{ width: '100%' }}
-              >
-                {loadingSessionsFilter ? <option>Loading...</option> :
-                  sessionOptions.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-              </SegmentedSelect>
-              <SegmentedSelect
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-                style={{ width: '100%' }}
-              >
-                {STATUS_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </SegmentedSelect>
-              <SegmentedButton
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                onClick={handleExportStudentsPdf}
-                disabled={exportLoading}
-                title="Export students to PDF"
-                style={{ width: '100%', gridColumn: '1 / -1', justifyContent: 'center' }}
-              >
-                {exportLoading ? (
-                  <div style={{
-                    width: 15,
-                    height: 15,
-                    border: '2px solid #e0e7ff',
-                    borderTop: '2px solid #4a6cf7',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }} />
-                ) : (
-                  <PictureAsPdf style={{ fontSize: 15 }} />
-                )}
-                <span style={{ fontWeight: 700 }}>
-                  {exportLoading ? 'Exporting...' : 'Export'}
-                </span>
-              </SegmentedButton>
-              </MobileFilterGrid>
-            </MobileFiltersPanel>
-          )}
-        </Header>
-        <MainContent ref={mainContentRef}>
+          </Header>
           {filteredStudents.length === 0 ? (
             <NoResults>No students found matching your search criteria.</NoResults>
           ) : (

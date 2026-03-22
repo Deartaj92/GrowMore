@@ -173,6 +173,9 @@ export const getFieldPalette = (theme: any) => {
     calendarIconFilter: dark ? 'invert(0.88)' : 'invert(0.18)',
     calendarIconOpacity: dark ? 0.82 : 0.72,
     selectIcon: dark ? '#94a3b8' : '#64748b',
+    menuBg: dark ? theme.CARD : '#ffffff',
+    menuText: dark ? theme.TEXT_PRIMARY : '#1e293b',
+    menuMutedText: dark ? theme.TEXT_SECONDARY : '#64748b',
   };
 };
 
@@ -217,6 +220,90 @@ export const getButtonPalette = (theme: any) => {
       : '0 10px 22px rgba(15, 23, 42, 0.08)',
   };
 };
+
+export const getFooterNavPalette = (theme: any) => {
+  const dark = isDark(theme);
+  const layout = getLayoutPalette(theme);
+
+  return {
+    buttonBg: layout.surfaceBg,
+    buttonBorder: layout.surfaceBorder,
+    buttonShadow: layout.surfaceShadow,
+    buttonHoverBg: layout.surfaceHoverBg,
+    buttonHoverBorder: layout.surfaceHoverBorder,
+    buttonHoverShadow: layout.surfaceHoverShadow,
+    iconShadow: dark ? 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35))' : 'drop-shadow(0 1px 1px rgba(255, 255, 255, 0.6))',
+    tooltipBg: dark ? theme.CARD : '#0f172a',
+    tooltipBorder: dark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)',
+    tooltipArrow: dark ? theme.CARD : '#0f172a',
+  };
+};
+
+export const getFooterNavButtonStyle = (theme: any, accentColor: string, hovered = false) => {
+  const footer = getFooterNavPalette(theme);
+
+  return {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    minHeight: '30px',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: hovered ? `${accentColor}22` : footer.buttonBg,
+    border: `1.5px solid ${hovered ? `${accentColor}66` : footer.buttonBorder}`,
+    borderRadius: '999px',
+    cursor: 'pointer',
+    position: 'relative' as const,
+    overflow: 'visible' as const,
+    boxShadow: hovered ? footer.buttonHoverShadow : footer.buttonShadow,
+    transition: 'none',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+  };
+};
+
+export const getFooterNavIconStyle = (theme: any, accentColor: string, hovered = false) => ({
+  fontSize: '16px',
+  color: hovered ? accentColor : accentColor,
+  opacity: hovered ? 1 : 0.92,
+  filter: getFooterNavPalette(theme).iconShadow,
+  transition: 'none',
+});
+
+export const getFooterNavTooltipStyle = (theme: any) => {
+  const footer = getFooterNavPalette(theme);
+
+  return {
+    position: 'absolute' as const,
+    bottom: 'calc(100% + 6px)',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: footer.tooltipBg,
+    color: '#fff',
+    padding: '3px 6px',
+    borderRadius: '4px',
+    fontSize: '10px',
+    whiteSpace: 'nowrap' as const,
+    pointerEvents: 'none' as const,
+    zIndex: 10001,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    border: `1px solid ${footer.tooltipBorder}`,
+    maxWidth: 'calc(100vw - 16px)',
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  };
+};
+
+export const getFooterNavTooltipArrowStyle = (theme: any) => ({
+  position: 'absolute' as const,
+  top: '100%',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  border: '3px solid transparent',
+  borderTopColor: getFooterNavPalette(theme).tooltipArrow,
+});
 
 // ==========================================
 // MIXINS: Neumorphic / Claymorphic
@@ -386,6 +473,20 @@ export const clayInputStyle = css`
 
 export const neumorphFieldStyle = clayInputStyle;
 
+export const minimalSelectMenuStyle = css`
+  color-scheme: ${({ theme }) => isDark(theme) ? 'dark' : 'light'};
+
+  option,
+  optgroup {
+    background: ${({ theme }) => getFieldPalette(theme).menuBg};
+    color: ${({ theme }) => getFieldPalette(theme).menuText};
+  }
+
+  option:disabled {
+    color: ${({ theme }) => getFieldPalette(theme).menuMutedText};
+  }
+`;
+
 export const neumorphDateFieldStyle = css`
   padding: 0.6rem 1rem;
   ${neumorphFieldStyle}
@@ -393,6 +494,7 @@ export const neumorphDateFieldStyle = css`
 
 export const neumorphSelectFieldStyle = css`
   ${neumorphFieldStyle}
+  ${minimalSelectMenuStyle}
   cursor: pointer;
   padding-right: 2rem;
   background-image: ${({ theme }) => {

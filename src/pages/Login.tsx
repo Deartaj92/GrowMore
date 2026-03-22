@@ -8,6 +8,16 @@ import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { hasPermission } from '../services/permissionService';
 import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person } from '@mui/icons-material';
+import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
+import {
+  clayCardStyle,
+  clayButtonStyle,
+  neumorphFieldStyle,
+  getFieldPalette,
+  getLayoutPalette,
+  CARD_RADIUS_LG,
+  CARD_RADIUS_MD,
+} from '../styles/DesignSystem';
 
 // Mac-style window controls (copied from Layout.tsx)
 const MacWindowControls = styled.div`
@@ -70,33 +80,6 @@ function MacWindowControlsComponent() {
   );
 }
 
-// Theme objects (copied from Layout.tsx)
-const darkTheme = {
-  BG: '#252525',
-  CARD: '#2a2a2a',
-  ACCENT: '#4a6cf7',
-  SHADOW: '0 1.8px 7.2px 0 #0003',
-  TEXT_PRIMARY: '#e0e0e0',
-  TEXT_SECONDARY: '#b0b8d1',
-  BORDER: 'rgba(255, 255, 255, 0.05)',
-  HOVER_BG: 'rgba(74, 108, 247, 0.18)',
-  FIELD_BG: '#252525',
-  FIELD_BORDER: '#3a3f4b',
-  ACCENT_INPUT: '#4a6cf7',
-};
-const lightTheme = {
-  BG: '#f5f7fa',
-  CARD: '#ffffff',
-  ACCENT: '#4a6cf7',
-  SHADOW: '0 1.8px 7.2px 0 #0003',
-  TEXT_PRIMARY: '#1a1a1a',
-  TEXT_SECONDARY: '#666666',
-  BORDER: 'rgba(0, 0, 0, 0.05)',
-  HOVER_BG: 'rgba(74, 108, 247, 0.15)',
-  FIELD_BG: '#f7faff',
-  FIELD_BORDER: '#b6c2d9',
-  ACCENT_INPUT: '#4a6cf7',
-};
 
 const Container = styled.div`
   min-height: 100vh;
@@ -149,9 +132,7 @@ const ThemeToggle = styled.button`
   }
 `;
 const LoginCard = styled.form`
-  background: ${({ theme }) => theme.CARD};
-  box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
-  border-radius: 14px;
+  ${clayCardStyle}
   padding: 2.2rem 2rem 1.7rem 2rem;
   margin-bottom: 1.2rem;
   display: flex;
@@ -206,28 +187,32 @@ const Label = styled.label`
 const InputGroup = styled.div`
   display: flex;
   align-items: center;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 10px;
+  border-radius: ${CARD_RADIUS_MD};
   padding: 0 12px;
-  transition: border 0.18s;
-  &:focus-within { border-color: ${({ theme }) => theme.ACCENT_INPUT}; }
+  transition: all 0.18s;
+  &:focus-within {
+    /* The focus state is handled by the neumorphFieldStyle */
+  }
 `;
 const Input = styled.input`
+  ${neumorphFieldStyle}
   border: none;
-  background: none;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 1.08rem;
-  padding: 13px 0;
+  padding: 13px 12px;
   width: 100%;
-  &:focus { outline: none; }
+  
+  /* Override neumorphFieldStyle padding if needed */
+  & {
+    padding: 13px 12px;
+  }
   
   /* Prevent autofill from changing theme style */
   &:-webkit-autofill,
   &:-webkit-autofill:hover,
   &:-webkit-autofill:focus,
   &:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px ${({ theme }) => theme.FIELD_BG} inset !important;
+    -webkit-box-shadow: 0 0 0 1000px ${({ theme }) => getFieldPalette(theme).bg} inset !important;
     -webkit-text-fill-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
     caret-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
     transition: background-color 5000s ease-in-out 0s;
@@ -242,20 +227,15 @@ const ToggleButton = styled.button`
   display: flex;
   align-items: center;
 `;
-const Button = styled.button`
-  background: ${({ theme }) => theme.ACCENT};
-  color: #fff;
-  border: none;
-  border-radius: 10px;
+const Button = styled.button.attrs({ $variant: 'primary' })`
+  ${clayButtonStyle}
+  border-radius: ${CARD_RADIUS_MD};
   padding: 13px 0;
   font-size: 1.08rem;
   font-weight: 600;
   cursor: pointer;
   margin-top: 8px;
-  transition: background 0.18s;
   width: 100%;
-  box-shadow: 0 2px 8px #6366f122;
-  &:hover { background: #4f46e5; }
 `;
 const ErrorMsg = styled.div`
   color: #ef4444;
@@ -271,38 +251,31 @@ const LoginModeSwitch = styled.div`
   display: flex;
   gap: 2px;
   margin-bottom: 16px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#1f1f1f' : '#e5e7eb'};
-  border-radius: 12px;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border-radius: ${CARD_RADIUS_LG};
   padding: 4px;
   position: relative;
+  border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
 `;
 
 const SwitchOption = styled.button<{ $active: boolean }>`
+  ${clayButtonStyle}
   flex: 1;
-  background: ${({ $active, theme }) =>
-    $active
-      ? theme.ACCENT || '#4a6cf7'
-      : 'transparent'};
-  color: ${({ $active, theme }) =>
-    $active
-      ? '#fff'
-      : theme.TEXT_SECONDARY};
-  border: none;
-  border-radius: 10px;
+  border-radius: ${CARD_RADIUS_MD};
   padding: 10px 16px;
   font-size: 0.95rem;
   font-weight: ${({ $active }) => $active ? '600' : '500'};
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1;
   
-  &:hover {
-    ${({ $active, theme }) => !$active && `
-      background: ${theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
-      color: ${theme.TEXT_PRIMARY};
-    `}
-  }
+  /* Use variant based on active state */
+  ${({ $active }) => $active ? `
+    $variant: 'primary';
+  ` : `
+    $variant: 'secondary';
+  `}
   
   &:active {
     transform: scale(0.98);

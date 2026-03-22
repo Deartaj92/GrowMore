@@ -30,6 +30,17 @@ import {
     Sensors as NfcIcon,
 } from '@mui/icons-material';
 import { rfidOfflineService } from '../services/rfidOfflineService';
+import {
+    clayCardStyle,
+    clayButtonStyle,
+    clayInputStyle,
+    clayInsetStyle,
+    getDashboardPalette,
+    getButtonPalette,
+    getLayoutPalette,
+    CARD_RADIUS_LG,
+    CARD_RADIUS_MD,
+} from '../styles/DesignSystem';
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 
@@ -73,34 +84,35 @@ const rippleRed = keyframes`
 
 const Page = styled.div`
   width: 100%;
-  height: 100%;
-  background: ${({ theme }) => theme.BG};
+  min-height: 100%;
+  background: ${({ theme }) => getLayoutPalette(theme).shellBg};
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
   box-sizing: border-box;
-  overflow-y: auto;
 
   @media (max-width: 768px) { padding: 0.5rem; gap: 0.5rem; }
 `;
 
 const TopBar = styled.div`
+  ${clayCardStyle}
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
+  padding: 0.8rem 1rem;
 `;
 
 const Title = styled.h1`
   margin: 0;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: ${({ theme }) => getDashboardPalette(theme).titleText};
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 
   svg { color: ${({ theme }) => theme.ACCENT}; }
 `;
@@ -130,11 +142,11 @@ const OfflineBadge = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  background: rgba(239, 68, 68, 0.1);
+  padding: 5px 11px;
+  background: rgba(239, 68, 68, 0.14);
   color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.26);
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
   animation: ${pulse} 2s infinite;
@@ -144,11 +156,11 @@ const SyncBadge = styled.div<{ $syncing?: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  background: rgba(59, 130, 246, 0.1);
+  padding: 5px 11px;
+  background: rgba(59, 130, 246, 0.14);
   color: #3b82f6;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.26);
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
@@ -175,13 +187,10 @@ const SyncOverlay = styled.div`
 `;
 
 const SyncModal = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 24px;
+  ${clayCardStyle}
   width: 100%;
   max-width: 450px;
   padding: 2rem;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -219,37 +228,33 @@ const SyncSuccessIcon = styled.div`
 `;
 
 const CloseBtn = styled.button`
+  ${clayButtonStyle}
   width: 100%;
   padding: 0.8rem;
-  background: ${({ theme }) => theme.ACCENT};
-  color: white;
-  border: none;
-  border-radius: 12px;
   font-weight: 700;
-  cursor: pointer;
   margin-top: 0.5rem;
-  transition: transform 0.2s;
-  &:hover { transform: translateY(-2px); }
-  &:active { transform: translateY(0); }
 `;
 
 const ProminentDate = styled.div`
+  ${clayInsetStyle}
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   text-align: right;
+  padding: 0.55rem 0.9rem;
+  border-radius: ${CARD_RADIUS_LG};
 
   .date-day {
     font-size: 0.72rem;
     font-weight: 700;
-    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    color: ${({ theme }) => getDashboardPalette(theme).subtleText};
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 2px;
   }
 
   .date-full {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 800;
     color: ${({ theme }) => theme.ACCENT};
   }
@@ -263,8 +268,8 @@ const ProminentDate = styled.div`
 
 const MainGrid = styled.div`
   display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 0.75rem;
   flex: 1;
   min-height: 0;
 
@@ -276,21 +281,19 @@ const MainGrid = styled.div`
 // ── Scanner Card ───────────────────────────────────────────────────────────────
 
 const ScannerCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 16px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayCardStyle}
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.2rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 `;
 
 const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
+  ${clayInsetStyle}
+  width: 188px;
+  height: 188px;
+  border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -299,7 +302,7 @@ const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
   background: ${({ $status }) =>
         $status === 'success' ? 'rgba(34,197,94,0.12)' :
             $status === 'error' ? 'rgba(239,68,68,0.12)' :
-                'rgba(59,130,246,0.08)'};
+                'rgba(59,130,246,0.06)'};
   animation: ${({ $status }) =>
         $status === 'success' ? css`${rippleGreen} 0.6s ease-out` :
             $status === 'error' ? css`${rippleRed} 0.6s ease-out` :
@@ -312,7 +315,7 @@ const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
 const ScannedImage = styled.img`
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: 24px;
   object-fit: cover;
   animation: ${fadeIn} 0.5s ease-out;
   border: 4px solid #22c55e;
@@ -340,7 +343,7 @@ const HiddenInput = styled.input`
 `;
 
 const StatusText = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 700;
   color: ${({ $status }) =>
         $status === 'success' ? '#22c55e' :
@@ -357,18 +360,10 @@ const SubText = styled.div`
 `;
 
 const DateSelect = styled.input`
+  ${clayInputStyle}
   width: 100%;
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
   box-sizing: border-box;
-  outline: none;
   cursor: pointer;
-
-  &:focus { border-color: ${({ theme }) => theme.ACCENT}; }
 `;
 
 const StatsRow = styled.div`
@@ -379,9 +374,10 @@ const StatsRow = styled.div`
 `;
 
 const StatBox = styled.div<{ $color: string }>`
-  background: ${({ $color }) => $color}18;
-  border: 1px solid ${({ $color }) => $color}33;
-  border-radius: 10px;
+  ${clayInsetStyle}
+  background: ${({ $color }) => `${$color}16`};
+  border-color: ${({ $color }) => `${$color}33`};
+  border-radius: ${CARD_RADIUS_MD};
   padding: 0.75rem;
   text-align: center;
 `;
@@ -402,12 +398,9 @@ const StatLabel = styled.div`
 // ── Feed Panel ────────────────────────────────────────────────────────────────
 
 const FeedCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 16px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayCardStyle}
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
   overflow: hidden;
 `;
 
@@ -416,7 +409,7 @@ const FeedHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  border-bottom: 1px solid ${({ theme }) => getDashboardPalette(theme).divider};
 `;
 
 const FeedTitle = styled.div`
@@ -431,24 +424,14 @@ const FeedTitle = styled.div`
 `;
 
 const ClearBtn = styled.button`
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  ${clayButtonStyle}
+  color: ${({ theme }) => getButtonPalette(theme).secondaryText};
   font-size: 0.78rem;
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 6px;
-  transition: all 0.2s;
-
-  &:hover { background: ${({ theme }) => theme.HOVER_BG}; color: ${({ theme }) => theme.TEXT_PRIMARY}; }
-`;
-
-const TestBtn = styled(ClearBtn)`
-  color: ${({ theme }) => theme.ACCENT};
-  &:hover { background: rgba(59, 130, 246, 0.1); color: ${({ theme }) => theme.ACCENT}; }
+  padding: 0.35rem 0.7rem;
+  min-height: 32px;
 `;
 
 const FeedList = styled.div`
@@ -466,28 +449,28 @@ const FeedSection = styled.div`
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  border-right: 1px solid ${({ theme }) => theme.BORDER};
+  border-right: 1px solid ${({ theme }) => getDashboardPalette(theme).divider};
   &:last-child { border-right: none; }
 
   @media (max-width: 1100px) {
     border-right: none;
-    border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+    border-bottom: 1px solid ${({ theme }) => getDashboardPalette(theme).divider};
     &:last-child { border-bottom: none; }
   }
 `;
 
 const SectionHeader = styled.div<{ $mode?: 'student' | 'employee' }>`
   padding: 0.6rem 1rem;
-  background: ${({ theme, $mode }) => $mode === 'employee' ? 'rgba(168, 85, 247, 0.08)' : theme.HOVER_BG};
-  font-size: 0.8rem;
+  background: ${({ theme, $mode }) => $mode === 'employee' ? 'rgba(168, 85, 247, 0.1)' : getDashboardPalette(theme).selectionBg};
+  font-size: 0.78rem;
   font-weight: 700;
-  color: ${({ theme, $mode }) => $mode === 'employee' ? '#a855f7' : theme.TEXT_SECONDARY};
+  color: ${({ theme, $mode }) => $mode === 'employee' ? '#a855f7' : getDashboardPalette(theme).subtleText};
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid ${({ theme, $mode }) => $mode === 'employee' ? 'rgba(168, 85, 247, 0.2)' : theme.BORDER};
+  border-bottom: 1px solid ${({ theme, $mode }) => $mode === 'employee' ? 'rgba(168, 85, 247, 0.24)' : getDashboardPalette(theme).divider};
 `;
 
 const SectionBody = styled.div`
@@ -497,11 +480,12 @@ const SectionBody = styled.div`
 `;
 
 const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType?: string; $new?: boolean }>`
+  ${clayInsetStyle}
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: ${CARD_RADIUS_MD};
   border: 1px solid ${({ $type, $personType }) =>
         $type === 'success' ? ($personType === 'employee' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(34,197,94,0.25)') :
             $type === 'error' ? 'rgba(239,68,68,0.25)' :
@@ -583,26 +567,17 @@ const EmptyFeed = styled.div`
 `;
 
 const MobileNfcBtn = styled.button<{ $active?: boolean }>`
-  background: ${({ $active }) => $active ? '#22c55e' : 'rgba(59, 130, 246, 0.1)'};
+  ${clayButtonStyle}
+  background: ${({ $active, theme }) => $active ? getButtonPalette(theme).primaryBg : undefined};
   color: ${({ $active }) => $active ? '#fff' : '#3b82f6'};
   border: 1px solid ${({ $active }) => $active ? '#22c55e' : 'rgba(59, 130, 246, 0.2)'};
   padding: 0.6rem 1.2rem;
-  border-radius: 12px;
   font-size: 0.85rem;
   font-weight: 700;
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: ${({ $active }) => $active ? '0 4px 15px rgba(34, 197, 94, 0.3)' : 'none'};
-
-  &:hover { 
-    transform: translateY(-2px);
-    background: ${({ $active }) => $active ? '#16a34a' : 'rgba(59, 130, 246, 0.15)'};
-  }
-  
-  &:active { transform: translateY(0); }
 
   @media (min-width: 1200px) {
     display: none; /* Hide on large desktop screens */
@@ -636,26 +611,20 @@ interface ScanResult {
 }
 
 const SecondaryBtn = styled.button`
-  background: ${({ theme }) => theme.HOVER_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  ${clayButtonStyle}
   padding: 0.5rem 1rem;
-  border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 600;
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.2s;
-  &:hover { background: ${({ theme }) => theme.BORDER}; }
 `;
 
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -664,13 +633,10 @@ const ModalOverlay = styled.div`
 `;
 
 const ModalContent = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 20px;
+  ${clayCardStyle}
   width: 90%;
   max-width: 450px;
   padding: 2rem;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
 `;
 
 const FormGroup = styled.div`
@@ -681,22 +647,16 @@ const Label = styled.label`
   display: block;
   font-size: 0.8rem;
   font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  color: ${({ theme }) => getDashboardPalette(theme).subtleText};
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 const TimeInput = styled.input`
+  ${clayInputStyle}
   width: 100%;
-  padding: 0.75rem;
-  border-radius: 10px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 1rem;
-  outline: none;
-  &:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
 `;
 
 
@@ -726,8 +686,6 @@ const RFIDAttendancePage: React.FC = () => {
 
     const [showSettings, setShowSettings] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
-    const [testScanStates, setTestScanStates] = useState<Record<string, 'in' | 'out'>>({});
-
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
@@ -1252,110 +1210,6 @@ const RFIDAttendancePage: React.FC = () => {
         setPresentCount(0);
         setUnknownCount(0);
         setDupCount(0);
-        setTestScanStates({});
-    };
-
-    const simulateScan = () => {
-        if (isProcessingRef.current) return;
-
-        // Reset any existing timer
-        if (resetTimerRef.current) {
-            clearTimeout(resetTimerRef.current);
-            resetTimerRef.current = null;
-        }
-
-        const dummyNames = ['Ali Khan', 'Fatima Zahra', 'Umar Farooq', 'Ayesha Bibi', 'Zainab Ahmed'];
-        const dummyPhotos = [
-            'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=160&h=160&fit=crop',
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&h=160&fit=crop',
-            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160&h=160&fit=crop',
-            'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=160&h=160&fit=crop',
-            'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=160&h=160&fit=crop'
-        ];
-        const dummySubs = ['Class 5-A \u2022 Roll: 102', 'Grade 8 \u2022 Roll: 045', 'Staff \u2022 Teacher', 'Class 3-C \u2022 Roll: 012', 'Staff \u2022 Admin'];
-        const randomIdx = Math.floor(Math.random() * dummyNames.length);
-        const name = dummyNames[randomIdx];
-        const photo = dummyPhotos[randomIdx];
-        const sub = dummySubs[randomIdx];
-        const isEmployee = sub.includes('Staff');
-        const currentState = testScanStates[name];
-
-
-        // --- Handle Existing State (Duplicate or Check-out) ---
-        if (currentState === 'out') {
-            setScanStatus('error');
-            setStatusMsg(`Already Left: ${name}`);
-            setDupCount(p => p + 1);
-            addFeedItem({
-                type: 'warn',
-                name: `${name} (Test)`,
-                sub: `Already checked out for today`,
-                time: formatTime(),
-                personType: isEmployee ? 'employee' : 'student',
-            });
-            showToast('Already Checked Out!', 'error');
-            return;
-        }
-
-        if (currentState === 'in') {
-            if (isEmployee) {
-                // Employee Check-out
-                setScanStatus('success');
-                setStatusMsg(`OUT ✓ ${name}`);
-                setScannedPerson({ name, picture_url: photo });
-                setTestScanStates(prev => ({ ...prev, [name]: 'out' }));
-                addFeedItem({
-                    type: 'success',
-                    name: `${name} (Test OUT)`,
-                    sub: `Checked Out • Staff`,
-                    time: formatTime(),
-                    personType: 'employee',
-                });
-                showToast('Employee Checked Out!', 'success');
-                return;
-            } else {
-                // Student Duplicate
-                setScanStatus('error');
-                setStatusMsg(`Already marked: ${name}`);
-                setDupCount(p => p + 1);
-                addFeedItem({
-                    type: 'warn',
-                    name: `${name} (Test)`,
-                    sub: `Duplicate scan detected`,
-                    time: formatTime(),
-                    personType: 'student',
-                });
-                showToast('Already Marked Present!', 'error');
-                return;
-            }
-        }
-
-        // --- Handle First Scan (New Entry) ---
-        setTestScanStates(prev => ({ ...prev, [name]: 'in' }));
-        const isLate = Math.random() > 0.7;
-
-        setScanStatus('success');
-        setStatusMsg(`${isEmployee ? 'IN ' : ''}✓ ${name}`);
-        setScannedPerson({ name, picture_url: photo });
-        setPresentCount(p => p + 1);
-
-        addFeedItem({
-            type: 'success',
-            name: `${name} (Test IN)`,
-            sub: `${isLate ? 'LATE • ' : ''}${sub}`,
-            time: formatTime(),
-            personType: isEmployee ? 'employee' : 'student',
-        });
-
-        showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
-
-        // Start fresh 4s timer
-        resetTimerRef.current = setTimeout(() => {
-            setScanStatus('idle');
-            setStatusMsg('Waiting for card scan...');
-            setScannedPerson(null);
-            resetTimerRef.current = null;
-        }, 4000);
     };
     const scanIcon =
         scanStatus === 'success' ? <CheckCircle style={{ fontSize: 56 }} /> :
@@ -1566,10 +1420,6 @@ const RFIDAttendancePage: React.FC = () => {
                             Live Scan Feed
                         </FeedTitle>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
-                            <TestBtn theme={themeObj} onClick={simulateScan}>
-                                <Scan style={{ fontSize: 14 }} />
-                                Test Scan
-                            </TestBtn>
                             <ClearBtn theme={themeObj} onClick={handleClear}>
                                 <RefreshCw style={{ fontSize: 14 }} />
                                 Clear
@@ -1724,3 +1574,4 @@ const RFIDAttendancePage: React.FC = () => {
 };
 
 export default RFIDAttendancePage;
+

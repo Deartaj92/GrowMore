@@ -58,6 +58,36 @@ export const ContentArea = styled.main`
   background: ${props => props.theme.BG};
   padding: 0;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) =>
+    isDark(theme) ? 'rgba(255, 255, 255, 0.22) transparent' : 'rgba(15, 23, 42, 0.18) transparent'};
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 6px 0;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) =>
+      isDark(theme) ? 'rgba(255, 255, 255, 0.18)' : 'rgba(15, 23, 42, 0.16)'};
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+    min-height: 36px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${({ theme }) =>
+      isDark(theme) ? 'rgba(255, 255, 255, 0.28)' : 'rgba(15, 23, 42, 0.24)'};
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
 `;
 
 export const Overlay = styled.div<{ open: boolean }>`
