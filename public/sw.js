@@ -6,7 +6,9 @@ const STATIC_ASSETS = [
     '/favicon.ico',
     '/manifest.json',
     '/icon-192.png',
-    '/icon-512.png'
+    '/icon-512.png',
+    '/patternLogo.png',
+    '/notification-icon.png'
 ];
 
 const canCacheResponse = (response) => {

@@ -9,12 +9,18 @@ interface LoaderProps {
 }
 
 const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullScreenDark = false }) => {
-  const primaryLogo = `${process.env.PUBLIC_URL || ''}/icon-192.png`;
-  const fallbackLogo = `${process.env.PUBLIC_URL || ''}/notification-icon.png`;
+  const primaryLogo = `${process.env.PUBLIC_URL || ''}/patternLogo.png`;
+  const fallbackLogo = `${process.env.PUBLIC_URL || ''}/icon-192.png`;
+  const finalFallbackLogo = `${process.env.PUBLIC_URL || ''}/notification-icon.png`;
   const [logoSrc, setLogoSrc] = React.useState(primaryLogo);
 
   React.useEffect(() => {
     setLogoSrc(primaryLogo);
+  }, [primaryLogo]);
+
+  React.useEffect(() => {
+    const preloadLogo = new Image();
+    preloadLogo.src = primaryLogo;
   }, [primaryLogo]);
 
   const content = (
@@ -25,9 +31,16 @@ const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullS
             src={logoSrc}
             alt="Grow More"
             draggable={false}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
             onError={() => {
               if (logoSrc !== fallbackLogo) {
                 setLogoSrc(fallbackLogo);
+                return;
+              }
+              if (logoSrc !== finalFallbackLogo) {
+                setLogoSrc(finalFallbackLogo);
               }
             }}
           />
