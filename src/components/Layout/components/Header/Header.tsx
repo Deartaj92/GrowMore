@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getUserPermissions } from '../../../../services/permissionService';
 import { shouldShowMenuItem, pathToPermissionKey } from '../../../../utils/permissionMapping';
@@ -9,6 +9,7 @@ import type { Examination } from '../../../../types/examinations';
 import { fetchUnreadCounts, UnreadCounts } from '../../../../services/notificationService';
 import {
   Refresh as RefreshIcon,
+  Search as SearchIcon,
   AccountCircle as UserIcon,
   Dashboard as DashboardIcon,
   People as PeopleIcon,
@@ -67,6 +68,7 @@ import { clayCardStyle, isDark, clayInsetStyle, getLayoutPalette, CARD_RADIUS_LG
 import { StudentInfo, ParentInfo, InstituteProfile } from '../../types';
 import NotificationBell from '../../../NotificationBell';
 import ProfileDropdown from '../ProfileDropdown/ProfileDropdown';
+import { getSequenceNumber } from '../../../../utils/studentUtils';
 
 // Mac-style window controls (for Electron)
 const MacWindowControls = styled.div`
@@ -893,6 +895,394 @@ const ProfileAvatarContainer = styled(HeaderIconCircle) <{ $hasImage: boolean }>
   }
 `;
 
+type SearchStudentRecord = {
+  id: number;
+  name: string;
+  father_name?: string | null;
+  class_id: number;
+  section_id: number;
+  picture_url?: string | null;
+  roll_number?: string | null;
+  status?: string | null;
+};
+
+type SearchEmployeeRecord = {
+  id: number;
+  name: string;
+  role?: string | null;
+  designation?: string | null;
+  department?: string | null;
+  mobile?: string | null;
+  picture_url?: string | null;
+  status?: string | null;
+};
+
+type SearchClassRecord = {
+  id: number;
+  name: string;
+  has_sections?: boolean | null;
+};
+
+type SearchSectionRecord = {
+  id: number;
+  name: string;
+};
+
+type SearchPageItem = {
+  id: string;
+  title: string;
+  description: string;
+  path: string;
+  category: string;
+  color?: string;
+};
+
+type SearchResultItem =
+  | {
+      type: 'student';
+      id: string;
+      title: string;
+      subtitle: string;
+      meta: string;
+      imageUrl?: string | null;
+      path: string;
+      accent?: string;
+      status?: string | null;
+    }
+  | {
+      type: 'employee';
+      id: string;
+      title: string;
+      subtitle: string;
+      meta: string;
+      imageUrl?: string | null;
+      path: string;
+      accent?: string;
+    }
+  | {
+      type: 'page';
+      id: string;
+      title: string;
+      subtitle: string;
+      meta: string;
+      path: string;
+      accent?: string;
+    };
+
+const GlobalSearchWrapper = styled.div`
+  position: relative;
+  flex: 0 0 auto;
+  width: 38px;
+  min-width: 38px;
+  -webkit-app-region: no-drag;
+  z-index: 100003;
+  transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.is-open {
+    width: clamp(300px, 34vw, 440px);
+    min-width: 280px;
+  }
+
+  @media (max-width: 1180px) {
+    &.is-open {
+      min-width: 240px;
+    }
+  }
+
+  @media (max-width: 980px) {
+    &.is-open {
+      width: min(420px, calc(100vw - 24px));
+      min-width: min(420px, calc(100vw - 24px));
+    }
+  }
+
+  @media (max-width: 700px) {
+    width: 36px;
+    min-width: 36px;
+    margin-left: auto;
+
+    &.is-open {
+      position: fixed;
+      top: 56px;
+      left: auto;
+      right: 12px;
+      width: calc(100vw - 24px);
+      min-width: calc(100vw - 24px);
+      z-index: 100004;
+    }
+  }
+`;
+
+const GlobalSearchInputShell = styled.div<{ $open: boolean }>`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: ${({ $open }) => ($open ? 'flex-start' : 'center')};
+  gap: ${({ $open }) => ($open ? '10px' : '0')};
+  width: 100%;
+  height: ${({ $open }) => ($open ? '38px' : '38px')};
+  min-height: ${({ $open }) => ($open ? '38px' : '38px')};
+  padding: 0 ${({ $open }) => ($open ? '14px' : '0')};
+  border-radius: ${({ $open }) => ($open ? CARD_RADIUS_LG : '999px')};
+  border: 1px solid ${({ theme, $open }) =>
+    $open ? theme.ACCENT : getLayoutPalette(theme).surfaceBorder};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  box-shadow: ${({ theme, $open }) =>
+    $open
+      ? `0 0 0 3px ${theme.ACCENT}22, ${getLayoutPalette(theme).surfaceShadow}`
+      : getLayoutPalette(theme).surfaceShadow};
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+
+  ${clayInsetStyle}
+
+  &:focus-within {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: ${({ theme }) => `0 0 0 3px ${theme.ACCENT}22, ${getLayoutPalette(theme).surfaceHoverShadow}`};
+  }
+
+  @media (max-width: 700px) {
+    background: ${({ theme }) => isDark(theme) ? '#252525' : '#ffffff'};
+    box-shadow: ${({ theme, $open }) =>
+      $open
+        ? (isDark(theme)
+            ? `0 0 0 3px ${theme.ACCENT}22, 0 14px 30px rgba(0, 0, 0, 0.34)`
+            : `0 0 0 3px ${theme.ACCENT}22, 0 14px 26px rgba(15, 23, 42, 0.16)`)
+        : (isDark(theme)
+            ? '0 6px 16px rgba(0, 0, 0, 0.28)'
+            : '0 6px 14px rgba(15, 23, 42, 0.12)')};
+  }
+`;
+
+const GlobalSearchIcon = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => getLayoutPalette(theme).shellSoftText};
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+
+  svg {
+    font-size: 18px;
+    display: block;
+    margin: 0;
+  }
+`;
+
+const GlobalSearchInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.92rem;
+  font-weight: 500;
+  outline: none;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+
+  &::placeholder {
+    color: ${({ theme }) => getLayoutPalette(theme).shellSoftText};
+    opacity: 0.95;
+  }
+
+  &:focus,
+  &:focus-visible,
+  &:active {
+    outline: none;
+    box-shadow: none;
+    border: none;
+  }
+`;
+
+const GlobalSearchDropdown = styled.div`
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  padding: 10px;
+  border-radius: 22px;
+  border: 1px solid ${({ theme }) => isDark(theme) ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)'};
+  background: ${({ theme }) => isDark(theme) ? '#262626' : '#ffffff'};
+  box-shadow: ${({ theme }) =>
+    isDark(theme)
+      ? '0 18px 40px rgba(0, 0, 0, 0.38)'
+      : '0 18px 40px rgba(15, 23, 42, 0.16)'};
+  max-height: min(68vh, 560px);
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => isDark(theme) ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.12)'};
+    border-radius: 999px;
+  }
+
+  @media (max-width: 700px) {
+    top: calc(100% + 8px);
+    max-height: min(62vh, 520px);
+  }
+`;
+
+const SearchSection = styled.div`
+  & + & {
+    margin-top: 8px;
+  }
+`;
+
+const SearchSectionLabel = styled.div`
+  padding: 6px 8px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: ${({ theme }) => getLayoutPalette(theme).shellSoftText};
+`;
+
+const SearchResultButton = styled.button<{ $active: boolean; $accent?: string }>`
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid ${({ theme, $active, $accent }) =>
+    $active ? ($accent || theme.ACCENT) : 'transparent'};
+  border-radius: 16px;
+  background: ${({ theme, $active, $accent }) =>
+    $active
+      ? `${$accent || theme.ACCENT}12`
+      : isDark(theme)
+        ? 'rgba(255,255,255,0.025)'
+        : 'rgba(255,255,255,0.55)'};
+  box-shadow: ${({ theme, $active }) =>
+    $active ? getLayoutPalette(theme).surfaceShadow : 'none'};
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  text-align: left;
+
+  &:hover {
+    border-color: ${({ theme, $accent }) => ($accent || theme.ACCENT)};
+    background: ${({ theme, $accent }) => `${$accent || theme.ACCENT}12`};
+    transform: translateY(-1px);
+  }
+`;
+
+const SearchResultAvatar = styled.div<{ $accent?: string }>`
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: ${({ theme, $accent }) => $accent || theme.ACCENT};
+  background: ${({ theme, $accent }) => `${$accent || theme.ACCENT}18`};
+  border: 1px solid ${({ theme, $accent }) => `${$accent || theme.ACCENT}33`};
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const SearchResultText = styled.div`
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const SearchResultTitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+`;
+
+const SearchResultTitle = styled.div`
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const SearchStatusBadge = styled.span<{ $status?: string | null }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: capitalize;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: ${({ $status }) =>
+    $status === 'active' ? '#22c55e' :
+    $status === 'inactive' ? '#ef4444' :
+    $status === 'suspended' ? '#f59e0b' :
+    '#94a3b8'};
+  background: ${({ $status }) =>
+    $status === 'active' ? 'rgba(34, 197, 94, 0.12)' :
+    $status === 'inactive' ? 'rgba(239, 68, 68, 0.12)' :
+    $status === 'suspended' ? 'rgba(245, 158, 11, 0.12)' :
+    'rgba(148, 163, 184, 0.12)'};
+  border: 1px solid ${({ $status }) =>
+    $status === 'active' ? 'rgba(34, 197, 94, 0.24)' :
+    $status === 'inactive' ? 'rgba(239, 68, 68, 0.24)' :
+    $status === 'suspended' ? 'rgba(245, 158, 11, 0.24)' :
+    'rgba(148, 163, 184, 0.24)'};
+`;
+
+const SearchResultSubtitle = styled.div`
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const SearchResultMeta = styled.div`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: ${({ theme }) => getLayoutPalette(theme).shellSoftText};
+  background: ${({ theme }) => isDark(theme) ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)'};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  white-space: nowrap;
+`;
+
+const SearchEmptyState = styled.div`
+  padding: 18px 14px;
+  text-align: center;
+  color: ${({ theme }) => getLayoutPalette(theme).shellSoftText};
+  font-size: 0.84rem;
+  line-height: 1.45;
+`;
+
 interface HeaderProps {
   user: any;
   studentInfo: StudentInfo | null;
@@ -944,6 +1334,7 @@ const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { user: authUser } = useAuth();
+  const searchSchoolId = authUser?.school_id || user?.school_id;
 
   // State for published examinations
   const [publishedExaminations, setPublishedExaminations] = useState<Examination[]>([]);
@@ -1163,8 +1554,18 @@ const Header: React.FC<HeaderProps> = ({
     complaints: 0,
     suggestions: 0,
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSearchIndex, setActiveSearchIndex] = useState(-1);
+  const [searchStudents, setSearchStudents] = useState<SearchStudentRecord[]>([]);
+  const [searchEmployees, setSearchEmployees] = useState<SearchEmployeeRecord[]>([]);
+  const [searchClasses, setSearchClasses] = useState<SearchClassRecord[]>([]);
+  const [searchSections, setSearchSections] = useState<SearchSectionRecord[]>([]);
   const [mobileOpenMenus, setMobileOpenMenus] = useState<Set<string>>(new Set());
   const menuLeaveTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({});
+  const globalSearchRef = useRef<HTMLDivElement>(null);
+  const globalSearchInputRef = useRef<HTMLInputElement>(null);
+  const searchItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const studentMenuRef = useRef<HTMLDivElement>(null);
   const studentButtonRef = useRef<HTMLButtonElement>(null);
   const studentDropdownRef = useRef<HTMLDivElement>(null);
@@ -1186,6 +1587,83 @@ const Header: React.FC<HeaderProps> = ({
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isRestrictedRole || !searchSchoolId) {
+      setSearchStudents([]);
+      setSearchEmployees([]);
+      setSearchClasses([]);
+      setSearchSections([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadSearchData = async () => {
+      try {
+        const [studentsResult, employeesResult, classesResult, sectionsResult] = await Promise.all([
+          supabase
+            .from('students')
+            .select('id, name, father_name, class_id, section_id, picture_url, roll_number, status')
+            .eq('school_id', searchSchoolId),
+          supabase
+            .from('staff')
+            .select('*')
+            .eq('school_id', searchSchoolId)
+            .order('name', { ascending: true }),
+          supabase
+            .from('classes')
+            .select('id, name, has_sections')
+            .eq('school_id', searchSchoolId),
+          supabase
+            .from('sections')
+            .select('id, name')
+            .eq('school_id', searchSchoolId),
+        ]);
+
+        if (!isMounted) return;
+
+        setSearchStudents(studentsResult.data || []);
+        setSearchEmployees(employeesResult.data || []);
+        setSearchClasses(classesResult.data || []);
+        setSearchSections(sectionsResult.data || []);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Error loading global search data:', error);
+        setSearchStudents([]);
+        setSearchEmployees([]);
+        setSearchClasses([]);
+        setSearchSections([]);
+      }
+    };
+
+    loadSearchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isRestrictedRole, searchSchoolId]);
+
+  useEffect(() => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    setActiveSearchIndex(-1);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (globalSearchRef.current && !globalSearchRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+        setSearchQuery('');
+        setActiveSearchIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [searchOpen]);
 
   // Update dropdown positions
   const updateDropdownPositions = () => {
@@ -2203,6 +2681,287 @@ const Header: React.FC<HeaderProps> = ({
     }).filter((item): item is NonNullable<typeof item> => item !== null);
   }, [permissionsLoaded, user?.role, userPermissions, menuItems, getDashboardPath]);
 
+  const searchablePages = useMemo<SearchPageItem[]>(() => {
+    const seen = new Set<string>();
+    const pages: SearchPageItem[] = [];
+
+    filterMenuItems.forEach((menuItem: any) => {
+      if (menuItem.hasDropdown && Array.isArray(menuItem.menuItems)) {
+        menuItem.menuItems.forEach((section: any) => {
+          (section.items || []).forEach((item: any) => {
+            if (!item?.path || seen.has(item.path)) return;
+            seen.add(item.path);
+            pages.push({
+              id: `page-${item.path}`,
+              title: item.title,
+              description: item.description || '',
+              path: item.path,
+              category: menuItem.label,
+              color: item.color,
+            });
+          });
+        });
+        return;
+      }
+
+      if (!menuItem?.path || seen.has(menuItem.path)) return;
+      seen.add(menuItem.path);
+      pages.push({
+        id: `page-${menuItem.path}`,
+        title: menuItem.label,
+        description: `Open ${menuItem.label}`,
+        path: menuItem.path,
+        category: 'Navigation',
+      });
+    });
+
+    return pages;
+  }, [filterMenuItems]);
+
+  const trimmedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const studentSearchResults = useMemo<SearchResultItem[]>(() => {
+    if (!trimmedSearchQuery) return [];
+
+    const scoredResults: Array<Extract<SearchResultItem, { type: 'student' }> & { score: number }> = [];
+
+    searchStudents.forEach((student) => {
+      const classObj = searchClasses.find((item) => item.id === student.class_id);
+      const sectionObj = searchSections.find((item) => item.id === student.section_id);
+      const classLabel = classObj?.name || 'Unknown class';
+      const sectionLabel = sectionObj?.name || '';
+      const studentName = student.name || '';
+      const fatherName = student.father_name || '';
+      const rollNumber = student.roll_number || '';
+      const sequenceNumber = getSequenceNumber(student.roll_number);
+      const nameLower = studentName.toLowerCase();
+      const fatherLower = fatherName.toLowerCase();
+      const classLower = classLabel.toLowerCase();
+      const sectionLower = sectionLabel.toLowerCase();
+      const rollLower = rollNumber.toLowerCase();
+      const sequenceLower = sequenceNumber.toLowerCase();
+      let score = 0;
+      if (nameLower.startsWith(trimmedSearchQuery)) score = Math.max(score, 950);
+      else if (nameLower.includes(trimmedSearchQuery)) score = Math.max(score, 640);
+      if (fatherLower.includes(trimmedSearchQuery)) score = Math.max(score, 260);
+      if (classLower.includes(trimmedSearchQuery)) score = Math.max(score, 220);
+      if (sectionLower.includes(trimmedSearchQuery)) score = Math.max(score, 180);
+      if (rollLower === trimmedSearchQuery) score = Math.max(score, 1200);
+      else if (rollLower.startsWith(trimmedSearchQuery)) score = Math.max(score, 980);
+      else if (rollLower.includes(trimmedSearchQuery)) score = Math.max(score, 760);
+      if (sequenceLower === trimmedSearchQuery) score = Math.max(score, 1100);
+      else if (sequenceLower.startsWith(trimmedSearchQuery)) score = Math.max(score, 900);
+
+      if (!score) return;
+      const displayId = sequenceNumber || String(student.id);
+      const classMeta = sectionLabel ? `${classLabel} - ${sectionLabel}` : classLabel;
+      const studentMeta = `${classMeta} - ${rollNumber || `Roll ${displayId}`}`;
+
+      scoredResults.push({
+        type: 'student',
+        id: `student-${student.id}`,
+        title: studentName,
+        subtitle: fatherName || classMeta,
+        meta: studentMeta,
+        imageUrl: student.picture_url,
+        path: `/students/profile/${displayId}`,
+        accent: '#3b82f6',
+        status: student.status || null,
+        score,
+      });
+    });
+
+    return scoredResults
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(({ score, ...item }) => item);
+  }, [searchClasses, searchSections, searchStudents, trimmedSearchQuery]);
+
+  const employeeSearchResults = useMemo<SearchResultItem[]>(() => {
+    if (!trimmedSearchQuery) return [];
+
+    const scoredResults: Array<Extract<SearchResultItem, { type: 'employee' }> & { score: number }> = [];
+
+    searchEmployees.forEach((employee) => {
+      const name = employee.name || '';
+      const role = employee.role || employee.designation || 'Staff member';
+      const department = employee.department || '';
+      const mobile = employee.mobile || '';
+      const status = employee.status || '';
+      const nameLower = name.toLowerCase();
+      const roleLower = role.toLowerCase();
+      const departmentLower = department.toLowerCase();
+      const mobileLower = mobile.toLowerCase();
+      const statusLower = status.toLowerCase();
+      const idLower = String(employee.id).toLowerCase();
+      let score = 0;
+
+      if (nameLower.startsWith(trimmedSearchQuery)) score = Math.max(score, 950);
+      else if (nameLower.includes(trimmedSearchQuery)) score = Math.max(score, 620);
+      if (roleLower.includes(trimmedSearchQuery)) score = Math.max(score, 320);
+      if (departmentLower.includes(trimmedSearchQuery)) score = Math.max(score, 280);
+      if (mobileLower.includes(trimmedSearchQuery)) score = Math.max(score, 260);
+      if (statusLower.includes(trimmedSearchQuery)) score = Math.max(score, 180);
+      if (idLower === trimmedSearchQuery) score = Math.max(score, 500);
+      if (['staff', 'employee', 'employees'].includes(trimmedSearchQuery)) score = Math.max(score, 140);
+      if (trimmedSearchQuery === 'teacher' && roleLower.includes('teacher')) score = Math.max(score, 220);
+
+      if (!score) return;
+
+      const subtitleParts = [role];
+      if (department) subtitleParts.push(department);
+
+      scoredResults.push({
+        type: 'employee',
+        id: `employee-${employee.id}`,
+        title: name,
+        subtitle: subtitleParts.join(' â€¢ '),
+        meta: `${status ? `${status.charAt(0).toUpperCase()}${status.slice(1)}` : 'Staff'}${mobile ? ` Â· ${mobile}` : ''}`,
+        imageUrl: employee.picture_url,
+        path: `/employees/profile/${employee.id}`,
+        accent: '#10b981',
+        score,
+      });
+    });
+
+    return scoredResults
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(({ score, ...item }) => item);
+  }, [searchEmployees, trimmedSearchQuery]);
+
+  const pageSearchResults = useMemo<SearchResultItem[]>(() => {
+    if (!trimmedSearchQuery) return [];
+
+    const scoredResults: Array<Extract<SearchResultItem, { type: 'page' }> & { score: number }> = [];
+
+    searchablePages.forEach((page) => {
+      const titleLower = page.title.toLowerCase();
+      const descriptionLower = page.description.toLowerCase();
+      const categoryLower = page.category.toLowerCase();
+      const pathLower = page.path.toLowerCase();
+      let score = 0;
+
+      if (titleLower.startsWith(trimmedSearchQuery)) score = Math.max(score, 900);
+      else if (titleLower.includes(trimmedSearchQuery)) score = Math.max(score, 560);
+      if (descriptionLower.includes(trimmedSearchQuery)) score = Math.max(score, 260);
+      if (categoryLower.includes(trimmedSearchQuery)) score = Math.max(score, 220);
+      if (pathLower.includes(trimmedSearchQuery)) score = Math.max(score, 140);
+
+      if (!score) return;
+
+      scoredResults.push({
+        type: 'page',
+        id: page.id,
+        title: page.title,
+        subtitle: page.description,
+        meta: page.category,
+        path: page.path,
+        accent: page.color || '#6366f1',
+        score,
+      });
+    });
+
+    return scoredResults
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map(({ score, ...item }) => item);
+  }, [searchablePages, trimmedSearchQuery]);
+
+  const groupedSearchResults = useMemo(() => {
+    const groups: Array<{ label: string; items: SearchResultItem[] }> = [];
+
+    if (studentSearchResults.length > 0) {
+      groups.push({ label: 'Students', items: studentSearchResults });
+    }
+    if (employeeSearchResults.length > 0) {
+      groups.push({ label: 'Staff', items: employeeSearchResults });
+    }
+    if (pageSearchResults.length > 0) {
+      groups.push({ label: 'Pages', items: pageSearchResults });
+    }
+
+    return groups;
+  }, [employeeSearchResults, pageSearchResults, studentSearchResults]);
+
+  const flattenedSearchResults = useMemo(
+    () => groupedSearchResults.flatMap((group) => group.items),
+    [groupedSearchResults]
+  );
+
+  useEffect(() => {
+    setActiveSearchIndex(-1);
+  }, [trimmedSearchQuery, groupedSearchResults]);
+
+  useEffect(() => {
+    if (activeSearchIndex >= 0 && searchItemRefs.current[activeSearchIndex]) {
+      searchItemRefs.current[activeSearchIndex]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [activeSearchIndex]);
+
+  const handleSearchResultSelect = useCallback((item: SearchResultItem) => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    setActiveSearchIndex(-1);
+    navigate(item.path, { replace: false });
+  }, [navigate]);
+
+  const openGlobalSearch = useCallback(() => {
+    setSearchOpen(true);
+    requestAnimationFrame(() => {
+      globalSearchInputRef.current?.focus();
+    });
+  }, []);
+
+  const handleGlobalSearchKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') {
+      setSearchOpen(false);
+      return;
+    }
+
+    if (!flattenedSearchResults.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      event.stopPropagation();
+      setSearchOpen(true);
+      setActiveSearchIndex((prev) => {
+        if (prev < 0) return 0;
+        return Math.min(prev + 1, flattenedSearchResults.length - 1);
+      });
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      event.stopPropagation();
+      setSearchOpen(true);
+      setActiveSearchIndex((prev) => {
+        if (prev < 0) return flattenedSearchResults.length - 1;
+        return Math.max(prev - 1, 0);
+      });
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = flattenedSearchResults[activeSearchIndex >= 0 ? activeSearchIndex : 0];
+      if (target) {
+        handleSearchResultSelect(target);
+      }
+      return;
+    }
+
+    if (event.key === 'Tab' && activeSearchIndex >= 0 && flattenedSearchResults[activeSearchIndex]) {
+      event.preventDefault();
+      handleSearchResultSelect(flattenedSearchResults[activeSearchIndex]);
+    }
+  }, [activeSearchIndex, flattenedSearchResults, handleSearchResultSelect]);
+
   const toggleMobileMenu = (menuLabel: string) => {
     setMobileOpenMenus(prev => {
       const newSet = new Set(prev);
@@ -2771,6 +3530,117 @@ const Header: React.FC<HeaderProps> = ({
           )}
         </HeaderLeft>
         <HeaderActions>
+          {!isRestrictedRole && permissionsLoaded && (
+            <GlobalSearchWrapper ref={globalSearchRef} className={searchOpen ? 'is-open' : ''}>
+              <GlobalSearchInputShell
+                $open={searchOpen}
+                onClick={() => {
+                  if (!searchOpen) {
+                    openGlobalSearch();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (!searchOpen && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    openGlobalSearch();
+                  }
+                }}
+                aria-label={searchOpen ? 'Search' : 'Open search'}
+              >
+                <GlobalSearchIcon>
+                  <SearchIcon />
+                </GlobalSearchIcon>
+                {searchOpen && (
+                  <GlobalSearchInput
+                    ref={globalSearchInputRef}
+                    type="text"
+                    autoComplete="off"
+                    value={searchQuery}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                      setSearchOpen(true);
+                    }}
+                    onFocus={() => setSearchOpen(true)}
+                    onKeyDown={handleGlobalSearchKeyDown}
+                    placeholder="Search students, staff, or pages"
+                    aria-label="Global search"
+                  />
+                )}
+              </GlobalSearchInputShell>
+              {searchOpen && (
+                <GlobalSearchDropdown>
+                  {!trimmedSearchQuery ? (
+                    <SearchEmptyState>
+                      Start typing to jump to a student profile, staff profile, or any page you can access.
+                    </SearchEmptyState>
+                  ) : groupedSearchResults.length === 0 ? (
+                    <SearchEmptyState>
+                      No matches found for "{searchQuery.trim()}". Try a name, roll number, staff role, or page title.
+                    </SearchEmptyState>
+                  ) : (
+                    (() => {
+                      let runningIndex = -1;
+
+                      return groupedSearchResults.map((group) => (
+                        <SearchSection key={group.label}>
+                          <SearchSectionLabel>{group.label}</SearchSectionLabel>
+                          {group.items.map((item) => {
+                            runningIndex += 1;
+                            const resultIndex = runningIndex;
+                            const isActive = resultIndex === activeSearchIndex;
+                            const fallbackLabel = item.title
+                              .split(' ')
+                              .map((part) => part[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase();
+
+                            return (
+                              <SearchResultButton
+                                key={item.id}
+                                ref={(element) => { searchItemRefs.current[resultIndex] = element; }}
+                                type="button"
+                                $active={isActive}
+                                $accent={item.accent}
+                                onMouseEnter={() => setActiveSearchIndex(resultIndex)}
+                                onClick={() => handleSearchResultSelect(item)}
+                              >
+                                <SearchResultAvatar $accent={item.accent}>
+                                  {item.type !== 'page' && item.imageUrl ? (
+                                    <img src={item.imageUrl} alt="" />
+                                  ) : item.type === 'student' ? (
+                                    <PeopleIcon style={{ fontSize: 18 }} />
+                                  ) : item.type === 'employee' ? (
+                                    <BadgeIcon style={{ fontSize: 18 }} />
+                                  ) : (
+                                    fallbackLabel
+                                )}
+                              </SearchResultAvatar>
+                              <SearchResultText>
+                                <SearchResultTitleRow>
+                                  <SearchResultTitle>{item.title}</SearchResultTitle>
+                                  {item.type === 'student' && item.status && (
+                                    <SearchStatusBadge $status={item.status}>
+                                      {item.status}
+                                    </SearchStatusBadge>
+                                  )}
+                                </SearchResultTitleRow>
+                                <SearchResultSubtitle>{item.subtitle}</SearchResultSubtitle>
+                              </SearchResultText>
+                                <SearchResultMeta>{item.meta}</SearchResultMeta>
+                              </SearchResultButton>
+                            );
+                          })}
+                        </SearchSection>
+                      ));
+                    })()
+                  )}
+                </GlobalSearchDropdown>
+              )}
+            </GlobalSearchWrapper>
+          )}
           {(user || studentInfo || parentInfo) && <NotificationBell />}
           <HeaderIconCircle
             role="button"
@@ -2834,3 +3704,4 @@ const Header: React.FC<HeaderProps> = ({
 };
 
 export default Header;
+

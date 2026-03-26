@@ -9,7 +9,44 @@ import Loader from './components/Loader';
 // Register Service Worker for offline support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '[::1]';
+
+    const appVersion = process.env.REACT_APP_VERSION || process.env.npm_package_version || 'dev';
+    const swUrl = `/sw.js?v=${encodeURIComponent(appVersion)}`;
+
+    if (isLocalhost) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+        });
+      });
+      if ('caches' in window) {
+        caches.keys().then((cacheNames) => {
+          cacheNames
+            .filter((cacheName) => cacheName.startsWith('growmore-'))
+            .forEach((cacheName) => caches.delete(cacheName));
+        });
+      }
+      return;
+    }
+
+    navigator.serviceWorker.register(swUrl).then((registration) => {
+      registration.update();
+
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      });
+    }).catch(err => {
       console.log('SW registration failed: ', err);
     });
   });

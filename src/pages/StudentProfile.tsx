@@ -31,7 +31,6 @@ import {
   MenuItem,
   Skeleton,
 } from '@mui/material';
-import Loader from '../components/Loader';
 import {
   Person,
   School,
@@ -109,11 +108,25 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
+import { CARD_RADIUS_LG, CARD_RADIUS_MD } from '../styles/DesignSystem';
 
 const pulseAnimation = keyframes`
   0%, 100% { opacity: 0.2; }
   50% { opacity: 0.8; }
 `;
+
+const getClayInsetSx = (theme: Theme) => ({
+  background: theme.palette.mode === 'dark'
+    ? 'rgba(0, 0, 0, 0.2)'
+    : 'rgba(255, 255, 255, 0.6)',
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(226, 232, 240, 0.6)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? 'inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.01)'
+    : 'inset 0 2px 4px rgba(15, 23, 42, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(8px)',
+});
 
 // Extend the Theme type to include our custom colors
 declare module '@mui/material/styles' {
@@ -273,23 +286,34 @@ const statusColors: Record<string, string> = {
 // Styled Components
 const ProfileContainer = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
+  background: theme.palette.mode === 'dark'
+    ? `linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, ${alpha(theme.palette.background.default, 0.94)} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
+  border: `1px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(226, 232, 240, 0.85)'}`,
+  borderRadius: CARD_RADIUS_LG,
+  boxShadow: theme.palette.mode === 'dark'
+    ? '0 4px 12px rgba(0, 0, 0, 0.3)'
+    : '0 4px 12px rgba(15, 23, 42, 0.03)',
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+    borderRadius: CARD_RADIUS_MD,
   }
 }));
 
 const GlassCard = muiStyled(Paper)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.8)
-    : alpha(theme.palette.background.paper, 0.7),
+    ? `linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, ${alpha(theme.palette.background.paper, 0.96)} 18%, ${theme.palette.background.default} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
   backdropFilter: 'blur(10px)',
-  borderRadius: 16,
-  border: `1px solid ${theme.palette.mode === 'dark'
-    ? alpha(theme.palette.divider, 0.1)
-    : alpha(theme.palette.divider, 0.1)}`,
+  borderRadius: CARD_RADIUS_LG,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.09)'
+    : 'rgba(226, 232, 240, 0.95)'}`,
   boxShadow: theme.palette.mode === 'dark'
-    ? `0 4px 30px ${alpha(theme.palette.common.black, 0.3)}`
-    : `0 4px 30px ${alpha(theme.palette.common.black, 0.1)}`,
+    ? `0 10px 24px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 10px 18px rgba(255, 255, 255, 0.03), inset 0 -10px 18px rgba(0, 0, 0, 0.2)`
+    : `0 10px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 2px 0 rgba(255, 255, 255, 0.95), inset 0 10px 16px rgba(255, 255, 255, 0.75), inset 0 -10px 16px rgba(59, 130, 246, 0.06)`,
   overflow: 'hidden',
   transition: 'all 0.3s ease',
 }));
@@ -297,39 +321,33 @@ const GlassCard = muiStyled(Paper)(({ theme }) => ({
 const ProfileHeader = muiStyled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(2.5),
-  padding: theme.spacing(2.5),
+  justifyContent: 'space-between',
+  gap: theme.spacing(2),
+  padding: theme.spacing(2),
   marginBottom: theme.spacing(2.5),
-  borderRadius: theme.shape.borderRadius * 2,
-  background: `linear-gradient(135deg, 
-    ${alpha(theme.palette.primary.main, 0.08)} 0%,
-    ${alpha(theme.palette.primary.main, 0.12)} 50%,
-    ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+  borderRadius: CARD_RADIUS_LG,
+  background: theme.palette.mode === 'dark'
+    ? `linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, ${alpha(theme.palette.background.paper, 0.96)} 18%, ${theme.palette.background.default} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
   backdropFilter: 'blur(12px)',
   position: 'relative',
   overflow: 'hidden',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-  boxShadow: `
-    0 1px 1px ${alpha(theme.palette.common.black, 0.02)},
-    0 2px 2px ${alpha(theme.palette.common.black, 0.02)},
-    0 4px 4px ${alpha(theme.palette.common.black, 0.02)},
-    0 8px 8px ${alpha(theme.palette.common.black, 0.02)},
-    0 16px 16px ${alpha(theme.palette.common.black, 0.02)},
-    0 1px 3px ${alpha(theme.palette.primary.main, 0.1)},
-    0 4px 6px ${alpha(theme.palette.primary.main, 0.05)},
-    inset 0 1px 1px ${alpha(theme.palette.common.white, 0.08)},
-    inset 0 -1px 1px ${alpha(theme.palette.common.black, 0.04)}
-  `,
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'row',
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.09)'
+    : 'rgba(226, 232, 240, 0.95)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? `0 10px 24px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 10px 18px rgba(255, 255, 255, 0.03), inset 0 -10px 18px rgba(0, 0, 0, 0.2)`
+    : `0 10px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 2px 0 rgba(255, 255, 255, 0.95), inset 0 10px 16px rgba(255, 255, 255, 0.75), inset 0 -10px 16px rgba(59, 130, 246, 0.06)`,
+  [theme.breakpoints.down('md')]: {
+    flexWrap: 'wrap',
     alignItems: 'flex-start',
-    padding: theme.spacing(2),
-    gap: theme.spacing(2),
-    '& > *:last-child': {
-      flex: 1,
-      minWidth: 0,
-    }
+  },
+  [theme.breakpoints.down('sm')]: {
+    alignItems: 'flex-start',
+    padding: theme.spacing(1.25),
+    gap: theme.spacing(1),
+    borderRadius: CARD_RADIUS_MD,
   },
 
   '&::before, &::after': {
@@ -343,21 +361,21 @@ const ProfileHeader = muiStyled(Box)(({ theme }) => ({
   '&::before': {
     background: `radial-gradient(
       1000px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-      ${alpha(theme.palette.primary.main, 0.1)},
+      ${alpha(theme.palette.primary.main, 0.08)},
       transparent 40%
     )`,
-    opacity: 0,
+    opacity: 1,
     zIndex: 1,
   },
 
   '&::after': {
     background: `linear-gradient(90deg,
       transparent 0%,
-      ${alpha(theme.palette.primary.main, 0.12)} 50%,
+      ${alpha(theme.palette.primary.main, 0.08)} 50%,
       transparent 100%
     )`,
     transform: 'translateX(-100%)',
-    animation: 'shimmer 3s infinite',
+    animation: 'shimmer 5s infinite',
   },
 
   '@keyframes shimmer': {
@@ -366,15 +384,8 @@ const ProfileHeader = muiStyled(Box)(({ theme }) => ({
     },
   },
 
-  [theme.breakpoints.down('sm')]: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: theme.spacing(2),
-    gap: theme.spacing(2),
-  },
-
   '&:hover': {
-    transform: 'translateY(-3px)',
+    transform: 'translateY(-2px)',
     boxShadow: `
       0 1px 1px ${alpha(theme.palette.common.black, 0.03)},
       0 2px 2px ${alpha(theme.palette.common.black, 0.03)},
@@ -393,9 +404,9 @@ const ProfileHeader = muiStyled(Box)(({ theme }) => ({
 }));
 
 const ProfileAvatar = muiStyled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
-  width: 90,
-  height: 90,
-  fontSize: '2.25rem',
+  width: 76,
+  height: 76,
+  fontSize: '2rem',
   fontWeight: 600,
   position: 'relative',
   border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
@@ -408,11 +419,10 @@ const ProfileAvatar = muiStyled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
     0 0 30px ${alpha(theme.palette.primary.main, 0.05)}
   `,
   [theme.breakpoints.down('sm')]: {
-    width: 70,
-    height: 70,
-    fontSize: '1.75rem',
-    borderRadius: theme.shape.borderRadius * 2,
-    marginTop: theme.spacing(0.5),
+    width: 46,
+    height: 46,
+    fontSize: '1.15rem',
+    borderRadius: theme.shape.borderRadius * 1.5,
   },
 
   '&::before': {
@@ -501,12 +511,17 @@ const TabPanel = muiStyled(Box)(({ theme }) => ({
 
 const ModernTabs = muiStyled(Tabs)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.5)
-    : alpha(theme.palette.background.paper, 0.8),
-  borderRadius: 16,
+    ? 'rgba(0, 0, 0, 0.2)'
+    : 'rgba(255, 255, 255, 0.6)',
+  borderRadius: CARD_RADIUS_LG,
   padding: theme.spacing(1),
   backdropFilter: 'blur(8px)',
-  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(226, 232, 240, 0.6)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? 'inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.01)'
+    : 'inset 0 2px 4px rgba(15, 23, 42, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
   '& .MuiTabs-flexContainer': {
     gap: theme.spacing(1),
     [theme.breakpoints.down('sm')]: {
@@ -517,7 +532,7 @@ const ModernTabs = muiStyled(Tabs)(({ theme }) => ({
   },
   '& .MuiTabs-indicator': {
     height: '100%',
-    borderRadius: 12,
+    borderRadius: CARD_RADIUS_MD,
     background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.15)}, ${alpha(theme.palette.primary.main, 0.25)})`,
     zIndex: 0,
     [theme.breakpoints.down('sm')]: {
@@ -538,11 +553,11 @@ const ModernTabs = muiStyled(Tabs)(({ theme }) => ({
 
 const TabItem = muiStyled(Tab)(({ theme }) => ({
   minHeight: 56,
-  borderRadius: 12,
-  padding: theme.spacing(1.5, 3),
+  borderRadius: 10,
+  padding: theme.spacing(1.2, 2.2),
   color: theme.palette.text.secondary,
-  fontWeight: 500,
-  fontSize: '0.9rem',
+  fontWeight: 600,
+  fontSize: '0.84rem',
   textTransform: 'none',
   zIndex: 1,
   transition: 'all 0.3s ease',
@@ -561,10 +576,10 @@ const TabItem = muiStyled(Tab)(({ theme }) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    background: 'transparent',
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    background: alpha(theme.palette.primary.main, 0.08),
     transition: 'all 0.3s ease',
   },
   '&.Mui-selected .icon-wrapper': {
@@ -624,12 +639,17 @@ const InfoCard = muiStyled(GlassCard)(({ theme }) => ({
 
 const InfoSection = muiStyled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
-  borderRadius: theme.shape.borderRadius * 2,
+  borderRadius: CARD_RADIUS_LG,
   background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.6)
-    : alpha(theme.palette.background.paper, 0.8),
+    ? `linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, ${alpha(theme.palette.background.paper, 0.96)} 18%, ${theme.palette.background.default} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
   backdropFilter: 'blur(10px)',
-  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.09)'
+    : 'rgba(226, 232, 240, 0.95)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? `0 10px 24px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 10px 18px rgba(255, 255, 255, 0.03), inset 0 -10px 18px rgba(0, 0, 0, 0.2)`
+    : `0 10px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 2px 0 rgba(255, 255, 255, 0.95), inset 0 10px 16px rgba(255, 255, 255, 0.75), inset 0 -10px 16px rgba(59, 130, 246, 0.06)`,
   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
   '&:hover': {
     transform: 'translateY(-2px)',
@@ -637,6 +657,7 @@ const InfoSection = muiStyled(Box)(({ theme }) => ({
   },
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+    borderRadius: CARD_RADIUS_MD,
   }
 }));
 
@@ -2677,6 +2698,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     subjectSummaries: []
   });
   const [expandedTestCards, setExpandedTestCards] = useState<Set<number>>(new Set());
+  const [selectedSessionId, setSelectedSessionId] = useState<number | 'all' | null>(null);
   const [selectedTestSession, setSelectedTestSession] = useState<number | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState(0);
@@ -2701,6 +2723,14 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const { startProgress, setProgress, completeProgress } = useProgress();
   const { user } = useAuth();
   const progressRef = useRef({ startProgress, setProgress, completeProgress });
+  const emptyTestSummaryData = {
+    totalSubjects: 0,
+    totalTests: 0,
+    totalObtainedMarks: 0,
+    totalMaxMarks: 0,
+    totalPercentage: 0,
+    subjectSummaries: []
+  };
   useEffect(() => {
     progressRef.current = { startProgress, setProgress, completeProgress };
   }, [startProgress, setProgress, completeProgress]);
@@ -2755,9 +2785,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   };
 
   // Process test records for session-wise display
-  const processTestRecords = useCallback(async (sessionId?: number) => {
-    const targetSession = sessionId || selectedTestSession;
-    if (!targetSession || !student) return;
+  const processTestRecords = useCallback(async (sessionId?: number | null) => {
+    const targetSession = sessionId ?? selectedTestSession;
+    if (!student) return;
 
     setTestSessionLoading(true);
     try {
@@ -2769,8 +2799,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       let page = 0;
       const pageSize = 1000;
 
-      while (true) {
-        const { data, error } = await supabase
+    while (true) {
+        let query = supabase
           .from('test_results')
           .select(`
             id,
@@ -2788,10 +2818,14 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             )
           `)
           .eq('student_id', student?.id || parseInt(id!))
-          .eq('session_id', targetSession)
           .eq('school_id', schoolId)
-          .order('id', { ascending: false })
-          .range(page * pageSize, (page + 1) * pageSize - 1);
+          .order('id', { ascending: false });
+
+        if (targetSession) {
+          query = query.eq('session_id', targetSession);
+        }
+
+        const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
           setTestSessionLoading(false);
@@ -2985,11 +3019,11 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   };
 
   // Load attendance data for a specific session with recursive fetching
-  const loadAttendanceData = useCallback(async (sessionId: number) => {
-    if (!student || !sessionId) return;
+  const loadAttendanceData = useCallback(async (sessionId: number | null) => {
+    if (!student) return;
 
-    const session = attendanceSessions.find(s => s.id === sessionId);
-    if (!session) return;
+    const session = sessionId ? attendanceSessions.find(s => s.id === sessionId) : null;
+    if (sessionId && !session) return;
 
     setAttendanceSessionLoading(true);
     try {
@@ -2999,14 +3033,19 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       const pageSize = 1000;
 
       while (true) {
-        const { data, error } = await supabase
+        let attendanceQuery = supabase
           .from('attendance_records')
           .select('id, date, status, remarks, class_id')
           .eq('student_id', student.id)
-          .gte('date', session.start_date)
-          .lte('date', session.end_date)
-          .order('date', { ascending: false })
-          .range(page * pageSize, (page + 1) * pageSize - 1);
+          .order('date', { ascending: false });
+
+        if (session) {
+          attendanceQuery = attendanceQuery
+            .gte('date', session.start_date)
+            .lte('date', session.end_date);
+        }
+
+        const { data, error } = await attendanceQuery.range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) throw error;
 
@@ -3021,13 +3060,18 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
       // Fetch half leaves for the session
       let hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
-      const { data: halfLeavesData } = await supabase
+      let halfLeavesQuery = supabase
         .from('half_leaves')
         .select('date, leave_type, arrival_time, departure_time')
         .eq('person_type', 'student')
         .eq('person_id', student.id)
-        .eq('session_id', sessionId)
         .eq('school_id', student.school_id);
+
+      if (sessionId) {
+        halfLeavesQuery = halfLeavesQuery.eq('session_id', sessionId);
+      }
+
+      const { data: halfLeavesData } = await halfLeavesQuery;
 
       (halfLeavesData || []).forEach((hl: any) => {
         hlMap.set(hl.date, {
@@ -3110,8 +3154,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
   // Effect to load attendance when session changes
   useEffect(() => {
-    if (selectedAttendanceSession) {
-      loadAttendanceData(selectedAttendanceSession);
+    if (student) {
+      loadAttendanceData(selectedAttendanceSession ?? null);
     }
   }, [selectedAttendanceSession, loadAttendanceData]);
 
@@ -3123,6 +3167,32 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       setPageHeader('Student Profile');
     }
   }, [student, setPageHeader]);
+
+  useEffect(() => {
+    const normalizedSessionId = typeof selectedSessionId === 'number' ? selectedSessionId : null;
+    setSelectedTestSession(normalizedSessionId);
+    setSelectedAttendanceSession(normalizedSessionId);
+  }, [selectedSessionId]);
+
+  const handleSessionChange = (value: number | 'all' | null) => {
+    setLoading(true);
+    setSelectedSessionId(value);
+    setSelectedTestSession(typeof value === 'number' ? value : null);
+    setSelectedAttendanceSession(typeof value === 'number' ? value : null);
+    setTestSessionData([]);
+    setTestSubjects([]);
+    setTestSummaryData(emptyTestSummaryData);
+    setExpandedTestCards(new Set());
+    setAttendanceStats(null);
+    setMonthlyStats([]);
+    setWeeklyAttendance([]);
+    setAttendancePattern([]);
+    setYearlyOverview([]);
+    setHalfLeavesMap(new Map());
+    setFineHistory([]);
+    setHomeworkDiaryEntries([]);
+    setTabDataLoaded({});
+  };
 
   // Process test records when session changes
   useEffect(() => {
@@ -3167,6 +3237,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     const fetchStudentData = async () => {
       const minDuration = 800; // Reduced from 1.5s to 0.8s
       const start = Date.now();
+      setLoading(true);
       progressRef.current.startProgress(false);
       progressRef.current.setProgress(10);
       try {
@@ -3305,11 +3376,31 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           .order('start_date', { ascending: false })
           .range(0, 99999);
 
+        let effectiveSessionId: number | null = typeof selectedSessionId === 'number' ? selectedSessionId : null;
         if (sessionsData && sessionsData.length > 0) {
+          setSessions(sessionsData);
           setAttendanceSessions(sessionsData);
-          const activeSession = sessionsData.find((s: any) => s.is_active);
-          const initialSessionId = activeSession ? activeSession.id : sessionsData[0].id;
-          setSelectedAttendanceSession(initialSessionId);
+
+          const keepAllSessions = selectedSessionId === 'all';
+          const sessionExists = effectiveSessionId
+            ? sessionsData.some((session: any) => session.id === effectiveSessionId)
+            : false;
+
+          if (!keepAllSessions && !sessionExists) {
+            const activeSession = sessionsData.find((s: any) => s.is_active);
+            effectiveSessionId = activeSession ? activeSession.id : sessionsData[0].id;
+          }
+
+          setSelectedSessionId(keepAllSessions ? 'all' : effectiveSessionId);
+          setSelectedAttendanceSession(effectiveSessionId);
+          setSelectedTestSession(effectiveSessionId);
+        } else {
+          effectiveSessionId = null;
+          setSessions([]);
+          setAttendanceSessions([]);
+          setSelectedSessionId(null);
+          setSelectedAttendanceSession(null);
+          setSelectedTestSession(null);
         }
 
         // Get current class from student_class_history
@@ -3451,7 +3542,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 id,
                 name,
                 exam_type,
-                status
+                status,
+                session_id
               )
             `)
             .eq('student_id', studentId)
@@ -3459,6 +3551,12 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             .order('examination_id', { ascending: false });
 
           let filteredSummaries = examinationSummaries || [];
+          if (effectiveSessionId) {
+            filteredSummaries = filteredSummaries.filter(summary => {
+              const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+              return examination?.session_id === effectiveSessionId;
+            });
+          }
           if (isStudent) {
             filteredSummaries = filteredSummaries.filter(summary => {
               const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
@@ -3503,12 +3601,15 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               // Fetch exam details with status filtering
               const { data: examsData } = await supabase
                 .from('examinations')
-                .select('id, name, exam_type, status')
+                .select('id, name, exam_type, status, session_id')
                 .in('id', examIds)
                 .eq('school_id', schoolId);
 
               // Filter exams by status
               let filteredExams = examsData || [];
+              if (effectiveSessionId) {
+                filteredExams = filteredExams.filter(exam => exam.session_id === effectiveSessionId);
+              }
               if (isStudent) {
                 filteredExams = filteredExams.filter(exam => exam.status === 'archived');
               } else {
@@ -3554,7 +3655,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         // Load test results count for summary cards
         try {
           // Fetch test results with test_records join (matching TestRecordMasterSheet pattern)
-          const { data: testResultsData } = await supabase
+          let testResultsQuery = supabase
             .from('test_results')
             .select(`
               id, 
@@ -3578,6 +3679,12 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             `)
             .eq('student_id', studentId)
             .eq('school_id', schoolId);
+
+          if (effectiveSessionId) {
+            testResultsQuery = testResultsQuery.eq('session_id', effectiveSessionId);
+          }
+
+          const { data: testResultsData } = await testResultsQuery;
 
           if (testResultsData && testResultsData.length > 0) {
             // Get unique subject IDs from test_records
@@ -3729,7 +3836,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       setLoading(false);
       progressRef.current.completeProgress();
     }
-  }, [id, isMyProfile, studentIdFromSession]);
+  }, [id, isMyProfile, studentIdFromSession, selectedSessionId]);
 
   // Fetch homework diary entries when date changes (for students only)
   useEffect(() => {
@@ -3757,7 +3864,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           {
             class_id: student.class_id,
             section_id: student.section_id,
-            homework_date: selectedDateStr
+            homework_date: selectedDateStr,
+            session_id: typeof selectedSessionId === 'number' ? selectedSessionId : undefined
           },
           1,
           50,
@@ -3771,7 +3879,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     };
 
     fetchHomeworkDiary();
-  }, [isStudent, student, selectedHomeworkDate, id]);
+  }, [isStudent, student, selectedHomeworkDate, id, selectedSessionId]);
 
   // Calculate and update student score when attendance stats, reports, exam summaries, test results, or half leaves change
   useEffect(() => {
@@ -3967,7 +4075,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     id,
                     name,
                     exam_type,
-                    status
+                    status,
+                    session_id
                   )
                 `)
                   .eq('student_id', studentId)
@@ -3975,6 +4084,12 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   .order('examination_id', { ascending: false });
 
                 let filteredSummaries = examinationSummaries || [];
+                if (typeof selectedSessionId === 'number') {
+                  filteredSummaries = filteredSummaries.filter(summary => {
+                    const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+                    return examination?.session_id === selectedSessionId;
+                  });
+                }
                 if (isStudent) {
                   filteredSummaries = filteredSummaries.filter(summary => {
                     const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
@@ -4033,6 +4148,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     try {
                       const exam = await examinationService.getExaminationById(examId);
                       if (exam) {
+                        if (typeof selectedSessionId === 'number' && exam.session_id !== selectedSessionId) {
+                          continue;
+                        }
                         if (isStudent) {
                           if (exam.status === 'archived') examDetails.set(examId, exam);
                         } else {
@@ -4085,30 +4203,11 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             break;
 
           case 3: // Test Records tab
-            const fetchAllSessions = async () => {
-              let allData: any[] = [];
-              let page = 0;
-              while (true) {
-                const { data, error } = await supabase
-                  .from('sessions')
-                  .select('id, name, start_date, end_date, is_active')
-                  .eq('school_id', schoolId)
-                  .order('start_date', { ascending: false })
-                  .range(page * 1000, (page + 1) * 1000 - 1);
-                if (error) throw error;
-                if (!data || data.length === 0) break;
-                allData.push(...data);
-                if (data.length < 1000) break;
-                page++;
-              }
-              return allData;
-            };
-
             const fetchAllTestResults = async () => {
               let allData: any[] = [];
               let page = 0;
               while (true) {
-                const { data, error } = await supabase
+                let query = supabase
                   .from('test_results')
                   .select(`
                     *,
@@ -4118,8 +4217,13 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   `)
                   .eq('student_id', studentId)
                   .eq('school_id', schoolId)
-                  .order('created_at', { ascending: false })
-                  .range(page * 1000, (page + 1) * 1000 - 1);
+                  .order('created_at', { ascending: false });
+
+                if (typeof selectedSessionId === 'number') {
+                  query = query.eq('session_id', selectedSessionId);
+                }
+
+                const { data, error } = await query.range(page * 1000, (page + 1) * 1000 - 1);
                 if (error) throw error;
                 if (!data || data.length === 0) break;
                 allData.push(...data);
@@ -4129,20 +4233,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               return allData;
             };
 
-            const [sessionsData, testResultsData] = await Promise.all([
-              fetchAllSessions(),
-              fetchAllTestResults()
-            ]);
+            const testResultsData = await fetchAllTestResults();
 
-            if (sessionsData && sessionsData.length > 0) {
-              setSessions(sessionsData);
-              const activeSession = sessionsData.find((s: any) => s.is_active);
-              const targetSessionId = activeSession ? activeSession.id : sessionsData[0].id;
-              setSelectedTestSession(targetSessionId);
-
-              // Pre-load session data to avoid "No Records" flash
-              await processTestRecords(targetSessionId);
-            }
+            await processTestRecords(typeof selectedSessionId === 'number' ? selectedSessionId : null);
 
             if (testResultsData) {
               setTestResults(testResultsData);
@@ -4185,7 +4278,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     if (originalTabIndex !== 0 && originalTabIndex !== 4) { // Don't load for Profile (0) or Attendance (4) tabs
       loadTabData(originalTabIndex);
     }
-  }, [activeTab, student, id, tabDataLoaded, tabDataLoading, isStudent, showToast, getOriginalTabIndex]);
+  }, [activeTab, student, id, tabDataLoaded, tabDataLoading, isStudent, showToast, getOriginalTabIndex, selectedSessionId]);
 
   // Attendance percentage: Present and Late count as attended, Absent and Leave count as not attended
   const attendancePercentage = useMemo(() => {
@@ -4241,7 +4334,196 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   };
 
   if (loading) {
-    return <Loader />;
+    return (
+      <ProfileContainer>
+        <ProfileHeader>
+          <Skeleton
+            variant="rounded"
+            width={76}
+            height={76}
+            sx={{ borderRadius: 4, flexShrink: 0, width: { xs: 46, sm: 76 }, height: { xs: 46, sm: 76 } }}
+          />
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: { xs: 'flex-start', md: 'center' },
+              justifyContent: 'space-between',
+              gap: { xs: 0.75, sm: 2 },
+              flexWrap: { xs: 'nowrap', md: 'wrap' },
+            }}
+          >
+            <Stack
+              spacing={1.1}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              <Box sx={{
+                display: 'flex',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 0.75, sm: 1 },
+                flexWrap: 'wrap',
+              }}>
+                <Skeleton variant="text" width={220} height={40} sx={{ width: { xs: 112, sm: 220 }, height: { xs: 26, sm: 40 } }} />
+                <Skeleton variant="rectangular" width={88} height={28} sx={{ borderRadius: 99, width: { xs: 68, sm: 88 }, height: { xs: 22, sm: 28 } }} />
+              </Box>
+              <Skeleton variant="text" width={190} height={24} sx={{ width: { xs: 132, sm: 190 }, height: { xs: 18, sm: 24 } }} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, width: '100%' }}>
+                <Skeleton variant="text" width={126} height={18} />
+              </Box>
+            </Stack>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: { xs: 0.75, sm: 1 },
+                flexShrink: 0,
+                width: { xs: 108, sm: 'auto' },
+              }}
+            >
+              <Skeleton variant="rectangular" width={176} height={42} sx={{ borderRadius: 2.5, width: { xs: '100%', sm: 176 }, height: { xs: 34, sm: 42 } }} />
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.9,
+                  p: { xs: 0.6, sm: 1.2 },
+                  minWidth: { xs: '100%', sm: 146 },
+                  borderRadius: 2.5,
+                  ...getClayInsetSx(theme),
+                  justifyContent: { xs: 'flex-start', sm: 'flex-start' },
+                }}
+              >
+                <Skeleton variant="circular" width={24} height={24} />
+                <Box>
+                  <Skeleton variant="text" width={40} height={12} />
+                  <Skeleton variant="text" width={46} height={16} />
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </ProfileHeader>
+
+        <Box sx={{ mb: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{ p: 3 }}>
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box sx={{ width: 180, height: 180, mx: 'auto', mb: 3 }}>
+                    <Skeleton variant="circular" width={180} height={180} />
+                  </Box>
+                  <Grid container spacing={2}>
+                    {[1, 2, 3, 4].map((item) => (
+                      <Grid item xs={6} key={item}>
+                        <Box sx={{ p: 1.5, borderRadius: 1, ...getClayInsetSx(theme) }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Skeleton variant="rounded" width={32} height={32} />
+                            <Box sx={{ flex: 1 }}>
+                              <Skeleton variant="text" width="55%" height={24} />
+                              <Skeleton variant="text" width="72%" height={16} />
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </StatCard>
+            </Grid>
+
+            {[1, 2, 3].map((item) => (
+              <Grid item xs={12} sm={6} md={3} key={item}>
+                <StatCard sx={{ p: 1, height: '100%' }}>
+                  <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, pb: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                      <Skeleton variant="text" width="38%" height={18} />
+                      <Skeleton variant="text" width={42} height={30} />
+                    </Box>
+                    <Grid container spacing={0.5} sx={{ mb: 1 }}>
+                      {[1, 2, 3].map((card) => (
+                        <Grid item xs={4} key={card}>
+                          <Box sx={{ p: 1, borderRadius: 1, ...getClayInsetSx(theme) }}>
+                            <Skeleton variant="circular" width={16} height={16} sx={{ mx: 'auto', mb: 0.5 }} />
+                            <Skeleton variant="text" width="70%" height={20} sx={{ mx: 'auto' }} />
+                            <Skeleton variant="text" width="80%" height={14} sx={{ mx: 'auto' }} />
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                    <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 1.5, flex: 1 }}>
+                      <Skeleton variant="text" width="42%" height={16} sx={{ mb: 1 }} />
+                      <Grid container spacing={1}>
+                        {[1, 2, 3, 4].map((row) => (
+                          <Grid item xs={6} key={row}>
+                            <Box sx={{ p: 1.25, borderRadius: 1, ...getClayInsetSx(theme) }}>
+                              <Skeleton variant="text" width="72%" height={16} />
+                              <Skeleton variant="text" width="88%" height={16} />
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  </Box>
+                </StatCard>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        <GlassCard>
+          <Box>
+            <ModernTabs value={0}>
+              {['Profile', 'Reports', 'Exams', 'Tests', 'Attendance'].map((tab) => (
+                <TabItem
+                  key={tab}
+                  disabled
+                  label={
+                    <Box className="tab-wrapper">
+                      <Box className="icon-wrapper">
+                        <Skeleton variant="circular" width={20} height={20} />
+                      </Box>
+                      <span className="tab-label">{tab}</span>
+                    </Box>
+                  }
+                />
+              ))}
+            </ModernTabs>
+          </Box>
+
+          <CustomTabPanel value={0} index={0}>
+            <Grid container spacing={3}>
+              {[1, 2].map((section) => (
+                <Grid item xs={12} md={6} key={section}>
+                  <GlassCard sx={{ p: 3, height: '100%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                      <Skeleton variant="rounded" width={40} height={40} sx={{ borderRadius: 2 }} />
+                      <Skeleton variant="text" width="44%" height={30} />
+                    </Box>
+                    <Grid container spacing={2}>
+                      {[1, 2, 3, 4, 5, 6].map((item) => (
+                        <Grid item xs={12} sm={item === 6 ? 12 : 6} key={item}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 1.5, borderRadius: 2, ...getClayInsetSx(theme) }}>
+                            <Skeleton variant="rounded" width={36} height={36} sx={{ borderRadius: 2 }} />
+                            <Box sx={{ flex: 1 }}>
+                              <Skeleton variant="text" width="36%" height={16} />
+                              <Skeleton variant="text" width={item === 6 ? '90%' : '68%'} height={20} />
+                            </Box>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </GlassCard>
+                </Grid>
+              ))}
+            </Grid>
+          </CustomTabPanel>
+        </GlassCard>
+      </ProfileContainer>
+    );
   }
 
   if (!student) {
@@ -4270,249 +4552,255 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         <ProfileAvatar src={student.picture_url} alt={student.name}>
           {!student.picture_url && student.name?.[0]}
         </ProfileAvatar>
-        <Stack
-          spacing={0.5}
+        <Box
           sx={{
             flex: 1,
             minWidth: 0,
-            [theme.breakpoints.down('sm')]: {
-              alignItems: 'center',
-            }
-          }}
-        >
-          <Box sx={{
             display: 'flex',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: 1,
-            flexWrap: 'wrap',
-            width: '100%'
+            alignItems: { xs: 'flex-start', md: 'center' },
+            justifyContent: 'space-between',
+            gap: { xs: 0.75, sm: 2 },
+            flexWrap: { xs: 'nowrap', md: 'wrap' },
           }}>
-            <Typography
-              variant="h4"
-              fontWeight="600"
-              sx={{
-                fontSize: { xs: '1.25rem', sm: '2rem' },
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                lineHeight: 1.2,
-                width: { xs: 'auto', sm: 'auto' },
-              }}
-            >
-              {student.name}
-            </Typography>
-            <Box
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                px: 1,
-                py: 0.25,
-                borderRadius: '100px',
-                fontSize: { xs: '0.675rem', sm: '0.875rem' },
-                fontWeight: 500,
-                letterSpacing: '0.025em',
-                textTransform: 'capitalize',
-                alignSelf: { xs: 'flex-start', sm: 'center' },
-                border: '1px solid',
-                borderColor: theme => alpha(
-                  student.status === 'active' ? theme.palette.success.main :
-                    student.status === 'inactive' ? theme.palette.error.main :
-                      student.status === 'suspended' ? theme.palette.warning.main :
-                        theme.palette.info.main, 0.2
-                ),
-                color: theme =>
-                  student.status === 'active' ? theme.palette.success.main :
-                    student.status === 'inactive' ? theme.palette.error.main :
-                      student.status === 'suspended' ? theme.palette.warning.main :
-                        theme.palette.info.main,
-                bgcolor: theme => alpha(
-                  student.status === 'active' ? theme.palette.success.main :
-                    student.status === 'inactive' ? theme.palette.error.main :
-                      student.status === 'suspended' ? theme.palette.warning.main :
-                        theme.palette.info.main, 0.1
-                ),
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'inherit',
-                  opacity: 0.2,
-                  animation: student.status === 'active' ? 'pulse 2s ease-in-out infinite' : 'none'
-                },
-                '@keyframes pulse': {
-                  '0%, 100%': {
-                    opacity: 0.2,
-                  },
-                  '50%': {
-                    opacity: 0.4,
-                  }
-                }
-              }}
-            >
-              <Box component="span" sx={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                bgcolor: 'currentColor',
-                mr: 1,
-                boxShadow: theme => `0 0 8px ${alpha(
-                  student.status === 'active' ? theme.palette.success.main :
-                    student.status === 'inactive' ? theme.palette.error.main :
-                      student.status === 'suspended' ? theme.palette.warning.main :
-                        theme.palette.info.main, 0.4
-                )}`,
-              }} />
-              {student.status || 'Unknown'}
+          <Stack
+            spacing={0.9}
+            sx={{
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Box sx={{
+              display: 'flex',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              gap: { xs: 0.75, sm: 1 },
+              flexWrap: 'wrap',
+              width: '100%'
+            }}>
+              <Typography
+                variant="h4"
+                fontWeight="700"
+                sx={{
+                  fontSize: { xs: '0.95rem', sm: '1.65rem' },
+                  whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: { xs: 1.05, sm: 1.1 },
+                  letterSpacing: '-0.02em',
+                  maxWidth: '100%',
+                }}
+              >
+                {student.name}
+              </Typography>
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  px: 1,
+                  py: { xs: 0.2, sm: 0.35 },
+                  borderRadius: '100px',
+                  fontSize: { xs: '0.62rem', sm: '0.8rem' },
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  textTransform: 'capitalize',
+                  alignSelf: { xs: 'flex-start', sm: 'center' },
+                  border: '1px solid',
+                  borderColor: theme => alpha(
+                    student.status === 'active' ? theme.palette.success.main :
+                      student.status === 'inactive' ? theme.palette.error.main :
+                        student.status === 'suspended' ? theme.palette.warning.main :
+                          theme.palette.info.main, 0.22
+                  ),
+                  color: theme =>
+                    student.status === 'active' ? theme.palette.success.main :
+                      student.status === 'inactive' ? theme.palette.error.main :
+                        student.status === 'suspended' ? theme.palette.warning.main :
+                          theme.palette.info.main,
+                  bgcolor: theme => alpha(
+                    student.status === 'active' ? theme.palette.success.main :
+                      student.status === 'inactive' ? theme.palette.error.main :
+                        student.status === 'suspended' ? theme.palette.warning.main :
+                          theme.palette.info.main, 0.12
+                  ),
+                }}
+              >
+                <Box component="span" sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  bgcolor: 'currentColor',
+                  mr: 0.8,
+                  boxShadow: theme => `0 0 8px ${alpha(
+                    student.status === 'active' ? theme.palette.success.main :
+                      student.status === 'inactive' ? theme.palette.error.main :
+                        student.status === 'suspended' ? theme.palette.warning.main :
+                          theme.palette.info.main, 0.4
+                  )}`,
+                }} />
+                {student.status || 'Unknown'}
+              </Box>
             </Box>
-          </Box>
-          <Box sx={{
-            mt: { xs: 0.5, sm: 1 },
-            width: '100%',
-            textAlign: { xs: 'left', sm: 'left' }
-          }}>
             <Typography
-              variant="h6"
+              variant="body1"
               sx={{
-                opacity: 0.8,
-                fontSize: { xs: '0.875rem', sm: '1.25rem' },
-                whiteSpace: 'nowrap',
+                fontSize: { xs: '0.76rem', sm: '1rem' },
+                fontWeight: 600,
+                color: theme => alpha(theme.palette.text.primary, 0.78),
+                whiteSpace: { xs: 'normal', sm: 'nowrap' },
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                lineHeight: 1.2,
-                mb: 0.25,
-                color: theme => alpha(theme.palette.text.primary, 0.7),
+                lineHeight: { xs: 1.1, sm: 1.2 },
               }}
             >
               Class {student.class?.name} {student.section?.name && `- ${student.section.name}`}
             </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                opacity: 0.6,
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                lineHeight: 1.2,
-                color: theme => alpha(theme.palette.text.primary, 0.6),
-              }}
-            >
-              ID: {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
-            </Typography>
-          </Box>
-        </Stack>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: { xs: 0.8, sm: 1.6 },
-            ml: 'auto',
-            p: { xs: 0.8, sm: 1.6 },
-            borderRadius: 2.4,
-            bgcolor: theme => alpha(theme.palette.background.paper, 0.05),
-            backdropFilter: 'blur(10px)',
-            border: '1px solid',
-            borderColor: theme => alpha(theme.palette.divider, 0.1),
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: theme => `linear-gradient(135deg, 
-                ${alpha(getScoreColor(studentScore).light, 0.1)} 0%, 
-                ${alpha(getScoreColor(studentScore).main, 0.05)} 100%
-              )`,
-              zIndex: 0,
-            },
-            [theme.breakpoints.down('sm')]: {
-              position: 'absolute',
-              right: 12,
-              bottom: 12,
-              left: 'auto',
-              top: 'auto',
-              p: 1,
-              bgcolor: theme => alpha(theme.palette.background.paper, 0.85),
-              borderRadius: 2,
-              boxShadow: 3,
-              zIndex: 2,
-              ml: 0,
-            }
-          }}
-        >
-          <Box sx={{
-            width: { xs: 32, sm: 38 },
-            height: { xs: 32, sm: 38 },
-            position: 'relative',
-            zIndex: 1
-          }}>
-            <CircularProgress
-              variant="determinate"
-              value={studentScore * 10}
-              sx={{
-                color: theme => getScoreColor(studentScore).main,
-                position: 'absolute',
-                left: 0,
-                '& .MuiCircularProgress-circle': {
-                  strokeLinecap: 'round',
-                  transition: 'all 0.5s ease-in-out',
-                }
-              }}
-              size="100%"
-            />
-            <Box sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+            {student.roll_number && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, width: '100%' }}>
+                <Class sx={{ fontSize: { xs: 12, sm: 16 }, color: 'text.secondary' }} />
+                <Typography variant="body2" sx={{ fontSize: { xs: '0.68rem', sm: '0.78rem' }, fontWeight: 600, color: 'text.secondary' }}>
+                  Roll No.
+                </Typography>
+                <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.82rem' }, fontWeight: 700 }}>
+                  {student.roll_number}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+          <Box
+            sx={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontSize: { xs: '0.6rem', sm: '0.8rem' },
-                  fontWeight: 700,
-                  color: theme => getScoreColor(studentScore).main,
-                }}
-              >
-                {studentScore}
-              </Typography>
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              gap: { xs: 0.5, sm: 1 },
+              flexShrink: 0,
+              width: { xs: 108, sm: 'auto' },
+            }}
+          >
+            {sessions.length > 0 && (
+              <Box sx={{ width: { xs: '100%', sm: 190 }, maxWidth: { md: 210 } }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  value={selectedSessionId ?? ''}
+                  onChange={(e) => handleSessionChange(e.target.value === 'all' ? 'all' : e.target.value ? parseInt(e.target.value as string, 10) : null)}
+                  variant="outlined"
+                  label="Session"
+                  sx={{
+                    ...getClayInsetSx(theme),
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2.5,
+                      minHeight: { xs: 32, sm: 'auto' },
+                      fontSize: { xs: '0.72rem', sm: '0.875rem' },
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: { xs: '0.68rem', sm: '0.82rem' },
+                    },
+                    '& .MuiSelect-select': {
+                      py: { xs: 0.85, sm: 1.1 },
+                    },
+                  }}
+                >
+                  <MenuItem value="all">All Sessions</MenuItem>
+                  {sessions.map((session) => (
+                    <MenuItem key={session.id} value={session.id}>
+                      {session.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            )}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 0.55, sm: 0.75 },
+                px: { xs: 0.65, sm: 1.25 },
+                py: { xs: 0.5, sm: 1 },
+                minWidth: { xs: '100%', sm: 152 },
+                borderRadius: 2.5,
+                ...getClayInsetSx(theme),
+                borderColor: theme => alpha(getScoreColor(studentScore).main, 0.18),
+                position: 'relative',
+                overflow: 'hidden',
+                justifyContent: 'flex-start',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: 0,
+                  background: theme => `linear-gradient(135deg,
+                    ${alpha(getScoreColor(studentScore).light, 0.12)} 0%,
+                    ${alpha(getScoreColor(studentScore).main, 0.06)} 100%)`,
+                  zIndex: 0,
+                },
+              }}
+            >
+              <Box sx={{
+                width: { xs: 22, sm: 34 },
+                height: { xs: 22, sm: 34 },
+                position: 'relative',
+                zIndex: 1,
+                flexShrink: 0,
+              }}>
+                <CircularProgress
+                  variant="determinate"
+                  value={studentScore * 10}
+                  sx={{
+                    color: theme => getScoreColor(studentScore).main,
+                    position: 'absolute',
+                    left: 0,
+                    '& .MuiCircularProgress-circle': {
+                      strokeLinecap: 'round',
+                      transition: 'all 0.5s ease-in-out',
+                    }
+                  }}
+                  size="100%"
+                />
+                <Box sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontSize: { xs: '0.48rem', sm: '0.72rem' },
+                      fontWeight: 800,
+                      color: theme => getScoreColor(studentScore).main,
+                    }}
+                  >
+                    {studentScore}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: { xs: '0.5rem', sm: '0.68rem' },
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: theme => alpha(theme.palette.text.secondary, 0.85),
+                    mb: { xs: 0, sm: 0.15 },
+                  }}
+                >
+                  Score
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontSize: { xs: '0.68rem', sm: '0.98rem' },
+                    fontWeight: 800,
+                    color: theme => getScoreColor(studentScore).main,
+                    lineHeight: 1,
+                  }}
+                >
+                  {getScoreLabel(studentScore)}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: { xs: '0.6rem', sm: '0.7rem' },
-                fontWeight: 500,
-                color: 'text.secondary',
-                mb: { xs: 0.2, sm: 0.5 }
-              }}
-            >
-              Student Score
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                fontSize: { xs: '0.7rem', sm: '1rem' },
-                fontWeight: 700,
-                color: theme => getScoreColor(studentScore).main,
-                lineHeight: 1,
-              }}
-            >
-              {getScoreLabel(studentScore)}
-            </Typography>
           </Box>
         </Box>
       </ProfileHeader>
@@ -6629,11 +6917,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                       variant="body2"
                                       sx={{
                                         color: 'text.secondary',
-                                        bgcolor: theme => alpha(theme.palette.background.paper, 0.5),
+                                        ...getClayInsetSx(theme),
                                         p: 1.5,
                                         borderRadius: 1,
-                                        border: '1px solid',
-                                        borderColor: 'divider'
                                       }}
                                     >
                                       {update.update_note}
@@ -6651,9 +6937,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   {reports.length === 0 && (
                     <Grid item xs={12}>
                       <Box sx={{
+                        ...getClayInsetSx(theme),
                         p: 4,
                         textAlign: 'center',
-                        bgcolor: theme => alpha(theme.palette.background.paper, 0.6),
                         borderRadius: 2
                       }}>
                         <Assignment sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
@@ -7031,31 +7317,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
                     Test Records
                   </Typography>
-                  <Box sx={{ minWidth: 200 }}>
-                    <TextField
-                      select
-                      fullWidth
-                      size="small"
-                      value={selectedTestSession || ''}
-                      onChange={(e) => setSelectedTestSession(e.target.value ? parseInt(e.target.value as string) : null)}
-                      variant="outlined"
-                      sx={{
-                        bgcolor: 'background.paper',
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 2
-                        }
-                      }}
-                    >
-                      {sessions.map((session) => (
-                        <MenuItem key={session.id} value={session.id}>
-                          {session.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Box>
                 </Box>
 
-                {!selectedTestSession ? (
+                {sessions.length === 0 ? (
                   <GlassCard sx={{ p: 4, textAlign: 'center' }}>
                     <Assessment sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
                     <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
@@ -7551,28 +7815,6 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Attendance Records
               </Typography>
-              <Box sx={{ minWidth: 200 }}>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  value={selectedAttendanceSession || ''}
-                  onChange={(e) => setSelectedAttendanceSession(e.target.value ? parseInt(e.target.value as string) : null)}
-                  variant="outlined"
-                  sx={{
-                    bgcolor: 'background.paper',
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
-                    }
-                  }}
-                >
-                  {attendanceSessions.map((session) => (
-                    <MenuItem key={session.id} value={session.id}>
-                      {session.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
             </Box>
 
             {attendanceSessionLoading ? (

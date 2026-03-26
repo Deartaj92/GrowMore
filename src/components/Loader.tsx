@@ -1,49 +1,55 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
+import loaderLogo from '../assets/loader-logo.png';
 
 interface LoaderProps {
   size?: 'small' | 'medium' | 'large';
   centered?: boolean;
-  /** Full-screen splash style with dark background */
   fullScreenDark?: boolean;
 }
 
 const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullScreenDark = false }) => {
-  return (
-    <StyledWrapper $centered={centered} $size={size} $fullScreenDark={fullScreenDark}>
-      <LoaderContent $size={size}>
-        <div className="book">
-          <div className="book__pg-shadow" />
-          <div className="book__pg" />
-          <div className="book__pg book__pg--2" />
-          <div className="book__pg book__pg--3" />
-          <div className="book__pg book__pg--4" />
-          <div className="book__pg book__pg--5" />
-        </div>
-        <LoadingText $darkBg={fullScreenDark}>
-          Loading
-          <DotsContainer>
-            <Dot $delay={0}>.</Dot>
-            <Dot $delay={0.2}>.</Dot>
-            <Dot $delay={0.4}>.</Dot>
-          </DotsContainer>
-        </LoadingText>
+  const content = (
+    <StyledWrapper $centered={centered} $fullScreenDark={fullScreenDark}>
+      <LoaderContent>
+        <LogoLoader $size={size}>
+          <img
+            src={loaderLogo}
+            alt="Grow More"
+            draggable={false}
+          />
+          <div className="shine" style={{ WebkitMaskImage: `url(${loaderLogo})`, maskImage: `url(${loaderLogo})` }} />
+        </LogoLoader>
+        <LoadingLine $darkBg={fullScreenDark}>
+          <span className="track" />
+          <span className="bar" />
+        </LoadingLine>
       </LoaderContent>
     </StyledWrapper>
   );
-}
 
-const StyledWrapper = styled.div<{ $centered: boolean; $size: string; $fullScreenDark?: boolean }>`
+  if (centered && typeof document !== 'undefined') {
+    return ReactDOM.createPortal(content, document.body);
+  }
+
+  return content;
+};
+
+const StyledWrapper = styled.div<{ $centered: boolean; $fullScreenDark?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: ${props => props.$centered ? '100%' : 'auto'};
-  min-height: ${props => props.$centered ? '60vh' : 'auto'};
-  padding: ${props => props.$centered ? '2rem' : '1rem'};
-  ${props => props.$fullScreenDark && `
+  width: ${props => (props.$centered ? '100vw' : '100%')};
+  height: ${props => (props.$centered ? '100dvh' : 'auto')};
+  min-height: ${props => (props.$centered ? '100vh' : 'auto')};
+  padding: ${props => (props.$centered ? '2rem' : '1rem')};
+  ${props => props.$centered && `
     position: fixed;
     inset: 0;
+    z-index: 9999;
+  `}
+  ${props => props.$fullScreenDark && `
     z-index: 99999;
     background: #252525;
     min-height: 100vh;
@@ -51,394 +57,123 @@ const StyledWrapper = styled.div<{ $centered: boolean; $size: string; $fullScree
   `}
 `;
 
-const LoaderContent = styled.div<{ $size: string }>`
+const LoaderContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  
-  .book,
-  .book__pg-shadow,
-  .book__pg {
-    animation: cover 5s ease-in-out infinite;
+  gap: 0.55rem;
+  transform: translateY(-16px);
+`;
+
+const LogoLoader = styled.div<{ $size: LoaderProps['size'] }>`
+  position: relative;
+  width: ${props => {
+    switch (props.$size) {
+      case 'small':
+        return '104px';
+      case 'large':
+        return '208px';
+      default:
+        return '152px';
+    }
+  }};
+  height: ${props => {
+    switch (props.$size) {
+      case 'small':
+        return '104px';
+      case 'large':
+        return '208px';
+      default:
+        return '152px';
+    }
+  }};
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.28));
   }
-  .book {
-    background-color: hsl(235, 85.40%, 59.60%);
-    border-radius: 0.25em;
-    box-shadow:
-      0 0.25em 0.5em hsla(0, 0%, 0%, 0.3),
-      0 0 0 0.25em hsl(235, 85.40%, 59.60%) inset;
-    padding: 0.25em;
-    perspective: 37.5em;
-    position: relative;
-    width: 8em;
-    height: 6em;
-    transform: scale(${props => {
-      switch (props.$size) {
-        case 'small': return '0.7';
-        case 'large': return '1.2';
-        default: return '0.85'; // Slightly smaller than original
-      }
-    }}) translate3d(0, 0, 0);
-    transform-style: preserve-3d;
-  }
-  .book__pg-shadow,
-  .book__pg {
+
+  .shine {
     position: absolute;
-    left: 0.25em;
-    width: calc(50% - 0.25em);
-  }
-  .book__pg-shadow {
-    animation-name: shadow;
+    inset: 0;
+    pointer-events: none;
     background-image: linear-gradient(
-      -45deg,
-      hsla(0, 0%, 0%, 0) 50%,
-      hsla(0, 0%, 0%, 0.3) 50%
+      120deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0) 36%,
+      rgba(255, 255, 255, 0.92) 50%,
+      rgba(255, 255, 255, 0) 64%,
+      rgba(255, 255, 255, 0) 100%
     );
-    filter: blur(0.25em);
-    top: calc(100% - 0.25em);
-    height: 3.75em;
-    transform: scaleY(0);
-    transform-origin: 100% 0%;
-  }
-  .book__pg {
-    animation-name: pg1;
-    background-color: hsl(223, 10%, 100%);
-    background-image: linear-gradient(
-      90deg,
-      hsla(223, 10%, 90%, 0) 87.5%,
-      hsl(223, 10%, 90%)
-    );
-    background-size: 100% 100%;
-    background-position: center;
-    background-repeat: no-repeat;
-    height: calc(100% - 0.5em);
-    transform-origin: 100% 50%;
-  }
-  .book__pg--2,
-  .book__pg--3,
-  .book__pg--4 {
-    background-image: repeating-linear-gradient(
-        hsl(223, 10%, 10%) 0 0.125em,
-        hsla(223, 10%, 10%, 0) 0.125em 0.5em
-      ),
-      linear-gradient(90deg, hsla(223, 10%, 90%, 0) 87.5%, hsl(223, 10%, 90%));
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size:
-      2.5em 4.125em,
-      100% 100%;
-  }
-  .book__pg--2 {
-    animation-name: pg2;
-  }
-  .book__pg--3 {
-    animation-name: pg3;
-  }
-  .book__pg--4 {
-    animation-name: pg4;
-  }
-  .book__pg--5 {
-    animation-name: pg5;
-    background-color: hsl(223, 10%, 100%);
-    background-image: linear-gradient(
-      90deg,
-      hsla(223, 10%, 90%, 0) 87.5%,
-      hsl(223, 10%, 90%)
-    );
-    background-size: 100% 100%;
-    background-position: center;
-    background-repeat: no-repeat;
-    height: calc(100% - 0.5em);
-    transform-origin: 100% 50%;
+    background-size: 200% auto;
+    background-position: 150% center;
+    opacity: 0.95;
+    -webkit-mask-image: url('/icon-192.png');
+    mask-image: url('/icon-192.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    animation: logoShine 2.8s linear infinite;
   }
 
-  /* Dark theme */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: hsl(223, 10%, 30%);
-      --fg: hsl(223, 10%, 90%);
-    }
-  }
-
-  /* Animations */
-  @keyframes cover {
-    from,
-    5%,
-    45%,
-    55%,
-    95%,
-    to {
-      animation-timing-function: ease-out;
-      background-color: hsl(235, 85.40%, 59.60%);
-    }
-    10%,
-    40%,
-    60%,
-    90% {
-      animation-timing-function: ease-in;
-      background-color: hsl(235, 85.40%, 59.60%);
-    }
-  }
-  @keyframes shadow {
-    from,
-    10.01%,
-    20.01%,
-    30.01%,
-    40.01% {
-      animation-timing-function: ease-in;
-      transform: translate3d(0, 0, 1px) scaleY(0) rotateY(0);
-    }
-    5%,
-    15%,
-    25%,
-    35%,
-    45%,
-    55%,
-    65%,
-    75%,
-    85%,
-    95% {
-      animation-timing-function: ease-out;
-      transform: translate3d(0, 0, 1px) scaleY(0.2) rotateY(90deg);
-    }
-    10%,
-    20%,
-    30%,
-    40%,
-    50%,
-    to {
-      animation-timing-function: ease-out;
-      transform: translate3d(0, 0, 1px) scaleY(0) rotateY(180deg);
-    }
-    50.01%,
-    60.01%,
-    70.01%,
-    80.01%,
-    90.01% {
-      animation-timing-function: ease-in;
-      transform: translate3d(0, 0, 1px) scaleY(0) rotateY(180deg);
-    }
-    60%,
-    70%,
-    80%,
-    90%,
-    to {
-      animation-timing-function: ease-out;
-      transform: translate3d(0, 0, 1px) scaleY(0) rotateY(0);
-    }
-  }
-  @keyframes pg1 {
-    from,
-    to {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.4deg);
-    }
-    10%,
+  @keyframes logoShine {
+    0%,
     15% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(180deg);
+      background-position: 150% center;
     }
-    20%,
-    80% {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(180deg);
+    55% {
+      background-position: -50% center;
     }
-    85%,
-    90% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(180deg);
-    }
-  }
-  @keyframes pg2 {
-    from,
-    to {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(0.3deg);
-    }
-    5%,
-    10% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.3deg);
-    }
-    20%,
-    25% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.9deg);
-    }
-    30%,
-    70% {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(179.9deg);
-    }
-    75%,
-    80% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.9deg);
-    }
-    90%,
-    95% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.3deg);
-    }
-  }
-  @keyframes pg3 {
-    from,
-    10%,
-    90%,
-    to {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(0.2deg);
-    }
-    15%,
-    20% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.2deg);
-    }
-    30%,
-    35% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.8deg);
-    }
-    40%,
-    60% {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(179.8deg);
-    }
-    65%,
-    70% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.8deg);
-    }
-    80%,
-    85% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.2deg);
-    }
-  }
-  @keyframes pg4 {
-    from,
-    20%,
-    80%,
-    to {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(0.1deg);
-    }
-    25%,
-    30% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.1deg);
-    }
-    40%,
-    45% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.7deg);
-    }
-    50% {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(179.7deg);
-    }
-    55%,
-    60% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.7deg);
-    }
-    70%,
-    75% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0.1deg);
-    }
-  }
-  @keyframes pg5 {
-    from,
-    30%,
-    70%,
-    to {
-      animation-timing-function: ease-in;
-      background-color: hsl(223, 10%, 45%);
-      transform: translate3d(0, 0, 1px) rotateY(0);
-    }
-    35%,
-    40% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0deg);
-    }
-    50% {
-      animation-timing-function: ease-in-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(179.6deg);
-    }
-    60%,
-    65% {
-      animation-timing-function: ease-out;
-      background-color: hsl(223, 10%, 100%);
-      transform: translate3d(0, 0, 1px) rotateY(0);
+    100% {
+      background-position: -50% center;
     }
   }
 `;
 
-const LoadingText = styled.div<{ $darkBg?: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  color: ${props => props.$darkBg ? 'hsl(223, 10%, 75%)' : 'hsl(223, 10%, 50%)'};
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  
-  @media (prefers-color-scheme: dark) {
-    color: ${props => props.$darkBg ? 'hsl(223, 10%, 85%)' : 'hsl(223, 10%, 80%)'};
+const LoadingLine = styled.div<{ $darkBg?: boolean }>`
+  position: relative;
+  width: 64px;
+  height: 3px;
+  margin-top: 2px;
+
+  .track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: ${props => (props.$darkBg ? 'rgba(255,255,255,0.14)' : 'rgba(51,65,85,0.14)')};
   }
-`;
 
-const DotsContainer = styled.span`
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.3rem;
-  width: 1.8rem;
-  justify-content: flex-start;
-`;
+  .bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 22px;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 55%, #d97706 100%);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.28);
+    animation: loaderLine 1.2s ease-in-out infinite;
+  }
 
-const Dot = styled.span<{ $delay: number }>`
-  opacity: 0;
-  font-size: 1.2rem;
-  line-height: 1;
-  animation: dotPulse 1.4s ease-in-out infinite;
-  animation-delay: ${props => props.$delay}s;
-  
-  @keyframes dotPulse {
-    0%, 20% {
-      opacity: 0;
+  @keyframes loaderLine {
+    0% {
+      transform: translateX(0);
+      opacity: 0.55;
     }
     50% {
+      transform: translateX(42px);
       opacity: 1;
     }
     100% {
-      opacity: 0;
+      transform: translateX(0);
+      opacity: 0.55;
     }
   }
 `;

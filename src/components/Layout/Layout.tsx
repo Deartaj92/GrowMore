@@ -1031,7 +1031,6 @@ const Layout: React.FC = () => {
     <MuiThemeProvider theme={muiTheme}>
       <CssBaseline />
         <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
-          {console.log("THEME_DEBUG", theme, theme === 'dark' ? darkTheme : lightTheme)}
           <GlobalStyles />
         <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
         <AppContainer>
@@ -1188,4 +1187,3 @@ const LayoutWithProviders: React.FC = () => {
 };
 
 export default LayoutWithProviders;
-

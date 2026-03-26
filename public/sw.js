@@ -1,4 +1,5 @@
-const CACHE_NAME = 'growmore-v2';
+const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'v1';
+const CACHE_NAME = `growmore-${SW_VERSION}`;
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -7,6 +8,10 @@ const STATIC_ASSETS = [
     '/icon-192.png',
     '/icon-512.png'
 ];
+
+const canCacheResponse = (response) => {
+    return !!response && response.status === 200 && response.type === 'basic';
+};
 
 // Helper to determine if an asset is a static file (JS, CSS, Font, etc.)
 const isStaticAsset = (url) => {
@@ -56,8 +61,10 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    const copy = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                    if (canCacheResponse(response)) {
+                        const copy = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                    }
                     return response;
                 })
                 .catch(() => caches.match('/index.html') || caches.match('/'))
@@ -72,7 +79,7 @@ self.addEventListener('fetch', (event) => {
                 if (cachedResponse) return cachedResponse;
 
                 return fetch(request).then((networkResponse) => {
-                    if (!networkResponse || networkResponse.status !== 200) return networkResponse;
+                    if (!canCacheResponse(networkResponse)) return networkResponse;
 
                     const copy = networkResponse.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
@@ -90,8 +97,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(request)
             .then((response) => {
-                const copy = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                if (canCacheResponse(response)) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                }
                 return response;
             })
             .catch(() => caches.match(request))

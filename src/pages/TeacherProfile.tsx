@@ -71,33 +71,57 @@ import imageCompression from 'browser-image-compression';
 import { AccountCircle } from '@mui/icons-material';
 import { fetchRenderSettings, isTeacherTabVisible, isTeacherSummaryCardVisible, RenderSettings } from '../services/renderSettingsService';
 import { TEACHER_PROFILE_TABS, TEACHER_PROFILE_SUMMARY_CARDS } from '../config/renderSettingsConfig';
-import Loader from '../components/Loader';
+import { CARD_RADIUS_LG, CARD_RADIUS_MD } from '../styles/DesignSystem';
 
 const pulseAnimation = keyframes`
   0%, 100% { opacity: 0.2; }
   50% { opacity: 0.8; }
 `;
 
+const getClayInsetSx = (theme: Theme) => ({
+  background: theme.palette.mode === 'dark'
+    ? 'rgba(0, 0, 0, 0.2)'
+    : 'rgba(255, 255, 255, 0.6)',
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(226, 232, 240, 0.6)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? 'inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.01)'
+    : 'inset 0 2px 4px rgba(15, 23, 42, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(8px)',
+});
+
 // Styled Components
 const ProfileContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
+  background: theme.palette.mode === 'dark'
+    ? `linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, ${alpha(theme.palette.background.default, 0.94)} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
+  border: `1px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(226, 232, 240, 0.85)'}`,
+  borderRadius: CARD_RADIUS_LG,
+  boxShadow: theme.palette.mode === 'dark'
+    ? '0 4px 12px rgba(0, 0, 0, 0.3)'
+    : '0 4px 12px rgba(15, 23, 42, 0.03)',
   [theme.breakpoints.down('sm')]: {
     padding: theme.spacing(2),
+    borderRadius: CARD_RADIUS_MD,
   }
 }));
 
 const GlassCard = styled(Paper)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.8)
-    : alpha(theme.palette.background.paper, 0.7),
+    ? `linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, ${alpha(theme.palette.background.paper, 0.96)} 18%, ${theme.palette.background.default} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
   backdropFilter: 'blur(10px)',
-  borderRadius: 16,
-  border: `1px solid ${theme.palette.mode === 'dark'
-    ? alpha(theme.palette.divider, 0.1)
-    : alpha(theme.palette.divider, 0.1)}`,
+  borderRadius: CARD_RADIUS_LG,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.09)'
+    : 'rgba(226, 232, 240, 0.95)'}`,
   boxShadow: theme.palette.mode === 'dark'
-    ? `0 4px 30px ${alpha(theme.palette.common.black, 0.3)}`
-    : `0 4px 30px ${alpha(theme.palette.common.black, 0.1)}`,
+    ? `0 10px 24px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 10px 18px rgba(255, 255, 255, 0.03), inset 0 -10px 18px rgba(0, 0, 0, 0.2)`
+    : `0 10px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 2px 0 rgba(255, 255, 255, 0.95), inset 0 10px 16px rgba(255, 255, 255, 0.75), inset 0 -10px 16px rgba(59, 130, 246, 0.06)`,
   overflow: 'hidden',
   transition: 'all 0.3s ease',
 }));
@@ -108,36 +132,30 @@ const ProfileHeader = styled(Box)(({ theme }) => ({
   gap: theme.spacing(2),
   padding: theme.spacing(1.5),
   marginBottom: theme.spacing(2),
-  borderRadius: theme.shape.borderRadius * 2,
-  background: `linear-gradient(135deg, 
-    ${alpha(theme.palette.primary.main, 0.08)} 0%,
-    ${alpha(theme.palette.primary.main, 0.12)} 50%,
-    ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+  borderRadius: CARD_RADIUS_LG,
+  background: theme.palette.mode === 'dark'
+    ? `linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, ${alpha(theme.palette.background.paper, 0.96)} 18%, ${theme.palette.background.default} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
   backdropFilter: 'blur(12px)',
   position: 'relative',
   overflow: 'hidden',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-  boxShadow: `
-    0 1px 1px ${alpha(theme.palette.common.black, 0.02)},
-    0 2px 2px ${alpha(theme.palette.common.black, 0.02)},
-    0 4px 4px ${alpha(theme.palette.common.black, 0.02)},
-    0 8px 8px ${alpha(theme.palette.common.black, 0.02)},
-    0 16px 16px ${alpha(theme.palette.common.black, 0.02)},
-    0 1px 3px ${alpha(theme.palette.primary.main, 0.1)},
-    0 4px 6px ${alpha(theme.palette.primary.main, 0.05)},
-    inset 0 1px 1px ${alpha(theme.palette.common.white, 0.08)},
-    inset 0 -1px 1px ${alpha(theme.palette.common.black, 0.04)}
-  `,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.09)'
+    : 'rgba(226, 232, 240, 0.95)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? `0 10px 24px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 10px 18px rgba(255, 255, 255, 0.03), inset 0 -10px 18px rgba(0, 0, 0, 0.2)`
+    : `0 10px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 2px 0 rgba(255, 255, 255, 0.95), inset 0 10px 16px rgba(255, 255, 255, 0.75), inset 0 -10px 16px rgba(59, 130, 246, 0.06)`,
   [theme.breakpoints.up('sm')]: {
     alignItems: 'center',
   },
   [theme.breakpoints.down('sm')]: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: theme.spacing(1),
-    padding: theme.spacing(1),
+    padding: theme.spacing(1.25),
     marginBottom: theme.spacing(1.5),
+    borderRadius: CARD_RADIUS_MD,
     '& > *:last-child': {
       flex: 1,
       minWidth: 0,
@@ -155,21 +173,21 @@ const ProfileHeader = styled(Box)(({ theme }) => ({
   '&::before': {
     background: `radial-gradient(
       1000px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-      ${alpha(theme.palette.primary.main, 0.1)},
+      ${alpha(theme.palette.primary.main, 0.08)},
       transparent 40%
     )`,
-    opacity: 0,
+    opacity: 1,
     zIndex: 1,
   },
 
   '&::after': {
     background: `linear-gradient(90deg,
       transparent 0%,
-      ${alpha(theme.palette.primary.main, 0.12)} 50%,
+      ${alpha(theme.palette.primary.main, 0.08)} 50%,
       transparent 100%
     )`,
     transform: 'translateX(-100%)',
-    animation: 'shimmer 3s infinite',
+    animation: 'shimmer 5s infinite',
   },
 
   '@keyframes shimmer': {
@@ -179,7 +197,7 @@ const ProfileHeader = styled(Box)(({ theme }) => ({
   },
 
   '&:hover': {
-    transform: 'translateY(-3px)',
+    transform: 'translateY(-2px)',
     boxShadow: `
       0 1px 1px ${alpha(theme.palette.common.black, 0.03)},
       0 2px 2px ${alpha(theme.palette.common.black, 0.03)},
@@ -218,12 +236,11 @@ const ProfileAvatar = styled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
     0 0 30px ${alpha(theme.palette.primary.main, 0.05)}
   `,
   [theme.breakpoints.down('sm')]: {
-    width: 60,
-    height: 60,
-    fontSize: '1.5rem',
-    borderRadius: theme.shape.borderRadius * 2,
+    width: 46,
+    height: 46,
+    fontSize: '1.15rem',
+    borderRadius: theme.shape.borderRadius * 1.5,
     border: `1.5px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-    marginTop: theme.spacing(0.5),
   },
 
   '&::before': {
@@ -254,11 +271,6 @@ const ProfileAvatar = styled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
     animationDuration: '2s',
   },
 
-  [theme.breakpoints.down('sm')]: {
-    width: 80,
-    height: 80,
-    fontSize: '2rem',
-  }
 }));
 
 const StatCard = styled(GlassCard)(({ theme }) => ({
@@ -318,12 +330,17 @@ const TabsContainer = styled(Box)(({ theme }) => ({
 
 const ModernTabs = styled(Tabs)(({ theme }) => ({
   background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.5)
-    : alpha(theme.palette.background.paper, 0.8),
-  borderRadius: 16,
+    ? 'rgba(0, 0, 0, 0.2)'
+    : 'rgba(255, 255, 255, 0.6)',
+  borderRadius: CARD_RADIUS_LG,
   padding: theme.spacing(1),
   backdropFilter: 'blur(8px)',
-  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(226, 232, 240, 0.6)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? 'inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.01)'
+    : 'inset 0 2px 4px rgba(15, 23, 42, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
   '& .MuiTabs-flexContainer': {
     gap: theme.spacing(1),
     [theme.breakpoints.down('sm')]: {
@@ -334,7 +351,7 @@ const ModernTabs = styled(Tabs)(({ theme }) => ({
   },
   '& .MuiTabs-indicator': {
     height: '100%',
-    borderRadius: 12,
+    borderRadius: CARD_RADIUS_MD,
     background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.15)}, ${alpha(theme.palette.primary.main, 0.25)})`,
     zIndex: 0,
     [theme.breakpoints.down('sm')]: {
@@ -355,11 +372,11 @@ const ModernTabs = styled(Tabs)(({ theme }) => ({
 
 const TabItem = styled(Tab)(({ theme }) => ({
   minHeight: 56,
-  borderRadius: 12,
-  padding: theme.spacing(1.5, 3),
+  borderRadius: 10,
+  padding: theme.spacing(1.2, 2.2),
   color: theme.palette.text.secondary,
-  fontWeight: 500,
-  fontSize: '0.9rem',
+  fontWeight: 600,
+  fontSize: '0.84rem',
   textTransform: 'none',
   zIndex: 1,
   transition: 'all 0.3s ease',
@@ -378,10 +395,10 @@ const TabItem = styled(Tab)(({ theme }) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    background: 'transparent',
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    background: alpha(theme.palette.primary.main, 0.08),
     transition: 'all 0.3s ease',
   },
   '&.Mui-selected .icon-wrapper': {
@@ -441,12 +458,17 @@ const InfoCard = styled(GlassCard)(({ theme }) => ({
 
 const InfoSection = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
-  borderRadius: theme.shape.borderRadius * 2,
+  borderRadius: CARD_RADIUS_LG,
   background: theme.palette.mode === 'dark'
-    ? alpha(theme.palette.background.paper, 0.6)
-    : alpha(theme.palette.background.paper, 0.8),
+    ? `linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, ${alpha(theme.palette.background.paper, 0.96)} 18%, ${theme.palette.background.default} 100%)`
+    : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
   backdropFilter: 'blur(10px)',
-  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  border: `1.5px solid ${theme.palette.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.09)'
+    : 'rgba(226, 232, 240, 0.95)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? `0 10px 24px rgba(0,0,0,0.42), 0 2px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 10px 18px rgba(255, 255, 255, 0.03), inset 0 -10px 18px rgba(0, 0, 0, 0.2)`
+    : `0 10px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 2px 0 rgba(255, 255, 255, 0.95), inset 0 10px 16px rgba(255, 255, 255, 0.75), inset 0 -10px 16px rgba(59, 130, 246, 0.06)`,
   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
   '&:hover': {
     transform: 'translateY(-2px)',
@@ -1882,7 +1904,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const [yearlyOverview, setYearlyOverview] = useState<{ startDate: Date; endDate: Date; percentage: number }[]>([]);
   const [assignedSections, setAssignedSections] = useState<Array<{ id: number; name: string; class_id: number; class_name: string }>>([]);
   const [activeTab, setActiveTab] = useState(0); // Attendance tab is now index 0
-  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<number | 'all' | null>(null);
   const [halfLeavesMap, setHalfLeavesMap] = useState<Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>>(new Map());
   const [timetableData, setTimetableData] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -1934,8 +1956,6 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     }>;
     totalTests: number;
   }>>([]);
-  const [testAnalysisSessionId, setTestAnalysisSessionId] = useState<number | null>(null);
-  const [diaryAnalysisSessionId, setDiaryAnalysisSessionId] = useState<number | null>(null);
   const [diaryMonthlyData, setDiaryMonthlyData] = useState<Array<{
     month: string;
     monthKey: string;
@@ -1963,6 +1983,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     recentAssignments: [],
   });
   const [sessions, setSessions] = useState<Array<{ id: number; name: string; is_active: boolean }>>([]);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [tabDataLoaded, setTabDataLoaded] = useState<{ [key: number]: boolean }>({});
   const [tabDataLoading, setTabDataLoading] = useState<{ [key: number]: boolean }>({});
   const isLoadingRef = useRef(false);
@@ -2001,6 +2022,28 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const RELIGION_OPTIONS = ['Muslim', 'Christianity', 'Hinduism', 'Sikhism', 'Other'];
   const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'];
   const ROLE_OPTIONS = ['Principal', 'Management Staff', 'Teacher', 'Accountant', 'Store Manager', 'Other'];
+  const emptyHomeworkSummary = {
+    totalAssignments: 0,
+    averagePerDay: 0,
+    assignmentsBySubject: [],
+    assignmentsByClass: [],
+    recentAssignments: [],
+  };
+  const emptyTestSummary = {
+    totalTests: 0,
+    totalStudents: 0,
+    averagePercentage: 0,
+    testsBySubject: [],
+    recentTests: [],
+  };
+  const emptyDiaryAnalysisData = {
+    totalAssignments: 0,
+    totalStudents: 0,
+    averagePerDay: 0,
+    assignmentsBySubject: [],
+    assignmentsByClass: [],
+    recentAssignments: [],
+  };
 
   // Check if current user is viewing their own profile
   const isOwnProfile = user?.staff_id && staffId && parseInt(staffId) === user.staff_id;
@@ -2065,6 +2108,39 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     }
   }, [teacher, isOwnProfile, setPageHeader]);
 
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user?.school_id) {
+        setSessions([]);
+        setSessionsLoaded(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, name, is_active')
+        .eq('school_id', user.school_id)
+        .order('name', { ascending: false });
+
+      if (!error && data) {
+        setSessions(data);
+      } else {
+        setSessions([]);
+      }
+
+      setSessionsLoaded(true);
+    };
+
+    fetchSessions();
+  }, [user?.school_id]);
+
+  useEffect(() => {
+    if (!sessionsLoaded || sessions.length === 0 || sessionId !== null) return;
+
+    const activeSession = sessions.find(session => session.is_active);
+    setSessionId(activeSession?.id ?? sessions[0].id);
+  }, [sessions, sessionsLoaded, sessionId]);
+
   // Memoized calculate monthly stats
   const calculateMonthlyStats = useCallback((records: AttendanceRecord[], halfLeavesMap?: Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>): MonthlyStats[] => {
     const monthlyData: Record<string, MonthlyStats> = {};
@@ -2116,24 +2192,20 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
   useEffect(() => {
     const fetchTeacherData = async () => {
-      if (!staffId || !user?.school_id) return;
+      if (!staffId || !user?.school_id || !sessionsLoaded) return;
+      if (sessions.length > 0 && sessionId === null) return;
 
       const minDuration = 800; // Reduced minimum loading time
       const start = Date.now();
+      const selectedSessionId = typeof sessionId === 'number' ? sessionId : null;
       startProgress(false);
       setProgress(10);
       setLoading(true);
 
       try {
-        // Parallel fetch: session, teacher details, and user_id lookup
+        // Parallel fetch: teacher details and user_id lookup
         setProgress(20);
-        const [sessionResult, teacherResult, userResult] = await Promise.all([
-          supabase
-            .from('sessions')
-            .select('id')
-            .eq('is_active', true)
-            .eq('school_id', user.school_id)
-            .single(),
+        const [teacherResult, userResult] = await Promise.all([
           supabase
             .from('staff')
             .select('*')
@@ -2147,11 +2219,6 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             .eq('school_id', user.school_id)
             .maybeSingle()
         ]);
-
-        const sessionData = sessionResult.data;
-        if (sessionData) {
-          setSessionId(sessionData.id);
-        }
 
         if (teacherResult.error) throw teacherResult.error;
         setTeacher(teacherResult.data);
@@ -2187,18 +2254,20 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               .eq('school_id', user.school_id)
               .range(from, to);
           }),
-          sessionData
-            ? fetchAllRows(async (from, to) => {
-              return await supabase
-                .from('timetable')
-                .select('period_index, subject_id, class_id, day_of_week')
-                .eq('teacher_id', parseInt(staffId))
-                .eq('session_id', sessionData.id)
-                .eq('school_id', user.school_id)
-                .eq('day_of_week', 1)
-                .range(from, to);
-            })
-            : Promise.resolve([]),
+          fetchAllRows(async (from, to) => {
+            let timetableQuery = supabase
+              .from('timetable')
+              .select('period_index, subject_id, class_id, day_of_week')
+              .eq('teacher_id', parseInt(staffId))
+              .eq('school_id', user.school_id)
+              .eq('day_of_week', 1);
+
+            if (selectedSessionId) {
+              timetableQuery = timetableQuery.eq('session_id', selectedSessionId);
+            }
+
+            return await timetableQuery.range(from, to);
+          }),
           // Fetch Timetable Settings & Periods
           supabase.from('timetable_periods').select('*').eq('school_id', user.school_id).order('period_index'),
           supabase.from('timetable_settings').select('*').eq('school_id', user.school_id).single()
@@ -2251,6 +2320,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           setTimetableData(timetableResult || []);
           const uniquePeriods = new Set(timetableResult.map((t: any) => t.period_index + 1));
           setTimetablePeriods(uniquePeriods.size);
+        } else {
+          setTimetableData([]);
+          setTimetablePeriods(0);
         }
 
         // Fetch attendance records and half leaves in parallel
@@ -2258,22 +2330,29 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         let allRecords: AttendanceRecord[] = [];
         let hlMap = new Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>();
 
-        if (sessionData) {
+        {
+          let attendanceQuery = supabase
+            .from('staff_attendance_records')
+            .select('date, status, remarks')
+            .eq('staff_id', parseInt(staffId))
+            .eq('school_id', user.school_id)
+            .order('date', { ascending: false });
+
+          let halfLeavesQuery = supabase
+            .from('half_leaves')
+            .select('date, leave_type, arrival_time, departure_time')
+            .eq('person_type', 'staff')
+            .eq('person_id', parseInt(staffId))
+            .eq('school_id', user.school_id);
+
+          if (selectedSessionId) {
+            attendanceQuery = attendanceQuery.eq('session_id', selectedSessionId);
+            halfLeavesQuery = halfLeavesQuery.eq('session_id', selectedSessionId);
+          }
+
           const [attendanceResult, halfLeavesResult] = await Promise.all([
-            supabase
-              .from('staff_attendance_records')
-              .select('date, status, remarks')
-              .eq('staff_id', parseInt(staffId))
-              .eq('session_id', sessionData.id)
-              .eq('school_id', user.school_id)
-              .order('date', { ascending: false }),
-            supabase
-              .from('half_leaves')
-              .select('date, leave_type, arrival_time, departure_time')
-              .eq('person_type', 'staff')
-              .eq('person_id', parseInt(staffId))
-              .eq('session_id', sessionData.id)
-              .eq('school_id', user.school_id)
+            attendanceQuery,
+            halfLeavesQuery
           ]);
 
           // Process attendance records
@@ -2305,6 +2384,16 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
             setAttendanceStats(stats);
             setRecentAttendance(allRecords.slice(0, 10));
+          } else {
+            setAttendanceStats({
+              present: 0,
+              absent: 0,
+              late: 0,
+              leave: 0,
+              half_day: 0,
+              total: 0,
+            });
+            setRecentAttendance([]);
           }
 
           // Process half leaves
@@ -2317,6 +2406,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
               });
             });
             setHalfLeavesMap(hlMap);
+          } else {
+            setHalfLeavesMap(new Map());
           }
 
           // Defer monthly stats calculation
@@ -2361,8 +2452,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   .eq('school_id', user.school_id);
 
                 // Only filter by session if we have one
-                if (sessionData) {
-                  homeworkQuery = homeworkQuery.eq('session_id', sessionData.id);
+                if (selectedSessionId) {
+                  homeworkQuery = homeworkQuery.eq('session_id', selectedSessionId);
                 }
 
                 const { data: homeworkEntries, error: homeworkError } = await homeworkQuery
@@ -2445,8 +2536,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   .eq('school_id', user.school_id);
 
                 // Only filter by session if we have one
-                if (sessionData) {
-                  testRecordsQuery = testRecordsQuery.eq('session_id', sessionData.id);
+                if (selectedSessionId) {
+                  testRecordsQuery = testRecordsQuery.eq('session_id', selectedSessionId);
                 }
 
                 const { data: testRecords, error: testRecordsError } = await testRecordsQuery
@@ -2577,21 +2668,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           setHomeworkSummary(homeworkPromise);
           setTestSummary(testPromise);
         } else {
-          // No userId found
-          setHomeworkSummary({
-            totalAssignments: 0,
-            averagePerDay: 0,
-            assignmentsBySubject: [],
-            assignmentsByClass: [],
-            recentAssignments: [],
-          });
-          setTestSummary({
-            totalTests: 0,
-            totalStudents: 0,
-            averagePercentage: 0,
-            testsBySubject: [],
-            recentTests: [],
-          });
+          setHomeworkSummary(emptyHomeworkSummary);
+          setTestSummary(emptyTestSummary);
         }
 
         // Wait for minimum duration
@@ -2611,19 +2689,19 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     };
 
     fetchTeacherData();
-  }, [staffId, user?.school_id, showToast, startProgress, setProgress, completeProgress, calculateMonthlyStats, isMyProfile]);
+  }, [staffId, user?.school_id, sessionId, sessions, sessionsLoaded, showToast, startProgress, setProgress, completeProgress, calculateMonthlyStats, isMyProfile]);
 
   // Lazy load test data when Test Analysis tab is accessed or session changes
   useEffect(() => {
     const loadTestData = async () => {
-      if (activeTab !== 3 || !id || !user?.school_id || !testAnalysisSessionId) return;
+      if (activeTab !== 3 || !staffId || !user?.school_id) return;
 
       // Prevent loading if already loading or if same session is already loaded
       if (isLoadingRef.current) return;
-      if (lastSessionIdRef.current === testAnalysisSessionId && tabDataLoaded[3]) return;
+      if (lastSessionIdRef.current === (typeof sessionId === 'number' ? sessionId : null) && tabDataLoaded[3]) return;
 
       isLoadingRef.current = true;
-      lastSessionIdRef.current = testAnalysisSessionId;
+      lastSessionIdRef.current = typeof sessionId === 'number' ? sessionId : null;
       setTabDataLoading(prev => ({ ...prev, [3]: true }));
 
       try {
@@ -2631,7 +2709,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         const { data: userData } = await supabase
           .from('users')
           .select('id')
-          .eq('staff_id', parseInt(id))
+          .eq('staff_id', parseInt(staffId))
           .eq('school_id', user.school_id)
           .maybeSingle();
 
@@ -2642,35 +2720,35 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         }
 
         // Fetch test records for monthly distribution
-        const { data: testRecordsForMonthly } = await supabase
+        let testRecordsForMonthlyQuery = supabase
           .from('test_records')
           .select('id, name, test_date, subject_id, class_id, section_id')
           .eq('created_by', userData.id)
-          .eq('school_id', user.school_id)
-          .eq('session_id', testAnalysisSessionId)
-          .order('test_date', { ascending: false });
+          .eq('school_id', user.school_id);
 
-        // Fetch test records for summary (same query, different fields)
-        const { data: testRecordsForSummary } = await supabase
+        let testRecordsForSummaryQuery = supabase
           .from('test_records')
           .select('id, name, test_date, subject_id, class_id')
           .eq('created_by', userData.id)
-          .eq('school_id', user.school_id)
-          .eq('session_id', testAnalysisSessionId)
-          .order('test_date', { ascending: false });
+          .eq('school_id', user.school_id);
+
+        const activeSessionId = typeof sessionId === 'number' ? sessionId : null;
+        if (activeSessionId) {
+          testRecordsForMonthlyQuery = testRecordsForMonthlyQuery.eq('session_id', activeSessionId);
+          testRecordsForSummaryQuery = testRecordsForSummaryQuery.eq('session_id', activeSessionId);
+        }
+
+        const { data: testRecordsForMonthly } = await testRecordsForMonthlyQuery.order('test_date', { ascending: false });
+
+        // Fetch test records for summary (same query, different fields)
+        const { data: testRecordsForSummary } = await testRecordsForSummaryQuery.order('test_date', { ascending: false });
 
         if (!testRecordsForMonthly || testRecordsForMonthly.length === 0) {
           // Still try to load summary even if no monthly data
           if (testRecordsForSummary && testRecordsForSummary.length > 0) {
             // Load summary data
           } else {
-            setTestSummary({
-              totalTests: 0,
-              totalStudents: 0,
-              averagePercentage: 0,
-              testsBySubject: [],
-              recentTests: [],
-            });
+            setTestSummary(emptyTestSummary);
             setTestMonthlyData([]);
             setTabDataLoaded(prev => ({ ...prev, [3]: true }));
             setTabDataLoading(prev => ({ ...prev, [3]: false }));
@@ -2856,13 +2934,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             recentTests,
           });
         } else {
-          setTestSummary({
-            totalTests: 0,
-            totalStudents: 0,
-            averagePercentage: 0,
-            testsBySubject: [],
-            recentTests: [],
-          });
+          setTestSummary(emptyTestSummary);
         }
 
         setTabDataLoaded(prev => ({ ...prev, [3]: true }));
@@ -2875,78 +2947,20 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     };
 
     // Only load if session is selected and tab is active
-    if (testAnalysisSessionId) {
-      loadTestData();
-    }
-  }, [activeTab, testAnalysisSessionId, staffId, user?.school_id, isMyProfile]); // tabDataLoaded intentionally excluded to prevent infinite loop
-
-  // Fetch sessions when Test Analysis tab is accessed
-  useEffect(() => {
-    const fetchSessions = async () => {
-      if (!user?.school_id || activeTab !== 3) return;
-
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('id, name, is_active')
-        .eq('school_id', user.school_id)
-        .order('name', { ascending: false });
-
-      if (!error && data) {
-        setSessions(data);
-        // Auto-select active session or first session only if not already set
-        if (!testAnalysisSessionId) {
-          const activeSession = data.find(s => s.is_active);
-          if (activeSession) {
-            setTestAnalysisSessionId(activeSession.id);
-          } else if (data.length > 0) {
-            setTestAnalysisSessionId(data[0].id);
-          }
-        }
-      }
-    };
-
-    fetchSessions();
-  }, [activeTab, user?.school_id]); // Removed testAnalysisSessionId from dependencies
-
-  // Fetch sessions when Diary Analysis tab is accessed
-  useEffect(() => {
-    const fetchSessionsForDiary = async () => {
-      if (!user?.school_id || activeTab !== 4) return;
-
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('id, name, is_active')
-        .eq('school_id', user.school_id)
-        .order('name', { ascending: false });
-
-      if (!error && data) {
-        setSessions(data);
-        // Auto-select active session or first session only if not already set
-        if (!diaryAnalysisSessionId) {
-          const activeSession = data.find(s => s.is_active);
-          if (activeSession) {
-            setDiaryAnalysisSessionId(activeSession.id);
-          } else if (data.length > 0) {
-            setDiaryAnalysisSessionId(data[0].id);
-          }
-        }
-      }
-    };
-
-    fetchSessionsForDiary();
-  }, [activeTab, user?.school_id]); // Removed diaryAnalysisSessionId from dependencies
+    loadTestData();
+  }, [activeTab, sessionId, staffId, user?.school_id, isMyProfile]); // tabDataLoaded intentionally excluded to prevent infinite loop
 
   // Lazy load diary analysis data when Diary Analysis tab is accessed or session changes
   useEffect(() => {
     const loadDiaryData = async () => {
-      if (activeTab !== 4 || !id || !user?.school_id || !diaryAnalysisSessionId) return;
+      if (activeTab !== 4 || !staffId || !user?.school_id) return;
 
       // Prevent loading if already loading or if same session is already loaded
       if (diaryLoadingRef.current) return;
-      if (lastDiarySessionIdRef.current === diaryAnalysisSessionId && tabDataLoaded[4]) return;
+      if (lastDiarySessionIdRef.current === (typeof sessionId === 'number' ? sessionId : null) && tabDataLoaded[4]) return;
 
       diaryLoadingRef.current = true;
-      lastDiarySessionIdRef.current = diaryAnalysisSessionId;
+      lastDiarySessionIdRef.current = typeof sessionId === 'number' ? sessionId : null;
       setTabDataLoading(prev => ({ ...prev, [4]: true }));
 
       try {
@@ -2954,26 +2968,19 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         const { data: userData } = await supabase
           .from('users')
           .select('id')
-          .eq('staff_id', parseInt(id))
+          .eq('staff_id', parseInt(staffId))
           .eq('school_id', user.school_id)
           .maybeSingle();
 
         if (!userData?.id) {
-          setDiaryAnalysisData({
-            totalAssignments: 0,
-            totalStudents: 0,
-            averagePerDay: 0,
-            assignmentsBySubject: [],
-            assignmentsByClass: [],
-            recentAssignments: [],
-          });
+          setDiaryAnalysisData(emptyDiaryAnalysisData);
           setDiaryMonthlyData([]);
           setTabDataLoaded(prev => ({ ...prev, [4]: true }));
           return;
         }
 
         // Fetch homework diary entries for the selected session
-        const { data: homeworkEntries, error: homeworkError } = await supabase
+        let homeworkEntriesQuery = supabase
           .from('homework_diary')
           .select(`
             id,
@@ -2987,33 +2994,24 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             sections:section_id(id, name)
           `)
           .eq('assigned_by', userData.id)
-          .eq('session_id', diaryAnalysisSessionId)
-          .eq('school_id', user.school_id)
-          .order('homework_date', { ascending: false });
+          .eq('school_id', user.school_id);
+
+        const activeSessionId = typeof sessionId === 'number' ? sessionId : null;
+        if (activeSessionId) {
+          homeworkEntriesQuery = homeworkEntriesQuery.eq('session_id', activeSessionId);
+        }
+
+        const { data: homeworkEntries, error: homeworkError } = await homeworkEntriesQuery.order('homework_date', { ascending: false });
 
         if (homeworkError) {
-          setDiaryAnalysisData({
-            totalAssignments: 0,
-            totalStudents: 0,
-            averagePerDay: 0,
-            assignmentsBySubject: [],
-            assignmentsByClass: [],
-            recentAssignments: [],
-          });
+          setDiaryAnalysisData(emptyDiaryAnalysisData);
           setDiaryMonthlyData([]);
           setTabDataLoaded(prev => ({ ...prev, [4]: true }));
           return;
         }
 
         if (!homeworkEntries || homeworkEntries.length === 0) {
-          setDiaryAnalysisData({
-            totalAssignments: 0,
-            totalStudents: 0,
-            averagePerDay: 0,
-            assignmentsBySubject: [],
-            assignmentsByClass: [],
-            recentAssignments: [],
-          });
+          setDiaryAnalysisData(emptyDiaryAnalysisData);
           setDiaryMonthlyData([]);
           setTabDataLoaded(prev => ({ ...prev, [4]: true }));
           return;
@@ -3222,10 +3220,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     };
 
     // Only load if session is selected and tab is active
-    if (diaryAnalysisSessionId) {
-      loadDiaryData();
-    }
-  }, [activeTab, diaryAnalysisSessionId, staffId, user?.school_id, isMyProfile]);
+    loadDiaryData();
+  }, [activeTab, sessionId, staffId, user?.school_id, isMyProfile]);
 
   // Edit modal functions
   const handleOpenEditModal = () => {
@@ -3443,10 +3439,233 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     }
   }, [visibleTabs, activeTab, getVisibleTabIndex]);
 
+  const handleSessionChange = (event: SelectChangeEvent<number | string>) => {
+    const newSessionId = event.target.value === 'all'
+      ? 'all'
+      : event.target.value
+        ? Number(event.target.value)
+        : null;
+
+    setLoading(true);
+    setSessionId(newSessionId);
+    setTabDataLoaded({});
+    setTabDataLoading({});
+    lastSessionIdRef.current = null;
+    lastDiarySessionIdRef.current = null;
+    isLoadingRef.current = false;
+    diaryLoadingRef.current = false;
+    setAttendanceStats(null);
+    setMonthlyStats([]);
+    setRecentAttendance([]);
+    setWeeklyAttendance([]);
+    setAttendancePattern([]);
+    setYearlyOverview([]);
+    setHalfLeavesMap(new Map());
+    setTimetableData([]);
+    setTimetablePeriods(0);
+    setHomeworkSummary(emptyHomeworkSummary);
+    setTestSummary(emptyTestSummary);
+    setTestMonthlyData([]);
+    setDiaryMonthlyData([]);
+    setDiaryAnalysisData(emptyDiaryAnalysisData);
+  };
 
   if (loading) {
-    return <Loader />;
+    return (
+      <ProfileContainer>
+        <ProfileHeader>
+          <Skeleton
+            variant="rounded"
+            width={75}
+            height={75}
+            sx={{ borderRadius: 4, flexShrink: 0, width: { xs: 46, sm: 75 }, height: { xs: 46, sm: 75 } }}
+          />
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: { xs: 'flex-start', md: 'center' },
+              justifyContent: 'space-between',
+              gap: { xs: 0.75, sm: 2 },
+              flexWrap: { xs: 'nowrap', md: 'wrap' },
+            }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Skeleton variant="text" width={180} height={38} sx={{ width: { xs: 112, sm: 180 }, height: { xs: 26, sm: 38 } }} />
+              <Skeleton variant="text" width={110} height={20} sx={{ width: { xs: 90, sm: 110 }, height: { xs: 18, sm: 20 } }} />
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                {[1, 2].map((item) => (
+                  <Skeleton key={item} variant="text" width={120} height={18} sx={{ width: { xs: 88 + (item * 10), sm: 120 + (item * 10) } }} />
+                ))}
+              </Box>
+            </Box>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: { xs: 0.5, sm: 1 },
+                flexShrink: 0,
+                width: { xs: 108, sm: 'auto' },
+              }}
+            >
+              <Skeleton variant="rectangular" width={180} height={40} sx={{ borderRadius: 2.5, width: { xs: '100%', sm: 180 }, height: { xs: 34, sm: 40 } }} />
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.8,
+                  p: { xs: 0.6, sm: 1 },
+                  minWidth: { xs: '100%', sm: 138 },
+                  borderRadius: 2.5,
+                  ...getClayInsetSx(theme),
+                }}
+              >
+                <Skeleton variant="circular" width={24} height={24} />
+                <Box>
+                  <Skeleton variant="text" width={38} height={12} />
+                  <Skeleton variant="text" width={48} height={16} />
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </ProfileHeader>
+
+        <Box sx={{ mb: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard sx={{ p: 3 }}>
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box sx={{ width: 180, height: 180, mx: 'auto', mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Skeleton variant="circular" width={180} height={180} />
+                  </Box>
+                  <Grid container spacing={2}>
+                    {[1, 2, 3, 4].map((item) => (
+                      <Grid item xs={6} key={item}>
+                        <Box sx={{ p: 1.5, borderRadius: 1, ...getClayInsetSx(theme) }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Skeleton variant="rounded" width={32} height={32} />
+                            <Box sx={{ flex: 1 }}>
+                              <Skeleton variant="text" width="55%" height={24} />
+                              <Skeleton variant="text" width="75%" height={16} />
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </StatCard>
+            </Grid>
+
+            {[1, 2, 3].map((item) => (
+              <Grid item xs={12} sm={6} md={3} key={item}>
+                <StatCard sx={{ p: 1.5, height: '100%' }}>
+                  <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1.25 }}>
+                      <Skeleton variant="circular" width={18} height={18} />
+                      <Skeleton variant="text" width="48%" height={20} />
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
+                      {[1, 2, 3].map((row) => (
+                        <Box
+                          key={row}
+                          sx={{
+                            py: 1.25,
+                            px: 1.25,
+                            borderRadius: 1,
+                            ...getClayInsetSx(theme),
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.25
+                          }}
+                        >
+                          <Box sx={{ minWidth: 75 }}>
+                            <Skeleton variant="text" width={40} height={22} />
+                            <Skeleton variant="text" width={55} height={16} />
+                          </Box>
+                          <Box sx={{ width: 1, height: 24, bgcolor: alpha(theme.palette.divider, 0.16) }} />
+                          <Box sx={{ flex: 1 }}>
+                            <Skeleton variant="text" width="70%" height={18} />
+                            <Skeleton variant="text" width="55%" height={16} />
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                </StatCard>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        <GlassCard>
+          <TabsContainer>
+            <ModernTabs value={0}>
+              {['Info', 'Attendance', 'Timetable', 'Tests', 'Diary'].map((tab) => (
+                <TabItem
+                  key={tab}
+                  disabled
+                  label={
+                    <Box className="tab-wrapper">
+                      <Box className="icon-wrapper">
+                        <Skeleton variant="circular" width={20} height={20} />
+                      </Box>
+                      <span className="tab-label">{tab}</span>
+                    </Box>
+                  }
+                />
+              ))}
+            </ModernTabs>
+          </TabsContainer>
+
+          <TabPanel>
+            <Grid container spacing={3}>
+              {[1, 2].map((section) => (
+                <Grid item xs={12} md={6} key={section}>
+                  <InfoSection>
+                    <SectionTitle>
+                      <Box className="icon-wrapper">
+                        <Skeleton variant="circular" width={20} height={20} />
+                      </Box>
+                      <Box className="title-content">
+                        <Skeleton variant="text" width="48%" height={30} />
+                      </Box>
+                    </SectionTitle>
+
+                    <Grid container spacing={2}>
+                      {[1, 2, 3, 4, 5, 6].map((item) => (
+                        <Grid item xs={12} sm={item === 6 ? 12 : 6} key={item}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                              p: 1.5,
+                              borderRadius: 2,
+                              ...getClayInsetSx(theme)
+                            }}
+                          >
+                            <Skeleton variant="rounded" width={40} height={40} />
+                            <Box sx={{ flex: 1 }}>
+                              <Skeleton variant="text" width="38%" height={18} />
+                              <Skeleton variant="text" width={item === 6 ? '92%' : '72%'} height={22} />
+                            </Box>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </InfoSection>
+                </Grid>
+              ))}
+            </Grid>
+          </TabPanel>
+        </GlassCard>
+      </ProfileContainer>
+    );
   }
+
 
   if (!teacher) {
     return (
@@ -3473,16 +3692,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         <Box sx={{
           display: 'flex',
           alignItems: 'center',
-          [theme.breakpoints.up('sm')]: {
-            alignSelf: 'center',
-          },
-          [theme.breakpoints.down('sm')]: {
-            '& .MuiAvatar-root': {
-              width: '60px !important',
-              height: '60px !important',
-              fontSize: '1.5rem !important',
-            }
-          }
+          flexShrink: 0,
         }}>
           <ProfileAvatar src={teacher.picture_url}>
             {teacher.name.charAt(0).toUpperCase()}
@@ -3494,39 +3704,27 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           zIndex: 2,
           minWidth: 0,
           display: 'flex',
-          flexDirection: 'column',
-          [theme.breakpoints.up('sm')]: {
-            justifyContent: 'center',
-          }
+          alignItems: { xs: 'flex-start', md: 'center' },
+          justifyContent: 'space-between',
+          gap: { xs: 0.75, sm: 2 },
+          flexWrap: { xs: 'nowrap', md: 'wrap' },
         }}>
-          {/* Top Row: Name, Score Badge, Edit Button */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: { xs: 'center', sm: 'center' },
-            justifyContent: 'space-between',
-            gap: { xs: 1, sm: 2 },
-            mb: { xs: 1, sm: 2 },
-            flexWrap: { xs: 'wrap', sm: 'nowrap' }
-          }}>
             <Box sx={{
               display: 'flex',
               flexDirection: 'column',
-              gap: { xs: 0.25, sm: 0.5 },
+              gap: { xs: 0.35, sm: 0.5 },
               flex: 1,
               minWidth: 0,
-              [theme.breakpoints.up('sm')]: {
-                justifyContent: 'center',
-              }
             }}>
               <Typography
                 variant="h4"
                 sx={{
                   fontWeight: 700,
-                  fontSize: { xs: '1rem', sm: '1.5rem' },
-                  lineHeight: 1.2,
+                  fontSize: { xs: '0.95rem', sm: '1.5rem' },
+                  lineHeight: { xs: 1.05, sm: 1.2 },
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: { xs: 'normal', sm: 'nowrap' }
                 }}
               >
                 {teacher.name}
@@ -3535,55 +3733,85 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 variant="body2"
                 sx={{
                   color: 'text.secondary',
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  fontWeight: 500,
-                  fontFamily: 'monospace'
+                  fontSize: { xs: '0.72rem', sm: '0.875rem' },
+                  fontWeight: 600,
+                  lineHeight: 1.1,
                 }}
               >
-                ID: {teacher.id}
+                {teacher.role || 'Teacher'}
               </Typography>
               {assignedSections.length > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.25, sm: 0.5 }, flexWrap: 'wrap' }}>
-                  {assignedSections.map((section, index) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', width: '100%' }}>
+                  {assignedSections.slice(0, 2).map((section) => (
                     <Chip
                       key={section.id}
                       label={`${section.class_name}${section.name ? `-${section.name}` : ''}`}
                       size="small"
                       sx={{
-                        height: { xs: 18, sm: 22 },
-                        fontSize: { xs: '0.625rem', sm: '0.7rem' },
+                        height: { xs: 16, sm: 22 },
+                        fontSize: { xs: '0.58rem', sm: '0.7rem' },
                         fontWeight: 500,
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        bgcolor: { xs: 'transparent', sm: alpha(theme.palette.primary.main, 0.1) },
                         color: theme.palette.primary.main,
-                        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        border: { xs: 'none', sm: `1px solid ${alpha(theme.palette.primary.main, 0.2)}` },
                         '& .MuiChip-label': {
-                          px: { xs: 0.5, sm: 1 },
+                          px: { xs: 0, sm: 1 },
                         }
                       }}
                     />
                   ))}
+                  {assignedSections.length > 2 && (
+                    <Typography sx={{ fontSize: { xs: '0.62rem', sm: '0.72rem' }, color: 'text.secondary', fontWeight: 600 }}>
+                      +{assignedSections.length - 2} more
+                    </Typography>
+                  )}
                 </Box>
               )}
             </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: { xs: 0.5, sm: 1 }, flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: { xs: 0.5, sm: 1 }, flexShrink: 0, width: { xs: 108, sm: 'auto' } }}>
+              {sessions.length > 0 && (
+                <FormControl size="small" sx={{ width: { xs: '100%', sm: 190 }, maxWidth: { md: 210 } }}>
+                  <InputLabel>Session</InputLabel>
+                  <Select
+                    value={sessionId ?? ''}
+                    label="Session"
+                    onChange={handleSessionChange}
+                    sx={{
+                      ...getClayInsetSx(theme),
+                      minHeight: { xs: 32, sm: 40 },
+                      fontSize: { xs: '0.72rem', sm: '0.875rem' },
+                      '& .MuiSelect-select': {
+                        py: { xs: 0.85, sm: 1.1 },
+                      },
+                    }}
+                  >
+                    <MenuItem value="all">All Sessions</MenuItem>
+                    {sessions.map((session) => (
+                      <MenuItem key={session.id} value={session.id}>
+                        {session.name} {session.is_active && '(Active)'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               {/* Teacher Score Badge */}
               <Box
                 onClick={() => setScoreBreakdownOpen(true)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: { xs: 0.5, sm: 1 },
-                  px: { xs: 0.75, sm: 1.5 },
-                  py: { xs: 0.375, sm: 0.75 },
+                  gap: { xs: 0.55, sm: 1 },
+                  px: { xs: 0.65, sm: 1.5 },
+                  py: { xs: 0.5, sm: 0.75 },
                   borderRadius: { xs: 1.5, sm: 2 },
-                  bgcolor: theme => alpha(getScoreColor(teacherScore).light, 0.1),
+                  ...getClayInsetSx(theme),
                   border: theme => `1px solid ${alpha(getScoreColor(teacherScore).main, 0.2)}`,
                   position: 'relative',
                   overflow: 'hidden',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    transform: 'scale(1.05)',
+                    transform: { xs: 'none', sm: 'scale(1.05)' },
                     bgcolor: theme => alpha(getScoreColor(teacherScore).light, 0.15),
                     border: theme => `1px solid ${alpha(getScoreColor(teacherScore).main, 0.3)}`,
                   },
@@ -3603,8 +3831,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 }}
               >
                 <Box sx={{
-                  width: { xs: 28, sm: 36 },
-                  height: { xs: 28, sm: 36 },
+                  width: { xs: 22, sm: 36 },
+                  height: { xs: 22, sm: 36 },
                   position: 'relative',
                   zIndex: 1,
                 }}>
@@ -3654,7 +3882,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     <Typography
                       variant="body2"
                       sx={{
-                        fontSize: { xs: '0.625rem', sm: '0.8rem' },
+                        fontSize: { xs: '0.48rem', sm: '0.8rem' },
                         fontWeight: 700,
                         color: theme => getScoreColor(teacherScore).main,
                       }}
@@ -3663,23 +3891,25 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     </Typography>
                   </Box>
                 </Box>
-                <Box sx={{ position: 'relative', zIndex: 1, display: { xs: 'none', sm: 'block' } }}>
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
                   <Typography
                     variant="body2"
                     sx={{
-                      fontSize: '0.7rem',
-                      fontWeight: 500,
+                      fontSize: { xs: '0.5rem', sm: '0.7rem' },
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
                       color: 'text.secondary',
-                      mb: 0.2
+                      mb: { xs: 0, sm: 0.2 }
                     }}
                   >
-                    Teacher Score
+                    Score
                   </Typography>
                   <Typography
                     variant="body2"
                     sx={{
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
+                      fontSize: { xs: '0.68rem', sm: '0.75rem' },
+                      fontWeight: 700,
                       color: theme => getScoreColor(teacherScore).main,
                       lineHeight: 1,
                     }}
@@ -3698,9 +3928,9 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     color: theme.palette.primary.main,
                     borderColor: alpha(theme.palette.primary.main, 0.3),
                     flexShrink: 0,
-                    fontSize: { xs: '0.625rem', sm: '0.75rem' },
-                    padding: { xs: '0.25rem 0.5rem', sm: '0.375rem 0.75rem' },
-                    minWidth: 'auto',
+                    fontSize: { xs: '0.6rem', sm: '0.75rem' },
+                    padding: { xs: '0.2rem 0.45rem', sm: '0.375rem 0.75rem' },
+                    minWidth: { xs: '100%', sm: 'auto' },
                     textTransform: 'none',
                     fontWeight: 500,
                     borderRadius: { xs: 1, sm: 1.5 },
@@ -3716,47 +3946,6 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 </Button>
               )}
             </Box>
-          </Box>
-
-          {/* Info Items: Organized in a grid */}
-          <Box sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-            gap: { xs: 1, sm: 1.5 },
-            mt: 0
-          }}>
-            {teacher.mobile && (
-              <InfoItem>
-                <Box className="icon-container">
-                  <Phone sx={{ fontSize: { xs: 14, sm: 18 } }} />
-                </Box>
-                <Box className="info-content">
-                  <Typography className="info-label">Mobile</Typography>
-                  <Typography className="info-value">{teacher.mobile}</Typography>
-                </Box>
-              </InfoItem>
-            )}
-            {teacher.email && (
-              <InfoItem>
-                <Box className="icon-container">
-                  <Email sx={{ fontSize: { xs: 14, sm: 18 } }} />
-                </Box>
-                <Box className="info-content">
-                  <Typography className="info-label">Email</Typography>
-                  <Typography
-                    className="info-value"
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {teacher.email}
-                  </Typography>
-                </Box>
-              </InfoItem>
-            )}
-          </Box>
         </Box>
       </ProfileHeader>
 
@@ -5977,40 +6166,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           {/* Test Analysis Tab */}
           {activeTab === 3 && isTeacherTabVisible(renderSettings, 'test_analysis_tab') && (
             <TabPanel>
-              {/* Session Selector */}
-              {sessions.length > 0 && (
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                  <FormControl size="small" sx={{ minWidth: 200 }}>
-                    <InputLabel>Session</InputLabel>
-                    <Select
-                      value={testAnalysisSessionId || ''}
-                      label="Session"
-                      onChange={(e) => {
-                        const newSessionId = Number(e.target.value);
-                        setTestAnalysisSessionId(newSessionId);
-                        setTabDataLoaded(prev => ({ ...prev, [3]: false })); // Reset loaded state to reload data
-                        lastSessionIdRef.current = null; // Reset ref to allow reload
-                        isLoadingRef.current = false; // Reset loading ref
-                        setTestMonthlyData([]); // Clear monthly data
-                        setTestSummary({ // Clear summary data
-                          totalTests: 0,
-                          totalStudents: 0,
-                          averagePercentage: 0,
-                          testsBySubject: [],
-                          recentTests: [],
-                        });
-                      }}
-                    >
-                      {sessions.map((session) => (
-                        <MenuItem key={session.id} value={session.id}>
-                          {session.name} {session.is_active && '(Active)'}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-              )}
-              {!testAnalysisSessionId ? (
+              {sessions.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 4 }}>
                   <Typography variant="body1" color="text.secondary">
                     Please select a session
@@ -6392,37 +6548,8 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           {/* Diary Analysis Tab */}
           {activeTab === 4 && isTeacherTabVisible(renderSettings, 'diary_analysis_tab') && (
             <TabPanel>
-              {/* Session Selector */}
-              {sessions.length > 0 && (
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                  <FormControl size="small" sx={{ minWidth: 200 }}>
-                    <InputLabel>Session</InputLabel>
-                    <Select
-                      value={diaryAnalysisSessionId || ''}
-                      label="Session"
-                      onChange={(e) => setDiaryAnalysisSessionId(e.target.value as number)}
-                    >
-                      {sessions.map((session) => (
-                        <MenuItem key={session.id} value={session.id}>
-                          {session.name} {session.is_active && '(Active)'}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-              )}
-
               {tabDataLoading[4] ? (
                 <Grid container spacing={3}>
-                  {/* Session Selector Skeleton */}
-                  {sessions.length > 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Skeleton variant="rectangular" width={200} height={40} sx={{ borderRadius: 1 }} />
-                      </Box>
-                    </Grid>
-                  )}
-
                   {/* Overview Stats Skeleton */}
                   <Grid item xs={12} md={4}>
                     <InfoCard>
@@ -7517,4 +7644,3 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 };
 
 export default TeacherProfile;
-
