@@ -10,9 +10,12 @@ interface LoaderProps {
 
 const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullScreenDark = false }) => {
   const assetVersion = process.env.REACT_APP_VERSION || 'dev';
-  const primaryLogo = `${process.env.PUBLIC_URL || ''}/patternLogo.png?v=${encodeURIComponent(assetVersion)}`;
-  const fallbackLogo = `${process.env.PUBLIC_URL || ''}/icon-192.png?v=${encodeURIComponent(assetVersion)}`;
-  const finalFallbackLogo = `${process.env.PUBLIC_URL || ''}/notification-icon.png?v=${encodeURIComponent(assetVersion)}`;
+  const publicBase = process.env.PUBLIC_URL && process.env.PUBLIC_URL !== '.'
+    ? process.env.PUBLIC_URL.replace(/\/$/, '')
+    : '';
+  const primaryLogo = `${publicBase}/patternLogo.png?v=${encodeURIComponent(assetVersion)}`;
+  const fallbackLogo = `${publicBase}/icon-192.png?v=${encodeURIComponent(assetVersion)}`;
+  const finalFallbackLogo = `${publicBase}/notification-icon.png?v=${encodeURIComponent(assetVersion)}`;
   const [logoSrc, setLogoSrc] = React.useState<string | null>(null);
 
   React.useEffect(() => {
