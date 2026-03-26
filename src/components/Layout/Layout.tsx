@@ -151,6 +151,33 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Keep the mobile app shell locked to the real visual viewport height.
+  // This prevents the outer page from gaining a small extra scroll range
+  // when browser chrome or the software keyboard changes the viewport.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const applyViewportHeight = () => {
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--app-viewport-height', `${viewportHeight}px`);
+    };
+
+    applyViewportHeight();
+
+    const visualViewport = window.visualViewport;
+    window.addEventListener('resize', applyViewportHeight, { passive: true });
+    window.addEventListener('orientationchange', applyViewportHeight, { passive: true });
+    visualViewport?.addEventListener('resize', applyViewportHeight, { passive: true });
+    visualViewport?.addEventListener('scroll', applyViewportHeight, { passive: true });
+
+    return () => {
+      window.removeEventListener('resize', applyViewportHeight);
+      window.removeEventListener('orientationchange', applyViewportHeight);
+      visualViewport?.removeEventListener('resize', applyViewportHeight);
+      visualViewport?.removeEventListener('scroll', applyViewportHeight);
+    };
+  }, []);
+
   // Scroll detection for auto-hide scrollbars
   useEffect(() => {
     let scrollTimeout: NodeJS.Timeout;

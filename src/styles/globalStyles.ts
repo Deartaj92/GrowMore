@@ -24,6 +24,7 @@ export const GlobalStyles = createGlobalStyle`
   html, body {
     margin: 0;
     padding: 0;
+    height: 100%;
     overflow-x: hidden;
     background: ${({ theme }: any) => theme.BG};
     color: ${({ theme }: any) => theme.TEXT_PRIMARY};
@@ -34,6 +35,7 @@ export const GlobalStyles = createGlobalStyle`
   }
 
   #root {
+    height: 100%;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -67,6 +69,13 @@ export const GlobalStyles = createGlobalStyle`
 
   /* Mobile touch optimizations */
   @media (max-width: 700px) {
+    html, body, #root {
+      height: 100%;
+      min-height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
     * {
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;

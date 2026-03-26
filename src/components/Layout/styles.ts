@@ -15,7 +15,8 @@ export const AppContainer = styled.div`
   flex-direction: column;
   
   @media (max-width: 700px) {
-    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+    height: var(--app-viewport-height, 100dvh);
+    min-height: var(--app-viewport-height, 100dvh);
   }
 `;
 
