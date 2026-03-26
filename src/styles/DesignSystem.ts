@@ -12,14 +12,24 @@ export const CONTROL_HEIGHT_SM = '24px';
 export const CONTROL_FONT_SM = '0.72rem';
 export const CONTROL_PADDING_X_SM = '0.6rem';
 
+const BLUE_THEME = {
+  blue: '#3b82f6',
+  blueStrong: '#2563eb',
+  blueSoft: '#60a5fa',
+  blueTintDark: 'rgba(59, 130, 246, 0.18)',
+  blueTintLight: 'rgba(59, 130, 246, 0.08)',
+  indigo: '#6366f1',
+  indigoStrong: '#4f46e5',
+} as const;
+
 export const DASHBOARD_STATUS_COLORS = {
   success: '#22c55e',
   successStrong: '#16a34a',
   danger: '#ef4444',
   warning: '#f59e0b',
   warningStrong: '#eab308',
-  info: '#3b82f6',
-  infoStrong: '#2563eb',
+  info: BLUE_THEME.blue,
+  infoStrong: BLUE_THEME.blueStrong,
   violet: '#8b5cf6',
   neutral: '#64748b',
   whatsapp: '#25D366',
@@ -93,16 +103,16 @@ export const getLayoutPalette = (theme: any) => {
     surfaceBorder: dark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.82)',
     surfaceShadow: dark
       ? '0 4px 12px rgba(0, 0, 0, 0.42), inset 0 1px 2px rgba(255, 255, 255, 0.05)'
-      : '0 2px 8px rgba(15, 23, 42, 0.05), inset 0 2px 4px rgba(255, 255, 255, 1)',
+      : '0 2px 10px rgba(37, 99, 235, 0.08), inset 0 2px 4px rgba(255, 255, 255, 1)',
     surfaceHoverBg: dark ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.92)',
     surfaceHoverBorder: dark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 1)',
     surfaceHoverShadow: dark
       ? '0 6px 16px rgba(0, 0, 0, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.1)'
-      : '0 4px 12px rgba(15, 23, 42, 0.08), inset 0 2px 4px rgba(255, 255, 255, 1)',
+      : '0 4px 12px rgba(37, 99, 235, 0.12), inset 0 2px 4px rgba(255, 255, 255, 1)',
     navHoverBg: dark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)',
     navHoverShadow: dark
       ? 'inset 0 1px 2px rgba(220, 235, 255, 0.06)'
-      : 'inset 0 1px 2px rgba(255, 255, 255, 1), 0 2px 4px rgba(15, 23, 42, 0.02)',
+      : 'inset 0 1px 2px rgba(255, 255, 255, 1), 0 2px 4px rgba(37, 99, 235, 0.05)',
     navActiveText: theme.ACCENT,
     dropdownThumb: dark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
     dropdownThumbHover: dark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
@@ -118,7 +128,7 @@ export const getLayoutPalette = (theme: any) => {
     footerBorder: dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(226, 232, 240, 0.9)',
     footerShadow: dark
       ? '0 -4px 16px rgba(0,0,0,0.45), inset 0 1px 2px rgba(255, 255, 255, 0.05)'
-      : '0 -4px 20px rgba(0, 0, 0, 0.04), inset 0 2px 5px rgba(255, 255, 255, 1)',
+      : '0 -4px 20px rgba(37, 99, 235, 0.06), inset 0 2px 5px rgba(255, 255, 255, 1)',
   };
 };
 
@@ -142,7 +152,7 @@ export const getFieldPalette = (theme: any) => {
          inset 0 8px 14px rgba(255, 255, 255, 0.02),
          inset 0 -8px 14px rgba(0, 0, 0, 0.18)`
       : `0 8px 18px rgba(15, 23, 42, 0.06),
-         0 2px 6px rgba(15, 23, 42, 0.03),
+         0 2px 6px rgba(37, 99, 235, 0.05),
          inset 0 2px 0 rgba(255, 255, 255, 0.92),
          inset 0 8px 12px rgba(255, 255, 255, 0.7),
          inset 0 -8px 12px rgba(59, 130, 246, 0.05)`,
@@ -153,7 +163,7 @@ export const getFieldPalette = (theme: any) => {
          inset 0 10px 16px rgba(255, 255, 255, 0.025),
          inset 0 -10px 16px rgba(0, 0, 0, 0.2)`
       : `0 10px 22px rgba(15, 23, 42, 0.08),
-         0 3px 8px rgba(15, 23, 42, 0.04),
+         0 3px 8px rgba(37, 99, 235, 0.06),
          inset 0 2px 0 rgba(255, 255, 255, 0.96),
          inset 0 10px 14px rgba(255, 255, 255, 0.74),
          inset 0 -10px 14px rgba(59, 130, 246, 0.06)`,
@@ -165,7 +175,7 @@ export const getFieldPalette = (theme: any) => {
          inset 0 -8px 14px rgba(0, 0, 0, 0.18),
          0 0 0 3px ${theme.ACCENT}22`
       : `0 8px 18px rgba(15, 23, 42, 0.06),
-         0 2px 6px rgba(15, 23, 42, 0.03),
+         0 2px 6px rgba(37, 99, 235, 0.05),
          inset 0 2px 0 rgba(255, 255, 255, 0.92),
          inset 0 8px 12px rgba(255, 255, 255, 0.7),
          inset 0 -8px 12px rgba(59, 130, 246, 0.05),
@@ -181,43 +191,43 @@ export const getFieldPalette = (theme: any) => {
 
 export const getButtonPalette = (theme: any) => {
   const dark = isDark(theme);
-  const accent = theme.ACCENT || '#6366f1';
+  const accent = theme.ACCENT || BLUE_THEME.indigo;
 
   return {
-    primaryBg: `linear-gradient(135deg, ${accent} 0%, ${dark ? '#4338ca' : '#4f46e5'} 100%)`,
+    primaryBg: `linear-gradient(135deg, ${accent} 0%, ${dark ? BLUE_THEME.indigoStrong : '#4f46e5'} 100%)`,
     primaryText: '#ffffff',
     primaryBorder: 'transparent',
     primaryShadow: dark
-      ? '0 4px 12px rgba(79, 70, 229, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2)'
-      : '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.4)',
+      ? '0 4px 12px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2)'
+      : '0 4px 12px rgba(37, 99, 235, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.4)',
     primaryHoverShadow: dark
-      ? '0 6px 16px rgba(79, 70, 229, 0.5)'
-      : '0 6px 16px rgba(99, 102, 241, 0.4)',
+      ? '0 6px 16px rgba(37, 99, 235, 0.5)'
+      : '0 6px 16px rgba(37, 99, 235, 0.36)',
     dangerBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
     dangerText: '#ffffff',
     dangerBorder: 'transparent',
     dangerShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
     dangerHoverShadow: '0 6px 16px rgba(239, 68, 68, 0.3)',
     secondaryBg: dark
-      ? `linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, ${theme.CARD}f2 22%, ${theme.BG} 100%)`
-      : 'linear-gradient(145deg, #ffffff 0%, #fdfefe 22%, #eef5fb 100%)',
-    secondaryText: dark ? '#94a3b8' : '#64748b',
+      ? `linear-gradient(145deg, rgba(37, 99, 235, 0.06) 0%, ${theme.CARD}f2 24%, rgba(212, 160, 23, 0.06) 100%)`
+      : 'linear-gradient(145deg, #fffdf8 0%, #f7faff 26%, #fff4d6 100%)',
+    secondaryText: dark ? '#b8c8e6' : '#5f6f89',
     secondaryTextHover: dark ? '#f8fafc' : '#0f172a',
-    secondaryBorder: dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.9)',
+    secondaryBorder: dark ? 'rgba(96, 165, 250, 0.14)' : 'rgba(255, 221, 138, 0.72)',
     secondaryShadow: dark
       ? `0 8px 18px rgba(0, 0, 0, 0.24),
-         inset 0 1px 0 rgba(255, 255, 255, 0.08),
-         inset 0 8px 14px rgba(255, 255, 255, 0.02),
+         inset 0 1px 0 rgba(96, 165, 250, 0.08),
+         inset 0 8px 14px rgba(96, 165, 250, 0.03),
          inset 0 -8px 14px rgba(0, 0, 0, 0.18)`
       : `0 8px 18px rgba(15, 23, 42, 0.05),
          inset 0 2px 0 rgba(255, 255, 255, 0.92),
          inset 0 8px 12px rgba(255, 255, 255, 0.7),
-         inset 0 -8px 12px rgba(59, 130, 246, 0.05)`,
-    secondaryHoverBg: dark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
+         inset 0 -8px 12px rgba(212, 160, 23, 0.08)`,
+    secondaryHoverBg: dark ? 'rgba(37, 99, 235, 0.08)' : '#fff7e3',
     secondaryHoverBorder: `${accent}44`,
     secondaryHoverShadow: dark
       ? '0 10px 22px rgba(0, 0, 0, 0.28)'
-      : '0 10px 22px rgba(15, 23, 42, 0.08)',
+      : '0 10px 22px rgba(37, 99, 235, 0.1)',
   };
 };
 

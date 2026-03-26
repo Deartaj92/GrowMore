@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import styled, { useTheme, createGlobalStyle } from 'styled-components';
+import styled, { useTheme, createGlobalStyle, css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
@@ -9,12 +9,31 @@ import { Print, Badge as BadgeIcon } from '@mui/icons-material';
 import { pdf } from '@react-pdf/renderer';
 import StudentCardsPDFDocument from '../components/StudentCardsPDFDocument';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import {
+  CARD_RADIUS_LG,
+  clayPanelStyle,
+  getButtonPalette,
+  getLayoutPalette,
+  isDark as checkIsDark,
+  clayInputStyle,
+  minimalSelectMenuStyle,
+} from '../styles/DesignSystem';
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding-bottom: 2rem;
+  gap: 1rem;
+  min-height: 100%;
+  padding: 0 10px 1rem 10px;
+  background: ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    const dark = checkIsDark(theme);
+    return `
+      radial-gradient(circle at top left, ${dark ? 'rgba(255, 255, 255, 0.035)' : `${theme.ACCENT}10`} 0%, transparent 26%),
+      linear-gradient(180deg, rgba(255,255,255,${dark ? '0.02' : '0.35'}) 0%, transparent 18%),
+      ${layout.shellBg}
+    `;
+  }};
 `;
 
 const PrintGlobalStyle = createGlobalStyle`
@@ -47,19 +66,25 @@ const PrintGlobalStyle = createGlobalStyle`
 `;
 
 const Header = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      ${clayPanelStyle}
+      border: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  margin: 6px 0 4px 0;
+  margin: 8px 0 6px 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-  border-radius: 10px;
-  padding: 4px 8px 2px 8px;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 8px 10px;
   min-height: 36px;
 
   @media print {
@@ -67,14 +92,20 @@ const Header = styled.div`
   }
 `;
 
-const SEGMENTED_HEIGHT = '32px';
+const SEGMENTED_HEIGHT = '30px';
 
 const SegmentedGroup = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: flex;
   align-items: center;
-  background: ${({ theme }) => (theme as any).BG === '#252525' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  border-radius: ${CARD_RADIUS_LG};
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
@@ -82,88 +113,62 @@ const SegmentedGroup = styled.div`
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
-    border-radius: 8px;
   }
 `;
 
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
+  ${clayInputStyle}
+  ${minimalSelectMenuStyle}
   font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
+  font-size: 0.72rem;
+  font-weight: 600;
   height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  line-height: 1;
   border: none;
   outline: none;
   transition: background 0.2s;
   appearance: none;
-  background: ${({ theme }) => (theme as any).BG === '#252525' ? '#444' : '#fff'};
-  color: ${({ theme }) => (theme as any).BG === '#252525' ? '#C0C0C0' : '#333'};
-  padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  padding: 0 1.8rem 0 0.72rem;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
-  &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
-  }
+  border-radius: 0;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.8em center;
-  background-size: 1em 1em;
   cursor: pointer;
   @media (max-width: 700px) {
     width: 100%;
-    border-radius: 8px !important;
-    border-left: none;
-    border-right: none;
     min-width: 0;
-    background-position: right 1em center;
   }
 `;
 
 const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
   font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 500;
+  font-size: 0.72rem;
+  font-weight: 700;
   height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  line-height: 1;
   border: none;
   outline: none;
   transition: background 0.2s;
   appearance: none;
-  background: ${({ theme }) => (theme as any).BG === '#252525' ? '#444' : '#fff'};
-  color: ${({ theme }) => (theme as any).BG === '#252525' ? '#C0C0C0' : '#333'};
-  padding: 0 1.12em;
+  ${({ theme }) => {
+    const buttons = getButtonPalette(theme);
+    return css`
+      background: ${buttons.primaryBg};
+      color: ${buttons.primaryText};
+      box-shadow: ${buttons.primaryShadow};
+    `;
+  }}
+  padding: 0 0.9rem;
   display: flex;
   align-items: center;
   gap: 0.35em;
   border-radius: 0;
-  border-right: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
-  &:last-child { border-right: none; }
-  &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#ddd'};
-  }
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
   cursor: pointer;
   &:hover {
-    background: ${({ theme }) => (theme as any).BG === '#252525' ? '#555' : '#e5e7eb'};
+    box-shadow: ${({ theme }) => getButtonPalette(theme).primaryHoverShadow};
   }
   &:disabled {
     opacity: 0.5;
@@ -171,9 +176,6 @@ const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
   }
   @media (max-width: 700px) {
     width: 100%;
-    border-radius: 8px !important;
-    border-left: none;
-    border-right: none;
     min-width: 0;
   }
 `;
@@ -181,7 +183,7 @@ const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
 const PrintContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
   justify-content: center;
 
   @media print {
@@ -444,10 +446,12 @@ const InfoValue = styled.span<{ $highlight?: boolean }>`
 
 const EmptyState = styled.div`
   text-align: center;
-  padding: 3rem;
-  background: ${({ theme }) => (theme as any).BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'};
-  border-radius: 12px;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  ${clayPanelStyle}
+  padding: 2rem;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border-radius: ${CARD_RADIUS_LG};
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   display: flex;
   flex-direction: column;
   align-items: center;

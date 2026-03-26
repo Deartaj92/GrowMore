@@ -20,12 +20,23 @@ import { useToast } from '../components/useToast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CircularProgress, Box, Grid } from '@mui/material';
-import { darkTheme, lightTheme, useProgress, ThemeContext } from '../components/Layout';
+import { useProgress, ThemeContext } from '../components/Layout';
 import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 import Loader from '../components/Loader';
+import {
+  CARD_RADIUS_LG,
+  clayCardStyle,
+  clayInputStyle,
+  clayPanelStyle,
+  getButtonPalette,
+  getDashboardPalette,
+  getLayoutPalette,
+  isDark as checkIsDark,
+  minimalSelectMenuStyle,
+} from '../styles/DesignSystem';
 // Styled components
 const PageContainer = styled.div`
   display: flex;
@@ -34,7 +45,15 @@ const PageContainer = styled.div`
   width: 100%;
   max-width: 100%;
   position: relative;
-  background: ${({ theme }) => theme.BG};
+  background: ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    const dark = checkIsDark(theme);
+    return `
+      radial-gradient(circle at top left, ${dark ? 'rgba(255, 255, 255, 0.035)' : `${theme.ACCENT}10`} 0%, transparent 26%),
+      linear-gradient(180deg, rgba(255,255,255,${dark ? '0.02' : '0.35'}) 0%, transparent 18%),
+      ${layout.shellBg}
+    `;
+  }};
   overflow: hidden;
 `;
 
@@ -42,12 +61,12 @@ const ContentArea = styled.div`
   flex: 1;
   width: 100%;
   overflow-y: auto;
-  padding: 16px;
+  padding: 10px;
   padding-bottom: 8px;
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 
   &::-webkit-scrollbar {
     display: none;
@@ -58,16 +77,24 @@ const ContentArea = styled.div`
 `;
 
 const Header = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+
+    return css`
+      ${clayPanelStyle}
+      border-bottom: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   position: sticky;
   top: 0;
   z-index: 20;
-  background: ${({ theme }) => theme.BG};
-  padding: 12px 16px;
+  padding: 8px 10px;
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
   width: 100%;
   flex-shrink: 0;
   
@@ -82,22 +109,23 @@ const Header = styled.div`
 const FilterGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   margin-left: auto;
   
   @media (max-width: 768px) {
     width: 100%;
-    flex-direction: column;
-    gap: 8px;
+    margin-left: 0;
+    justify-content: stretch;
   }
 `;
 
 const Heading = styled.h2`
-  font-size: 22px;
+  font-size: 1.3rem;
   font-weight: 700;
   color: ${({ theme }) => theme.ACCENT};
   margin: 0;
   text-align: left;
+  letter-spacing: 0.01em;
 `;
 
 const SearchBar = styled.div`
@@ -162,7 +190,7 @@ const PageGrid = styled.div`
 const StudentGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
   width: 100%;
   padding: 0;
   margin: 0;
@@ -173,7 +201,7 @@ const StudentGrid = styled.div`
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(1, minmax(0, 1fr));
-    gap: 12px; /* Reduce gap on mobile for better performance */
+    gap: 10px;
   }
 `;
 
@@ -184,32 +212,50 @@ const getStatusColor = (status: string) =>
         status === 'withdrawn' ? '239,68,68' : // red
           '99,102,241'; // blue
 
+const getStatusThemeColor = (theme: any, status: string) => {
+  const palette = getDashboardPalette(theme).status;
+
+  if (status === 'active') return palette.success;
+  if (status === 'inactive') return palette.neutral;
+  if (status === 'suspended') return palette.warning;
+  if (status === 'withdrawn') return palette.danger;
+  return palette.info;
+};
+
+const getStatusThemeSurface = (theme: any, status: string) => {
+  const palette = getDashboardPalette(theme).status;
+
+  if (status === 'active') return palette.successBg;
+  if (status === 'inactive') return palette.neutralBg;
+  if (status === 'suspended') return palette.warningBg;
+  if (status === 'withdrawn') return palette.dangerBg;
+  return palette.infoBg;
+};
+
 const StudentCard = styled.div<{ status: string }>`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
+  ${clayCardStyle}
   padding: 0;
   position: relative;
-  border: 2.5px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.18s;
-  min-width: 270px;
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-left: 3px solid rgba(${({ status }) => getStatusColor(status)}, 0.82);
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  min-width: 248px;
   max-width: 100%;
   width: 100%;
   overflow: hidden;
   box-sizing: border-box;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: rgba(${({ status }) => getStatusColor(status)}, 0.8);
+    transform: translateY(-1px);
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
+    border-color: rgba(${({ status }) => getStatusColor(status)}, 0.45);
   }
   
   @media (max-width: 700px) {
     /* Optimize for mobile performance */
     padding: 0;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-width: 2px;
+    border-radius: ${CARD_RADIUS_LG};
     transition: none;
     transform: translateZ(0);
     will-change: transform;
@@ -227,20 +273,15 @@ const StudentCard = styled.div<{ status: string }>`
 
 const StatusBadge = styled.div<{ status: string }>`
   position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 0.25rem 0.6rem;
+  top: 8px;
+  right: 8px;
+  padding: 0.2rem 0.52rem;
   border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: ${({ status }) =>
-    status === 'active' ? 'rgb(34, 197, 94)' :
-      status === 'inactive' ? 'rgb(107, 114, 128)' :
-        status === 'suspended' ? 'rgb(245, 158, 11)' :
-          status === 'withdrawn' ? 'rgb(239, 68, 68)' :
-            'rgb(99, 102, 241)'};
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: ${({ theme, status }) => getStatusThemeColor(theme, status)};
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.16);
   z-index: 2;
   letter-spacing: 0.01em;
   display: flex;
@@ -278,41 +319,48 @@ const StatusBadge = styled.div<{ status: string }>`
 `;
 
 const StudentInfo = styled.div`
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 `;
 
 const StudentName = styled.h3`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.3rem 0;
+  font-size: 0.93rem;
+  font-weight: 700;
+  margin: 0 0 0.18rem 0;
   
   @media (max-width: 700px) {
-    font-size: 0.95rem;
-    margin: 0 0 0.25rem 0;
+    font-size: 0.88rem;
+    margin: 0 0 0.15rem 0;
   }
 `;
 
 const StudentDetails = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.85rem;
-  margin: 0.2rem 0;
+  font-size: 0.78rem;
+  margin: 0.12rem 0;
   
   @media (max-width: 700px) {
-    font-size: 0.8rem;
-    margin: 0.15rem 0;
+    font-size: 0.72rem;
+    margin: 0.1rem 0;
   }
 `;
 
 const ActionButtons = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: 3px;
-  width: 200px;
-  background: transparent;
-  border-radius: 6px;
-  padding: 3px;
+  gap: 0;
+  width: 176px;
+  border-radius: ${CARD_RADIUS_LG};
+  overflow: hidden;
   flex-shrink: 0;
   
   /* When single button, align to bottom right */
@@ -320,69 +368,102 @@ const ActionButtons = styled.div`
     display: flex !important;
     justify-content: flex-end;
     align-items: flex-end;
-    width: 200px; /* Keep same width as grid */
+    width: 176px;
     
     button {
       width: auto !important;
       min-width: fit-content;
-      max-width: calc(100% - 6px); /* Ensure it fits within padding */
+      max-width: 100%;
+      border-right: none;
+      border-bottom: none;
     }
   }
   
   @media (max-width: 700px) {
-    /* 2x2 grid on mobile for compact layout */
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
-    width: 150px;
-    gap: 4px;
+    width: 132px;
+    gap: 0;
     padding: 0;
     margin: 0;
-    background: transparent;
-    border-radius: 6px;
+    border-radius: ${CARD_RADIUS_LG};
     align-self: center;
     
     &[data-single-button="true"] {
       display: flex !important;
       justify-content: center;
       align-items: center;
-      width: 150px;
+      width: 132px;
       
       button {
         width: 100% !important;
+        border-right: none;
+        border-bottom: none;
       }
     }
   }
 `;
 
 const ActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'warning' }>`
-  background: ${({ variant, theme }) =>
-    variant === 'primary' ? 'rgba(59, 130, 246, 0.13)' :
-      variant === 'danger' ? 'rgba(239, 68, 68, 0.13)' :
-        variant === 'warning' ? 'rgba(251, 191, 36, 0.13)' :
-          theme.BG === '#252525' ? '#333' : '#f3f4f6'};
-  color: ${({ variant }) =>
-    variant === 'primary' ? '#3b82f6' :
-      variant === 'danger' ? '#ef4444' :
-        variant === 'warning' ? '#f59e0b' :
-          '#888'};
+  ${({ theme, variant }) => {
+    const dark = checkIsDark(theme);
+    const palette = getDashboardPalette(theme);
+    const neutralText = palette.bodyText;
+    const tones = {
+      primary: {
+        bg: palette.status.infoBg,
+        hover: `${palette.status.info}22`,
+        text: palette.status.info,
+      },
+      danger: {
+        bg: palette.status.dangerBg,
+        hover: `${palette.status.danger}22`,
+        text: palette.status.danger,
+      },
+      warning: {
+        bg: palette.status.warningBg,
+        hover: `${palette.status.warning}22`,
+        text: palette.status.warning,
+      },
+      default: {
+        bg: 'transparent',
+        hover: dark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.04)',
+        text: neutralText,
+      },
+    } as const;
+
+    const tone = variant ? tones[variant] : tones.default;
+
+    return css`
+      background: ${tone.bg};
+      color: ${tone.text};
+
+      &:hover:not(:disabled) {
+        background: ${tone.hover};
+      }
+    `;
+  }}
   border: none;
-  border-radius: 6px;
-  padding: clamp(0.3rem, 2vw, 0.6rem) clamp(0.4rem, 3vw, 0.8rem);
-  font-size: clamp(0.5rem, 1.8vw, 0.85rem);
-  font-weight: 600;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: clamp(0.1rem, 1vw, 0.3rem);
-  transition: all 0.18s;
+  transition: background 0.18s ease, color 0.18s ease;
   min-width: 0;
   white-space: nowrap;
-  height: clamp(28px, 8vw, 36px);
+  height: 29px;
   width: 100%;
   justify-content: center;
   overflow: visible;
   box-sizing: border-box;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  box-shadow: ${({ theme }) =>
+    `inset 0 1px 0 rgba(255, 255, 255, ${checkIsDark(theme) ? 0.04 : 0.45})`};
 
   /* Icon sizing */
   svg {
@@ -399,12 +480,12 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'warning' 
     flex-shrink: 0;
   }
 
-  &:hover:not(:disabled) {
-    background: ${({ variant }) =>
-    variant === 'primary' ? 'rgba(59, 130, 246, 0.22)' :
-      variant === 'danger' ? 'rgba(239, 68, 68, 0.22)' :
-        variant === 'warning' ? 'rgba(251, 191, 36, 0.22)' :
-          'rgba(120,120,120,0.18)'};
+  &:nth-child(2n) {
+    border-right: none;
+  }
+
+  &:nth-last-child(-n + 2) {
+    border-bottom: none;
   }
 
   &:disabled {
@@ -416,21 +497,20 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'warning' 
     /* Compact buttons to fit in one line */
     flex: 1;
     min-width: 0;
-    padding: 0.4rem 0.3rem;
-    font-size: 0.65rem;
-    height: 32px;
+    padding: 0.28rem 0.2rem;
+    font-size: 0.6rem;
+    height: 26px;
     gap: 0.2rem;
-    border-radius: 6px;
     white-space: nowrap;
     
     svg {
-      width: 0.75rem;
-      height: 0.75rem;
+      width: 0.7rem;
+      height: 0.7rem;
       flex-shrink: 0;
     }
     
     span {
-      font-size: 0.65rem;
+      font-size: 0.58rem;
       font-weight: 600;
       white-space: nowrap;
     }
@@ -439,24 +519,23 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'warning' 
 
 const HistoryButton = styled.button<{ status: string }>`
   position: absolute;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#555' : '#9ca3af'};
-  color: #fff;
+  background: ${({ theme, status }) => getStatusThemeSurface(theme, status)};
+  color: ${({ theme, status }) => getStatusThemeColor(theme, status)};
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   z-index: 3;
   transition: all 0.2s;
   
   &:hover {
     transform: scale(1.1);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    background: ${({ theme }) => theme.BG === '#252525' ? '#666' : '#6b7280'};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
   
   svg {
@@ -490,9 +569,7 @@ const HistoryButton = styled.button<{ status: string }>`
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(0, 0, 0, 0.5)'
-    : 'rgba(255, 255, 255, 0.5)'};
+  background: ${({ theme }) => getLayoutPalette(theme).shellOverlay};
   backdrop-filter: blur(8px);
   WebkitBackdropFilter: blur(8px);
   z-index: 4000;
@@ -507,19 +584,15 @@ const ModalOverlay = styled.div`
 `;
 
 const ModalBox = styled.div`
-  background: ${({ theme }) => theme.CARD};
+  ${clayPanelStyle}
   width: 90vw;
   max-width: 500px;
   max-height: 90vh;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-    ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
-    : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
-  border: ${({ theme }) => theme.BG === '#252525'
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   margin: 32px 16px;
   position: relative;
   z-index: 1301;
@@ -541,12 +614,8 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
@@ -558,7 +627,7 @@ const ModalHeader = styled.div`
 const ModalTitle = styled.div`
   font-size: 1.5rem;
   font-weight: 600;
-  background: linear-gradient(45deg, #6366f1, #8b5cf6);
+  background: ${({ theme }) => `linear-gradient(45deg, ${theme.ACCENT}, ${getDashboardPalette(theme).status.violet})`};
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -579,9 +648,7 @@ const ModalContent = styled.div`
   flex-direction: column;
   gap: 24px;
   overflow-y: auto;
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)'};
+  background: transparent;
   scrollbar-width: thin;
   scrollbar-color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.2) transparent'
@@ -614,61 +681,65 @@ const ModalFooter = styled.div`
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-top: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
 `;
 
 type ModalButtonVariant = 'primary' | 'secondary' | 'danger';
 
 const ModalButton = styled.button<{ variant?: ModalButtonVariant }>`
+  ${({ theme, variant }) => {
+    const buttons = getButtonPalette(theme);
+    const layout = getLayoutPalette(theme);
+
+    if (variant === 'primary') {
+      return css`
+        background: ${buttons.primaryBg};
+        color: ${buttons.primaryText};
+        border: 1px solid ${buttons.primaryBorder};
+        box-shadow: ${buttons.primaryShadow};
+
+        &:hover:not(:disabled) {
+          box-shadow: ${buttons.primaryHoverShadow};
+        }
+      `;
+    }
+
+    if (variant === 'danger') {
+      return css`
+        background: ${buttons.dangerBg};
+        color: ${buttons.dangerText};
+        border: 1px solid ${buttons.dangerBorder};
+        box-shadow: ${buttons.dangerShadow};
+
+        &:hover:not(:disabled) {
+          box-shadow: ${buttons.dangerHoverShadow};
+        }
+      `;
+    }
+
+    return css`
+      background: ${layout.surfaceBg};
+      color: ${theme.TEXT_PRIMARY};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+
+      &:hover:not(:disabled) {
+        background: ${layout.surfaceHoverBg};
+        border-color: ${layout.surfaceHoverBorder};
+        box-shadow: ${layout.surfaceHoverShadow};
+      }
+    `;
+  }}
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: ${CARD_RADIUS_LG};
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? 'linear-gradient(45deg, #6366f1, #8b5cf6)'
-      : variant === 'danger'
-        ? 'linear-gradient(45deg, #ef4444, #dc2626)'
-        : theme.BG === '#252525'
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme, variant }) =>
-    variant === 'primary' || variant === 'danger'
-      ? '#fff'
-      : theme.BG === '#252525'
-        ? '#fff'
-        : '#1e293b'};
-  border: none;
-  box-shadow: ${({ variant }) =>
-    variant === 'primary'
-      ? '0 2px 8px rgba(99, 102, 241, 0.25)'
-      : variant === 'danger'
-        ? '0 2px 8px rgba(239, 68, 68, 0.25)'
-        : 'none'};
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
   
-  &:hover {
+  &:hover:not(:disabled) {
     transform: translateY(-1px);
-    background: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
-      : variant === 'danger'
-        ? 'linear-gradient(45deg, #dc2626, #b91c1c)'
-        : theme.BG === '#252525'
-          ? 'rgba(255, 255, 255, 0.15)'
-          : 'rgba(0, 0, 0, 0.1)'};
-    box-shadow: ${({ variant }) =>
-    variant === 'primary'
-      ? '0 4px 12px rgba(99, 102, 241, 0.35)'
-      : variant === 'danger'
-        ? '0 4px 12px rgba(239, 68, 68, 0.35)'
-        : 'none'};
   }
   
   &:active {
@@ -684,16 +755,21 @@ const ModalButton = styled.button<{ variant?: ModalButtonVariant }>`
 `;
 
 const Avatar = styled.div`
-  width: 120px;
-  min-height: 140px;
+  width: 96px;
+  min-height: 120px;
   align-self: stretch;
   border-radius: 0;
-  background: ${({ theme }) => theme.ACCENT + '22'};
-  color: ${({ theme }) => theme.ACCENT};
+  background: ${({ theme }) => {
+    const dark = checkIsDark(theme);
+    return dark
+      ? `linear-gradient(160deg, ${theme.ACCENT}2d 0%, rgba(255,255,255,0.04) 100%)`
+      : `linear-gradient(160deg, ${theme.ACCENT}1c 0%, rgba(255,255,255,0.78) 100%)`;
+  }};
+  color: ${({ theme }) => getDashboardPalette(theme).titleText};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   flex-shrink: 0;
   overflow: hidden;
@@ -717,9 +793,9 @@ const Avatar = styled.div`
   }
 
   @media (max-width: 700px) {
-    width: 90px;
-    min-height: 120px;
-    font-size: 2rem;
+    width: 76px;
+    min-height: 102px;
+    font-size: 1.65rem;
   }
 `;
 
@@ -727,10 +803,10 @@ const CardTop = styled.div`
   display: flex;
   align-items: stretch;
   gap: 0;
-  max-height: 140px;
+  min-height: 120px;
   
   @media (max-width: 700px) {
-    max-height: 120px;
+    min-height: 102px;
   }
 `;
 
@@ -743,38 +819,31 @@ const MobileInfoRow = styled.div`
 
 const FatherName = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.85rem;
-  margin-bottom: 0.1rem;
+  font-size: 0.76rem;
+  margin-bottom: 0.05rem;
   
   @media (max-width: 700px) {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     margin-bottom: 0.05rem;
   }
 `;
 
 const ReasonBadge = styled.div<{ status: string }>`
-  padding: 0.4rem 0.6rem;
+  padding: 0.32rem 0.45rem;
   border-radius: 6px;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   font-weight: 500;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  background: ${({ theme, status }) =>
-    theme.BG === '#252525'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.03)'};
-  border-left: 3px solid ${({ status }) =>
-    status === 'suspended' ? '#f59e0b' :
-      status === 'withdrawn' ? '#ef4444' :
-        status === 'inactive' ? '#6b7280' :
-          '#6366f1'};
-  margin-top: 0.5rem;
+  background: ${({ theme, status }) => getStatusThemeSurface(theme, status)};
+  border-left: 3px solid ${({ theme, status }) => getStatusThemeColor(theme, status)};
+  margin-top: 0.35rem;
   display: flex;
   align-items: center;
   gap: 0.3rem;
   
   @media (max-width: 700px) {
-    font-size: 0.65rem;
-    padding: 0.35rem 0.5rem;
+    font-size: 0.6rem;
+    padding: 0.26rem 0.38rem;
   }
 `;
 
@@ -833,12 +902,13 @@ const PaginationContainer = styled.div`
 `;
 
 const PaginationInfo = styled.div`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.95rem;
+  color: ${({ theme }) => getLayoutPalette(theme).footerText};
+  font-size: 0.9rem;
+  font-weight: 600;
   
   @media (max-width: 768px) {
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
   }
 `;
 
@@ -908,58 +978,32 @@ const PageSizeSelect = styled.select`
 `;
 
 const ModalInput = styled.input`
+  ${clayInputStyle}
   width: 100%;
   padding: 12px 16px;
-  border-radius: 12px;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: ${CARD_RADIUS_LG};
   font-size: 1rem;
-  outline: none;
-  transition: all 0.2s ease;
   margin-bottom: 0.5rem;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}33;
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.TEXT_SECONDARY};
-  }
 `;
 
 const ModalSelect = styled.select`
+  ${clayInputStyle}
+  ${minimalSelectMenuStyle}
   width: 100%;
   padding: 12px 16px;
-  border-radius: 12px;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  padding-right: 2.3rem;
+  border-radius: ${CARD_RADIUS_LG};
   font-size: 1rem;
-  outline: none;
-  transition: all 0.2s ease;
   margin-bottom: 1rem;
   cursor: pointer;
   appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525'
-    ? `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`
-    : `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`};
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}33;
-  }
 `;
 
 const ModalLabel = styled.label`
   display: block;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.95rem;
-  font-weight: 500;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  font-size: 0.9rem;
+  font-weight: 700;
   margin-bottom: 0.5rem;
 `;
 
@@ -968,8 +1012,8 @@ const ModalFormGroup = styled.div`
 `;
 
 const ModalText = styled.div`
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.1rem;
+  color: ${({ theme }) => getDashboardPalette(theme).bodyText};
+  font-size: 1rem;
   margin-bottom: 1.5rem;
   font-weight: 500;
   line-height: 1.5;
@@ -1227,13 +1271,19 @@ const InfoBox = styled.div<{ type?: 'success' | 'warning' | 'error' }>`
 
 
 // Add SegmentedGroup, SegmentedInput, SegmentedSelect styled components (copied from StudentList.tsx)
-const SEGMENTED_HEIGHT = '32px';
+const SEGMENTED_HEIGHT = '30px';
 const SegmentedGroup = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px rgba(0, 0, 0, 0.1);
+  align-items: stretch;
+  border-radius: ${CARD_RADIUS_LG};
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
@@ -1241,56 +1291,52 @@ const SegmentedGroup = styled.div`
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
-    border-radius: 8px;
   }
 `;
 const SegmentedBase = css`
+  ${minimalSelectMenuStyle}
   font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
+  font-size: 0.72rem;
+  font-weight: 600;
   height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0, 0, 0, 0.1);
+  line-height: 1;
   border: none;
   outline: none;
-  transition: background 0.2s;
+  transition: background 0.18s ease, color 0.18s ease;
   appearance: none;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
-  color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
 const SegmentedInput = styled.input`
   ${SegmentedBase}
-  padding: 0 0.84em;
+  padding: 0 0.7rem;
   min-width: 98px;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-  border-top-left-radius: 11px;
-  border-bottom-left-radius: 11px;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  &::placeholder {
+    color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  }
   @media (max-width: 700px) {
     width: 100%;
-    border-radius: 8px !important;
     border-right: none;
     min-width: 0;
   }
 `;
 const SegmentedSelect = styled.select`
   ${SegmentedBase}
-  padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+  padding: 0 1.8rem 0 0.7rem;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
-  &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-  }
   appearance: none;
   -webkit-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525'
-    ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
-    : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
+  background-image: ${({ theme }) => {
+    const color = encodeURIComponent(checkIsDark(theme) ? '#94a3b8' : '#64748b');
+    return `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='${color}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
+  }};
   background-repeat: no-repeat;
-  background-position: right 0.8em center;
+  background-position: right 0.65rem center;
   background-size: 1em 1em;
   @media (max-width: 700px) {
     width: 100%;
-    border-radius: 8px !important;
     border-left: none;
     border-right: none;
     min-width: 0;
@@ -1307,29 +1353,19 @@ interface SegmentedButtonProps {
 
 const SegmentedButton = styled.button<SegmentedButtonProps>`
   ${SegmentedBase}
-  padding: 0 0.84em;
+  padding: 0 0.68rem;
   min-width: 32px;
   cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
   opacity: ${({ disabled }) => disabled ? '0.5' : '1'};
   background: ${({ theme, active }) =>
-    active ? theme.ACCENT :
-      theme.BG === '#252525' ? '#444' : '#f3f4f6'};
+    active ? theme.ACCENT : 'transparent'};
   color: ${({ theme, active }) =>
-    active ? '#fff' :
-      theme.BG === '#252525' ? '#C0C0C0' : '#444'};
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+    active ? '#fff' : theme.TEXT_PRIMARY};
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
-  &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-  }
-  border-top-left-radius: ${({ first }) => first ? '11px' : '0'};
-  border-bottom-left-radius: ${({ first }) => first ? '11px' : '0'};
-  border-top-right-radius: ${({ last }) => last ? '11px' : '0'};
-  border-bottom-right-radius: ${({ last }) => last ? '11px' : '0'};
   &:hover:not(:disabled) {
     background: ${({ theme, active }) =>
-    active ? theme.ACCENT :
-      theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+      active ? theme.ACCENT : getLayoutPalette(theme).surfaceHoverBg};
   }
   @media (max-width: 700px) {
     width: 100%;
@@ -1338,13 +1374,18 @@ const SegmentedButton = styled.button<SegmentedButtonProps>`
 `;
 
 const AddHeaderIconButton = styled.button`
-  background: ${({ theme }) => theme.BG === '#252525' ? '#23242a' : '#f3f4f6'};
-  border: none;
-  border-radius: 8px;
-  padding: 8px;
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 6px;
   margin-left: 8px;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   @media (min-width: 701px) {
@@ -1714,7 +1755,7 @@ const StudentStatusManager: React.FC = () => {
   useEffect(() => {
     if (filteredStudents.length > 0) {
       const FooterContentComponent = React.memo(() => {
-        const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
+        const themeObj = theme as any;
         const currentFrom = (page - 1) * perPage + 1;
         const currentTo = (page - 1) * perPage + paginated.length;
         const currentTotal = filteredStudents.length;
@@ -1726,10 +1767,10 @@ const StudentStatusManager: React.FC = () => {
             alignItems: isMobile ? 'center' : 'center',
             justifyContent: isMobile ? 'center' : 'space-between',
             width: '100%',
-            gap: isMobile ? '0.5rem' : '1rem',
+            gap: isMobile ? '0.35rem' : '0.75rem',
             flexWrap: isMobile ? 'nowrap' : 'wrap'
           }}>
-            <PaginationInfo theme={themeObj} style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', fontSize: isMobile ? '0.9rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <PaginationInfo theme={themeObj} style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', fontSize: isMobile ? '0.78rem' : '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isMobile
                 ? `${currentFrom} to ${currentTo} of ${currentTotal}`
                 : `Showing ${currentFrom} to ${currentTo} of ${currentTotal} students`
@@ -1742,7 +1783,7 @@ const StudentStatusManager: React.FC = () => {
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
                   first
-                  style={{ minWidth: 32 }}
+                  style={{ minWidth: 28 }}
                 >
                   ‹
                 </SegmentedButton>
@@ -1750,7 +1791,7 @@ const StudentStatusManager: React.FC = () => {
                   <SegmentedButton
                     theme={themeObj}
                     onClick={() => handlePageChange(page - 1)}
-                    style={{ minWidth: 32 }}
+                    style={{ minWidth: 28 }}
                   >
                     {page - 1}
                   </SegmentedButton>
@@ -1759,7 +1800,7 @@ const StudentStatusManager: React.FC = () => {
                   theme={themeObj}
                   active
                   disabled
-                  style={{ minWidth: 32 }}
+                  style={{ minWidth: 28 }}
                 >
                   {page}
                 </SegmentedButton>
@@ -1767,7 +1808,7 @@ const StudentStatusManager: React.FC = () => {
                   <SegmentedButton
                     theme={themeObj}
                     onClick={() => handlePageChange(page + 1)}
-                    style={{ minWidth: 32 }}
+                    style={{ minWidth: 28 }}
                   >
                     {page + 1}
                   </SegmentedButton>
@@ -1777,7 +1818,7 @@ const StudentStatusManager: React.FC = () => {
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page === totalPages}
                   last
-                  style={{ minWidth: 32 }}
+                  style={{ minWidth: 28 }}
                 >
                   ›
                 </SegmentedButton>
@@ -2618,36 +2659,29 @@ const StudentStatusManager: React.FC = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '6px 12px',
-                fontSize: '0.9rem',
-                height: '32px'
+                gap: 6,
+                padding: '0 10px',
+                fontSize: '0.74rem',
+                height: '30px',
+                width: 'auto',
+                minWidth: 'unset',
+                borderRight: 'none',
+                borderBottom: 'none',
               }}
             >
-              <SchoolIcon style={{ fontSize: '1rem' }} />
+              <SchoolIcon style={{ fontSize: '0.88rem' }} />
               Promote/Demote
             </ActionButton>
           </div>
 
           {/* Mobile filter toggle button */}
           <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
-            <button
+            <AddHeaderIconButton
               aria-label="Show/hide filters"
-              style={{
-                background: (theme as any).BG === '#252525' ? '#23242a' : '#f3f4f6',
-                border: 'none',
-                borderRadius: 8,
-                padding: 8,
-                marginLeft: 8,
-                cursor: 'pointer',
-                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-              }}
               onClick={() => setShowMobileFilters(v => !v)}
             >
-              <FilterListIcon style={{ fontSize: 24, color: (theme as any).BG === '#252525' ? '#C0C0C0' : '#444' }} />
-            </button>
+              <FilterListIcon style={{ fontSize: 20, color: getLayoutPalette(theme as any).shellMutedText }} />
+            </AddHeaderIconButton>
           </div>
 
           {/* Desktop filters */}
@@ -2658,7 +2692,7 @@ const StudentStatusManager: React.FC = () => {
                 placeholder="Search students..."
                 value={searchInput}
                 onChange={handleSearchInputChange}
-                style={{ minWidth: 180, maxWidth: 240, width: '100%' }}
+                style={{ minWidth: 160, maxWidth: 220, width: '100%' }}
               />
               <SegmentedSelect
                 value={sessionFilter}
@@ -2833,14 +2867,15 @@ const StudentStatusManager: React.FC = () => {
                 setStatusFilter('');
               }}
               style={{
-                padding: '8px 20px',
-                background: (theme as any).BG === '#252525' ? ((theme as any).ACCENT + '22') : '#f3f4f8',
-                border: `1.5px solid ${(theme as any).BG === '#252525' ? (theme as any).ACCENT : '#bbb'}`,
-                borderRadius: 8,
+                padding: '6px 14px',
+                background: getLayoutPalette(theme as any).surfaceBg,
+                border: `1px solid ${getLayoutPalette(theme as any).surfaceBorder}`,
+                borderRadius: 6,
                 cursor: 'pointer',
-                color: (theme as any).BG === '#252525' ? (theme as any).ACCENT : '#333',
-                fontWeight: 600,
-                fontSize: '0.95rem'
+                color: (theme as any).ACCENT,
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                boxShadow: getLayoutPalette(theme as any).surfaceShadow,
               }}
             >
               Clear Filters

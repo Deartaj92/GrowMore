@@ -17,10 +17,46 @@ import NoStudentsFound from './NoStudentsFound';
 import Loader from './Loader';
 import { useProgress } from '../components/Layout';
 import { ThemeContext, darkTheme, lightTheme } from './Layout';
+import {
+  clayCardStyle,
+  clayPanelStyle,
+  getLayoutPalette,
+  getDashboardPalette,
+  minimalSelectMenuStyle,
+  CARD_RADIUS_LG,
+  isDark as checkIsDark
+} from '../styles/DesignSystem';
 
 const Container = styled.div`
-  max-width: 100vw;
-  padding: 0 1rem 1rem 1rem;
+  width: 100%;
+  min-height: 100%;
+  padding: 0.55rem;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top right, ${({ theme }) => `${theme.ACCENT}14`} 0%, transparent 28%),
+    ${({ theme }) => getLayoutPalette(theme).shellBg};
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 26%),
+      radial-gradient(circle at bottom left, ${({ theme }) => `${theme.ACCENT}10`} 0%, transparent 34%);
+    z-index: -1;
+  }
+
+  @media (max-width: 700px) {
+    padding: 0.38rem;
+    gap: 0.35rem;
+  }
   
   @keyframes spin {
     0% { transform: rotate(0deg); }
@@ -32,161 +68,160 @@ const Container = styled.div`
 const SEGMENTED_HEIGHT = '32px';
 
 const Header = styled.div`
+  ${clayPanelStyle}
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 6px 0 4px 0;
+  gap: 0.55rem;
+  margin: 0;
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-  border-radius: 10px;
-  padding: 4px 8px 2px 8px;
-  min-height: 36px;
+  z-index: 100;
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.42rem 0.58rem;
+  min-height: 40px;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
 `;
 
 const HeaderFilters = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 0;
   align-items: center;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  padding: 6px 8px;
+  background: transparent;
+  border-radius: ${CARD_RADIUS_LG};
+  box-shadow: none;
+  padding: 0;
 `;
 
 const SegmentedGroup = styled.div`
   display: flex;
   align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  border-radius: ${CARD_RADIUS_LG};
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
-    justify-content: center;
+    justify-content: stretch;
     flex-direction: row;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    border-radius: 8px;
+    overflow: hidden;
+    border-radius: ${CARD_RADIUS_LG};
+  }
+`;
+
+const SegmentedBase = `
+  font-family: inherit;
+  font-size: 0.77em;
+  font-weight: 500;
+  height: ${SEGMENTED_HEIGHT};
+  line-height: ${SEGMENTED_HEIGHT};
+  border: none;
+  outline: none;
+  transition: background 0.2s, color 0.2s;
+  appearance: none;
+  background: transparent;
+  color: ${({ theme }: any) => theme.TEXT_PRIMARY};
+  box-shadow: none;
+  @media (max-width: 700px) {
+    font-size: 0.68em;
+    height: 26px;
+    line-height: 26px;
   }
 `;
 
 const SegmentedInput = styled.input`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: #444;
-  color: #C0C0C0;
+  ${SegmentedBase}
   padding: 0 0.84em;
   min-width: 98px;
-  border-right: 1px solid #555;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
   &:not(:first-child) {
-    border-left: 1px solid #555;
+    border-left: none;
+  }
+  &:focus {
+    background: ${({ theme }) => getLayoutPalette(theme).navHoverBg};
   }
   @media (max-width: 700px) {
+    flex: 1 1 0;
     width: 100%;
-    border-radius: 8px !important;
-    border-left: none;
-    border-right: none;
     min-width: 0;
+    padding: 0 0.5em;
   }
 `;
 
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: #444;
-  color: #C0C0C0;
+  ${SegmentedBase}
+  ${minimalSelectMenuStyle}
   padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid #555;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
   ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
+    border-top-left-radius: ${CARD_RADIUS_LG};
+    border-bottom-left-radius: ${CARD_RADIUS_LG};
   `}
   ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
+    border-top-right-radius: ${CARD_RADIUS_LG};
+    border-bottom-right-radius: ${CARD_RADIUS_LG};
   `}
   &:not(:first-child) {
-    border-left: 1px solid #555;
-  }
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.8em center;
-  background-size: 1em 1em;
-  @media (max-width: 700px) {
-    width: 100%;
-    border-radius: 8px !important;
     border-left: none;
-    border-right: none;
+  }
+  -webkit-appearance: none;
+  background-image: ${({ theme }) => {
+    const stroke = checkIsDark(theme) ? '%2394a3b8' : '%2364748b';
+    return `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='${stroke}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
+  }};
+  background-repeat: no-repeat;
+  background-position: right 0.75em center;
+  background-size: 0.9em 0.9em;
+  cursor: pointer;
+  &:focus {
+    background-color: ${({ theme }) => getLayoutPalette(theme).navHoverBg};
+  }
+  @media (max-width: 700px) {
+    flex: 1 1 0;
+    width: 100%;
     min-width: 0;
-    background-position: right 1em center;
+    padding: 0 1.55em 0 0.5em;
+    background-position: right 0.5em center;
+    background-size: 0.85em 0.85em;
   }
 `;
 
 const SegmentedButton = styled.button<{ first?: boolean; last?: boolean }>`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: #444;
-  color: #C0C0C0;
+  ${SegmentedBase}
   padding: 0 1.12em;
   display: flex;
   align-items: center;
   gap: 0.35em;
   border-radius: 0;
-  border-right: 1px solid #555;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
   &:not(:first-child) {
-    border-left: 1px solid #555;
+    border-left: none;
   }
   ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
+    border-top-left-radius: ${CARD_RADIUS_LG};
+    border-bottom-left-radius: ${CARD_RADIUS_LG};
   `}
   ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
+    border-top-right-radius: ${CARD_RADIUS_LG};
+    border-bottom-right-radius: ${CARD_RADIUS_LG};
   `}
   cursor: pointer;
+  background: ${({ theme }) => `${theme.ACCENT}18`};
+  color: ${({ theme }) => theme.ACCENT};
+  font-weight: 700;
   &:hover {
-    background: #555;
+    background: ${({ theme }) => `${theme.ACCENT}24`};
   }
   @media (max-width: 700px) {
+    flex: 1 1 0;
     width: 100%;
-    border-radius: 8px !important;
-    border-left: none;
-    border-right: none;
     min-width: 0;
   }
 `;
@@ -289,11 +324,9 @@ const SummaryGrid = styled.div`
   flex-wrap: wrap;
 `;
 const SummaryCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  padding: 1.2rem 2.2rem;
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.9rem 1.4rem;
   min-width: 220px;
   display: flex;
   flex-direction: column;
@@ -314,36 +347,37 @@ const CardValue = styled.div`
   color: ${({ theme }) => theme.ACCENT};
 `;
 const TableWrapper = styled.div`
+  ${clayPanelStyle}
   width: 100%;
   overflow-x: auto;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: ${({ theme }) => theme.SHADOW};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
 `;
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   min-width: 900px;
   thead tr:hover, tbody tr:hover {
-    background: ${({ theme }) => isDark(theme) ? '#232a3b' : '#f3f4f8'} !important;
+    background: ${({ theme }) => getLayoutPalette(theme).navHoverBg} !important;
   }
   tbody tr {
     transition: background-color 0.2s ease;
     cursor: pointer;
   }
   tbody tr:hover {
-    background: ${({ theme }) => isDark(theme) ? '#2a2a2a' : '#f8f9fa'} !important;
+    background: ${({ theme }) => getLayoutPalette(theme).navHoverBg} !important;
   }
 `;
 const Th = styled.th`
-  padding: 0.25rem 0.2rem;
+  padding: 0.45rem 0.24rem;
   text-align: center;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  color: ${({ theme }) => getDashboardPalette(theme).subtleText};
   font-weight: 700;
-  font-size: 0.93rem;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.CARD};
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: transparent;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -351,10 +385,10 @@ const Th = styled.th`
   max-width: 36px;
 `;
 const Td = styled.td`
-  padding: 0.18rem 0.2rem;
+  padding: 0.24rem 0.2rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  font-size: 0.97rem;
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  font-size: 0.92rem;
   text-align: center;
   min-width: 34px;
   max-width: 36px;
@@ -372,7 +406,7 @@ const StatusCell = styled(Td) <{ status?: string }>`
 const InlineStats = styled.div`
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 0.55rem;
   margin-left: auto;
   flex-wrap: wrap;
   @media (max-width: 700px) {
@@ -382,12 +416,12 @@ const InlineStats = styled.div`
   }
 `;
 const StatCard = styled.div`
+  ${clayCardStyle}
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: ${({ theme }) => theme.ICON_BG};
-  border-radius: 12px;
-  padding: 0.3rem 1.1rem 0.3rem 0.8rem;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.3rem 0.8rem 0.3rem 0.65rem;
   font-size: 1.01rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
@@ -529,10 +563,10 @@ const StatusDropdown = styled.div`
   position: absolute;
   z-index: 10;
   min-width: 120px;
-  background: ${({ theme }) => theme.CARD};
-  border: 1.5px solid ${({ theme }) => theme.BORDER};
-  border-radius: 8px;
-  box-shadow: 0 4px 24px #0003;
+  background: ${({ theme }) => checkIsDark(theme) ? theme.CARD : '#ffffff'};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  border-radius: ${CARD_RADIUS_LG};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   padding: 0.3rem 0;
   display: flex;
   flex-direction: column;

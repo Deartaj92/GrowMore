@@ -1,18 +1,29 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import styled, { useTheme, keyframes } from 'styled-components';
+import styled, { useTheme, keyframes, css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { School as SchoolIcon } from '@mui/icons-material';
 import { Box, Grid } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
-import { darkTheme, lightTheme, useProgress, ThemeContext } from '../components/Layout';
+import { useProgress, ThemeContext } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 
 import Loader from '../components/Loader';
+import {
+  CARD_RADIUS_LG,
+  clayCardStyle,
+  clayInputStyle,
+  clayPanelStyle,
+  getButtonPalette,
+  getDashboardPalette,
+  getLayoutPalette,
+  isDark as checkIsDark,
+  minimalSelectMenuStyle,
+} from '../styles/DesignSystem';
 // Reuse styled components from StudentStatusManager or redefine as needed
 // ... (copy ModalContent, Column, StudentList, StudentItem, Checkbox, StudentListItemName, SelectAllContainer, etc.)
 
@@ -20,9 +31,17 @@ const Container = styled.div`
   width: 100%;
   height: 100%;
   margin: 0;
-  padding: 0 12px 6px 12px;
+  padding: 0 10px 6px 10px;
   box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
+  background: ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    const dark = checkIsDark(theme);
+    return `
+      radial-gradient(circle at top left, ${dark ? 'rgba(255, 255, 255, 0.035)' : `${theme.ACCENT}10`} 0%, transparent 26%),
+      linear-gradient(180deg, rgba(255,255,255,${dark ? '0.02' : '0.35'}) 0%, transparent 18%),
+      ${layout.shellBg}
+    `;
+  }};
   max-width: 100vw;
   overflow: hidden;
   min-height: 0;
@@ -31,46 +50,52 @@ const Container = styled.div`
 `;
 
 const PageHeader = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      ${clayPanelStyle}
+      border: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 6px 0 4px 0;
-  padding: 4px 8px 2px 8px;
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  margin: 8px 0 6px 0;
+  padding: 8px 10px;
   @media (max-width: 768px) {
-    margin: 6px 0 4px 0;
-    padding: 4px 8px 2px 8px;
+    margin: 8px 0 6px 0;
+    padding: 8px;
   }
 `;
 
 const Heading = styled.h1`
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
   @media (max-width: 768px) {
-    font-size: 1.25rem;
-    gap: 0.5rem;
+    font-size: 1rem;
+    gap: 0.4rem;
   }
 `;
 
 const HeaderIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, ${({ theme }) => theme.ACCENT}22, ${({ theme }) => theme.ACCENT}44);
+  ${clayCardStyle}
+  width: 32px;
+  height: 32px;
+  border-radius: ${CARD_RADIUS_LG};
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${({ theme }) => theme.ACCENT};
   @media (max-width: 768px) {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
   }
 `;
 
@@ -82,7 +107,7 @@ const MainContent = styled.div`
   padding: 0 0 8px 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   &::-webkit-scrollbar {
@@ -96,28 +121,27 @@ const MainContent = styled.div`
     border-radius: 4px;
   }
   @media (max-width: 768px) {
-    gap: 1rem;
+    gap: 0.8rem;
     scroll-behavior: auto;
   }
 `;
 
 const ControlPanel = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  ${clayPanelStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  padding: 1rem;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   @media (max-width: 768px) {
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 0.8rem;
   }
 `;
 
 const ControlGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
 
   @media (max-width: 1200px) {
     grid-template-columns: repeat(2, 1fr);
@@ -132,8 +156,8 @@ const ControlGrid = styled.div`
 
 const FormRow = styled.div`
   display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
   
   @media (max-width: 1200px) {
     flex-direction: column;
@@ -145,37 +169,37 @@ const FormRow = styled.div`
 `;
 
 const FormSection = styled.div`
+  ${clayCardStyle}
   flex: 1;
-  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)'};
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 8px;
-  padding: 1.5rem;
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.8rem;
 
   @media (max-width: 768px) {
-    padding: 1rem;
-    gap: 1rem;
+    padding: 0.7rem;
+    gap: 0.7rem;
   }
 `;
 
 const FormSectionTitle = styled.h4`
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  gap: 0.4rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
 `;
 
 const ControlField = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
   width: 100%;
   @media (max-width: 768px) {
     gap: 0.25rem;
@@ -183,11 +207,11 @@ const ControlField = styled.div`
 `;
 
 const Label = styled.label`
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.35px;
   @media (max-width: 768px) {
     font-size: 0.75rem;
     letter-spacing: 0.25px;
@@ -195,43 +219,33 @@ const Label = styled.label`
 `;
 
 const Select = styled.select`
+  ${clayInputStyle}
+  ${minimalSelectMenuStyle}
   width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.95rem;
-  font-weight: 500;
-  outline: none;
-  transition: all 0.2s ease;
+  padding: 0.55rem 2rem 0.55rem 0.8rem;
+  border-radius: ${CARD_RADIUS_LG};
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
-  
-  &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.ACCENT}22;
-  }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f5f5f5'};
   }
   
   @media (max-width: 768px) {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border-radius: 6px;
+    padding: 0.5rem 1.85rem 0.5rem 0.72rem;
+    font-size: 0.78rem;
   }
 `;
 
 const ActionSelector = styled.div`
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   align-items: center;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   @media (max-width: 768px) {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
@@ -240,31 +254,37 @@ const ActionSelector = styled.div`
 `;
 
 const ActionToggle = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: flex;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 8px;
+  border-radius: ${CARD_RADIUS_LG};
   padding: 2px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
 `;
 
 const ToggleButton = styled.button<{ active?: boolean }>`
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 0.42rem 0.78rem;
+  border-radius: 4px;
   border: none;
-  background: ${({ active }) => active ? '#3b82f6' : 'transparent'};
-  color: ${({ active }) => active ? '#fff' : '#666'};
-  font-size: 0.875rem;
-  font-weight: 600;
+  background: ${({ active, theme }) => active ? theme.ACCENT : 'transparent'};
+  color: ${({ active, theme }) => active ? '#fff' : getLayoutPalette(theme).shellMutedText};
+  font-size: 0.76rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover {
-    background: ${({ active }) => active ? '#2563eb' : '#f3f4f6'};
+    background: ${({ active, theme }) => active ? theme.ACCENT : getLayoutPalette(theme).surfaceHoverBg};
   }
   
   @media (max-width: 768px) {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
+    padding: 0.34rem 0.6rem;
+    font-size: 0.7rem;
     border-radius: 4px;
   }
 `;
@@ -272,7 +292,7 @@ const ToggleButton = styled.button<{ active?: boolean }>`
 const StudentsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1rem;
   @media (max-width: 1200px) {
     gap: 1.5rem;
   }
@@ -286,12 +306,12 @@ const StudentsGrid = styled.div`
 `;
 
 const StudentsCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  min-height: 400px;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  min-height: 340px;
   display: flex;
   flex-direction: column;
   @media (max-width: 768px) {
@@ -301,9 +321,9 @@ const StudentsCard = styled.div`
 `;
 
 const CardHeader = styled.div`
-  padding: 1rem 1.5rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8fafc'};
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  padding: 0.7rem 0.9rem;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -313,8 +333,8 @@ const CardHeader = styled.div`
 `;
 
 const CardTitle = styled.h3`
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0;
   display: flex;
@@ -327,12 +347,12 @@ const CardTitle = styled.h3`
 `;
 
 const StudentCount = styled.span`
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  background: ${({ theme }) => theme.ACCENT}22;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-weight: 500;
+  font-size: 0.72rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  background: ${({ theme }) => getDashboardPalette(theme).status.infoBg};
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 700;
   @media (max-width: 768px) {
     font-size: 0.75rem;
     padding: 0.125rem 0.5rem;
@@ -349,7 +369,7 @@ const TableContainer = styled.div`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   @media (max-width: 768px) {
     font-size: 0.8rem;
   }
@@ -357,14 +377,14 @@ const Table = styled.table`
 
 const Th = styled.th`
   text-align: left;
-  padding: 0.75rem 1rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-weight: 600;
-  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  font-weight: 700;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8fafc'};
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   position: sticky;
   top: 0;
   z-index: 1;
@@ -376,8 +396,8 @@ const Th = styled.th`
 `;
 
 const Td = styled.td`
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  padding: 0.58rem 0.8rem;
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   vertical-align: middle;
   @media (max-width: 768px) {
@@ -387,18 +407,18 @@ const Td = styled.td`
 
 const SerialCheckbox = styled.div`
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   border-radius: 4px;
-  border: 2px solid ${({ theme }) => theme.ACCENT};
-  background: ${({ theme }) => theme.FIELD_BG};
+  border: 1px solid ${({ theme }) => theme.ACCENT};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   transition: all 0.2s ease;
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.64rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.ACCENT};
 
   &:hover {
@@ -420,17 +440,17 @@ const SerialCheckbox = styled.div`
 `;
 
 const Avatar = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, ${({ theme }) => theme.ACCENT}22, ${({ theme }) => theme.ACCENT}44);
+  ${clayCardStyle}
+  width: 28px;
+  height: 28px;
+  border-radius: ${CARD_RADIUS_LG};
   color: ${({ theme }) => theme.ACCENT};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-right: 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-right: 0.55rem;
   overflow: hidden;
   flex-shrink: 0;
   @media (max-width: 768px) {
@@ -444,23 +464,24 @@ const Avatar = styled.div`
 const StudentInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
   @media (max-width: 768px) {
     gap: 0.5rem;
   }
 `;
 
 const StudentName = styled.span`
-  font-weight: 500;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.82rem;
   @media (max-width: 768px) {
     font-size: 0.8rem;
   }
 `;
 
 const StudentId = styled.span`
-  font-size: 0.8rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.68rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
   font-family: 'Monaco', 'Menlo', monospace;
   @media (max-width: 768px) {
     font-size: 0.7rem;
@@ -471,13 +492,13 @@ const ActionsPanel = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2rem;
-  margin-top: 1.5rem;
-  padding: 1.5rem 2rem;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  gap: 1rem;
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  ${clayPanelStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 0.75rem;
@@ -489,7 +510,7 @@ const ActionsPanel = styled.div`
 
 const ActionButtons = styled.div`
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
   @media (max-width: 768px) {
     gap: 0.5rem;
@@ -499,49 +520,51 @@ const ActionButtons = styled.div`
 `;
 
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  border-radius: ${CARD_RADIUS_LG};
   border: 1px solid;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 120px;
+  gap: 0.4rem;
+  min-width: 104px;
   justify-content: center;
   
-  ${({ variant }) => {
+  ${({ variant, theme }) => {
+    const buttons = getButtonPalette(theme);
     switch (variant) {
       case 'primary':
         return `
-          background: #3b82f6;
-          color: white;
-          border-color: #3b82f6;
+          background: ${buttons.primaryBg};
+          color: ${buttons.primaryText};
+          border-color: ${buttons.primaryBorder};
+          box-shadow: ${buttons.primaryShadow};
   &:hover {
-            background: #2563eb;
-            border-color: #2563eb;
+            box-shadow: ${buttons.primaryHoverShadow};
           }
         `;
       case 'danger':
         return `
-          background: #ef4444;
-          color: white;
-          border-color: #ef4444;
+          background: ${buttons.dangerBg};
+          color: ${buttons.dangerText};
+          border-color: ${buttons.dangerBorder};
+          box-shadow: ${buttons.dangerShadow};
           &:hover {
-            background: #dc2626;
-            border-color: #dc2626;
+            box-shadow: ${buttons.dangerHoverShadow};
           }
         `;
       default:
         return `
-          background: transparent;
-          color: #6b7280;
-          border-color: #d1d5db;
+          background: ${getLayoutPalette(theme).surfaceBg};
+          color: ${getLayoutPalette(theme).shellMutedText};
+          border-color: ${getLayoutPalette(theme).surfaceBorder};
+          box-shadow: ${getLayoutPalette(theme).surfaceShadow};
           &:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
+            background: ${getLayoutPalette(theme).surfaceHoverBg};
+            border-color: ${getLayoutPalette(theme).surfaceHoverBorder};
           }
         `;
     }
@@ -563,31 +586,32 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
 const StatusIndicator = styled.div<{ type: 'success' | 'warning' | 'info' }>`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
+  gap: 0.35rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: ${CARD_RADIUS_LG};
+  font-size: 0.72rem;
+  font-weight: 700;
   
-  ${({ type }) => {
+  ${({ type, theme }) => {
+    const status = getDashboardPalette(theme).status;
     switch (type) {
       case 'success':
         return `
-          background: #dcfce7;
-          color: #166534;
-          border: 1px solid #bbf7d0;
+          background: ${status.successBg};
+          color: ${status.success};
+          border: 1px solid ${status.success}33;
         `;
       case 'warning':
         return `
-          background: #fef3c7;
-          color: #92400e;
-          border: 1px solid #fde68a;
+          background: ${status.warningBg};
+          color: ${status.warning};
+          border: 1px solid ${status.warning}33;
         `;
       default:
         return `
-          background: #dbeafe;
-          color: #1e40af;
-          border: 1px solid #bfdbfe;
+          background: ${status.infoBg};
+          color: ${status.info};
+          border: 1px solid ${status.info}33;
         `;
     }
   }}
@@ -604,13 +628,13 @@ const StatusIndicator = styled.div<{ type: 'success' | 'warning' | 'info' }>`
 const SessionInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  background: ${({ theme }) => theme.BACKGROUND_SECONDARY};
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  padding: 0.38rem 0.72rem;
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   
   @media (max-width: 768px) {
     font-size: 0.75rem;
@@ -622,9 +646,7 @@ const SessionInfo = styled.div`
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(0, 0, 0, 0.5)'
-    : 'rgba(255, 255, 255, 0.5)'};
+  background: ${({ theme }) => getLayoutPalette(theme).shellOverlay};
   backdrop-filter: blur(8px);
   WebkitBackdropFilter: blur(8px);
   z-index: 4000;
@@ -639,19 +661,15 @@ const ModalOverlay = styled.div`
 `;
 
 const ModalBox = styled.div`
-  background: ${({ theme }) => theme.CARD};
+  ${clayPanelStyle}
   width: 90vw;
   max-width: 600px;
   max-height: 90vh;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-    ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
-    : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
-  border: ${({ theme }) => theme.BG === '#252525'
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   margin: 32px 16px;
   position: relative;
   z-index: 1301;
@@ -673,12 +691,8 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
@@ -688,36 +702,30 @@ const ModalHeader = styled.div`
 `;
 
 const ModalTitle = styled.div`
-  font-size: 1.5rem;
-  font-weight: 600;
-  background: linear-gradient(45deg, #6366f1, #8b5cf6);
+  font-size: 1.15rem;
+  font-weight: 700;
+  background: ${({ theme }) => `linear-gradient(45deg, ${theme.ACCENT}, ${getDashboardPalette(theme).status.violet})`};
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
   gap: 16px;
-  text-shadow: ${({ theme }) => theme.BG === '#252525'
-    ? '0 2px 4px rgba(0, 0, 0, 0.5)'
-    : 'none'};
+  text-shadow: none;
   position: relative;
   z-index: 1;
   letter-spacing: 0.5px;
 `;
 
 const ModalContent = styled.div`
-  padding: 24px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
   overflow-y: auto;
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)'};
+  background: transparent;
   scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.2) transparent'
-    : 'rgba(0, 0, 0, 0.2) transparent'};
+  scrollbar-color: ${({ theme }) => `${getLayoutPalette(theme).dropdownThumb} transparent`};
   &::-webkit-scrollbar {
     width: 8px;
     background: transparent;
@@ -728,15 +736,11 @@ const ModalContent = styled.div`
     margin: 4px;
   }
   &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.2)'
-    : 'rgba(0, 0, 0, 0.2)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
     border-radius: 4px;
     border: 2px solid ${({ theme }) => theme.BG};
     &:hover {
-      background: ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.3)'
-    : 'rgba(0, 0, 0, 0.3)'};
+      background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
     }
   }
 `;
@@ -746,59 +750,61 @@ const ModalFooter = styled.div`
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid ${({ theme }) => theme.BG === '#252525'
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-    ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
-    : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
+  border-top: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
 `;
 
 const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 20px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: ${CARD_RADIUS_LG};
+  font-size: 0.84rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? 'linear-gradient(45deg, #6366f1, #8b5cf6)'
-      : variant === 'danger'
-        ? 'linear-gradient(45deg, #ef4444, #dc2626)'
-        : theme.BG === '#252525'
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.05)'};
-  color: ${({ theme, variant }) =>
-    variant === 'primary' || variant === 'danger'
-      ? '#fff'
-      : theme.BG === '#252525'
-        ? '#fff'
-        : '#1e293b'};
-  border: none;
-  box-shadow: ${({ variant }) =>
-    variant === 'primary'
-      ? '0 2px 8px rgba(99, 102, 241, 0.25)'
-      : variant === 'danger'
-        ? '0 2px 8px rgba(239, 68, 68, 0.25)'
-        : 'none'};
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  ${({ theme, variant }) => {
+    const buttons = getButtonPalette(theme);
+    const layout = getLayoutPalette(theme);
+
+    if (variant === 'primary') {
+      return css`
+        background: ${buttons.primaryBg};
+        color: ${buttons.primaryText};
+        border: 1px solid ${buttons.primaryBorder};
+        box-shadow: ${buttons.primaryShadow};
+      `;
+    }
+
+    if (variant === 'danger') {
+      return css`
+        background: ${buttons.dangerBg};
+        color: ${buttons.dangerText};
+        border: 1px solid ${buttons.dangerBorder};
+        box-shadow: ${buttons.dangerShadow};
+      `;
+    }
+
+    return css`
+      background: ${layout.surfaceBg};
+      color: ${theme.TEXT_PRIMARY};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   
-  &:hover {
+  &:hover:not(:disabled) {
     transform: translateY(-1px);
-    background: ${({ theme, variant }) =>
-    variant === 'primary'
-      ? 'linear-gradient(45deg, #4f46e5, #7c3aed)'
-      : variant === 'danger'
-        ? 'linear-gradient(45deg, #dc2626, #b91c1c)'
-        : theme.BG === '#252525'
-          ? 'rgba(255, 255, 255, 0.15)'
-          : 'rgba(0, 0, 0, 0.1)'};
-    box-shadow: ${({ variant }) =>
-    variant === 'primary'
-      ? '0 4px 12px rgba(99, 102, 241, 0.35)'
-      : variant === 'danger'
-        ? '0 4px 12px rgba(239, 68, 68, 0.35)'
-        : 'none'};
+    box-shadow: ${({ theme, variant }) => {
+      const buttons = getButtonPalette(theme);
+      const layout = getLayoutPalette(theme);
+      if (variant === 'primary') return buttons.primaryHoverShadow;
+      if (variant === 'danger') return buttons.dangerHoverShadow;
+      return layout.surfaceHoverShadow;
+    }};
+    background: ${({ theme, variant }) => {
+      const layout = getLayoutPalette(theme);
+      if (variant === 'primary' || variant === 'danger') return undefined;
+      return layout.surfaceHoverBg;
+    }};
   }
   
   &:active {
@@ -814,8 +820,8 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
 `;
 
 const ModalText = styled.div`
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.1rem;
+  color: ${({ theme }) => getDashboardPalette(theme).bodyText};
+  font-size: 0.95rem;
   margin-bottom: 1.5rem;
   font-weight: 500;
   line-height: 1.5;
@@ -827,31 +833,26 @@ const ModalText = styled.div`
 `;
 
 const InfoBox = styled.div<{ type?: 'success' | 'warning' | 'error' }>`
-  background: ${({ theme, type }) => {
-    if (type === 'success') return theme.BG === '#252525' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)';
-    if (type === 'warning') return theme.BG === '#252525' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)';
-    if (type === 'error') return theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)';
-    return theme.BG === '#252525' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)';
-  }};
-  border: 1px solid ${({ theme, type }) => {
-    if (type === 'success') return 'rgba(34, 197, 94, 0.2)';
-    if (type === 'warning') return 'rgba(245, 158, 11, 0.2)';
-    if (type === 'error') return 'rgba(239, 68, 68, 0.2)';
-    return 'rgba(99, 102, 241, 0.2)';
-  }};
-  color: ${({ theme, type }) => {
-    if (type === 'success') return theme.BG === '#252525' ? '#22c55e' : '#16a34a';
-    if (type === 'warning') return theme.BG === '#252525' ? '#f59e0b' : '#d97706';
-    if (type === 'error') return theme.BG === '#252525' ? '#ef4444' : '#dc2626';
-    return theme.BG === '#252525' ? '#6366f1' : '#4f46e5';
-  }};
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-top: 1rem;
-  font-size: 0.95rem;
+  ${({ theme, type }) => {
+    const status = getDashboardPalette(theme).status;
+    if (type === 'success') {
+      return css`background: ${status.successBg}; border: 1px solid ${status.success}33; color: ${status.success};`;
+    }
+    if (type === 'warning') {
+      return css`background: ${status.warningBg}; border: 1px solid ${status.warning}33; color: ${status.warning};`;
+    }
+    if (type === 'error') {
+      return css`background: ${status.dangerBg}; border: 1px solid ${status.danger}33; color: ${status.danger};`;
+    }
+    return css`background: ${status.infoBg}; border: 1px solid ${status.info}33; color: ${status.info};`;
+  }}
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 10px 12px;
+  margin-top: 0.8rem;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 `;
 
 const StudentList = styled.div`
@@ -867,15 +868,15 @@ const StudentItem = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : theme.CARD};
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  padding: 0.45rem 0.55rem;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
 `;
 
 const StudentListItemName = styled.span`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 `;
 
 
@@ -1640,7 +1641,7 @@ const BulkPromoteDemote: React.FC = () => {
   // Set global footer content - MUST be before early returns
   useEffect(() => {
     const FooterContent = React.memo(() => {
-      const themeObj = (theme as any).BG === '#252525' ? darkTheme : lightTheme;
+      const themeObj = theme as any;
       const sourceClassObj = classes.find(c => String(c.id) === String(sourceClass));
       const targetClassObj = classes.find(c => String(c.id) === String(targetClass));
       const isDisabled = action === 'passout'
@@ -1657,7 +1658,7 @@ const BulkPromoteDemote: React.FC = () => {
           alignItems: isMobile ? 'center' : 'center',
           justifyContent: isMobile ? 'center' : 'space-between',
           width: '100%',
-          gap: isMobile ? '0.5rem' : '1rem',
+          gap: isMobile ? '0.35rem' : '0.75rem',
           flexWrap: isMobile ? 'nowrap' : 'wrap'
         }}>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1668,21 +1669,22 @@ const BulkPromoteDemote: React.FC = () => {
               }}
               disabled={processing}
               style={{
-                padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.5rem',
-                borderRadius: isMobile ? '6px' : '8px',
+                padding: isMobile ? '0.46rem 0.82rem' : '0.55rem 1rem',
+                borderRadius: '6px',
                 border: '1px solid',
-                fontSize: isMobile ? '0.8rem' : '0.875rem',
-                fontWeight: 600,
+                fontSize: isMobile ? '0.72rem' : '0.76rem',
+                fontWeight: 700,
                 cursor: processing ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                minWidth: isMobile ? '100px' : '120px',
+                minWidth: isMobile ? '92px' : '104px',
                 justifyContent: 'center',
-                background: 'transparent',
-                color: '#6b7280',
-                borderColor: '#d1d5db',
+                background: getLayoutPalette(themeObj).surfaceBg,
+                color: getLayoutPalette(themeObj).shellMutedText,
+                borderColor: getLayoutPalette(themeObj).surfaceBorder,
+                boxShadow: getLayoutPalette(themeObj).surfaceShadow,
                 opacity: processing ? 0.5 : 1
               }}
             >
@@ -1696,21 +1698,22 @@ const BulkPromoteDemote: React.FC = () => {
               }}
               disabled={isDisabled}
               style={{
-                padding: isMobile ? '0.625rem 1rem' : '0.75rem 1.5rem',
-                borderRadius: isMobile ? '6px' : '8px',
+                padding: isMobile ? '0.46rem 0.82rem' : '0.55rem 1rem',
+                borderRadius: '6px',
                 border: '1px solid',
-                fontSize: isMobile ? '0.8rem' : '0.875rem',
-                fontWeight: 600,
+                fontSize: isMobile ? '0.72rem' : '0.76rem',
+                fontWeight: 700,
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                minWidth: isMobile ? '100px' : '120px',
+                minWidth: isMobile ? '92px' : '104px',
                 justifyContent: 'center',
-                background: '#3b82f6',
+                background: getButtonPalette(themeObj).primaryBg,
                 color: 'white',
-                borderColor: '#3b82f6',
+                borderColor: getButtonPalette(themeObj).primaryBorder,
+                boxShadow: getButtonPalette(themeObj).primaryShadow,
                 opacity: isDisabled ? 0.5 : 1
               }}
             >
@@ -1723,13 +1726,13 @@ const BulkPromoteDemote: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              padding: isMobile ? '0.375rem 0.75rem' : '0.5rem 1rem',
-              borderRadius: isMobile ? '6px' : '8px',
-              fontSize: isMobile ? '0.8rem' : '0.875rem',
-              fontWeight: 500,
-              background: '#dcfce7',
-              color: '#166534',
-              border: '1px solid #bbf7d0'
+              padding: isMobile ? '0.28rem 0.58rem' : '0.34rem 0.68rem',
+              borderRadius: '6px',
+              fontSize: isMobile ? '0.7rem' : '0.74rem',
+              fontWeight: 700,
+              background: getDashboardPalette(themeObj).status.successBg,
+              color: getDashboardPalette(themeObj).status.success,
+              border: `1px solid ${getDashboardPalette(themeObj).status.success}33`
             }}>
               {selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected for {action === 'passout' ? 'passout' : action}
             </div>
@@ -1762,7 +1765,7 @@ const BulkPromoteDemote: React.FC = () => {
       <PageHeader>
         <Heading>
           <HeaderIcon>
-            <SchoolIcon style={{ fontSize: 20 }} />
+            <SchoolIcon style={{ fontSize: 16 }} />
           </HeaderIcon>
           Bulk Promote/Demote Students
         </Heading>

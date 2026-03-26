@@ -34,6 +34,16 @@ import { whatsappSemiAutoService, AttendanceNotificationData } from '../services
 import WhatsAppBulkSender from './WhatsAppBulkSender';
 import { hasPermission } from '../services/permissionService';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
+import {
+  clayCardStyle,
+  clayPanelStyle,
+  clayInputStyle,
+  getLayoutPalette,
+  getDashboardPalette,
+  minimalSelectMenuStyle,
+  CARD_RADIUS_LG,
+  isDark as checkIsDark
+} from '../styles/DesignSystem';
 
 import Loader from '../components/Loader';
 // Move bounceAnimation to the top, before any styled components use it
@@ -68,52 +78,78 @@ const spinAnimation = `
 // Styled Components
 const PageContainer = styled.div`
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   margin: 0;
-  padding: 0 12px 6px 12px;
+  padding: 0.55rem;
   box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  max-width: 100vw;
-  overflow: hidden; /* Prevent container scroll - let MainContent handle it */
-  min-height: 0; /* Critical for flex children */
+  background:
+    radial-gradient(circle at top right, ${({ theme }) => `${theme.ACCENT}14`} 0%, transparent 28%),
+    ${({ theme }) => getLayoutPalette(theme).shellBg};
+  max-width: 100%;
+  overflow: hidden;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 26%),
+      radial-gradient(circle at bottom left, ${({ theme }) => `${theme.ACCENT}10`} 0%, transparent 34%);
+    z-index: -1;
+  }
+
+  @media (max-width: 768px) {
+    padding: 0.38rem;
+    gap: 0.35rem;
+  }
 `;
 
 const Header = styled.div`
-  flex-shrink: 0; /* Don't shrink */
+  ${clayPanelStyle}
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 6px 0 4px 0;
+  gap: 0.55rem;
+  margin: 0;
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 1px 6px #0001;
-  border-radius: 10px;
-  padding: 4px 8px 2px 8px;
-  min-height: 36px;
+  z-index: 100;
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.42rem 0.58rem;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  overflow: hidden;
+  min-height: 40px;
+
+  @media (max-width: 768px) {
+    gap: 0.42rem;
+    padding: 0.4rem 0.48rem;
+  }
 `;
 
 const MainContent = styled.div`
-  flex: 1; /* Fill remaining space */
-  min-height: 0; /* Critical - allows flex child to shrink below content size */
+  ${clayPanelStyle}
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 0 8px 0;
+  padding: 0.42rem;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y proximity;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-radius: ${CARD_RADIUS_LG};
   @media (max-width: 700px) {
+    padding: 0.34rem;
     scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
   }
   &::-webkit-scrollbar {
     width: 8px;
@@ -122,12 +158,12 @@ const MainContent = styled.div`
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumb};
     border-radius: 4px;
     transition: background 0.2s;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
+    background: ${({ theme }) => getLayoutPalette(theme).dropdownThumbHover};
   }
 `;
 
@@ -391,13 +427,11 @@ const TwoColumnGrid = styled.div`
   }
 `;
 const TableCard = styled.div`
+  ${clayCardStyle}
   flex: 1 1 0;
   min-width: 340px;
-  background: ${({ theme }: { theme: any }) => theme.CARD};
-  border-radius: 16px;
-  box-shadow: ${({ theme }: { theme: any }) => theme.SHADOW}, 0 8px 32px 0 ${({ theme }: { theme: any }) => theme.ACCENT}11;
-  border: 1.5px solid ${({ theme }: { theme: any }) => theme.BORDER};
-  padding: 0 0 1.5rem 0;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0 0 1rem 0;
   overflow-x: auto;
 `;
 const EnhancedTable = styled.table`
@@ -406,29 +440,29 @@ const EnhancedTable = styled.table`
   min-width: 340px;
 `;
 const EnhancedTh = styled.th`
-  padding: 0.35rem 0.6rem;
+  padding: 0.7rem 0.75rem;
   text-align: left;
-  color: ${({ theme }: { theme: any }) => theme.TEXT_SECONDARY};
+  color: ${({ theme }: { theme: any }) => getDashboardPalette(theme).subtleText};
   font-weight: 700;
-  font-size: 0.93rem;
-  border-bottom: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
-  background: ${({ theme }: { theme: any }) => theme.CARD};
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid ${({ theme }: { theme: any }) => getLayoutPalette(theme).shellDivider};
+  background: transparent;
   position: sticky;
   top: 0;
   z-index: 2;
-  height: 30px;
 `;
 const EnhancedTd = styled.td`
-  padding: 0.35rem 0.6rem;
+  padding: 0.8rem 0.75rem;
   color: ${({ theme }: { theme: any }) => theme.TEXT_PRIMARY};
-  border-bottom: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
-  font-size: 0.93rem;
-  height: 30px;
+  border-bottom: 1px solid ${({ theme }: { theme: any }) => getLayoutPalette(theme).shellDivider};
+  font-size: 0.92rem;
 `;
 const EnhancedTr = styled.tr`
+  transition: background 0.18s ease;
   &:hover {
-    background: ${({ theme }: { theme: any }) => theme.FIELD_BG};
-    box-shadow: 0 2px 8px ${({ theme }: { theme: any }) => theme.ACCENT}11;
+    background: ${({ theme }: { theme: any }) => getLayoutPalette(theme).navHoverBg};
   }
 `;
 const StudentDetails = styled.div`
@@ -453,25 +487,26 @@ const FatherName = styled.span`
   margin-top: 0.1rem;
 `;
 const EnhancedStatusButton = styled.button<{ $active: boolean; $color: string }>`
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: ${({ $active, $color }) => $active ? $color : 'transparent'};
-  color: ${({ $active, $color }) => $active ? '#fff' : $color};
-  border: 1.5px solid ${({ $color }) => $color};
-  font-size: 0.93rem;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: ${({ $active, $color, theme }) => $active ? `linear-gradient(135deg, ${$color} 0%, ${$color}dd 100%)` : getLayoutPalette(theme).surfaceBg};
+  color: ${({ $active, $color, theme }) => $active ? '#fff' : (checkIsDark(theme) ? '#e2e8f0' : $color)};
+  border: 1px solid ${({ $active, $color }) => $active ? 'transparent' : `${$color}40`};
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: ${({ $active, $color }) => $active ? `0 0 6px 1.5px ${$color}55` : 'none'};
-  transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+  box-shadow: ${({ $active, $color, theme }) => $active ? `0 6px 12px ${$color}30` : getLayoutPalette(theme).surfaceShadow};
+  transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s, transform 0.18s;
   &:hover, &:focus {
-    background: ${({ $color }) => $color};
+    background: ${({ $active, $color }) => $active ? `linear-gradient(135deg, ${$color} 0%, ${$color}dd 100%)` : `${$color}18`};
     color: #fff;
     outline: none;
-    box-shadow: 0 0 6px 1.5px ${({ $color }) => $color}55;
+    box-shadow: 0 8px 14px ${({ $color }) => `${$color}30`};
+    transform: translateY(-1px);
   }
 `;
 
@@ -512,17 +547,18 @@ const Checkbox = styled.input.attrs({ type: 'checkbox' })`
 
 const SerialCheckbox = styled.div`
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
-  border: 2px solid ${({ theme }) => theme.ACCENT};
-  background: ${({ theme }) => theme.FIELD_BG};
+  border-radius: 8px;
+  border: 1px solid ${({ theme }) => `${theme.ACCENT}55`};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   transition: all 0.2s ease;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 600;
   color: ${({ theme }) => theme.ACCENT};
 
@@ -532,15 +568,17 @@ const SerialCheckbox = styled.div`
   }
 
   &.checked {
-    background: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => `linear-gradient(135deg, ${theme.ACCENT} 0%, ${theme.ACCENT}dd 100%)`};
+    border-color: transparent;
     color: white;
+    box-shadow: 0 8px 16px ${({ theme }) => `${theme.ACCENT}33`};
   }
 
   /* Mobile adjustments */
   @media (max-width: 700px) {
-    width: 22px;
-    height: 22px;
-    font-size: 0.65rem;
+    width: 20px;
+    height: 20px;
+    font-size: 0.6rem;
   }
 `;
 const attentionPulse = `
@@ -632,35 +670,34 @@ const Spinner = styled.div`
 const MobileStudentList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
-  padding-bottom: 1rem;
+  padding-bottom: 0.2rem;
 `;
 const MobileStudentCard = styled.div`
+  ${clayCardStyle}
   display: flex;
   align-items: center;
-  background: ${({ theme }: { theme: any }) => theme.CARD};
-  border-radius: 12px;
-  box-shadow: ${({ theme }: { theme: any }) => theme.SHADOW};
-  border: 1px solid ${({ theme }: { theme: any }) => theme.BORDER};
-  padding: 0.5rem 0.7rem;
-  gap: 0.7rem;
-  font-size: 0.93rem;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.62rem 0.72rem;
+  gap: 0.55rem;
+  font-size: 0.88rem;
   width: 100%;
-  min-width: 320px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  min-width: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   
   &:hover {
-    background: ${({ theme }: { theme: any }) => theme.ACCENT}25;
+    transform: translateY(-1px);
     border-color: ${({ theme }: { theme: any }) => theme.ACCENT}40;
+    box-shadow: ${({ theme }: { theme: any }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
 `;
 const MobileAvatar = styled(Avatar)`
-  width: 28px;
-  height: 28px;
-  font-size: 0.93rem;
+  width: 24px;
+  height: 24px;
+  font-size: 0.82rem;
 `;
 const MobileNameBlock = styled.div`
   display: flex;
@@ -671,14 +708,14 @@ const MobileNameBlock = styled.div`
 `;
 const MobileStudentName = styled.span`
   font-weight: 700;
-  font-size: 0.97rem;
+  font-size: 0.9rem;
   color: ${({ theme }: { theme: any }) => theme.TEXT_PRIMARY};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 const MobileFatherName = styled.span`
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: ${({ theme }: { theme: any }) => theme.TEXT_SECONDARY};
   font-weight: 500;
   margin-top: 0.05rem;
@@ -709,36 +746,91 @@ const SNoBlock = styled.div`
 const MobileStatusGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-gap: 0.3rem;
-  width: 64px;
+  grid-gap: 0.24rem;
+  width: 56px;
 `;
 const DesktopStatusRow = styled.div`
   display: flex;
-  gap: 0.6rem;
+  gap: 0.42rem;
   margin-left: auto;
 `;
 // Desktop status button: pill/rounded rectangle, full name
 const DesktopStatusButton = styled.button<{ $active: boolean; $color: string }>`
-  min-width: 90px;
-  padding: 0.45rem 1.1rem;
-  border-radius: 22px;
-  background: ${({ $active, $color }) => $active ? $color : 'transparent'};
-  color: ${({ $active, $color }) => $active ? '#fff' : $color};
-  border: 1.5px solid ${({ $color }) => $color};
-  font-size: 1.01rem;
+  min-width: 78px;
+  padding: 0.42rem 0.78rem;
+  border-radius: 12px;
+  background: ${({ $active, $color, theme }) => $active ? `linear-gradient(135deg, ${$color} 0%, ${$color}dd 100%)` : getLayoutPalette(theme).surfaceBg};
+  color: ${({ $active, $color, theme }) => $active ? '#fff' : (checkIsDark(theme) ? '#e2e8f0' : $color)};
+  border: 1px solid ${({ $active, $color }) => $active ? 'transparent' : `${$color}44`};
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: ${({ $active, $color }) => $active ? `0 0 8px 2px ${$color}33` : 'none'};
-  transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+  box-shadow: ${({ $active, $color, theme }) => $active ? `0 8px 14px ${$color}30` : getLayoutPalette(theme).surfaceShadow};
+  transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s, transform 0.18s;
   &:hover, &:focus {
-    background: ${({ $color }) => $color};
+    background: ${({ $active, $color }) => $active ? `linear-gradient(135deg, ${$color} 0%, ${$color}dd 100%)` : `${$color}18`};
     color: #fff;
     outline: none;
-    box-shadow: 0 0 8px 2px ${({ $color }) => $color}33;
+    box-shadow: 0 10px 16px ${({ $color }) => `${$color}30`};
+    transform: translateY(-1px);
   }
+`;
+
+const RemarksInput = styled.input`
+  ${clayInputStyle}
+  min-width: 104px;
+  max-width: 168px;
+  padding: 0.38rem 0.62rem;
+  margin-right: 0.72rem;
+  font-size: 0.84rem;
+`;
+
+const SelectionRow = styled.div`
+  ${clayCardStyle}
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.58rem;
+  margin-bottom: 0.1rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  font-size: 0.84rem;
+  font-weight: 600;
+`;
+
+const CenterStateCard = styled.div`
+  ${clayCardStyle}
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+  padding: 1.4rem 0.9rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+`;
+
+const WhatsAppNotice = styled.div`
+  ${clayCardStyle}
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.58rem 0.75rem;
+  color: ${({ theme }) => getDashboardPalette(theme).titleText};
+  font-size: 0.83rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+`;
+
+const WhatsAppToggle = styled.input.attrs({ type: 'checkbox' })`
+  width: 16px;
+  height: 16px;
+  accent-color: #25d366;
+  cursor: pointer;
 `;
 
 // Select All/Deselect All controls
@@ -1036,11 +1128,139 @@ const StatusListFooter = styled.div`
 const ClickableSummaryItem = styled.span`
   cursor: pointer;
   transition: all 0.2s;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }: { theme: any }) => `${theme.ACCENT}22`};
+  background: ${({ theme }: { theme: any }) => getLayoutPalette(theme).surfaceBg};
+  box-shadow: ${({ theme }: { theme: any }) => getLayoutPalette(theme).surfaceShadow};
   &:hover {
-    background: ${({ theme }: { theme: any }) => theme.ACCENT}22;
+    background: ${({ theme }: { theme: any }) => `${theme.ACCENT}18`};
     color: ${({ theme }: { theme: any }) => theme.ACCENT};
+    border-color: ${({ theme }: { theme: any }) => `${theme.ACCENT}44`};
+    box-shadow: ${({ theme }: { theme: any }) => getLayoutPalette(theme).surfaceHoverShadow};
+  }
+`;
+
+const FooterShell = styled.div<{ $isMobile: boolean }>`
+  width: 100%;
+  display: flex;
+  flex-direction: ${({ $isMobile }) => $isMobile ? 'column' : 'row'};
+  align-items: center;
+  justify-content: ${({ $isMobile }) => $isMobile ? 'center' : 'space-between'};
+  gap: ${({ $isMobile }) => $isMobile ? '0.42rem' : '0.7rem'};
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+`;
+
+const FooterSummary = styled.div<{ $isMobile: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: ${({ $isMobile }) => $isMobile ? 'center' : 'flex-start'};
+  flex-wrap: wrap;
+  gap: ${({ $isMobile }) => $isMobile ? '0.24rem' : '0.36rem'};
+  font-size: ${({ $isMobile }) => $isMobile ? '0.7rem' : '0.84rem'};
+  font-weight: 600;
+  color: ${({ theme }) => getLayoutPalette(theme).footerText};
+  min-width: 0;
+`;
+
+const FooterDivider = styled.span`
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  opacity: 0.65;
+`;
+
+const FooterActions = styled.div<{ $isMobile: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: ${({ $isMobile }) => $isMobile ? 'center' : 'flex-end'};
+  gap: 0;
+  width: ${({ $isMobile }) => $isMobile ? '100%' : 'auto'};
+  flex-wrap: wrap;
+`;
+
+const FooterActionGroup = styled.div<{ $isMobile: boolean }>`
+  display: flex;
+  align-items: center;
+  width: ${({ $isMobile }) => $isMobile ? '100%' : 'auto'};
+  max-width: 100%;
+  overflow: hidden;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  border-radius: ${CARD_RADIUS_LG};
+
+  @media (max-width: 700px) {
+    width: 100%;
+  }
+`;
+
+const FooterActionButton = styled.button<{ $variant?: 'default' | 'danger' | 'success'; first?: boolean; last?: boolean }>`
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  min-height: 30px;
+  min-width: 72px;
+  padding: 0.34rem 0.72rem;
+  border: none;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: ${({ theme, $variant }) => {
+    if ($variant === 'danger' || $variant === 'success') return '#fff';
+    return theme.TEXT_PRIMARY;
+  }};
+  background: ${({ theme, $variant }) => {
+    if ($variant === 'danger') return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+    if ($variant === 'success') return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+    return 'transparent';
+  }};
+  box-shadow: ${({ theme, $variant }) => {
+    if ($variant === 'danger') return 'inset 0 0 0 999px rgba(239, 68, 68, 0.06)';
+    if ($variant === 'success') return 'inset 0 0 0 999px rgba(34, 197, 94, 0.06)';
+    return 'none';
+  }};
+  transition: background 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+
+  ${({ first }) => first && `
+    border-top-left-radius: ${CARD_RADIUS_LG};
+    border-bottom-left-radius: ${CARD_RADIUS_LG};
+  `}
+
+  ${({ last }) => last && `
+    border-top-right-radius: ${CARD_RADIUS_LG};
+    border-bottom-right-radius: ${CARD_RADIUS_LG};
+    border-right: none;
+  `}
+
+  &:hover:not(:disabled) {
+    transform: none;
+    background: ${({ theme, $variant }) => {
+      if ($variant === 'danger') return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+      if ($variant === 'success') return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+      return getLayoutPalette(theme).navHoverBg;
+    }};
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  @media (max-width: 700px) {
+    flex: 1 1 25%;
+    min-width: 0;
+    padding: 0.36rem 0.4rem;
+    font-size: 0.72rem;
+    gap: 0.24rem;
+    white-space: nowrap;
   }
 `;
 
@@ -1254,28 +1474,10 @@ const MarkAttendance: React.FC = () => {
   // Set footer content for global footer
   useEffect(() => {
     const footerContent = (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'center' : 'center', 
-        justifyContent: isMobile ? 'center' : 'space-between', 
-        width: '100%',
-        gap: isMobile ? '0.5rem' : '1rem',
-        flexWrap: isMobile ? 'nowrap' : 'wrap'
-      }}>
-        <div style={{ 
-          fontSize: isMobile ? '0.75rem' : '0.98rem', 
-          color: (theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY), 
-          fontWeight: 600, 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: isMobile ? 3 : 8, 
-          flexWrap: isMobile ? 'nowrap' : 'wrap',
-          justifyContent: isMobile ? 'center' : 'flex-start',
-          whiteSpace: isMobile ? 'nowrap' : 'normal'
-        }}>
+      <FooterShell theme={theme === 'dark' ? darkTheme : lightTheme} $isMobile={isMobile}>
+        <FooterSummary theme={theme === 'dark' ? darkTheme : lightTheme} $isMobile={isMobile}>
           <span>Total: {totalStudents}</span>
-          <span>|</span>
+          <FooterDivider theme={theme === 'dark' ? darkTheme : lightTheme}>|</FooterDivider>
           <ClickableSummaryItem 
             theme={theme === 'dark' ? darkTheme : lightTheme}
             onClick={() => {
@@ -1285,7 +1487,7 @@ const MarkAttendance: React.FC = () => {
           >
             Present: {presentCount}
           </ClickableSummaryItem>
-          <span>|</span>
+          <FooterDivider theme={theme === 'dark' ? darkTheme : lightTheme}>|</FooterDivider>
           <ClickableSummaryItem 
             theme={theme === 'dark' ? darkTheme : lightTheme}
             onClick={() => {
@@ -1295,7 +1497,7 @@ const MarkAttendance: React.FC = () => {
           >
             Absent: {absentCount}
           </ClickableSummaryItem>
-          <span>|</span>
+          <FooterDivider theme={theme === 'dark' ? darkTheme : lightTheme}>|</FooterDivider>
           <ClickableSummaryItem 
             theme={theme === 'dark' ? darkTheme : lightTheme}
             onClick={() => {
@@ -1305,7 +1507,7 @@ const MarkAttendance: React.FC = () => {
           >
             Leave: {leaveCount}
           </ClickableSummaryItem>
-          <span>|</span>
+          <FooterDivider theme={theme === 'dark' ? darkTheme : lightTheme}>|</FooterDivider>
           <ClickableSummaryItem 
             theme={theme === 'dark' ? darkTheme : lightTheme}
             onClick={() => {
@@ -1315,52 +1517,46 @@ const MarkAttendance: React.FC = () => {
           >
             Late: {students.filter(s => s.status === 'late').length}
           </ClickableSummaryItem>
-        </div>
-        <SegmentedGroup
-          theme={theme === 'dark' ? darkTheme : lightTheme}
-          style={isMobile
-            ? { width: '100%', justifyContent: 'center', overflowX: 'auto', marginTop: 0 }
-            : { justifyContent: 'flex-end', marginTop: 0 }
-          }
-        >
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            first
-            onClick={() => handleMarkAll('present')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
-            disabled={students.length === 0 || selectedRows.length === 0}
-          >
-            {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
-            All Present
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            onClick={() => handleMarkAll('absent')}
-            style={{ minWidth: 70, padding: '0.35rem 0.7em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 32, justifyContent: 'center' }}
-            disabled={students.length === 0 || selectedRows.length === 0}
-          >
-            {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
-            All Absent
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            onClick={() => setShowDeleteConfirm(true)}
-            disabled={students.length === 0 || selectedRows.length === 0 || !selectedClass || !date || deleting || (classes.find(c => String(c.id) === String(selectedClass))?.has_sections ?? true) && !selectedSection}
-            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 32, opacity: 0.93 }}
-          >
-            {deleting ? <Spinner /> : <><Delete style={{ fontSize: 18, marginRight: 4 }} /> Delete</>}
-          </SegmentedButton>
-          <SegmentedButton
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            last
-            onClick={() => handleSaveRef.current?.()}
-            disabled={students.length === 0 || selectedRows.length === 0 || saving}
-            style={{ minWidth: 90, padding: '0.35rem 0.7em', fontSize: '0.97em', color: '#fff', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700, minHeight: 32, opacity: 0.93 }}
-          >
-            {saving ? <Spinner /> : <><Save style={{ fontSize: 18, marginRight: 4 }} /> Save</>}
-          </SegmentedButton>
-        </SegmentedGroup>
-      </div>
+        </FooterSummary>
+        <FooterActions theme={theme === 'dark' ? darkTheme : lightTheme} $isMobile={isMobile}>
+          <FooterActionGroup theme={theme === 'dark' ? darkTheme : lightTheme} $isMobile={isMobile}>
+            <FooterActionButton
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              first
+              onClick={() => handleMarkAll('present')}
+              disabled={students.length === 0 || selectedRows.length === 0}
+            >
+              {!isMobile && <CheckCircle style={{ fontSize: 18, marginRight: 4 }} />}
+              All Present
+            </FooterActionButton>
+            <FooterActionButton
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              onClick={() => handleMarkAll('absent')}
+              disabled={students.length === 0 || selectedRows.length === 0}
+            >
+              {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
+              All Absent
+            </FooterActionButton>
+            <FooterActionButton
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              $variant="danger"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={students.length === 0 || selectedRows.length === 0 || !selectedClass || !date || deleting || (classes.find(c => String(c.id) === String(selectedClass))?.has_sections ?? true) && !selectedSection}
+            >
+              {deleting ? <Spinner /> : <><Delete style={{ fontSize: isMobile ? 14 : 18, marginRight: isMobile ? 2 : 4 }} /> Delete</>}
+            </FooterActionButton>
+            <FooterActionButton
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              $variant="success"
+              last
+              onClick={() => handleSaveRef.current?.()}
+              disabled={students.length === 0 || selectedRows.length === 0 || saving}
+            >
+              {saving ? <Spinner /> : <><Save style={{ fontSize: isMobile ? 14 : 18, marginRight: isMobile ? 2 : 4 }} /> Save</>}
+            </FooterActionButton>
+          </FooterActionGroup>
+        </FooterActions>
+      </FooterShell>
     );
 
     setFooterContent({
@@ -2361,13 +2557,11 @@ const MarkAttendance: React.FC = () => {
   let studentAreaContent = null;
   if (!selectedClass) {
     studentAreaContent = (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', width: '100%', textAlign: 'center', color: '#888', fontWeight: 600
-      }}>
+      <CenterStateCard>
         <Class style={{ fontSize: 54, color: '#6366f1', marginBottom: 12 }} />
         <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>Select a class to mark attendance</div>
-        <div style={{ fontSize: '1rem', marginTop: 8, color: '#aaa' }}>Attendance will appear here once you select a class.</div>
-      </div>
+        <div style={{ fontSize: '1rem', marginTop: 8, opacity: 0.82 }}>Attendance will appear here once you select a class.</div>
+      </CenterStateCard>
     );
   } else {
     // Check if the selected class has sections
@@ -2377,24 +2571,20 @@ const MarkAttendance: React.FC = () => {
     // If class has sections but no section is selected, show section selection message
     if (hasSections && !selectedSection) {
       studentAreaContent = (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', width: '100%', textAlign: 'center', color: '#888', fontWeight: 600
-        }}>
+        <CenterStateCard>
           <Class style={{ fontSize: 54, color: '#6366f1', marginBottom: 12 }} />
           <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>Select a section to mark attendance</div>
-          <div style={{ fontSize: '1rem', marginTop: 8, color: '#aaa' }}>Attendance will appear here once you select a section.</div>
-        </div>
+          <div style={{ fontSize: '1rem', marginTop: 8, opacity: 0.82 }}>Attendance will appear here once you select a section.</div>
+        </CenterStateCard>
       );
     } else if (!loading && !loadingStudents && students.length === 0) {
       studentAreaContent = (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 0', color: '#888', fontWeight: 600
-        }}>
+        <CenterStateCard style={{ minHeight: 220 }}>
           <span style={{ fontSize: 48, marginBottom: 12 }}>
             <i className="fas fa-user-slash" />
           </span>
           <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>No students found to be listed for this class.</div>
-        </div>
+        </CenterStateCard>
       );
     }
   }
@@ -2566,7 +2756,7 @@ const MarkAttendance: React.FC = () => {
         <MobileStudentList>
           {/* Minimal Select All / Deselect All checkbox above the list */}
           {filtered.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 8px 12px', fontSize: '0.97em' }}>
+            <SelectionRow>
               <SerialCheckbox
                 className={allChecked ? 'checked' : ''}
                 onClick={handleToggleSelectAll}
@@ -2575,8 +2765,8 @@ const MarkAttendance: React.FC = () => {
               >
                 {allChecked ? '✓' : '○'}
               </SerialCheckbox>
-              <span style={{ userSelect: 'none', color: '#a0a7b8' }}>Select All</span>
-            </div>
+              <span style={{ userSelect: 'none' }}>Select All</span>
+            </SelectionRow>
           )}
           {studentAreaContent ? (
             studentAreaContent
@@ -2585,10 +2775,10 @@ const MarkAttendance: React.FC = () => {
             null
           )}
           {loadingStudents ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', gap: 16 }}>
+            <CenterStateCard style={{ minHeight: 180 }}>
               <Spinner />
               <div style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '1.2px' }}>Loading students…</div>
-            </div>
+            </CenterStateCard>
           ) : (!loadingStudents && students.length === 0) ? (
             null
           ) : (
@@ -2744,23 +2934,11 @@ const MarkAttendance: React.FC = () => {
                   </MobileStatusGrid>
                 ) : (
                   <>
-                    <input
+                    <RemarksInput
                       type="text"
                       value={student.remarks || ''}
                       onChange={e => handleRemarksChange(student.id, e.target.value)}
                       placeholder="Remarks"
-                      style={{
-                        marginRight: '1rem',
-                        padding: '0.4rem 0.7rem',
-                        borderRadius: '8px',
-                        border: '1px solid #888',
-                        minWidth: '120px',
-                        maxWidth: '200px',
-                        fontSize: '0.97rem',
-                        background: 'rgba(255,255,255,0.07)',
-                        color: '#fff',
-                        outline: 'none',
-                      }}
                     />
                     <DesktopStatusRow>
                       <DesktopStatusButton
@@ -2823,32 +3001,12 @@ const MarkAttendance: React.FC = () => {
       
       {/* WhatsApp Notification Toggle */}
       {students.length > 0 && hasWhatsAppPermission && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 12,
-          padding: '8px 16px',
-          margin: '8px 0',
-          background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-          borderRadius: '8px',
-          border: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-          fontSize: '0.9rem',
-          fontWeight: 600,
-          color: theme === 'dark' ? '#e2e8f0' : '#374151'
-        }}>
-          <input
-            type="checkbox"
+        <WhatsAppNotice>
+          <WhatsAppToggle
             id="whatsapp-toggle"
             checked={sendWhatsAppNotifications}
             onChange={(e) => setSendWhatsAppNotifications(e.target.checked)}
             disabled={saving || whatsappProcessing}
-            style={{
-              width: '18px',
-              height: '18px',
-              accentColor: '#25d366',
-              cursor: saving || whatsappProcessing ? 'not-allowed' : 'pointer'
-            }}
           />
           <label 
             htmlFor="whatsapp-toggle" 
@@ -2876,7 +3034,7 @@ const MarkAttendance: React.FC = () => {
               <span style={{ fontSize: '0.8rem' }}>Preparing...</span>
             </div>
           )}
-        </div>
+        </WhatsAppNotice>
       )}
         {showDeleteConfirm && (
           <>
@@ -3048,53 +3206,50 @@ const MarkAttendance: React.FC = () => {
 // Native MUI Skeleton Component
 
 // --- Segmented Group Styles (copied from StudentList) ---
-const SEGMENTED_HEIGHT = '32px';
+const SEGMENTED_HEIGHT = '29px';
 const SegmentedGroup = styled.div`
   display: flex;
   align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px #2222;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  border-radius: ${CARD_RADIUS_LG};
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
-    justify-content: flex-start;
+    justify-content: stretch;
     flex-direction: row;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
     border-radius: 11px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    &::-webkit-scrollbar {
-      display: none;
-    }
   }
 `;
 const SegmentedBase = css`
   font-family: inherit;
   font-size: 0.77em;
-  font-weight: 400;
+  font-weight: 500;
   height: ${SEGMENTED_HEIGHT};
   line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px #2222;
-  border: none;
   outline: none;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
   appearance: none;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
-  color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: none;
+  box-shadow: none;
   @media (max-width: 700px) {
-    font-size: 0.7em;
-    height: 28px;
-    line-height: 28px;
+    font-size: 0.68em;
+    height: 26px;
+    line-height: 26px;
   }
 `;
 const SegmentedInput = styled.input<{ pill?: boolean }>`
   ${SegmentedBase}
   padding: 0 0.84em;
   min-width: 98px;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+  border-radius: 0;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   ${({ pill }) => pill && `
     border-top-left-radius: 11px;
     border-bottom-left-radius: 11px;
@@ -3112,13 +3267,22 @@ const SegmentedInput = styled.input<{ pill?: boolean }>`
     border-bottom-left-radius: 11px;
   }
   &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+    border-left: none;
+  }
+  &:focus {
+    background: ${({ theme }) => getLayoutPalette(theme).navHoverBg};
+  }
+  &::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: ${({ theme }) => checkIsDark(theme) ? 0.82 : 0.65};
+    filter: ${({ theme }) => checkIsDark(theme) ? 'invert(0.88)' : 'invert(0.18)'};
   }
   @media (max-width: 700px) {
     min-width: 80px;
-    max-width: 120px;
-    flex: 0 0 auto;
-    padding: 0 0.6em;
+    max-width: none;
+    flex: 1 1 0;
+    width: 100%;
+    padding: 0 0.5em;
     border-radius: 0;
     &:last-child {
       border-top-right-radius: 11px;
@@ -3132,8 +3296,10 @@ const SegmentedInput = styled.input<{ pill?: boolean }>`
 `;
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   ${SegmentedBase}
+  ${minimalSelectMenuStyle}
   padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+  border-radius: 0;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
   ${({ first }) => first && `
     border-top-left-radius: 11px;
@@ -3144,21 +3310,27 @@ const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
     border-bottom-right-radius: 11px;
   `}
   &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+    border-left: none;
   }
-  appearance: none;
+  cursor: pointer;
   -webkit-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525'
-    ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
-    : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
+  appearance: none;
+  background-image: ${({ theme }) => {
+    const stroke = checkIsDark(theme) ? '%2394a3b8' : '%2364748b';
+    return `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='${stroke}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
+  }};
   background-repeat: no-repeat;
-  background-position: right 0.8em center;
-  background-size: 1em 1em;
+  background-position: right 0.75em center;
+  background-size: 0.9em 0.9em;
+  &:focus {
+    background-color: ${({ theme }) => getLayoutPalette(theme).navHoverBg};
+  }
   @media (max-width: 700px) {
-    min-width: 90px;
-    max-width: 130px;
-    flex: 0 0 auto;
-    padding: 0 1.8em 0 0.6em;
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 0;
+    width: 100%;
+    padding: 0 1.55em 0 0.5em;
     background-position: right 0.5em center;
     background-size: 0.85em 0.85em;
     border-radius: 0;
@@ -3181,6 +3353,7 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
   align-items: center;
   gap: 0.35em;
   border-radius: 0;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   ${({ first }) => first && `
     border-top-left-radius: 11px;
     border-bottom-left-radius: 11px;
@@ -3190,13 +3363,18 @@ const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?
     border-bottom-right-radius: 11px;
   `}
   cursor: pointer;
-  background: ${({ active, theme }) => active ? theme.ACCENT : theme.BG};
-  color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
-  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
+  background: ${({ active, theme }) => active ? `${theme.ACCENT}18` : 'transparent'};
+  color: ${({ active, theme }) => active ? theme.ACCENT : theme.TEXT_PRIMARY};
+  border-top: none;
+  border-bottom: none;
+  border-left: none;
   font-weight: ${({ active }) => active ? 700 : 400};
+  &:last-child {
+    border-right: none;
+  }
   &:hover, &:focus {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#353535' : '#e5e7eb'};
-    opacity: 0.92;
+    background: ${({ active, theme }) => active ? `${theme.ACCENT}18` : getLayoutPalette(theme).navHoverBg};
+    opacity: 1;
   }
   & svg {
     font-size: 15px;

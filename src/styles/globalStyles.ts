@@ -64,7 +64,7 @@ export const GlobalStyles = createGlobalStyle`
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }: any) => theme.ACCENT}66;
+    background: ${({ theme }: any) => `${theme.ACCENT}66`};
   }
 
   /* Mobile touch optimizations */

@@ -17,13 +17,31 @@ import {
   Visibility as VisibilityIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
+import {
+  CARD_RADIUS_LG,
+  clayCardStyle,
+  clayPanelStyle,
+  getDashboardPalette,
+  getLayoutPalette,
+  isDark as checkIsDark,
+  minimalSelectMenuStyle,
+  getButtonPalette,
+} from '../styles/DesignSystem';
 
 const PageContainer = styled.div`
   width: 100%;
   margin: 0;
-  padding: 0 12px 6px 12px;
+  padding: 0 10px 6px 10px;
   box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
+  background: ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    const dark = checkIsDark(theme);
+    return `
+      radial-gradient(circle at top left, ${dark ? 'rgba(255, 255, 255, 0.035)' : `${theme.ACCENT}10`} 0%, transparent 26%),
+      linear-gradient(180deg, rgba(255,255,255,${dark ? '0.02' : '0.35'}) 0%, transparent 18%),
+      ${layout.shellBg}
+    `;
+  }};
   max-width: 100vw;
   overflow-x: hidden;
   height: 100%;
@@ -36,20 +54,26 @@ const PageContainer = styled.div`
 `;
 
 const Header = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      ${clayPanelStyle}
+      border: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 6px 0 4px 0;
+  margin: 8px 0 6px 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 1px 6px #0001;
-  border-radius: 10px;
-  padding: 4px 8px 2px 8px;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 8px 10px;
   min-height: 36px;
 `;
 
@@ -57,14 +81,11 @@ const HeaderFilters = styled.div`
   display: flex;
   gap: 6px;
   align-items: center;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 8px;
-  box-shadow: 0 1px 4px #0001;
-  padding: 6px 8px;
+  padding: 0;
 `;
 
 const Title = styled.h2`
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: 1px;
   color: ${({ theme }) => theme.ACCENT};
@@ -72,11 +93,17 @@ const Title = styled.h2`
 `;
 
 const SegmentedGroup = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px #2222;
+  align-items: stretch;
+  border-radius: ${CARD_RADIUS_LG};
   overflow: hidden;
   @media (max-width: 700px) {
     width: 100%;
@@ -84,37 +111,37 @@ const SegmentedGroup = styled.div`
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
-    border-radius: 8px;
   }
 `;
 
 const SegmentedBase = css`
+  ${minimalSelectMenuStyle}
   font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: 32px;
-  line-height: 32px;
-  box-shadow: 1.4px 1.4px 4px #2222;
+  font-size: 0.72rem;
+  font-weight: 600;
+  height: 30px;
+  line-height: 1;
   border: none;
   outline: none;
   transition: background 0.2s;
   appearance: none;
-  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
-  color: ${({ theme }) => theme.BG === '#252525' ? '#C0C0C0' : '#444'};
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  box-shadow: none;
 `;
 
 const SegmentedInput = styled.input`
   ${SegmentedBase}
-  padding: 0 0.84em;
-  min-width: 220px;
-  max-width: 320px;
+  padding: 0 0.72rem;
+  min-width: 180px;
+  max-width: 260px;
   width: 100%;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-  border-top-left-radius: 11px;
-  border-bottom-left-radius: 11px;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  &::placeholder {
+    color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  }
   @media (max-width: 700px) {
     width: 100%;
-    border-radius: 8px !important;
     border-right: none;
     min-width: 0;
   }
@@ -122,60 +149,48 @@ const SegmentedInput = styled.input`
 
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   ${SegmentedBase}
-  padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
+  ${minimalSelectMenuStyle}
+  padding: 0 1.8rem 0 0.72rem;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
-  &:not(:first-child) {
-    border-left: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#555' : '#e5e7eb'};
-  }
+  border-radius: 0;
   appearance: none;
   -webkit-appearance: none;
-  background-image: ${({ theme }) => theme.BG === '#252525'
-    ? `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
-    : `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`};
+  background: transparent;
+  background-image: ${({ theme }) => {
+    const color = encodeURIComponent(checkIsDark(theme) ? '#94a3b8' : '#64748b');
+    return `url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='${color}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
+  }};
   background-repeat: no-repeat;
-  background-position: right 0.8em center;
+  background-position: right 0.65rem center;
   background-size: 1em 1em;
   @media (max-width: 700px) {
     width: 100%;
-    border-radius: 8px !important;
     border-left: none;
     border-right: none;
     min-width: 0;
-    background-position: right 1em center;
+    background-position: right 0.72rem center;
   }
 `;
 
 const SegmentedButton = styled.button<{ active?: boolean; first?: boolean; last?: boolean }>`
   ${SegmentedBase}
-  padding: 0 1.12em;
+  padding: 0 0.9rem;
   display: flex;
   align-items: center;
   gap: 0.35em;
   border-radius: 0;
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
   cursor: pointer;
-  background: ${({ active, theme }) => active ? theme.ACCENT : theme.BG};
+  background: ${({ active, theme }) => active ? theme.ACCENT : 'transparent'};
   color: ${({ active, theme }) => active ? '#fff' : theme.TEXT_PRIMARY};
-  border: 1.5px solid ${({ active, theme }) => active ? theme.ACCENT : theme.FIELD_BORDER};
-  font-weight: ${({ active }) => active ? 700 : 400};
+  border: none;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  font-weight: ${({ active }) => active ? 700 : 600};
+  &:last-child {
+    border-right: none;
+  }
   &:hover, &:focus {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#353535' : '#e5e7eb'};
+    background: ${({ active, theme }) => active ? theme.ACCENT : getLayoutPalette(theme).surfaceHoverBg};
     opacity: 0.92;
   }
   & svg {
@@ -244,10 +259,10 @@ const TableWrapper = styled.div`
   width: 100%;
   overflow-x: auto;
   overflow-y: auto;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 14px;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.10);
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   margin-top: 8px;
   position: relative;
   flex: 1;
@@ -290,7 +305,7 @@ const Table = styled.table`
   }
   
   thead tr {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
     position: relative;
   }
   
@@ -301,7 +316,7 @@ const Table = styled.table`
     border-bottom: 1px solid ${({ theme }) => theme.FIELD_BORDER};
     
     &:hover {
-      background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
+      background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
     }
     
     &:last-child {
@@ -311,15 +326,15 @@ const Table = styled.table`
 `;
 
 const Th = styled.th`
-  padding: 1rem 1.2rem;
+  padding: 0.72rem 0.9rem;
   text-align: left;
   color: ${({ theme }) => theme.ACCENT};
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   position: sticky;
   top: 0;
   z-index: 100;
@@ -332,15 +347,15 @@ const Th = styled.th`
 `;
 
 const ThGroup = styled.th`
-  padding: 0.5rem 1.2rem;
+  padding: 0.45rem 0.9rem;
   text-align: center;
   color: ${({ theme }) => theme.ACCENT};
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f3f4f8'};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   position: sticky;
   top: 0;
   z-index: 100;
@@ -353,9 +368,9 @@ const ThGroup = styled.th`
 `;
 
 const Td = styled.td`
-  padding: 1rem 1.2rem;
+  padding: 0.72rem 0.9rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 500;
   vertical-align: middle;
   white-space: normal;
@@ -368,28 +383,34 @@ const Td = styled.td`
 
 const StatusBadge = styled.span<{ status: string }>`
   display: inline-block;
-  padding: 0.25rem 0.75rem;
+  padding: 0.22rem 0.62rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  background: ${({ status }) =>
-    status === 'active' ? 'rgb(34, 197, 94)' :
-    status === 'suspended' ? 'rgb(245, 158, 11)' :
-    status === 'withdrawn' ? 'rgb(239, 68, 68)' :
-    'rgb(99, 102, 241)'};
+  background: ${({ theme, status }) =>
+    status === 'active' ? getDashboardPalette(theme).status.success :
+    status === 'suspended' ? getDashboardPalette(theme).status.warning :
+    status === 'withdrawn' ? getDashboardPalette(theme).status.danger :
+    getDashboardPalette(theme).status.info};
   color: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.13);
   letter-spacing: 0.02em;
 `;
 
 const ActionButton = styled.button`
-  background: ${({ theme }) => theme.ACCENT};
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-  font-weight: 600;
+  ${({ theme }) => {
+    const buttons = getButtonPalette(theme);
+    return css`
+      background: ${buttons.primaryBg};
+      color: ${buttons.primaryText};
+      box-shadow: ${buttons.primaryShadow};
+    `;
+  }}
+  border: 1px solid transparent;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.34rem 0.68rem;
+  font-size: 0.76rem;
+  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -398,9 +419,8 @@ const ActionButton = styled.button`
   margin-right: 0.5rem;
   
   &:hover {
-    background: ${({ theme }) => theme.ACCENT}dd;
+    box-shadow: ${({ theme }) => getButtonPalette(theme).primaryHoverShadow};
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   }
   
   &:active {
@@ -418,9 +438,9 @@ const PaginationContainer = styled.div`
   align-items: center;
   margin-top: 0;
   padding: 0.15rem 0;
-  border-top: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.BG};
-  box-shadow: 0 -1px 6px #0001;
+  border-top: 1px solid ${({ theme }) => getLayoutPalette(theme).footerBorder};
+  background: transparent;
+  box-shadow: none;
   flex: 0 0 auto;
   width: 100%;
   @media (max-width: 700px) {
@@ -432,8 +452,9 @@ const PaginationContainer = styled.div`
 `;
 
 const PaginationInfo = styled.div`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.95rem;
+  color: ${({ theme }) => getLayoutPalette(theme).footerText};
+  font-size: 0.84rem;
+  font-weight: 600;
   
   @media (max-width: 768px) {
     text-align: center;
@@ -457,10 +478,10 @@ const PaginationControls = styled.div`
 
 const NoResults = styled.div`
   text-align: center;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 1.1rem;
-  margin: 48px 0;
-  padding: 2rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  font-size: 0.95rem;
+  margin: 36px 0;
+  padding: 1.5rem;
 `;
 
 const STATUS_OPTIONS = [
@@ -1268,7 +1289,7 @@ const WithdrawalRegister: React.FC = () => {
           }}
         >
           <Title theme={theme === 'dark' ? darkTheme : lightTheme}>
-            Admission & Withdrawal Register <span style={{fontWeight:400, fontSize:'1rem', color: theme === 'dark' ? '#b0b8d1' : '#4a4a4a'}}>({filteredStudents.length})</span>
+            Admission & Withdrawal Register <span style={{fontWeight:500, fontSize:'0.88rem', color: (theme === 'dark' ? getLayoutPalette(darkTheme).shellMutedText : getLayoutPalette(lightTheme).shellMutedText)}}>({filteredStudents.length})</span>
           </Title>
           
           {/* Mobile filter toggle */}
@@ -1276,19 +1297,19 @@ const WithdrawalRegister: React.FC = () => {
             <button
               aria-label="Show/hide filters"
               style={{
-                background: theme === 'dark' ? '#23242a' : '#f3f4f6',
-                border: 'none',
-                borderRadius: 8,
-                padding: 8,
+                background: theme === 'dark' ? getLayoutPalette(darkTheme).surfaceBg : getLayoutPalette(lightTheme).surfaceBg,
+                border: `1px solid ${theme === 'dark' ? getLayoutPalette(darkTheme).surfaceBorder : getLayoutPalette(lightTheme).surfaceBorder}`,
+                borderRadius: 6,
+                padding: 6,
                 marginLeft: 8,
                 cursor: 'pointer',
-                boxShadow: '0 1px 4px #0002',
+                boxShadow: theme === 'dark' ? getLayoutPalette(darkTheme).surfaceShadow : getLayoutPalette(lightTheme).surfaceShadow,
                 display: 'flex',
                 alignItems: 'center',
               }}
               onClick={() => setShowMobileFilters(v => !v)}
             >
-              <FilterListIcon style={{ fontSize: 24, color: theme === 'dark' ? '#C0C0C0' : '#444' }} />
+              <FilterListIcon style={{ fontSize: 20, color: theme === 'dark' ? getLayoutPalette(darkTheme).shellMutedText : getLayoutPalette(lightTheme).shellMutedText }} />
             </button>
           )}
           
@@ -1301,7 +1322,7 @@ const WithdrawalRegister: React.FC = () => {
                 placeholder="Search Student..."
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
-                style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
+                style={{ minWidth: 180, maxWidth: 260, width: '100%' }}
               />
               <SegmentedSelect
                 value={classFilter}
@@ -1337,6 +1358,7 @@ const WithdrawalRegister: React.FC = () => {
                 onChange={handleSessionFilterChange}
                 style={{ borderRadius: 0 }}
               >
+                <option value="">All Sessions</option>
                 {loadingSessionsFilter ? <option>Loading...</option> :
                   sessionOptions.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -1359,7 +1381,7 @@ const WithdrawalRegister: React.FC = () => {
                 last
                 style={{
                   minWidth: 110,
-                  maxWidth: 130,
+                  maxWidth: 118,
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
@@ -1372,7 +1394,7 @@ const WithdrawalRegister: React.FC = () => {
                     width: 15, 
                     height: 15, 
                     border: '2px solid #e0e7ff', 
-                    borderTop: '2px solid #4a6cf7', 
+                    borderTop: `2px solid ${theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT}`, 
                     borderRadius: '50%', 
                     animation: 'spin 1s linear infinite' 
                   }} />
@@ -1447,6 +1469,7 @@ const WithdrawalRegister: React.FC = () => {
               onChange={handleSessionFilterChange}
               style={{ width: '100%' }}
             >
+              <option value="">All Sessions</option>
               {loadingSessionsFilter ? <option>Loading...</option> :
                 sessionOptions.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -1473,7 +1496,7 @@ const WithdrawalRegister: React.FC = () => {
                   width: 15, 
                   height: 15, 
                   border: '2px solid #e0e7ff', 
-                  borderTop: '2px solid #4a6cf7', 
+                  borderTop: `2px solid ${theme === 'dark' ? darkTheme.ACCENT : lightTheme.ACCENT}`, 
                   borderRadius: '50%', 
                   animation: 'spin 1s linear infinite' 
                 }} />
@@ -1524,7 +1547,7 @@ const WithdrawalRegister: React.FC = () => {
                     <Td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <span style={{ fontWeight: 600 }}>{student.name || '-'}</span>
-                        <span style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#b0b8d1' : '#666' }}>
+                        <span style={{ fontSize: '0.76rem', color: theme === 'dark' ? getLayoutPalette(darkTheme).shellMutedText : getLayoutPalette(lightTheme).shellMutedText }}>
                           {student.father_name || '-'}
                         </span>
                       </div>
@@ -1576,7 +1599,7 @@ const WithdrawalRegister: React.FC = () => {
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
                 first
-                style={{ minWidth: 32 }}
+                style={{ minWidth: 28 }}
               >
                 ‹
               </SegmentedButton>
@@ -1584,7 +1607,7 @@ const WithdrawalRegister: React.FC = () => {
                 <SegmentedButton
                   theme={theme === 'dark' ? darkTheme : lightTheme}
                   onClick={() => handlePageChange(page - 1)}
-                  style={{ minWidth: 32 }}
+                  style={{ minWidth: 28 }}
                 >
                   {page - 1}
                 </SegmentedButton>
@@ -1593,7 +1616,7 @@ const WithdrawalRegister: React.FC = () => {
                 theme={theme === 'dark' ? darkTheme : lightTheme}
                 active
                 disabled
-                style={{ minWidth: 32 }}
+                style={{ minWidth: 28 }}
               >
                 {page}
               </SegmentedButton>
@@ -1601,7 +1624,7 @@ const WithdrawalRegister: React.FC = () => {
                 <SegmentedButton
                   theme={theme === 'dark' ? darkTheme : lightTheme}
                   onClick={() => handlePageChange(page + 1)}
-                  style={{ minWidth: 32 }}
+                  style={{ minWidth: 28 }}
                 >
                   {page + 1}
                 </SegmentedButton>
@@ -1611,7 +1634,7 @@ const WithdrawalRegister: React.FC = () => {
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page === totalPages}
                 last
-                style={{ minWidth: 32 }}
+                style={{ minWidth: 28 }}
               >
                 ›
               </SegmentedButton>
@@ -1624,4 +1647,3 @@ const WithdrawalRegister: React.FC = () => {
 };
 
 export default memo(WithdrawalRegister);
-

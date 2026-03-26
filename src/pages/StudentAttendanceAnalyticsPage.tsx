@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,16 +36,34 @@ import {
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { getStudentDisplayId } from '../utils/studentUtils';
 import { sortClasses } from '../utils/classUtils';
+import {
+    CARD_RADIUS_LG,
+    clayCardStyle,
+    clayInputStyle,
+    clayPanelStyle,
+    getDashboardPalette,
+    getLayoutPalette,
+    isDark as checkIsDark,
+    minimalSelectMenuStyle,
+} from '../styles/DesignSystem';
 
 const Page = styled.div`
   width: 100%;
   height: 100%;
-  background: ${({ theme }) => theme.BG};
+  background: ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    const dark = checkIsDark(theme);
+    return `
+      radial-gradient(circle at top left, ${dark ? 'rgba(255,255,255,0.035)' : `${theme.ACCENT}10`} 0%, transparent 26%),
+      linear-gradient(180deg, rgba(255,255,255,${dark ? '0.02' : '0.35'}) 0%, transparent 18%),
+      ${layout.shellBg}
+    `;
+  }};
   padding: 0.5rem;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.4rem;
   overflow-y: auto;
   overflow-x: hidden;
 
@@ -59,18 +77,19 @@ const Page = styled.div`
 `;
 
 const Header = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      ${clayPanelStyle}
+      border: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  border: ${({ theme }) => theme.BG === '#252525'
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-        ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-        : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  padding: 0.65rem 0.85rem;
+  border-radius: ${CARD_RADIUS_LG};
   margin-bottom: 0.25rem;
 
   @media (max-width: 768px) {
@@ -87,7 +106,7 @@ const Title = styled.h1`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   letter-spacing: 0.2px;
 
@@ -97,85 +116,126 @@ const Title = styled.h1`
 `;
 
 const Filters = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  border: ${({ theme }) => theme.BG === '#252525'
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-        ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-        : '0 4px 20px rgba(0, 0, 0, 0.1)'};
-  margin-bottom: 0.25rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: flex-end;
+  align-items: center;
+  margin-left: auto;
+  min-width: 0;
+  margin-bottom: 0.25rem;
+  gap: 0.4rem;
 
   @media (max-width: 768px) {
-    padding: 0.75rem;
-    gap: 0.375rem;
+    width: 100%;
+    margin-left: 0;
+  }
+`;
+
+const HeaderSegmentedGroup = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
+  display: flex;
+  align-items: stretch;
+  border-radius: ${CARD_RADIUS_LG};
+  overflow: hidden;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+`;
+
+const HeaderSegmentBase = css`
+  ${minimalSelectMenuStyle}
+  border: none;
+  outline: none;
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 32px;
+`;
+
+const HeaderSegmentInput = styled.input`
+  ${HeaderSegmentBase}
+  padding: 0.5rem 0.72rem;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  min-width: 130px;
+  flex: 1;
+
+  &::placeholder {
+    color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  }
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  }
+`;
+
+const HeaderSegmentSelect = styled.select`
+  ${HeaderSegmentBase}
+  padding: 0.5rem 1.9rem 0.5rem 0.72rem;
+  border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  min-width: 130px;
+  flex: 1;
+  cursor: pointer;
+
+  &:last-child {
+    border-right: none;
+  }
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 50%;
+    border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+    border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+
+    &:nth-last-child(-n + 2) {
+      border-bottom: none;
+    }
   }
 `;
 
 const Input = styled.input`
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: ${({ theme }) => theme.BG === '#252525'
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.03)'
-        : 'rgba(255, 255, 255, 0.8)'};
+  ${clayInputStyle}
+  padding: 0.48rem 0.7rem;
+  border-radius: ${CARD_RADIUS_LG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   outline: none;
   transition: all 0.2s ease;
   flex: 1;
   min-width: 150px;
 
-  &:hover, &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    background: ${({ theme }) => theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(255, 255, 255, 0.9)'};
-  }
 `;
 
 const Select = styled.select`
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: ${({ theme }) => theme.BG === '#252525'
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.03)'
-        : 'rgba(255, 255, 255, 0.8)'};
+  ${clayInputStyle}
+  ${minimalSelectMenuStyle}
+  padding: 0.48rem 2rem 0.48rem 0.7rem;
+  border-radius: ${CARD_RADIUS_LG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   outline: none;
   cursor: pointer;
   transition: all 0.2s ease;
   flex: 1;
   min-width: 150px;
 
-  &:hover, &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-    background: ${({ theme }) => theme.BG === '#252525'
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(255, 255, 255, 0.9)'};
-  }
-
-  & option {
-    background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#ffffff'};
-    color: ${({ theme }) => theme.BG === '#252525' ? '#e2e8f0' : '#1e293b'};
-  }
 `;
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.4rem;
   margin-bottom: 0.25rem;
   
   @media (max-width: 768px) {
@@ -185,15 +245,11 @@ const Grid = styled.div`
 `;
 
 const Card = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  border: ${({ theme }) => theme.BG === '#252525'
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-        ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-        : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.8rem;
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -205,8 +261,8 @@ const Card = styled.div`
 `;
 
 const Label = styled.div`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.78rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  font-size: 0.72rem;
   margin-bottom: 0.22rem;
   display: flex;
   align-items: center;
@@ -215,7 +271,7 @@ const Label = styled.div`
 
 const Value = styled.div`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.06rem;
+  font-size: 0.96rem;
   font-weight: 700;
   display: flex;
   align-items: baseline;
@@ -223,15 +279,15 @@ const Value = styled.div`
 `;
 
 const StatChange = styled.span<{ $positive?: boolean }>`
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: ${({ $positive }) => $positive ? '#22c55e' : '#ef4444'};
+  color: ${({ theme, $positive }) => $positive ? getDashboardPalette(theme).status.success : getDashboardPalette(theme).status.danger};
 `;
 
 const TwoCol = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-bottom: 0.25rem;
 
   @media (max-width: 980px) {
@@ -240,23 +296,19 @@ const TwoCol = styled.div`
 `;
 
 const Panel = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: ${({ theme }) => theme.BG === '#252525'
-        ? '1px solid rgba(255, 255, 255, 0.05)'
-        : '1px solid rgba(0, 0, 0, 0.05)'};
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: ${({ theme }) => theme.BG === '#252525'
-        ? '0 4px 20px rgba(0, 0, 0, 0.3)'
-        : '0 4px 20px rgba(0, 0, 0, 0.1)'};
+  ${clayPanelStyle}
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.85rem;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   display: flex;
   flex-direction: column;
 `;
 
 const PanelTitle = styled.h3`
-  margin: 0 0 0.72rem 0;
+  margin: 0 0 0.6rem 0;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -269,9 +321,9 @@ const PanelTitle = styled.h3`
 
 const TableWrap = styled.div`
   overflow-x: auto;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 10px;
-  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  border-radius: ${CARD_RADIUS_LG};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
 `;
 
 const Table = styled.table`
@@ -282,36 +334,36 @@ const Table = styled.table`
 const TH = styled.th`
   text-align: left;
   padding: 0.58rem;
-  font-size: 0.78rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  background: rgba(148, 163, 184, 0.08);
+  font-size: 0.72rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
 `;
 
 const TD = styled.td`
   padding: 0.58rem;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
 `;
 
 const Status = styled.span<{ $type: 'present' | 'absent' | 'leave' | 'late', theme: any }>`
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 0.22rem 0.46rem;
+  border-radius: ${CARD_RADIUS_LG};
+  font-size: 0.68rem;
+  font-weight: 700;
   display: inline-block;
-  background: ${({ $type }) =>
-        $type === 'present' ? 'rgba(34, 197, 94, 0.1)' :
-            $type === 'absent' ? 'rgba(239, 68, 68, 0.1)' :
-                $type === 'leave' ? 'rgba(234, 179, 8, 0.1)' :
-                    'rgba(59, 130, 246, 0.1)'
+  background: ${({ $type, theme }) =>
+        $type === 'present' ? getDashboardPalette(theme).status.successBg :
+            $type === 'absent' ? getDashboardPalette(theme).status.dangerBg :
+                $type === 'leave' ? getDashboardPalette(theme).status.warningBg :
+                    getDashboardPalette(theme).status.infoBg
     };
-  color: ${({ $type }) =>
-        $type === 'present' ? '#22c55e' :
-            $type === 'absent' ? '#ef4444' :
-                $type === 'leave' ? '#eab308' :
-                    '#3b82f6'
+  color: ${({ $type, theme }) =>
+        $type === 'present' ? getDashboardPalette(theme).status.success :
+            $type === 'absent' ? getDashboardPalette(theme).status.danger :
+                $type === 'leave' ? getDashboardPalette(theme).status.warningStrong :
+                    getDashboardPalette(theme).status.info
     };
 `;
 
@@ -331,11 +383,13 @@ type StudentRow = {
     father_name?: string;
     class_id: number | null;
     section_id: number | null;
+    session_id?: number | null;
     status: string;
 };
 
 type ClassRow = { id: number; name: string };
 type SectionRow = { id: number; name: string; class_id: number };
+type SessionRow = { id: number; name: string; is_active?: boolean };
 
 const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b'];
 
@@ -350,6 +404,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
 
     const [fromDate, setFromDate] = useState(monthStart.toISOString().slice(0, 10));
     const [toDate, setToDate] = useState(today.toISOString().slice(0, 10));
+    const [selectedSession, setSelectedSession] = useState('all');
     const [selectedClass, setSelectedClass] = useState('all');
     const [selectedSection, setSelectedSection] = useState('all');
     const [studentQuery, setStudentQuery] = useState('');
@@ -359,6 +414,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
     const [students, setStudents] = useState<StudentRow[]>([]);
     const [classes, setClasses] = useState<ClassRow[]>([]);
     const [sections, setSections] = useState<SectionRow[]>([]);
+    const [sessions, setSessions] = useState<SessionRow[]>([]);
 
     const studentsMap = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
     const classesMap = useMemo(() => new Map(classes.map((c) => [c.id, c.name])), [classes]);
@@ -367,19 +423,22 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
     const fetchReferenceData = async () => {
         if (!user?.school_id) return;
         try {
-            const [classesRes, sectionsRes, studentsRes] = await Promise.all([
+            const [classesRes, sectionsRes, studentsRes, sessionsRes] = await Promise.all([
                 supabase.from('classes').select('id,name').eq('school_id', user.school_id).order('name'),
                 supabase.from('sections').select('id,name,class_id').eq('school_id', user.school_id).order('name'),
-                supabase.from('students').select('id,name,roll_number,father_name,class_id,section_id,status').eq('school_id', user.school_id)
+                supabase.from('students').select('id,name,roll_number,father_name,class_id,section_id,session_id,status').eq('school_id', user.school_id),
+                supabase.from('sessions').select('id,name,is_active').eq('school_id', user.school_id).order('name')
             ]);
 
             if (classesRes.error) throw classesRes.error;
             if (sectionsRes.error) throw sectionsRes.error;
             if (studentsRes.error) throw studentsRes.error;
+            if (sessionsRes.error) throw sessionsRes.error;
 
             setClasses((classesRes.data || []) as ClassRow[]);
             setSections((sectionsRes.data || []) as SectionRow[]);
             setStudents((studentsRes.data || []) as StudentRow[]);
+            setSessions((sessionsRes.data || []) as SessionRow[]);
         } catch (e: any) {
             toast.showToast(`Failed to load reference data: ${e?.message || 'Unknown error'}`, 'error');
         }
@@ -419,6 +478,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
         return attendance.filter((a) => {
             const st = studentsMap.get(a.student_id);
 
+            if (selectedSession !== 'all' && String(st?.session_id || '') !== selectedSession) return false;
             if (selectedClass !== 'all' && String(st?.class_id || String(a.class_id)) !== selectedClass) return false;
             if (selectedSection !== 'all' && String(st?.section_id || String(a.section_id)) !== selectedSection) return false;
 
@@ -431,7 +491,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
             }
             return true;
         });
-    }, [attendance, selectedClass, selectedSection, studentQuery, studentsMap]);
+    }, [attendance, selectedSession, selectedClass, selectedSection, studentQuery, studentsMap]);
 
     const stats = useMemo(() => {
         const total = filteredAttendance.length;
@@ -545,6 +605,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
     }, [sections, selectedClass]);
 
     const isDark = theme === 'dark';
+    const statusPalette = getDashboardPalette(themeObj).status;
 
     return (
         <Page theme={themeObj}>
@@ -555,32 +616,43 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
                 </Title>
 
                 <Filters>
-                    <Input theme={themeObj} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                    <Input theme={themeObj} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    <HeaderSegmentedGroup theme={themeObj}>
+                    <HeaderSegmentSelect theme={themeObj} value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)}>
+                        <option value="all">All Sessions</option>
+                        {sessions.map((session) => (
+                            <option key={session.id} value={String(session.id)}>
+                                {session.name}
+                            </option>
+                        ))}
+                    </HeaderSegmentSelect>
 
-                    <Select theme={themeObj} value={selectedClass} onChange={(e) => {
+                    <HeaderSegmentInput theme={themeObj} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                    <HeaderSegmentInput theme={themeObj} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+
+                    <HeaderSegmentSelect theme={themeObj} value={selectedClass} onChange={(e) => {
                         setSelectedClass(e.target.value);
                         setSelectedSection('all');
                     }}>
                         <option value="all">All Classes</option>
                         {classes.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-                    </Select>
+                    </HeaderSegmentSelect>
 
                     {filteredSections.length > 0 && (
-                        <Select theme={themeObj} value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
+                        <HeaderSegmentSelect theme={themeObj} value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
                             <option value="all">All Sections</option>
                             {filteredSections.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-                        </Select>
+                        </HeaderSegmentSelect>
                     )}
 
-                    <Input
+                    <HeaderSegmentInput
                         theme={themeObj}
                         type="text"
                         placeholder="Search student / father / roll"
                         value={studentQuery}
                         onChange={(e) => setStudentQuery(e.target.value)}
-                        style={{ gridColumn: '1 / -1' }}
+                        style={{ minWidth: 220 }}
                     />
+                    </HeaderSegmentedGroup>
                 </Filters>
             </Header>
 
@@ -616,8 +688,8 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
                                         <YAxis tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }} />
                                         <Tooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', border: 'none', borderRadius: '8px', color: isDark ? '#f3f4f6' : '#1e293b' }} />
                                         <Legend />
-                                        <Line type="monotone" dataKey="present" stroke="#22c55e" strokeWidth={2} name="Present" dot={false} />
-                                        <Line type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={2} name="Absent" dot={false} />
+                                        <Line type="monotone" dataKey="present" stroke={statusPalette.success} strokeWidth={2} name="Present" dot={false} />
+                                        <Line type="monotone" dataKey="absent" stroke={statusPalette.danger} strokeWidth={2} name="Absent" dot={false} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -667,7 +739,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
                                                 <TD theme={themeObj}>{s.cls}</TD>
                                                 <TD theme={themeObj}>{s.total}</TD>
                                                 <TD theme={themeObj}>{s.absent}</TD>
-                                                <TD theme={themeObj} style={{ color: '#ef4444', fontWeight: 'bold' }}>{s.rate}%</TD>
+                                                <TD theme={themeObj} style={{ color: statusPalette.danger, fontWeight: 'bold' }}>{s.rate}%</TD>
                                             </tr>
                                         ))}
                                         {bottomStudents.length === 0 && (
@@ -702,7 +774,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
                                                 <TD theme={themeObj}>{s.cls}</TD>
                                                 <TD theme={themeObj}>{s.total}</TD>
                                                 <TD theme={themeObj}>{s.present}</TD>
-                                                <TD theme={themeObj} style={{ color: '#22c55e', fontWeight: 'bold' }}>{s.rate}%</TD>
+                                                <TD theme={themeObj} style={{ color: statusPalette.success, fontWeight: 'bold' }}>{s.rate}%</TD>
                                             </tr>
                                         ))}
                                         {topStudents.length === 0 && (
@@ -728,7 +800,7 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
                                             <YAxis tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }} />
                                             <Tooltip contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', border: 'none', borderRadius: '8px', color: isDark ? '#f3f4f6' : '#1e293b' }} />
                                             <Legend />
-                                            <Bar dataKey="presentRate" fill="#3b82f6" name="Present %" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="presentRate" fill={statusPalette.info} name="Present %" radius={[4, 4, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>

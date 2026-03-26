@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import styled, { ThemeProvider, keyframes } from 'styled-components';
+import styled, { ThemeProvider, keyframes, css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { FamilyRestroom, PersonAdd, Person, Add as AddIcon, Close as CloseIcon, Edit as EditIcon, Delete as DeleteIcon, CloudUpload as CloudUploadIcon } from '@mui/icons-material';
@@ -28,13 +28,31 @@ import { Theme as MuiTheme } from '@mui/material/styles';
 import imageCompression from 'browser-image-compression';
 
 import Loader from '../components/Loader';
+import {
+  CARD_RADIUS_LG,
+  clayCardStyle,
+  clayInputStyle,
+  clayPanelStyle,
+  getButtonPalette,
+  getDashboardPalette,
+  getLayoutPalette,
+  isDark as checkIsDark,
+} from '../styles/DesignSystem';
 const PageContainer = styled.div`
   width: 100%;
   height: 100%;
   margin: 0;
-  padding: 0 12px 6px 12px;
+  padding: 0 10px 6px 10px;
   box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
+  background: ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    const dark = checkIsDark(theme);
+    return `
+      radial-gradient(circle at top left, ${dark ? 'rgba(255, 255, 255, 0.035)' : `${theme.ACCENT}10`} 0%, transparent 26%),
+      linear-gradient(180deg, rgba(255,255,255,${dark ? '0.02' : '0.35'}) 0%, transparent 18%),
+      ${layout.shellBg}
+    `;
+  }};
   max-width: 100vw;
   overflow: hidden; /* Prevent container scroll - let MainContent handle it */
   min-height: 0; /* Critical for flex children */
@@ -47,12 +65,20 @@ const PageContainer = styled.div`
 `;
 
 const PageHeader = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      ${clayPanelStyle}
+      border: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
   flex-shrink: 0; /* Don't shrink */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 6px 0 4px 0;
-  padding: 0.5rem 0;
+  margin: 8px 0 6px 0;
+  padding: 0.55rem 0.8rem;
   
   @media (max-width: 700px) {
     margin: 4px 0 4px 0;
@@ -64,7 +90,7 @@ const MainContent = styled.div`
   min-height: 0; /* Critical - allows flex child to shrink below content size */
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 1rem 0 8px 0;
+  padding: 0.85rem 0 8px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   
@@ -95,8 +121,8 @@ const MainContent = styled.div`
 
 const PageTitle = styled.h1`
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
 
@@ -109,7 +135,7 @@ const HeaderActions = styled.div`
 const FamiliesGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+  gap: 0.85rem;
   margin-top: 0;
   
   @media (max-width: 700px) {
@@ -119,12 +145,12 @@ const FamiliesGrid = styled.div`
 `;
 
 const FamilyCard = styled.div<{ $accent: string }>`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  ${clayCardStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.85rem;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
   transition: all 0.2s ease;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   position: relative;
   overflow: hidden;
   display: flex;
@@ -132,9 +158,9 @@ const FamilyCard = styled.div<{ $accent: string }>`
   border-top: 3px solid ${({ $accent }) => $accent};
   
   &:hover {
-    border-color: #6366f1;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-    transform: translateY(-2px);
+    border-color: ${({ theme }) => `${theme.ACCENT}55`};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
+    transform: translateY(-1px);
   }
   
   @media (max-width: 700px) {
@@ -149,28 +175,28 @@ const AddFamilyCard = styled(FamilyCard)`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: 1.5px dashed #6366f1;
-  color: #6366f1;
-  background: ${({ theme }) => theme.BG};
+  border: 1.5px dashed ${({ theme }) => `${theme.ACCENT}66`};
+  color: ${({ theme }) => theme.ACCENT};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
   transition: all 0.2s ease;
-  min-height: 180px;
+  min-height: 160px;
   
   &:hover {
-    border-color: #4f46e5;
-    background: ${({ theme }) => theme.FIELD_BG};
-    color: #4f46e5;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    border-color: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
+    color: ${({ theme }) => theme.ACCENT};
+    transform: translateY(-1px);
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
 `;
 
 const FamilyHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.85rem;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   
   @media (max-width: 700px) {
     gap: 0.6rem;
@@ -183,9 +209,9 @@ const ContactBadge = styled.div`
   position: absolute;
   top: 8px;
   right: 10px;
-  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
   border-radius: 999px;
   padding: 4px 8px;
   font-size: 0.75rem;
@@ -247,9 +273,9 @@ const FamilyInfo = styled.div`
 
 const FamilyName = styled.h3`
   margin: 0 0 0.25rem 0;
-  font-size: 1.1rem;
+  font-size: 0.98rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -261,7 +287,7 @@ const FamilyName = styled.h3`
 
 const FamilyDetails = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   line-height: 1.4;
   
   @media (max-width: 700px) {
@@ -364,19 +390,19 @@ const CardActions = styled.div`
 `;
 
 const StyledIconButton = styled.button`
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  padding: 5px;
+  border-radius: ${CARD_RADIUS_LG};
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 
   &:hover {
-    background: ${({ theme }) => theme.HOVER_BG};
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg};
     color: ${({ theme }) => theme.TEXT_PRIMARY};
   }
 
@@ -392,31 +418,36 @@ const StyledIconButton = styled.button`
 
 const DeleteButton = styled(StyledIconButton)`
   &:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: ${({ theme }) => getDashboardPalette(theme).status.dangerBg};
+    color: ${({ theme }) => getDashboardPalette(theme).status.danger};
   }
 `;
 
 const Button = styled.button`
+  ${({ theme }) => {
+    const buttons = getButtonPalette(theme);
+    return css`
+      background: ${buttons.primaryBg};
+      color: ${buttons.primaryText};
+      box-shadow: ${buttons.primaryShadow};
+    `;
+  }}
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.85rem;
+  padding: 0.42rem 0.78rem;
+  border-radius: ${CARD_RADIUS_LG};
+  font-weight: 700;
+  font-size: 0.76rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: none;
-  background: ${({ theme }) => theme.ACCENT};
-  color: white;
+  border: 1px solid transparent;
   min-width: 0;
   width: auto;
   
   &:hover {
-    background: ${({ theme }) => theme.ACCENT_INPUT};
+    box-shadow: ${({ theme }) => getButtonPalette(theme).primaryHoverShadow};
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
   }
   
   @media (max-width: 700px) {
@@ -432,22 +463,23 @@ const Modal = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: ${({ theme }) => getLayoutPalette(theme).shellOverlay};
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 `;
 
 const ModalContent = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 12px;
-  padding: 1rem;
+  ${clayPanelStyle}
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.9rem;
   width: 96%;
   max-width: 380px;
   position: relative;
-  border: 1px solid ${({ theme }) => theme.BORDER};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   
   @media (max-width: 700px) {
     padding: 0.9rem;
@@ -456,8 +488,8 @@ const ModalContent = styled.div`
 `;
 
 const ModalTitle = styled.h2`
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   margin: 0 0 1.2rem;
   
@@ -478,9 +510,9 @@ const FormGroup = styled.div`
 const Label = styled.label`
   display: block;
   margin-bottom: 0.4rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-weight: 500;
-  font-size: 0.9rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  font-weight: 700;
+  font-size: 0.76rem;
   
   @media (max-width: 700px) {
     font-size: 0.85rem;
@@ -489,20 +521,11 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
+  ${clayInputStyle}
   width: 100%;
-  padding: 0.65rem;
-  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 8px;
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.ACCENT};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}33;
-  }
+  padding: 0.55rem 0.7rem;
+  border-radius: ${CARD_RADIUS_LG};
+  font-size: 0.82rem;
   
   @media (max-width: 700px) {
     padding: 0.6rem;
@@ -516,7 +539,7 @@ const CloseButton = styled.button`
   right: 12px;
   background: none;
   border: none;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
   font-size: 1.3rem;
   cursor: pointer;
   z-index: 10;
@@ -542,7 +565,7 @@ const CloseButton = styled.button`
 const UnlinkButton = styled.button`
   background: none;
   border: none;
-  color: #ef4444;
+  color: ${({ theme }) => getDashboardPalette(theme).status.danger};
   font-size: 1.2rem;
   cursor: pointer;
   position: absolute;
@@ -635,7 +658,7 @@ const ToastMsg = styled.div<{ type: 'error' | 'success', themeMode: 'dark' | 'li
 const DeleteModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(30, 32, 38, 0.38);
+  background: ${({ theme }) => getLayoutPalette(theme).shellOverlay};
   backdrop-filter: blur(7px) saturate(1.2);
   z-index: 14000;
   display: flex;
@@ -652,10 +675,10 @@ const DeleteModalOverlay = styled.div`
   }
 `;
 const DeleteModalBox = styled.div`
-  background: ${({ theme }) => theme.CARD};
+  ${clayPanelStyle}
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   border-radius: 16px;
-  box-shadow: 0 8px 32px #0007;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   padding: 24px 28px 20px 28px;
   min-width: 320px;
   max-width: 520px;
@@ -663,7 +686,7 @@ const DeleteModalBox = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1.5px solid ${({ theme }) => theme.FIELD_BORDER};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
   @media (max-width: 700px) {
     min-width: 0;
     width: calc(100vw - 32px);
@@ -676,22 +699,25 @@ const DeleteModalActions = styled.div`
   margin-top: 24px;
 `;
 const DeleteModalButton = styled.button`
-  padding: 10px 28px;
-  border-radius: 8px;
-  border: 1.5px solid ${props => props.theme.FIELD_BORDER};
-  font-size: 1.08rem;
-  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: ${CARD_RADIUS_LG};
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  background: #ef4444;
-  color: #fff;
-  transition: background 0.18s, border 0.18s;
+  background: ${({ theme }) => getButtonPalette(theme).dangerBg};
+  color: ${({ theme }) => getButtonPalette(theme).dangerText};
+  transition: background 0.18s, border 0.18s, box-shadow 0.18s;
   overflow-wrap: break-word;
-  &:hover { background: #b91c1c; border-color: #b91c1c; }
+  box-shadow: ${({ theme }) => getButtonPalette(theme).dangerShadow};
+  &:hover { box-shadow: ${({ theme }) => getButtonPalette(theme).dangerHoverShadow}; }
 `;
 const DeleteModalCancel = styled(DeleteModalButton)`
-  background: ${props => props.theme.CANCEL_BG};
-  color: ${props => props.theme.CANCEL_COLOR};
-  &:hover, &:focus { background: ${props => props.theme.ACCENT_INPUT}; color: #fff; border-color: ${props => props.theme.ACCENT_INPUT}; }
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  border-color: ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  &:hover, &:focus { background: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBg}; color: ${({ theme }) => theme.TEXT_PRIMARY}; border-color: ${({ theme }) => getLayoutPalette(theme).surfaceHoverBorder}; }
 `;
 
 // Add sound effects for toasts
