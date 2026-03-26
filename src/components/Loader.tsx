@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
-import loaderLogo from '../assets/loader-logo.png';
 
 interface LoaderProps {
   size?: 'small' | 'medium' | 'large';
@@ -10,16 +9,29 @@ interface LoaderProps {
 }
 
 const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullScreenDark = false }) => {
+  const primaryLogo = `${process.env.PUBLIC_URL || ''}/icon-192.png`;
+  const fallbackLogo = `${process.env.PUBLIC_URL || ''}/notification-icon.png`;
+  const [logoSrc, setLogoSrc] = React.useState(primaryLogo);
+
+  React.useEffect(() => {
+    setLogoSrc(primaryLogo);
+  }, [primaryLogo]);
+
   const content = (
     <StyledWrapper $centered={centered} $fullScreenDark={fullScreenDark}>
       <LoaderContent>
         <LogoLoader $size={size}>
           <img
-            src={loaderLogo}
+            src={logoSrc}
             alt="Grow More"
             draggable={false}
+            onError={() => {
+              if (logoSrc !== fallbackLogo) {
+                setLogoSrc(fallbackLogo);
+              }
+            }}
           />
-          <div className="shine" style={{ WebkitMaskImage: `url(${loaderLogo})`, maskImage: `url(${loaderLogo})` }} />
+          <div className="shine" style={{ WebkitMaskImage: `url(${logoSrc})`, maskImage: `url(${logoSrc})` }} />
         </LogoLoader>
         <LoadingLine $darkBg={fullScreenDark}>
           <span className="track" />

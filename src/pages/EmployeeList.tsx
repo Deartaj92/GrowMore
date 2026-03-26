@@ -18,9 +18,8 @@ const PageContainer = styled.div`
   background: ${({ theme }) => theme.BG};
   max-width: 100vw;
   overflow-x: hidden;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 100%;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   transform: translateZ(0);
@@ -76,35 +75,16 @@ const MainContent = styled.div`
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
-  overflow-y: auto;
+  overflow: visible;
   padding: 0 0 32px 0;
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: scroll-position;
   @media (max-width: 700px) {
-    scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
     perspective: none;
-    overscroll-behavior: contain;
-    scroll-snap-type: none;
   }
   @media (min-width: 701px) {
-    scroll-behavior: smooth;
-    scroll-snap-type: y proximity;
     perspective: 1000px;
-  }
-  &::-webkit-scrollbar { width: 6px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
-    border-radius: 3px;
-    transition: background 0.2s;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'};
-  }
-  @media (max-width: 700px) {
-    &::-webkit-scrollbar { width: 4px; }
   }
 `;
 
@@ -452,27 +432,6 @@ const EmployeeList: React.FC = () => {
   const [statusModal, setStatusModal] = useState<{ employee: any; open: boolean }>({ employee: null, open: false });
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  // Check if user has school_id
-  if (!user?.school_id) {
-    return (
-      <PageContainer>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2rem',
-          gap: 16,
-          color: '#888',
-          fontSize: '1.1rem',
-          fontWeight: 600
-        }}>
-          <Info style={{ fontSize: '1.5rem' }} />
-          No school context found. Please contact your administrator.
-        </div>
-      </PageContainer>
-    );
-  }
-
   useEffect(() => {
     const fetchEmployees = async () => {
       if (!user?.school_id) return;
@@ -564,6 +523,26 @@ const EmployeeList: React.FC = () => {
       setUpdatingStatus(false);
     }
   };
+
+  if (!user?.school_id) {
+    return (
+      <PageContainer>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          gap: 16,
+          color: '#888',
+          fontSize: '1.1rem',
+          fontWeight: 600
+        }}>
+          <Info style={{ fontSize: '1.5rem' }} />
+          No school context found. Please contact your administrator.
+        </div>
+      </PageContainer>
+    );
+  }
 
   // Delete functionality intentionally removed per requirements.
 
