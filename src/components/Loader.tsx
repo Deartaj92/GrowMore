@@ -9,42 +9,69 @@ interface LoaderProps {
 }
 
 const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullScreenDark = false }) => {
-  const primaryLogo = `${process.env.PUBLIC_URL || ''}/patternLogo.png`;
-  const fallbackLogo = `${process.env.PUBLIC_URL || ''}/icon-192.png`;
-  const finalFallbackLogo = `${process.env.PUBLIC_URL || ''}/notification-icon.png`;
-  const [logoSrc, setLogoSrc] = React.useState(primaryLogo);
+  const assetVersion = process.env.REACT_APP_VERSION || 'dev';
+  const primaryLogo = `${process.env.PUBLIC_URL || ''}/patternLogo.png?v=${encodeURIComponent(assetVersion)}`;
+  const fallbackLogo = `${process.env.PUBLIC_URL || ''}/icon-192.png?v=${encodeURIComponent(assetVersion)}`;
+  const finalFallbackLogo = `${process.env.PUBLIC_URL || ''}/notification-icon.png?v=${encodeURIComponent(assetVersion)}`;
+  const [logoSrc, setLogoSrc] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    setLogoSrc(primaryLogo);
-  }, [primaryLogo]);
+    let cancelled = false;
 
-  React.useEffect(() => {
-    const preloadLogo = new Image();
-    preloadLogo.src = primaryLogo;
-  }, [primaryLogo]);
+    const preload = (src: string) =>
+      new Promise<string>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(src);
+        image.onerror = () => reject(new Error(`Failed to load ${src}`));
+        image.src = src;
+      });
+
+    const resolveLogo = async () => {
+      try {
+        const resolved = await preload(primaryLogo);
+        if (!cancelled) setLogoSrc(resolved);
+        return;
+      } catch {}
+
+      try {
+        const resolved = await preload(fallbackLogo);
+        if (!cancelled) setLogoSrc(resolved);
+        return;
+      } catch {}
+
+      try {
+        const resolved = await preload(finalFallbackLogo);
+        if (!cancelled) setLogoSrc(resolved);
+      } catch {
+        if (!cancelled) setLogoSrc(null);
+      }
+    };
+
+    setLogoSrc(null);
+    resolveLogo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [primaryLogo, fallbackLogo, finalFallbackLogo]);
 
   const content = (
     <StyledWrapper $centered={centered} $fullScreenDark={fullScreenDark}>
       <LoaderContent>
         <LogoLoader $size={size}>
-          <img
-            src={logoSrc}
-            alt="Grow More"
-            draggable={false}
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-            onError={() => {
-              if (logoSrc !== fallbackLogo) {
-                setLogoSrc(fallbackLogo);
-                return;
-              }
-              if (logoSrc !== finalFallbackLogo) {
-                setLogoSrc(finalFallbackLogo);
-              }
-            }}
-          />
-          <div className="shine" style={{ WebkitMaskImage: `url(${logoSrc})`, maskImage: `url(${logoSrc})` }} />
+          {logoSrc && (
+            <>
+              <img
+                src={logoSrc}
+                alt="Grow More"
+                draggable={false}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
+              />
+              <div className="shine" style={{ WebkitMaskImage: `url(${logoSrc})`, maskImage: `url(${logoSrc})` }} />
+            </>
+          )}
         </LogoLoader>
         <LoadingLine $darkBg={fullScreenDark}>
           <span className="track" />
